@@ -3464,8 +3464,12 @@
       ],
       "responses": [
         {
+          "status": "200",
+          "schema": "ref:ContactImageUploadResponse"
+        },
+        {
           "status": "201",
-          "schema": "object"
+          "schema": "ref:ContactImageUploadResponse"
         },
         {
           "status": "400",
@@ -3498,11 +3502,27 @@
       "request_body": "ref:AdoptImageInput",
       "responses": [
         {
+          "status": "200",
+          "schema": "ref:ContactImageUploadResponse"
+        },
+        {
           "status": "201",
-          "schema": "object"
+          "schema": "ref:ContactImageUploadResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "507",
           "schema": "ref:Error"
         }
       ]
@@ -12688,12 +12708,7 @@
       "properties": [
         {
           "name": "crop",
-          "type": "ref:ImageCrop",
-          "required": false
-        },
-        {
-          "name": "reset_crop",
-          "type": "boolean",
+          "type": "composed[object]",
           "required": false
         },
         {
@@ -12705,6 +12720,21 @@
             "private",
             "secret"
           ]
+        }
+      ]
+    },
+    {
+      "name": "ContactImageUploadResponse",
+      "properties": [
+        {
+          "name": "deduplicated",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "image",
+          "type": "ref:ContactImage",
+          "required": true
         }
       ]
     },
@@ -13017,16 +13047,6 @@
           "required": true
         },
         {
-          "name": "kind",
-          "type": "string",
-          "required": true,
-          "enum": [
-            "contact",
-            "note",
-            "activity"
-          ]
-        },
-        {
           "name": "mime_type",
           "type": "string",
           "required": true,
@@ -13051,13 +13071,8 @@
           "required": true
         },
         {
-          "name": "source_id",
-          "type": "integer",
-          "required": true
-        },
-        {
-          "name": "source_label",
-          "type": "string",
+          "name": "source",
+          "type": "ref:PhotoSource",
           "required": true
         },
         {
@@ -20396,6 +20411,31 @@
           "name": "pref",
           "type": "integer",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "PhotoSource",
+      "properties": [
+        {
+          "name": "id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "contact",
+            "note",
+            "activity"
+          ]
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": true
         }
       ]
     },

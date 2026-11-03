@@ -300,7 +300,7 @@ func TestImageService_UpdateSensitivityAndCrop(t *testing.T) {
 	crop := &models.ImageCrop{X: 0.1, Y: 0.2, W: 0.5, H: 0.6}
 	updated, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{
 		Sensitivity: &private,
-		Crop:        crop,
+		Crop:        models.OptionalCrop{Set: true, Value: crop},
 	})
 	require.NoError(t, err)
 	assert.Equal(t, models.ImageSensitivityPrivate, updated.Sensitivity)
@@ -308,7 +308,7 @@ func TestImageService_UpdateSensitivityAndCrop(t *testing.T) {
 	assert.InDelta(t, 0.1, *updated.CropX, 0.0001)
 	assert.InDelta(t, 0.6, *updated.CropH, 0.0001)
 
-	cleared, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{ResetCrop: true})
+	cleared, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: models.OptionalCrop{Set: true}})
 	require.NoError(t, err)
 	assert.Nil(t, cleared.CropX)
 	assert.Nil(t, cleared.CropW)
@@ -327,7 +327,7 @@ func TestImageService_UpdateRejectsInvalidValues(t *testing.T) {
 	assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode)
 
 	_, err = svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{
-		Crop: &models.ImageCrop{X: 0.8, Y: 0.8, W: 0.5, H: 0.5},
+		Crop: models.OptionalCrop{Set: true, Value: &models.ImageCrop{X: 0.8, Y: 0.8, W: 0.5, H: 0.5}},
 	})
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode)
@@ -432,7 +432,7 @@ func TestImageService_UpdateCropValidation(t *testing.T) {
 		"overflow in x": {X: 0.6, Y: 0, W: 0.5, H: 0.5},
 	} {
 		crop := c
-		_, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: &crop})
+		_, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: models.OptionalCrop{Set: true, Value: &crop}})
 		var appErr *apperrors.AppError
 		require.ErrorAs(t, err, &appErr, name)
 		assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode, name)
@@ -440,7 +440,7 @@ func TestImageService_UpdateCropValidation(t *testing.T) {
 	// Float rounding at the edge is tolerated; the full image is a valid crop.
 	for _, c := range []models.ImageCrop{{X: 0.7, Y: 0, W: 0.30000000000000004, H: 1}, {X: 0, Y: 0, W: 1, H: 1}} {
 		crop := c
-		_, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: &crop})
+		_, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: models.OptionalCrop{Set: true, Value: &crop}})
 		require.NoError(t, err)
 	}
 }

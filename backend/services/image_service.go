@@ -166,20 +166,73 @@ func (s *ImageService[T, P]) Get(ctx context.Context, userID uint, owner OwnerRe
 	return &row, nil
 }
 
-// processUpload validates and processes one image without touching disk or the
-// database, so dedupe can decide before storing anything.
-func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*imaging.Result, error) {
-	if s.Limit > 0 {
-		var count int64
-		var model T
-		if err := s.baseQuery(ctx, userID, owner).Model(&model).Count(&count).Error; err != nil {
-			return nil, apperrors.ErrDatabase("Failed to check the image limit").WithError(err)
-		}
-		if count >= int64(s.Limit) {
-			return nil, apperrors.ErrConflict("Image limit reached").WithReason(apperrors.ReasonImageLimitReached, map[string]any{"limit": s.Limit})
+// checkLimit enforces the per-owner image cap (ADR 0040 decision 9).
+func (s *ImageService[T, P]) checkLimit(ctx context.Context, userID uint, owner OwnerRef) error {
+	if s.Limit <= 0 {
+		return nil
+	}
+	var count int64
+	var model T
+	if err := s.baseQuery(ctx, userID, owner).Model(&model).Count(&count).Error; err != nil {
+		return apperrors.ErrDatabase("Failed to check the image limit").WithError(err)
+	}
+	if count >= int64(s.Limit) {
+		return apperrors.ErrConflict("Image limit reached").WithReason(apperrors.ReasonImageLimitReached, map[string]any{"limit": s.Limit})
+	}
+	return nil
+}
+
+// checkCapacity enforces the per-user storage quota and the free-disk
+// preflight for n new bytes. Every path that adds stored image bytes (upload
+// and adopt) goes through it.
+func (s *ImageService[T, P]) checkCapacity(userID uint, n int) error {
+	if n < 0 {
+		n = 0
+	}
+	if s.Quota.Enabled() {
+		if qerr := s.Quota.CheckAttachmentUpload(s.DB, userID, int64(n)); qerr != nil {
+			return qerr
 		}
 	}
+	if s.Store.Dir != "" {
+		if err := diskspace.Require(s.Store.Dir, uint64(n)); err != nil {
+			return apperrors.ErrInsufficientStorage(err.Error()).WithReason(apperrors.ReasonImageInsufficientStorage, nil)
+		}
+	}
+	return nil
+}
 
+// findDuplicate returns the live image on this owner whose dHash is nearest to
+// dhash and within imaging.DedupeMaxHamming (lowest id wins a tie), or nil.
+// Only the contact gallery dedupes (ADR 0040 decision 9).
+func (s *ImageService[T, P]) findDuplicate(ctx context.Context, userID uint, owner OwnerRef, dhash int64) (*T, error) {
+	if s.Kind != OwnerKindContact {
+		return nil, nil
+	}
+	var rows []T
+	if err := s.baseQuery(ctx, userID, owner).Where("dhash IS NOT NULL").Order("id ASC").Find(&rows).Error; err != nil {
+		return nil, apperrors.ErrDatabase("Failed to check for a duplicate image").WithError(err)
+	}
+	best, bestDist := -1, imaging.DedupeMaxHamming+1
+	for i := range rows {
+		hash := P(&rows[i]).Fields().DHash
+		if hash == nil {
+			continue
+		}
+		if d := imaging.HammingDistance(*hash, dhash); d < bestDist {
+			best, bestDist = i, d
+		}
+	}
+	if best < 0 {
+		return nil, nil
+	}
+	return &rows[best], nil
+}
+
+// processUpload validates and processes one image without touching disk or the
+// database, so dedupe can decide before storing anything. It does not check the
+// owner cap: callers decide whether a duplicate is exempt from it.
+func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*imaging.Result, error) {
 	reader := src
 	if s.MaxBytes > 0 {
 		reader = io.LimitReader(src, s.MaxBytes+1)
@@ -196,15 +249,8 @@ func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, own
 		return nil, imageError(err, s.Limits.MaxPixels, s.MaxBytes)
 	}
 
-	if s.Quota.Enabled() {
-		if qerr := s.Quota.CheckAttachmentUpload(s.DB, userID, int64(len(result.Full)+len(result.Thumb))); qerr != nil {
-			return nil, qerr
-		}
-	}
-	if s.Store.Dir != "" {
-		if err := diskspace.Require(s.Store.Dir, uint64(len(result.Full)+len(result.Thumb))); err != nil {
-			return nil, apperrors.ErrInsufficientStorage(err.Error()).WithReason(apperrors.ReasonImageInsufficientStorage, nil)
-		}
+	if err := s.checkCapacity(userID, len(result.Full)+len(result.Thumb)); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
@@ -249,6 +295,9 @@ func (s *ImageService[T, P]) storeUpload(ctx context.Context, userID uint, owner
 // files are removed if the row insert fails, so a failed request leaves no
 // orphan behind (ADR 0040 decision 5).
 func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*T, error) {
+	if err := s.checkLimit(ctx, userID, owner); err != nil {
+		return nil, err
+	}
 	result, err := s.processUpload(ctx, userID, owner, src)
 	if err != nil {
 		return nil, err
@@ -261,21 +310,22 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 // of inserting a re-encoded copy (ADR 0040 decision 9). Other owner kinds
 // never dedupe. The bool reports whether an existing row was returned.
 func (s *ImageService[T, P]) UploadDeduped(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*T, bool, error) {
+	// A duplicate is an idempotent retry, so it is exempt from the cap: the
+	// cap verdict is held back until dedupe has had its say.
+	limitErr := s.checkLimit(ctx, userID, owner)
 	result, err := s.processUpload(ctx, userID, owner, src)
 	if err != nil {
 		return nil, false, err
 	}
-	if s.Kind == OwnerKindContact {
-		var rows []T
-		if err := s.baseQuery(ctx, userID, owner).Where("dhash IS NOT NULL").Find(&rows).Error; err != nil {
-			return nil, false, apperrors.ErrDatabase("Failed to check for a duplicate image").WithError(err)
-		}
-		for i := range rows {
-			hash := P(&rows[i]).Fields().DHash
-			if hash != nil && imaging.HammingDistance(*hash, result.DHash) <= imaging.DedupeMaxHamming {
-				return &rows[i], true, nil
-			}
-		}
+	dup, err := s.findDuplicate(ctx, userID, owner, result.DHash)
+	if err != nil {
+		return nil, false, err
+	}
+	if dup != nil {
+		return dup, true, nil
+	}
+	if limitErr != nil {
+		return nil, false, limitErr
 	}
 	row, err := s.storeUpload(ctx, userID, owner, result)
 	return row, false, err
@@ -297,13 +347,13 @@ func (s *ImageService[T, P]) Update(ctx context.Context, userID uint, owner Owne
 				WithReason(apperrors.ReasonValidationInvalid, map[string]any{"field": "sensitivity"})
 		}
 	}
-	if in.ResetCrop {
+	if in.Crop.Set && in.Crop.Value == nil {
 		updates["crop_x"] = nil
 		updates["crop_y"] = nil
 		updates["crop_w"] = nil
 		updates["crop_h"] = nil
-	} else if in.Crop != nil {
-		c := *in.Crop
+	} else if in.Crop.Set {
+		c := *in.Crop.Value
 		// Positive-form checks so NaN (every comparison false) is rejected.
 		const eps = 1e-9
 		if !(c.X >= 0 && c.Y >= 0 && c.W > 0 && c.H > 0 && c.X+c.W <= 1+eps && c.Y+c.H <= 1+eps) {

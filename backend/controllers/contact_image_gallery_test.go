@@ -142,7 +142,7 @@ func TestAdoptContactImage_AndPhotosTab(t *testing.T) {
 	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &out))
 	assert.Equal(t, 3, out.Total)
 	require.Len(t, out.Photos, 3)
-	assert.Equal(t, "note", out.Photos[0].Kind)
+	assert.Equal(t, "note", out.Photos[0].Source.Kind)
 	assert.Equal(t, "/api/v1/notes/"+strconv.FormatUint(uint64(note.ID), 10)+"/images/"+strconv.FormatUint(uint64(noteImgID), 10)+"/file", out.Photos[0].FileURL)
 	assert.Equal(t, http.StatusNotFound, galleryDo(env, "GET", galleryPath(9999, "/photos"), nil).Code)
 }
@@ -178,6 +178,7 @@ func TestContactGalleryHandlers_DatabaseFailures(t *testing.T) {
 	assert.Equal(t, http.StatusInternalServerError, galleryDo(env, "PATCH", galleryPath(contact.ID, img), map[string]any{"sensitivity": "private"}).Code)
 	assert.Equal(t, http.StatusInternalServerError, galleryDo(env, "PUT", galleryPath(contact.ID, "/main-image"), map[string]any{"image_id": id}).Code)
 	assert.Equal(t, http.StatusInternalServerError, galleryDo(env, "GET", galleryPath(contact.ID, "/photos"), nil).Code)
+	require.NoError(t, env.db.Exec("DROP TABLE activity_contacts").Error)
 	assert.Equal(t, http.StatusInternalServerError, galleryDo(env, "POST", galleryPath(contact.ID, "/images/adopt"), map[string]any{"source_kind": "activity", "source_id": 1, "image_id": 1}).Code)
 }
 
@@ -360,4 +361,52 @@ func TestContactImages_DeleteMainImageIsAtomic(t *testing.T) {
 	require.NoError(t, env.db.First(&got, contact.ID).Error)
 	require.NotNil(t, got.MainImageID)
 	assert.NotEmpty(t, got.Photo)
+}
+
+func TestAdoptContactImage_DuplicateReturns200(t *testing.T) {
+	env := galleryEnv(t)
+	contact := models.Contact{UserID: env.user.ID, Firstname: "AdoptDup"}
+	require.NoError(t, env.db.Create(&contact).Error)
+	note := models.Note{UserID: env.user.ID, ContactID: &contact.ID, Content: "n"}
+	require.NoError(t, env.db.Create(&note).Error)
+	noteImgID := seedNoteImage(t, env, note.ID)
+	p := galleryPath(contact.ID, "/images/adopt")
+	body := map[string]any{"source_kind": "note", "source_id": note.ID, "image_id": noteImgID}
+
+	first := galleryDo(env, "POST", p, body)
+	require.Equal(t, http.StatusCreated, first.Code, first.Body.String())
+	assert.Contains(t, first.Body.String(), `"deduplicated":false`)
+	second := galleryDo(env, "POST", p, body)
+	require.Equal(t, http.StatusOK, second.Code, second.Body.String())
+	assert.Contains(t, second.Body.String(), `"deduplicated":true`)
+	var count int64
+	require.NoError(t, env.db.Model(&models.ContactImage{}).Count(&count).Error)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestPatchContactImage_CropAbsentNullAndObject(t *testing.T) {
+	env := galleryEnv(t)
+	contact := models.Contact{UserID: env.user.ID, Firstname: "CropSem"}
+	require.NoError(t, env.db.Create(&contact).Error)
+	id := galleryUpload(t, env, contact.ID, 0)
+	p := galleryPath(contact.ID, "/images/"+strconv.FormatUint(uint64(id), 10))
+	cropW := func() *float64 {
+		var row models.ContactImage
+		require.NoError(t, env.db.First(&row, id).Error)
+		return row.CropW
+	}
+
+	require.Equal(t, http.StatusOK, galleryDo(env, "PATCH", p, `{"crop":{"x":0,"y":0,"w":0.5,"h":0.5}}`).Code)
+	require.NotNil(t, cropW())
+
+	// Absent "crop" leaves the stored crop alone.
+	require.Equal(t, http.StatusOK, galleryDo(env, "PATCH", p, `{"sensitivity":"private"}`).Code)
+	require.NotNil(t, cropW(), "an absent crop must not clear it")
+
+	// Explicit null clears it.
+	require.Equal(t, http.StatusOK, galleryDo(env, "PATCH", p, `{"crop":null}`).Code)
+	assert.Nil(t, cropW())
+
+	// A malformed crop is a 400.
+	assert.Equal(t, http.StatusBadRequest, galleryDo(env, "PATCH", p, `{"crop":"big"}`).Code)
 }

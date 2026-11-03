@@ -696,9 +696,13 @@ export type ContactImage = {
 };
 
 export type ContactImagePatchInput = {
-  crop?: ImageCrop;
-  reset_crop?: boolean;
+  crop?: ImageCrop | null;
   sensitivity?: 'normal' | 'private' | 'secret';
+};
+
+export type ContactImageUploadResponse = {
+  deduplicated: boolean;
+  image: ContactImage;
 };
 
 export type ContactMapPoint = {
@@ -779,12 +783,10 @@ export type ContactPhoto = {
   file_url: string;
   height: number;
   id: number;
-  kind: 'contact' | 'note' | 'activity';
   mime_type: 'image/jpeg' | 'image/png';
   sensitivity: 'normal' | 'private' | 'secret';
   size_bytes: number;
-  source_id: number;
-  source_label: string;
+  source: PhotoSource;
   taken_at?: string | null;
   taken_date?: string | null;
   thumbnail_url: string;
@@ -2420,6 +2422,12 @@ export type Phone = {
   label?: string;
   number: string;
   pref?: number | null;
+};
+
+export type PhotoSource = {
+  id: number;
+  kind: 'contact' | 'note' | 'activity';
+  label: string;
 };
 
 export type Preference = {

@@ -159,7 +159,7 @@ func PatchContactImage(ctx context.Context, db *gorm.DB, svc *ImageService[model
 		if _, err := ClearContactMainImage(ctx, db, userID, contact, photoDir); err != nil {
 			return nil, err
 		}
-	case in.Crop != nil || in.ResetCrop:
+	case in.Crop.Set:
 		if _, err := SetContactMainImage(ctx, db, store, userID, contact, img, photoDir); err != nil {
 			return nil, err
 		}
@@ -170,112 +170,93 @@ func PatchContactImage(ctx context.Context, db *gorm.DB, svc *ImageService[model
 // AdoptImageIntoContact copies a note's or activity's stored full variant into
 // the contact gallery without re-decoding it (ADR 0040 decision 10). The
 // source must belong to the same user and to this contact (the note is filed
-// under it, or the activity is linked to it). Sensitivity is copied verbatim
-// and never lowered.
-func AdoptImageIntoContact(ctx context.Context, db *gorm.DB, store imaging.Store, userID uint, contact *models.Contact, kind string, sourceID uint, imageID uint, limit int) (*models.ContactImage, error) {
-	if limit > 0 {
-		var count int64
-		if err := db.WithContext(ctx).Model(&models.ContactImage{}).
-			Where("user_id = ? AND contact_vcard_uid = ?", userID, contact.VCardUID).
-			Count(&count).Error; err != nil {
-			return nil, apperrors.ErrDatabase("Failed to check the image limit").WithError(err)
-		}
-		if count >= int64(limit) {
-			return nil, apperrors.ErrConflict("Image limit reached").
-				WithReason(apperrors.ReasonImageLimitReached, map[string]any{"limit": limit})
-		}
-	}
-
-	type sourceImage struct {
-		storedName  string
-		thumbName   string
-		mime        string
-		thumbMIME   string
-		width       int
-		height      int
-		sizeBytes   int64
-		thumbBytes  int64
-		sensitivity string
-		dhash       *int64
-		takenAt     *time.Time
-		takenDate   *string
-	}
-
-	var src sourceImage
+// under it, or the activity is live and linked to it). Sensitivity is copied
+// verbatim and never lowered. Adopt is an ingress like upload: a near-duplicate
+// of a live gallery image returns that image (the bool reports it) before the
+// cap applies, and a new copy counts against the cap, the storage quota and
+// the free-disk preflight.
+func AdoptImageIntoContact(ctx context.Context, svc *ImageService[models.ContactImage, *models.ContactImage], userID uint, contact *models.Contact, kind string, sourceID uint, imageID uint) (*models.ContactImage, bool, error) {
+	db, store := svc.DB, svc.Store
+	var src models.ImageFields
 	switch kind {
 	case "note":
 		var note models.Note
 		if err := db.WithContext(ctx).Where("user_id = ? AND id = ?", userID, sourceID).First(&note).Error; err != nil {
-			return nil, apperrors.ErrNotFound("Image")
+			return nil, false, apperrors.ErrNotFound("Image")
 		}
 		if note.ContactID == nil || *note.ContactID != contact.ID {
-			return nil, apperrors.ErrNotFound("Image")
+			return nil, false, apperrors.ErrNotFound("Image")
 		}
 		var img models.NoteImage
 		if err := db.WithContext(ctx).Where("user_id = ? AND note_id = ? AND id = ?", userID, note.ID, imageID).First(&img).Error; err != nil {
-			return nil, apperrors.ErrNotFound("Image")
+			return nil, false, apperrors.ErrNotFound("Image")
 		}
-		src = sourceImage{img.StoredName, img.ThumbName, img.MIMEType, img.ThumbMIMEType, img.Width, img.Height, img.SizeBytes, img.ThumbSizeBytes, img.Sensitivity, img.DHash, img.TakenAt, img.TakenDate}
+		src = img.ImageFields
 	case "activity":
 		var linked int64
 		if err := db.WithContext(ctx).Table("activity_contacts").
 			Joins("JOIN activities ON activities.id = activity_contacts.activity_id AND activities.user_id = ? AND activities.deleted_at IS NULL", userID).
 			Where("activity_contacts.activity_id = ? AND activity_contacts.contact_id = ?", sourceID, contact.ID).Count(&linked).Error; err != nil {
-			return nil, apperrors.ErrDatabase("Failed to check the activity").WithError(err)
+			return nil, false, apperrors.ErrDatabase("Failed to check the activity").WithError(err)
 		}
 		if linked == 0 {
-			return nil, apperrors.ErrNotFound("Image")
+			return nil, false, apperrors.ErrNotFound("Image")
 		}
 		var img models.ActivityImage
 		if err := db.WithContext(ctx).Where("user_id = ? AND activity_id = ? AND id = ?", userID, sourceID, imageID).First(&img).Error; err != nil {
-			return nil, apperrors.ErrNotFound("Image")
+			return nil, false, apperrors.ErrNotFound("Image")
 		}
-		src = sourceImage{img.StoredName, img.ThumbName, img.MIMEType, img.ThumbMIMEType, img.Width, img.Height, img.SizeBytes, img.ThumbSizeBytes, img.Sensitivity, img.DHash, img.TakenAt, img.TakenDate}
+		src = img.ImageFields
 	default:
-		return nil, apperrors.ErrValidation("source_kind must be note or activity").
+		return nil, false, apperrors.ErrValidation("source_kind must be note or activity").
 			WithReason(apperrors.ReasonValidationInvalid, map[string]any{"field": "source_kind"})
 	}
 
-	full, err := store.Read(userID, src.storedName)
-	if err != nil {
-		return nil, apperrors.ErrNotFound("Image file")
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	if src.DHash != nil {
+		dup, err := svc.findDuplicate(ctx, userID, owner, *src.DHash)
+		if err != nil {
+			return nil, false, err
+		}
+		if dup != nil {
+			return dup, true, nil
+		}
 	}
-	thumb, err := store.Read(userID, src.thumbName)
-	if err != nil {
-		return nil, apperrors.ErrNotFound("Image file")
-	}
-	ext, thumbExt := imageExtension(src.mime), imageExtension(src.thumbMIME)
-	newFull, newThumb, err := store.Save(userID, full, thumb, ext, thumbExt)
-	if err != nil {
-		return nil, apperrors.ErrInternal("Failed to copy image").WithError(err)
+	if err := svc.checkLimit(ctx, userID, owner); err != nil {
+		return nil, false, err
 	}
 
-	row := models.ContactImage{
-		ImageFields: models.ImageFields{
-			UserID:         userID,
-			UUID:           uuid.New().String(),
-			StoredName:     newFull,
-			ThumbName:      newThumb,
-			MIMEType:       src.mime,
-			ThumbMIMEType:  src.thumbMIME,
-			Width:          src.width,
-			Height:         src.height,
-			SizeBytes:      src.sizeBytes,
-			ThumbSizeBytes: src.thumbBytes,
-			Sensitivity:    src.sensitivity,
-			DHash:          src.dhash,
-			TakenAt:        src.takenAt,
-			TakenDate:      src.takenDate,
-		},
-		ContactVCardUID: contact.VCardUID,
+	full, err := store.Read(userID, src.StoredName)
+	if err != nil {
+		return nil, false, apperrors.ErrNotFound("Image file")
 	}
+	thumb, err := store.Read(userID, src.ThumbName)
+	if err != nil {
+		return nil, false, apperrors.ErrNotFound("Image file")
+	}
+	if err := svc.checkCapacity(userID, len(full)+len(thumb)); err != nil {
+		return nil, false, err
+	}
+	newFull, newThumb, err := store.Save(userID, full, thumb, imageExtension(src.MIMEType), imageExtension(src.ThumbMIMEType))
+	if err != nil {
+		return nil, false, apperrors.ErrInternal("Failed to copy image").WithError(err)
+	}
+
+	// The copy gets a new identity and file names; everything else, including
+	// sensitivity, carries over verbatim.
+	fields := src
+	fields.ID, fields.CreatedAt, fields.UpdatedAt, fields.DeletedAt = 0, time.Time{}, time.Time{}, gorm.DeletedAt{}
+	fields.UUID = uuid.New().String()
+	fields.CropX, fields.CropY, fields.CropW, fields.CropH = nil, nil, nil, nil
+	fields.StoredName, fields.ThumbName = newFull, newThumb
+	row := models.ContactImage{ImageFields: fields, ContactVCardUID: contact.VCardUID}
 	if err := db.WithContext(ctx).Create(&row).Error; err != nil {
 		_ = store.Remove(userID, newFull)
 		_ = store.Remove(userID, newThumb)
-		return nil, apperrors.ErrDatabase("Failed to adopt image").WithError(err)
+		return nil, false, apperrors.ErrDatabase("Failed to adopt image").WithError(err)
 	}
 	models.RecordAuditEvent(db, models.AuditEntityContact, contact.VCardUID, models.AuditOpCreate, userID)
-	return &row, nil
+	return &row, false, nil
 }
 
 func imageExtension(mime string) string {
