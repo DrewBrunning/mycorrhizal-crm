@@ -90,16 +90,51 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun `unterminated and nested markers do not throw`() {
+    fun `unterminated markers stay as literal text and drop nothing`() {
         listOf(
             "**bold",
             "[a](",
             "[[[[",
             "`x",
-            "*a **b* c**",
             "_".repeat(50),
             "[".repeat(2000)
-        ).forEach { parseInlineMarkdown(it) }
+        ).forEach { src ->
+            assertEquals(
+                "unterminated <${src.take(20)}> must stay one literal run",
+                listOf(Inline.Text(src)),
+                parseInlineMarkdown(src)
+            )
+        }
+    }
+
+    @Test
+    fun `crossed markers parse only the valid pair and keep the rest literal`() {
+        // The leading "*" has no closer without trailing whitespace, so it stays text;
+        // the "**...**" pair is real emphasis, and the unmatched "*" inside it stays text.
+        assertEquals(
+            listOf(Inline.Text("*a "), Inline.Strong(listOf(Inline.Text("b* c")))),
+            parseInlineMarkdown("*a **b* c**")
+        )
+    }
+
+    @Test
+    fun `the deepest inline nesting the grammar allows parses completely`() {
+        // Greedy first-closer matching means a marker type cannot nest in itself, so the deepest
+        // possible tree is link > ** > _ > * (four levels), below MAX_INLINE_DEPTH (6), which is
+        // therefore a defence-in-depth bound rather than a reachable limit. Nothing is dropped.
+        assertEquals(
+            listOf(
+                Inline.Link(
+                    "https://e.com",
+                    listOf(
+                        Inline.Strong(
+                            listOf(Inline.Em(listOf(Inline.Em(listOf(Inline.Text("x"))))))
+                        )
+                    )
+                )
+            ),
+            parseInlineMarkdown("[**_*x*_**](https://e.com)")
+        )
     }
 
     @Test
@@ -138,8 +173,17 @@ class MarkdownParserTest {
     }
 
     @Test
-    fun `deeply nested quotes do not throw`() {
-        parseMarkdown("> ".repeat(500) + "x")
+    fun `nested quotes stop at the depth cap and keep the remaining markers as text`() {
+        val src = "> ".repeat(500) + "x"
+        var block: Block = parseMarkdown(src).single()
+        var quotes = 0
+        while (block is Block.Quote) {
+            quotes += 1
+            block = block.blocks.single()
+        }
+        assertEquals("five nested quotes (levels 0..MAX_QUOTE_DEPTH)", 5, quotes)
+        // Past the cap the rest is one plain paragraph: 500 markers - 5 consumed, none dropped.
+        assertEquals(Block.Paragraph(listOf("> ".repeat(495) + "x"), 0), block)
     }
 
     @Test

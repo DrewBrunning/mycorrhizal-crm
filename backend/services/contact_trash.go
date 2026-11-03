@@ -351,27 +351,37 @@ type TrashEntry struct {
 }
 
 // ListTrash returns the user's trashed, restorable contacts (those with a
-// deletion snapshot), newest deletion first, plus the total.
+// deletion snapshot whose contact is still soft-deleted), newest deletion
+// first, plus the total.
+//
+// One join of contact_deletion_snapshots to contacts (Unscoped, deleted_at IS
+// NOT NULL, same user_id on both) drives both the count and the page, so an
+// orphan snapshot (its contact live again or hard-gone; the scheduled purge
+// reaps it) is in neither: total always matches the rows pages can return, and
+// there is no per-row lookup (issue #2315).
 func ListTrash(db *gorm.DB, userID uint, offset, limit int) ([]TrashEntry, int64, error) {
-	base := db.Table("contact_deletion_snapshots").Where("user_id = ?", userID)
+	base := func() *gorm.DB {
+		return db.Unscoped().Model(&models.Contact{}).
+			Joins("JOIN contact_deletion_snapshots s ON s.contact_id = contacts.id AND s.user_id = contacts.user_id").
+			Where("contacts.user_id = ? AND contacts.deleted_at IS NOT NULL", userID)
+	}
 	var total int64
-	if err := base.Count(&total).Error; err != nil {
+	if err := base().Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	var snaps []models.ContactDeletionSnapshot
-	if err := db.Where("user_id = ?", userID).Order("trashed_at DESC, id").Offset(offset).Limit(limit).Find(&snaps).Error; err != nil {
+	var rows []struct {
+		models.Contact
+		TrashedAt time.Time `gorm:"column:snapshot_trashed_at"`
+	}
+	if err := base().
+		Select("contacts.*, s.trashed_at AS snapshot_trashed_at").
+		Order("s.trashed_at DESC, s.id").Offset(offset).Limit(limit).
+		Find(&rows).Error; err != nil {
 		return nil, 0, err
 	}
-	entries := make([]TrashEntry, 0, len(snaps))
-	for _, s := range snaps {
-		var c models.Contact
-		if err := db.Unscoped().Where("id = ? AND user_id = ? AND deleted_at IS NOT NULL", s.ContactID, userID).First(&c).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				continue // snapshot of a contact that is live or gone; the scheduled purge reaps it
-			}
-			return nil, 0, err
-		}
-		entries = append(entries, TrashEntry{Contact: c, DeletedAt: s.TrashedAt})
+	entries := make([]TrashEntry, 0, len(rows))
+	for _, r := range rows {
+		entries = append(entries, TrashEntry{Contact: r.Contact, DeletedAt: r.TrashedAt})
 	}
 	return entries, total, nil
 }
