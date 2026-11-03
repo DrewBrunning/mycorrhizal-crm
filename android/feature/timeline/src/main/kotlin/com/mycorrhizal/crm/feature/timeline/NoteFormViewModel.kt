@@ -321,15 +321,14 @@ class NoteFormViewModel @Inject constructor(
         val id = noteId ?: return
         viewModelScope.launch {
             _uiState.update { it.copy(imagesLoading = true) }
-            runCatching { noteRepository.listImages(id) }
-                .getOrNull()
-                ?.fold(
-                    onSuccess = { images ->
-                        _uiState.update { it.copy(images = images, imagesLoading = false) }
-                    },
-                    onFailure = { _uiState.update { it.copy(imagesLoading = false) } }
+            val loaded = loadOwnerImages { noteRepository.listImages(id) }
+            _uiState.update {
+                it.copy(
+                    images = loaded.images ?: it.images,
+                    imagesLoading = false,
+                    error = loaded.error ?: it.error
                 )
-                ?: _uiState.update { it.copy(imagesLoading = false) }
+            }
         }
     }
 

@@ -893,7 +893,7 @@ class NoteFormViewModelTest {
     }
 
     @Test
-    fun `an image load failure leaves the form usable`() = runTest(
+    fun `an image load failure surfaces the error and keeps the form usable`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
         coEvery { noteRepository.get(3) } returns Result.success(
@@ -908,6 +908,7 @@ class NoteFormViewModelTest {
 
         assertFalse(vm.uiState.value.imagesLoading)
         assertTrue(vm.uiState.value.images.isEmpty())
+        assertEquals("boom", vm.uiState.value.error?.message)
         assertEquals("Loves climbing", vm.uiState.value.content)
     }
 
