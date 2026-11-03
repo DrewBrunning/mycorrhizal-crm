@@ -78,7 +78,7 @@ func sweepImageFiles(ctx context.Context, db *gorm.DB, root string, cutoff time.
 		if !e.IsDir() || !strings.HasPrefix(e.Name(), "u") {
 			continue
 		}
-		userID, err := strconv.ParseUint(strings.TrimPrefix(e.Name(), "u"), 10, 64)
+		userID, err := strconv.ParseUint(strings.TrimPrefix(e.Name(), "u"), 10, strconv.IntSize)
 		if err != nil {
 			continue
 		}
