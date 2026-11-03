@@ -619,3 +619,152 @@ func TestRunRequiresBaselineEntry(t *testing.T) {
 		t.Fatalf("run = %d, stderr %q", code, stderr)
 	}
 }
+
+func TestRunPromotesArtifact(t *testing.T) {
+	root, sha := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	artifact := agenteval.Artifact{
+		Task:         "demo",
+		BaseRef:      sha,
+		Profile:      "pinned",
+		AgentName:    "pinned",
+		AgentModel:   "test-model",
+		AgentVersion: "1.0.0",
+		AgentCommand: agenteval.RedactCommand(agenteval.ExpandPrompt(": {prompt}", "do nothing")),
+		Status:       "passed",
+		Context:      &agenteval.RunResult{Success: true},
+	}
+	body, err := json.Marshal(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifactPath := filepath.Join(t.TempDir(), "artifact.json")
+	if err := os.WriteFile(artifactPath, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if code, _, stderr := runCLI(t, "-promote-artifact", artifactPath, "-root", root); code != 2 || !strings.Contains(stderr, "requires -write-baseline") {
+		t.Fatalf("missing write target = %d, stderr %q", code, stderr)
+	}
+	code, stdout, stderr := runCLI(t, "-promote-artifact", artifactPath, "-write-baseline", "testdata/agent-eval/baseline.json", "-promotion-source", "https://example.invalid/run", "-root", root)
+	if code != 0 {
+		t.Fatalf("promote = %d, stderr %q stdout %q", code, stderr, stdout)
+	}
+	if !strings.Contains(stdout, "Promoted pinned/demo") {
+		t.Fatalf("stdout = %q", stdout)
+	}
+	baselinePath := filepath.Join(root, "testdata/agent-eval/baseline.json")
+	base, err := agenteval.LoadBaseline(baselinePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := base.Profiles["pinned"]["demo"]
+	if !got.Verified || got.PromotedFrom != "https://example.invalid/run" || !got.Success {
+		t.Fatalf("baseline = %+v", got)
+	}
+}
+
+func writePromotionArtifact(t *testing.T, root string, mutate func(*agenteval.Artifact)) string {
+	t.Helper()
+	sha := git(t, root, "rev-parse", "HEAD")
+	artifact := agenteval.Artifact{
+		Task:         "demo",
+		BaseRef:      sha,
+		Profile:      "pinned",
+		AgentName:    "pinned",
+		AgentModel:   "test-model",
+		AgentVersion: "1.0.0",
+		AgentCommand: agenteval.RedactCommand(agenteval.ExpandPrompt(": {prompt}", "do nothing")),
+		Status:       "passed",
+		Context:      &agenteval.RunResult{Success: true},
+	}
+	if mutate != nil {
+		mutate(&artifact)
+	}
+	body, err := json.Marshal(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "artifact.json")
+	if err := os.WriteFile(path, body, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestRunPromoteArtifactErrors(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	target := "testdata/agent-eval/baseline.json"
+
+	badJSON := filepath.Join(t.TempDir(), "bad.json")
+	if err := os.WriteFile(badJSON, []byte("{"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		args []string
+		code int
+		want string
+	}{
+		{"read", []string{"-promote-artifact", filepath.Join(t.TempDir(), "missing.json")}, 1, "read artifact"},
+		{"parse", []string{"-promote-artifact", badJSON}, 1, "parse artifact"},
+		{"select", []string{"-mode", "select", "-promote-artifact", writePromotionArtifact(t, root, nil)}, 2, "task mode"},
+		{"profile mismatch", []string{"-profile", "other", "-promote-artifact", writePromotionArtifact(t, root, nil)}, 2, "does not match"},
+		{"no profile", []string{"-promote-artifact", writePromotionArtifact(t, root, func(a *agenteval.Artifact) { a.Profile = "" })}, 1, "no profile"},
+		{"unknown profile", []string{"-promote-artifact", writePromotionArtifact(t, root, func(a *agenteval.Artifact) { a.Profile = "missing" })}, 1, "not defined"},
+		{"unknown task", []string{"-promote-artifact", writePromotionArtifact(t, root, func(a *agenteval.Artifact) { a.Task = "missing" })}, 1, "task"},
+		{"not passing", []string{"-promote-artifact", writePromotionArtifact(t, root, func(a *agenteval.Artifact) { a.Status = "failed" })}, 1, "not a passing run"},
+		{"baseline read", []string{"-promote-artifact", writePromotionArtifact(t, root, nil), "-write-baseline", "testdata/agent-eval"}, 1, "baseline"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			args := append([]string{}, tc.args...)
+			if (tc.code != 2 || tc.name != "select") && tc.name != "baseline read" {
+				args = append(args, "-write-baseline", target)
+			}
+			args = append(args, "-root", root)
+			code, _, stderr := runCLI(t, args...)
+			if code != tc.code || !strings.Contains(stderr, tc.want) {
+				t.Fatalf("run = %d, stderr %q, want %d %q", code, stderr, tc.code, tc.want)
+			}
+		})
+	}
+}
+
+func TestRunWritesVerifiedBaselineFromPassingRun(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	writeFile(t, root, "frontend/package.json", "{}\n")
+	git(t, root, "add", ".")
+	git(t, root, "commit", "-q", "-m", "frontend")
+	sha := git(t, root, "rev-parse", "HEAD")
+	writeFile(t, root, "testdata/agent-eval/demo/spec.yaml", "name: demo\nprompt: do nothing\nbase_ref: "+sha+"\nsuite: localization-change\nagent_command: \"true\"\nexpect_paths: [\"**\"]\n")
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	fakeBin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(fakeBin, "npx"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	code, stdout, stderr := runCLI(t, "-root", root, "-task", "demo", "-base-ref", sha, "-profile", "pinned", "-out", t.TempDir(), "-no-control", "-write-baseline", "testdata/agent-eval/baseline.json")
+	if code != 0 {
+		t.Fatalf("run = %d, stderr %q stdout %q", code, stderr, stdout)
+	}
+	base, err := agenteval.LoadBaseline(filepath.Join(root, "testdata/agent-eval/baseline.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := base.Profiles["pinned"]["demo"]
+	if !got.Verified || got.PromotedFrom != "local run" || got.PromotedAt == "" {
+		t.Fatalf("baseline = %+v", got)
+	}
+}
+
+func TestRunPromoteFindsRepoRoot(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	artifactPath := writePromotionArtifact(t, root, nil)
+	t.Chdir(root)
+	code, stdout, stderr := runCLI(t, "-promote-artifact", artifactPath, "-write-baseline", "testdata/agent-eval/baseline.json")
+	if code != 0 {
+		t.Fatalf("promote = %d, stderr %q stdout %q", code, stderr, stdout)
+	}
+}

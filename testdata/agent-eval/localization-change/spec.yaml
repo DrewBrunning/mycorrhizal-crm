@@ -13,3 +13,21 @@ forbid_paths:
   - backend/**
   - android/**
   - .github/**
+content_checks:
+  - name: every locale carries the plural key
+    files:
+      - frontend/src/i18n/locales/en.json
+      - frontend/src/i18n/locales/de.json
+      - frontend/src/i18n/locales/es.json
+      - frontend/src/i18n/locales/fr.json
+      - frontend/src/i18n/locales/it.json
+    contains_all:
+      - '"total_one"'
+      - '"total_other"'
+  - name: CLDR many-form locales carry the many form
+    files:
+      - frontend/src/i18n/locales/es.json
+      - frontend/src/i18n/locales/fr.json
+      - frontend/src/i18n/locales/it.json
+    contains_all:
+      - '"total_many"'

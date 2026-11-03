@@ -14,11 +14,12 @@ import (
 // with a moving version or a command that silently drops the prompt is
 // rejected rather than treated as a dry run.
 type Profile struct {
-	Command string `yaml:"command" json:"command"`
-	Name    string `yaml:"name" json:"name"`
-	Model   string `yaml:"model" json:"model"`
-	Version string `yaml:"version" json:"version"`
-	DryRun  bool   `yaml:"dry_run,omitempty" json:"dry_run,omitempty"`
+	Command        string `yaml:"command" json:"command"`
+	Name           string `yaml:"name" json:"name"`
+	Model          string `yaml:"model" json:"model"`
+	Version        string `yaml:"version" json:"version"`
+	VersionCommand string `yaml:"version_command,omitempty" json:"version_command,omitempty"`
+	DryRun         bool   `yaml:"dry_run,omitempty" json:"dry_run,omitempty"`
 }
 
 type profileFile struct {
@@ -83,6 +84,9 @@ func (p Profile) Validate(name string) error {
 	}
 	if !p.DryRun && strings.EqualFold(strings.TrimSpace(p.Model), "none") {
 		return fmt.Errorf("agent profile %q is not a dry run but has model none", name)
+	}
+	if strings.Contains(p.VersionCommand, "{prompt}") {
+		return fmt.Errorf("agent profile %q version_command must not contain {prompt}", name)
 	}
 	return nil
 }

@@ -13,15 +13,19 @@ import (
 // wall-clock and changed-file counts: an agent may solve a task differently
 // without regressing, and neither number is a quality signal on its own.
 type RunSummary struct {
-	Status              string `json:"status"` // passed | failed
-	Success             bool   `json:"success"`
-	CommandsPassed      int    `json:"commands_passed"`
-	CommandsTotal       int    `json:"commands_total"`
-	ScopeViolations     int    `json:"scope_violations"`
-	HandEditedGenerated int    `json:"hand_edited_generated"`
-	IntegrityViolations int    `json:"integrity_violations"`
-	UnexpectedChanges   int    `json:"unexpected_changes"`
-	ConfigHash          string `json:"config_hash,omitempty"`
+	Status               string `json:"status"` // passed | failed
+	Success              bool   `json:"success"`
+	CommandsPassed       int    `json:"commands_passed"`
+	CommandsTotal        int    `json:"commands_total"`
+	ScopeViolations      int    `json:"scope_violations"`
+	HandEditedGenerated  int    `json:"hand_edited_generated"`
+	IntegrityViolations  int    `json:"integrity_violations"`
+	UnexpectedChanges    int    `json:"unexpected_changes"`
+	ContentCheckFailures int    `json:"content_check_failures,omitempty"`
+	ConfigHash           string `json:"config_hash,omitempty"`
+	Verified             bool   `json:"verified"`
+	PromotedAt           string `json:"promoted_at,omitempty"`
+	PromotedFrom         string `json:"promoted_from,omitempty"`
 }
 
 // Baseline is the committed record of the last accepted run per profile and
@@ -39,6 +43,7 @@ type BaselineComparison struct {
 	Baseline    *RunSummary `json:"baseline,omitempty"`
 	Current     RunSummary  `json:"current"`
 	Regressions []string    `json:"regressions,omitempty"`
+	Warnings    []string    `json:"warnings,omitempty"`
 }
 
 // Regressed reports whether the current run is worse than the baseline.
@@ -89,6 +94,7 @@ func SummarizeRun(status string, run *RunResult, configHash string) RunSummary {
 	s.HandEditedGenerated = len(run.HandEditedGenerated)
 	s.IntegrityViolations = len(run.IntegrityViolations)
 	s.UnexpectedChanges = len(run.UnexpectedChanges)
+	s.ContentCheckFailures = len(run.ContentCheckFindings)
 	return s
 }
 
@@ -164,6 +170,9 @@ func CompareBaseline(b Baseline, profile, task string, current RunSummary) Basel
 	}
 	c.Present = true
 	c.Baseline = &base
+	if !base.Verified {
+		c.Warnings = append(c.Warnings, "baseline entry is unverified: it was not promoted by -write-baseline from a passing pinned-profile run")
+	}
 	if base.Success && !current.Success {
 		c.Regressions = append(c.Regressions, "task passed before; now failed")
 	}
@@ -186,6 +195,9 @@ func CompareBaseline(b Baseline, profile, task string, current RunSummary) Basel
 	}
 	if current.UnexpectedChanges > base.UnexpectedChanges {
 		c.Regressions = append(c.Regressions, fmt.Sprintf("unexpected changes %d -> %d", base.UnexpectedChanges, current.UnexpectedChanges))
+	}
+	if current.ContentCheckFailures > base.ContentCheckFailures {
+		c.Regressions = append(c.Regressions, fmt.Sprintf("content check failures %d -> %d", base.ContentCheckFailures, current.ContentCheckFailures))
 	}
 	sort.Strings(c.Regressions)
 	return c

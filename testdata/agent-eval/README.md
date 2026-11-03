@@ -25,7 +25,10 @@ The promoted profile is `pinned-opencode`: opencode CLI `1.19.4`, model
 `deepseek/deepseek-flash`. Its command installs that exact CLI with `npx`, maps
 `AGENT_EVAL_MODEL_KEY` to the provider variable opencode reads, and runs with
 `--pure --auto` so the collector needs no preinstalled agent. Set
-`AGENT_EVAL_MODEL_KEY` for a local run with the same profile.
+`AGENT_EVAL_MODEL_KEY` for a local run with the same profile. Its
+`version_command` is run before the agent: the observed CLI version is recorded
+in the artifact and a mismatch with the pinned `version` fails the run before a
+model call.
 
 Explicit `-agent-command`/`-agent-model`/`-agent-version` flags cannot be
 combined with `-profile`; a free-form run is not comparable with a baseline.
@@ -36,9 +39,14 @@ involved or when selection needs a command that writes a report.
 
 `baseline.json` records the last accepted run per profile and task: success,
 suite commands passed/failed, scope violations, generated-artifact hand-edits,
-gate-integrity violations, refusal-task unexpected changes and a fingerprint of
-the agent, prompt, base ref and suite. A missing entry is "no baseline", never a
-regression by itself.
+gate-integrity violations, content-check failures, refusal-task unexpected
+changes and a fingerprint of the agent, prompt, base ref and suite. A missing
+entry is "no baseline", never a regression by itself.
+
+Tasks may also declare `content_checks` in `spec.yaml`, asserting that the
+changed files contain the behavior the prompt asked for (for example naming the
+regeneration command, or carrying a plural key in every locale). Suite commands
+prove a gate still exits 0; content checks prove the requested change exists.
 
 Compare a run against it:
 
@@ -55,6 +63,20 @@ cd backend && go run ./cmd/agenteval -task database-migration -profile pinned-op
   -write-baseline testdata/agent-eval/baseline.json -no-control
 ```
 
+When the run happened in CI and the model credential is not local, download its
+artifact and promote the measured result instead of editing the baseline:
+
+```bash
+cd backend && go run ./cmd/agenteval -promote-artifact /path/to/artifact.json \
+  -write-baseline testdata/agent-eval/baseline.json \
+  -promotion-source https://github.com/DrewBrunning/mycorrhizal-crm/actions/runs/ID
+```
+
+Promotion refuses an artifact that is not a passing run of the committed
+profile, prompt, base ref and content checks. Only `-write-baseline` and
+`-promote-artifact` set `verified`; a hand-edited `config_hash` is unverified
+even when its recomputation matches, and a comparison prints that warning.
+
 Refresh every task after a profile, prompt, spec or suite change (each passing
 run merges into the same file; failing tasks are refused and need review):
 
@@ -69,14 +91,18 @@ done
 A non-passing run is refused unless `-force-baseline` is explicit; a failing run
 is never evidence for a baseline. A comparison
 fails the command when the task stops passing, suite command failures rise,
-scope/hand-edit/integrity/unexpected-change counts rise, or the configuration
-fingerprint changes (the baseline is no longer comparable; re-baseline after
-review). The artifact
+scope/hand-edit/integrity/unexpected-change/content-check counts rise, or the
+configuration fingerprint changes (the baseline is no longer comparable;
+re-baseline after review). The artifact
 records the exact regressions; wall-clock and changed-file counts are
 deliberately not compared. A committed-file test
 (`TestCommittedBaselineConfigHashes`) recomputes every entry's fingerprint from
 the committed profile, task spec and suite commands, so a stale or hand-edited
 `config_hash` fails `go test ./...`.
+
+One run per task is a deterministic tripwire, not a confidence estimate. For a
+noisy task, run the stripped-context control or repeat the task manually and
+report the spread; never widen a budget or compare sub-command wall-clock.
 
 ## Refusal tasks
 
@@ -93,6 +119,15 @@ instead of green. It is enabled with `AGENT_EVAL_PROFILE=pinned-opencode` and
 latter to the provider variable opencode reads. It is scheduled and can also be
 dispatched, is never triggered by a pull request, and is registered in the
 nightly failure alarm and the reconcile list by `cmd/nightlyalertcheck`.
+
+The collector is a weekly drift/canary check, not a validator of current
+agent-file changes: each task pins `base_ref`, so it re-runs a frozen snapshot of
+the suite, prompt and context. Keep the cadence weekly; if spend is reviewed
+again, fortnightly is the next step. A change-triggered path would need a
+post-merge `push` filtered to `AGENTS.md`, `.agents/skills/` and
+`testdata/agent-eval/` with `-base-ref "$GITHUB_SHA"`. A `pull_request` trigger
+is unsafe because the agent executes repository code with a model credential;
+the supported path is PR before/after evidence plus a manual dispatch.
 
 ### Billing window
 

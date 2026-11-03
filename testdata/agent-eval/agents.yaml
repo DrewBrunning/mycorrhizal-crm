@@ -16,6 +16,7 @@ profiles:
     name: opencode
     model: deepseek/deepseek-flash
     version: "1.19.4"
+    version_command: 'npx -y opencode-ai@1.19.4 --version'
   dry-run:
     command: "true"
     name: dry-run

@@ -24,19 +24,21 @@ type CommandResult struct {
 
 // RunResult is one worktree's score and evidence.
 type RunResult struct {
-	Status              string          `json:"status"` // passed | failed | error
-	Agent               CommandResult   `json:"agent"`
-	SuiteCommands       []CommandResult `json:"suite_commands"`
-	ChangedFiles        []string        `json:"changed_files"`
-	ScopeViolations     []string        `json:"scope_violations,omitempty"`
-	HandEditedGenerated []string        `json:"hand_edited_generated,omitempty"`
-	UnexpectedChanges   []string        `json:"unexpected_changes,omitempty"`
-	IntegrityViolations []string        `json:"integrity_violations,omitempty"`
-	IntegrityWarnings   []string        `json:"integrity_warnings,omitempty"`
-	HeadMoved           bool            `json:"head_moved,omitempty"`
-	ExpectedFindingsOK  bool            `json:"expected_findings_ok"`
-	MissingFindings     []string        `json:"missing_findings,omitempty"`
-	Success             bool            `json:"success"`
+	Status               string          `json:"status"` // passed | failed | error
+	Agent                CommandResult   `json:"agent"`
+	SuiteCommands        []CommandResult `json:"suite_commands"`
+	ChangedFiles         []string        `json:"changed_files"`
+	ScopeViolations      []string        `json:"scope_violations,omitempty"`
+	HandEditedGenerated  []string        `json:"hand_edited_generated,omitempty"`
+	UnexpectedChanges    []string        `json:"unexpected_changes,omitempty"`
+	IntegrityViolations  []string        `json:"integrity_violations,omitempty"`
+	IntegrityWarnings    []string        `json:"integrity_warnings,omitempty"`
+	ContentCheckFindings []string        `json:"content_check_findings,omitempty"`
+	ContentChecksRun     int             `json:"content_checks_run,omitempty"`
+	HeadMoved            bool            `json:"head_moved,omitempty"`
+	ExpectedFindingsOK   bool            `json:"expected_findings_ok"`
+	MissingFindings      []string        `json:"missing_findings,omitempty"`
+	Success              bool            `json:"success"`
 }
 
 // ControlDelta records how the stripped-context control differed from the run
@@ -55,23 +57,25 @@ type ControlDelta struct {
 
 // Artifact is the JSON contract the workflow uploads.
 type Artifact struct {
-	Task         string              `json:"task"`
-	BaseRef      string              `json:"base_ref"`
-	Profile      string              `json:"profile,omitempty"`
-	AgentName    string              `json:"agent_name,omitempty"`
-	AgentModel   string              `json:"agent_model,omitempty"`
-	AgentVersion string              `json:"agent_version,omitempty"`
-	AgentCommand string              `json:"agent_command"`
-	Status       string              `json:"status"` // passed | failed | skipped | error
-	Reason       string              `json:"reason,omitempty"`
-	StartedAt    time.Time           `json:"started_at"`
-	FinishedAt   time.Time           `json:"finished_at"`
-	DurationMS   int64               `json:"duration_ms"`
-	Stripped     []string            `json:"stripped,omitempty"`
-	Context      *RunResult          `json:"context,omitempty"`
-	Control      *RunResult          `json:"control,omitempty"`
-	Delta        *ControlDelta       `json:"delta,omitempty"`
-	Baseline     *BaselineComparison `json:"baseline,omitempty"`
+	Task                 string              `json:"task"`
+	BaseRef              string              `json:"base_ref"`
+	Profile              string              `json:"profile,omitempty"`
+	AgentName            string              `json:"agent_name,omitempty"`
+	AgentModel           string              `json:"agent_model,omitempty"`
+	AgentVersion         string              `json:"agent_version,omitempty"`
+	ObservedAgentVersion string              `json:"observed_agent_version,omitempty"`
+	AgentVersionDrift    bool                `json:"agent_version_drift,omitempty"`
+	AgentCommand         string              `json:"agent_command"`
+	Status               string              `json:"status"` // passed | failed | skipped | error
+	Reason               string              `json:"reason,omitempty"`
+	StartedAt            time.Time           `json:"started_at"`
+	FinishedAt           time.Time           `json:"finished_at"`
+	DurationMS           int64               `json:"duration_ms"`
+	Stripped             []string            `json:"stripped,omitempty"`
+	Context              *RunResult          `json:"context,omitempty"`
+	Control              *RunResult          `json:"control,omitempty"`
+	Delta                *ControlDelta       `json:"delta,omitempty"`
+	Baseline             *BaselineComparison `json:"baseline,omitempty"`
 }
 
 // GeneratedArtifact is one committed artifact and the editable sources it is
@@ -221,7 +225,7 @@ func Score(run *RunResult) {
 			run.Success = false
 		}
 	}
-	if len(run.ScopeViolations) > 0 || len(run.HandEditedGenerated) > 0 || len(run.UnexpectedChanges) > 0 || len(run.IntegrityViolations) > 0 || len(run.MissingFindings) > 0 {
+	if len(run.ScopeViolations) > 0 || len(run.HandEditedGenerated) > 0 || len(run.UnexpectedChanges) > 0 || len(run.IntegrityViolations) > 0 || len(run.MissingFindings) > 0 || len(run.ContentCheckFindings) > 0 {
 		run.Success = false
 	}
 }
@@ -283,6 +287,12 @@ func Markdown(a Artifact) string {
 		fmt.Fprintf(&b, "- Profile: `%s`\n", a.Profile)
 	}
 	fmt.Fprintf(&b, "- Agent: %s / %s / %s\n", a.AgentName, a.AgentModel, a.AgentVersion)
+	if a.ObservedAgentVersion != "" {
+		fmt.Fprintf(&b, "- Observed CLI: %s\n", a.ObservedAgentVersion)
+	}
+	if a.AgentVersionDrift {
+		b.WriteString("- **Agent CLI version drift**: the installed CLI does not match the pinned profile\n")
+	}
 	fmt.Fprintf(&b, "- Command: `%s`\n", a.AgentCommand)
 	fmt.Fprintf(&b, "- Duration: %dms\n\n", a.DurationMS)
 	if a.Context != nil {
@@ -311,6 +321,9 @@ func Markdown(a Artifact) string {
 		}
 		for _, r := range a.Baseline.Regressions {
 			fmt.Fprintf(&b, "- Regression: %s\n", r)
+		}
+		for _, w := range a.Baseline.Warnings {
+			fmt.Fprintf(&b, "- Warning: %s\n", w)
 		}
 	}
 	if len(a.Stripped) > 0 {
@@ -347,6 +360,9 @@ func renderRun(r RunResult) string {
 	}
 	for _, v := range r.MissingFindings {
 		fmt.Fprintf(&b, "- Missing finding: %s\n", v)
+	}
+	for _, v := range r.ContentCheckFindings {
+		fmt.Fprintf(&b, "- Content check: %s\n", v)
 	}
 	return b.String()
 }

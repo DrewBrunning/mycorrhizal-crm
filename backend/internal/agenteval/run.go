@@ -23,10 +23,12 @@ type Options struct {
 	AgentName               string
 	AgentModel              string
 	AgentVersion            string
+	AgentVersionCommand     string
 	RunControl              bool
 	LookPath                func(string) (string, error)
 	CommandRunner           func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
 	SuiteCommandRunner      func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
+	VersionRunner           func(ctx context.Context, dir, command string, timeout time.Duration) CommandResult
 	InstallNodeDependencies func(ctx context.Context, wt string) error
 }
 
@@ -48,6 +50,9 @@ func Run(ctx context.Context, opts Options) (Artifact, error) {
 	}
 	if opts.SuiteCommandRunner == nil {
 		opts.SuiteCommandRunner = runSuiteShellCommand
+	}
+	if opts.VersionRunner == nil {
+		opts.VersionRunner = runShellCommand
 	}
 	if opts.InstallNodeDependencies == nil {
 		opts.InstallNodeDependencies = func(ctx context.Context, wt string) error {
@@ -80,6 +85,18 @@ func Run(ctx context.Context, opts Options) (Artifact, error) {
 		artifact.Reason = "missing required tool(s): " + strings.Join(missing, ", ")
 		finish()
 		return artifact, nil
+	}
+
+	if opts.AgentVersionCommand != "" {
+		observed, err := CheckAgentVersion(ctx, opts.Root, artifact.AgentVersion, opts.AgentVersionCommand, opts.Spec.TimeoutValue, opts.VersionRunner)
+		artifact.ObservedAgentVersion = observed
+		if err != nil {
+			artifact.Status = "error"
+			artifact.Reason = err.Error()
+			artifact.AgentVersionDrift = observed != "" && observed != artifact.AgentVersion
+			finish()
+			return artifact, err
+		}
 	}
 
 	tmp, err := os.MkdirTemp("", "agent-eval-*")
@@ -172,6 +189,8 @@ func runWorktree(ctx context.Context, opts Options, wt string, control bool, com
 	}
 	result.ScopeViolations = ClassifyPaths(result.ChangedFiles, opts.Spec.ExpectPaths, opts.Spec.ForbidPaths)
 	result.HandEditedGenerated = DetectHandEdits(result.ChangedFiles, GeneratedArtifacts)
+	result.ContentCheckFindings = CheckContent(wt, result.ChangedFiles, opts.Spec.ContentChecks)
+	result.ContentChecksRun = len(opts.Spec.ContentChecks)
 	result.HeadMoved, err = headMoved(ctx, wt, evalBase)
 	if err != nil {
 		return result, stripped, err

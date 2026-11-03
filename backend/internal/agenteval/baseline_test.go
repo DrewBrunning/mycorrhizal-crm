@@ -215,3 +215,32 @@ func TestConfigFingerprintChanges(t *testing.T) {
 		t.Fatal("fingerprint ignored the prompt")
 	}
 }
+
+func TestCompareBaselineWarnsWhenUnverified(t *testing.T) {
+	b := Baseline{Version: 1, Profiles: map[string]map[string]RunSummary{
+		"pinned": {"demo": {Status: "passed", Success: true, CommandsPassed: 1, CommandsTotal: 1}},
+	}}
+	got := CompareBaseline(b, "pinned", "demo", summary(true, 1, 1))
+	if len(got.Warnings) != 1 || !strings.Contains(got.Warnings[0], "unverified") {
+		t.Fatalf("warnings = %v", got.Warnings)
+	}
+}
+
+func TestSummarizeRunCountsContentChecks(t *testing.T) {
+	run := &RunResult{
+		Success:              false,
+		SuiteCommands:        []CommandResult{{Passed: true}},
+		ContentCheckFindings: []string{"missing text"},
+	}
+	got := SummarizeRun("failed", run, "hash")
+	if got.ContentCheckFailures != 1 {
+		t.Fatalf("summary = %+v", got)
+	}
+	base := Baseline{Version: 1, Profiles: map[string]map[string]RunSummary{
+		"pinned": {"demo": {Status: "passed", Success: true, CommandsPassed: 1, CommandsTotal: 1, Verified: true}},
+	}}
+	cmp := CompareBaseline(base, "pinned", "demo", got)
+	if !cmp.Regressed() {
+		t.Fatalf("content check failure did not regress: %+v", cmp)
+	}
+}

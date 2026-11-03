@@ -41,7 +41,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("agenteval", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	var task, tasksDir, rootFlag, outDir, agentCommand, agentName, agentModel, agentVersion, baseRef, mode, triggersPath, timeoutFlag, skill string
-	var profileName, profilesPath, baselinePath, baselineOut string
+	var profileName, profilesPath, baselinePath, baselineOut, promoteArtifact, promotionSource string
 	var noControl, requireBaseline, forceBaseline bool
 	fs.StringVar(&mode, "mode", "task", "task or select (trigger-selection pass)")
 	fs.StringVar(&task, "task", "", "task name under testdata/agent-eval (required in task mode)")
@@ -49,6 +49,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.StringVar(&profilesPath, "profiles", "testdata/agent-eval/agents.yaml", "agent profile file, repo-relative")
 	fs.StringVar(&baselinePath, "baseline", "", "committed baseline to compare against (requires -profile; task mode)")
 	fs.StringVar(&baselineOut, "write-baseline", "", "write this run into the named baseline file (requires -profile; task mode)")
+	fs.StringVar(&promoteArtifact, "promote-artifact", "", "promote a passing pinned-profile artifact JSON into -write-baseline")
+	fs.StringVar(&promotionSource, "promotion-source", "", "run URL or artifact reference recorded with a promoted baseline")
 	fs.BoolVar(&requireBaseline, "require-baseline", false, "fail if the profile/task has no committed baseline entry (task mode)")
 	fs.BoolVar(&forceBaseline, "force-baseline", false, "write a baseline even when the run did not pass")
 	fs.StringVar(&tasksDir, "tasks-dir", "testdata/agent-eval", "task directory, repo-relative")
@@ -66,6 +68,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	fs.Usage = func() {
 		fmt.Fprintln(stderr, "usage: agenteval -task NAME [-agent-command CMD] [-out DIR] [-no-control]")
 		fmt.Fprintln(stderr, "       agenteval -task NAME -profile PROFILE [-baseline FILE] [-out DIR]")
+		fmt.Fprintln(stderr, "       agenteval -promote-artifact FILE -write-baseline FILE [-promotion-source URL]")
 		fmt.Fprintln(stderr, "       agenteval -mode select (-profile PROFILE | -agent-command CMD) [-triggers PATH] [-base-ref REF]")
 		fs.PrintDefaults()
 	}
@@ -74,6 +77,13 @@ func run(args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 		return 2
+	}
+	if promoteArtifact != "" {
+		if mode != "task" {
+			fmt.Fprintln(stderr, "agenteval: -promote-artifact is only supported in task mode")
+			return 2
+		}
+		return runPromote(promoteArtifact, promotionSource, baselineOut, profileName, profilesPath, tasksDir, rootFlag, stdout, stderr)
 	}
 	if mode != "task" && mode != "select" {
 		fmt.Fprintln(stderr, "agenteval: -mode must be task or select")
@@ -174,15 +184,16 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	artifact, runErr := agenteval.Run(context.Background(), agenteval.Options{
-		Root:         abs,
-		Spec:         spec,
-		Suites:       local,
-		AgentCommand: agentCommand,
-		AgentProfile: profileName,
-		AgentName:    agentName,
-		AgentModel:   agentModel,
-		AgentVersion: agentVersion,
-		RunControl:   !noControl,
+		Root:                abs,
+		Spec:                spec,
+		Suites:              local,
+		AgentCommand:        agentCommand,
+		AgentProfile:        profileName,
+		AgentName:           agentName,
+		AgentModel:          agentModel,
+		AgentVersion:        agentVersion,
+		AgentVersionCommand: loadedProfile.VersionCommand,
+		RunControl:          !noControl,
 	})
 	effectiveProfile := agenteval.Profile{Command: agentCommand, Name: agentName, Model: agentModel, Version: agentVersion}
 	if effectiveProfile.Command == "" {
@@ -234,6 +245,14 @@ func run(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stderr, "agenteval: refusing to write a baseline from a non-passing run (use -force-baseline to override)")
 			return 1
 		}
+		if artifact.Status == "passed" && current.Success {
+			current.Verified = true
+			current.PromotedAt = time.Now().UTC().Format(time.RFC3339)
+			current.PromotedFrom = promotionSource
+			if current.PromotedFrom == "" {
+				current.PromotedFrom = "local run"
+			}
+		}
 		out := resolvePath(abs, baselineOut)
 		base, err := agenteval.LoadBaseline(out)
 		if err != nil {
@@ -252,6 +271,89 @@ func run(args []string, stdout, stderr io.Writer) int {
 	default:
 		return 1
 	}
+}
+
+// runPromote records a baseline entry from a downloaded passing artifact. It
+// refuses an artifact that is not a measured run of the committed profile,
+// prompt, base ref and content checks, so a hand-edited config_hash cannot
+// silently preserve older success counts.
+func runPromote(artifactPath, source, baselineOut, profileName, profilesPath, tasksDir, rootFlag string, stdout, stderr io.Writer) int {
+	if baselineOut == "" {
+		fmt.Fprintln(stderr, "agenteval: -promote-artifact requires -write-baseline")
+		return 2
+	}
+	body, err := os.ReadFile(artifactPath) // #nosec G304 -- operator-supplied artifact path
+	if err != nil {
+		fmt.Fprintln(stderr, "agenteval: read artifact:", err)
+		return 1
+	}
+	var artifact agenteval.Artifact
+	if err := json.Unmarshal(body, &artifact); err != nil {
+		fmt.Fprintln(stderr, "agenteval: parse artifact:", err)
+		return 1
+	}
+	if artifact.Profile == "" {
+		fmt.Fprintln(stderr, "agenteval: artifact has no profile")
+		return 1
+	}
+	if profileName != "" && profileName != artifact.Profile {
+		fmt.Fprintln(stderr, "agenteval: -profile does not match the artifact profile", artifact.Profile)
+		return 2
+	}
+	profileName = artifact.Profile
+	root := rootFlag
+	if root == "" {
+		found, err := agentcontext.FindRepoRoot(".")
+		if err != nil {
+			fmt.Fprintln(stderr, "agenteval:", err)
+			return 1
+		}
+		root = found
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		fmt.Fprintln(stderr, "agenteval:", err)
+		return 1
+	}
+	profile, err := agenteval.LoadProfile(abs, profilesPath, profileName)
+	if err != nil {
+		fmt.Fprintln(stderr, "agenteval:", err)
+		return 1
+	}
+	suites := agentcontext.Suites()
+	names := make([]string, 0, len(suites))
+	local := make([]agenteval.Suite, 0, len(suites))
+	for _, s := range suites {
+		names = append(names, s.Name)
+		local = append(local, agenteval.Suite{Name: s.Name, Commands: s.Commands})
+	}
+	spec, err := agenteval.LoadTask(abs, tasksDir, artifact.Task, names)
+	if err != nil {
+		fmt.Fprintln(stderr, "agenteval:", err)
+		return 1
+	}
+	if source == "" {
+		source = artifactPath
+	}
+	summary, err := agenteval.SummarizeArtifact(artifact, profileName, profile, spec, local, source, time.Now())
+	if err != nil {
+		fmt.Fprintln(stderr, "agenteval: refuse promotion:", err)
+		return 1
+	}
+	out := resolvePath(abs, baselineOut)
+	base, err := agenteval.LoadBaseline(out)
+	if err != nil {
+		fmt.Fprintln(stderr, "agenteval: baseline:", err)
+		return 1
+	}
+	agenteval.RecordBaseline(&base, profileName, artifact.Task, summary)
+	if err := agenteval.WriteBaseline(out, base); err != nil {
+		fmt.Fprintln(stderr, "agenteval: write baseline:", err)
+		return 1
+	}
+	fmt.Fprintf(stdout, "Promoted %s/%s: success=%v commands=%d/%d content-checks=%d\n",
+		profileName, artifact.Task, summary.Success, summary.CommandsPassed, summary.CommandsTotal, summary.ContentCheckFailures)
+	return 0
 }
 
 func resolvePath(root, path string) string {
