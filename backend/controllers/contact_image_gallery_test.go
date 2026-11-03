@@ -410,3 +410,43 @@ func TestPatchContactImage_CropAbsentNullAndObject(t *testing.T) {
 	// A malformed crop is a 400.
 	assert.Equal(t, http.StatusBadRequest, galleryDo(env, "PATCH", p, `{"crop":"big"}`).Code)
 }
+
+// A client that edits a crop must be able to open the editor at the stored
+// rectangle, so the image DTO and the Photos tab both return it (issue #2004).
+// The key is always present: null when no crop is stored.
+func TestContactImages_ExposeStoredCrop(t *testing.T) {
+	env := galleryEnv(t)
+	contact := models.Contact{UserID: env.user.ID, Firstname: "CropOut"}
+	require.NoError(t, env.db.Create(&contact).Error)
+	id := galleryUpload(t, env, contact.ID, 0)
+	p := galleryPath(contact.ID, "/images/"+strconv.FormatUint(uint64(id), 10))
+
+	crops := func(path, key string) json.RawMessage {
+		rec := galleryDo(env, "GET", path, nil)
+		require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+		var raw map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &raw))
+		var items []map[string]json.RawMessage
+		require.NoError(t, json.Unmarshal(raw[key], &items))
+		require.Len(t, items, 1)
+		c, ok := items[0]["crop"]
+		require.True(t, ok, "crop key must always be present: %s", rec.Body.String())
+		return c
+	}
+
+	assert.JSONEq(t, `null`, string(crops(galleryPath(contact.ID, "/images"), "images")))
+	assert.JSONEq(t, `null`, string(crops(galleryPath(contact.ID, "/photos"), "photos")))
+
+	rec := galleryDo(env, "PATCH", p, `{"crop":{"x":0.1,"y":0.2,"w":0.5,"h":0.5}}`)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	var patched struct {
+		Image ContactImageDTO `json:"image"`
+	}
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &patched))
+	require.NotNil(t, patched.Image.Crop)
+	assert.Equal(t, models.ImageCrop{X: 0.1, Y: 0.2, W: 0.5, H: 0.5}, *patched.Image.Crop)
+
+	want := `{"x":0.1,"y":0.2,"w":0.5,"h":0.5}`
+	assert.JSONEq(t, want, string(crops(galleryPath(contact.ID, "/images"), "images")))
+	assert.JSONEq(t, want, string(crops(galleryPath(contact.ID, "/photos"), "photos")))
+}

@@ -682,6 +682,7 @@ export type ContactImage = {
   contact_id: number;
   contact_vcard_uid?: string;
   created_at: string;
+  crop: ImageCrop | null;
   file_url: string;
   height: number;
   id: number;
@@ -780,6 +781,7 @@ export type ContactPhone = {
 
 export type ContactPhoto = {
   created_at: string;
+  crop: ImageCrop | null;
   file_url: string;
   height: number;
   id: number;
@@ -814,6 +816,7 @@ export type ContactRecordResponse = {
   gender: string;
   id: number;
   is_favorite: boolean;
+  main_image_id?: number;
   notes?: Record<string, unknown>[];
   passthrough?: Passthrough;
   photo: string;

@@ -15773,6 +15773,12 @@ components:
           description: >
             Issue #173: whether the caller marked this contact as a favorite.
             Always present. CRM-local — never exported or synced.
+        main_image_id:
+          type: integer
+          description: >
+            ADR 0040: id of the contact's chosen gallery image (a
+            ContactImage id); omitted when none is set. The profile photo is
+            derived from it.
         notes:
           type: array
           items: { type: object }
@@ -17451,7 +17457,7 @@ components:
     ContactImage:
       type: object
       description: One image attached to a note (ADR 0040). Bytes are stored under server-generated UUID names; the original filename is not retained.
-      required: [id, uuid, contact_id, mime_type, width, height, size_bytes, sensitivity, created_at, file_url, thumbnail_url]
+      required: [id, uuid, contact_id, mime_type, width, height, size_bytes, sensitivity, created_at, file_url, thumbnail_url, crop]
       properties:
         id: { type: integer }
         uuid: { type: string, format: uuid }
@@ -17467,6 +17473,11 @@ components:
         created_at: { type: string, format: date-time }
         file_url: { type: string, description: Authenticated relative URL of the full variant. }
         thumbnail_url: { type: string, description: Authenticated relative URL of the thumbnail. }
+        crop:
+          type: object
+          allOf: [{ $ref: "#/components/schemas/ImageCrop" }]
+          nullable: true
+          description: Stored crop rectangle (fractions of the full variant), or null when none is set. Always present.
     ImageCrop:
       type: object
       required: [x, y, w, h]
@@ -17511,7 +17522,7 @@ components:
         label: { type: string }
     ContactPhoto:
       type: object
-      required: [id, source, mime_type, width, height, size_bytes, sensitivity, created_at, file_url, thumbnail_url]
+      required: [id, source, mime_type, width, height, size_bytes, sensitivity, created_at, file_url, thumbnail_url, crop]
       properties:
         id: { type: integer }
         source: { $ref: "#/components/schemas/PhotoSource" }
@@ -17525,6 +17536,11 @@ components:
         created_at: { type: string, format: date-time }
         file_url: { type: string }
         thumbnail_url: { type: string }
+        crop:
+          type: object
+          allOf: [{ $ref: "#/components/schemas/ImageCrop" }]
+          nullable: true
+          description: Stored crop rectangle for a contact-gallery image; null for note and activity images and when none is set. Always present.
     ContactPhotosResponse:
       type: object
       required: [photos, total]

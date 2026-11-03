@@ -35,6 +35,10 @@ type ContactImageDTO struct {
 	CreatedAt       time.Time  `json:"created_at"`
 	FileURL         string     `json:"file_url"`
 	ThumbnailURL    string     `json:"thumbnail_url"`
+	// Crop is the stored crop rectangle (fractions of the full variant), or
+	// null. Always present so a client can open its editor at the stored
+	// crop (issue #2004).
+	Crop *models.ImageCrop `json:"crop"`
 }
 
 func contactImageDTO(img models.ContactImage, contactID uint) ContactImageDTO {
@@ -53,6 +57,7 @@ func contactImageDTO(img models.ContactImage, contactID uint) ContactImageDTO {
 		CreatedAt:       img.CreatedAt,
 		FileURL:         fmt.Sprintf("/api/v1/contacts/%d/images/%d/file", contactID, img.ID),
 		ThumbnailURL:    fmt.Sprintf("/api/v1/contacts/%d/images/%d/thumbnail", contactID, img.ID),
+		Crop:            img.StoredCrop(),
 	}
 }
 
@@ -271,6 +276,8 @@ type ContactPhotoDTO struct {
 	CreatedAt    time.Time   `json:"created_at"`
 	FileURL      string      `json:"file_url"`
 	ThumbnailURL string      `json:"thumbnail_url"`
+	// Crop is set for contact-gallery images only (null otherwise).
+	Crop *models.ImageCrop `json:"crop"`
 }
 
 func contactPhotoDTO(photo services.ContactPhoto, contactID uint) ContactPhotoDTO {
@@ -296,6 +303,7 @@ func contactPhotoDTO(photo services.ContactPhoto, contactID uint) ContactPhotoDT
 		CreatedAt:    photo.CreatedAt,
 		FileURL:      base + "/file",
 		ThumbnailURL: base + "/thumbnail",
+		Crop:         photo.Crop,
 	}
 }
 

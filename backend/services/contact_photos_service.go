@@ -28,6 +28,9 @@ type ContactPhoto struct {
 	TakenAt     *time.Time
 	TakenDate   *string
 	CreatedAt   time.Time
+	// Crop is the stored crop rectangle of a contact-gallery image; nil for
+	// note and activity images (crop is a gallery-only concept) and when unset.
+	Crop *models.ImageCrop
 }
 
 func (p ContactPhoto) sortTime() time.Time {
@@ -55,7 +58,9 @@ func ListContactPhotos(ctx context.Context, db *gorm.DB, userID uint, contact *m
 		return nil, apperrors.ErrDatabase("Failed to retrieve photos").WithError(err)
 	}
 	for _, img := range own {
-		photos = append(photos, contactPhoto("contact", contact.ID, "Contact", img.ID, img.UUID, img.MIMEType, img.Width, img.Height, img.SizeBytes, img.Sensitivity, img.TakenAt, img.TakenDate, img.CreatedAt))
+		p := contactPhoto("contact", contact.ID, "Contact", img.ID, img.UUID, img.MIMEType, img.Width, img.Height, img.SizeBytes, img.Sensitivity, img.TakenAt, img.TakenDate, img.CreatedAt)
+		p.Crop = img.StoredCrop()
+		photos = append(photos, p)
 	}
 
 	var notes []models.NoteImage

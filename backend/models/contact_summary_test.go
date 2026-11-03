@@ -329,3 +329,34 @@ func TestNewContactRecordResponseFiltered_SensitivityOptIn(t *testing.T) {
 		t.Error("include_sensitive must project the private edge")
 	}
 }
+
+// A client needs the chosen main image to mark it in the Photos tab; the
+// record is the only thing a fresh page load reads (issue #2004). The key is
+// omitted when no main image is set.
+func TestNewContactRecordResponse_ExposesMainImageID(t *testing.T) {
+	t.Parallel()
+	mainID := uint(9)
+	with, err := json.Marshal(NewContactRecordResponse(&Contact{Firstname: "Ada", MainImageID: &mainID}, "", nil))
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(with, &decoded); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if string(decoded["main_image_id"]) != "9" {
+		t.Errorf("main_image_id = %s, want 9", decoded["main_image_id"])
+	}
+
+	without, err := json.Marshal(NewContactRecordResponse(&Contact{Firstname: "Ada"}, "", nil))
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	decoded = nil
+	if err := json.Unmarshal(without, &decoded); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if _, present := decoded["main_image_id"]; present {
+		t.Errorf("main_image_id present with no main image: %s", without)
+	}
+}

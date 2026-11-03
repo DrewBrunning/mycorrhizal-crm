@@ -12638,6 +12638,11 @@
           "required": true
         },
         {
+          "name": "crop",
+          "type": "composed[object]",
+          "required": true
+        },
+        {
           "name": "file_url",
           "type": "string",
           "required": true
@@ -13032,6 +13037,11 @@
           "required": true
         },
         {
+          "name": "crop",
+          "type": "composed[object]",
+          "required": true
+        },
+        {
           "name": "file_url",
           "type": "string",
           "required": true
@@ -13185,6 +13195,11 @@
           "name": "is_favorite",
           "type": "boolean",
           "required": true
+        },
+        {
+          "name": "main_image_id",
+          "type": "integer",
+          "required": false
         },
         {
           "name": "notes",
