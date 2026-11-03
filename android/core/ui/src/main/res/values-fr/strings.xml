@@ -3213,4 +3213,21 @@
     <string name="contact_images_delete">Supprimer la photo</string>
     <string name="contact_images_delete_title">Supprimer la photo ?</string>
     <string name="contact_images_delete_confirm">Supprimer cette photo ? Cette action est irréversible.</string>
+    <string name="contact_images_main_badge">Photo principale</string>
+    <string name="contact_images_more">Actions de la photo</string>
+    <string name="contact_images_set_main">Définir comme photo principale</string>
+    <string name="contact_images_clear_main">Retirer comme photo principale</string>
+    <string name="contact_images_crop">Recadrer pour la photo de profil</string>
+    <string name="contact_images_adopt">Ajouter aux photos du contact</string>
+    <string name="contact_images_crop_title">Recadrer la photo</string>
+    <string name="contact_images_crop_zoom">Zoom</string>
+    <string name="contact_images_crop_horizontal">Position horizontale</string>
+    <string name="contact_images_crop_vertical">Position verticale</string>
+    <string name="contact_images_crop_reset">Utiliser la photo entière</string>
+    <string name="contact_images_crop_save">Enregistrer le recadrage</string>
+    <string name="contact_images_source_note">Note</string>
+    <string name="contact_images_source_activity">Activité</string>
+    <string name="contact_images_source_labeled">%1$s : %2$s</string>
+    <string name="contact_images_sensitivity_private">Privée</string>
+    <string name="contact_images_sensitivity_secret">Secrète</string>
 </resources>

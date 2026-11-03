@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactFieldVisibilityInput
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
+import com.mycorrhizal.crm.model.network.ImageCrop
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.MeerkatConnectRequest
 import com.mycorrhizal.crm.model.network.Name
@@ -6511,5 +6512,85 @@ class ApiClientTest {
         server.enqueue(MockResponse().setBody("{}"))
         assertTrue(client.deleteContactImage(5, 9).isSuccess)
         assertEquals("/api/v1/contacts/5/images/9", server.takeRequest().path)
+    }
+
+    @Test
+    fun `contact photos aggregate route decodes source labels`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"photos":[{"id":3,"source":{"kind":"note","id":8,"label":"Lunch"},"sensitivity":"private","file_url":"/api/v1/notes/8/images/3/file","thumbnail_url":"/api/v1/notes/8/images/3/thumbnail"}],"total":1}"""
+            )
+        )
+        val photos = client.listContactPhotos(5).getOrThrow().photos
+        assertEquals("/api/v1/contacts/5/photos", server.takeRequest().path)
+        assertEquals("note", photos.single().source.kind)
+        assertEquals(8, photos.single().source.id)
+        assertEquals("Lunch", photos.single().source.label)
+        assertEquals("private", photos.single().sensitivity)
+    }
+
+    @Test
+    fun `main image set sends If-Match and image id then clear sends If-Match`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody("""{"message":"ok","main_image_id":9,"revision":4}""")
+        )
+        val set = client.setContactMainImage(5, 9, ifMatchRevision = 3).getOrThrow()
+        val setRequest = server.takeRequest()
+        assertEquals("PUT", setRequest.method)
+        assertEquals("/api/v1/contacts/5/main-image", setRequest.path)
+        assertEquals("\"3\"", setRequest.getHeader("If-Match"))
+        assertTrue(setRequest.body.readUtf8().contains("\"image_id\":9"))
+        assertEquals(9, set.mainImageId)
+        assertEquals(4, set.revision)
+
+        server.enqueue(MockResponse().setBody("""{"message":"ok","revision":5}"""))
+        val cleared = client.clearContactMainImage(5, ifMatchRevision = 4).getOrThrow()
+        val clearRequest = server.takeRequest()
+        assertEquals("DELETE", clearRequest.method)
+        assertEquals("/api/v1/contacts/5/main-image", clearRequest.path)
+        assertEquals("\"4\"", clearRequest.getHeader("If-Match"))
+        assertEquals(null, cleared.mainImageId)
+        assertEquals(5, cleared.revision)
+    }
+
+    @Test
+    fun `crop patch sends the rectangle and an explicit null clears it`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"image":{"id":9,"contact_id":5}}"""))
+        client.patchContactImageCrop(5, 9, ImageCrop(0.1, 0.0, 0.8, 1.0)).getOrThrow()
+        val setRequest = server.takeRequest()
+        assertEquals("PATCH", setRequest.method)
+        assertEquals("/api/v1/contacts/5/images/9", setRequest.path)
+        assertEquals(
+            """{"crop":{"x":0.1,"y":0.0,"w":0.8,"h":1.0}}""",
+            setRequest.body.readUtf8()
+        )
+
+        server.enqueue(MockResponse().setBody("""{"image":{"id":9,"contact_id":5}}"""))
+        client.patchContactImageCrop(5, 9, null).getOrThrow()
+        assertEquals("""{"crop":null}""", server.takeRequest().body.readUtf8())
+    }
+
+    @Test
+    fun `adopt posts the source triple to the contact gallery`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody("""{"image":{"id":12,"contact_id":5},"deduplicated":false}""")
+        )
+        val adopted = client.adoptContactImage(5, "note", 8, 3).getOrThrow()
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/5/images/adopt", request.path)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains("\"source_kind\":\"note\""))
+        assertTrue(body.contains("\"source_id\":8"))
+        assertTrue(body.contains("\"image_id\":3"))
+        assertEquals(12, adopted.id)
+    }
+
+    @Test
+    fun `contact record carries main_image_id`() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"id":5,"revision":7,"main_image_id":9}"""))
+        val contact = client.getContact(5).getOrThrow()
+        assertEquals(9, contact.mainImageId)
+        assertEquals(7, contact.revision)
     }
 }

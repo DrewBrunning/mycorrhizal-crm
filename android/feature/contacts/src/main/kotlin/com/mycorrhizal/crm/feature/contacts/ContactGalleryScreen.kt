@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,10 +21,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -54,7 +59,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
-import com.mycorrhizal.crm.model.network.ContactImage
+import com.mycorrhizal.crm.model.network.ContactPhoto
+import com.mycorrhizal.crm.model.network.ImageCrop
+import com.mycorrhizal.crm.model.network.PhotoSource
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -64,10 +71,11 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
- * ADR 0040 slice c: the contact photo gallery (web Photos section parity).
- * Thumbnails come from the owner-nested endpoint and open a lightbox; the
- * upload FAB uses the system photo picker and each upload is re-encoded by the
- * server before it appears in the grid.
+ * ADR 0040 slice c: the contact Photos screen (web Photos section parity). It shows
+ * the aggregated gallery (own, note and activity images) with source labels; thumbnails
+ * open a lightbox, the upload FAB uses the system photo picker, and an own image can be
+ * made the main image, cropped for the avatar, or deleted. A note/activity image can be
+ * copied into the contact's own gallery.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,15 +118,19 @@ fun ContactGalleryScreen(
             )
         },
         onDelete = viewModel::delete,
+        onSetMain = viewModel::setMain,
+        onClearMain = viewModel::clearMain,
+        onCrop = viewModel::saveCrop,
+        onAdopt = viewModel::adopt,
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown
     )
 }
 
 /**
- * Stateless gallery content (house pattern): loading / empty / populated, the
- * delete confirmation and the lightbox. The system picker stays in
- * [ContactGalleryScreen] so this surface is directly testable.
+ * Stateless gallery content (house pattern): loading / empty / populated, the per-photo
+ * menu, the delete confirmation, the crop editor and the lightbox. The system picker
+ * stays in [ContactGalleryScreen] so this surface is directly testable.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -127,13 +139,18 @@ fun ContactGalleryScreenContent(
     modifier: Modifier = Modifier,
     onBack: () -> Unit = {},
     onAddClick: () -> Unit = {},
-    onDelete: (ContactImage) -> Unit = {},
+    onDelete: (ContactPhoto) -> Unit = {},
+    onSetMain: (ContactPhoto) -> Unit = {},
+    onClearMain: () -> Unit = {},
+    onCrop: (ContactPhoto, ImageCrop?) -> Unit = { _, _ -> },
+    onAdopt: (ContactPhoto) -> Unit = {},
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
-    var pendingDelete by remember { mutableStateOf<ContactImage?>(null) }
-    var viewing by remember { mutableStateOf<ContactImage?>(null) }
+    var pendingDelete by remember { mutableStateOf<ContactPhoto?>(null) }
+    var cropping by remember { mutableStateOf<ContactPhoto?>(null) }
+    var viewing by remember { mutableStateOf<ContactPhoto?>(null) }
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
 
     Scaffold(
@@ -185,14 +202,14 @@ fun ContactGalleryScreenContent(
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             RefreshableContent(
-                isRefreshing = uiState.isLoading && uiState.images.isNotEmpty(),
+                isRefreshing = uiState.isLoading && uiState.photos.isNotEmpty(),
                 onRefresh = onRefresh,
                 modifier = Modifier.fillMaxSize()
             ) {
                 when {
-                    uiState.isLoading && uiState.images.isEmpty() -> LoadingSkeleton()
+                    uiState.isLoading && uiState.photos.isEmpty() -> LoadingSkeleton()
 
-                    uiState.images.isEmpty() -> EmptyState(
+                    uiState.photos.isEmpty() -> EmptyState(
                         title = stringResource(R.string.contact_images_empty),
                         body = stringResource(R.string.contact_images_empty_body),
                         icon = Icons.Outlined.PhotoLibrary,
@@ -201,58 +218,23 @@ fun ContactGalleryScreenContent(
                         modifier = Modifier.testTag("contact-gallery-empty")
                     )
 
-                    else -> LazyVerticalGrid(
-                        columns = GridCells.Fixed(3),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 16.dp,
-                            bottom = FabListBottomPadding
-                        ),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(uiState.images, key = { it.id }) { image ->
-                            Box(
-                                modifier = Modifier
-                                    .aspectRatio(1f)
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                                    .clickable { viewing = image }
-                                    .testTag("contact-image-${image.id}")
-                            ) {
-                                AsyncImage(
-                                    model = image.thumbnailUrl,
-                                    contentDescription = stringResource(
-                                        R.string.contact_images_alt
-                                    ),
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                                IconButton(
-                                    onClick = { pendingDelete = image },
-                                    enabled = uiState.deletingId != image.id,
-                                    modifier = Modifier
-                                        .align(Alignment.TopEnd)
-                                        .testTag("delete-contact-image-${image.id}")
-                                ) {
-                                    Icon(
-                                        Icons.Outlined.Delete,
-                                        contentDescription = stringResource(
-                                            R.string.contact_images_delete
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    else -> PhotoGrid(
+                        uiState = uiState,
+                        onView = { viewing = it },
+                        actions = PhotoActions(
+                            onSetMain = onSetMain,
+                            onClearMain = onClearMain,
+                            onCrop = { cropping = it },
+                            onAdopt = onAdopt,
+                            onDelete = { pendingDelete = it }
+                        )
+                    )
                 }
             }
         }
     }
 
-    pendingDelete?.let { image ->
+    pendingDelete?.let { photo ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(R.string.contact_images_delete_title)) },
@@ -260,7 +242,7 @@ fun ContactGalleryScreenContent(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        onDelete(image)
+                        onDelete(photo)
                         pendingDelete = null
                     }
                 ) {
@@ -275,10 +257,25 @@ fun ContactGalleryScreenContent(
         )
     }
 
-    viewing?.let { image ->
+    cropping?.let { photo ->
+        ImageCropDialog(
+            photo = photo,
+            onSave = {
+                onCrop(photo, it)
+                cropping = null
+            },
+            onClear = {
+                onCrop(photo, null)
+                cropping = null
+            },
+            onDismiss = { cropping = null }
+        )
+    }
+
+    viewing?.let { photo ->
         Dialog(onDismissRequest = { viewing = null }) {
             AsyncImage(
-                model = image.fileUrl,
+                model = photo.fileUrl,
                 contentDescription = stringResource(R.string.contact_images_alt),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxWidth().padding(8.dp)
@@ -294,3 +291,177 @@ fun ContactGalleryScreenContent(
         }
     }
 }
+
+/** The per-photo write callbacks, bundled so the grid and tile signatures stay short. */
+private class PhotoActions(
+    val onSetMain: (ContactPhoto) -> Unit,
+    val onClearMain: () -> Unit,
+    val onCrop: (ContactPhoto) -> Unit,
+    val onAdopt: (ContactPhoto) -> Unit,
+    val onDelete: (ContactPhoto) -> Unit
+)
+
+@Composable
+private fun PhotoGrid(
+    uiState: ContactGalleryUiState,
+    onView: (ContactPhoto) -> Unit,
+    actions: PhotoActions
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(3),
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 16.dp,
+            bottom = FabListBottomPadding
+        ),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        items(uiState.photos, key = { it.key }) { photo ->
+            PhotoTile(
+                photo = photo,
+                isMain = uiState.isMain(photo),
+                busy = uiState.busyKey != null,
+                onView = { onView(photo) },
+                actions = actions
+            )
+        }
+    }
+}
+
+@Composable
+private fun PhotoTile(
+    photo: ContactPhoto,
+    isMain: Boolean,
+    busy: Boolean,
+    onView: () -> Unit,
+    actions: PhotoActions
+) {
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .clickable(onClick = onView)
+            .testTag("contact-photo-${photo.key}")
+    ) {
+        AsyncImage(
+            model = photo.thumbnailUrl,
+            contentDescription = stringResource(R.string.contact_images_alt),
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize()
+        )
+        if (isMain) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(4.dp)
+                    .size(MAIN_BADGE_SIZE)
+                    .testTag("main-badge-${photo.key}")
+            ) {
+                Icon(
+                    Icons.Outlined.Star,
+                    contentDescription = stringResource(R.string.contact_images_main_badge),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
+        }
+        PhotoMenu(
+            photo = photo,
+            isMain = isMain,
+            enabled = !busy,
+            actions = actions,
+            modifier = Modifier.align(Alignment.TopEnd)
+        )
+        PhotoCaption(photo, Modifier.align(Alignment.BottomStart))
+    }
+}
+
+@Composable
+private fun PhotoMenu(
+    photo: ContactPhoto,
+    isMain: Boolean,
+    enabled: Boolean,
+    actions: PhotoActions,
+    modifier: Modifier = Modifier
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box(modifier = modifier) {
+        IconButton(
+            onClick = { expanded = true },
+            enabled = enabled,
+            modifier = Modifier.testTag("photo-menu-${photo.key}")
+        ) {
+            Icon(
+                Icons.Outlined.MoreVert,
+                contentDescription = stringResource(R.string.contact_images_more)
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (photo.isOwn) {
+                if (isMain) {
+                    PhotoMenuItem(R.string.contact_images_clear_main) { actions.onClearMain() }
+                } else {
+                    PhotoMenuItem(R.string.contact_images_set_main) { actions.onSetMain(photo) }
+                }
+                PhotoMenuItem(R.string.contact_images_crop) { actions.onCrop(photo) }
+                PhotoMenuItem(R.string.contact_images_delete) { actions.onDelete(photo) }
+            } else {
+                PhotoMenuItem(R.string.contact_images_adopt) { actions.onAdopt(photo) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoMenuItem(@androidx.annotation.StringRes label: Int, onClick: () -> Unit) {
+    DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = onClick)
+}
+
+/** Source label (for note/activity images) and a badge for non-normal sensitivity. */
+@Composable
+private fun PhotoCaption(photo: ContactPhoto, modifier: Modifier = Modifier) {
+    val source = sourceCaption(photo.source)
+    val sensitivity = when (photo.sensitivity) {
+        "private" -> stringResource(R.string.contact_images_sensitivity_private)
+        "secret" -> stringResource(R.string.contact_images_sensitivity_secret)
+        else -> null
+    }
+    if (source == null && sensitivity == null) return
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(Color.Black.copy(alpha = CAPTION_SCRIM_ALPHA))
+            .padding(horizontal = 4.dp, vertical = 2.dp)
+    ) {
+        source?.let { CaptionText(it) }
+        sensitivity?.let { CaptionText(it) }
+    }
+}
+
+@Composable
+private fun CaptionText(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall,
+        color = Color.White,
+        maxLines = 1
+    )
+}
+
+@Composable
+private fun sourceCaption(source: PhotoSource): String? {
+    val kind = when (source.kind) {
+        PhotoSource.KIND_NOTE -> stringResource(R.string.contact_images_source_note)
+        PhotoSource.KIND_ACTIVITY -> stringResource(R.string.contact_images_source_activity)
+        else -> return null
+    }
+    val label = source.label?.takeIf { it.isNotBlank() } ?: return kind
+    return stringResource(R.string.contact_images_source_labeled, kind, label)
+}
+
+private const val CAPTION_SCRIM_ALPHA = 0.55f
+private val MAIN_BADGE_SIZE = 20.dp

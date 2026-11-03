@@ -3133,4 +3133,21 @@
     <string name="contact_images_delete">Delete photo</string>
     <string name="contact_images_delete_title">Delete photo?</string>
     <string name="contact_images_delete_confirm">Delete this photo? This cannot be undone.</string>
+    <string name="contact_images_main_badge">Main photo</string>
+    <string name="contact_images_more">Photo actions</string>
+    <string name="contact_images_set_main">Set as main photo</string>
+    <string name="contact_images_clear_main">Remove as main photo</string>
+    <string name="contact_images_crop">Crop for profile photo</string>
+    <string name="contact_images_adopt">Add to contact photos</string>
+    <string name="contact_images_crop_title">Crop photo</string>
+    <string name="contact_images_crop_zoom">Zoom</string>
+    <string name="contact_images_crop_horizontal">Horizontal position</string>
+    <string name="contact_images_crop_vertical">Vertical position</string>
+    <string name="contact_images_crop_reset">Use whole photo</string>
+    <string name="contact_images_crop_save">Save crop</string>
+    <string name="contact_images_source_note">Note</string>
+    <string name="contact_images_source_activity">Activity</string>
+    <string name="contact_images_source_labeled">%1$s: %2$s</string>
+    <string name="contact_images_sensitivity_private">Private</string>
+    <string name="contact_images_sensitivity_secret">Secret</string>
 </resources>

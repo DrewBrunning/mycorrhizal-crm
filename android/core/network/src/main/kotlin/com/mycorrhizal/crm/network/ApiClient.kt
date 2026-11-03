@@ -17,6 +17,7 @@ import com.mycorrhizal.crm.model.network.AdminUser
 import com.mycorrhizal.crm.model.network.AdminUserCreateInput
 import com.mycorrhizal.crm.model.network.AdminUserUpdateInput
 import com.mycorrhizal.crm.model.network.AdminUsersListResponse
+import com.mycorrhizal.crm.model.network.AdoptContactImageRequest
 import com.mycorrhizal.crm.model.network.ApiToken
 import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
 import com.mycorrhizal.crm.model.network.ApiTokenInput
@@ -61,6 +62,7 @@ import com.mycorrhizal.crm.model.network.ContactMergeCommitResponse
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
 import com.mycorrhizal.crm.model.network.ContactMergeRequest
 import com.mycorrhizal.crm.model.network.ContactNotesResponse
+import com.mycorrhizal.crm.model.network.ContactPhotosResponse
 import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactRemindersResponse
@@ -137,6 +139,7 @@ import com.mycorrhizal.crm.model.network.HouseholdInput
 import com.mycorrhizal.crm.model.network.HouseholdMember
 import com.mycorrhizal.crm.model.network.HouseholdMemberInput
 import com.mycorrhizal.crm.model.network.HouseholdsPage
+import com.mycorrhizal.crm.model.network.ImageCrop
 import com.mycorrhizal.crm.model.network.ImmichAssetSummary
 import com.mycorrhizal.crm.model.network.ImmichAssetsResponse
 import com.mycorrhizal.crm.model.network.ImmichConfigInput
@@ -162,6 +165,7 @@ import com.mycorrhizal.crm.model.network.LifeEventInput
 import com.mycorrhizal.crm.model.network.LifeEventsPage
 import com.mycorrhizal.crm.model.network.LoginRequest
 import com.mycorrhizal.crm.model.network.LoginResponse
+import com.mycorrhizal.crm.model.network.MainImageResponse
 import com.mycorrhizal.crm.model.network.MapConfig
 import com.mycorrhizal.crm.model.network.MeerkatConnectRequest
 import com.mycorrhizal.crm.model.network.MeerkatConnectResponse
@@ -229,6 +233,7 @@ import com.mycorrhizal.crm.model.network.SelfContactRequest
 import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.model.network.SessionInfo
 import com.mycorrhizal.crm.model.network.SessionsResponse
+import com.mycorrhizal.crm.model.network.SetMainImageRequest
 import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.SourceImportStatus
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
@@ -1726,6 +1731,72 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
 
     suspend fun downloadContactImage(path: String): Result<ByteArray> =
         executeGetBytes("$PLACEHOLDER_ORIGIN$path")
+
+    /** GET /contacts/{id}/photos — the Photos tab: own, note and activity images with source labels. */
+    suspend fun listContactPhotos(contactId: Int): Result<ContactPhotosResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/photos") { _, body ->
+            moshi.adapter(ContactPhotosResponse::class.java).fromJson(body)
+        }
+
+    /** PUT /contacts/{id}/main-image — choose the main image; the server derives the avatar. */
+    suspend fun setContactMainImage(
+        contactId: Int,
+        imageId: Int,
+        ifMatchRevision: Int? = null
+    ): Result<MainImageResponse> = executePut(
+        "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/main-image",
+        SetMainImageRequest(imageId),
+        ifMatchRevision
+    ) { _, body ->
+        moshi.adapter(MainImageResponse::class.java).fromJson(body)
+    }
+
+    /** DELETE /contacts/{id}/main-image — clear the pointer and the derived avatar. */
+    suspend fun clearContactMainImage(
+        contactId: Int,
+        ifMatchRevision: Int? = null
+    ): Result<MainImageResponse> = executeDelete(
+        "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/main-image",
+        ifMatchRevision
+    ) { _, body ->
+        moshi.adapter(MainImageResponse::class.java).fromJson(body)
+    }
+
+    /**
+     * PATCH /contacts/{id}/images/{imageId} with only `crop`. A null [crop] sends an explicit
+     * `"crop":null`, which clears the stored crop (an absent key would leave it unchanged).
+     */
+    suspend fun patchContactImageCrop(
+        contactId: Int,
+        imageId: Int,
+        crop: ImageCrop?
+    ): Result<ContactImage> {
+        val cropJson = if (crop == null) {
+            "null"
+        } else {
+            moshi.adapter(ImageCrop::class.java).toJson(crop)
+        }
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/images/$imageId".toHttpUrl())
+            .patch("""{"crop":$cropJson}""".toRequestBody(jsonMediaType))
+            .build()
+        return execute(request) { _, body ->
+            moshi.adapter(UploadContactImageResponse::class.java).fromJson(body)?.image
+        }
+    }
+
+    /** POST /contacts/{id}/images/adopt — copy a note/activity image into the contact gallery. */
+    suspend fun adoptContactImage(
+        contactId: Int,
+        sourceKind: String,
+        sourceId: Int,
+        imageId: Int
+    ): Result<ContactImage> = executePost(
+        "$CONTACTS_PATH/$contactId/images/adopt",
+        AdoptContactImageRequest(sourceKind, sourceId, imageId)
+    ) { _, body ->
+        moshi.adapter(UploadContactImageResponse::class.java).fromJson(body)?.image
+    }
 
     /** GET /api/v1/notes — the N4 unfiled-notes inbox (M9 Notes drawer entry), cursor-paginated. */
     suspend fun listNotes(cursor: String? = null, limit: Int? = null): Result<NotesPage> {
