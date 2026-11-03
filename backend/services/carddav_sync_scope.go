@@ -160,41 +160,29 @@ func ReplaceCardDAVSyncScope(db *gorm.DB, userID uint, sel CardDAVSyncScopeSelec
 
 // CardDAVSyncScopeCounts returns (in scope, total live contacts) for a
 // selection. The preview endpoint uses this against an unpersisted proposal;
-// GET uses it against the stored scope.
+// GET uses it against the stored scope. The in-scope count applies the same
+// predicate as the CardDAV read path (cardDAVSyncScopePredicate), bound to the
+// proposed selection instead of the stored tables, so the settings preview
+// cannot disagree with what CardDAV serves (issue #2315).
 func CardDAVSyncScopeCounts(db *gorm.DB, userID uint, sel CardDAVSyncScopeSelection) (int, int, error) {
 	var total int64
 	if err := db.Model(&models.Contact{}).Where("user_id = ?", userID).Count(&total).Error; err != nil {
 		return 0, 0, err
 	}
 
-	switch sel.Mode {
-	case models.CardDAVSyncScopeModeInclude:
-		if len(sel.CircleIDs) == 0 {
-			return 0, int(total), nil
-		}
-		var in int64
-		if err := db.Model(&models.Contact{}).
-			Where("user_id = ?", userID).
-			Where("EXISTS (SELECT 1 FROM circle_members cm WHERE cm.user_id = ? AND cm.member_vcard_uid = contacts.vcard_uid AND cm.circle_id IN ?)", userID, sel.CircleIDs).
-			Count(&in).Error; err != nil {
-			return 0, 0, err
-		}
-		return int(in), int(total), nil
-	case models.CardDAVSyncScopeModeExclude:
-		if len(sel.CircleIDs) == 0 {
-			return int(total), int(total), nil
-		}
-		var excluded int64
-		if err := db.Model(&models.Contact{}).
-			Where("user_id = ?", userID).
-			Where("EXISTS (SELECT 1 FROM circle_members cm WHERE cm.user_id = ? AND cm.member_vcard_uid = contacts.vcard_uid AND cm.circle_id IN ?)", userID, sel.CircleIDs).
-			Count(&excluded).Error; err != nil {
-			return 0, 0, err
-		}
-		return int(total - excluded), int(total), nil
-	default:
-		return int(total), int(total), nil
+	circleIDs := sel.CircleIDs
+	if circleIDs == nil {
+		circleIDs = []string{}
 	}
+	cond, args := cardDAVSyncScopePredicate("?", []any{sel.Mode}, "IN ?", []any{circleIDs})
+	var in int64
+	if err := db.Model(&models.Contact{}).
+		Where("user_id = ?", userID).
+		Where(cond, args...).
+		Count(&in).Error; err != nil {
+		return 0, 0, err
+	}
+	return int(in), int(total), nil
 }
 
 // CardDAVSyncScopeWarnings derives the read-time warnings (ADR 0041 decision
@@ -226,29 +214,51 @@ func CardDAVSyncScopeWarnings(sel CardDAVSyncScopeSelection) []models.CardDAVSyn
 	return warnings
 }
 
-// CardDAVSyncScopeContactCondition is the in-query scope predicate (ADR 0041
-// decision 4). It reads the scope tables as correlated subqueries, so a scope
-// edit cannot race a contact read; there is no pre-fetched id list. It assumes
-// the query's model is contacts and refers to contacts.user_id/vcard_uid. It
-// re-joins circles on user_id so a row written by any future path cannot name
-// another user's circle (backend trap #5).
-const CardDAVSyncScopeContactCondition = `(
-	COALESCE((SELECT css.mode FROM carddav_sync_scopes css WHERE css.user_id = contacts.user_id), 'all') = 'all'
-	OR (COALESCE((SELECT css.mode FROM carddav_sync_scopes css WHERE css.user_id = contacts.user_id), 'all') = 'include'
-	    AND EXISTS (
-	        SELECT 1 FROM carddav_sync_scope_circles cscc
-	        JOIN circle_members cm ON cm.user_id = cscc.user_id AND cm.circle_id = cscc.circle_id
-	        JOIN circles ci ON ci.id = cscc.circle_id AND ci.user_id = cscc.user_id
-	        WHERE cscc.user_id = contacts.user_id AND cm.member_vcard_uid = contacts.vcard_uid
-	    ))
-	OR (COALESCE((SELECT css.mode FROM carddav_sync_scopes css WHERE css.user_id = contacts.user_id), 'all') = 'exclude'
-	    AND NOT EXISTS (
-	        SELECT 1 FROM carddav_sync_scope_circles cscc
-	        JOIN circle_members cm ON cm.user_id = cscc.user_id AND cm.circle_id = cscc.circle_id
-	        JOIN circles ci ON ci.id = cscc.circle_id AND ci.user_id = cscc.user_id
-	        WHERE cscc.user_id = contacts.user_id AND cm.member_vcard_uid = contacts.vcard_uid
-	    ))
+// cardDAVSyncScopePredicate is the single definition of the CardDAV sync-scope
+// predicate (ADR 0041 decision 4): a contact is in scope when the mode is
+// "all", or the mode is "include" and the contact is in one of the selected
+// circles, or the mode is "exclude" and it is in none of them. Both the stored
+// read path (CardDAVSyncScopeContactCondition) and the preview counts bind it,
+// differing only in where the mode and the circle set come from:
+//
+//   - modeSQL/modeArgs: the SQL expression yielding the mode and its bind args;
+//   - circlesInSQL/circlesArgs: the right-hand side of a "circle_id" membership
+//     test, e.g. "IN (SELECT ...)" or "IN ?", and its bind args.
+//
+// It assumes the query's model is contacts and refers to contacts.user_id and
+// contacts.vcard_uid. Membership re-joins circles on user_id, so a row written
+// by any future path cannot name another user's circle (backend trap #5).
+func cardDAVSyncScopePredicate(modeSQL string, modeArgs []any, circlesInSQL string, circlesArgs []any) (string, []any) {
+	member := `SELECT 1 FROM circle_members cm
+	        JOIN circles ci ON ci.id = cm.circle_id AND ci.user_id = contacts.user_id
+	        WHERE cm.user_id = contacts.user_id AND cm.member_vcard_uid = contacts.vcard_uid
+	        AND cm.circle_id ` + circlesInSQL
+	sql := `(
+	` + modeSQL + ` = 'all'
+	OR (` + modeSQL + ` = 'include' AND EXISTS (` + member + `))
+	OR (` + modeSQL + ` = 'exclude' AND NOT EXISTS (` + member + `))
 )`
+	var args []any
+	args = append(args, modeArgs...)
+	args = append(args, modeArgs...)
+	args = append(args, circlesArgs...)
+	args = append(args, modeArgs...)
+	args = append(args, circlesArgs...)
+	return sql, args
+}
+
+// CardDAVSyncScopeContactCondition is the in-query scope predicate (ADR 0041
+// decision 4) over the stored scope. It reads the scope tables as correlated
+// subqueries, so a scope edit cannot race a contact read; there is no
+// pre-fetched id list. It is cardDAVSyncScopePredicate bound to the stored
+// tables and carries no bind args.
+var CardDAVSyncScopeContactCondition = func() string {
+	sql, _ := cardDAVSyncScopePredicate(
+		"COALESCE((SELECT css.mode FROM carddav_sync_scopes css WHERE css.user_id = contacts.user_id), 'all')", nil,
+		"IN (SELECT cscc.circle_id FROM carddav_sync_scope_circles cscc WHERE cscc.user_id = contacts.user_id)", nil,
+	)
+	return sql
+}()
 
 // ApplyCardDAVSyncScope restricts a contacts query to the user's CardDAV sync
 // scope. Every CardDAV read path must go through this helper (ADR 0041

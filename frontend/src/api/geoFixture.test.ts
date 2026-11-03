@@ -1,5 +1,4 @@
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import geoFixture from '@testdata/geo-uri-fixtures.json';
 import { describe, expect, test } from 'vitest';
 
 import { formatGeoUri, parseCoordinateInput, parseGeoUri } from './map';
@@ -18,9 +17,11 @@ interface FormatCase {
   lon: number;
   expected: string;
 }
-const fixture = JSON.parse(
-  readFileSync(resolve(__dirname, '../../../testdata/geo-uri-fixtures.json'), 'utf8'),
-) as { parse: ParseCase[]; format: FormatCase[]; coordinateInput: ParseCase[] };
+const fixture = geoFixture as {
+  parse: ParseCase[];
+  format: FormatCase[];
+  coordinateInput: ParseCase[];
+};
 
 describe('geo URI fixture parity', () => {
   test('fixture is non-empty', () => {

@@ -632,3 +632,36 @@ func TestListContactPhotos_TiesAreOrderedDeterministically(t *testing.T) {
 		assert.Equal(t, n.ID, photos[2].ImageID)
 	}
 }
+
+// Issue #2313: adopt had the same check-then-insert race as upload. A
+// concurrent upload that lands after adopt's pre-check fills the cap, and the
+// in-transaction recheck must reject the copy and remove its files.
+func TestAdoptImageIntoContact_RecheckRejectsCapFilledAfterPreCheck(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "n"}
+	require.NoError(t, svc.DB.Create(&note).Error)
+	src := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
+	capped := adoptServiceForTest(svc.DB, imaging.Store{Dir: dir}, 1, UserQuota{})
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	ctx := context.Background()
+
+	capped.beforeInsert = func() {
+		capped.beforeInsert = nil
+		_, err := capped.Upload(ctx, userID, owner, bytes.NewReader(imageTestJPEGVariant(t, 5)))
+		require.NoError(t, err)
+	}
+	userDir := filepath.Join(dir, "u"+strconv.FormatUint(uint64(userID), 10))
+	before, err := os.ReadDir(userDir)
+	require.NoError(t, err)
+
+	_, _, err = AdoptImageIntoContact(ctx, capped, userID, &contact, "note", note.ID, src.ID)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, string(apperrors.ReasonImageLimitReached), appErr.ReasonCode)
+	count, err := capped.Count(ctx, userID, owner)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count, "only the concurrent upload's row exists")
+	after, err := os.ReadDir(userDir)
+	require.NoError(t, err)
+	assert.Len(t, after, len(before)+2, "the upload's full+thumb remain; the rejected copy's files are removed")
+}

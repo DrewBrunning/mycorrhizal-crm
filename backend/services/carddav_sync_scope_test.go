@@ -315,3 +315,56 @@ func TestContactInCardDAVSyncScope(t *testing.T) {
 	_, err = ContactInCardDAVSyncScope(f.db, f.owner.ID, f.c1)
 	require.Error(t, err)
 }
+
+// Issue #2315 item 3: the settings preview count and the CardDAV listing must
+// share one scope predicate, so "N contacts will sync" can never disagree with
+// what CardDAV serves.
+func TestCardDAVSyncScopeCounts_MatchesCardDAVListing(t *testing.T) {
+	listing := func(f *scopeFixture) int {
+		var n int64
+		require.NoError(t, ApplyCardDAVSyncScope(f.db.Model(&models.Contact{}).Where("user_id = ?", f.owner.ID)).Count(&n).Error)
+		return int(n)
+	}
+	selections := func(f *scopeFixture) map[string]CardDAVSyncScopeSelection {
+		return map[string]CardDAVSyncScopeSelection{
+			"all":                 {Mode: models.CardDAVSyncScopeModeAll},
+			"include":             {Mode: models.CardDAVSyncScopeModeInclude, CircleIDs: []string{f.a.ID}, DefaultCircleID: &f.a.ID},
+			"include two circles": {Mode: models.CardDAVSyncScopeModeInclude, CircleIDs: []string{f.a.ID, f.b.ID}, DefaultCircleID: &f.a.ID},
+			"exclude":             {Mode: models.CardDAVSyncScopeModeExclude, CircleIDs: []string{f.b.ID}},
+			"exclude two circles": {Mode: models.CardDAVSyncScopeModeExclude, CircleIDs: []string{f.a.ID, f.b.ID}},
+		}
+	}
+
+	f := newScopeFixture(t)
+	for name, sel := range selections(f) {
+		t.Run(name, func(t *testing.T) {
+			_, err := ReplaceCardDAVSyncScope(f.db, f.owner.ID, sel)
+			require.NoError(t, err)
+			in, total, err := CardDAVSyncScopeCounts(f.db, f.owner.ID, sel)
+			require.NoError(t, err)
+			assert.Equal(t, 3, total)
+			assert.Equal(t, listing(f), in, "preview must equal the CardDAV listing")
+		})
+	}
+
+	// The read path re-joins circles on user_id (backend trap #5), so a scope
+	// row that names another user's circle never matches. The preview must
+	// apply the same rule.
+	t.Run("foreign circle in the selection", func(t *testing.T) {
+		f := newScopeFixture(t)
+		var foreign models.Circle
+		require.NoError(t, f.db.Where("user_id = ?", f.other.ID).First(&foreign).Error)
+		require.NoError(t, f.db.Create(&models.CircleMember{CircleID: foreign.ID, UserID: f.owner.ID, MemberVCardUID: f.c3.VCardUID}).Error)
+		for _, mode := range []string{models.CardDAVSyncScopeModeInclude, models.CardDAVSyncScopeModeExclude} {
+			sel := CardDAVSyncScopeSelection{Mode: mode, CircleIDs: []string{foreign.ID}}
+			// Bypass validation: this is the corrupt row a future write path could leave.
+			require.NoError(t, f.db.Exec("DELETE FROM carddav_sync_scope_circles WHERE user_id = ?", f.owner.ID).Error)
+			require.NoError(t, f.db.Exec("DELETE FROM carddav_sync_scopes WHERE user_id = ?", f.owner.ID).Error)
+			require.NoError(t, f.db.Create(&models.CardDAVSyncScope{UserID: f.owner.ID, Mode: mode}).Error)
+			require.NoError(t, f.db.Create(&models.CardDAVSyncScopeCircle{UserID: f.owner.ID, CircleID: foreign.ID}).Error)
+			in, _, err := CardDAVSyncScopeCounts(f.db, f.owner.ID, sel)
+			require.NoError(t, err)
+			assert.Equal(t, listing(f), in, "mode %s", mode)
+		}
+	})
+}
