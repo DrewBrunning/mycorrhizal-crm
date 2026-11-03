@@ -270,6 +270,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/activities/:id/images",
 		"POST /api/v1/notes/:id/images",
 		"POST /api/v1/contacts/:id/images",
+		"POST /api/v1/contacts/:id/images/adopt",
 	} {
 		t[k] = keyed(idemReasonCreate)
 	}

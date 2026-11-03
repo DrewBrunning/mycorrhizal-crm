@@ -479,7 +479,7 @@
     "services/contact_score_service.go": 98.36,
     "services/contact_share_purge_service.go": 100,
     "services/contact_sync_service.go": 84.33,
-    "services/contact_trash.go": 94.29,
+    "services/contact_trash.go": 94.82,
     "services/contact_write.go": 100,
     "services/credential_crypto.go": 82.35,
     "services/custom_field_service.go": 91.86,

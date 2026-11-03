@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -256,4 +257,190 @@ func TestImageService_AuditEntityByKind(t *testing.T) {
 	assert.Equal(t, models.AuditEntityContact, svc.auditEntity())
 	svc.Kind = OwnerKind("")
 	assert.Equal(t, models.AuditEntityActivity, svc.auditEntity())
+}
+
+func contactImageServiceEnv(t *testing.T) (*ImageService[models.ContactImage, *models.ContactImage], models.Contact, uint, string) {
+	t.Helper()
+	db := dbtest.New(t)
+	user := models.User{Username: "contact-image-service", Password: "password123!A", Email: "contact-image-service@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	contact := models.Contact{UserID: user.ID, Firstname: "Dana", VCardUID: "11111111-1111-4111-8111-111111111111"}
+	require.NoError(t, db.Create(&contact).Error)
+	dir := t.TempDir()
+	svc := ContactImageService(db, imaging.Store{Dir: dir}, 10, 50_000_000, 20<<20, UserQuota{})
+	return svc, contact, user.ID, dir
+}
+
+func TestImageService_UploadDedupedReturnsExistingContactImage(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	data := imageTestJPEG(t)
+
+	first, dup, err := svc.UploadDeduped(context.Background(), userID, owner, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.False(t, dup)
+
+	second, dup, err := svc.UploadDeduped(context.Background(), userID, owner, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.True(t, dup)
+	assert.Equal(t, first.ID, second.ID)
+
+	count, err := svc.Count(context.Background(), userID, owner)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestImageService_UpdateSensitivityAndCrop(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	img, err := svc.Upload(context.Background(), userID, owner, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+
+	private := models.ImageSensitivityPrivate
+	crop := &models.ImageCrop{X: 0.1, Y: 0.2, W: 0.5, H: 0.6}
+	updated, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{
+		Sensitivity: &private,
+		Crop:        models.OptionalCrop{Set: true, Value: crop},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, models.ImageSensitivityPrivate, updated.Sensitivity)
+	require.NotNil(t, updated.CropX)
+	assert.InDelta(t, 0.1, *updated.CropX, 0.0001)
+	assert.InDelta(t, 0.6, *updated.CropH, 0.0001)
+
+	cleared, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: models.OptionalCrop{Set: true}})
+	require.NoError(t, err)
+	assert.Nil(t, cleared.CropX)
+	assert.Nil(t, cleared.CropW)
+}
+
+func TestImageService_UpdateRejectsInvalidValues(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	img, err := svc.Upload(context.Background(), userID, owner, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+
+	bad := "bogus"
+	_, err = svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Sensitivity: &bad})
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode)
+
+	_, err = svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{
+		Crop: models.OptionalCrop{Set: true, Value: &models.ImageCrop{X: 0.8, Y: 0.8, W: 0.5, H: 0.5}},
+	})
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode)
+}
+
+func TestImageService_UploadDedupedBranches(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	ctx := context.Background()
+
+	// processUpload failure propagates.
+	_, _, err := svc.UploadDeduped(ctx, userID, owner, bytes.NewReader([]byte("not an image")))
+	require.Error(t, err)
+
+	// Non-contact owners never dedupe.
+	asvc, activity, auid, _ := imageServiceEnv(t)
+	aowner := OwnerRef{ID: activity.ID}
+	data := imageTestJPEG(t)
+	_, dup, err := asvc.UploadDeduped(ctx, auid, aowner, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.False(t, dup)
+	_, dup, err = asvc.UploadDeduped(ctx, auid, aowner, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.False(t, dup)
+
+	// Duplicate-lookup query failure.
+	require.NoError(t, svc.DB.Exec("DROP TABLE contact_images").Error)
+	_, _, err = svc.UploadDeduped(ctx, userID, owner, bytes.NewReader(data))
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
+}
+
+func TestImageService_UpdateBranches(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	ctx := context.Background()
+
+	// Unknown image id.
+	_, err := svc.Update(ctx, userID, owner, 9999, models.ContactImagePatchInput{})
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
+
+	img, err := svc.Upload(ctx, userID, owner, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+
+	// Empty patch returns the row untouched.
+	same, err := svc.Update(ctx, userID, owner, img.ID, models.ContactImagePatchInput{})
+	require.NoError(t, err)
+	assert.Equal(t, img.ID, same.ID)
+
+	// Update failure surfaces as a database error.
+	require.NoError(t, svc.DB.Callback().Update().Before("gorm:update").Register("test:fail_update", func(tx *gorm.DB) {
+		_ = tx.AddError(errors.New("boom"))
+	}))
+	secret := models.ImageSensitivitySecret
+	_, err = svc.Update(ctx, userID, owner, img.ID, models.ContactImagePatchInput{Sensitivity: &secret})
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
+}
+
+func TestImageService_UploadDedupedIsScopedToOwnerContact(t *testing.T) {
+	svc, contactA, userID, _ := contactImageServiceEnv(t)
+	ctx := context.Background()
+	data := imageTestJPEG(t)
+	contactB := models.Contact{UserID: userID, Firstname: "B", VCardUID: "77777777-7777-4777-8777-777777777777"}
+	require.NoError(t, svc.DB.Create(&contactB).Error)
+	stranger := models.User{Username: "dedupe-stranger", Password: "password123!A", Email: "dedupe-stranger@example.com"}
+	require.NoError(t, svc.DB.Create(&stranger).Error)
+	strangerContact := models.Contact{UserID: stranger.ID, Firstname: "S", VCardUID: "88888888-8888-4888-8888-888888888888"}
+	require.NoError(t, svc.DB.Create(&strangerContact).Error)
+
+	first, dup, err := svc.UploadDeduped(ctx, userID, OwnerRef{ID: contactA.ID, UID: contactA.VCardUID}, bytes.NewReader(data))
+	require.NoError(t, err)
+	require.False(t, dup)
+
+	// The same picture on another contact, or for another user, is a new row.
+	other, dup, err := svc.UploadDeduped(ctx, userID, OwnerRef{ID: contactB.ID, UID: contactB.VCardUID}, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.False(t, dup, "dedupe must not cross contacts")
+	assert.NotEqual(t, first.ID, other.ID)
+
+	foreign, dup, err := svc.UploadDeduped(ctx, stranger.ID, OwnerRef{ID: strangerContact.ID, UID: strangerContact.VCardUID}, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.False(t, dup, "dedupe must not cross users")
+	assert.Equal(t, stranger.ID, foreign.UserID)
+}
+
+func TestImageService_UpdateCropValidation(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	img, err := svc.Upload(context.Background(), userID, owner, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+	nan := math.NaN()
+	for name, c := range map[string]models.ImageCrop{
+		"nan x":         {X: nan, Y: 0, W: 0.5, H: 0.5},
+		"nan w":         {X: 0, Y: 0, W: nan, H: 0.5},
+		"inf w":         {X: 0, Y: 0, W: math.Inf(1), H: 0.5},
+		"negative x":    {X: -0.1, Y: 0, W: 0.5, H: 0.5},
+		"zero width":    {X: 0, Y: 0, W: 0, H: 0.5},
+		"overflow in x": {X: 0.6, Y: 0, W: 0.5, H: 0.5},
+	} {
+		crop := c
+		_, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: models.OptionalCrop{Set: true, Value: &crop}})
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr, name)
+		assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode, name)
+	}
+	// Float rounding at the edge is tolerated; the full image is a valid crop.
+	for _, c := range []models.ImageCrop{{X: 0.7, Y: 0, W: 0.30000000000000004, H: 1}, {X: 0, Y: 0, W: 1, H: 1}} {
+		crop := c
+		_, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: models.OptionalCrop{Set: true, Value: &crop}})
+		require.NoError(t, err)
+	}
 }

@@ -191,6 +191,12 @@ export type AdminUsersListResponse = {
   users?: AdminUserResponse[];
 };
 
+export type AdoptImageInput = {
+  image_id: number;
+  source_id: number;
+  source_kind: 'note' | 'activity';
+};
+
 export type Anniversary = {
   date: AnniversaryDate;
   id?: string;
@@ -689,6 +695,16 @@ export type ContactImage = {
   width: number;
 };
 
+export type ContactImagePatchInput = {
+  crop?: ImageCrop | null;
+  sensitivity?: 'normal' | 'private' | 'secret';
+};
+
+export type ContactImageUploadResponse = {
+  deduplicated: boolean;
+  image: ContactImage;
+};
+
 export type ContactMapPoint = {
   address_id: string;
   contact_id: number;
@@ -760,6 +776,26 @@ export type ContactMergeResolution = {
 export type ContactPhone = {
   type?: string;
   value?: string;
+};
+
+export type ContactPhoto = {
+  created_at: string;
+  file_url: string;
+  height: number;
+  id: number;
+  mime_type: 'image/jpeg' | 'image/png';
+  sensitivity: 'normal' | 'private' | 'secret';
+  size_bytes: number;
+  source: PhotoSource;
+  taken_at?: string | null;
+  taken_date?: string | null;
+  thumbnail_url: string;
+  width: number;
+};
+
+export type ContactPhotosResponse = {
+  photos: ContactPhoto[];
+  total: number;
 };
 
 export type ContactRecordInput = {
@@ -1561,6 +1597,13 @@ export type HouseholdMemberInput = {
   until?: string;
 };
 
+export type ImageCrop = {
+  h: number;
+  w: number;
+  x: number;
+  y: number;
+};
+
 export type ImmichAssetSummary = {
   id?: string;
   occurred_at?: string;
@@ -1880,6 +1923,16 @@ export type LossReport = {
   reason?: string;
   severity?: 'warn';
   vcard_uid?: string;
+};
+
+export type MainImageInput = {
+  image_id: number;
+};
+
+export type MainImageResponse = {
+  main_image_id?: number;
+  message: string;
+  revision: number;
 };
 
 export type MapConfigResponse = {
@@ -2369,6 +2422,12 @@ export type Phone = {
   label?: string;
   number: string;
   pref?: number | null;
+};
+
+export type PhotoSource = {
+  id: number;
+  kind: 'contact' | 'note' | 'activity';
+  label: string;
 };
 
 export type Preference = {
