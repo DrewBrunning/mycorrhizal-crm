@@ -148,7 +148,7 @@ func ConfirmMycorrhizalImport(c *gin.Context) {
 		return
 	}
 
-	if appErr := mycorrhizalImportSessions.Confirm(db, userID, *req, log); appErr != nil {
+	if appErr := mycorrhizalImportSessions.Confirm(db, userID, *req, currentConfig(c), log); appErr != nil {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}

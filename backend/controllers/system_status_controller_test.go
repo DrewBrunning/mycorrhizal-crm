@@ -619,3 +619,44 @@ func TestGetSystemStatus_StorageReadsUseRequestContext(t *testing.T) {
 	require.NoError(t, db.Model(&models.AlertState{}).Where("condition_key = ?", "storage_threshold").Count(&states).Error)
 	assert.Zero(t, states, "threshold tier must not be persisted under a cancelled request context")
 }
+
+// TestGetSystemStatus_ReportsImageStorage pins ADR 0040 decision 6: the
+// storage block lists IMAGES_DIR and carries an images object summed over live
+// and not-yet-purged soft-deleted rows (both occupy disk), full plus thumbnail
+// bytes, split by owner kind.
+func TestGetSystemStatus_ReportsImageStorage(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "x.db")
+	db := dbtest.NewAt(t, dbPath)
+	admin := seedAdmin(t, db)
+	cfg := validSystemStatusConfig(t, dbPath)
+	cfg.ImagesDir = t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(cfg.ImagesDir, "a.jpg"), make([]byte, 512), 0o644))
+
+	fields := func(uuid string, size, thumb int64) models.ImageFields {
+		return models.ImageFields{UserID: admin.ID, UUID: uuid, StoredName: uuid + ".jpg", ThumbName: uuid + "-t.jpg", MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: size, ThumbSizeBytes: thumb, Sensitivity: models.ImageSensitivityNormal}
+	}
+	act := models.Activity{UserID: admin.ID, Title: "a", Date: time.Now()}
+	require.NoError(t, db.Create(&act).Error)
+	note := models.Note{UserID: admin.ID, Content: "n", Date: time.Now()}
+	require.NoError(t, db.Create(&note).Error)
+	require.NoError(t, db.Create(&models.ActivityImage{ImageFields: fields("a1", 100, 10), ActivityID: act.ID}).Error)
+	require.NoError(t, db.Create(&models.NoteImage{ImageFields: fields("n1", 200, 20), NoteID: note.ID}).Error)
+	gone := models.NoteImage{ImageFields: fields("n2", 400, 40), NoteID: note.ID}
+	require.NoError(t, db.Create(&gone).Error)
+	require.NoError(t, db.Delete(&gone).Error) // soft-deleted rows still occupy disk
+
+	router := systemStatusEnv(t, db, cfg, admin.ID)
+	w, body := getSystemStatus(t, router)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp SystemStatusResponse
+	require.NoError(t, json.Unmarshal(body, &resp))
+
+	assert.Len(t, resp.Storage.Directories, 3, "photos, attachments and images")
+	assert.EqualValues(t, 3, resp.Storage.Images.Count)
+	assert.EqualValues(t, 770, resp.Storage.Images.Bytes)
+	assert.EqualValues(t, 1, resp.Storage.Images.ByKind.Activity.Count)
+	assert.EqualValues(t, 110, resp.Storage.Images.ByKind.Activity.Bytes)
+	assert.EqualValues(t, 2, resp.Storage.Images.ByKind.Note.Count)
+	assert.EqualValues(t, 660, resp.Storage.Images.ByKind.Note.Bytes)
+	assert.EqualValues(t, 0, resp.Storage.Images.ByKind.Contact.Count)
+}

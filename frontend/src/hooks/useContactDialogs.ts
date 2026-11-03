@@ -12,7 +12,12 @@ export function useContactDialogs(
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
 
-  const handleSaveNote = async (content: string, date: string) => {
+  const handleSaveNote = async (
+    content: string,
+    date: string,
+    _contactId?: number,
+    awaitingImages?: boolean,
+  ) => {
     if (!contactId) return;
 
     try {
@@ -20,6 +25,7 @@ export function useContactDialogs(
         content,
         date: new Date(date).toISOString(),
         contact_id: parseInt(contactId, 10),
+        awaiting_images: awaitingImages,
       });
       await onRefresh();
       return created;

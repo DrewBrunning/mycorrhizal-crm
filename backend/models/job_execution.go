@@ -105,6 +105,10 @@ const (
 	// retention window (issue #652).
 	JobNameStorageSample = "storage_sample"
 
+	// JobNameImageSweep is the daily sweep of unreferenced gallery files, stale
+	// *.tmp files and lapsed empty notes (ADR 0040 decision 5, issue #2004).
+	JobNameImageSweep = "image_sweep"
+
 	// JobNameSearchIndexRebuild is the job name for the FTS5 full-text search
 	// index rebuild (SEARCH-01, issue #461). Unlike every other JobName* this
 	// is not a scheduled job — it is operator-triggered (POST

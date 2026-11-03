@@ -3546,6 +3546,7 @@
       "idempotency_key_purge": "Pulizia delle chiavi di idempotenza",
       "session_purge": "Pulizia delle sessioni",
       "storage_sample": "Campionamento dello spazio",
+      "image_sweep": "Pulizia dei file immagine",
       "search_index_rebuild": "Ricostruzione dell'indice di ricerca",
       "derived_columns_rebuild": "Ricostruzione delle colonne derivate"
     }
@@ -4100,6 +4101,7 @@
       "image_heic_unsupported": "Le immagini HEIC non sono supportate; convertile prima in JPEG",
       "image_corrupt": "L’immagine è danneggiata o troncata",
       "image_limit_reached": "Questo elemento ha già il massimo di {{limit}} immagini",
+      "note_requires_content_or_image": "Una nota richiede testo o almeno un’immagine",
       "image_processing_busy": "L’elaborazione delle immagini è occupata; riprova tra poco",
       "image_not_found": "Immagine non trovata",
       "image_insufficient_storage": "Spazio su disco insufficiente per salvare l’immagine"

@@ -110,7 +110,7 @@ export async function getNote(id: string | number): Promise<Note> {
 // Create note for contact
 export async function createNote(
   contactId: string | number,
-  data: { content: string; date: string; contact_id?: number },
+  data: { content: string; date: string; contact_id?: number; awaiting_images?: boolean },
 ): Promise<Note> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/notes`, {
     method: 'POST',
@@ -130,6 +130,8 @@ export async function createUnassignedNote(data: {
   content: string;
   date: string;
   contact_id?: number | null; // *uint without omitempty: null for an unfiled note
+  // Empty content is valid only with this, while the note's first image uploads.
+  awaiting_images?: boolean;
 }): Promise<Note> {
   const response = await apiFetch(`${API_BASE_URL}/notes`, {
     method: 'POST',

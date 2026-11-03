@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/fireandforget"
 	"mycorrhizal/models"
@@ -406,7 +407,7 @@ func (m *MycorrhizalImportManager) Preview(userID uint, sessionID string) (*mode
 
 // Confirm starts the import in the background (the endpoint returns 202); the
 // client polls Status until phase done / cancelled / failed.
-func (m *MycorrhizalImportManager) Confirm(db *gorm.DB, userID uint, req models.SourceImportConfirmRequest, log *zerolog.Logger) *apperrors.AppError {
+func (m *MycorrhizalImportManager) Confirm(db *gorm.DB, userID uint, req models.SourceImportConfirmRequest, cfg config.Config, log *zerolog.Logger) *apperrors.AppError {
 	s, appErr := m.get(req.SessionID, userID)
 	if appErr != nil {
 		return appErr
@@ -435,12 +436,12 @@ func (m *MycorrhizalImportManager) Confirm(db *gorm.DB, userID uint, req models.
 		s.mu.Unlock()
 		return appErr
 	}
-	fireandforget.Run(func() { m.runImport(ctx, db, s, plan, len(previews), actions, log) })
+	fireandforget.Run(func() { m.runImport(ctx, db, s, plan, len(previews), actions, cfg, log) })
 	return nil
 }
 
-func (m *MycorrhizalImportManager) runImport(ctx context.Context, db *gorm.DB, s *mycorrhizalImportSession, plan *ImportSourcePlan, totalRows int, actions map[string]SourceContactAction, log *zerolog.Logger) {
-	report, _, err := ExecuteSourceImportWithActions(ctx, db, s.userID, plan, actions, s.setProgress)
+func (m *MycorrhizalImportManager) runImport(ctx context.Context, db *gorm.DB, s *mycorrhizalImportSession, plan *ImportSourcePlan, totalRows int, actions map[string]SourceContactAction, cfg config.Config, log *zerolog.Logger) {
+	report, refToID, err := ExecuteSourceImportWithActions(ctx, db, s.userID, plan, actions, s.setProgress)
 	if err != nil {
 		if ctx.Err() != nil {
 			s.mu.Lock()
@@ -455,6 +456,19 @@ func (m *MycorrhizalImportManager) runImport(ctx context.Context, db *gorm.DB, s
 	}
 
 	result := sourceImportResultFromReport(report, totalRows)
+	// Gallery images land after the entity import commits (ADR 0040 decision
+	// 3): each is re-validated through the upload pipeline, and a failure is
+	// counted, never fatal to the rest of the import.
+	if s.bundle != nil && len(s.bundle.Images) > 0 {
+		mains := map[string]string{}
+		for _, c := range s.bundle.Plan.Contacts {
+			if c.MainImage != "" {
+				mains[c.UID] = c.MainImage
+			}
+		}
+		img := ImportBundleImages(ctx, db, BundleImageImport{Config: cfg}, s.userID, s.bundle.Images, mains, refToID)
+		result.ImagesCreated, result.ImagesRejected = img.Created, img.Rejected
+	}
 	models.RecordImportRun(context.Background(), db, models.ImportRun{
 		UserID:         s.userID,
 		Format:         models.ImportFormatMycorrhizal,

@@ -115,12 +115,18 @@ const NotesPage: React.FC = () => {
     setAddDialogOpen(true);
   };
 
-  const handleNoteSave = async (content: string, date: string, contactId?: number) => {
+  const handleNoteSave = async (
+    content: string,
+    date: string,
+    contactId?: number,
+    awaitingImages?: boolean,
+  ) => {
     try {
       const created = await createUnassignedNote({
         content,
         date: new Date(date).toISOString(),
         contact_id: contactId,
+        awaiting_images: awaitingImages,
       });
       setAddDialogOpen(false);
       void refetch();
@@ -151,20 +157,19 @@ const NotesPage: React.FC = () => {
     void refetch();
   });
 
-  const handleSaveEdit = async () => {
-    if (!editingNote || !editValues.noteContent?.trim()) return;
-
+  const handleSaveEdit = async (note: Note) => {
     try {
       await updateNote(
-        editingNote.ID,
+        note.ID,
         {
-          content: editValues.noteContent,
+          // handleEditClick always seeds noteContent; empty is valid for an image-only note.
+          content: editValues.noteContent as string,
           date: editValues.noteDate
             ? new Date(editValues.noteDate).toISOString()
             : new Date().toISOString(),
           contact_id: editValues.noteContactId ?? null,
         },
-        editingNote.revision,
+        note.revision,
       );
       setEditingNote(null);
       setEditValues({});
@@ -440,7 +445,7 @@ const NotesPage: React.FC = () => {
         <EditTimelineItemDialog
           open={!!editingNote}
           onClose={handleCancelEdit}
-          onSave={() => void handleSaveEdit()}
+          onSave={() => void handleSaveEdit(editingNote)}
           onDelete={() => void handleDeleteNote()}
           type="note"
           values={editValues}

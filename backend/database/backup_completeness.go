@@ -61,29 +61,37 @@ type BackupSetReport struct {
 	// looked at, so "0 missing" can be told apart from "nothing checked".
 	AttachmentsScanned int
 	PhotosScanned      int
+	// ImagesScanned is the live gallery-image row count (all three owner
+	// kinds) checked against IMAGES_DIR; zero when no images directory was
+	// given to VerifyBackupSetWithImages.
+	ImagesScanned int
 
 	MissingAttachments []MissingRef
 	MissingPhotos      []MissingRef
+	// MissingImages names live image rows whose full or thumbnail file is
+	// absent; StoredName is "u<user id>/<file>", relative to IMAGES_DIR.
+	MissingImages []MissingRef
 
 	OrphanAttachmentFiles []string
 	OrphanPhotoFiles      []string
+	OrphanImageFiles      []string
 }
 
 // Complete reports whether every live attachment and profile-photo row in the
 // database resolves to a file present in the backup set. Orphan files do not
 // affect it.
 func (r *BackupSetReport) Complete() bool {
-	return len(r.MissingAttachments) == 0 && len(r.MissingPhotos) == 0
+	return len(r.MissingAttachments) == 0 && len(r.MissingPhotos) == 0 && len(r.MissingImages) == 0
 }
 
 // TotalMissing is the number of live rows with no backing file.
 func (r *BackupSetReport) TotalMissing() int {
-	return len(r.MissingAttachments) + len(r.MissingPhotos)
+	return len(r.MissingAttachments) + len(r.MissingPhotos) + len(r.MissingImages)
 }
 
 // TotalOrphans is the number of files with no owning live row.
 func (r *BackupSetReport) TotalOrphans() int {
-	return len(r.OrphanAttachmentFiles) + len(r.OrphanPhotoFiles)
+	return len(r.OrphanAttachmentFiles) + len(r.OrphanPhotoFiles) + len(r.OrphanImageFiles)
 }
 
 // String renders a human-readable summary for the CLI and the restore-drill
@@ -103,6 +111,9 @@ func (r *BackupSetReport) String() string {
 	for _, m := range r.MissingPhotos {
 		fmt.Fprintf(&b, "\n  missing photo: %s (owner %s)", m.StoredName, m.Owner)
 	}
+	for _, m := range r.MissingImages {
+		fmt.Fprintf(&b, "\n  missing image: %s (owner %s)", m.StoredName, m.Owner)
+	}
 	if n := r.TotalOrphans(); n > 0 {
 		fmt.Fprintf(&b, "\n%d orphan file(s) present with no owning row (informational):", n)
 		for _, f := range r.OrphanAttachmentFiles {
@@ -110,6 +121,9 @@ func (r *BackupSetReport) String() string {
 		}
 		for _, f := range r.OrphanPhotoFiles {
 			fmt.Fprintf(&b, "\n  orphan photo file: %s", f)
+		}
+		for _, f := range r.OrphanImageFiles {
+			fmt.Fprintf(&b, "\n  orphan image file: %s", f)
 		}
 	}
 	return b.String()
@@ -127,6 +141,15 @@ func (r *BackupSetReport) String() string {
 // signature, issue #943) — and no migrations are run: a backup set must be
 // verifiable without mutating the snapshot.
 func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport, error) {
+	return VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, "")
+}
+
+// VerifyBackupSetWithImages is VerifyBackupSet plus the gallery-image
+// directory (IMAGES_DIR, ADR 0040 decision 5): every live activity, note and
+// contact image row must resolve to its full and thumbnail file under
+// imagesDir/u<user id>/. An empty imagesDir skips the image check. A snapshot
+// taken before the gallery tables existed has nothing to reconcile.
+func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir string) (*BackupSetReport, error) {
 	if photoDir == "" || attachmentsDir == "" {
 		return nil, fmt.Errorf("verify backup set: both a photo directory and an attachments directory are required")
 	}
@@ -141,6 +164,11 @@ func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport,
 	}
 	if err := statDir(attachmentsDir, "attachments"); err != nil {
 		return nil, err
+	}
+	if imagesDir != "" {
+		if err := statDir(imagesDir, "images"); err != nil {
+			return nil, err
+		}
 	}
 
 	sqlDB, err := sql.Open("sqlite", openReadOnlyDSN(dbPath))
@@ -181,7 +209,51 @@ func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport,
 	}
 	report.OrphanPhotoFiles = orphanPhoto
 
+	if imagesDir != "" {
+		if err := verifyImages(sqlDB, imagesDir, report); err != nil {
+			return nil, err
+		}
+	}
+
 	return report, nil
+}
+
+// imageTables are the three owner-kind tables of ADR 0040; each row names a
+// full and a thumbnail file under its owner's u<user id> directory.
+var imageTables = []string{"activity_images", "note_images", "contact_images"}
+
+// verifyImages reconciles the gallery tables against imagesDir. Live rows must
+// have both files; any file no row (live or soft-deleted, which keeps its
+// files until purge) names is an informational orphan.
+func verifyImages(db *sql.DB, imagesDir string, report *BackupSetReport) error {
+	referenced := map[string]bool{}
+	for _, table := range imageTables {
+		if err := scanImageTable(db, table, imagesDir, referenced, report); err != nil {
+			return err
+		}
+	}
+
+	userDirs, err := os.ReadDir(imagesDir)
+	if err != nil { // # pragma: no cover — statDir confirmed the directory a moment ago
+		return fmt.Errorf("read directory %q: %w", imagesDir, err)
+	}
+	for _, ud := range userDirs {
+		if !ud.IsDir() {
+			continue
+		}
+		files, err := os.ReadDir(filepath.Join(imagesDir, ud.Name()))
+		if err != nil { // # pragma: no cover — TOCTOU only
+			return fmt.Errorf("read directory %q: %w", ud.Name(), err)
+		}
+		for _, f := range files {
+			rel := ud.Name() + "/" + f.Name()
+			if !f.IsDir() && !referenced[rel] {
+				report.OrphanImageFiles = append(report.OrphanImageFiles, rel)
+			}
+		}
+	}
+	sort.Strings(report.OrphanImageFiles)
+	return nil
 }
 
 func statDir(dir, label string) error {
@@ -298,4 +370,46 @@ func orphanFiles(dir string, referenced map[string]bool) ([]string, error) {
 	}
 	sort.Strings(orphans)
 	return orphans, nil
+}
+
+// scanImageTable reconciles one image table: live rows must have both files
+// under imagesDir/u<user id>/, and every named file is recorded in referenced.
+// A snapshot without the table (taken before the gallery existed) has nothing
+// to check.
+func scanImageTable(db *sql.DB, table, imagesDir string, referenced map[string]bool, report *BackupSetReport) error {
+	// #nosec G202 -- table comes from the fixed imageTables list, never input.
+	rows, err := db.QueryContext(context.Background(),
+		"SELECT id, user_id, stored_name, thumb_name, deleted_at IS NULL FROM "+table)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such table") {
+			return nil
+		}
+		return fmt.Errorf("query %s: %w", table, err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, userID int64
+		var stored, thumb string
+		var live bool
+		if err := rows.Scan(&id, &userID, &stored, &thumb, &live); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
+			return fmt.Errorf("scan %s row: %w", table, err)
+		}
+		for _, name := range []string{stored, thumb} {
+			rel := fmt.Sprintf("u%d/%s", userID, filepath.Base(name))
+			referenced[rel] = true
+			if !live {
+				continue
+			}
+			if _, err := os.Stat(filepath.Join(imagesDir, filepath.FromSlash(rel))); err != nil {
+				report.MissingImages = append(report.MissingImages, MissingRef{Kind: "image", StoredName: rel, Owner: fmt.Sprintf("%s#%d", table, id)})
+			}
+		}
+		if live {
+			report.ImagesScanned++
+		}
+	}
+	if err := rows.Err(); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
+		return fmt.Errorf("iterate %s rows: %w", table, err)
+	}
+	return nil
 }

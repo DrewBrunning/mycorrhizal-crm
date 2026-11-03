@@ -82,6 +82,7 @@ func TestRegisterScheduledJobs_EmbeddedExactSet(t *testing.T) {
 		models.JobNameCadenceOverdue:      true,
 		models.JobNameReachOutDetection:   true,
 		models.JobNameDBIntegrityCheck:    true,
+		models.JobNameImageSweep:          true,
 	}
 	require.Equal(t, want, got)
 	for _, outbound := range []string{

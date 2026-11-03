@@ -197,7 +197,7 @@ func TestMycorrhizalImportManager_ConcurrentConfirmLaunchesOnce(t *testing.T) {
 		return mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{
 			SessionID: s.id,
 			Actions:   []models.RowImportAction{{RowIndex: 0, Action: "update"}},
-		}, log)
+		}, config.Config{}, log)
 	})
 }
 
@@ -358,7 +358,7 @@ func TestMycorrhizalImportManager_ImportIsShutdownTracked(t *testing.T) {
 	require.Nil(t, mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{
 		SessionID: s.id,
 		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
-	}, log))
+	}, config.Config{}, log))
 
 	select {
 	case <-entered:
@@ -463,7 +463,7 @@ func TestMycorrhizalImportManager_ConfirmResolveFailureRevertsToReady(t *testing
 		return mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{
 			SessionID: s.id,
 			Actions:   []models.RowImportAction{{RowIndex: 0, Action: "update"}},
-		}, testImportLogger())
+		}, config.Config{}, testImportLogger())
 	}, func() string {
 		st, appErr := mgr.Status(user.ID, s.id)
 		require.Nil(t, appErr)

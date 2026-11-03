@@ -3174,6 +3174,7 @@
     <string name="error_reason_image_heic_unsupported">Les images HEIC ne sont pas prises en charge ; convertissez-les en JPEG</string>
     <string name="error_reason_image_corrupt">L’image est corrompue ou tronquée</string>
     <string name="error_reason_image_limit_reached">Cet élément a déjà le nombre maximal d’images (%1$d)</string>
+    <string name="error_reason_note_requires_content_or_image">Une note doit contenir du texte ou au moins une image</string>
     <string name="error_reason_image_processing_busy">Le traitement des images est occupé ; réessayez bientôt</string>
     <string name="error_reason_image_not_found">Image introuvable</string>
     <string name="error_reason_image_insufficient_storage">Espace disque insuffisant pour enregistrer l’image</string>

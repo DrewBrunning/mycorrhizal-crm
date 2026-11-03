@@ -354,3 +354,41 @@ test('uploads picked photos after the note is created', async () => {
 
   await waitFor(() => expect(calls.some((c) => c.includes('/notes/9/images'))).toBe(true));
 });
+
+// ADR 0040 decision 11 (issue #2004): an image-only note is created empty with
+// awaiting_images, then its photos upload; without text or photos it is still
+// refused.
+test('saves an image-only note: empty content is sent with awaitingImages and the photo uploads', async () => {
+  const calls: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: { method?: string }) => {
+      calls.push(`${options?.method ?? 'GET'} ${url}`);
+      if (url.includes('/contacts?')) return { ok: true, json: async () => contactsResponse() };
+      if (url.includes('/notes/9/images')) {
+        return { ok: true, json: async () => ({ image: { id: 9, note_id: 9 } }) };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  const onSave = vi.fn().mockResolvedValue({ ID: 9 });
+  renderDialog({ onSave });
+
+  const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+  fireEvent.change(screen.getByLabelText('Add photos'), { target: { files: [file] } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(onSave).toHaveBeenCalledWith('', expect.any(String), undefined, true));
+  await waitFor(() => expect(calls.some((c) => c.includes('/notes/9/images'))).toBe(true));
+});
+
+test('refuses a note with neither text nor photos', async () => {
+  mockFetchByUrl({ '/contacts?': contactsResponse });
+  const onSave = vi.fn();
+  renderDialog({ onSave });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('Content is required')).toBeDefined();
+  expect(onSave).not.toHaveBeenCalled();
+});

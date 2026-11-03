@@ -477,6 +477,18 @@ for the operator and the sweeper, and the release note says so), a schema-parity
   from stored bytes; oversize bytes and pixels; the per-owner cap; a user-delete test asserting rows and
   files are gone; and a trash-restore test that brings images back.
 
+## Implementation notes (issue #2004 completion)
+
+- **`storage_samples.image_dir_bytes` is not added.** Decision 6 listed it, but the growth trend and
+  projection derive from the filesystem-used series, which already includes `IMAGES_DIR`, and a column
+  needs a migration for no new signal. `IMAGES_DIR` is in `directories` and the `images` object
+  carries count/bytes by kind. Add the column only if a per-directory image trend is wanted.
+- **Imported image uuids.** `uuid` is a globally unique column, so when another account already holds
+  a bundle image's uuid the importer uses a uuid derived from the importing user and the source uuid
+  (UUIDv5). The same bundle re-imported into the same account therefore finds it and skips it.
+- **Sweeper job name** is `image_sweep` (24h, ADR 0011 window); `VerifyBackupSetWithImages` skips the
+  image check when `IMAGES_DIR` does not exist yet (it is created by the first upload).
+
 ## Settled by the maintainer
 
 - **HEIC.** The gallery rejects HEIC in v1.6.0 (`image_heic_unsupported`); the avatar endpoint keeps

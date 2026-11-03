@@ -757,3 +757,78 @@ test('renders note images and refetches after deleting one', async () => {
   await waitFor(() => expect(deletes).toBe(1));
   await waitFor(() => expect(listCalls).toBeGreaterThan(1));
 });
+
+// ADR 0040 decision 11 (issue #2004): an image-only note is created empty with
+// awaiting_images, and an existing note's text may be cleared (the server
+// decides whether a live image keeps it valid).
+test('an image-only note is created with awaiting_images and its photo uploads', async () => {
+  sessionStorage.clear(); // a draft left by an earlier test would prefill the content
+  const posts: { url: string; body: string }[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: { method?: string; body?: string }) => {
+      if (options?.method === 'POST') {
+        posts.push({ url, body: options.body ?? '' });
+        if (url.includes('/images')) {
+          return { ok: true, json: async () => ({ image: { id: 1, note_id: 9 } }) };
+        }
+        return { ok: true, json: async () => ({ ID: 9, content: '', date: '2026-01-01' }) };
+      }
+      if (url.includes('/contacts')) {
+        return { ok: true, json: async () => ({ contacts: [] }) };
+      }
+      if (url.includes('/notes')) {
+        return {
+          ok: true,
+          json: async () => ({ notes: [], next_cursor: '', limit: 25, total: 0 }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  renderPage();
+  await waitFor(() => expect(screen.getByText('No notes yet')).toBeDefined());
+
+  fireEvent.click(screen.getByText('Add Note'));
+  await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
+  const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+  fireEvent.change(screen.getByLabelText('Add photos'), { target: { files: [file] } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(posts.some((p) => p.url.includes('/notes/9/images'))).toBe(true));
+  const create = posts.find((p) => p.url.endsWith('/notes'));
+  expect(JSON.parse(create?.body ?? '{}')).toMatchObject({ content: '', awaiting_images: true });
+});
+
+test('clearing a note’s text still sends the update; the server decides if it is valid', async () => {
+  const putBodies: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, options?: { method?: string; body?: string }) => {
+      if (options?.method === 'PUT') {
+        putBodies.push(options.body ?? '');
+        return { ok: true, json: async () => ({ message: 'ok' }) };
+      }
+      if (url.includes('/contacts?')) {
+        return { ok: true, json: async () => ({ contacts: [] }) };
+      }
+      if (url.includes('/notes')) {
+        return {
+          ok: true,
+          json: async () => ({ notes: [filedNote], next_cursor: '', limit: 25, total: 1 }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Linked to Ada')).toBeDefined());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Edit Note' }));
+  await waitFor(() => expect(screen.getByRole('dialog')).toBeDefined());
+  fireEvent.change(screen.getByRole('textbox', { name: /content/i }), { target: { value: '' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() => expect(putBodies.length).toBe(1));
+  expect(JSON.parse(putBodies[0]).content).toBe('');
+});

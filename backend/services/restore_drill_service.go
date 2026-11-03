@@ -199,7 +199,13 @@ func checkBackupSetCompleteness(snapshotPath string, cfg config.Config) (ok bool
 		return true, "", nil
 	}
 
-	report, err := database.VerifyBackupSet(snapshotPath, cfg.ProfilePhotoDir, cfg.AttachmentsDir)
+	// IMAGES_DIR is created lazily on the first upload, so an instance that has
+	// never stored a gallery image has no directory to reconcile (ADR 0040).
+	imagesDir := cfg.ImagesDir
+	if info, statErr := os.Stat(imagesDir); statErr != nil || !info.IsDir() {
+		imagesDir = ""
+	}
+	report, err := database.VerifyBackupSetWithImages(snapshotPath, cfg.ProfilePhotoDir, cfg.AttachmentsDir, imagesDir)
 	if err != nil {
 		return false, "", fmt.Errorf("verify backup set completeness: %w", err)
 	}
@@ -215,6 +221,9 @@ func checkBackupSetCompleteness(snapshotPath string, cfg config.Config) (ok bool
 			refs = append(refs, m.String())
 		}
 		for _, m := range report.MissingPhotos {
+			refs = append(refs, m.String())
+		}
+		for _, m := range report.MissingImages {
 			refs = append(refs, m.String())
 		}
 		return false, "backup set incomplete: " + strings.Join(refs, "; "), nil

@@ -94,6 +94,12 @@ func cadenceOverdueTask(db *gorm.DB, cfg config.Config) func() (int, error) {
 	return func() (int, error) { return services.ProcessOverdueCadences(db, cfg) }
 }
 
+// imageSweepTask removes unreferenced gallery files and lapsed empty notes
+// daily (ADR 0040 decision 5). Reports the number of items removed.
+func imageSweepTask(db *gorm.DB, cfg config.Config) func() (int, error) {
+	return func() (int, error) { return services.SweepImagesScheduled(db, cfg) }
+}
+
 // reachOutTask detects event-driven reach-out suggestions daily (issue #177).
 // Reports the number of suggestions created.
 func reachOutTask(db *gorm.DB, cfg config.Config) func() (int, error) {
@@ -224,6 +230,10 @@ func scheduledJobRegistrations(db *gorm.DB, cfg *config.Config) []scheduledJobRe
 		{models.JobNameStorageSample, func(s *gocron.Scheduler) (*gocron.Job, error) {
 			return s.Every(24).Hours().Do(
 				recoverJob(db, models.JobNameStorageSample, models.JobTriggerScheduled, storageSampleTask(db, *cfg)))
+		}},
+		{models.JobNameImageSweep, func(s *gocron.Scheduler) (*gocron.Job, error) {
+			return s.Every(24).Hours().Do(
+				recoverJobReport(db, models.JobNameImageSweep, models.JobTriggerScheduled, imageSweepTask(db, *cfg)))
 		}},
 	}
 }

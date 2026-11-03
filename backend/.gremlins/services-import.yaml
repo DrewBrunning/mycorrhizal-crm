@@ -4,6 +4,7 @@
 unleash:
     exclude-files:
         - ^account_bundle\.go$
+        - ^account_bundle_images\.go$
         - ^account_bundle_import\.go$
         - ^address_suggestion_service\.go$
         - ^alerting_conditions\.go$
@@ -57,6 +58,8 @@ unleash:
         - ^household_service\.go$
         - ^idempotency_purge_service\.go$
         - ^image_service\.go$
+        - ^image_storage_usage\.go$
+        - ^image_sweep_service\.go$
         - ^immich_client\.go$
         - ^immich_service\.go$
         - ^import_row_failure\.go$

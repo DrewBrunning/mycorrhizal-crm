@@ -25,6 +25,7 @@ const KNOWN_JOB_KEYS = [
   'alert_eval',
   'job_run_purge',
   'storage_sample',
+  'image_sweep',
   'search_index_rebuild',
   'derived_columns_rebuild',
 ] as const;

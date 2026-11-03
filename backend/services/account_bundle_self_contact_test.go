@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -336,7 +337,7 @@ func TestMycorrhizalImportManager_SelfContactSuggestedActions(t *testing.T) {
 				actions = append(actions, models.RowImportAction{RowIndex: row.RowIndex, Action: action})
 			}
 			require.True(t, sawSelf)
-			require.Nil(t, mgr.Confirm(dstDB, dest.ID, models.SourceImportConfirmRequest{SessionID: up.SessionID, Actions: actions}, &log))
+			require.Nil(t, mgr.Confirm(dstDB, dest.ID, models.SourceImportConfirmRequest{SessionID: up.SessionID, Actions: actions}, config.Config{}, &log))
 			waitForMycorrhizalPhase(t, mgr, dest.ID, up.SessionID, models.SourceImportPhaseDone)
 
 			var contacts []models.Contact

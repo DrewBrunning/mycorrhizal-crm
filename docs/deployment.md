@@ -370,6 +370,11 @@ backup:
 | Attachments (N7) | `ATTACHMENTS_DIR` (default a sibling of the photos) | `ATTACHMENTS_PATH` (default `./attachments`) |
 | Gallery images (ADR 0040) | `IMAGES_DIR` (default an `images` sibling of the photos) | mount the same volume as photos, or a dedicated one |
 
+`backupverify` and the restore drill also reconcile `IMAGES_DIR` (`BACKUP_IMAGES_DIR` overrides it in
+the CLI; with neither set, an existing `images` sibling of the photo directory is checked): every live
+image row must have its full and thumbnail file under `u<user id>/`. The daily `image_sweep` job removes
+files no row names, so a growing `IMAGES_DIR` with no rows is cleaned up automatically.
+
 Photos and attachments live **outside** the SQLite file, so backing up only the `.db` silently loses
 them. They are plain directories; a file-level copy (`rsync`/`cp`) is exactly right for them.
 

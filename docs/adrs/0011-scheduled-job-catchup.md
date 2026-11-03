@@ -71,7 +71,7 @@ Per-job windows after this change:
 
 | Job | scheduled period | de-dup window |
 |---|---|---|
-| `daily_reminders`, `cadence_overdue`, `reach_out_detection`, `audit_purge`, `system_event_purge`, `job_run_purge`, `purge_deleted`, `storage_sample` | 24h | 23h30m |
+| `daily_reminders`, `cadence_overdue`, `reach_out_detection`, `audit_purge`, `system_event_purge`, `job_run_purge`, `purge_deleted`, `storage_sample`, `image_sweep` | 24h | 23h30m |
 | `idempotency_key_purge` | 6h | 5h30m |
 | `calendar_sync` | `CALDAV_SYNC_INTERVAL_HOURS` (default 6h) | period − 30m |
 | `immich_sync` | `IMMICH_SYNC_INTERVAL_HOURS` (default 6h) | period − 30m |

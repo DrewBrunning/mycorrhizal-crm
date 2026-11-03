@@ -569,6 +569,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
                 "limit"
             )?.let { stringResource(R.string.error_reason_image_limit_reached, it) }
 
+        ErrorReasonCode.NOTE_REQUIRES_CONTENT_OR_IMAGE ->
+            stringResource(R.string.error_reason_note_requires_content_or_image)
+
         ErrorReasonCode.IMAGE_PROCESSING_BUSY ->
             stringResource(R.string.error_reason_image_processing_busy)
 

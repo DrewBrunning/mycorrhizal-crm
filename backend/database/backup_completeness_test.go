@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"mycorrhizal/database"
+	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -300,4 +301,121 @@ func TestVerifyBackupSetUsageErrors(t *testing.T) {
 	_, err = database.VerifyBackupSet(s.dbPath, s.photoDir, notDir)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "not a directory")
+}
+
+// ADR 0040 decision 5: VerifyBackupSet learns IMAGES_DIR. Image files live in
+// per-user subdirectories (u<id>/<name>), so a live image row of any of the
+// three owner kinds whose full or thumbnail file is absent makes the set
+// incomplete.
+
+func (s *backupSet) addNoteImage(t *testing.T, imagesDir, uuid string, writeThumb bool) {
+	t.Helper()
+	require.NoError(t, s.db.Exec(`INSERT INTO notes (id, user_id, content, date) VALUES (50, 1, 'n', '2024-01-01')`).Error)
+	img := models.NoteImage{NoteID: 50, ImageFields: models.ImageFields{UserID: 1, UUID: uuid, StoredName: uuid + ".jpg", ThumbName: uuid + "_t.jpg", MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 1, ThumbSizeBytes: 1, Sensitivity: models.ImageSensitivityNormal}}
+	require.NoError(t, s.db.Create(&img).Error)
+	userDir := filepath.Join(imagesDir, "u1")
+	require.NoError(t, os.MkdirAll(userDir, 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(userDir, uuid+".jpg"), []byte("full"), 0o600))
+	if writeThumb {
+		require.NoError(t, os.WriteFile(filepath.Join(userDir, uuid+"_t.jpg"), []byte("thumb"), 0o600))
+	}
+}
+
+func TestVerifyBackupSetWithImages_CompleteAndMissingAndOrphan(t *testing.T) {
+	s := newBackupSet(t)
+	imagesDir := filepath.Join(t.TempDir(), "images")
+	require.NoError(t, os.MkdirAll(imagesDir, 0o750))
+	s.addNoteImage(t, imagesDir, "a", true)
+
+	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	require.NoError(t, err)
+	assert.True(t, report.Complete(), report.String())
+	assert.Equal(t, 1, report.ImagesScanned)
+
+	// An orphan file is informational only.
+	require.NoError(t, os.WriteFile(filepath.Join(imagesDir, "u1", "stray.jpg"), []byte("x"), 0o600))
+	report, err = database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	require.NoError(t, err)
+	assert.True(t, report.Complete())
+	assert.Equal(t, []string{"u1/stray.jpg"}, report.OrphanImageFiles)
+
+	// A missing thumbnail is a real hole in the set.
+	require.NoError(t, os.Remove(filepath.Join(imagesDir, "u1", "a_t.jpg")))
+	report, err = database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	require.NoError(t, err)
+	assert.False(t, report.Complete())
+	require.Len(t, report.MissingImages, 1)
+	assert.Equal(t, "u1/a_t.jpg", report.MissingImages[0].StoredName)
+	assert.Contains(t, report.String(), "missing image: u1/a_t.jpg")
+}
+
+func TestVerifyBackupSetWithImages_SnapshotWithoutImageTablesIsClean(t *testing.T) {
+	s := newBackupSet(t)
+	require.NoError(t, s.db.Exec(`DROP TABLE contact_images`).Error)
+	require.NoError(t, s.db.Exec(`DROP TABLE note_images`).Error)
+	require.NoError(t, s.db.Exec(`DROP TABLE activity_images`).Error)
+	imagesDir := t.TempDir()
+	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	require.NoError(t, err, "a pre-gallery snapshot has no image tables")
+	assert.True(t, report.Complete())
+	assert.Zero(t, report.ImagesScanned)
+}
+
+func TestVerifyBackupSet_IgnoresImagesWhenNoDirGiven(t *testing.T) {
+	s := newBackupSet(t)
+	s.addNoteImage(t, t.TempDir(), "a", false) // file set elsewhere; the plain verify never looks
+	report := s.verify(t)
+	assert.True(t, report.Complete())
+	assert.Zero(t, report.ImagesScanned)
+}
+
+func TestVerifyBackupSetWithImages_RejectsMissingDirAndIgnoresStrayEntries(t *testing.T) {
+	s := newBackupSet(t)
+	_, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, filepath.Join(t.TempDir(), "absent"))
+	require.Error(t, err, "an explicit images directory that does not exist is an error")
+
+	imagesDir := t.TempDir()
+	require.NoError(t, os.WriteFile(filepath.Join(imagesDir, "top-level-file"), []byte("x"), 0o600))
+	require.NoError(t, os.MkdirAll(filepath.Join(imagesDir, "u1", "nested"), 0o750))
+
+	// A soft-deleted image row owns its files but a missing file is not a hole.
+	require.NoError(t, s.db.Exec(`INSERT INTO notes (id, user_id, content, date) VALUES (50, 1, 'n', '2024-01-01')`).Error)
+	img := models.NoteImage{NoteID: 50, ImageFields: models.ImageFields{UserID: 1, UUID: "gone", StoredName: "gone.jpg", ThumbName: "gone_t.jpg", MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Width: 1, Height: 1, SizeBytes: 1, ThumbSizeBytes: 1, Sensitivity: models.ImageSensitivityNormal}}
+	require.NoError(t, s.db.Create(&img).Error)
+	require.NoError(t, s.db.Delete(&img).Error)
+
+	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	require.NoError(t, err)
+	assert.True(t, report.Complete(), report.String())
+	assert.Zero(t, report.ImagesScanned)
+	assert.Empty(t, report.OrphanImageFiles)
+}
+
+func TestVerifyBackupSetWithImages_BrokenImageTableIsAnError(t *testing.T) {
+	// A snapshot whose image table lacks the expected columns, or holds NULL
+	// names, cannot be reconciled: that is an error, not a silent pass.
+	for name, ddl := range map[string][]string{
+		"missing columns": {`DROP TABLE note_images`, `CREATE TABLE note_images (id integer)`},
+		"null names": {
+			`DROP TABLE note_images`,
+			`CREATE TABLE note_images (id integer, user_id integer, stored_name text, thumb_name text, deleted_at datetime)`,
+			`INSERT INTO note_images (id, user_id, stored_name, thumb_name) VALUES (1, 1, NULL, NULL)`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := newBackupSet(t)
+			require.NoError(t, s.db.Exec(`PRAGMA foreign_keys = OFF`).Error)
+			for _, stmt := range ddl {
+				require.NoError(t, s.db.Exec(stmt).Error)
+			}
+			_, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, t.TempDir())
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestBackupSetReport_TotalMissingCountsImages(t *testing.T) {
+	r := &database.BackupSetReport{MissingImages: []database.MissingRef{{Kind: "image"}}}
+	assert.Equal(t, 1, r.TotalMissing())
+	assert.False(t, r.Complete())
 }

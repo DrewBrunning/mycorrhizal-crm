@@ -397,10 +397,17 @@ type ContactSubscriptionResponse struct {
 }
 
 // NoteInput represents the DTO for creating/updating notes
+//
+// Content may be empty only for an image-only note (ADR 0040 decision 11): the
+// controllers enforce "non-empty content, or at least one live image", so the
+// tag carries only the upper bound. AwaitingImages is write-only and valid on
+// create: it opens the one-hour window in which an empty note waits for its
+// first upload.
 type NoteInput struct {
-	Content   string    `json:"content" validate:"required,min=1,max=5000"`
-	Date      time.Time `json:"date" validate:"required"`
-	ContactID *uint     `json:"contact_id" validate:"omitempty,gt=0"`
+	Content        string    `json:"content" validate:"max=5000"`
+	Date           time.Time `json:"date" validate:"required"`
+	ContactID      *uint     `json:"contact_id" validate:"omitempty,gt=0"`
+	AwaitingImages bool      `json:"awaiting_images,omitempty"`
 }
 
 // represents the DTO for updating which extended contact fields are visible in the UI. A nil/absent list means "use the default set"
