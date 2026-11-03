@@ -62,10 +62,10 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.mycorrhizal.crm.feature.timeline.ImageLightbox
 import com.mycorrhizal.crm.model.network.ContactPhoto
 import com.mycorrhizal.crm.model.network.ImageCrop
 import com.mycorrhizal.crm.model.network.PhotoSource
-import com.mycorrhizal.crm.feature.timeline.ImageLightbox
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
