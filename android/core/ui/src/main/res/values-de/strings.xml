@@ -3133,4 +3133,9 @@
     <string name="contact_images_source_labeled">%1$s: %2$s</string>
     <string name="contact_images_sensitivity_private">Privat</string>
     <string name="contact_images_sensitivity_secret">Geheim</string>
+    <string name="contact_images_sensitivity_change">Sensibilität ändern</string>
+    <string name="contact_images_sensitivity_title">Sensibilität des Fotos</string>
+    <string name="contact_images_sensitivity_normal">Normal</string>
+    <string name="contact_images_sensitivity_main_note">Ein privates oder geheimes Foto kann nicht das Hauptfoto sein; wird es heraufgestuft, ist es nicht mehr das Hauptfoto.</string>
+    <string name="contact_images_delete_source_confirm">Dieses Foto löschen? Es wird auch aus der zugehörigen Notiz oder Aktivität entfernt.</string>
 </resources>

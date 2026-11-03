@@ -40,6 +40,23 @@ class ImageCropMathTest {
         assertCrop(ImageCrop(0.0, 0.0, 1.0, 1.0), squareCrop(0, 0, 0.5f, 0.5f, 0.5f))
     }
 
+    @Test
+    fun `cropToControls inverts squareCrop`() {
+        val controls = cropToControls(1000, 500, squareCrop(1000, 500, 0.6f, 0.25f, 0.75f))
+        assertEquals(0.6f, controls.zoom, 1e-4f)
+        assertEquals(0.25f, controls.posX, 1e-4f)
+        assertEquals(0.75f, controls.posY, 1e-4f)
+    }
+
+    @Test
+    fun `cropToControls opens whole and centred without a stored crop`() {
+        assertEquals(CropControls(1f, 0.5f, 0.5f), cropToControls(1000, 500, null))
+        assertEquals(
+            CropControls(1f, 0.5f, 0.5f),
+            cropToControls(1000, 500, ImageCrop(0.0, 0.0, 1.0, 1.0))
+        )
+    }
+
     private companion object {
         const val EPS = 1e-6
     }

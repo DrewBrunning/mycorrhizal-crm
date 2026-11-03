@@ -135,6 +135,15 @@ type ImageCrop struct {
 	H float64 `json:"h"`
 }
 
+// StoredCrop returns the stored crop rectangle, or nil when no complete
+// rectangle is stored.
+func (i *ImageFields) StoredCrop() *ImageCrop {
+	if i.CropX == nil || i.CropY == nil || i.CropW == nil || i.CropH == nil {
+		return nil
+	}
+	return &ImageCrop{X: *i.CropX, Y: *i.CropY, W: *i.CropW, H: *i.CropH}
+}
+
 // ContactImagePatchInput is the PATCH body for a gallery image. Only these
 // fields are writable (no mass assignment): sensitivity and the crop.
 type ContactImagePatchInput struct {

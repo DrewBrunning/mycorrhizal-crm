@@ -127,15 +127,119 @@ class ContactGalleryViewModelTest {
     }
 
     @Test
-    fun `delete is refused for a note photo`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `delete removes a note photo through its note and leaves the main pointer alone`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            stubLoad(listOf(own, fromNote), ContactMainImage(7, 4))
+            coEvery { repository.deleteSourceImage("note", 8, 3) } returns Result.success(Unit)
+            val vm = loaded()
+
+            vm.delete(fromNote)
+            advanceUntilIdle()
+
+            coVerify { repository.deleteSourceImage("note", 8, 3) }
+            coVerify(exactly = 0) { repository.delete(any(), any()) }
+            // Only the note photo is gone; the own photo sharing no table with it is untouched.
+            assertEquals(listOf(own.key), vm.uiState.value.photos.map { it.key })
+            assertEquals(7, vm.uiState.value.mainImageId)
+            assertNull(vm.uiState.value.busyKey)
+        }
+
+    @Test
+    fun `delete removes an activity photo through its activity`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val fromActivity = ContactPhoto(
+            id = 3,
+            source = PhotoSource(PhotoSource.KIND_ACTIVITY, 9, "Walk")
+        )
+        stubLoad(listOf(fromActivity))
+        coEvery { repository.deleteSourceImage("activity", 9, 3) } returns Result.success(Unit)
+        val vm = loaded()
+
+        vm.delete(fromActivity)
+        advanceUntilIdle()
+
+        coVerify { repository.deleteSourceImage("activity", 9, 3) }
+        assertTrue(vm.uiState.value.photos.isEmpty())
+    }
+
+    @Test
+    fun `a failed note photo delete keeps the tile and reports the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLoad(listOf(fromNote))
+        coEvery { repository.deleteSourceImage("note", 8, 3) } returns
+            Result.failure(ApiError.Client(404, "gone"))
         val vm = loaded()
 
         vm.delete(fromNote)
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { repository.delete(any(), any()) }
         assertEquals(1, vm.uiState.value.photos.size)
+        assertEquals("gone", vm.uiState.value.error?.message)
+    }
+
+    @Test
+    fun `setSensitivity patches an own photo and re-reads the main pointer`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(listOf(own), ContactMainImage(7, 4))
+        coEvery { repository.setSensitivity(5, 7, "private") } returns
+            Result.success(ContactImage(id = 7, sensitivity = "private"))
+        val vm = loaded()
+        // The server clears a main image that is no longer normal sensitivity.
+        coEvery { repository.mainImage(5) } returns Result.success(ContactMainImage(null, 5))
+
+        vm.setSensitivity(own, "private")
+        advanceUntilIdle()
+
+        assertEquals("private", vm.uiState.value.photos.single().sensitivity)
+        assertNull(vm.uiState.value.mainImageId)
+        assertEquals(5, vm.uiState.value.revision)
+    }
+
+    @Test
+    fun `setSensitivity is refused for a note photo and for an unchanged value`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(listOf(own, fromNote))
+        val vm = loaded()
+
+        vm.setSensitivity(fromNote, "secret")
+        vm.setSensitivity(own, "normal")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.setSensitivity(any(), any(), any()) }
+    }
+
+    @Test
+    fun `setSensitivity failure leaves the photo as it was`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(listOf(own))
+        coEvery { repository.setSensitivity(5, 7, "secret") } returns
+            Result.failure(ApiError.Client(400, "bad"))
+        val vm = loaded()
+
+        vm.setSensitivity(own, "secret")
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.photos.single().sensitivity)
+        assertEquals("bad", vm.uiState.value.error?.message)
+    }
+
+    @Test
+    fun `setMain is refused for a private photo`() = runTest(mainDispatcherRule.testDispatcher) {
+        val secret = own.copy(sensitivity = "secret")
+        stubLoad(listOf(secret))
+        val vm = loaded()
+
+        vm.setMain(secret)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { repository.setMainImage(any(), any(), any()) }
     }
 
     @Test
@@ -203,7 +307,8 @@ class ContactGalleryViewModelTest {
     ) {
         stubLoad(listOf(own), ContactMainImage(7, 4))
         val crop = ImageCrop(0.1, 0.0, 0.8, 1.0)
-        coEvery { repository.setCrop(5, 7, crop) } returns Result.success(ContactImage(id = 7))
+        coEvery { repository.setCrop(5, 7, crop) } returns
+            Result.success(ContactImage(id = 7, crop = crop))
         val vm = loaded()
         coEvery { repository.mainImage(5) } returns Result.success(ContactMainImage(7, 5))
 
@@ -212,7 +317,22 @@ class ContactGalleryViewModelTest {
 
         coVerify { repository.setCrop(5, 7, crop) }
         assertEquals(5, vm.uiState.value.revision)
+        // The editor reopens at the crop just saved without a refetch.
+        assertEquals(crop, vm.uiState.value.photos.single().crop)
         assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `clearing the crop drops it from the tile`() = runTest(mainDispatcherRule.testDispatcher) {
+        val cropped = own.copy(crop = ImageCrop(0.0, 0.0, 0.5, 0.5))
+        stubLoad(listOf(cropped), ContactMainImage(null, 4))
+        coEvery { repository.setCrop(5, 7, null) } returns Result.success(ContactImage(id = 7))
+        val vm = loaded()
+
+        vm.saveCrop(cropped, null)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.photos.single().crop)
     }
 
     @Test

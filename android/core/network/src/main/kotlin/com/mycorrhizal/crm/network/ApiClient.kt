@@ -1785,6 +1785,25 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         }
     }
 
+    /**
+     * PATCH /contacts/{id}/images/{imageId} with only `sensitivity` (an absent `crop` key
+     * leaves the stored crop alone). The server clears the main image when it is raised
+     * above `normal`.
+     */
+    suspend fun patchContactImageSensitivity(
+        contactId: Int,
+        imageId: Int,
+        sensitivity: String
+    ): Result<ContactImage> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/images/$imageId".toHttpUrl())
+            .patch("""{"sensitivity":"$sensitivity"}""".toRequestBody(jsonMediaType))
+            .build()
+        return execute(request) { _, body ->
+            moshi.adapter(UploadContactImageResponse::class.java).fromJson(body)?.image
+        }
+    }
+
     /** POST /contacts/{id}/images/adopt — copy a note/activity image into the contact gallery. */
     suspend fun adoptContactImage(
         contactId: Int,

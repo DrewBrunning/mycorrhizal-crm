@@ -5,6 +5,7 @@ import com.mycorrhizal.crm.domain.repository.ContactMainImage
 import com.mycorrhizal.crm.model.network.ContactImage
 import com.mycorrhizal.crm.model.network.ContactPhoto
 import com.mycorrhizal.crm.model.network.ImageCrop
+import com.mycorrhizal.crm.model.network.PhotoSource
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
@@ -42,6 +43,30 @@ class ContactImageRepositoryImpl @Inject constructor(private val apiClient: ApiC
         imageId: Int,
         crop: ImageCrop?
     ): Result<ContactImage> = apiClient.patchContactImageCrop(contactId, imageId, crop)
+
+    override suspend fun setSensitivity(
+        contactId: Int,
+        imageId: Int,
+        sensitivity: String
+    ): Result<ContactImage> = apiClient.patchContactImageSensitivity(
+        contactId,
+        imageId,
+        sensitivity
+    )
+
+    override suspend fun deleteSourceImage(
+        sourceKind: String,
+        sourceId: Int,
+        imageId: Int
+    ): Result<Unit> = when (sourceKind) {
+        PhotoSource.KIND_NOTE -> apiClient.deleteNoteImage(sourceId, imageId)
+
+        PhotoSource.KIND_ACTIVITY -> apiClient.deleteActivityImage(sourceId, imageId)
+
+        else -> Result.failure(
+            IllegalArgumentException("Not a note or activity image: $sourceKind")
+        )
+    }
 
     override suspend fun adopt(
         contactId: Int,

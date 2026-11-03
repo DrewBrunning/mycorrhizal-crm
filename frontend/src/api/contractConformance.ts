@@ -44,6 +44,7 @@ import type {
   ImmichPersonSummary,
 } from './contactDetail';
 import type { ContactFieldVisibility } from './contactFieldVisibility';
+import type { ContactImage, ContactPhoto, MainImageResponse } from './contactImages';
 import type { ContactScoreFacet, ContactScoreTarget, SCORE_REASON_CODES } from './contactScore';
 import type { ContactSyncConflict } from './contactSyncConflicts';
 import type {
@@ -247,6 +248,9 @@ export type Conformance = [
     ResponseDrift<DeliberateException<ContactDetailLifeEvent, 'type'>, S.ContactDetailLifeEvent>
   >,
   NoDrift<ResponseDrift<ContactDetailImmich, S.ContactDetailImmich>>,
+  NoDrift<ResponseDrift<ContactPhoto, S.ContactPhoto>>,
+  NoDrift<ResponseDrift<MainImageResponse, S.MainImageResponse>>,
+  NoDrift<ResponseDrift<ContactImage, S.ContactImage>>,
   NoDrift<ResponseDrift<ImmichPersonSummary, S.ImmichPersonSummary>>,
   NoDrift<ResponseDrift<CardName, S.Name>>,
   NoDrift<ResponseDrift<CardAddress, S.Address>>,

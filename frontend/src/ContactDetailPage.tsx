@@ -69,6 +69,7 @@ import ClothingSizesPanel from './components/ClothingSizesPanel';
 import ConnectionsPanel from './components/ConnectionsPanel';
 import ContactFieldVisibilityDialog from './components/ContactFieldVisibilityDialog';
 import ContactHeader from './components/ContactHeader';
+import ContactImageGallery from './components/ContactImageGallery';
 import ContactInformation from './components/ContactInformation';
 import ContactTimeline from './components/ContactTimeline';
 import ConversationAgendaDialog, {
@@ -82,7 +83,6 @@ import ExternalLinkPanel from './components/ExternalLinkPanel';
 import FeedCreateDialog from './components/FeedCreateDialog';
 import GiftDialog, { type GiftFormData } from './components/GiftDialog';
 import GiftList from './components/GiftList';
-import ImageGallery, { contactImageGalleryApi } from './components/ImageGallery';
 import LifeEventDialog, { type LifeEventFormData } from './components/LifeEventDialog';
 import LifeEventList from './components/LifeEventList';
 import LifeEventSuggestions from './components/LifeEventSuggestions';
@@ -1815,11 +1815,12 @@ export default function ContactDetailPage() {
 
       <SectionGroup id="photos">
         <PanelCard title={t('contactImages.title')}>
-          <ImageGallery
-            ownerId={Number(id ?? 0)}
-            api={contactImageGalleryApi}
-            i18nPrefix="contactImages"
+          <ContactImageGallery
+            contactId={Number(id ?? 0)}
             editable
+            mainImageId={record.main_image_id}
+            revision={record.revision}
+            onContactChanged={() => void reloadRecord()}
           />
         </PanelCard>
       </SectionGroup>

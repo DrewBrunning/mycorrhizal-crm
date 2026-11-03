@@ -44,9 +44,11 @@ fun ImageCropDialog(
     onClear: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    var zoom by remember { mutableFloatStateOf(1f) }
-    var posX by remember { mutableFloatStateOf(0.5f) }
-    var posY by remember { mutableFloatStateOf(0.5f) }
+    // Open at the stored crop (the image DTO returns it); whole photo when none is stored.
+    val initial = remember(photo) { cropToControls(photo.width, photo.height, photo.crop) }
+    var zoom by remember { mutableFloatStateOf(initial.zoom) }
+    var posX by remember { mutableFloatStateOf(initial.posX) }
+    var posY by remember { mutableFloatStateOf(initial.posY) }
     val crop = squareCrop(photo.width, photo.height, zoom, posX, posY)
     val aspect = if (photo.width > 0 && photo.height > 0) {
         photo.width.toFloat() / photo.height

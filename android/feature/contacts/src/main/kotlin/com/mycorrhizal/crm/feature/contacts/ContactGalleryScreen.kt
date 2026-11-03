@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -32,6 +34,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -54,6 +57,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -74,8 +78,9 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
  * ADR 0040 slice c: the contact Photos screen (web Photos section parity). It shows
  * the aggregated gallery (own, note and activity images) with source labels; thumbnails
  * open a lightbox, the upload FAB uses the system photo picker, and an own image can be
- * made the main image, cropped for the avatar, or deleted. A note/activity image can be
- * copied into the contact's own gallery.
+ * made the main image (when normal sensitivity), cropped for the avatar, given another
+ * sensitivity, or deleted. A note/activity image can be copied into the contact's own
+ * gallery or deleted (which removes it from its note or activity too).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -122,6 +127,7 @@ fun ContactGalleryScreen(
         onClearMain = viewModel::clearMain,
         onCrop = viewModel::saveCrop,
         onAdopt = viewModel::adopt,
+        onSetSensitivity = viewModel::setSensitivity,
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown
     )
@@ -144,12 +150,14 @@ fun ContactGalleryScreenContent(
     onClearMain: () -> Unit = {},
     onCrop: (ContactPhoto, ImageCrop?) -> Unit = { _, _ -> },
     onAdopt: (ContactPhoto) -> Unit = {},
+    onSetSensitivity: (ContactPhoto, String) -> Unit = { _, _ -> },
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     var pendingDelete by remember { mutableStateOf<ContactPhoto?>(null) }
     var cropping by remember { mutableStateOf<ContactPhoto?>(null) }
+    var changingSensitivity by remember { mutableStateOf<ContactPhoto?>(null) }
     var viewing by remember { mutableStateOf<ContactPhoto?>(null) }
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
 
@@ -226,6 +234,7 @@ fun ContactGalleryScreenContent(
                             onClearMain = onClearMain,
                             onCrop = { cropping = it },
                             onAdopt = onAdopt,
+                            onSensitivity = { changingSensitivity = it },
                             onDelete = { pendingDelete = it }
                         )
                     )
@@ -238,7 +247,17 @@ fun ContactGalleryScreenContent(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text(stringResource(R.string.contact_images_delete_title)) },
-            text = { Text(stringResource(R.string.contact_images_delete_confirm)) },
+            text = {
+                Text(
+                    stringResource(
+                        if (photo.isOwn) {
+                            R.string.contact_images_delete_confirm
+                        } else {
+                            R.string.contact_images_delete_source_confirm
+                        }
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -272,6 +291,17 @@ fun ContactGalleryScreenContent(
         )
     }
 
+    changingSensitivity?.let { photo ->
+        SensitivityDialog(
+            photo = photo,
+            onSelect = {
+                onSetSensitivity(photo, it)
+                changingSensitivity = null
+            },
+            onDismiss = { changingSensitivity = null }
+        )
+    }
+
     viewing?.let { photo ->
         Dialog(onDismissRequest = { viewing = null }) {
             AsyncImage(
@@ -298,6 +328,7 @@ private class PhotoActions(
     val onClearMain: () -> Unit,
     val onCrop: (ContactPhoto) -> Unit,
     val onAdopt: (ContactPhoto) -> Unit,
+    val onSensitivity: (ContactPhoto) -> Unit,
     val onDelete: (ContactPhoto) -> Unit
 )
 
@@ -404,16 +435,65 @@ private fun PhotoMenu(
             if (photo.isOwn) {
                 if (isMain) {
                     PhotoMenuItem(R.string.contact_images_clear_main) { actions.onClearMain() }
-                } else {
+                } else if (photo.isNormalSensitivity) {
+                    // Only a normal-sensitivity image can be the main image (the server rejects the rest).
                     PhotoMenuItem(R.string.contact_images_set_main) { actions.onSetMain(photo) }
                 }
                 PhotoMenuItem(R.string.contact_images_crop) { actions.onCrop(photo) }
-                PhotoMenuItem(R.string.contact_images_delete) { actions.onDelete(photo) }
+                PhotoMenuItem(R.string.contact_images_sensitivity_change) {
+                    actions.onSensitivity(photo)
+                }
             } else {
                 PhotoMenuItem(R.string.contact_images_adopt) { actions.onAdopt(photo) }
             }
+            PhotoMenuItem(R.string.contact_images_delete) { actions.onDelete(photo) }
         }
     }
+}
+
+/** Pick normal, private or secret for an own image (ADR 0040 decision 7). */
+@Composable
+private fun SensitivityDialog(
+    photo: ContactPhoto,
+    onSelect: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val current = if (photo.isNormalSensitivity) SENSITIVITY_NORMAL else photo.sensitivity
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.contact_images_sensitivity_title)) },
+        text = {
+            Column {
+                Text(
+                    stringResource(R.string.contact_images_sensitivity_main_note),
+                    style = MaterialTheme.typography.bodySmall
+                )
+                SENSITIVITY_LEVELS.forEach { (value, label) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = current == value,
+                                role = Role.RadioButton,
+                                onClick = { onSelect(value) }
+                            )
+                            .testTag("sensitivity-$value")
+                    ) {
+                        RadioButton(selected = current == value, onClick = null)
+                        Text(
+                            stringResource(label),
+                            modifier = Modifier.padding(start = 8.dp, top = 12.dp, bottom = 12.dp)
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
+        }
+    )
 }
 
 @Composable
@@ -462,6 +542,15 @@ private fun sourceCaption(source: PhotoSource): String? {
     val label = source.label?.takeIf { it.isNotBlank() } ?: return kind
     return stringResource(R.string.contact_images_source_labeled, kind, label)
 }
+
+private const val SENSITIVITY_NORMAL = "normal"
+
+/** Mirror of the backend `sensitivity` oneof (normal|private|secret); keep in sync by hand. */
+private val SENSITIVITY_LEVELS = listOf(
+    SENSITIVITY_NORMAL to R.string.contact_images_sensitivity_normal,
+    "private" to R.string.contact_images_sensitivity_private,
+    "secret" to R.string.contact_images_sensitivity_secret
+)
 
 private const val CAPTION_SCRIM_ALPHA = 0.55f
 private val MAIN_BADGE_SIZE = 20.dp

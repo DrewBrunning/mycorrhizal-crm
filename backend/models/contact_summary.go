@@ -266,6 +266,9 @@ type ContactRecordResponse struct {
 	PhotoThumbnail string `json:"photo_thumbnail,omitempty"`
 	Archived       bool   `json:"archived"`
 	IsFavorite     bool   `json:"is_favorite"`
+	// MainImageID is the contact's chosen gallery image (ADR 0040), omitted
+	// when none is set. The avatar is derived from it.
+	MainImageID *uint `json:"main_image_id,omitempty"`
 
 	// Preserved from the existing GetContact/GetContacts preload-all
 	// behavior (Gap: "keep the existing preload behavior for backward
@@ -328,6 +331,7 @@ func NewContactRecordResponseFiltered(c *Contact, photoDir string, db *gorm.DB, 
 		PhotoThumbnail: ProfilePictureURL(c.ID, c.Photo, c.PhotoThumbnail, true),
 		Archived:       c.Archived,
 		IsFavorite:     c.IsFavorite,
+		MainImageID:    c.MainImageID,
 		Notes:          nonNilSlice(c.Notes),
 		Activities:     nonNilSlice(c.Activities),
 		Reminders:      nonNilSlice(c.Reminders),

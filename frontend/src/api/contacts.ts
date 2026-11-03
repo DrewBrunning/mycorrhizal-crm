@@ -417,6 +417,8 @@ export interface ContactRecordResponse {
   photo_thumbnail?: string;
   archived?: boolean;
   is_favorite?: boolean;
+  // ADR 0040: id of the chosen gallery image (a ContactImage id); omitted when none.
+  main_image_id?: number;
 }
 
 // ContactSummaryDTO mirrors the backend's slim GET /contacts list

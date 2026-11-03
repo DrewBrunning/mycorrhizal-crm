@@ -37,7 +37,9 @@ data class ContactImage(
     @Json(name = "taken_date") val takenDate: String? = null,
     @Json(name = "created_at") val createdAt: String? = null,
     @Json(name = "file_url") val fileUrl: String? = null,
-    @Json(name = "thumbnail_url") val thumbnailUrl: String? = null
+    @Json(name = "thumbnail_url") val thumbnailUrl: String? = null,
+    /** Stored avatar crop; the server always sends the key, null when unset. */
+    val crop: ImageCrop? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -94,7 +96,9 @@ data class ContactPhoto(
     @Json(name = "taken_date") val takenDate: String? = null,
     @Json(name = "created_at") val createdAt: String? = null,
     @Json(name = "file_url") val fileUrl: String? = null,
-    @Json(name = "thumbnail_url") val thumbnailUrl: String? = null
+    @Json(name = "thumbnail_url") val thumbnailUrl: String? = null,
+    /** Stored avatar crop of an own image (null for note/activity images and when unset). */
+    val crop: ImageCrop? = null
 ) {
     /** Only the contact's own images can be main, cropped or deleted here. */
     val isOwn: Boolean get() = source.kind == PhotoSource.KIND_CONTACT

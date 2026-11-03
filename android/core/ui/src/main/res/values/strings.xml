@@ -3150,4 +3150,9 @@
     <string name="contact_images_source_labeled">%1$s: %2$s</string>
     <string name="contact_images_sensitivity_private">Private</string>
     <string name="contact_images_sensitivity_secret">Secret</string>
+    <string name="contact_images_sensitivity_change">Change sensitivity</string>
+    <string name="contact_images_sensitivity_title">Photo sensitivity</string>
+    <string name="contact_images_sensitivity_normal">Normal</string>
+    <string name="contact_images_sensitivity_main_note">A private or secret photo cannot be the main photo; raising it removes it as the main photo.</string>
+    <string name="contact_images_delete_source_confirm">Delete this photo? It will also be removed from its note or activity.</string>
 </resources>
