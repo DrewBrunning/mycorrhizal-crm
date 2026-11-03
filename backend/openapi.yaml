@@ -7520,7 +7520,8 @@ paths:
         relationships, field values, activity links, …) captured in its deletion snapshot
         (ADR 0037). Content deleted before the contact stays deleted. Derived state and revoked
         feeds are not restored; `skipped` reports rows that could not be (their other side is
-        gone or the key was re-created). Fires the `contact.restored` webhook.
+        gone or the key was re-created). Fires the `contact.restored` webhook once, whose `data` is
+        the full restored contact (the same shape as the `contact.updated` webhook payload).
       responses:
         "200":
           description: Restored.

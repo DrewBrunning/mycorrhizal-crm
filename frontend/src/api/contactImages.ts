@@ -26,6 +26,11 @@ export interface ContactImage {
   crop: ImageCrop | null;
 }
 
+export interface ContactImagesResponse {
+  images: ContactImage[];
+  total: number;
+}
+
 // Fractions of the full-size variant; the stored image is never cropped
 // destructively (ADR 0040 decision 10).
 export interface ImageCrop {
@@ -83,6 +88,14 @@ export interface AdoptImageInput {
 
 export function contactImageSrc(path: string): string {
   return `${API_BASE_URL.replace(/\/api\/v1$/, '')}${path}`;
+}
+
+export async function getContactImages(contactId: string | number): Promise<ContactImagesResponse> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/images`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
 }
 
 export async function uploadContactImage(

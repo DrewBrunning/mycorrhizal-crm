@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
 	"unicode/utf8"
 
+	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
@@ -104,8 +106,13 @@ func buildBulkFieldUpdate(db *gorm.DB, userID uint, photoDir string, in models.B
 // (RecordForContact -> edit -> ApplyRecordToContact -> Save), never a direct
 // Card/CRM mutation (backend traps 2 and 3), so the neutral Card, flat
 // columns, revision/ETag and audit trail stay consistent.
-func (u *bulkFieldUpdate) apply(db *gorm.DB, userID uint, contact models.Contact) error {
-	return db.Transaction(func(tx *gorm.DB) error {
+//
+// After the transaction commits, the same post-commit tail as
+// services.SaveContact runs (services.AfterContactWrite: wedding sync and the
+// contact.updated webhook, issue #2311), once per successfully updated
+// contact and never for a contact whose transaction rolled back.
+func (u *bulkFieldUpdate) apply(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contact models.Contact) error {
+	if err := db.Transaction(func(tx *gorm.DB) error {
 		if len(u.set) > 0 || len(u.clear) > 0 {
 			record := models.RecordForContact(&contact, u.photoDir, tx)
 			u.editRecord(record)
@@ -150,7 +157,11 @@ func (u *bulkFieldUpdate) apply(db *gorm.DB, userID uint, contact models.Contact
 			}
 		}
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+	services.AfterContactWrite(ctx, db, cfg, userID, &contact, false)
+	return nil
 }
 
 // editRecord applies the allowlisted set/clear edits to the neutral Record.

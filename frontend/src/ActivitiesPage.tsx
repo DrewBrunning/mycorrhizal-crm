@@ -27,11 +27,11 @@ import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
 import { type Activity, createActivity, deleteActivity, updateActivity } from './api/activities';
 import { type Contact, getAllContacts } from './api/contacts';
-import ActivityImageGallery from './components/ActivityImageGallery';
 import AddActivityDialog from './components/AddActivityDialog';
 import DateField from './components/DateField';
 import EditTimelineItemDialog from './components/EditTimelineItemDialog';
 import GeoPulseSuggestionsDialog from './components/GeoPulseSuggestionsDialog';
+import ImageGallery, { activityImageGalleryApi } from './components/ImageGallery';
 import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import MarkdownText from './components/MarkdownText';
@@ -434,8 +434,10 @@ const ActivitiesPage: React.FC = () => {
                             📍 {activity.location}
                           </Typography>
                         )}
-                        <ActivityImageGallery
-                          activityId={activity.ID}
+                        <ImageGallery
+                          ownerId={activity.ID}
+                          api={activityImageGalleryApi}
+                          i18nPrefix="activityImages"
                           editable
                           onChanged={() => void refetch()}
                         />

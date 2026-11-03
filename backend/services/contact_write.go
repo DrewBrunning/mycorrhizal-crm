@@ -75,6 +75,18 @@ func saveContact(ctx context.Context, db *gorm.DB, cfg config.Config, userID uin
 		return err
 	}
 
+	AfterContactWrite(ctx, db, cfg, userID, contact, isNew)
+	return nil
+}
+
+// AfterContactWrite is the post-commit tail shared by every contact write path
+// (saveContact and the bulk update_fields action, issue #2311): it mirrors the
+// card's wedding anniversary into the married LifeEvent (SyncWeddingFromCard;
+// a failure is logged, not returned, because the contact write has already
+// committed) and fires the contact.created / contact.updated webhook. Call it
+// only after the write's transaction has committed, so a failed write delivers
+// nothing.
+func AfterContactWrite(ctx context.Context, db *gorm.DB, cfg config.Config, userID uint, contact *models.Contact, isNew bool) {
 	// See wedding_sync.go: the just-saved card is authoritative.
 	if err := SyncWeddingFromCard(db, userID, contact.VCardUID, WeddingDateFromCard(&contact.Card)); err != nil {
 		logger.Ctx(ctx).Error().Err(err).Msg("Error syncing wedding anniversary to life event")
@@ -85,5 +97,4 @@ func saveContact(ctx context.Context, db *gorm.DB, cfg config.Config, userID uin
 		event = "contact.created"
 	}
 	TriggerWebhooksAsync(ctx, db, cfg, userID, event, *contact)
-	return nil
 }

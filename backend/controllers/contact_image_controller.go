@@ -9,7 +9,6 @@ import (
 
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
-	"mycorrhizal/imaging"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
@@ -64,16 +63,7 @@ func contactImageDTO(img models.ContactImage, contactID uint) ContactImageDTO {
 // contactImageService builds the contact-image service from the request's
 // config and DB.
 func contactImageService(c *gin.Context) *services.ImageService[models.ContactImage, *models.ContactImage] {
-	cfg := currentConfig(c)
-	db := c.MustGet("db").(*gorm.DB)
-	return services.ContactImageService(
-		db,
-		imaging.Store{Dir: cfg.ImagesDir},
-		cfg.ImageMaxPerContact,
-		cfg.ImageMaxPixels,
-		int64(cfg.ImageMaxUploadMB)<<20,
-		services.UserQuotaFromConfig(cfg),
-	)
+	return galleryService(c, services.ContactImageService, func(cfg config.Config) int { return cfg.ImageMaxPerContact })
 }
 
 // loadOwnedContact resolves a contact by id, scoped to the caller. Every
@@ -115,144 +105,35 @@ func contactOwnerRef(contact *models.Contact) services.OwnerRef {
 	return services.OwnerRef{ID: contact.ID, UID: contact.VCardUID}
 }
 
-// UploadContactImage stores one image against a contact.
-func UploadContactImage(c *gin.Context) {
-	contact, ok := loadOwnedContact(c)
-	if !ok {
-		return
-	}
-	userID, ok := currentUserID(c)
-	if !ok {
-		return
-	}
-	fileHeader, err := c.FormFile("file")
-	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "No file uploaded").WithReason(apperrors.ReasonAttachmentFileMissing, nil))
-		return
-	}
-	if maxBytes := int64(currentConfig(c).ImageMaxUploadMB) << 20; maxBytes > 0 && fileHeader.Size > maxBytes {
-		apperrors.AbortWithError(c, apperrors.ErrPayloadTooLarge("image too large").WithReason(apperrors.ReasonImageTooLarge, map[string]any{"max_mb": currentConfig(c).ImageMaxUploadMB}))
-		return
-	}
-	file, err := fileHeader.Open()
-	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrInternal("Failed to read uploaded file").WithError(err))
-		return
-	}
-	defer file.Close()
-
-	svc := contactImageService(c)
-	img, duplicated, err := svc.UploadDeduped(c.Request.Context(), userID, contactOwnerRef(contact), file)
-	if err != nil {
-		apperrors.AbortWithError(c, apperrors.GetAppError(err))
-		return
-	}
-	status := http.StatusCreated
-	if duplicated {
-		status = http.StatusOK
-	}
-	c.JSON(status, gin.H{"image": contactImageDTO(*img, contact.ID), "deduplicated": duplicated})
+var contactGallery = gallerySpec[models.ContactImage, *models.ContactImage, models.Contact, ContactImageDTO]{
+	service:  contactImageService,
+	load:     loadOwnedContact,
+	ownerRef: contactOwnerRef,
+	dto: func(img models.ContactImage, contact *models.Contact) ContactImageDTO {
+		return contactImageDTO(img, contact.ID)
+	},
+	dedupe: true,
+	remove: func(c *gin.Context, svc *services.ImageService[models.ContactImage, *models.ContactImage], userID uint, contact *models.Contact, id uint) error {
+		db := c.MustGet("db").(*gorm.DB)
+		return services.DeleteContactImageAndClearMain(c.Request.Context(), db, svc, userID, contact, id, currentConfig(c).ProfilePhotoDir)
+	},
+	abort: abortContactImageError,
 }
+
+// UploadContactImage stores one image against a contact.
+func UploadContactImage(c *gin.Context) { serveImageUpload(c, contactGallery) }
 
 // ListContactImages returns a contact's live images, newest first.
-func ListContactImages(c *gin.Context) {
-	contact, ok := loadOwnedContact(c)
-	if !ok {
-		return
-	}
-	userID, ok := currentUserID(c)
-	if !ok {
-		return
-	}
-	svc := contactImageService(c)
-	rows, err := svc.List(c.Request.Context(), userID, contactOwnerRef(contact))
-	if err != nil {
-		apperrors.AbortWithError(c, apperrors.GetAppError(err))
-		return
-	}
-	dtos := make([]ContactImageDTO, 0, len(rows))
-	for _, img := range rows {
-		dtos = append(dtos, contactImageDTO(img, contact.ID))
-	}
-	c.JSON(http.StatusOK, gin.H{"images": dtos, "total": len(dtos)})
-}
+func ListContactImages(c *gin.Context) { serveImageList(c, contactGallery) }
 
-// DownloadContactImage serves the full variant or the thumbnail. Ownership is
-// checked before the file is opened or an ETag is honoured.
+// DownloadContactImage serves the full variant or the thumbnail.
 func DownloadContactImage(c *gin.Context, thumbnail bool) {
-	contact, ok := loadOwnedContact(c)
-	if !ok {
-		return
-	}
-	userID, ok := currentUserID(c)
-	if !ok {
-		return
-	}
-	id, err := strconv.ParseUint(c.Param("image_id"), 10, strconv.IntSize)
-	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid image ID").WithReason(apperrors.ReasonAttachmentInvalidID, nil))
-		return
-	}
-	svc := contactImageService(c)
-	img, err := svc.Get(c.Request.Context(), userID, contactOwnerRef(contact), uint(id))
-	if err != nil {
-		apperrors.AbortWithError(c, apperrors.GetAppError(err))
-		return
-	}
-
-	variant := "file"
-	storedName := img.StoredName
-	mimeType := img.MIMEType
-	if thumbnail {
-		variant = "thumb"
-		storedName = img.ThumbName
-		mimeType = img.ThumbMIMEType
-	}
-	etag := `"` + img.UUID + "-" + variant + `"`
-	if match := c.GetHeader("If-None-Match"); match != "" && match == etag {
-		c.Status(http.StatusNotModified)
-		return
-	}
-
-	data, err := svc.Store.Read(userID, storedName)
-	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrNotFound("Image file"))
-		return
-	}
-
-	c.Header("ETag", etag)
-	c.Header("Cache-Control", "private, no-cache")
-	c.Header("Content-Disposition", fmt.Sprintf(`inline; filename="image-%s.%s"`, img.UUID, imageExt(mimeType)))
-	c.Header("X-Content-Type-Options", "nosniff")
-	c.Header("Content-Security-Policy", "default-src 'none'; sandbox")
-	c.Header("Cross-Origin-Resource-Policy", "same-origin")
-	c.Data(http.StatusOK, mimeType, data)
+	serveImageDownload(c, contactGallery, thumbnail)
 }
 
 // DeleteContactImage soft-deletes one image and removes its files after the
 // commit.
-func DeleteContactImage(c *gin.Context) {
-	contact, ok := loadOwnedContact(c)
-	if !ok {
-		return
-	}
-	userID, ok := currentUserID(c)
-	if !ok {
-		return
-	}
-	id, err := strconv.ParseUint(c.Param("image_id"), 10, strconv.IntSize)
-	if err != nil {
-		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid image ID").WithReason(apperrors.ReasonAttachmentInvalidID, nil))
-		return
-	}
-	svc := contactImageService(c)
-	db := c.MustGet("db").(*gorm.DB)
-	if err := services.DeleteContactImageAndClearMain(c.Request.Context(), db, svc, userID, contact, uint(id), currentConfig(c).ProfilePhotoDir); err != nil {
-		abortContactImageError(c, err)
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"message": "Image deleted"})
-}
+func DeleteContactImage(c *gin.Context) { serveImageDelete(c, contactGallery) }
 
 // ContactPhotoDTO is one aggregated Photos-tab item.
 // PhotoSource names where a Photos-tab image lives (ADR 0040 decision 8):
@@ -451,13 +332,5 @@ func GetContactPhotos(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"photos": dtos, "total": len(dtos)})
 }
 
-// contactImageUploadBodyLimit is the per-request body cap for an image upload: the
-// configured file cap plus multipart overhead.
 // ContactImageUploadBodyLimit exports the per-request upload cap for routes.
-func ContactImageUploadBodyLimit(cfg *config.Config) int64 {
-	return contactImageUploadBodyLimit(cfg)
-}
-
-func contactImageUploadBodyLimit(cfg *config.Config) int64 {
-	return int64(cfg.ImageMaxUploadMB)<<20 + 1<<20
-}
+func ContactImageUploadBodyLimit(cfg *config.Config) int64 { return ImageUploadBodyLimit(cfg) }
