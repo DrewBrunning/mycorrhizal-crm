@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/faults"
@@ -219,7 +220,7 @@ func TestMycorrhizalImportManager_Guards(t *testing.T) {
 	// Preview/Confirm before the session exists.
 	_, appErr := mgr.Preview(user.ID, "nope")
 	require.NotNil(t, appErr)
-	require.NotNil(t, mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{SessionID: "nope"}, &log))
+	require.NotNil(t, mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{SessionID: "nope"}, config.Config{}, &log))
 
 	up, appErr := mgr.Upload(user.ID, bundleMultipartHeader(t, body))
 	require.Nil(t, appErr)
@@ -227,7 +228,7 @@ func TestMycorrhizalImportManager_Guards(t *testing.T) {
 	// Preview before ready.
 	_, appErr = mgr.Preview(user.ID, up.SessionID)
 	require.NotNil(t, appErr, "preview before fetch is rejected")
-	require.NotNil(t, mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{SessionID: up.SessionID}, &log))
+	require.NotNil(t, mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{SessionID: up.SessionID}, config.Config{}, &log))
 
 	// A different user must not see the session.
 	_, appErr = mgr.Status(other.ID, up.SessionID)
@@ -279,7 +280,7 @@ func TestMycorrhizalImportManager_Guards(t *testing.T) {
 	_, appErr = mgr.Preview(user.ID, up4.SessionID)
 	require.Nil(t, appErr)
 	armImportFault(t)
-	require.Nil(t, mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{SessionID: up4.SessionID}, &log))
+	require.Nil(t, mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{SessionID: up4.SessionID}, config.Config{}, &log))
 	failed := waitForMycorrhizalPhase(t, mgr, user.ID, up4.SessionID, models.SourceImportPhaseFailed)
 	assert.NotEmpty(t, failed.Error)
 }
@@ -347,7 +348,7 @@ func TestMycorrhizalImportManager_CancelInFlight(t *testing.T) {
 	faults.Reset()
 	t.Cleanup(faults.Reset)
 	faults.ArmPause(faultImportSource, 500*time.Millisecond)
-	require.Nil(t, mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{SessionID: up.SessionID, Actions: actions}, &log))
+	require.Nil(t, mgr.Confirm(db, user.ID, models.SourceImportConfirmRequest{SessionID: up.SessionID, Actions: actions}, config.Config{}, &log))
 
 	st := waitForMycorrhizalPhase(t, mgr, user.ID, up.SessionID, models.SourceImportPhaseImporting)
 	require.Equal(t, models.SourceImportPhaseImporting, st.Phase)

@@ -327,6 +327,49 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 	return s.storeUpload(ctx, userID, owner, result)
 }
 
+// Restore is Upload for an account-bundle import: the bytes go through the
+// full pipeline (decode under the pixel limit, orient, re-encode, thumbnail) and
+// the per-owner cap, then the owner's metadata from the bundle is re-applied.
+// The source uuid is kept unless this table already holds it (the column is
+// globally unique and another account on the instance may have imported the
+// same bundle).
+func (s *ImageService[T, P]) Restore(ctx context.Context, userID uint, owner OwnerRef, src io.Reader, meta ImageRestoreMeta) (*T, error) {
+	row, err := s.Upload(ctx, userID, owner, src)
+	if err != nil {
+		return nil, err
+	}
+	p := P(row)
+	updates := map[string]any{}
+	switch meta.Sensitivity {
+	case models.ImageSensitivityNormal, models.ImageSensitivityPrivate, models.ImageSensitivitySecret:
+		updates["sensitivity"] = meta.Sensitivity
+	}
+	if meta.UUID != "" {
+		var n int64
+		if err := s.DB.WithContext(ctx).Unscoped().Model(new(T)).Where("uuid = ?", meta.UUID).Count(&n).Error; err == nil && n == 0 {
+			updates["uuid"] = meta.UUID
+		}
+	}
+	if meta.TakenAt != nil {
+		updates["taken_at"] = meta.TakenAt
+	}
+	if meta.TakenDate != nil {
+		updates["taken_date"] = meta.TakenDate
+	}
+	if c := meta.Crop; c != nil {
+		updates["crop_x"], updates["crop_y"], updates["crop_w"], updates["crop_h"] = c.X, c.Y, c.W, c.H
+	}
+	if !meta.CreatedAt.IsZero() {
+		updates["created_at"] = meta.CreatedAt
+	}
+	if len(updates) > 0 {
+		if err := s.DB.WithContext(ctx).Model(p).Updates(updates).Error; err != nil {
+			return nil, apperrors.ErrDatabase("Failed to save image metadata").WithError(err)
+		}
+	}
+	return row, nil
+}
+
 // UploadDeduped is Upload for the contact gallery: a live image on the same
 // contact whose dHash is within imaging.DedupeMaxHamming is returned instead
 // of inserting a re-encoded copy (ADR 0040 decision 9). Other owner kinds
@@ -428,6 +471,12 @@ func (s *ImageService[T, P]) DeleteWithin(ctx context.Context, userID uint, owne
 		models.RecordAuditEvent(tx, s.auditEntity(), imageAuditID(owner), models.AuditOpDelete, userID)
 		return nil
 	}); err != nil {
+		// A hook may refuse with its own typed error (e.g. the last image of
+		// an image-only note); that is not a database failure.
+		var appErr *apperrors.AppError
+		if errors.As(err, &appErr) {
+			return appErr
+		}
 		return apperrors.ErrDatabase("Failed to delete image").WithError(err)
 	}
 

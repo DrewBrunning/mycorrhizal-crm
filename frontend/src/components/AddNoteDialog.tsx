@@ -43,7 +43,14 @@ function contactLabel(contact: ContactBrief): string {
 interface AddNoteDialogProps {
   open: boolean;
   onClose: () => void;
-  onSave: (content: string, date: string, contactId?: number) => Promise<Note | undefined>;
+  // awaitingImages is true for an image-only note (empty content, photos queued):
+  // the server accepts the empty note for a one-hour window while they upload.
+  onSave: (
+    content: string,
+    date: string,
+    contactId?: number,
+    awaitingImages?: boolean,
+  ) => Promise<Note | undefined>;
   noteContactId?: number;
   noteContactName?: string;
   // Prefills the content (the Web Share Target, issue #1294). The user still
@@ -158,7 +165,8 @@ export default function AddNoteDialog({
   }, [open, loadContacts]);
 
   const handleSave = async () => {
-    if (!content.trim()) {
+    const imageOnly = !content.trim() && selectedImages.length > 0 && createdId == null;
+    if (!content.trim() && selectedImages.length === 0 && createdId == null) {
       setError(t('noteDialog.required'));
       return;
     }
@@ -171,6 +179,7 @@ export default function AddNoteDialog({
           content,
           date,
           lockedContact ? noteContactId : selectedContact?.ID,
+          imageOnly ? true : undefined,
         );
         noteId = created?.ID ?? null;
         if (noteId != null) setCreatedId(noteId);

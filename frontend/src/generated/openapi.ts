@@ -19,6 +19,7 @@ export type AccountBundle = {
   exported_at: string;
   format: 'mycorrhizal-account';
   hide_empty_fields?: boolean;
+  images?: AccountBundleImage[];
   omitted: AccountBundleOmissions;
   plan: AccountBundlePlan;
   self_contact_uid?: string;
@@ -35,8 +36,30 @@ export type AccountBundleAttachment = {
   size_bytes: number;
 };
 
+export type AccountBundleImage = {
+  created_at: string;
+  crop?: {
+    h?: number;
+    w?: number;
+    x?: number;
+    y?: number;
+  } | null;
+  data: string;
+  height: number;
+  mime_type: string;
+  owner: string;
+  owner_kind: 'contact' | 'note' | 'activity';
+  sensitivity: 'normal' | 'private' | 'secret';
+  taken_at?: string | null;
+  taken_date?: string | null;
+  uuid: string;
+  width: number;
+};
+
 export type AccountBundleOmissions = {
   attachments: boolean;
+  image_bytes_omitted?: number;
+  images_omitted?: number;
   photos_omitted: number;
 };
 
@@ -1607,6 +1630,11 @@ export type ImageCrop = {
   y: number;
 };
 
+export type ImageKindUsage = {
+  bytes?: number;
+  count?: number;
+};
+
 export type ImmichAssetSummary = {
   id?: string;
   occurred_at?: string;
@@ -2042,6 +2070,8 @@ export type MonicaImportResult = ImportResult & {
   activities_created?: number;
   custom_fields_created?: number;
   gifts_created?: number;
+  images_created?: number;
+  images_rejected?: number;
   notes_created?: number;
   photos_failed?: number;
   photos_queued?: number;
@@ -2168,6 +2198,7 @@ export type NoteImage = {
 };
 
 export type NoteInput = {
+  awaiting_images?: boolean;
   contact_id?: number | null;
   content: string;
   date: string;
@@ -2821,6 +2852,15 @@ export type SystemStatus = {
     growth_30d_bytes?: number;
     growth_7d_bytes?: number;
     growth_90d_bytes?: number;
+    images?: {
+      by_kind?: {
+        activity?: ImageKindUsage;
+        contact?: ImageKindUsage;
+        note?: ImageKindUsage;
+      };
+      bytes?: number;
+      count?: number;
+    };
     projected_full_at?: string;
     threshold?: 'ok' | 'warning' | 'critical';
     usage_percent?: number;

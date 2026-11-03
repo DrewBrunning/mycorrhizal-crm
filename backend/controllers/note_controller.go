@@ -55,6 +55,11 @@ func CreateNote(c *gin.Context) {
 		return
 	}
 
+	if strings.TrimSpace(noteInput.Content) == "" && !noteInput.AwaitingImages {
+		apperrors.AbortWithError(c, errNoteRequiresContentOrImage(false))
+		return
+	}
+
 	// Create note from validated input
 	note := models.Note{
 		UserID:    userID,
@@ -92,6 +97,11 @@ func CreateUnassignedNote(c *gin.Context) {
 	noteInput, err := middleware.GetValidated[models.NoteInput](c)
 	if err != nil {
 		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	if strings.TrimSpace(noteInput.Content) == "" && !noteInput.AwaitingImages {
+		apperrors.AbortWithError(c, errNoteRequiresContentOrImage(false))
 		return
 	}
 
@@ -338,6 +348,18 @@ func UpdateNote(c *gin.Context) {
 	if err != nil {
 		apperrors.AbortWithError(c, err)
 		return
+	}
+
+	if strings.TrimSpace(updatedNote.Content) == "" {
+		var live int64
+		if err := db.Model(&models.NoteImage{}).Where("note_id = ? AND user_id = ?", note.ID, userID).Count(&live).Error; err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count note images").WithError(err))
+			return
+		}
+		if live == 0 {
+			apperrors.AbortWithError(c, errNoteRequiresContentOrImage(false))
+			return
+		}
 	}
 
 	// Updateable fields

@@ -90,14 +90,24 @@ data class NoteFormState(
 
     fun snapshotForBaseline(): NoteFormState = editableSnapshot()
 
+    /**
+     * An image-only note (ADR 0040 decision 11): no text, photos queued in
+     * create mode. The server accepts the empty note for a one-hour window
+     * while the photos upload.
+     */
+    val isImageOnlyCreate: Boolean get() = !isEdit && !hasContent && pendingImages.isNotEmpty()
+
     fun toInput(): NoteInput = NoteInput(
         content = content.trim(),
         date = DateFieldValue.normalizeCalendarDayInstant(date),
-        contactId = targetContactId
+        contactId = targetContactId,
+        awaitingImages = if (isImageOnlyCreate) true else null
     )
 
     fun validate(): Int? = when {
-        !hasContent -> R.string.note_error_content
+        // Edit mode lets the server decide: it accepts empty text only while the
+        // note holds a live image (note_requires_content_or_image).
+        !hasContent && !isImageOnlyCreate && !isEdit -> R.string.note_error_content
 
         date.isBlank() -> R.string.note_error_date_required
 

@@ -3446,6 +3446,7 @@
       "idempotency_key_purge": "Idempotency key purge",
       "session_purge": "Session purge",
       "storage_sample": "Storage sampling",
+      "image_sweep": "Image file cleanup",
       "search_index_rebuild": "Search index rebuild",
       "derived_columns_rebuild": "Derived columns rebuild"
     }
@@ -3997,6 +3998,7 @@
       "image_heic_unsupported": "HEIC images are not supported; convert to JPEG first",
       "image_corrupt": "The image is corrupt or truncated",
       "image_limit_reached": "This item already has the maximum of {{limit}} images",
+      "note_requires_content_or_image": "A note needs text or at least one image",
       "image_processing_busy": "Image processing is busy; try again shortly",
       "image_not_found": "Image not found",
       "image_insufficient_storage": "Not enough disk space to store the image"

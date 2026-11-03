@@ -10804,6 +10804,12 @@ paths:
               schema: { type: integer }
             X-Mycorrhizal-Bundle-Photos-Omitted:
               schema: { type: integer }
+            X-Mycorrhizal-Bundle-Images:
+              description: Gallery images embedded in the bundle (ADR 0040).
+              schema: { type: integer }
+            X-Mycorrhizal-Bundle-Images-Omitted:
+              description: Gallery images that did not fit the size budget; also recorded in omitted.images_omitted.
+              schema: { type: integer }
           content:
             application/json:
               schema:
@@ -10833,9 +10839,12 @@ paths:
                   occasions: []
                   occasion_events: []
                 attachments: []
+                images: []
                 omitted:
                   attachments: true
                   photos_omitted: 0
+                  images_omitted: 0
+                  image_bytes_omitted: 0
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
           content:
@@ -16521,13 +16530,31 @@ components:
           type: boolean
           description: "Change-feed tombstone marker (T17): true only via ?since= for a soft-deleted note."
           default: false
+    ImageKindUsage:
+      type: object
+      properties:
+        count: { type: integer }
+        bytes: { type: integer }
     NoteInput:
       type: object
       required: [content, date]
       properties:
-        content: { type: string, minLength: 1, maxLength: 5000 }
+        content:
+          type: string
+          maxLength: 5000
+          description: >
+            Note text. May be empty only for an image-only note (ADR 0040
+            decision 11): on create it requires awaiting_images, on update the
+            note must already hold a live image; otherwise 422
+            note_requires_content_or_image.
         date: { type: string, format: date-time }
         contact_id: { type: integer, minimum: 1, nullable: true }
+        awaiting_images:
+          type: boolean
+          description: >
+            Create only. Allows empty content for a one-hour window while the
+            client uploads the note's first image; an empty note with no image
+            after the window is soft-deleted by the image sweep.
     Activity:
       type: object
       description: >
@@ -17355,6 +17382,18 @@ components:
                   bytes: { type: integer }
                   file_count: { type: integer }
                   truncated: { type: boolean, description: "A hard cap (200000 entries or depth 8) stopped the walk early; bytes is a lower bound" }
+            images:
+              type: object
+              description: "Gallery images (ADR 0040), summed from the tables over live and not-yet-purged soft-deleted rows; bytes include thumbnails"
+              properties:
+                count: { type: integer }
+                bytes: { type: integer }
+                by_kind:
+                  type: object
+                  properties:
+                    activity: { $ref: '#/components/schemas/ImageKindUsage' }
+                    note: { $ref: '#/components/schemas/ImageKindUsage' }
+                    contact: { $ref: '#/components/schemas/ImageKindUsage' }
             growth_7d_bytes:
               type: integer
               description: "Latest database_bytes minus the oldest sample in the last 7 days; null when the window holds fewer than two samples"
@@ -19646,6 +19685,8 @@ components:
             photos_queued: { type: integer }
             photos_saved: { type: integer }
             photos_failed: { type: integer }
+            images_created: { type: integer, description: "Account bundle gallery images that landed (ADR 0040); 0 for other sources" }
+            images_rejected: { type: integer, description: "Account bundle gallery images that failed validation (corrupt, oversized, over a per-owner cap)" }
 
     # --- Meerkat import assistant (issue #550) ---
     MeerkatSourceUser:
@@ -19775,7 +19816,43 @@ components:
         attachments:
           type: array
           items: { $ref: "#/components/schemas/AccountBundleAttachment" }
+        images:
+          type: array
+          description: >
+            Gallery images of every owner kind (ADR 0040 decision 3). Additive
+            to version 1: absent on a bundle written before the field existed.
+            Admitted main images first, then newest first, within the size
+            budget; what did not fit is counted in omitted. contacts[].main_image
+            names the contact's main image by uuid.
+          items: { $ref: "#/components/schemas/AccountBundleImage" }
         omitted: { $ref: "#/components/schemas/AccountBundleOmissions" }
+    AccountBundleImage:
+      type: object
+      required: [uuid, owner_kind, owner, mime_type, width, height, sensitivity, created_at, data]
+      description: >
+        One gallery image. owner is the portable id of the owner (contact
+        vcard_uid, note uuid or activity uuid). Only the full variant is
+        embedded; import re-validates the bytes and regenerates the thumbnail.
+      properties:
+        uuid: { type: string }
+        owner_kind: { type: string, enum: [contact, note, activity] }
+        owner: { type: string }
+        mime_type: { type: string }
+        width: { type: integer }
+        height: { type: integer }
+        taken_at: { type: string, format: date-time, nullable: true }
+        taken_date: { type: string, nullable: true }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        crop:
+          type: object
+          nullable: true
+          properties:
+            x: { type: number }
+            y: { type: number }
+            w: { type: number }
+            h: { type: number }
+        created_at: { type: string, format: date-time }
+        data: { type: string, description: "Base64 of the stored full variant" }
     AccountBundlePlan:
       type: object
       description: >
@@ -19820,6 +19897,8 @@ components:
       properties:
         attachments: { type: boolean }
         photos_omitted: { type: integer }
+        images_omitted: { type: integer, description: "Gallery images that did not fit the size budget or whose file was unreadable" }
+        image_bytes_omitted: { type: integer, format: int64 }
     MycorrhizalBundleCounts:
       type: object
       description: Per-section tally of an uploaded account bundle, shown after upload.

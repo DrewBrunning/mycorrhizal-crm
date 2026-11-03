@@ -149,6 +149,9 @@ type SystemStatusStorage struct {
 	// Directories is never nil — it marshals as [] when no storage directory
 	// is configured (frontend trap #8).
 	Directories []services.DirectoryUsage `json:"directories"`
+	// Images is the gallery-image count and bytes by owner kind (ADR 0040
+	// decision 6, issue #2004); IMAGES_DIR also appears in Directories.
+	Images services.ImageUsage `json:"images"`
 
 	// Storage-growth trend block (issue #652), derived from the persisted
 	// storage_samples series. Pointers so "not enough history" marshals as
@@ -260,12 +263,17 @@ func systemStatusStorage(ctx context.Context, db *gorm.DB, cfg config.Config) Sy
 		fs.TotalBytes = int64(total)
 	}
 
-	dirs := services.StorageUsage([]string{cfg.ProfilePhotoDir, cfg.AttachmentsDir})
+	dirPaths := []string{cfg.ProfilePhotoDir, cfg.AttachmentsDir}
+	if cfg.ImagesDir != "" {
+		dirPaths = append(dirPaths, cfg.ImagesDir)
+	}
+	dirs := services.StorageUsage(dirPaths)
 
 	out := SystemStatusStorage{
 		DatabaseBytes: metrics.DatabaseBytes(cfg.DBPath),
 		Filesystem:    fs,
 		Directories:   dirs,
+		Images:        services.ImageStorageUsage(ctx, db),
 	}
 
 	// Storage-growth trend from the persisted samples (issue #652). Best-effort

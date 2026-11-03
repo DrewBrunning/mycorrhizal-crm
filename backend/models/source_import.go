@@ -111,4 +111,9 @@ type SourceImportResult struct {
 	PhotosQueued         int `json:"photos_queued"`
 	PhotosSaved          int `json:"photos_saved"`
 	PhotosFailed         int `json:"photos_failed"`
+	// ImagesCreated / ImagesRejected are the account bundle's gallery images
+	// that landed / failed validation (corrupt, oversized, over a per-owner
+	// cap); always 0 for the Meerkat and Monica sources.
+	ImagesCreated  int `json:"images_created"`
+	ImagesRejected int `json:"images_rejected"`
 }

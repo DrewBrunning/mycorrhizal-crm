@@ -188,7 +188,7 @@ func TestCapabilities_NoTokenCollidesWithAJobName(t *testing.T) {
 		"db_integrity_check", "restore_drill", "system_event_purge",
 		"webhook_delivery_purge", "idempotency_key_purge", "session_purge",
 		"alert_eval", "job_run_purge", "storage_sample", "search_index_rebuild",
-		"derived_columns_rebuild",
+		"derived_columns_rebuild", "image_sweep",
 	}
 	var server Config
 	for _, token := range server.Capabilities() {

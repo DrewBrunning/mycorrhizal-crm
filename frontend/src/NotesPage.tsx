@@ -115,12 +115,18 @@ const NotesPage: React.FC = () => {
     setAddDialogOpen(true);
   };
 
-  const handleNoteSave = async (content: string, date: string, contactId?: number) => {
+  const handleNoteSave = async (
+    content: string,
+    date: string,
+    contactId?: number,
+    awaitingImages?: boolean,
+  ) => {
     try {
       const created = await createUnassignedNote({
         content,
         date: new Date(date).toISOString(),
         contact_id: contactId,
+        awaiting_images: awaitingImages,
       });
       setAddDialogOpen(false);
       void refetch();
@@ -152,13 +158,13 @@ const NotesPage: React.FC = () => {
   });
 
   const handleSaveEdit = async () => {
-    if (!editingNote || !editValues.noteContent?.trim()) return;
+    if (!editingNote) return;
 
     try {
       await updateNote(
         editingNote.ID,
         {
-          content: editValues.noteContent,
+          content: editValues.noteContent ?? '',
           date: editValues.noteDate
             ? new Date(editValues.noteDate).toISOString()
             : new Date().toISOString(),

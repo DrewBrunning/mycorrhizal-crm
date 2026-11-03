@@ -57,7 +57,34 @@ type AccountBundle struct {
 	HideEmptyFields bool                      `json:"hide_empty_fields,omitempty"`
 	Plan            AccountBundlePlan         `json:"plan"`
 	Attachments     []AccountBundleAttachment `json:"attachments"`
-	Omitted         AccountBundleOmissions    `json:"omitted"`
+	// Images carries every gallery image (activity, note and contact) as its
+	// full variant, base64 (ADR 0040 decision 3, issue #2004). Additive to
+	// version 1 like self_contact_uid; absent on a bundle written before the
+	// field existed. Never omitempty: a client must see [] (frontend trap #8).
+	Images  []AccountBundleImage   `json:"images"`
+	Omitted AccountBundleOmissions `json:"omitted"`
+}
+
+// AccountBundleImage is one gallery image. Owner is the portable id of the
+// owning entity: the contact's vcard_uid, or the note's / activity's uuid
+// (never a uint primary key). Only the full variant is embedded; the thumbnail
+// is regenerated on import. Sensitivity travels as-is: the bundle is the
+// owner's full-fidelity export.
+type AccountBundleImage struct {
+	UUID        string     `json:"uuid"`
+	OwnerKind   string     `json:"owner_kind"` // contact | note | activity
+	Owner       string     `json:"owner"`
+	MIMEType    string     `json:"mime_type"`
+	Width       int        `json:"width"`
+	Height      int        `json:"height"`
+	TakenAt     *time.Time `json:"taken_at"`
+	TakenDate   *string    `json:"taken_date"`
+	Sensitivity string     `json:"sensitivity"`
+	Crop        *ImageCrop `json:"crop"`
+	CreatedAt   time.Time  `json:"created_at"`
+	// Data is the base64 of the stored full variant. Import never trusts the
+	// declared mime_type/width/height: the bytes are re-decoded and re-encoded.
+	Data string `json:"data"`
 }
 
 // AccountBundleOmissions records what the bundle deliberately did not carry,
@@ -68,6 +95,11 @@ type AccountBundleOmissions struct {
 	Attachments bool `json:"attachments"`
 	// PhotosOmitted counts profile photos dropped for exceeding the size cap.
 	PhotosOmitted int `json:"photos_omitted"`
+	// ImagesOmitted / ImageBytesOmitted count gallery images that did not fit
+	// the bundle's size budget (or whose file was missing), so nothing is
+	// dropped silently (ADR 0040 decision 3).
+	ImagesOmitted     int   `json:"images_omitted"`
+	ImageBytesOmitted int64 `json:"image_bytes_omitted"`
 }
 
 // AccountBundleAttachment is attachment metadata only — the bytes live on
@@ -121,6 +153,10 @@ type AccountBundleContact struct {
 	Archived     bool                     `json:"archived"`
 	IsFavorite   bool                     `json:"is_favorite"`
 	PhotoOmitted bool                     `json:"photo_omitted,omitempty"`
+	// MainImage is the uuid of the contact's main gallery image (the entry in
+	// AccountBundle.Images whose owner is this contact); applied after every
+	// image lands on import.
+	MainImage string `json:"main_image,omitempty"`
 	// FieldOverrides / HideEmptyOverride are the owner's per-contact field
 	// visibility preferences for this contact (contact_field_overrides, issue
 	// #1997): field key -> "show"/"hide", and the per-contact hide-empty

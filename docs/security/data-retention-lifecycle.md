@@ -310,6 +310,16 @@ Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password
   so the trash/undo window remains restorable. The scheduled purge hard-deletes the rows and then the
   files. Stored bytes are a metadata-free JPEG/PNG re-encode (no GPS, serial number or camera
   thumbnail), not the camera original.
+- **Image sweep (ADR 0040 decision 5, issue #2004)**: the daily `image_sweep` job removes files under
+  `IMAGES_DIR` that no image row (live or soft-deleted) names once they are an hour old, stale `*.tmp`
+  files, and soft-deletes empty image-less notes whose one-hour `awaiting_images` window has lapsed.
+  It never touches `PROFILE_PHOTO_DIR` or `ATTACHMENTS_DIR` and records only file, byte and note
+  counts (no file names) on the operational timeline.
+- **Account bundle**: gallery images travel in the account bundle as base64 full variants
+  (sensitivity and crop included; main images first, then newest first, within the size budget). What
+  does not fit is counted in `omitted.images_omitted` / `image_bytes_omitted` and the
+  `X-Mycorrhizal-Bundle-Images-Omitted` header. Import re-validates every image through the upload
+  pipeline; the flat CSV export carries no image data.
 - **Retention**: the metadata row (`Attachment`) follows §1's soft-delete/purge window. An attachment
   deleted on its own (`DeleteAttachment`) has its file removed immediately (N7: "an attachment's
   content IS the file; a tombstone that outlives a vanished file is acceptable for the change feed, an

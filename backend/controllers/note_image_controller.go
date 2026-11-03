@@ -3,6 +3,7 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"mycorrhizal/config"
@@ -91,6 +92,23 @@ var noteGallery = gallerySpec[models.NoteImage, *models.NoteImage, models.Note, 
 	load:     loadOwnedNote,
 	ownerRef: noteOwnerRef,
 	dto:      func(img models.NoteImage, _ *models.Note) NoteImageDTO { return noteImageDTO(img) },
+	// Deleting the last image of an empty-content note would leave an invalid
+	// note (ADR 0040 decision 11); the count runs in the delete's transaction.
+	remove: func(c *gin.Context, svc *services.ImageService[models.NoteImage, *models.NoteImage], userID uint, note *models.Note, id uint) error {
+		return svc.DeleteWithin(c.Request.Context(), userID, noteOwnerRef(note), id, func(tx *gorm.DB) error {
+			if strings.TrimSpace(note.Content) != "" {
+				return nil
+			}
+			var live int64
+			if err := tx.Model(&models.NoteImage{}).Where("note_id = ? AND user_id = ?", note.ID, userID).Count(&live).Error; err != nil {
+				return err
+			}
+			if live == 0 {
+				return errNoteRequiresContentOrImage(true)
+			}
+			return nil
+		})
+	},
 }
 
 // UploadNoteImage stores one image against a note.
@@ -108,3 +126,14 @@ func DeleteNoteImage(c *gin.Context) { serveImageDelete(c, noteGallery) }
 
 // NoteImageUploadBodyLimit exports the per-request upload cap for routes.
 func NoteImageUploadBodyLimit(cfg *config.Config) int64 { return ImageUploadBodyLimit(cfg) }
+
+// errNoteRequiresContentOrImage is the typed refusal for a note that would be
+// left with neither text nor a live image. A refused delete is a conflict with
+// the note's current state; a refused write is an unprocessable body.
+func errNoteRequiresContentOrImage(conflict bool) *apperrors.AppError {
+	const msg = "a note needs text or at least one image"
+	if conflict {
+		return apperrors.ErrConflict(msg).WithReason(apperrors.ReasonNoteRequiresContentOrImage, nil)
+	}
+	return apperrors.ErrBusinessLogic(msg).WithReason(apperrors.ReasonNoteRequiresContentOrImage, nil)
+}

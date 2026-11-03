@@ -301,3 +301,57 @@ func TestRunNoSigningKeyExitsTwo(t *testing.T) {
 	assert.Equal(t, 2, code)
 	assert.Contains(t, errOut.String(), "no at-rest master key configured")
 }
+
+func addNoteImageRow(t *testing.T, dbPath string) {
+	t.Helper()
+	db, err := database.OpenMigratedFile(dbPath)
+	require.NoError(t, err)
+	require.NoError(t, db.Exec(`INSERT INTO users (id, username, email, password) VALUES (1, 'u', 'u@example.com', 'x')`).Error)
+	require.NoError(t, db.Exec(`INSERT INTO notes (id, user_id, content, date) VALUES (1, 1, 'n', '2024-01-01')`).Error)
+	require.NoError(t, db.Exec(
+		`INSERT INTO note_images (user_id, uuid, stored_name, thumb_name, mime_type, thumb_mime_type, width, height, size_bytes, thumb_size_bytes, sensitivity, note_id)
+		 VALUES (1, 'u1', 'a.jpg', 'a_t.jpg', 'image/jpeg', 'image/jpeg', 1, 1, 1, 1, 'normal', 1)`).Error)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+}
+
+// ADR 0040 decision 5: the gallery directory is part of the backup set.
+func TestRunChecksImagesDirFromEnvAndSiblingDefault(t *testing.T) {
+	dbPath, photoDir, attachmentsDir := setupSet(t)
+	addNoteImageRow(t, dbPath)
+	signSet(t, dbPath)
+	t.Setenv("SQLITE_DB_PATH", dbPath)
+	t.Setenv("PROFILE_PHOTO_DIR", photoDir)
+	t.Setenv("ATTACHMENTS_DIR", attachmentsDir)
+
+	// Neither variable set and no sibling "images" directory: not checked.
+	var out, errOut bytes.Buffer
+	assert.Equal(t, 0, run(nil, &out, &errOut), errOut.String())
+	assert.Contains(t, out.String(), "(not checked)")
+
+	// The server's default (an "images" sibling of the photos) is picked up and
+	// the row's missing files make the set incomplete.
+	siblings := filepath.Join(filepath.Dir(photoDir), "images")
+	require.NoError(t, os.MkdirAll(filepath.Join(siblings, "u1"), 0o750))
+	out.Reset()
+	errOut.Reset()
+	assert.Equal(t, 1, run(nil, &out, &errOut))
+	assert.Contains(t, out.String(), "u1/a.jpg")
+
+	// An explicit directory wins; once the files exist the set is complete.
+	explicit := filepath.Join(t.TempDir(), "imgs")
+	require.NoError(t, os.MkdirAll(filepath.Join(explicit, "u1"), 0o750))
+	require.NoError(t, os.WriteFile(filepath.Join(explicit, "u1", "a.jpg"), []byte("x"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(explicit, "u1", "a_t.jpg"), []byte("x"), 0o600))
+	t.Setenv("BACKUP_IMAGES_DIR", explicit)
+	out.Reset()
+	errOut.Reset()
+	assert.Equal(t, 0, run(nil, &out, &errOut), errOut.String())
+
+	// A typo'd explicit directory is refused, never silently skipped.
+	t.Setenv("BACKUP_IMAGES_DIR", filepath.Join(t.TempDir(), "typo"))
+	out.Reset()
+	errOut.Reset()
+	assert.Equal(t, 2, run(nil, &out, &errOut))
+}

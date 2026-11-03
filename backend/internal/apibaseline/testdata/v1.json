@@ -9674,6 +9674,11 @@
           "required": false
         },
         {
+          "name": "images",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "omitted",
           "type": "ref:AccountBundleOmissions",
           "required": true
@@ -9744,12 +9749,97 @@
       ]
     },
     {
+      "name": "AccountBundleImage",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "crop",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "data",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "height",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "mime_type",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "owner",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "owner_kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "contact",
+            "note",
+            "activity"
+          ]
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "taken_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "taken_date",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "uuid",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "width",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "AccountBundleOmissions",
       "properties": [
         {
           "name": "attachments",
           "type": "boolean",
           "required": true
+        },
+        {
+          "name": "image_bytes_omitted",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "images_omitted",
+          "type": "integer",
+          "required": false
         },
         {
           "name": "photos_omitted",
@@ -17006,6 +17096,21 @@
       ]
     },
     {
+      "name": "ImageKindUsage",
+      "properties": [
+        {
+          "name": "bytes",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "count",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
       "name": "ImmichAssetSummary",
       "properties": [
         {
@@ -18759,6 +18864,16 @@
           "required": false
         },
         {
+          "name": "images_created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "images_rejected",
+          "type": "integer",
+          "required": false
+        },
+        {
           "name": "notes_created",
           "type": "integer",
           "required": false
@@ -19363,6 +19478,11 @@
     {
       "name": "NoteInput",
       "properties": [
+        {
+          "name": "awaiting_images",
+          "type": "boolean",
+          "required": false
+        },
         {
           "name": "contact_id",
           "type": "integer",

@@ -40,11 +40,21 @@ type AccountBundleStats struct {
 	PhotosEmbedded int
 	PhotosOmitted  int
 	Contacts       int
+	// ImagesEmbedded / ImagesOmitted are the gallery images carried in, and
+	// left out of, the bundle (ADR 0040 decision 3).
+	ImagesEmbedded int
+	ImagesOmitted  int
 }
 
 // BuildAccountBundle assembles the full bundle for userID. photoDir is the
 // configured profile-photo directory used to embed photos as data URIs.
 func BuildAccountBundle(db *gorm.DB, userID uint, photoDir string) (*models.AccountBundle, AccountBundleStats, error) {
+	return BuildAccountBundleWithImages(db, userID, photoDir, BundleImageExport{})
+}
+
+// BuildAccountBundleWithImages is BuildAccountBundle plus the gallery images
+// (ADR 0040 decision 3). A zero images.Store.Dir carries no images.
+func BuildAccountBundleWithImages(db *gorm.DB, userID uint, photoDir string, images BundleImageExport) (*models.AccountBundle, AccountBundleStats, error) {
 	stats := AccountBundleStats{}
 
 	bundle := &models.AccountBundle{
@@ -141,6 +151,9 @@ func BuildAccountBundle(db *gorm.DB, userID uint, photoDir string) (*models.Acco
 	}
 
 	bundle.Omitted.PhotosOmitted = stats.PhotosOmitted
+	if err := attachBundleImages(db, userID, bundle, images, &stats); err != nil {
+		return nil, stats, err // # pragma: no cover — defensive: a healthy migrated schema does not fail these queries
+	}
 	return bundle, stats, nil
 }
 

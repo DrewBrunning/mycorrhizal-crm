@@ -47,6 +47,9 @@ var bundleFieldMap = map[string]bundleFieldDTO{
 	"Attachment": {dto: AccountBundleAttachment{}, renamed: map[string]string{
 		"ContactVCardUID": "ContactVCardUID",
 	}},
+	"ActivityImage": {dto: AccountBundleImage{}, renamed: bundleImageRenames("ActivityID")},
+	"NoteImage":     {dto: AccountBundleImage{}, renamed: bundleImageRenames("NoteID")},
+	"ContactImage":  {dto: AccountBundleImage{}, renamed: bundleImageRenames("ContactVCardUID")},
 	"CadencePolicy": {dto: AccountBundleCadencePolicy{}},
 	"Circle":        {dto: AccountBundleCircle{}},
 	"Contact": {dto: AccountBundleContact{}, renamed: map[string]string{
@@ -98,6 +101,9 @@ var bundleUniversalExcluded = map[string]string{
 // bundleFieldExcluded maps model -> column (Go field name) -> the reason the
 // bundle deliberately does not carry it. Each entry is a decision.
 var bundleFieldExcluded = map[string]map[string]string{
+	"ActivityImage": bundleImageExcluded(),
+	"NoteImage":     bundleImageExcluded(),
+	"ContactImage":  bundleImageExcluded(),
 	"Activity": {
 		"ID": reasonPK, "Revision": reasonRevision, "ETag": reasonRevision,
 	},
@@ -105,7 +111,7 @@ var bundleFieldExcluded = map[string]map[string]string{
 		"StoredName": "server-generated on-disk filename; attachment bytes are not embedded in v1 (AccountBundleOmissions.Attachments)",
 	},
 	"Contact": {
-		"MainImageID": "ADR 0040 slice (c): the chosen gallery image is not yet carried in the bundle",
+		"MainImageID": "carried as contacts[].main_image, the image uuid (a uint pointer is not portable)",
 		"ID":          reasonPK,
 		"Revision":    reasonRevision,
 		"VCardExtra":  "legacy unmapped-vCard-property blob; RecordForContact folds it into Passthrough, which the bundle carries",
@@ -222,4 +228,25 @@ func TestAccountBundleFieldsAreCarriedOrExcluded(t *testing.T) {
 func modelFieldRenamed(spec bundleFieldDTO, field string) bool {
 	_, ok := spec.renamed[field]
 	return ok
+}
+
+// bundleImageRenames maps an image model's owner key and crop columns onto the
+// shared AccountBundleImage DTO: the owner becomes the portable Owner id and
+// the four crop fractions fold into Crop.
+func bundleImageRenames(ownerField string) map[string]string {
+	return map[string]string{
+		ownerField: "Owner", "MIMEType": "MIMEType",
+		"CropX": "Crop", "CropY": "Crop", "CropW": "Crop", "CropH": "Crop",
+	}
+}
+
+// bundleImageExcluded lists the image columns the bundle recomputes on import
+// rather than carries: names and sizes of on-disk variants, and the dHash.
+func bundleImageExcluded() map[string]string {
+	const regenerated = "regenerated from the embedded full variant on import (ADR 0040 decision 3)"
+	return map[string]string{
+		"StoredName": regenerated, "ThumbName": regenerated, "ThumbMIMEType": regenerated,
+		"ThumbSizeBytes": regenerated, "SizeBytes": regenerated, "DHash": regenerated,
+		"ID": reasonPK,
+	}
 }

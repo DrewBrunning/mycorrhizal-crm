@@ -853,6 +853,51 @@ class NoteFormViewModelTest {
     }
 
     @Test
+    fun `an image-only note is created empty with awaiting_images and its photos upload`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            coEvery { noteRepository.createUnassigned(any()) } returns
+                Result.success(Note(id = 12, content = ""))
+            coEvery {
+                noteRepository.uploadImage(12, "a.jpg", "image/jpeg", any())
+            } returns Result.success(NoteImage(id = 1, noteId = 12))
+
+            val vm = createViewModel(contactId = 0)
+            vm.onDateChange("2026-08-10")
+            vm.addImages(listOf(PendingNoteImage("a.jpg", "image/jpeg", byteArrayOf(1))))
+            vm.save()
+            advanceUntilIdle()
+
+            coVerify {
+                noteRepository.createUnassigned(
+                    match<NoteInput> { it.content == "" && it.awaitingImages == true }
+                )
+            }
+            coVerify { noteRepository.uploadImage(12, "a.jpg", "image/jpeg", any()) }
+            assertEquals(NoteFormEvent.Saved, vm.events.value)
+        }
+
+    @Test
+    fun `a note with text never sends awaiting_images`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { noteRepository.createUnassigned(any()) } returns
+            Result.success(Note(id = 12, content = "hi"))
+        coEvery { noteRepository.uploadImage(any(), any(), any(), any()) } returns
+            Result.success(NoteImage(id = 1, noteId = 12))
+
+        val vm = createViewModel(contactId = 0)
+        vm.onContentChange("hi")
+        vm.onDateChange("2026-08-10")
+        vm.addImages(listOf(PendingNoteImage("a.jpg", "image/jpeg", byteArrayOf(1))))
+        vm.save()
+        advanceUntilIdle()
+
+        coVerify { noteRepository.createUnassigned(match<NoteInput> { it.awaitingImages == null }) }
+    }
+
+    @Test
     fun `deleting an image removes it from the form`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {

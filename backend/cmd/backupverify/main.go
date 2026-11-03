@@ -20,6 +20,8 @@
 //	database:    positional argument, else SQLITE_DB_PATH, else mycorrhizal.db
 //	photos:      BACKUP_PHOTOS_DIR, else PROFILE_PHOTO_DIR
 //	attachments: BACKUP_ATTACHMENTS_DIR, else ATTACHMENTS_DIR
+//	images:      BACKUP_IMAGES_DIR, else IMAGES_DIR, else an existing "images"
+//	             sibling of the photo directory (skipped when absent)
 //
 // The signature is verified with a key derived from the at-rest master key, so
 // verification must run with the same key environment the server (and `make
@@ -37,6 +39,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"mycorrhizal/atrest"
 	"mycorrhizal/database"
@@ -68,7 +71,8 @@ func run(args []string, out, errOut io.Writer) int {
 	// (unreadable database/directories → exit 2) from "a hole in the set"
 	// (→ exit 1). Authentication follows, so a tampered snapshot is reported
 	// even when its rows happen to reconcile.
-	report, err := database.VerifyBackupSet(dbPath, photoDir, attachmentsDir)
+	imagesDir := resolveImagesDir(photoDir)
+	report, err := database.VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir)
 	if err != nil {
 		fmt.Fprintln(errOut, "backupverify:", err)
 		return 2
@@ -80,8 +84,8 @@ func run(args []string, out, errOut io.Writer) int {
 		return sigCode
 	}
 
-	fmt.Fprintf(out, "database:    %s\nphotos:      %s\nattachments: %s\nsignature:   %s\n\n%s\n",
-		dbPath, photoDir, attachmentsDir, sigDetail, report.String())
+	fmt.Fprintf(out, "database:    %s\nphotos:      %s\nattachments: %s\nimages:      %s\nsignature:   %s\n\n%s\n",
+		dbPath, photoDir, attachmentsDir, firstNonEmpty(imagesDir, "(not checked)"), sigDetail, report.String())
 	if !report.Complete() {
 		return 1
 	}
@@ -144,6 +148,23 @@ func resolvePaths(args []string) (dbPath, photoDir, attachmentsDir string, err e
 		return "", "", "", fmt.Errorf("set the photo directory (BACKUP_PHOTOS_DIR or PROFILE_PHOTO_DIR) and the attachments directory (BACKUP_ATTACHMENTS_DIR or ATTACHMENTS_DIR)")
 	}
 	return dbPath, photoDir, attachmentsDir, nil
+}
+
+// resolveImagesDir finds the gallery-image directory (ADR 0040): an explicit
+// BACKUP_IMAGES_DIR / IMAGES_DIR must exist (a typo must not silently skip the
+// check); with neither set, the server's default (an "images" sibling of the
+// photo directory) is checked only when it exists, because the server creates
+// it on the first upload.
+func resolveImagesDir(photoDir string) string {
+	if explicit := firstNonEmpty(os.Getenv("BACKUP_IMAGES_DIR"), os.Getenv("IMAGES_DIR")); explicit != "" {
+		return explicit
+	}
+	def := filepath.Join(filepath.Dir(photoDir), "images")
+	// #nosec G703 -- def is the operator's own photo directory's sibling, not request input (CLI tool).
+	if info, err := os.Stat(def); err == nil && info.IsDir() {
+		return def
+	}
+	return ""
 }
 
 func firstNonEmpty(vals ...string) string {

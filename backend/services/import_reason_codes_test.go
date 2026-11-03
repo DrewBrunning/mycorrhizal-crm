@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/models"
 	"mycorrhizal/monica"
@@ -227,7 +228,7 @@ func TestMycorrhizalImport_SessionReasons(t *testing.T) {
 	// Not yet prepared: preview and confirm are refused.
 	_, appErr = mgr.Preview(1, id)
 	requireImportReason(t, appErr, apperrors.ReasonBundleNotPrepared, nil)
-	appErr = mgr.Confirm(db, 1, models.SourceImportConfirmRequest{SessionID: id}, meerkatTestLogger())
+	appErr = mgr.Confirm(db, 1, models.SourceImportConfirmRequest{SessionID: id}, config.Config{}, meerkatTestLogger())
 	requireImportReason(t, appErr, apperrors.ReasonBundleNotPrepared, nil)
 
 	mgr.sessions[id].phase = models.SourceImportPhaseFetchingContacts

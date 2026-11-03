@@ -134,6 +134,7 @@ object ErrorReasonCode {
     const val IMAGE_PROCESSING_BUSY = "image_processing_busy"
     const val IMAGE_NOT_FOUND = "image_not_found"
     const val IMAGE_INSUFFICIENT_STORAGE = "image_insufficient_storage"
+    const val NOTE_REQUIRES_CONTENT_OR_IMAGE = "note_requires_content_or_image"
     const val IMMICH_LINK_NOT_FOUND = "immich_link_not_found"
     const val IMMICH_LINK_ALREADY_EXISTS = "immich_link_already_exists"
     const val IMMICH_PERSON_NOT_FOUND = "immich_person_not_found"

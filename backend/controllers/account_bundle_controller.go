@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/imaging"
 	"mycorrhizal/internal/clock"
 	"mycorrhizal/logger"
 	"mycorrhizal/services"
@@ -40,8 +41,11 @@ func ExportAccountBundle(c *gin.Context) {
 		return
 	}
 
-	photoDir := currentConfig(c).ProfilePhotoDir
-	bundle, stats, err := services.BuildAccountBundle(db, userID, photoDir)
+	cfg := currentConfig(c)
+	bundle, stats, err := services.BuildAccountBundleWithImages(db, userID, cfg.ProfilePhotoDir, services.BundleImageExport{
+		Store:          imaging.Store{Dir: cfg.ImagesDir},
+		MaxBundleBytes: accountBundleMaxBytes,
+	})
 	if err != nil {
 		abortExportError(c, log, exportOpAccount, exportCatDatabase, "Failed to build account bundle", err)
 		return
@@ -84,6 +88,8 @@ func ExportAccountBundle(c *gin.Context) {
 	c.Header("X-Mycorrhizal-Bundle-Contacts", strconv.Itoa(stats.Contacts))
 	c.Header("X-Mycorrhizal-Bundle-Photos", strconv.Itoa(stats.PhotosEmbedded))
 	c.Header("X-Mycorrhizal-Bundle-Photos-Omitted", strconv.Itoa(stats.PhotosOmitted))
+	c.Header("X-Mycorrhizal-Bundle-Images", strconv.Itoa(stats.ImagesEmbedded))
+	c.Header("X-Mycorrhizal-Bundle-Images-Omitted", strconv.Itoa(stats.ImagesOmitted))
 
 	c.Data(http.StatusOK, "application/json; charset=utf-8", payload)
 
@@ -91,6 +97,8 @@ func ExportAccountBundle(c *gin.Context) {
 		Int("contacts", stats.Contacts).
 		Int("photos", stats.PhotosEmbedded).
 		Int("photos_omitted", stats.PhotosOmitted).
+		Int("images", stats.ImagesEmbedded).
+		Int("images_omitted", stats.ImagesOmitted).
 		Msg("Account bundle export completed successfully")
 }
 

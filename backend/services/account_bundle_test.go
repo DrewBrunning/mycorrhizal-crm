@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/config"
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
@@ -630,7 +631,7 @@ func TestMycorrhizalImportManager_Lifecycle(t *testing.T) {
 	for i, row := range preview.Rows {
 		actions[i] = models.RowImportAction{RowIndex: row.RowIndex, Action: "add"}
 	}
-	require.Nil(t, mgr.Confirm(targetDB, target.ID, models.SourceImportConfirmRequest{SessionID: up.SessionID, Actions: actions}, &log))
+	require.Nil(t, mgr.Confirm(targetDB, target.ID, models.SourceImportConfirmRequest{SessionID: up.SessionID, Actions: actions}, config.Config{}, &log))
 	status := waitForMycorrhizalPhase(t, mgr, target.ID, up.SessionID, models.SourceImportPhaseDone)
 	require.NotNil(t, status.Result)
 	assert.Equal(t, 3, status.Result.Created)

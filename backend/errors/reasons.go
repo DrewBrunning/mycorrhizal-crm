@@ -36,6 +36,7 @@ var reasonAreas = []string{
 	"graph",
 	"geocoder",
 	"image",
+	"note",
 }
 
 // Reason constants. Each must be a key of reasonRegistry (and vice versa);
@@ -141,6 +142,9 @@ const (
 	ReasonImageProcessingBusy      ReasonCode = "image_processing_busy"
 	ReasonImageNotFound            ReasonCode = "image_not_found"
 	ReasonImageInsufficientStorage ReasonCode = "image_insufficient_storage"
+	// ReasonNoteRequiresContentOrImage: a note must keep non-empty content or
+	// at least one live image (ADR 0040 decision 11).
+	ReasonNoteRequiresContentOrImage ReasonCode = "note_requires_content_or_image"
 
 	ReasonAttachmentNotFound                        ReasonCode = "attachment_not_found"
 	ReasonAttachmentFileNotFound                    ReasonCode = "attachment_file_not_found"
@@ -596,6 +600,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonImageLimitReached:              {Template: "This item already has the maximum of {limit} images", Params: []string{"limit"}},
 	ReasonImageProcessingBusy:            {Template: "Image processing is busy; try again shortly"},
 	ReasonImageNotFound:                  {Template: "Image not found"},
+	ReasonNoteRequiresContentOrImage:     {Template: "A note needs text or at least one image"},
 	ReasonImageInsufficientStorage:       {Template: "Not enough disk space to store the image"},
 
 	ReasonAttachmentNotFound:                        {Template: "Attachment not found"},

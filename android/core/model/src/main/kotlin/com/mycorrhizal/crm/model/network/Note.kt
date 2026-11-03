@@ -27,7 +27,12 @@ data class Note(
 data class NoteInput(
     val content: String? = null,
     val date: String? = null,
-    @Json(name = "contact_id") val contactId: Int? = null
+    @Json(name = "contact_id") val contactId: Int? = null,
+    /**
+     * Create only: allows empty [content] while the note's first image uploads
+     * (ADR 0040 decision 11). Null (omitted) for any note with text.
+     */
+    @Json(name = "awaiting_images") val awaitingImages: Boolean? = null
 )
 
 /** GET /contacts/{id}/notes — wrapped `{ notes }` array (M19: T17 cursor envelope). */
