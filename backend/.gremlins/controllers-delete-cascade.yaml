@@ -50,6 +50,7 @@ unleash:
         - ^helpers\.go$
         - ^household_controller\.go$
         - ^image_controller\.go$
+        - ^image_gallery\.go$
         - ^immich_controller\.go$
         - ^import_controller\.go$
         - ^integrity_controller\.go$

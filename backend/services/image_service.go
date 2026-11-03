@@ -63,61 +63,42 @@ type ImageService[T any, P interface {
 	afterProcess func()
 }
 
-// ContactImageService builds the contact-gallery service from config (ADR 0040 slice c).
-func ContactImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.ContactImage, *models.ContactImage] {
+// newImageService is the one constructor behind the three per-owner ones: it
+// applies the config defaults (50 MP, 20 MiB) and stamps the owner kind.
+func newImageService[T any, P interface {
+	*T
+	ImageRow
+}](kind OwnerKind, db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[T, P] {
 	if maxPixels <= 0 {
 		maxPixels = imaging.DefaultLimits.MaxPixels
 	}
 	if maxBytes <= 0 {
 		maxBytes = 20 << 20
 	}
-	return &ImageService[models.ContactImage, *models.ContactImage]{
+	return &ImageService[T, P]{
 		DB:       db,
 		Store:    store,
-		Kind:     OwnerKindContact,
+		Kind:     kind,
 		Limit:    limit,
 		Limits:   imaging.Limits{MaxPixels: maxPixels},
 		MaxBytes: maxBytes,
 		Quota:    quota,
 	}
+}
+
+// ContactImageService builds the contact-gallery service from config (ADR 0040 slice c).
+func ContactImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.ContactImage, *models.ContactImage] {
+	return newImageService[models.ContactImage](OwnerKindContact, db, store, limit, maxPixels, maxBytes, quota)
 }
 
 // NoteImageService builds the note-image service from config (ADR 0040 slice b).
 func NoteImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.NoteImage, *models.NoteImage] {
-	if maxPixels <= 0 {
-		maxPixels = imaging.DefaultLimits.MaxPixels
-	}
-	if maxBytes <= 0 {
-		maxBytes = 20 << 20
-	}
-	return &ImageService[models.NoteImage, *models.NoteImage]{
-		DB:       db,
-		Store:    store,
-		Kind:     OwnerKindNote,
-		Limit:    limit,
-		Limits:   imaging.Limits{MaxPixels: maxPixels},
-		MaxBytes: maxBytes,
-		Quota:    quota,
-	}
+	return newImageService[models.NoteImage](OwnerKindNote, db, store, limit, maxPixels, maxBytes, quota)
 }
 
 // ActivityImageService builds the activity-image service from config.
 func ActivityImageService(db *gorm.DB, store imaging.Store, limit, maxPixels int, maxBytes int64, quota UserQuota) *ImageService[models.ActivityImage, *models.ActivityImage] {
-	if maxPixels <= 0 {
-		maxPixels = imaging.DefaultLimits.MaxPixels
-	}
-	if maxBytes <= 0 {
-		maxBytes = 20 << 20
-	}
-	return &ImageService[models.ActivityImage, *models.ActivityImage]{
-		DB:       db,
-		Store:    store,
-		Kind:     OwnerKindActivity,
-		Limit:    limit,
-		Limits:   imaging.Limits{MaxPixels: maxPixels},
-		MaxBytes: maxBytes,
-		Quota:    quota,
-	}
+	return newImageService[models.ActivityImage](OwnerKindActivity, db, store, limit, maxPixels, maxBytes, quota)
 }
 
 func (s *ImageService[T, P]) auditEntity() string {
