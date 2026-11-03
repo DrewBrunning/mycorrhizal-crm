@@ -548,15 +548,40 @@ func stepKeyedByUID(step CascadeStep) bool {
 }
 
 // collectContactFiles gathers the on-disk files of one trashed contact's
-// attachments BEFORE the rows are
+// attachments and gallery (contact and note images) BEFORE the rows are
 // deleted. When the UID is shared, only rows of this deletion's batch count.
 func collectContactFiles(tx *gorm.DB, userID uint, contact models.Contact, shared bool, batch map[string][]string, files *PurgedFiles) error {
 	att := tx.Unscoped().Model(&models.Attachment{}).Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID)
+	img := tx.Unscoped().Model(&models.ContactImage{}).Select("user_id", "stored_name", "thumb_name").
+		Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID)
 	if shared {
 		att = att.Where("id IN ?", batch["attachments"])
+		img = img.Where("id IN ?", batch["contact_images"])
 	}
 	if err := att.Pluck("stored_name", &files.Attachments).Error; err != nil {
 		return err
+	}
+	var rows []struct {
+		UserID     uint
+		StoredName string
+		ThumbName  string
+	}
+	if err := img.Scan(&rows).Error; err != nil {
+		return err
+	}
+	// Note images follow the note, which is keyed by this contact's row id.
+	var noteRows []struct {
+		UserID     uint
+		StoredName string
+		ThumbName  string
+	}
+	if err := tx.Unscoped().Model(&models.NoteImage{}).Select("user_id", "stored_name", "thumb_name").
+		Where("note_id IN (SELECT id FROM notes WHERE contact_id = ? AND user_id = ?)", contact.ID, userID).
+		Scan(&noteRows).Error; err != nil {
+		return err
+	}
+	for _, r := range append(rows, noteRows...) {
+		files.Images = appendImageFiles(files.Images, r.UserID, r.StoredName, r.ThumbName)
 	}
 	return nil
 }
