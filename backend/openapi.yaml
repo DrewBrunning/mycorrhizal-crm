@@ -6038,6 +6038,134 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   # --- Contact images (ADR 0040 slice a, issue #1994) ---
+  /contacts/{id}/photos:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: The aggregated contact Photos tab (own + notes + activities)
+      operationId: getContactPhotos
+      tags: [Contacts]
+      responses:
+        "200":
+          description: Newest-first photos across the contact's own gallery and its notes and activities.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactPhotosResponse" }
+        "404":
+          description: Contact not found (or not owned by the caller).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /contacts/{id}/main-image:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    put:
+      summary: Set the contact's main image and derive its avatar
+      description: Only a normal-sensitivity image can be the main image. Saves the contact, so the contact revision advances and the new value is returned.
+      operationId: putContactMainImage
+      tags: [Contacts]
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MainImageInput" }
+      responses:
+        "200":
+          description: Main image updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MainImageResponse" }
+        "400":
+          description: Missing image_id, or the image is private or secret.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Contact or image not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "412":
+          description: Stale If-Match revision, or the contact was modified concurrently; nothing was changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      summary: Clear the contact's main image and derived avatar
+      operationId: deleteContactMainImage
+      tags: [Contacts]
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      responses:
+        "200":
+          description: Main image cleared (a no-op when none is set).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MainImageResponse" }
+        "404":
+          description: Contact not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "412":
+          description: Stale If-Match revision, or the contact was modified concurrently; nothing was changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+  /contacts/{id}/images/adopt:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Copy a note or activity image into the contact gallery
+      operationId: adoptContactImage
+      tags: [Contacts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AdoptImageInput" }
+      responses:
+        "200":
+          description: A near-duplicate of an existing gallery image; that image is returned and nothing is copied. Exempt from the image cap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactImageUploadResponse" }
+        "201":
+          description: The copied image. Counts against the image cap, the storage quota and the free-disk preflight.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactImageUploadResponse" }
+        "400":
+          description: Missing field or unknown source_kind.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Contact, source or image not found (the source must be a note filed under, or a live activity linked to, this contact).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: The contact gallery already has the maximum number of images.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "507":
+          description: Over the storage quota or out of disk space.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /contacts/{id}/images:
     parameters:
       - name: id
@@ -6045,12 +6173,12 @@ paths:
         required: true
         schema: { type: integer }
     get:
-      summary: List a note's images
+      summary: List a contact's gallery images
       operationId: listContactImages
-      tags: [Activities]
+      tags: [Contacts]
       responses:
         "200":
-          description: The activity's live images, newest first.
+          description: The contact's live gallery images, newest first.
           content:
             application/json:
               schema:
@@ -6067,9 +6195,9 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
     post:
-      summary: Upload an image to a note
+      summary: Upload an image to the contact gallery
       operationId: uploadContactImage
-      tags: [Activities]
+      tags: [Contacts]
       requestBody:
         required: true
         content:
@@ -6080,15 +6208,16 @@ paths:
               properties:
                 file: { type: string, format: binary }
       responses:
+        "200":
+          description: A near-duplicate of an existing gallery image (perceptual-hash match). That image is returned and nothing is stored, so a retried upload is idempotent. Exempt from the image cap.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ContactImageUploadResponse" }
         "201":
           description: The stored image.
           content:
             application/json:
-              schema:
-                type: object
-                required: [image]
-                properties:
-                  image: { $ref: "#/components/schemas/ContactImage" }
+              schema: { $ref: "#/components/schemas/ContactImageUploadResponse" }
         "400":
           description: Unsupported, corrupt, HEIC or oversized-pixel image.
           content:
@@ -6100,7 +6229,7 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "409":
-          description: The activity already has the maximum number of images.
+          description: The contact gallery already has the maximum number of images.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -6120,15 +6249,44 @@ paths:
         required: true
         schema: { type: integer }
     delete:
-      summary: Delete a note image (soft delete)
+      summary: Delete a gallery image (soft delete)
       operationId: deleteContactImage
-      tags: [Activities]
+      tags: [Contacts]
       responses:
         "200":
           description: Deleted.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MessageResponse" }
+        "404":
+          description: Contact or image not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      summary: Update an image's sensitivity or crop
+      operationId: patchContactImage
+      tags: [Contacts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactImagePatchInput" }
+      responses:
+        "200":
+          description: The updated image.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [image]
+                properties:
+                  image: { $ref: "#/components/schemas/ContactImage" }
+        "400":
+          description: Invalid sensitivity or crop rectangle.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Contact or image not found.
           content:
@@ -14922,6 +15080,13 @@ components:
       properties:
         message: { type: string }
       additionalProperties: true
+    MainImageResponse:
+      type: object
+      required: [message, revision]
+      properties:
+        message: { type: string }
+        main_image_id: { type: integer, description: Present when a main image was set. }
+        revision: { type: integer, format: int64, description: The contact revision after the write. }
     LogoutResponse:
       type: object
       properties:
@@ -17302,6 +17467,72 @@ components:
         created_at: { type: string, format: date-time }
         file_url: { type: string, description: Authenticated relative URL of the full variant. }
         thumbnail_url: { type: string, description: Authenticated relative URL of the thumbnail. }
+    ImageCrop:
+      type: object
+      required: [x, y, w, h]
+      properties:
+        x: { type: number, format: double, minimum: 0, maximum: 1 }
+        y: { type: number, format: double, minimum: 0, maximum: 1 }
+        w: { type: number, format: double, minimum: 0, exclusiveMinimum: true, maximum: 1 }
+        h: { type: number, format: double, minimum: 0, exclusiveMinimum: true, maximum: 1 }
+    ContactImagePatchInput:
+      type: object
+      properties:
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        crop:
+          type: object
+          allOf: [{ $ref: "#/components/schemas/ImageCrop" }]
+          nullable: true
+          description: Omit to leave the stored crop alone, send null to clear it, send a rectangle to set it. When the image is the contact's main image, a change regenerates the avatar.
+    MainImageInput:
+      type: object
+      required: [image_id]
+      properties:
+        image_id: { type: integer }
+    AdoptImageInput:
+      type: object
+      required: [source_kind, source_id, image_id]
+      properties:
+        source_kind: { type: string, enum: [note, activity] }
+        source_id: { type: integer }
+        image_id: { type: integer }
+    ContactImageUploadResponse:
+      type: object
+      required: [image, deduplicated]
+      properties:
+        image: { $ref: "#/components/schemas/ContactImage" }
+        deduplicated: { type: boolean, description: True when an existing near-duplicate image was returned instead of storing a new one. }
+    PhotoSource:
+      type: object
+      required: [kind, id, label]
+      properties:
+        kind: { type: string, enum: [contact, note, activity] }
+        id: { type: integer, description: "The contact id, note id or activity id that holds the image." }
+        label: { type: string }
+    ContactPhoto:
+      type: object
+      required: [id, source, mime_type, width, height, size_bytes, sensitivity, created_at, file_url, thumbnail_url]
+      properties:
+        id: { type: integer }
+        source: { $ref: "#/components/schemas/PhotoSource" }
+        mime_type: { type: string, enum: [image/jpeg, image/png] }
+        width: { type: integer }
+        height: { type: integer }
+        size_bytes: { type: integer }
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        taken_at: { type: string, format: date-time, nullable: true }
+        taken_date: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+        file_url: { type: string }
+        thumbnail_url: { type: string }
+    ContactPhotosResponse:
+      type: object
+      required: [photos, total]
+      properties:
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/ContactPhoto" }
+        total: { type: integer }
     Tag:
       type: object
       required: [id, created_at, updated_at, name]

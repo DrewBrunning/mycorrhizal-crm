@@ -14,6 +14,7 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"math/bits"
 	"net/http"
 	"runtime"
 	"strings"
@@ -325,4 +326,14 @@ func differenceHash(img image.Image) int64 {
 		}
 	}
 	return hash
+}
+
+// DedupeMaxHamming is the dHash distance at or below which two contact
+// gallery images are treated as the same picture (ADR 0040 decision 9).
+const DedupeMaxHamming = 4
+
+// HammingDistance returns the bit distance between two 64-bit difference
+// hashes.
+func HammingDistance(a, b int64) int {
+	return bits.OnesCount64(uint64(a ^ b)) // #nosec G115 -- hashes are bit patterns, not quantities
 }

@@ -23,10 +23,11 @@ import (
 )
 
 type contactImageTestEnv struct {
-	db     *gorm.DB
-	router *gin.Engine
-	user   models.User
-	dir    string
+	db              *gorm.DB
+	router          *gin.Engine
+	user            models.User
+	dir             string
+	profilePhotoDir string
 }
 
 func setupContactImageRouter(t *testing.T) contactImageTestEnv {
@@ -36,7 +37,8 @@ func setupContactImageRouter(t *testing.T) contactImageTestEnv {
 	user := models.User{Username: "image-owner", Password: "password123!A", Email: "image-owner@example.com"}
 	require.NoError(t, db.Create(&user).Error)
 	dir := filepath.Join(t.TempDir(), "images")
-	cfg := config.Config{ProfilePhotoDir: t.TempDir(), ImagesDir: dir, ImageMaxUploadMB: 20, ImageMaxPixels: 50_000_000, ImageMaxPerContact: 10}
+	photoDir := t.TempDir()
+	cfg := config.Config{ProfilePhotoDir: photoDir, ImagesDir: dir, ImageMaxUploadMB: 20, ImageMaxPixels: 50_000_000, ImageMaxPerContact: 10}
 	router := gin.Default()
 	router.MaxMultipartMemory = 10 << 20
 	router.Use(func(c *gin.Context) {
@@ -50,7 +52,7 @@ func setupContactImageRouter(t *testing.T) contactImageTestEnv {
 	router.GET("/contacts/:id/images/:image_id/file", func(c *gin.Context) { DownloadContactImage(c, false) })
 	router.GET("/contacts/:id/images/:image_id/thumbnail", func(c *gin.Context) { DownloadContactImage(c, true) })
 	router.DELETE("/contacts/:id/images/:image_id", DeleteContactImage)
-	return contactImageTestEnv{db: db, router: router, user: user, dir: dir}
+	return contactImageTestEnv{db: db, router: router, user: user, dir: dir, profilePhotoDir: photoDir}
 }
 
 func uploadContactImageForTest(t *testing.T, env contactImageTestEnv, contactID uint, data []byte) *httptest.ResponseRecorder {
@@ -221,10 +223,10 @@ func TestContactImages_UploadValidationAndLimit(t *testing.T) {
 	// Per-contact cap.
 	cfgEnv := env
 	for i := 0; i < 10; i++ {
-		capRec := uploadContactImageForTest(t, cfgEnv, contact.ID, testJPEG(t))
+		capRec := uploadContactImageForTest(t, cfgEnv, contact.ID, testJPEGVariant(t, i))
 		require.Equal(t, http.StatusCreated, capRec.Code, capRec.Body.String())
 	}
-	overRec := uploadContactImageForTest(t, cfgEnv, contact.ID, testJPEG(t))
+	overRec := uploadContactImageForTest(t, cfgEnv, contact.ID, testJPEGVariant(t, 10))
 	assert.Equal(t, http.StatusConflict, overRec.Code, overRec.Body.String())
 }
 

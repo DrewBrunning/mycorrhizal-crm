@@ -71,6 +71,26 @@ func testJPEG(t *testing.T) []byte {
 	return buf.Bytes()
 }
 
+// testJPEGVariant returns a distinct valid JPEG for each seed so per-owner
+// cap tests are not deduplicated as the same picture (ADR 0040 decision 9).
+func testJPEGVariant(t *testing.T, seed int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 64, 48))
+	for y := 0; y < 48; y++ {
+		for x := 0; x < 64; x++ {
+			c := color.RGBA{R: uint8(x * 3), G: uint8(y * 4), B: 80, A: 255}
+			cell := 4 + seed
+			if (x/cell+y/cell)%2 == 0 {
+				c = color.RGBA{R: 255, G: 0, B: 0, A: 255}
+			}
+			img.Set(x, y, c)
+		}
+	}
+	var buf bytes.Buffer
+	require.NoError(t, jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}))
+	return buf.Bytes()
+}
+
 func uploadActivityImage(t *testing.T, env imageTestEnv, activityID uint, data []byte) *httptest.ResponseRecorder {
 	t.Helper()
 	var buf bytes.Buffer
