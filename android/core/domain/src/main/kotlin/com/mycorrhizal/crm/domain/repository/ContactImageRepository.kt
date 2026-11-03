@@ -42,6 +42,23 @@ interface ContactImageRepository {
     /** PATCH /contacts/{id}/images/{imageId} — set the crop, or clear it with null. */
     suspend fun setCrop(contactId: Int, imageId: Int, crop: ImageCrop?): Result<ContactImage>
 
+    /**
+     * PATCH /contacts/{id}/images/{imageId} with `sensitivity` only. Raising it above
+     * `normal` makes the server clear the contact's main image if this was it.
+     */
+    suspend fun setSensitivity(
+        contactId: Int,
+        imageId: Int,
+        sensitivity: String
+    ): Result<ContactImage>
+
+    /**
+     * Delete a note or activity image from the Photos tab: DELETE /notes/{sourceId}/images/{id}
+     * or /activities/{sourceId}/images/{id} ([sourceKind] `note` or `activity`; any other
+     * kind is a failure — own images use [delete]).
+     */
+    suspend fun deleteSourceImage(sourceKind: String, sourceId: Int, imageId: Int): Result<Unit>
+
     /** POST /contacts/{id}/images/adopt — copy a note/activity image into the gallery. */
     suspend fun adopt(
         contactId: Int,

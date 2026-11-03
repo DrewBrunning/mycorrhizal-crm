@@ -77,14 +77,53 @@ class ContactGalleryViewModel @Inject constructor(
         }
     }
 
-    /** Delete with the caller's confirmation handled in the UI. Only the contact's own images. */
+    /**
+     * Delete with the caller's confirmation handled in the UI. An own image goes through the
+     * contact gallery; a note/activity image is deleted on its owner (the backend permits it
+     * from either screen), which also removes it from that note or activity.
+     */
     fun delete(photo: ContactPhoto) {
-        if (!photo.isOwn || _uiState.value.busyKey != null) return
+        if (_uiState.value.busyKey != null) return
         runWrite(photo) {
-            contactImageRepository.delete(contactId, photo.id).foldApiError(
+            val result = if (photo.isOwn) {
+                contactImageRepository.delete(contactId, photo.id)
+            } else {
+                contactImageRepository.deleteSourceImage(
+                    photo.source.kind,
+                    photo.source.id,
+                    photo.id
+                )
+            }
+            result.foldApiError(
                 onSuccess = {
                     _uiState.update { state ->
                         state.copy(photos = state.photos.filterNot { it.key == photo.key })
+                    }
+                    // Deleting the main image clears the pointer and bumps the revision.
+                    if (photo.isOwn) refreshMain()
+                },
+                onError = ::fail
+            )
+        }
+    }
+
+    /**
+     * Change an own image's sensitivity (ADR 0040 decision 7). Only the contact's own images
+     * are patchable; raising it above `normal` makes the server clear the main image if this
+     * was it, so the pointer and revision are re-read.
+     */
+    fun setSensitivity(photo: ContactPhoto, sensitivity: String) {
+        if (!photo.isOwn || _uiState.value.busyKey != null) return
+        if (photo.sensitivity.orEmpty().ifEmpty { SENSITIVITY_NORMAL } == sensitivity) return
+        runWrite(photo) {
+            contactImageRepository.setSensitivity(contactId, photo.id, sensitivity).foldApiError(
+                onSuccess = {
+                    _uiState.update { state ->
+                        state.copy(
+                            photos = state.photos.map {
+                                if (it.key == photo.key) it.copy(sensitivity = sensitivity) else it
+                            }
+                        )
                     }
                     refreshMain()
                 },
@@ -95,7 +134,8 @@ class ContactGalleryViewModel @Inject constructor(
 
     /** Make one of the contact's own images the main image (drives the avatar). */
     fun setMain(photo: ContactPhoto) {
-        if (!photo.isOwn || _uiState.value.busyKey != null) return
+        // Only a normal-sensitivity image can be main: the avatar leaves the instance via CardDAV.
+        if (!photo.isOwn || !photo.isNormalSensitivity || _uiState.value.busyKey != null) return
         runWrite(photo) {
             contactImageRepository.setMainImage(contactId, photo.id, _uiState.value.revision)
                 .foldApiError(onSuccess = ::applyMain, onError = { failAndResync(it) })
@@ -115,8 +155,18 @@ class ContactGalleryViewModel @Inject constructor(
         if (!photo.isOwn || _uiState.value.busyKey != null) return
         runWrite(photo) {
             contactImageRepository.setCrop(contactId, photo.id, crop).foldApiError(
-                // A crop on the main image regenerates the avatar and bumps the revision.
-                onSuccess = { refreshMain() },
+                onSuccess = {
+                    // Keep the stored crop on the tile so the editor reopens at it.
+                    _uiState.update { state ->
+                        state.copy(
+                            photos = state.photos.map {
+                                if (it.key == photo.key) it.copy(crop = crop) else it
+                            }
+                        )
+                    }
+                    // A crop on the main image regenerates the avatar and bumps the revision.
+                    refreshMain()
+                },
                 onError = ::fail
             )
         }
@@ -171,11 +221,16 @@ class ContactGalleryViewModel @Inject constructor(
 
     private companion object {
         const val CLEAR_MAIN_KEY = "clear-main"
+        const val SENSITIVITY_NORMAL = "normal"
     }
 }
 
 /** One picked image, read from the system photo picker. */
 data class PickedContactImage(val fileName: String, val mimeType: String, val bytes: ByteArray)
+
+/** An absent sensitivity on the wire means `normal` (the column default). */
+val ContactPhoto.isNormalSensitivity: Boolean
+    get() = sensitivity.isNullOrEmpty() || sensitivity == "normal"
 
 /** Ids are unique per owner table, not across them, so a tile is keyed by kind + id. */
 val ContactPhoto.key: String get() = "${source.kind}-$id"

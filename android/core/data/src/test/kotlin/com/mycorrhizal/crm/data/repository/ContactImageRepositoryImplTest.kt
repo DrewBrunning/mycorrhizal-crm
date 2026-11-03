@@ -58,6 +58,36 @@ class ContactImageRepositoryImplTest {
     }
 
     @Test
+    fun `setSensitivity forwards to the client`() = runTest {
+        coEvery { apiClient.patchContactImageSensitivity(5, 9, "secret") } returns
+            Result.success(ContactImage(id = 9, sensitivity = "secret"))
+
+        assertEquals("secret", repository.setSensitivity(5, 9, "secret").getOrThrow().sensitivity)
+    }
+
+    @Test
+    fun `deleteSourceImage routes a note image to the note and an activity image to the activity`() =
+        runTest {
+            coEvery { apiClient.deleteNoteImage(8, 3) } returns Result.success(Unit)
+            coEvery { apiClient.deleteActivityImage(9, 4) } returns Result.success(Unit)
+
+            repository.deleteSourceImage("note", 8, 3).getOrThrow()
+            repository.deleteSourceImage("activity", 9, 4).getOrThrow()
+
+            coVerify(exactly = 1) { apiClient.deleteNoteImage(8, 3) }
+            coVerify(exactly = 1) { apiClient.deleteActivityImage(9, 4) }
+        }
+
+    @Test
+    fun `deleteSourceImage rejects the contact kind`() = runTest {
+        assertEquals(
+            true,
+            repository.deleteSourceImage("contact", 5, 9).exceptionOrNull() is
+                IllegalArgumentException
+        )
+    }
+
+    @Test
     fun `setCrop and adopt forward to the client`() = runTest {
         val crop = ImageCrop(0.0, 0.0, 0.5, 0.5)
         coEvery { apiClient.patchContactImageCrop(5, 9, crop) } returns

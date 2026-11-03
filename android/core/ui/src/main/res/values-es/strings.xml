@@ -3228,4 +3228,9 @@
     <string name="contact_images_source_labeled">%1$s: %2$s</string>
     <string name="contact_images_sensitivity_private">Privada</string>
     <string name="contact_images_sensitivity_secret">Secreta</string>
+    <string name="contact_images_sensitivity_change">Cambiar sensibilidad</string>
+    <string name="contact_images_sensitivity_title">Sensibilidad de la foto</string>
+    <string name="contact_images_sensitivity_normal">Normal</string>
+    <string name="contact_images_sensitivity_main_note">Una foto privada o secreta no puede ser la foto principal; al elevarla deja de serlo.</string>
+    <string name="contact_images_delete_source_confirm">¿Eliminar esta foto? También se quitará de su nota o actividad.</string>
 </resources>

@@ -6587,6 +6587,39 @@ class ApiClientTest {
     }
 
     @Test
+    fun `photos and images decode the stored crop and a null crop`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody(
+                """{"photos":[{"id":3,"source":{"kind":"contact","id":5,"label":"Contact"},"crop":{"x":0.1,"y":0.2,"w":0.5,"h":0.4}},{"id":4,"source":{"kind":"note","id":8,"label":"n"},"crop":null}],"total":2}"""
+            )
+        )
+        val photos = client.listContactPhotos(5).getOrThrow().photos
+        assertEquals(ImageCrop(0.1, 0.2, 0.5, 0.4), photos[0].crop)
+        assertEquals(null, photos[1].crop)
+
+        server.enqueue(
+            MockResponse().setBody(
+                """{"image":{"id":9,"contact_id":5,"crop":{"x":0.0,"y":0.0,"w":1.0,"h":1.0}}}"""
+            )
+        )
+        val patched = client.patchContactImageCrop(5, 9, null).getOrThrow()
+        assertEquals(ImageCrop(0.0, 0.0, 1.0, 1.0), patched.crop)
+    }
+
+    @Test
+    fun `sensitivity patch sends only sensitivity so the stored crop is left alone`() =
+        runBlocking {
+            val body = """{"image":{"id":9,"contact_id":5,"sensitivity":"private"}}"""
+            server.enqueue(MockResponse().setBody(body))
+            val image = client.patchContactImageSensitivity(5, 9, "private").getOrThrow()
+            val request = server.takeRequest()
+            assertEquals("PATCH", request.method)
+            assertEquals("/api/v1/contacts/5/images/9", request.path)
+            assertEquals("""{"sensitivity":"private"}""", request.body.readUtf8())
+            assertEquals("private", image.sensitivity)
+        }
+
+    @Test
     fun `contact record carries main_image_id`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"id":5,"revision":7,"main_image_id":9}"""))
         val contact = client.getContact(5).getOrThrow()
