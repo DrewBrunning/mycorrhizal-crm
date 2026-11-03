@@ -187,7 +187,7 @@ func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir strin
 	report.MissingAttachments = missingRefs(attRefs, attachmentsDir)
 	orphanAtt, err := orphanFiles(attachmentsDir, referencedNames(attRefs))
 	if err != nil { // # pragma: no cover — orphanFiles can only fail via the TOCTOU race noted on its own os.ReadDir call
-		return nil, err // # pragma: no cover — defensive: statDir/query errors are covered by the shared checks above
+		return nil, err
 	}
 	report.OrphanAttachmentFiles = orphanAtt
 
@@ -229,7 +229,7 @@ func verifyImages(db *sql.DB, imagesDir string, report *BackupSetReport) error {
 	referenced := map[string]bool{}
 	for _, table := range imageTables {
 		if err := scanImageTable(db, table, imagesDir, referenced, report); err != nil {
-			return err // # pragma: no cover — defensive: statDir/query errors are covered by the shared checks above
+			return err
 		}
 	}
 

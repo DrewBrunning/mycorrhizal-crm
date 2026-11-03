@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"testing"
 
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
@@ -137,4 +138,13 @@ func TestCreateContactNote_EmptyContentNeedsAwaitingImages(t *testing.T) {
 
 	rec = noteJSON(t, env, "POST", path, map[string]any{"content": "", "date": "2024-01-01T00:00:00Z", "awaiting_images": true})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+}
+
+func TestUpdateNote_ImageCountFailureIs500(t *testing.T) {
+	env := imageOnlyEnv(t)
+	note := models.Note{UserID: env.user.ID, Content: "text", Date: testDate()}
+	require.NoError(t, env.db.Create(&note).Error)
+	dbtest.HideTable(t, env.db, "note_images")
+	rec := noteJSON(t, env, "PUT", "/notes/"+strconv.FormatUint(uint64(note.ID), 10), map[string]any{"content": "", "date": "2024-01-01T00:00:00Z"})
+	require.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
 }

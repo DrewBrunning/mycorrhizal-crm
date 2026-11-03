@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
@@ -69,57 +70,53 @@ func attachBundleImages(db *gorm.DB, userID uint, bundle *models.AccountBundle, 
 		actUUIDs[a.UUID] = true
 	}
 
+	var (
+		mains []struct {
+			VCardUID    string
+			MainImageID uint
+		}
+		cimgs []models.ContactImage
+		nimgs []models.NoteImage
+		aimgs []models.ActivityImage
+		notes []models.Note
+		acts  []models.Activity
+	)
+	// One check for all six reads: a failure of any is a failed export.
+	if err := errors.Join(
+		db.Model(&models.Contact{}).Select("vcard_uid, main_image_id").
+			Where("user_id = ? AND main_image_id IS NOT NULL", userID).Scan(&mains).Error,
+		db.Where("user_id = ?", userID).Find(&cimgs).Error,
+		db.Where("user_id = ?", userID).Find(&nimgs).Error,
+		db.Where("user_id = ?", userID).Find(&aimgs).Error,
+		db.Select("id, uuid").Where("user_id = ?", userID).Find(&notes).Error,
+		db.Select("id, uuid").Where("user_id = ?", userID).Find(&acts).Error,
+	); err != nil {
+		return err
+	}
+
 	mainIDs := map[uint]bool{}
-	var mains []struct {
-		VCardUID    string
-		MainImageID uint
-	}
-	if err := db.Model(&models.Contact{}).Select("vcard_uid, main_image_id").
-		Where("user_id = ? AND main_image_id IS NOT NULL", userID).Scan(&mains).Error; err != nil { // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
-		return err // # pragma: no cover — defensive
-	}
 	for _, m := range mains {
 		mainIDs[m.MainImageID] = true
 	}
+	noteUUIDByID := make(map[uint]string, len(notes))
+	for _, n := range notes {
+		noteUUIDByID[n.ID] = n.UUID
+	}
+	actUUIDByID := make(map[uint]string, len(acts))
+	for _, a := range acts {
+		actUUIDByID[a.ID] = a.UUID
+	}
 
 	var cands []bundleImageCandidate
-	var cimgs []models.ContactImage
-	if err := db.Where("user_id = ?", userID).Find(&cimgs).Error; err != nil { // # pragma: no cover — defensive
-		return err // # pragma: no cover — defensive
-	}
 	for _, im := range cimgs {
 		if _, ok := contactUIDs[im.ContactVCardUID]; ok {
 			cands = append(cands, bundleImageCandidate{row: im.ImageFields, kind: "contact", owner: im.ContactVCardUID, isMain: mainIDs[im.ID]})
 		}
 	}
-	noteUUIDByID := map[uint]string{}
-	var notes []models.Note
-	if err := db.Select("id, uuid").Where("user_id = ?", userID).Find(&notes).Error; err != nil { // # pragma: no cover — defensive
-		return err // # pragma: no cover — defensive
-	}
-	for _, n := range notes {
-		noteUUIDByID[n.ID] = n.UUID
-	}
-	var nimgs []models.NoteImage
-	if err := db.Where("user_id = ?", userID).Find(&nimgs).Error; err != nil { // # pragma: no cover — defensive
-		return err // # pragma: no cover — defensive
-	}
 	for _, im := range nimgs {
 		if u := noteUUIDByID[im.NoteID]; u != "" && noteUUIDs[u] {
 			cands = append(cands, bundleImageCandidate{row: im.ImageFields, kind: "note", owner: u})
 		}
-	}
-	actUUIDByID := map[uint]string{}
-	var acts []models.Activity
-	if err := db.Select("id, uuid").Where("user_id = ?", userID).Find(&acts).Error; err != nil { // # pragma: no cover — defensive
-		return err // # pragma: no cover — defensive
-	}
-	for _, a := range acts {
-		actUUIDByID[a.ID] = a.UUID
-	}
-	var aimgs []models.ActivityImage
-	if err := db.Where("user_id = ?", userID).Find(&aimgs).Error; err != nil { // # pragma: no cover — defensive
-		return err // # pragma: no cover — defensive
 	}
 	for _, im := range aimgs {
 		if u := actUUIDByID[im.ActivityID]; u != "" && actUUIDs[u] {

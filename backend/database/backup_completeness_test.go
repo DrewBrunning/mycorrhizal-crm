@@ -390,3 +390,32 @@ func TestVerifyBackupSetWithImages_RejectsMissingDirAndIgnoresStrayEntries(t *te
 	assert.Zero(t, report.ImagesScanned)
 	assert.Empty(t, report.OrphanImageFiles)
 }
+
+func TestVerifyBackupSetWithImages_BrokenImageTableIsAnError(t *testing.T) {
+	// A snapshot whose image table lacks the expected columns, or holds NULL
+	// names, cannot be reconciled: that is an error, not a silent pass.
+	for name, ddl := range map[string][]string{
+		"missing columns": {`DROP TABLE note_images`, `CREATE TABLE note_images (id integer)`},
+		"null names": {
+			`DROP TABLE note_images`,
+			`CREATE TABLE note_images (id integer, user_id integer, stored_name text, thumb_name text, deleted_at datetime)`,
+			`INSERT INTO note_images (id, user_id, stored_name, thumb_name) VALUES (1, 1, NULL, NULL)`,
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := newBackupSet(t)
+			require.NoError(t, s.db.Exec(`PRAGMA foreign_keys = OFF`).Error)
+			for _, stmt := range ddl {
+				require.NoError(t, s.db.Exec(stmt).Error)
+			}
+			_, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, t.TempDir())
+			require.Error(t, err)
+		})
+	}
+}
+
+func TestBackupSetReport_TotalMissingCountsImages(t *testing.T) {
+	r := &database.BackupSetReport{MissingImages: []database.MissingRef{{Kind: "image"}}}
+	assert.Equal(t, 1, r.TotalMissing())
+	assert.False(t, r.Complete())
+}
