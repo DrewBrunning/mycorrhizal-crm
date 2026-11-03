@@ -22,6 +22,8 @@ data class ContactRecordResponse(
     val passthrough: Passthrough? = null,
     val photo: String? = null,
     @Json(name = "photo_thumbnail") val photoThumbnail: String? = null,
+    /** ADR 0040 slice c: the contact's chosen gallery image (the avatar is derived from it). */
+    @Json(name = "main_image_id") val mainImageId: Int? = null,
     val archived: Boolean = false,
     // Issue #212: CRM-local favorite flag (web #173), always on the wire —
     // see ContactSummary.isFavorite.
