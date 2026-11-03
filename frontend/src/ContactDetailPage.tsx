@@ -1815,7 +1815,13 @@ export default function ContactDetailPage() {
 
       <SectionGroup id="photos">
         <PanelCard title={t('contactImages.title')}>
-          <ContactImageGallery contactId={Number(id ?? 0)} editable />
+          <ContactImageGallery
+            contactId={Number(id ?? 0)}
+            editable
+            mainImageId={record.main_image_id}
+            revision={record.revision}
+            onContactChanged={() => void reloadRecord()}
+          />
         </PanelCard>
       </SectionGroup>
 
