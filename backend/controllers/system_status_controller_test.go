@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -585,4 +586,36 @@ func TestGetSystemStatus_UpdateCheckDisabled_BlockStillMarshals(t *testing.T) {
 
 	raw := string(body)
 	assert.Contains(t, raw, `"update":{"enabled":false}`)
+}
+
+// Issue #2315 item 1 (#1939): the storage trend and threshold reads inside the
+// handler use the request context, so a client that has gone away stops the
+// work. A cancelled request context makes both reads fail closed (null trend,
+// nothing persisted); with context.Background() they would still run.
+func TestGetSystemStatus_StorageReadsUseRequestContext(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "x.db")
+	db := dbtest.NewAt(t, dbPath)
+	admin := seedAdmin(t, db)
+	for d := 0; d <= 8; d++ {
+		require.NoError(t, db.Create(&models.StorageSample{
+			TakenAt:       time.Now().Add(-time.Duration(d)*24*time.Hour - 12*time.Hour),
+			DatabaseBytes: 1_000_000_000 - int64(d)*10_000_000,
+			FSUsedBytes:   int64(d) * 100,
+			FSTotalBytes:  1 << 40,
+		}).Error)
+	}
+	router := systemStatusEnv(t, db, validSystemStatusConfig(t, dbPath), admin.ID)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "/admin/system-status", nil)
+	router.ServeHTTP(w, req)
+
+	var resp SystemStatusResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp), w.Body.String())
+	assert.Nil(t, resp.Storage.Growth7DBytes, "trend read must observe the cancelled request context")
+	var states int64
+	require.NoError(t, db.Model(&models.AlertState{}).Where("condition_key = ?", "storage_threshold").Count(&states).Error)
+	assert.Zero(t, states, "threshold tier must not be persisted under a cancelled request context")
 }
