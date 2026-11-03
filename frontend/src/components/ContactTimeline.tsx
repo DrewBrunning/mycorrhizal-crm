@@ -27,9 +27,8 @@ import type { ReminderCompletion } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
 import { formatActivityDateRange } from '../utils/activityRange';
 import { calendarDateOnly } from '../utils/localDate';
-import ActivityImageGallery from './ActivityImageGallery';
+import ImageGallery, { activityImageGalleryApi, noteImageGalleryApi } from './ImageGallery';
 import MarkdownText from './MarkdownText';
-import NoteImageGallery from './NoteImageGallery';
 import { timelineMobileDateSx, timelinePhoneSx } from './timelineLayout';
 
 interface ContactTimelineProps {
@@ -315,9 +314,19 @@ export default function ContactTimeline({
                     <MarkdownText text={bodyText} sx={{ mt: 1 }} />
                   ))}
                 {item.type === 'activity' && (
-                  <ActivityImageGallery activityId={(item.data as Activity).ID} />
+                  <ImageGallery
+                    ownerId={(item.data as Activity).ID}
+                    api={activityImageGalleryApi}
+                    i18nPrefix="activityImages"
+                  />
                 )}
-                {item.type === 'note' && <NoteImageGallery noteId={(item.data as Note).ID} />}
+                {item.type === 'note' && (
+                  <ImageGallery
+                    ownerId={(item.data as Note).ID}
+                    api={noteImageGalleryApi}
+                    i18nPrefix="noteImages"
+                  />
+                )}
                 {item.type === 'activity' && (item.data as Activity).location && (
                   <Typography
                     variant="caption"

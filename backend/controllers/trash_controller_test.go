@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -171,7 +172,10 @@ func TestTrash_PurgeAndEmpty(t *testing.T) {
 func TestTrash_RestoreFiresContactRestoredWebhookOnce(t *testing.T) {
 	db, router, uid := trashRouter(t, 30)
 	var hits int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	var lastBody atomic.Value
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		lastBody.Store(b)
 		atomic.AddInt32(&hits, 1)
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -187,6 +191,18 @@ func TestTrash_RestoreFiresContactRestoredWebhookOnce(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
 	services.WaitForWebhookGoroutines()
 	assert.EqualValues(t, 1, atomic.LoadInt32(&hits), "restore must fire contact.restored once")
+
+	// Issue #2315 item 4: the payload is the full restored contact, the same
+	// shape as contact.updated, so a consumer need not refetch it.
+	var env struct {
+		Event string         `json:"event"`
+		Data  map[string]any `json:"data"`
+	}
+	raw, _ := lastBody.Load().([]byte)
+	require.NoError(t, json.Unmarshal(raw, &env), string(raw))
+	assert.Equal(t, "contact.restored", env.Event)
+	assert.EqualValues(t, c.ID, env.Data["ID"], "payload carries the contact id")
+	assert.Equal(t, "Webhook", env.Data["firstname"], "payload carries the full contact, not just {id}")
 
 	// The snapshot is consumed, so the repeat is a checked 404 with no second event.
 	w = trashDo(router, http.MethodPost, fmt.Sprintf("/trash/contacts/%d/restore", c.ID))

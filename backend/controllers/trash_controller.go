@@ -92,7 +92,10 @@ func RestoreTrashedContact(c *gin.Context) {
 	for _, s := range res.Skipped {
 		skipped = append(skipped, models.TrashRestoreSkip{Table: s.Table, Reason: s.Reason, Count: s.Count})
 	}
-	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.restored", gin.H{"id": res.Contact.ID})
+	// The payload is the full restored contact, the same shape as
+	// contact.updated, so a consumer re-syncing on restore needs no second
+	// fetch (issue #2315 item 4; the event is new in v1.6.0).
+	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.restored", res.Contact)
 	c.JSON(http.StatusOK, models.TrashRestoreResponse{Contact: models.NewContactSummary(&res.Contact), Skipped: skipped})
 }
 

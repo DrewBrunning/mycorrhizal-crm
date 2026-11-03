@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // TestLinkFieldType_RealMigratedSchema is the real-DB check for T34 (per
@@ -256,4 +257,37 @@ func TestLinkFieldType_ConcurrentSeeding(t *testing.T) {
 	var count int64
 	require.NoError(t, db.Model(&models.LinkFieldType{}).Where("user_id = ?", user.ID).Count(&count).Error)
 	assert.Equal(t, int64(len(models.LinkFieldTypeDefaults)), count, "concurrent seeding must not duplicate the default set")
+}
+
+// TestLinkFieldType_SeedLosesRaceDeterministically pins the recount branch of
+// seedLinkFieldTypesIfEmpty without relying on goroutine timing: a callback
+// seeds the same user's defaults just before the batch Create, so the Create
+// hits the partial unique index exactly as the loser of a real race would.
+func TestLinkFieldType_SeedLosesRaceDeterministically(t *testing.T) {
+	db := dbtest.NewAt(t, filepath.Join(t.TempDir(), "link-field-types-race.db"))
+
+	user := models.User{Username: "linkfieldtype-race", Password: "password123!A", Email: "linkfieldtype-race@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	fired := false
+	require.NoError(t, db.Callback().Create().Before("gorm:begin_transaction").Register("test:winner_seeds_first", func(tx *gorm.DB) {
+		if fired {
+			return
+		}
+		fired = true
+		winner := make([]models.LinkFieldType, len(models.LinkFieldTypeDefaults))
+		for i, d := range models.LinkFieldTypeDefaults {
+			d.UserID = user.ID
+			d.IsDefault = true
+			winner[i] = d
+		}
+		require.NoError(t, db.Session(&gorm.Session{NewDB: true}).Create(&winner).Error)
+	}))
+
+	require.NoError(t, seedLinkFieldTypesIfEmpty(db, user.ID))
+	require.True(t, fired)
+
+	var count int64
+	require.NoError(t, db.Model(&models.LinkFieldType{}).Where("user_id = ?", user.ID).Count(&count).Error)
+	assert.Equal(t, int64(len(models.LinkFieldTypeDefaults)), count)
 }
