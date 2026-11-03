@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -12,7 +13,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.domain.repository.NoteRepository
+import com.mycorrhizal.crm.domain.repository.NotesScope
 import com.mycorrhizal.crm.domain.repository.UnfiledNotesPage
+import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -43,6 +46,8 @@ class NotesInboxScreenTest {
         onLoadMore: () -> Unit = {},
         onCreateNote: () -> Unit = {},
         onErrorShown: () -> Unit = {},
+        onScopeChange: (NotesScope) -> Unit = {},
+        onContactClick: (Int) -> Unit = {},
         darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
@@ -52,7 +57,9 @@ class NotesInboxScreenTest {
                     onNoteClick = onNoteClick,
                     onLoadMore = onLoadMore,
                     onCreateNote = onCreateNote,
-                    onErrorShown = onErrorShown
+                    onErrorShown = onErrorShown,
+                    onScopeChange = onScopeChange,
+                    onContactClick = onContactClick
                 )
             }
         }
@@ -61,7 +68,9 @@ class NotesInboxScreenTest {
     @Test
     fun `the empty state says the unassigned set is empty, never No notes yet`() {
         // Issue #1757: a user whose notes are all on contacts saw "No notes yet" here.
-        setContent(NotesInboxUiState(isLoading = false, notes = emptyList()))
+        setContent(
+            NotesInboxUiState(isLoading = false, notes = emptyList(), scope = NotesScope.UNFILED)
+        )
         composeTestRule.onNodeWithText("No unassigned notes yet").assertIsDisplayed()
         composeTestRule.onNodeWithText(
             "Notes you capture without a contact land here."
@@ -71,7 +80,9 @@ class NotesInboxScreenTest {
 
     @Test
     fun `the title names the unassigned set`() {
-        setContent(NotesInboxUiState(isLoading = false, notes = emptyList()))
+        setContent(
+            NotesInboxUiState(isLoading = false, notes = emptyList(), scope = NotesScope.UNFILED)
+        )
         composeTestRule.onNodeWithText("Unassigned notes").assertIsDisplayed()
     }
 
@@ -280,7 +291,7 @@ class NotesInboxScreenTest {
     @Test
     fun `top-level screen renders the view model's unfiled notes`() {
         val repository = mockk<NoteRepository>()
-        coEvery { repository.listUnfiled() } returns Result.success(
+        coEvery { repository.listNotes(NotesScope.ALL) } returns Result.success(
             UnfiledNotesPage(
                 notes = listOf(Note(id = 3, content = "Buy milk")),
                 nextCursor = null,
@@ -305,5 +316,97 @@ class NotesInboxScreenTest {
         setContent(NotesInboxUiState(notes = listOf(Note(id = 3, content = "_Call_ back"))))
 
         composeTestRule.onNodeWithText("Call back").assertIsDisplayed()
+    }
+
+    // --- Issue #2224: all notes by default, an All notes / Unfiled filter, the contact per note ---
+
+    @Test
+    fun `the default view is titled Notes and its empty state is not the unassigned one`() {
+        setContent(NotesInboxUiState(isLoading = false, notes = emptyList()))
+
+        composeTestRule.onNodeWithText("Notes").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No notes yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No unassigned notes yet").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a filed note shows its contact name and tapping it opens the contact`() {
+        var opened = -1
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(
+                    Note(
+                        id = 8,
+                        content = "Met at the fair",
+                        contactId = 5,
+                        contact = ContactFlat(id = 5, firstname = "Ada", lastname = "Lovelace")
+                    ),
+                    Note(id = 9, content = "Loose thought")
+                ),
+                total = 2
+            ),
+            onContactClick = { opened = it }
+        )
+
+        composeTestRule.onNodeWithText("Ada Lovelace").performClick()
+        assertEquals(5, opened)
+        // The unfiled note has no contact chip.
+        composeTestRule.onAllNodesWithText("#0").assertCountEquals(0)
+    }
+
+    @Test
+    fun `the filter offers All notes and Unfiled and reports the choice`() {
+        val chosen = mutableListOf<NotesScope>()
+        setContent(
+            NotesInboxUiState(isLoading = false, notes = emptyList()),
+            onScopeChange = { chosen += it }
+        )
+
+        composeTestRule.onNodeWithText("All notes").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Unfiled").performClick()
+        assertEquals(listOf(NotesScope.UNFILED), chosen)
+    }
+
+    @Test
+    fun `switching the filter on the real screen changes the list and the count`() {
+        val repository = mockk<NoteRepository>()
+        coEvery { repository.listNotes(NotesScope.ALL) } returns Result.success(
+            UnfiledNotesPage(
+                notes = listOf(
+                    Note(
+                        id = 1,
+                        content = "Filed note",
+                        contact = ContactFlat(id = 5, firstname = "Ada")
+                    ),
+                    Note(id = 2, content = "Loose note")
+                ),
+                nextCursor = null,
+                total = 2
+            )
+        )
+        coEvery { repository.listNotes(NotesScope.UNFILED) } returns Result.success(
+            UnfiledNotesPage(
+                notes = listOf(Note(id = 2, content = "Loose note")),
+                nextCursor = null,
+                total = 1
+            )
+        )
+        val viewModel = NotesInboxViewModel(repository)
+
+        composeTestRule.setContent {
+            MycorrhizalTheme { NotesInboxScreen(onNoteClick = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Filed note").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2 total").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Unfiled").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Filed note").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Loose note").assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 total").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Unassigned notes").assertIsDisplayed()
     }
 }

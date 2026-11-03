@@ -1051,6 +1051,9 @@
     <!-- Notes -->
     <string name="notes_empty">Aucune note pour le moment</string>
     <string name="notes_empty_body">Les notes conservent ce que vous voulez retenir sur quelqu\'un.</string>
+    <!-- Issue #2224: the All notes / Unfiled filter on the Notes screen (web: notes.filterAll/filterUnfiled). -->
+    <string name="notes_filter_all">Toutes les notes</string>
+    <string name="notes_filter_unfiled">Non classées</string>
     <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
     <string name="notes_unassigned_empty">Aucune note non classée pour le moment</string>
     <string name="notes_unassigned_empty_body">Les notes que vous saisissez sans contact arrivent ici.</string>

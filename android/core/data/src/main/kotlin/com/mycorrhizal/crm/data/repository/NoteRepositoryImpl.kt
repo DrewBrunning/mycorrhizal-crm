@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.data.local.CachedNote
 import com.mycorrhizal.crm.data.local.CachedNoteDao
 import com.mycorrhizal.crm.domain.repository.ContactNotesPage
 import com.mycorrhizal.crm.domain.repository.NoteRepository
+import com.mycorrhizal.crm.domain.repository.NotesScope
 import com.mycorrhizal.crm.domain.repository.UnfiledNotesPage
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.network.NoteImage
@@ -41,8 +42,15 @@ class NoteRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun listUnfiled(cursor: String?, limit: Int?): Result<UnfiledNotesPage> {
-        val result = apiClient.listNotes(cursor, limit)
+    override suspend fun listNotes(
+        scope: NotesScope,
+        cursor: String?,
+        limit: Int?
+    ): Result<UnfiledNotesPage> {
+        val result = when (scope) {
+            NotesScope.ALL -> apiClient.listNotes(cursor, limit, "all", true)
+            NotesScope.UNFILED -> apiClient.listNotes(cursor, limit, "unfiled", false)
+        }
         result.getOrNull()?.let { page -> dao.upsertAll(page.notes.map { it.toCached() }) }
         return result.map { page ->
             UnfiledNotesPage(

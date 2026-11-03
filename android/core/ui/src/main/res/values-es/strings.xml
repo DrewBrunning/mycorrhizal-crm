@@ -1051,6 +1051,9 @@
     <!-- Notas -->
     <string name="notes_empty">Aún no hay notas</string>
     <string name="notes_empty_body">Las notas guardan lo que quieres recordar sobre alguien.</string>
+    <!-- Issue #2224: the All notes / Unfiled filter on the Notes screen (web: notes.filterAll/filterUnfiled). -->
+    <string name="notes_filter_all">Todas las notas</string>
+    <string name="notes_filter_unfiled">Sin archivar</string>
     <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
     <string name="notes_unassigned_empty">Aún no hay notas sin asignar</string>
     <string name="notes_unassigned_empty_body">Las notas que guardas sin un contacto aparecen aquí.</string>

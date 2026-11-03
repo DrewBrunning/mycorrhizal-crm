@@ -1028,6 +1028,9 @@
     <!-- Notizen -->
     <string name="notes_empty">Noch keine Notizen</string>
     <string name="notes_empty_body">Notizen halten fest, was du dir über jemanden merken möchtest.</string>
+    <!-- Issue #2224: the All notes / Unfiled filter on the Notes screen (web: notes.filterAll/filterUnfiled). -->
+    <string name="notes_filter_all">Alle Notizen</string>
+    <string name="notes_filter_unfiled">Nicht zugewiesen</string>
     <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
     <string name="notes_unassigned_empty">Noch keine nicht zugeordneten Notizen</string>
     <string name="notes_unassigned_empty_body">Notizen, die du ohne Kontakt erfasst, landen hier.</string>

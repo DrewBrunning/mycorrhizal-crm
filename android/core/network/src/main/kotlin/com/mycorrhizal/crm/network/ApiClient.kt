@@ -1817,11 +1817,22 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         moshi.adapter(UploadContactImageResponse::class.java).fromJson(body)?.image
     }
 
-    /** GET /api/v1/notes — the N4 unfiled-notes inbox (M9 Notes drawer entry), cursor-paginated. */
-    suspend fun listNotes(cursor: String? = null, limit: Int? = null): Result<NotesPage> {
+    /**
+     * GET /api/v1/notes — the Notes drawer entry, cursor-paginated. With no [scope] the server
+     * returns the N4 unfiled-notes inbox; `scope=all` lists every note (issue #2224, additive from
+     * #2223) and [includeContacts] fills each note's nested `contact` (the caller's own contacts).
+     */
+    suspend fun listNotes(
+        cursor: String? = null,
+        limit: Int? = null,
+        scope: String? = null,
+        includeContacts: Boolean = false
+    ): Result<NotesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$NOTES_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
         limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        scope?.let { urlBuilder.addQueryParameter("scope", it) }
+        if (includeContacts) urlBuilder.addQueryParameter("include", "contacts")
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(NotesPage::class.java).fromJson(body)
         }

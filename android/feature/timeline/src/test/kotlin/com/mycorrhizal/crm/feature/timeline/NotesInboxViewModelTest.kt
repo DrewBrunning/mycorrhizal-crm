@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.timeline
 
 import com.mycorrhizal.crm.domain.repository.NoteRepository
+import com.mycorrhizal.crm.domain.repository.NotesScope
 import com.mycorrhizal.crm.domain.repository.UnfiledNotesPage
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.network.ApiError
@@ -28,7 +29,7 @@ class NotesInboxViewModelTest {
 
     @Test
     fun `loads the unfiled inbox on init`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listUnfiled() } returns Result.success(
+        coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
             UnfiledNotesPage(
                 notes = listOf(
                     Note(id = 3, content = "Buy milk"),
@@ -53,7 +54,7 @@ class NotesInboxViewModelTest {
     @Test
     fun `onResumed reloads once a load has finished but not while the first one is running`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { noteRepository.listUnfiled() } returns Result.success(
+            coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
                 UnfiledNotesPage(
                     notes = listOf(Note(id = 1, content = "One")),
                     nextCursor = null,
@@ -63,9 +64,9 @@ class NotesInboxViewModelTest {
 
             val vm = NotesInboxViewModel(noteRepository)
             advanceUntilIdle()
-            coVerify(exactly = 1) { noteRepository.listUnfiled() }
+            coVerify(exactly = 1) { noteRepository.listNotes(NotesScope.ALL) }
 
-            coEvery { noteRepository.listUnfiled() } returns Result.success(
+            coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
                 UnfiledNotesPage(
                     notes = listOf(Note(id = 2, content = "Two"), Note(id = 1, content = "One")),
                     nextCursor = null,
@@ -76,13 +77,13 @@ class NotesInboxViewModelTest {
             advanceUntilIdle()
 
             assertEquals(listOf(2, 1), vm.uiState.value.notes.map { it.id })
-            coVerify(exactly = 2) { noteRepository.listUnfiled() }
+            coVerify(exactly = 2) { noteRepository.listNotes(NotesScope.ALL) }
         }
 
     @Test
     fun `onResumed during the initial load does not start a second request`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { noteRepository.listUnfiled() } returns Result.success(
+            coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
                 UnfiledNotesPage(notes = emptyList(), nextCursor = null, total = 0)
             )
 
@@ -90,12 +91,12 @@ class NotesInboxViewModelTest {
             vm.onResumed()
             advanceUntilIdle()
 
-            coVerify(exactly = 1) { noteRepository.listUnfiled() }
+            coVerify(exactly = 1) { noteRepository.listNotes(NotesScope.ALL) }
         }
 
     @Test
     fun `failure surfaces the display message`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listUnfiled() } returns Result.failure(
+        coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.failure(
             ApiError.Client(500, "server error")
         )
 
@@ -112,14 +113,19 @@ class NotesInboxViewModelTest {
     fun `loadMore appends the next page without duplicating`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
-        coEvery { noteRepository.listUnfiled() } returns Result.success(
+        coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
             UnfiledNotesPage(
                 notes = listOf(Note(id = 1, content = "One")),
                 nextCursor = "cursor-2",
                 total = 3
             )
         )
-        coEvery { noteRepository.listUnfiled(cursor = "cursor-2") } returns Result.success(
+        coEvery {
+            noteRepository.listNotes(
+                NotesScope.ALL,
+                cursor = "cursor-2"
+            )
+        } returns Result.success(
             UnfiledNotesPage(
                 notes = listOf(Note(id = 2, content = "Two")),
                 nextCursor = null,
@@ -135,12 +141,12 @@ class NotesInboxViewModelTest {
         val ids = vm.uiState.value.notes.map { it.id }
         assertEquals(listOf(1, 2), ids)
         assertNull(vm.uiState.value.nextCursor)
-        coVerify(exactly = 1) { noteRepository.listUnfiled(cursor = "cursor-2") }
+        coVerify(exactly = 1) { noteRepository.listNotes(NotesScope.ALL, cursor = "cursor-2") }
     }
 
     @Test
     fun `loadMore is a no-op with no next cursor`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { noteRepository.listUnfiled() } returns Result.success(
+        coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
             UnfiledNotesPage(
                 notes = listOf(Note(id = 1, content = "One")),
                 nextCursor = null,
@@ -154,6 +160,113 @@ class NotesInboxViewModelTest {
         advanceUntilIdle()
 
         // Only the initial load() call — loadMore() short-circuited on a null cursor.
-        coVerify(exactly = 1) { noteRepository.listUnfiled(cursor = null, limit = null) }
+        coVerify(
+            exactly = 1
+        ) { noteRepository.listNotes(NotesScope.ALL, cursor = null, limit = null) }
     }
+
+    // Issue #2224: the default is every note (like web and Activities); Unfiled is the filter.
+    @Test
+    fun `defaults to the all scope and switching to unfiled reloads with that scope`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
+                UnfiledNotesPage(
+                    notes = listOf(
+                        Note(id = 1, content = "Filed"),
+                        Note(id = 2, content = "Loose")
+                    ),
+                    nextCursor = null,
+                    total = 2
+                )
+            )
+            coEvery { noteRepository.listNotes(NotesScope.UNFILED) } returns Result.success(
+                UnfiledNotesPage(
+                    notes = listOf(Note(id = 2, content = "Loose")),
+                    nextCursor = null,
+                    total = 1
+                )
+            )
+
+            val vm = NotesInboxViewModel(noteRepository)
+            advanceUntilIdle()
+            assertEquals(NotesScope.ALL, vm.uiState.value.scope)
+            assertEquals(2, vm.uiState.value.total)
+
+            vm.setScope(NotesScope.UNFILED)
+            advanceUntilIdle()
+
+            assertEquals(NotesScope.UNFILED, vm.uiState.value.scope)
+            assertEquals(listOf(2), vm.uiState.value.notes.map { it.id })
+            assertEquals(1, vm.uiState.value.total)
+            coVerify(exactly = 1) { noteRepository.listNotes(NotesScope.UNFILED) }
+        }
+
+    @Test
+    fun `selecting the active scope again does not reload`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
+                UnfiledNotesPage(notes = emptyList(), nextCursor = null, total = 0)
+            )
+
+            val vm = NotesInboxViewModel(noteRepository)
+            advanceUntilIdle()
+            vm.setScope(NotesScope.ALL)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { noteRepository.listNotes(NotesScope.ALL) }
+        }
+
+    @Test
+    fun `loadMore and resume keep the selected scope`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { noteRepository.listNotes(NotesScope.UNFILED) } returns Result.success(
+                UnfiledNotesPage(notes = listOf(Note(id = 1)), nextCursor = "c2", total = 2)
+            )
+            coEvery { noteRepository.listNotes(NotesScope.UNFILED, cursor = "c2") } returns
+                Result.success(
+                    UnfiledNotesPage(notes = listOf(Note(id = 2)), nextCursor = null, total = 2)
+                )
+            coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
+                UnfiledNotesPage(notes = emptyList(), nextCursor = null, total = 0)
+            )
+
+            val vm = NotesInboxViewModel(noteRepository)
+            advanceUntilIdle()
+            vm.setScope(NotesScope.UNFILED)
+            advanceUntilIdle()
+            vm.loadMore()
+            advanceUntilIdle()
+            vm.onResumed()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { noteRepository.listNotes(NotesScope.UNFILED, cursor = "c2") }
+            coVerify(exactly = 2) { noteRepository.listNotes(NotesScope.UNFILED) }
+        }
+
+    @Test
+    fun `a slow response for the previous scope does not overwrite the new one`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slowAll = kotlinx.coroutines.CompletableDeferred<Result<UnfiledNotesPage>>()
+            coEvery { noteRepository.listNotes(NotesScope.ALL) } coAnswers { slowAll.await() }
+            coEvery { noteRepository.listNotes(NotesScope.UNFILED) } returns Result.success(
+                UnfiledNotesPage(notes = listOf(Note(id = 2)), nextCursor = null, total = 1)
+            )
+
+            val vm = NotesInboxViewModel(noteRepository)
+            vm.setScope(NotesScope.UNFILED)
+            advanceUntilIdle()
+            slowAll.complete(
+                Result.success(
+                    UnfiledNotesPage(
+                        notes = listOf(Note(id = 1), Note(id = 2)),
+                        nextCursor = null,
+                        total = 2
+                    )
+                )
+            )
+            advanceUntilIdle()
+
+            assertEquals(listOf(2), vm.uiState.value.notes.map { it.id })
+            assertEquals(1, vm.uiState.value.total)
+        }
 }

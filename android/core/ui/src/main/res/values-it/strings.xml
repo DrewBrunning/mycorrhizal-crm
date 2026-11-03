@@ -1051,6 +1051,9 @@
     <!-- Notes -->
     <string name="notes_empty">Ancora nessuna nota</string>
     <string name="notes_empty_body">Le note raccolgono ciò che vuoi ricordare di qualcuno.</string>
+    <!-- Issue #2224: the All notes / Unfiled filter on the Notes screen (web: notes.filterAll/filterUnfiled). -->
+    <string name="notes_filter_all">Tutte le note</string>
+    <string name="notes_filter_unfiled">Da archiviare</string>
     <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
     <string name="notes_unassigned_empty">Ancora nessuna nota non assegnata</string>
     <string name="notes_unassigned_empty_body">Le note che salvi senza un contatto finiscono qui.</string>

@@ -1,18 +1,23 @@
 package com.mycorrhizal.crm.feature.timeline
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Menu
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -37,6 +42,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.repository.NotesScope
 import com.mycorrhizal.crm.model.network.Note
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
@@ -51,10 +57,10 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.markdown.MarkdownText
 
 /**
- * M9 item 1: the "Unassigned notes" drawer entry — a contact-agnostic view of the N4 unfiled-notes
- * queue (matching web's `NotesPage.tsx`). Issue #1757: it lists only the notes with no contact, so
- * the drawer label, the title and the empty state all say "unassigned" rather than "Notes".
- * [onNoteClick] and [onCreateNote] reuse the per-contact note form routes with contact id `0`
+ * The "Notes" drawer entry — every note by default with an All notes / Unfiled filter and each
+ * note's contact (matching web's `NotesPage.tsx`, issue #2224). Issue #1757: under the Unfiled
+ * filter, which lists only the notes with no contact, the title and the empty state say
+ * "unassigned" rather than "Notes". [onNoteClick] and [onCreateNote] reuse the per-contact note form routes with contact id `0`
  * (never a real id): [NoteFormViewModel] treats it as "no contact", so a new note saved from here
  * is created unassigned and an existing unassigned note edits unmodified.
  */
@@ -64,6 +70,7 @@ fun NotesInboxScreen(
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
     onCreateNote: () -> Unit = {},
+    onContactClick: (Int) -> Unit = {},
     viewModel: NotesInboxViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -74,6 +81,8 @@ fun NotesInboxScreen(
         onMenuClick = onMenuClick,
         onNoteClick = onNoteClick,
         onCreateNote = onCreateNote,
+        onContactClick = onContactClick,
+        onScopeChange = viewModel::setScope,
         onLoadMore = viewModel::loadMore,
         onRefresh = viewModel::load,
         onErrorShown = viewModel::onErrorShown
@@ -92,6 +101,8 @@ fun NotesInboxScreenContent(
     onMenuClick: (() -> Unit)? = {},
     onNoteClick: (Int) -> Unit = {},
     onCreateNote: () -> Unit = {},
+    onContactClick: (Int) -> Unit = {},
+    onScopeChange: (NotesScope) -> Unit = {},
     onLoadMore: () -> Unit = {},
     onRefresh: () -> Unit = {},
     onErrorShown: () -> Unit = {}
@@ -116,7 +127,13 @@ fun NotesInboxScreenContent(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            stringResource(R.string.nav_notes_unassigned),
+                            stringResource(
+                                if (state.scope == NotesScope.UNFILED) {
+                                    R.string.nav_notes_unassigned
+                                } else {
+                                    R.string.nav_notes
+                                }
+                            ),
                             style = MaterialTheme.typography.titleLarge
                         )
                         if (state.total > 0) {
@@ -147,11 +164,12 @@ fun NotesInboxScreenContent(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            NotesScopeFilter(scope = state.scope, onScopeChange = onScopeChange)
             RefreshableContent(
                 isRefreshing = state.isLoading && state.notes.isNotEmpty(),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth().weight(1f)
             ) {
                 when {
                     state.isLoading && state.notes.isEmpty() ->
@@ -160,8 +178,20 @@ fun NotesInboxScreenContent(
                     state.notes.isEmpty() && state.error == null ->
                         // Issue #1757: says which set is empty and where its notes come from.
                         EmptyState(
-                            title = stringResource(R.string.notes_unassigned_empty),
-                            body = stringResource(R.string.notes_unassigned_empty_body),
+                            title = stringResource(
+                                if (state.scope == NotesScope.UNFILED) {
+                                    R.string.notes_unassigned_empty
+                                } else {
+                                    R.string.notes_empty
+                                }
+                            ),
+                            body = stringResource(
+                                if (state.scope == NotesScope.UNFILED) {
+                                    R.string.notes_unassigned_empty_body
+                                } else {
+                                    R.string.notes_empty_body
+                                }
+                            ),
                             actionLabel = stringResource(R.string.cd_new_note),
                             onAction = onCreateNote
                         )
@@ -175,7 +205,11 @@ fun NotesInboxScreenContent(
                             contentPadding = FabListContentPadding
                         ) {
                             items(state.notes, key = { it.id }) { note ->
-                                InboxNoteRow(note = note, onClick = { onNoteClick(note.id) })
+                                InboxNoteRow(
+                                    note = note,
+                                    onClick = { onNoteClick(note.id) },
+                                    onContactClick = onContactClick
+                                )
                             }
                             if (!state.nextCursor.isNullOrEmpty()) {
                                 item {
@@ -209,8 +243,40 @@ fun NotesInboxScreenContent(
 }
 
 @Composable
-private fun InboxNoteRow(note: Note, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun NotesScopeFilter(scope: NotesScope, onScopeChange: (NotesScope) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        FilterChip(
+            selected = scope == NotesScope.ALL,
+            onClick = { onScopeChange(NotesScope.ALL) },
+            label = { Text(stringResource(R.string.notes_filter_all)) },
+            modifier = Modifier.heightIn(min = 48.dp)
+        )
+        FilterChip(
+            selected = scope == NotesScope.UNFILED,
+            onClick = { onScopeChange(NotesScope.UNFILED) },
+            label = { Text(stringResource(R.string.notes_filter_unfiled)) },
+            modifier = Modifier.heightIn(min = 48.dp)
+        )
+    }
+}
+
+@Composable
+private fun InboxNoteRow(
+    note: Note,
+    onClick: () -> Unit,
+    onContactClick: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val dateFormat = LocalDateFormat.current
+    val date = note.date?.let {
+        DateFormat.formatTimestamp(
+            it,
+            dateFormat
+        )
+    }?.takeIf { it.isNotBlank() }
     androidx.compose.material3.ListItem(
         headlineContent = {
             MarkdownText(
@@ -219,13 +285,23 @@ private fun InboxNoteRow(note: Note, onClick: () -> Unit, modifier: Modifier = M
                 overflow = TextOverflow.Ellipsis
             )
         },
-        supportingContent = note.date?.let {
-            DateFormat.formatTimestamp(
-                it,
-                dateFormat
-            )
-        }?.takeIf { it.isNotBlank() }?.let { date ->
-            { Text(date, style = MaterialTheme.typography.bodySmall) }
+        supportingContent = if (date != null || note.contact != null) {
+            {
+                Column {
+                    date?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                    // Issue #2224: the contact each filed note belongs to; unfiled notes have none.
+                    note.contact?.let { contact ->
+                        AssistChip(
+                            onClick = { onContactClick(contact.id) },
+                            label = { Text(contact.displayName) },
+                            // #214: 48dp touch target, as in the Activities contact chips.
+                            modifier = Modifier.heightIn(min = 48.dp)
+                        )
+                    }
+                }
+            }
+        } else {
+            null
         },
         modifier = modifier
             .fillMaxWidth()
