@@ -331,3 +331,60 @@ func TestImageService_UpdateRejectsInvalidValues(t *testing.T) {
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode)
 }
+
+func TestImageService_UploadDedupedBranches(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	ctx := context.Background()
+
+	// processUpload failure propagates.
+	_, _, err := svc.UploadDeduped(ctx, userID, owner, bytes.NewReader([]byte("not an image")))
+	require.Error(t, err)
+
+	// Non-contact owners never dedupe.
+	asvc, activity, auid, _ := imageServiceEnv(t)
+	aowner := OwnerRef{ID: activity.ID}
+	data := imageTestJPEG(t)
+	_, dup, err := asvc.UploadDeduped(ctx, auid, aowner, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.False(t, dup)
+	_, dup, err = asvc.UploadDeduped(ctx, auid, aowner, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.False(t, dup)
+
+	// Duplicate-lookup query failure.
+	require.NoError(t, svc.DB.Exec("DROP TABLE contact_images").Error)
+	_, _, err = svc.UploadDeduped(ctx, userID, owner, bytes.NewReader(data))
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
+}
+
+func TestImageService_UpdateBranches(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	ctx := context.Background()
+
+	// Unknown image id.
+	_, err := svc.Update(ctx, userID, owner, 9999, models.ContactImagePatchInput{})
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
+
+	img, err := svc.Upload(ctx, userID, owner, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+
+	// Empty patch returns the row untouched.
+	same, err := svc.Update(ctx, userID, owner, img.ID, models.ContactImagePatchInput{})
+	require.NoError(t, err)
+	assert.Equal(t, img.ID, same.ID)
+
+	// Update failure surfaces as a database error.
+	require.NoError(t, svc.DB.Callback().Update().Before("gorm:update").Register("test:fail_update", func(tx *gorm.DB) {
+		_ = tx.AddError(errors.New("boom"))
+	}))
+	secret := models.ImageSensitivitySecret
+	_, err = svc.Update(ctx, userID, owner, img.ID, models.ContactImagePatchInput{Sensitivity: &secret})
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
+}

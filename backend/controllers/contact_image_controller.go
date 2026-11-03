@@ -303,7 +303,7 @@ func PatchContactImage(c *gin.Context) {
 	if !ok {
 		return
 	}
-	id, err := strconv.ParseUint(c.Param("image_id"), 10, 64)
+	id, err := strconv.ParseUint(c.Param("image_id"), 10, strconv.IntSize)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrValidation("Invalid image ID").WithReason(apperrors.ReasonAttachmentInvalidID, nil))
 		return

@@ -579,3 +579,70 @@ func TestRemoveContactPhoto_PropagatesRemoveError(t *testing.T) {
 		t.Fatal("expected error removing a non-empty directory")
 	}
 }
+
+// --- applyCrop / SaveContactPhotoCropped ---
+
+func TestApplyCrop_SubImagePath(t *testing.T) {
+	t.Parallel()
+	img := image.NewRGBA(image.Rect(0, 0, 100, 200))
+	got := applyCrop(img, CropRect{X: 0.1, Y: 0.25, W: 0.5, H: 0.5})
+	b := got.Bounds()
+	if b.Dx() != 50 || b.Dy() != 100 {
+		t.Errorf("applyCrop = %dx%d, want 50x100", b.Dx(), b.Dy())
+	}
+	if b.Min.X != 10 || b.Min.Y != 50 {
+		t.Errorf("applyCrop origin = (%d,%d), want (10,50)", b.Min.X, b.Min.Y)
+	}
+}
+
+func TestApplyCrop_ClampsToBounds(t *testing.T) {
+	t.Parallel()
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	got := applyCrop(img, CropRect{X: 0.5, Y: 0.5, W: 1, H: 1})
+	b := got.Bounds()
+	if b.Dx() != 50 || b.Dy() != 50 {
+		t.Errorf("applyCrop clamped = %dx%d, want 50x50", b.Dx(), b.Dy())
+	}
+}
+
+func TestApplyCrop_DegenerateLeavesImageUntouched(t *testing.T) {
+	t.Parallel()
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	for _, c := range []CropRect{{W: 0, H: 0.5}, {W: 0.5, H: 0}, {X: 2, Y: 2, W: 0.5, H: 0.5}} {
+		if got := applyCrop(img, c); got.Bounds() != img.Bounds() {
+			t.Errorf("applyCrop(%+v) = %v, want unchanged %v", c, got.Bounds(), img.Bounds())
+		}
+	}
+}
+
+// nonSubImager has no SubImage method, forcing the pixel-copy fallback.
+type nonSubImager struct{ image.Image }
+
+func TestApplyCrop_FallbackCopyPath(t *testing.T) {
+	t.Parallel()
+	src := image.NewRGBA(image.Rect(0, 0, 40, 40))
+	got := applyCrop(nonSubImager{src}, CropRect{X: 0.25, Y: 0.25, W: 0.5, H: 0.5})
+	b := got.Bounds()
+	if b.Dx() != 20 || b.Dy() != 20 || b.Min.X != 0 || b.Min.Y != 0 {
+		t.Errorf("applyCrop fallback bounds = %v, want 20x20 at origin", b)
+	}
+}
+
+func TestSaveContactPhotoCropped_AppliesCrop(t *testing.T) {
+	t.Parallel()
+	var buf bytes.Buffer
+	if err := jpeg.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 300, 200)), nil); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	path, thumb, err := SaveContactPhotoCropped(buf.Bytes(), "image/jpeg", &CropRect{X: 0, Y: 0, W: 0.5, H: 1}, dir)
+	if err != nil {
+		t.Fatalf("SaveContactPhotoCropped: %v", err)
+	}
+	if path == "" || thumb == "" {
+		t.Errorf("expected path and thumbnail, got %q / %d bytes", path, len(thumb))
+	}
+	if _, err := os.Stat(filepath.Join(dir, path)); err != nil {
+		t.Errorf("photo file missing: %v", err)
+	}
+}
