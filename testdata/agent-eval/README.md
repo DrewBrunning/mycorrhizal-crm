@@ -112,9 +112,11 @@ missing deprecation window), so a silent no-op does not pass.
 
 ## Collector
 
-`agent-eval-collect.yml` runs every discovered task weekly against the trusted
+`agent-eval-collect.yml` runs every discovered task weekly from the trusted
 main tree with `-require-baseline`, so a missing baseline entry is visible
-instead of green. It is enabled with `AGENT_EVAL_PROFILE=pinned-opencode` and
+instead of green. It evaluates each task's pinned `base_ref`, not the current
+tree, so it is a drift/canary check. It is enabled with
+`AGENT_EVAL_PROFILE=pinned-opencode` and
 `AGENT_EVAL_MODEL_KEY` set to the model credential; the profile command maps the
 latter to the provider variable opencode reads. It is scheduled and can also be
 dispatched, is never triggered by a pull request, and is registered in the
