@@ -146,6 +146,42 @@ func TestRestoreContact_UIDInUseIs409Equivalent(t *testing.T) {
 	assert.EqualValues(t, 1, count(t, f.db, true, &models.ContactDeletionSnapshot{}, "contact_id = ?", f.contact.ID), "snapshot kept")
 }
 
+// Issue #2309: after restore returns 409 the natural next step is purging the
+// trashed copy. That purge must not touch the live same-UID contact's files or
+// its own soft-deleted rows (its undo).
+func TestPurgeContact_LiveSameUIDContactKeepsItsFilesAndUndoRows(t *testing.T) {
+	f := newCascadeFixture(t)
+	uid := f.contact.VCardUID
+	require.NoError(t, f.db.Create(&models.Attachment{UserID: f.userID, ContactVCardUID: uid, StoredName: "trashed-attach", OriginalName: "t", ContentType: "x/y", SizeBytes: 1}).Error)
+	require.NoError(t, DeleteContact(f.db, f.contact, f.userID, trashNow))
+
+	live := models.Contact{UserID: f.userID, VCardUID: uid, Firstname: "Reborn"}
+	require.NoError(t, f.db.Create(&live).Error)
+	var inUse *ContactUIDInUseError
+	_, err := RestoreContact(f.db, f.userID, f.contact.ID, trashNow)
+	require.ErrorAs(t, err, &inUse)
+
+	// The live contact's own attachment and gallery image, plus rows it
+	// soft-deleted itself (undo window, not part of the trashed batch).
+	liveAttach := models.Attachment{UserID: f.userID, ContactVCardUID: uid, StoredName: "live-attach", OriginalName: "l", ContentType: "x/y", SizeBytes: 1}
+	require.NoError(t, f.db.Create(&liveAttach).Error)
+	liveGift := models.Gift{UserID: f.userID, EntityID: uid, Description: "live-undo"}
+	require.NoError(t, f.db.Create(&liveGift).Error)
+	require.NoError(t, f.db.Delete(&liveGift).Error)
+	deletedAttach := models.Attachment{UserID: f.userID, ContactVCardUID: uid, StoredName: "live-deleted-attach", OriginalName: "d", ContentType: "x/y", SizeBytes: 1}
+	require.NoError(t, f.db.Create(&deletedAttach).Error)
+	require.NoError(t, f.db.Delete(&deletedAttach).Error)
+
+	files, err := PurgeContact(f.db, f.userID, f.contact.ID)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"trashed-attach"}, files.Attachments, "only the trashed batch's attachment file is reported")
+	assert.EqualValues(t, 1, count(t, f.db, false, &models.Attachment{}, "id = ?", liveAttach.ID), "live attachment row survives")
+	assert.EqualValues(t, 1, count(t, f.db, true, &models.Gift{}, "id = ? AND deleted_at IS NOT NULL", liveGift.ID), "the live contact's soft-deleted gift (its undo) survives")
+	assert.EqualValues(t, 1, count(t, f.db, true, &models.Attachment{}, "id = ? AND deleted_at IS NOT NULL", deletedAttach.ID), "the live contact's soft-deleted attachment row survives")
+	assert.Zero(t, count(t, f.db, true, &models.Attachment{}, "stored_name = 'trashed-attach'"), "the trashed batch's own rows are purged")
+}
+
 func TestRestoreContact_NotFoundCases(t *testing.T) {
 	f := newCascadeFixture(t)
 	require.NoError(t, DeleteContact(f.db, f.contact, f.userID, trashNow))

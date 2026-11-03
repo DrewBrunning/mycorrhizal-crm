@@ -18,6 +18,8 @@ package services
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -299,5 +301,55 @@ func TestPurgeContactUIDCleanups_OwnerScopedBehavior(t *testing.T) {
 				assert.Equal(t, int64(3), kept)
 			})
 		}
+	}
+}
+
+// Issue #2309: the purge's FILE collection must honour the same owner-scoped,
+// live-UID-excluding predicate as the row cleanups. A bare vcard_uid match let
+// user A's purge delete user B's live same-UID attachment and gallery files
+// while B's rows survived.
+func TestPurgeSoftDeletedRows_KeepsOtherUsersSameUIDFiles(t *testing.T) {
+	db := dbtest.New(t)
+	userA := models.User{Username: "file-a", Email: "file-a@example.com", Password: "x"}
+	userB := models.User{Username: "file-b", Email: "file-b@example.com", Password: "x"}
+	require.NoError(t, db.Create(&userA).Error)
+	require.NoError(t, db.Create(&userB).Error)
+
+	const uid = "shared-uid-2309"
+	contactA := models.Contact{UserID: userA.ID, VCardUID: uid, Firstname: "A"}
+	contactB := models.Contact{UserID: userB.ID, VCardUID: uid, Firstname: "B"}
+	require.NoError(t, db.Create(&contactA).Error)
+	require.NoError(t, db.Create(&contactB).Error)
+
+	attachDir, imagesDir := t.TempDir(), t.TempDir()
+	imgFields := func(userID uint, id, stored, thumb string) models.ImageFields {
+		return models.ImageFields{UserID: userID, UUID: id, StoredName: stored, ThumbName: thumb, MIMEType: "image/jpeg", ThumbMIMEType: "image/jpeg", Sensitivity: "normal"}
+	}
+	require.NoError(t, db.Create(&models.Attachment{UserID: userA.ID, ContactVCardUID: uid, StoredName: "a-attach", OriginalName: "a", ContentType: "x/y", SizeBytes: 1}).Error)
+	require.NoError(t, db.Create(&models.Attachment{UserID: userB.ID, ContactVCardUID: uid, StoredName: "b-attach", OriginalName: "b", ContentType: "x/y", SizeBytes: 1}).Error)
+	require.NoError(t, db.Create(&models.ContactImage{ContactVCardUID: uid, ImageFields: imgFields(userA.ID, "uuid-a", "a-img.jpg", "a-img_t.jpg")}).Error)
+	require.NoError(t, db.Create(&models.ContactImage{ContactVCardUID: uid, ImageFields: imgFields(userB.ID, "uuid-b", "b-img.jpg", "b-img_t.jpg")}).Error)
+
+	writePurgeFixture(t, attachDir, "a-attach")
+	bAttach := writePurgeFixture(t, attachDir, "b-attach")
+	imgPath := func(u models.User, name string) string {
+		dir := filepath.Join(imagesDir, fmt.Sprintf("u%d", u.ID))
+		require.NoError(t, os.MkdirAll(dir, 0o700))
+		return writePurgeFixture(t, dir, name)
+	}
+	aImg, aThumb := imgPath(userA, "a-img.jpg"), imgPath(userA, "a-img_t.jpg")
+	bImg, bThumb := imgPath(userB, "b-img.jpg"), imgPath(userB, "b-img_t.jpg")
+
+	softDeleteAt(t, db, &models.Contact{}, contactA.ID, time.Now().AddDate(0, 0, -60))
+
+	cfg := purgeConfig()
+	cfg.AttachmentsDir, cfg.ImagesDir = attachDir, imagesDir
+	require.NoError(t, PurgeSoftDeletedRows(db, cfg))
+
+	for _, p := range []string{bAttach, bImg, bThumb} {
+		assert.FileExists(t, p, "another user's live same-UID file must survive the purge")
+	}
+	for _, p := range []string{filepath.Join(attachDir, "a-attach"), aImg, aThumb} {
+		assert.NoFileExists(t, p, "the purged contact's own file must be removed")
 	}
 }

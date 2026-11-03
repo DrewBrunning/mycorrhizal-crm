@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
 	"gorm.io/gorm"
@@ -409,18 +410,47 @@ func appendImageFiles(dst []ImageFile, userID uint, names ...string) []ImageFile
 func purgeContactInTx(tx *gorm.DB, userID uint, contact models.Contact, snap models.ContactDeletionSnapshot) (PurgedFiles, error) {
 	var files PurgedFiles
 	files.Photos = appendPhotoFiles(files.Photos, contact.Photo, contact.PhotoThumbnail)
-	if err := tx.Unscoped().Model(&models.Attachment{}).
-		Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).
-		Pluck("stored_name", &files.Attachments).Error; err != nil {
+
+	// vcard_uid is unique only among live contacts, so a live (or another
+	// trashed) contact of this user may hold the same UID, which is exactly the
+	// state after restore answers 409. Its rows must not be collected or
+	// deleted: restrict to the ids this deletion batch recorded (ADR 0037
+	// decision 2). Otherwise every row keyed to the UID is this contact's.
+	var batch map[string][]string
+	shared, err := uidHeldByAnotherContact(tx, userID, contact)
+	if err != nil {
 		return files, err
 	}
+	if shared {
+		batch = map[string][]string{}
+		if payload, derr := decodePayload(snap.Payload); derr == nil {
+			batch = payload.Soft
+		} else {
+			// An unreadable payload names no batch: delete nothing shared
+			// rather than guess; the scheduled purge reaps leftovers by age.
+			logger.Warn().Err(derr).Uint("contact_id", contact.ID).Msg("trash purge: unreadable snapshot payload; leaving UID-shared rows")
+		}
+	}
+	if err := collectContactFiles(tx, userID, contact, shared, batch, &files); err != nil {
+		return files, err
+	}
+
 	target := ContactCascadeTarget{ID: contact.ID, VCardUID: contact.VCardUID, UserID: userID}
 	for _, step := range ContactCascadeRegistry() {
 		if step.Mode != CascadeSoft {
 			continue
 		}
 		query, args := step.Match(target)
-		if err := tx.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s AND deleted_at IS NOT NULL", step.Table, query), args...).Error; err != nil {
+		where := query + " AND deleted_at IS NOT NULL"
+		if shared && stepKeyedByUID(step) {
+			ids := batch[step.Table]
+			if len(ids) == 0 {
+				continue
+			}
+			where += " AND id IN ?"
+			args = append(args, ids)
+		}
+		if err := tx.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s", step.Table, where), args...).Error; err != nil {
 			return files, err
 		}
 	}
@@ -491,4 +521,42 @@ func appendPhotoFiles(dst []string, photo, thumbnail string) []string {
 		dst = append(dst, thumbnail)
 	}
 	return dst
+}
+
+// uidHeldByAnotherContact reports whether a different contact row of the user
+// (live, or another trashed copy) carries this contact's vcard_uid.
+func uidHeldByAnotherContact(tx *gorm.DB, userID uint, contact models.Contact) (bool, error) {
+	var n int64
+	err := tx.Unscoped().Model(&models.Contact{}).
+		Where("user_id = ? AND vcard_uid = ? AND id <> ?", userID, contact.VCardUID, contact.ID).
+		Count(&n).Error
+	return n > 0, err
+}
+
+// stepKeyedByUID reports whether a cascade step finds its rows by the
+// contact's vcard_uid (rather than its row id), the only keying a same-UID
+// contact can collide with. It probes Match with a sentinel UID.
+func stepKeyedByUID(step CascadeStep) bool {
+	const sentinel = "\x00probe-uid"
+	_, args := step.Match(ContactCascadeTarget{VCardUID: sentinel})
+	for _, a := range args {
+		if a == sentinel {
+			return true
+		}
+	}
+	return false
+}
+
+// collectContactFiles gathers the on-disk files of one trashed contact's
+// attachments BEFORE the rows are
+// deleted. When the UID is shared, only rows of this deletion's batch count.
+func collectContactFiles(tx *gorm.DB, userID uint, contact models.Contact, shared bool, batch map[string][]string, files *PurgedFiles) error {
+	att := tx.Unscoped().Model(&models.Attachment{}).Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID)
+	if shared {
+		att = att.Where("id IN ?", batch["attachments"])
+	}
+	if err := att.Pluck("stored_name", &files.Attachments).Error; err != nil {
+		return err
+	}
+	return nil
 }
