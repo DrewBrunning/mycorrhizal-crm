@@ -10,6 +10,94 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+> **Upgrade**: database migrations run automatically on first start. If you sync contacts over
+> CardDAV and deleted any from a sync client on v1.5.1 or earlier, those contacts have no trash
+> entry and an incomplete cleanup; there is a repair (see
+> [the CardDAV delete repair guide](docs/operations/carddav-delete-repair.md)).
+> Nothing else is required.
+
+### Added
+
+- **Contact trash** ([#2002](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2002)): deleted contacts go to a Trash page on web and Android, where you
+  can restore them or delete them permanently. They are purged after `DELETED_RETENTION_DAYS`.
+- **Images on activities, notes and contacts** ([#2004](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2004)): attach images to activities and notes,
+  keep a photo gallery per contact with a chosen main image, and see every image from a contact's
+  notes and activities in one place. Web and Android.
+- **CardDAV sync scope** ([#1993](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1993)): choose which circles sync to your phone or other CardDAV
+  clients. Everything still syncs by default.
+- **Per-contact field visibility** ([#1997](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1997)): hide or show a field on a single contact, and hide
+  empty fields. Web and Android.
+- **Bulk-edit contact fields** ([#1996](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1996)): set the same fields on a whole selection of contacts.
+  Web and Android.
+- **Circle descriptions, colours and timelines** ([#1995](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1995)): describe and colour a circle, and see
+  its members' notes and activities merged on one timeline.
+- **Relationship start and end dates** ([#2001](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2001)): record when a relationship began or ended, such as
+  "married 2010-2018".
+- **Import into circles and tags** ([#2000](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2000)): give every imported contact the same circles or tags.
+  Web and Android.
+- **Import from a running Meerkat** ([#2013](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2013)): connect to your Meerkat server instead of uploading
+  its database. Photos come across too. Web and Android.
+- **Markdown in notes and activities** ([#2005](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2005)): bold, lists, links and other basic formatting
+  render safely.
+- **Multi-day activities** ([#2006](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2006)): give an activity an end date. Web and Android.
+- **Add a contact to existing activities** ([#2007](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2007)) from the contact's page. Web and Android.
+- **Type dates directly** ([#2198](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2198)): date fields accept typed dates in your date format, on web and
+  Android.
+- **Custom sign-in button name** ([#1992](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1992)): set `OIDC_PROVIDER_NAME` to show your provider's name
+  instead of a generic label.
+- **Translated error messages** ([#2093](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2093)): errors from the server now appear in your language on
+  web and Android, and server errors show a reference you can quote when asking for help.
+
+### Changed
+
+- **"This is me" marks the contact as ambient** ([#2193](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2193)), so you are never shown as overdue. The
+  option moved to the bottom of the contact menu and asks for confirmation.
+- **The Notes page lists all notes** ([#2180](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2180)), with a filter for all or unfiled notes, instead of
+  only unfiled ones.
+- **The import review badges are filters** ([#2184](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2184)), and per-row actions appear only for duplicates.
+- **Clearer explanations** of circles, tags, households, occasions, the prep view and skill labels
+  on web and Android.
+- **Log from location and Immich linking are hidden** until GeoPulse or Immich is configured.
+- **The storage warning needs low free space as well as high use** ([#2182](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2182)), so large disks stop
+  showing "degraded" while hundreds of gigabytes remain.
+
+### Deprecated
+
+- **Flat lockout and sign-in error bodies** ([#2107](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2107)): the account-lockout `429` and two OIDC
+  errors will use the standard error format in v2.0.0, not before 2027-01-27. Clients that read
+  both shapes keep working. See [the deprecation list](docs/deprecations.md).
+
+### Fixed
+
+- **"Export as JSContact" exported every contact** ([#2196](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2196)); it now exports the one you chose.
+- **CardDAV deletes, creates and updates now behave like the app**: they use the trash, respect
+  the contact limit, and fire webhooks (([#2249](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2249)), ([#2261](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2261)), ([#2255](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2255))).
+- **Bulk actions fire contact webhooks** ([#2311](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2311)), so updates and deletes made in bulk reach your
+  integrations.
+- **Duplicate contact-share imports**, a missed import-link cleanup on delete, and stale note
+  lists are fixed (([#2062](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2062)), ([#2063](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2063)), ([#2061](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2061))).
+- **Android: sessions and profiles are fully separated** ([#2065](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2065)); offline contact lists respect
+  filters (([#2067](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2067))); incoming SMS is handled reliably (([#2066](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2066))).
+- **Navigation highlights only the current item** ([#2154](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2154)), and the date picker keeps a steady
+  height ([#2199](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2199)).
+- **Web: only the reason is shown for invalid input** ([#2094](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2094)), instead of raw field names.
+- **Phone-friendly import review** and Android dialog titles wrap correctly.
+
+### Security
+
+- **Purging the trash can no longer remove another account's files** ([#2309](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2309)), and removes the
+  image files of purged contacts (([#2310](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2310))).
+- **Other accounts' import sessions are indistinguishable from missing ones** ([#2203](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2203)).
+- **Image uploads enforce per-owner limits reliably** ([#2313](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2313)).
+- **Updated dependencies** clear known security advisories.
+
+### Internal
+
+- **Errors carry machine-readable reason codes** with a CI check that blocks new ones without a
+  code ([#2098](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2098)).
+- **Architecture decisions recorded** for standing shares ([#1998](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1998)) and reusable organisations,
+  places and pets ([#1999](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1999)); neither is implemented yet.
+
 ## [1.5.1] - 2026-10-27
 
 > **Upgrade**: if you use two-factor authentication with CardDAV or CalDAV, create an app password

@@ -152,4 +152,6 @@ Frontend [#1](frontend/AGENTS.md#trap-1) [#2](frontend/AGENTS.md#trap-2) [#3](fr
   implement → verify → commit → push → PR.
 - PR body says what changed and why, lists checks run and not run, and adds `## Upgrade notes`
   (or `no-changelog: <reason>`) when the change is operator-visible (`docs/changelog-policy.md`).
+- A user-visible change also adds one plain-language bullet to `CHANGELOG.md` under `[Unreleased]`
+  (format and limits: `docs/changelog-policy.md`); no user-visible effect means `no-changelog:`.
 - Close the corresponding issue when a ticket lands.
