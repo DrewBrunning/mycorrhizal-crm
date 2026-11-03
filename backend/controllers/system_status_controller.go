@@ -48,7 +48,7 @@ func GetSystemStatus(c *gin.Context) {
 
 	deep := services.DeepHealthSnapshot(c.Request.Context(), db, cfg)
 
-	storage := systemStatusStorage(db, cfg)
+	storage := systemStatusStorage(c.Request.Context(), db, cfg)
 
 	// Fold the storage threshold into the overall status (issue #652 item 4):
 	// warning or critical elevates a healthy overall to degraded. Never to
@@ -252,7 +252,7 @@ func systemStatusDatabase(db *gorm.DB, cfg config.Config) SystemStatusDatabase {
 	return out
 }
 
-func systemStatusStorage(db *gorm.DB, cfg config.Config) SystemStatusStorage {
+func systemStatusStorage(ctx context.Context, db *gorm.DB, cfg config.Config) SystemStatusStorage {
 	free, total, ok := metrics.FilesystemBytes(filepath.Dir(cfg.DBPath))
 	fs := SystemStatusFilesystem{}
 	if ok {
@@ -270,7 +270,7 @@ func systemStatusStorage(db *gorm.DB, cfg config.Config) SystemStatusStorage {
 
 	// Storage-growth trend from the persisted samples (issue #652). Best-effort
 	// reads: a diagnostic endpoint degrades to nulls, not a 500.
-	trend := services.ComputeStorageTrend(context.Background(), db, services.Now())
+	trend := services.ComputeStorageTrend(ctx, db, services.Now())
 	out.Growth7DBytes = trend.Growth7DBytes
 	out.Growth30DBytes = trend.Growth30DBytes
 	out.Growth90DBytes = trend.Growth90DBytes
@@ -282,7 +282,11 @@ func systemStatusStorage(db *gorm.DB, cfg config.Config) SystemStatusStorage {
 	if ok && total > 0 {
 		usedPct := int((total - free) / total * 100)
 		out.UsagePercent = &usedPct
-		out.Threshold = services.StorageThreshold(context.Background(), db, usedPct, uint64(free), services.StorageLimitsFromConfig(cfg))
+		// StorageThreshold persists the resolved tier into alert_states even
+		// though this is a GET. That is deliberate: the -5% hysteresis needs the
+		// last tier any observer saw, so a read that crosses a boundary must
+		// record it or the next read would flap. The write is idempotent.
+		out.Threshold = services.StorageThreshold(ctx, db, usedPct, uint64(free), services.StorageLimitsFromConfig(cfg))
 	} else {
 		out.Threshold = services.StorageThresholdOK
 	}
