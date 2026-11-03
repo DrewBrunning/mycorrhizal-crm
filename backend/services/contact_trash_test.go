@@ -146,6 +146,48 @@ func TestRestoreContact_UIDInUseIs409Equivalent(t *testing.T) {
 	assert.EqualValues(t, 1, count(t, f.db, true, &models.ContactDeletionSnapshot{}, "contact_id = ?", f.contact.ID), "snapshot kept")
 }
 
+// Issue #2309: after restore returns 409 the natural next step is purging the
+// trashed copy. That purge must not touch the live same-UID contact's files or
+// its own soft-deleted rows (its undo).
+func TestPurgeContact_LiveSameUIDContactKeepsItsFilesAndUndoRows(t *testing.T) {
+	f := newCascadeFixture(t)
+	uid := f.contact.VCardUID
+	require.NoError(t, f.db.Create(&models.Attachment{UserID: f.userID, ContactVCardUID: uid, StoredName: "trashed-attach", OriginalName: "t", ContentType: "x/y", SizeBytes: 1}).Error)
+	require.NoError(t, f.db.Create(&models.ContactImage{ContactVCardUID: uid, ImageFields: seedImageFields(f.userID, "trashed-img", "trashed.jpg", "trashed_t.jpg")}).Error)
+	require.NoError(t, DeleteContact(f.db, f.contact, f.userID, trashNow))
+
+	live := models.Contact{UserID: f.userID, VCardUID: uid, Firstname: "Reborn"}
+	require.NoError(t, f.db.Create(&live).Error)
+	var inUse *ContactUIDInUseError
+	_, err := RestoreContact(f.db, f.userID, f.contact.ID, trashNow)
+	require.ErrorAs(t, err, &inUse)
+
+	// The live contact's own attachment and gallery image, plus rows it
+	// soft-deleted itself (undo window, not part of the trashed batch).
+	liveAttach := models.Attachment{UserID: f.userID, ContactVCardUID: uid, StoredName: "live-attach", OriginalName: "l", ContentType: "x/y", SizeBytes: 1}
+	require.NoError(t, f.db.Create(&liveAttach).Error)
+	liveImg := models.ContactImage{ContactVCardUID: uid, ImageFields: seedImageFields(f.userID, "live-img", "live.jpg", "live_t.jpg")}
+	require.NoError(t, f.db.Create(&liveImg).Error)
+	liveGift := models.Gift{UserID: f.userID, EntityID: uid, Description: "live-undo"}
+	require.NoError(t, f.db.Create(&liveGift).Error)
+	require.NoError(t, f.db.Delete(&liveGift).Error)
+	deletedAttach := models.Attachment{UserID: f.userID, ContactVCardUID: uid, StoredName: "live-deleted-attach", OriginalName: "d", ContentType: "x/y", SizeBytes: 1}
+	require.NoError(t, f.db.Create(&deletedAttach).Error)
+	require.NoError(t, f.db.Delete(&deletedAttach).Error)
+
+	files, err := PurgeContact(f.db, f.userID, f.contact.ID)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"trashed-attach"}, files.Attachments, "only the trashed batch's attachment file is reported")
+	assert.ElementsMatch(t, []ImageFile{{UserID: f.userID, Name: "trashed.jpg"}, {UserID: f.userID, Name: "trashed_t.jpg"}}, files.Images)
+	assert.EqualValues(t, 1, count(t, f.db, false, &models.Attachment{}, "id = ?", liveAttach.ID), "live attachment row survives")
+	assert.EqualValues(t, 1, count(t, f.db, false, &models.ContactImage{}, "id = ?", liveImg.ID), "live gallery row survives")
+	assert.EqualValues(t, 1, count(t, f.db, true, &models.Gift{}, "id = ? AND deleted_at IS NOT NULL", liveGift.ID), "the live contact's soft-deleted gift (its undo) survives")
+	assert.EqualValues(t, 1, count(t, f.db, true, &models.Attachment{}, "id = ? AND deleted_at IS NOT NULL", deletedAttach.ID), "the live contact's soft-deleted attachment row survives")
+	assert.Zero(t, count(t, f.db, true, &models.Attachment{}, "stored_name = 'trashed-attach'"), "the trashed batch's own rows are purged")
+	assert.Zero(t, count(t, f.db, true, &models.ContactImage{}, "uuid = 'trashed-img'"))
+}
+
 func TestRestoreContact_NotFoundCases(t *testing.T) {
 	f := newCascadeFixture(t)
 	require.NoError(t, DeleteContact(f.db, f.contact, f.userID, trashNow))
@@ -214,6 +256,12 @@ func TestPurgeContact_RemovesEverythingAndReportsFiles(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, []string{"p.jpg"}, files.Photos)
 	assert.Equal(t, []string{"a-uuid"}, files.Attachments)
+	assert.ElementsMatch(t, []ImageFile{
+		{UserID: f.userID, Name: "note.jpg"}, {UserID: f.userID, Name: "note_t.jpg"},
+		{UserID: f.userID, Name: "contact.jpg"}, {UserID: f.userID, Name: "contact_t.jpg"},
+	}, files.Images, "note and contact gallery files are reported for removal (issue #2310)")
+	assert.Zero(t, count(t, f.db, true, &models.NoteImage{}, "user_id = ?", f.userID))
+	assert.Zero(t, count(t, f.db, true, &models.ContactImage{}, "user_id = ?", f.userID))
 
 	assert.Zero(t, count(t, f.db, true, &models.Contact{}, "id = ?", f.contact.ID))
 	assert.Zero(t, count(t, f.db, true, &models.Note{}, "contact_id = ?", f.contact.ID))
@@ -259,13 +307,17 @@ func TestEmptyTrash_PurgesOnlyTheCallersTrash(t *testing.T) {
 	theirs := models.Contact{UserID: otherUser.ID, Firstname: "Theirs"}
 	require.NoError(t, f.db.Create(&theirs).Error)
 	require.NoError(t, DeleteContact(f.db, theirs, otherUser.ID, trashNow))
+	f.seed(t)
 	require.NoError(t, DeleteContact(f.db, f.contact, f.userID, trashNow))
 	require.NoError(t, DeleteContact(f.db, f.other, f.userID, trashNow))
 
 	files, n, err := EmptyTrash(f.db, f.userID)
 	require.NoError(t, err)
 	assert.Equal(t, 2, n)
-	assert.NotNil(t, files)
+	assert.ElementsMatch(t, []ImageFile{
+		{UserID: f.userID, Name: "note.jpg"}, {UserID: f.userID, Name: "note_t.jpg"},
+		{UserID: f.userID, Name: "contact.jpg"}, {UserID: f.userID, Name: "contact_t.jpg"},
+	}, files.Images, "empty trash reports the gallery files of every purged contact (issue #2310)")
 	assert.Zero(t, count(t, f.db, true, &models.Contact{}, "user_id = ?", f.userID))
 	assert.EqualValues(t, 1, count(t, f.db, true, &models.Contact{}, "id = ?", theirs.ID))
 	assert.EqualValues(t, 1, count(t, f.db, true, &models.ContactDeletionSnapshot{}, "user_id = ?", otherUser.ID))
@@ -377,16 +429,42 @@ func TestDecodePayload_RejectsMalformedJSON(t *testing.T) {
 
 func TestListTrash_SurfacesQueryFailure(t *testing.T) {
 	db, userID := newPurgeDB(t)
-	require.NoError(t, db.Exec("DROP TABLE contact_deletion_snapshots").Error)
+	dbtest.HideTable(t, db, "contact_deletion_snapshots")
 
 	_, _, err := ListTrash(db, userID, 0, 10)
 	assert.Error(t, err)
 }
 
-func TestPurgedFiles_MergeCarriesImageFiles(t *testing.T) {
-	var files PurgedFiles
-	files.merge(PurgedFiles{Images: []ImageFile{{UserID: 1, Name: "a.jpg"}}})
-	files.Images = appendImageFiles(files.Images, 2, "b.jpg", "", "b_t.jpg")
-	require.Len(t, files.Images, 3)
-	assert.Equal(t, ImageFile{UserID: 2, Name: "b_t.jpg"}, files.Images[2])
+// Issue #2315 item 2: total and page come from one join, so an orphan
+// snapshot (its contact live again, or hard-gone) is in neither, and a page is
+// never short because of one.
+func TestListTrash_OrphanSnapshotsExcludedFromTotalAndPages(t *testing.T) {
+	f := newCascadeFixture(t)
+	trash := func(name string, at time.Time) models.Contact {
+		c := models.Contact{UserID: f.userID, Firstname: name}
+		require.NoError(t, f.db.Create(&c).Error)
+		require.NoError(t, DeleteContact(f.db, c, f.userID, at))
+		return c
+	}
+	oldest := trash("Oldest", trashNow.Add(-3*time.Hour))
+	trash("Middle", trashNow.Add(-2*time.Hour))
+	newest := trash("Newest", trashNow.Add(-1*time.Hour))
+
+	// Two orphans that sort newest of all: one whose contact is live again, one hard-gone.
+	live := trash("LiveAgain", trashNow.Add(time.Hour))
+	require.NoError(t, f.db.Unscoped().Model(&models.Contact{}).Where("id = ?", live.ID).Update("deleted_at", nil).Error)
+	gone := trash("Gone", trashNow.Add(2*time.Hour))
+	require.NoError(t, f.db.Unscoped().Delete(&models.Contact{}, gone.ID).Error)
+
+	page1, total, err := ListTrash(f.db, f.userID, 0, 2)
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, total, "orphan snapshots are not counted")
+	require.Len(t, page1, 2, "orphans do not shorten the page")
+	assert.Equal(t, newest.ID, page1[0].Contact.ID)
+
+	page2, total, err := ListTrash(f.db, f.userID, 2, 2)
+	require.NoError(t, err)
+	assert.EqualValues(t, 3, total)
+	require.Len(t, page2, 1)
+	assert.Equal(t, oldest.ID, page2[0].Contact.ID)
 }

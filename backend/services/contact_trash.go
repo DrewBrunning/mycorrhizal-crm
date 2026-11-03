@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
 	"gorm.io/gorm"
@@ -350,27 +351,37 @@ type TrashEntry struct {
 }
 
 // ListTrash returns the user's trashed, restorable contacts (those with a
-// deletion snapshot), newest deletion first, plus the total.
+// deletion snapshot whose contact is still soft-deleted), newest deletion
+// first, plus the total.
+//
+// One join of contact_deletion_snapshots to contacts (Unscoped, deleted_at IS
+// NOT NULL, same user_id on both) drives both the count and the page, so an
+// orphan snapshot (its contact live again or hard-gone; the scheduled purge
+// reaps it) is in neither: total always matches the rows pages can return, and
+// there is no per-row lookup (issue #2315).
 func ListTrash(db *gorm.DB, userID uint, offset, limit int) ([]TrashEntry, int64, error) {
-	base := db.Table("contact_deletion_snapshots").Where("user_id = ?", userID)
+	base := func() *gorm.DB {
+		return db.Unscoped().Model(&models.Contact{}).
+			Joins("JOIN contact_deletion_snapshots s ON s.contact_id = contacts.id AND s.user_id = contacts.user_id").
+			Where("contacts.user_id = ? AND contacts.deleted_at IS NOT NULL", userID)
+	}
 	var total int64
-	if err := base.Count(&total).Error; err != nil {
+	if err := base().Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
-	var snaps []models.ContactDeletionSnapshot
-	if err := db.Where("user_id = ?", userID).Order("trashed_at DESC, id").Offset(offset).Limit(limit).Find(&snaps).Error; err != nil {
+	var rows []struct {
+		models.Contact
+		TrashedAt time.Time `gorm:"column:snapshot_trashed_at"`
+	}
+	if err := base().
+		Select("contacts.*, s.trashed_at AS snapshot_trashed_at").
+		Order("s.trashed_at DESC, s.id").Offset(offset).Limit(limit).
+		Find(&rows).Error; err != nil {
 		return nil, 0, err
 	}
-	entries := make([]TrashEntry, 0, len(snaps))
-	for _, s := range snaps {
-		var c models.Contact
-		if err := db.Unscoped().Where("id = ? AND user_id = ? AND deleted_at IS NOT NULL", s.ContactID, userID).First(&c).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				continue // snapshot of a contact that is live or gone; the scheduled purge reaps it
-			}
-			return nil, 0, err
-		}
-		entries = append(entries, TrashEntry{Contact: c, DeletedAt: s.TrashedAt})
+	entries := make([]TrashEntry, 0, len(rows))
+	for _, r := range rows {
+		entries = append(entries, TrashEntry{Contact: r.Contact, DeletedAt: r.TrashedAt})
 	}
 	return entries, total, nil
 }
@@ -409,18 +420,47 @@ func appendImageFiles(dst []ImageFile, userID uint, names ...string) []ImageFile
 func purgeContactInTx(tx *gorm.DB, userID uint, contact models.Contact, snap models.ContactDeletionSnapshot) (PurgedFiles, error) {
 	var files PurgedFiles
 	files.Photos = appendPhotoFiles(files.Photos, contact.Photo, contact.PhotoThumbnail)
-	if err := tx.Unscoped().Model(&models.Attachment{}).
-		Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID).
-		Pluck("stored_name", &files.Attachments).Error; err != nil {
+
+	// vcard_uid is unique only among live contacts, so a live (or another
+	// trashed) contact of this user may hold the same UID, which is exactly the
+	// state after restore answers 409. Its rows must not be collected or
+	// deleted: restrict to the ids this deletion batch recorded (ADR 0037
+	// decision 2). Otherwise every row keyed to the UID is this contact's.
+	var batch map[string][]string
+	shared, err := uidHeldByAnotherContact(tx, userID, contact)
+	if err != nil {
 		return files, err
 	}
+	if shared {
+		batch = map[string][]string{}
+		if payload, derr := decodePayload(snap.Payload); derr == nil {
+			batch = payload.Soft
+		} else {
+			// An unreadable payload names no batch: delete nothing shared
+			// rather than guess; the scheduled purge reaps leftovers by age.
+			logger.Warn().Err(derr).Uint("contact_id", contact.ID).Msg("trash purge: unreadable snapshot payload; leaving UID-shared rows")
+		}
+	}
+	if err := collectContactFiles(tx, userID, contact, shared, batch, &files); err != nil {
+		return files, err
+	}
+
 	target := ContactCascadeTarget{ID: contact.ID, VCardUID: contact.VCardUID, UserID: userID}
 	for _, step := range ContactCascadeRegistry() {
 		if step.Mode != CascadeSoft {
 			continue
 		}
 		query, args := step.Match(target)
-		if err := tx.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s AND deleted_at IS NOT NULL", step.Table, query), args...).Error; err != nil {
+		where := query + " AND deleted_at IS NOT NULL"
+		if shared && stepKeyedByUID(step) {
+			ids := batch[step.Table]
+			if len(ids) == 0 {
+				continue
+			}
+			where += " AND id IN ?"
+			args = append(args, ids)
+		}
+		if err := tx.Exec(fmt.Sprintf("DELETE FROM %s WHERE %s", step.Table, where), args...).Error; err != nil {
 			return files, err
 		}
 	}
@@ -491,4 +531,67 @@ func appendPhotoFiles(dst []string, photo, thumbnail string) []string {
 		dst = append(dst, thumbnail)
 	}
 	return dst
+}
+
+// uidHeldByAnotherContact reports whether a different contact row of the user
+// (live, or another trashed copy) carries this contact's vcard_uid.
+func uidHeldByAnotherContact(tx *gorm.DB, userID uint, contact models.Contact) (bool, error) {
+	var n int64
+	err := tx.Unscoped().Model(&models.Contact{}).
+		Where("user_id = ? AND vcard_uid = ? AND id <> ?", userID, contact.VCardUID, contact.ID).
+		Count(&n).Error
+	return n > 0, err
+}
+
+// stepKeyedByUID reports whether a cascade step finds its rows by the
+// contact's vcard_uid (rather than its row id), the only keying a same-UID
+// contact can collide with. It probes Match with a sentinel UID.
+func stepKeyedByUID(step CascadeStep) bool {
+	const sentinel = "\x00probe-uid"
+	_, args := step.Match(ContactCascadeTarget{VCardUID: sentinel})
+	for _, a := range args {
+		if a == sentinel {
+			return true
+		}
+	}
+	return false
+}
+
+// collectContactFiles gathers the on-disk files of one trashed contact's
+// attachments and gallery (contact and note images) BEFORE the rows are
+// deleted. When the UID is shared, only rows of this deletion's batch count.
+func collectContactFiles(tx *gorm.DB, userID uint, contact models.Contact, shared bool, batch map[string][]string, files *PurgedFiles) error {
+	att := tx.Unscoped().Model(&models.Attachment{}).Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID)
+	img := tx.Unscoped().Model(&models.ContactImage{}).Select("user_id", "stored_name", "thumb_name").
+		Where("contact_vcard_uid = ? AND user_id = ?", contact.VCardUID, userID)
+	if shared {
+		att = att.Where("id IN ?", batch["attachments"])
+		img = img.Where("id IN ?", batch["contact_images"])
+	}
+	if err := att.Pluck("stored_name", &files.Attachments).Error; err != nil {
+		return err
+	}
+	var rows []struct {
+		UserID     uint
+		StoredName string
+		ThumbName  string
+	}
+	if err := img.Scan(&rows).Error; err != nil {
+		return err
+	}
+	// Note images follow the note, which is keyed by this contact's row id.
+	var noteRows []struct {
+		UserID     uint
+		StoredName string
+		ThumbName  string
+	}
+	if err := tx.Unscoped().Model(&models.NoteImage{}).Select("user_id", "stored_name", "thumb_name").
+		Where("note_id IN (SELECT id FROM notes WHERE contact_id = ? AND user_id = ?)", contact.ID, userID).
+		Scan(&noteRows).Error; err != nil {
+		return err
+	}
+	for _, r := range append(rows, noteRows...) {
+		files.Images = appendImageFiles(files.Images, r.UserID, r.StoredName, r.ThumbName)
+	}
+	return nil
 }

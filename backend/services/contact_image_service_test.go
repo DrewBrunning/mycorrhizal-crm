@@ -3,6 +3,9 @@ package services
 import (
 	"bytes"
 	"context"
+	"image"
+	"image/color"
+	"image/jpeg"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -11,6 +14,7 @@ import (
 
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/imaging"
+	"mycorrhizal/internal/diskspace"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -20,10 +24,35 @@ import (
 
 func uploadNoteImage(t *testing.T, db *gorm.DB, dir string, userID, noteID uint) *models.NoteImage {
 	t.Helper()
+	return uploadNoteImageData(t, db, dir, userID, noteID, imageTestJPEG(t))
+}
+
+func uploadNoteImageData(t *testing.T, db *gorm.DB, dir string, userID, noteID uint, data []byte) *models.NoteImage {
+	t.Helper()
 	svc := NoteImageService(db, imaging.Store{Dir: dir}, 10, 50_000_000, 20<<20, UserQuota{})
-	img, err := svc.Upload(context.Background(), userID, OwnerRef{ID: noteID}, bytes.NewReader(imageTestJPEG(t)))
+	img, err := svc.Upload(context.Background(), userID, OwnerRef{ID: noteID}, bytes.NewReader(data))
 	require.NoError(t, err)
 	return img
+}
+
+// imageTestJPEGVariant returns a visually distinct picture per seed, so its
+// dHash is far from imageTestJPEG's and from other seeds'.
+func imageTestJPEGVariant(t *testing.T, seed int) []byte {
+	t.Helper()
+	img := image.NewRGBA(image.Rect(0, 0, 64, 48))
+	for y := 0; y < 48; y++ {
+		for x := 0; x < 64; x++ {
+			c := color.RGBA{R: uint8(x * 3), G: uint8(y * 4), B: 80, A: 255}
+			cell := 4 + seed
+			if (x/cell+y/cell)%2 == 0 {
+				c = color.RGBA{R: 255, A: 255}
+			}
+			img.Set(x, y, c)
+		}
+	}
+	var buf bytes.Buffer
+	require.NoError(t, jpeg.Encode(&buf, img, &jpeg.Options{Quality: 90}))
+	return buf.Bytes()
 }
 
 func TestSetAndClearContactMainImage(t *testing.T) {
@@ -150,7 +179,7 @@ func TestAdoptImageIntoContact_FromNote(t *testing.T) {
 	src := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
 	store := imaging.Store{Dir: dir}
 
-	row, err := AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &contact, "note", note.ID, src.ID, 10)
+	row, err := adoptForTest(svc.DB, store, userID, &contact, "note", note.ID, src.ID, 10)
 	require.NoError(t, err)
 	assert.Equal(t, contact.VCardUID, row.ContactVCardUID)
 	assert.NotEqual(t, src.StoredName, row.StoredName, "adopt copies the file")
@@ -166,18 +195,18 @@ func TestAdoptImageIntoContact_FromActivity(t *testing.T) {
 	store := imaging.Store{Dir: dir}
 
 	// Not linked yet: 404.
-	_, err = AdoptImageIntoContact(context.Background(), asvc.DB, store, userID, &contact, "activity", activity.ID, src.ID, 10)
+	_, err = adoptForTest(asvc.DB, store, userID, &contact, "activity", activity.ID, src.ID, 10)
 	var appErr *apperrors.AppError
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 
 	require.NoError(t, asvc.DB.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", activity.ID, contact.ID).Error)
-	row, err := AdoptImageIntoContact(context.Background(), asvc.DB, store, userID, &contact, "activity", activity.ID, src.ID, 10)
+	row, err := adoptForTest(asvc.DB, store, userID, &contact, "activity", activity.ID, src.ID, 10)
 	require.NoError(t, err)
 	assert.Equal(t, contact.VCardUID, row.ContactVCardUID)
 
 	// Wrong image id for a linked activity: 404.
-	_, err = AdoptImageIntoContact(context.Background(), asvc.DB, store, userID, &contact, "activity", activity.ID, src.ID+999, 10)
+	_, err = adoptForTest(asvc.DB, store, userID, &contact, "activity", activity.ID, src.ID+999, 10)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
@@ -193,34 +222,34 @@ func TestAdoptImageIntoContact_Rejections(t *testing.T) {
 
 	var appErr *apperrors.AppError
 	// Note filed under another contact.
-	_, err := AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &contact, "note", note.ID, src.ID, 10)
+	_, err := adoptForTest(svc.DB, store, userID, &contact, "note", note.ID, src.ID, 10)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 
 	// Unknown note.
-	_, err = AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &contact, "note", note.ID+999, src.ID, 10)
+	_, err = adoptForTest(svc.DB, store, userID, &contact, "note", note.ID+999, src.ID, 10)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 
 	// Right note, wrong image.
-	_, err = AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &other, "note", note.ID, src.ID+999, 10)
+	_, err = adoptForTest(svc.DB, store, userID, &other, "note", note.ID, src.ID+999, 10)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 
 	// Unknown kind.
-	_, err = AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &contact, "bogus", 1, 1, 10)
+	_, err = adoptForTest(svc.DB, store, userID, &contact, "bogus", 1, 1, 10)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode)
 
 	// Source file gone: full, then thumbnail.
 	require.NoError(t, store.Remove(userID, src.StoredName))
-	_, err = AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &other, "note", note.ID, src.ID, 10)
+	_, err = adoptForTest(svc.DB, store, userID, &other, "note", note.ID, src.ID, 10)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 
 	src2 := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
 	require.NoError(t, store.Remove(userID, src2.ThumbName))
-	_, err = AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &other, "note", note.ID, src2.ID, 10)
+	_, err = adoptForTest(svc.DB, store, userID, &other, "note", note.ID, src2.ID, 10)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
@@ -232,16 +261,17 @@ func TestAdoptImageIntoContact_LimitAndDBFailures(t *testing.T) {
 	require.NoError(t, svc.DB.Create(&note).Error)
 	src := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
 
-	_, err := AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &contact, "note", note.ID, src.ID, 1)
+	_, err := adoptForTest(svc.DB, store, userID, &contact, "note", note.ID, src.ID, 1)
 	require.NoError(t, err)
 	var appErr *apperrors.AppError
-	_, err = AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &contact, "note", note.ID, src.ID, 1)
+	other := uploadNoteImageData(t, svc.DB, dir, userID, note.ID, imageTestJPEGVariant(t, 3))
+	_, err = adoptForTest(svc.DB, store, userID, &contact, "note", note.ID, other.ID, 1)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, string(apperrors.ReasonImageLimitReached), appErr.ReasonCode)
 
 	// Insert failure removes the copied files.
 	require.NoError(t, svc.DB.Exec("DROP TABLE contact_images").Error)
-	_, err = AdoptImageIntoContact(context.Background(), svc.DB, store, userID, &contact, "note", note.ID, src.ID, 0)
+	_, err = adoptForTest(svc.DB, store, userID, &contact, "note", note.ID, src.ID, 0)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
 }
@@ -249,7 +279,7 @@ func TestAdoptImageIntoContact_LimitAndDBFailures(t *testing.T) {
 func TestAdoptImageIntoContact_ActivityLinkQueryFailure(t *testing.T) {
 	svc, contact, userID, dir := contactImageServiceEnv(t)
 	require.NoError(t, svc.DB.Exec("DROP TABLE activity_contacts").Error)
-	_, err := AdoptImageIntoContact(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, "activity", 1, 1, 0)
+	_, err := adoptForTest(svc.DB, imaging.Store{Dir: dir}, userID, &contact, "activity", 1, 1, 0)
 	var appErr *apperrors.AppError
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
@@ -321,11 +351,11 @@ func TestListContactPhotos_QueryFailures(t *testing.T) {
 
 func TestActivityLabels_QueryFailureAndEmpty(t *testing.T) {
 	svc, _, userID, _ := contactImageServiceEnv(t)
-	labels, err := activityLabels(svc.DB, userID, nil)
+	labels, err := activityLabels(context.Background(), svc.DB, userID, nil)
 	require.NoError(t, err)
 	assert.Empty(t, labels)
 	require.NoError(t, svc.DB.Exec("DROP TABLE activities").Error)
-	_, err = activityLabels(svc.DB, userID, []models.ActivityImage{{ActivityID: 1}})
+	_, err = activityLabels(context.Background(), svc.DB, userID, []models.ActivityImage{{ActivityID: 1}})
 	assert.Error(t, err)
 }
 
@@ -348,7 +378,7 @@ func TestAdoptImageIntoContact_NeverLowersSensitivity(t *testing.T) {
 	require.NoError(t, svc.DB.Create(&note).Error)
 	src := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
 	require.NoError(t, svc.DB.Model(&models.NoteImage{}).Where("id = ?", src.ID).Update("sensitivity", models.ImageSensitivitySecret).Error)
-	row, err := AdoptImageIntoContact(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, "note", note.ID, src.ID, 10)
+	row, err := adoptForTest(svc.DB, imaging.Store{Dir: dir}, userID, &contact, "note", note.ID, src.ID, 10)
 	require.NoError(t, err)
 	assert.Equal(t, models.ImageSensitivitySecret, row.Sensitivity)
 }
@@ -362,7 +392,7 @@ func TestAdoptImageIntoContact_InsertFailureLeavesNoCopies(t *testing.T) {
 	before, err := os.ReadDir(userDir)
 	require.NoError(t, err)
 	require.NoError(t, svc.DB.Exec("DROP TABLE contact_images").Error)
-	_, err = AdoptImageIntoContact(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, "note", note.ID, src.ID, 0)
+	_, err = adoptForTest(svc.DB, imaging.Store{Dir: dir}, userID, &contact, "note", note.ID, src.ID, 0)
 	require.Error(t, err)
 	after, err := os.ReadDir(userDir)
 	require.NoError(t, err)
@@ -380,12 +410,12 @@ func TestAdoptImageIntoContact_TrashedOrForeignActivityIs404(t *testing.T) {
 	var appErr *apperrors.AppError
 
 	// Another user cannot adopt through this activity.
-	_, err = AdoptImageIntoContact(context.Background(), asvc.DB, store, userID+1000, &contact, "activity", activity.ID, src.ID, 10)
+	_, err = adoptForTest(asvc.DB, store, userID+1000, &contact, "activity", activity.ID, src.ID, 10)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 
 	require.NoError(t, asvc.DB.Delete(&activity).Error)
-	_, err = AdoptImageIntoContact(context.Background(), asvc.DB, store, userID, &contact, "activity", activity.ID, src.ID, 10)
+	_, err = adoptForTest(asvc.DB, store, userID, &contact, "activity", activity.ID, src.ID, 10)
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code, "an image of a trashed activity cannot be adopted")
 }
@@ -488,4 +518,150 @@ func TestSetContactMainImage_RejectsImageDeletedMeanwhile(t *testing.T) {
 	assert.Nil(t, stored.MainImageID, "no dangling pointer to a tombstone")
 	entries, _ := os.ReadDir(photoDir)
 	assert.Empty(t, entries)
+}
+
+func adoptServiceForTest(db *gorm.DB, store imaging.Store, limit int, quota UserQuota) *ImageService[models.ContactImage, *models.ContactImage] {
+	return ContactImageService(db, store, limit, 50_000_000, 20<<20, quota)
+}
+
+// adoptForTest runs AdoptImageIntoContact against a contact service with the
+// given per-contact cap (0 = unlimited) and no quota.
+func adoptForTest(db *gorm.DB, store imaging.Store, userID uint, contact *models.Contact, kind string, sourceID, imageID uint, limit int) (*models.ContactImage, error) {
+	row, _, err := AdoptImageIntoContact(context.Background(), adoptServiceForTest(db, store, limit, UserQuota{}), userID, contact, kind, sourceID, imageID)
+	return row, err
+}
+
+func TestAdoptImageIntoContact_NearDuplicateReturnsExistingEvenAtCap(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "n"}
+	require.NoError(t, svc.DB.Create(&note).Error)
+	first := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
+	// A second note image of the same picture (distinct row, same dHash).
+	second := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
+	capped := adoptServiceForTest(svc.DB, imaging.Store{Dir: dir}, 1, UserQuota{})
+	ctx := context.Background()
+
+	adopted, dup, err := AdoptImageIntoContact(ctx, capped, userID, &contact, "note", note.ID, first.ID)
+	require.NoError(t, err)
+	assert.False(t, dup)
+
+	again, dup, err := AdoptImageIntoContact(ctx, capped, userID, &contact, "note", note.ID, second.ID)
+	require.NoError(t, err, "a duplicate is exempt from the cap")
+	assert.True(t, dup)
+	assert.Equal(t, adopted.ID, again.ID)
+	count, err := capped.Count(ctx, userID, OwnerRef{ID: contact.ID, UID: contact.VCardUID})
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count)
+}
+
+func TestAdoptImageIntoContact_EnforcesQuotaAndDisk(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "n"}
+	require.NoError(t, svc.DB.Create(&note).Error)
+	src := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
+	store := imaging.Store{Dir: dir}
+	userDir := filepath.Join(dir, "u"+strconv.FormatUint(uint64(userID), 10))
+	before, err := os.ReadDir(userDir)
+	require.NoError(t, err)
+	var appErr *apperrors.AppError
+
+	// A user at their storage quota cannot grow it by adopting.
+	over := adoptServiceForTest(svc.DB, store, 10, UserQuota{AttachmentBytes: 1})
+	_, _, err = AdoptImageIntoContact(context.Background(), over, userID, &contact, "note", note.ID, src.ID)
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeInsufficientStorage, appErr.Code)
+
+	restore := diskspace.StubForTest(0)
+	_, _, err = AdoptImageIntoContact(context.Background(), adoptServiceForTest(svc.DB, store, 10, UserQuota{}), userID, &contact, "note", note.ID, src.ID)
+	restore()
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeInsufficientStorage, appErr.Code)
+
+	after, err := os.ReadDir(userDir)
+	require.NoError(t, err)
+	assert.Len(t, after, len(before), "a refused adopt copies nothing")
+	var rows int64
+	require.NoError(t, svc.DB.Model(&models.ContactImage{}).Count(&rows).Error)
+	assert.Zero(t, rows)
+}
+
+func TestImageService_UploadDedupedDuplicateIsExemptFromCap(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	svc.Limit = 1
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	data := imageTestJPEG(t)
+	ctx := context.Background()
+	first, _, err := svc.UploadDeduped(ctx, userID, owner, bytes.NewReader(data))
+	require.NoError(t, err)
+
+	again, dup, err := svc.UploadDeduped(ctx, userID, owner, bytes.NewReader(data))
+	require.NoError(t, err, "a retried upload at the cap is an idempotent 200, not a 409")
+	assert.True(t, dup)
+	assert.Equal(t, first.ID, again.ID)
+
+	_, _, err = svc.UploadDeduped(ctx, userID, owner, bytes.NewReader(imageTestJPEGVariant(t, 3)))
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, string(apperrors.ReasonImageLimitReached), appErr.ReasonCode)
+}
+
+func TestListContactPhotos_TiesAreOrderedDeterministically(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	ctx := context.Background()
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	a, err := svc.Upload(ctx, userID, owner, bytes.NewReader(imageTestJPEGVariant(t, 1)))
+	require.NoError(t, err)
+	b, err := svc.Upload(ctx, userID, owner, bytes.NewReader(imageTestJPEGVariant(t, 5)))
+	require.NoError(t, err)
+	note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "n"}
+	require.NoError(t, svc.DB.Create(&note).Error)
+	n := uploadNoteImageData(t, svc.DB, dir, userID, note.ID, imageTestJPEGVariant(t, 7))
+
+	same := time.Now().Add(-time.Hour).Truncate(time.Second)
+	require.NoError(t, svc.DB.Model(&models.ContactImage{}).Where("1 = 1").Update("taken_at", same).Error)
+	require.NoError(t, svc.DB.Model(&models.NoteImage{}).Where("1 = 1").Update("taken_at", same).Error)
+
+	for i := 0; i < 5; i++ {
+		photos, err := ListContactPhotos(ctx, svc.DB, userID, &contact, 0)
+		require.NoError(t, err)
+		require.Len(t, photos, 3)
+		got := []string{photos[0].Kind, photos[1].Kind, photos[2].Kind}
+		assert.Equal(t, []string{"contact", "contact", "note"}, got, "equal times order by kind, then image id")
+		assert.Equal(t, a.ID, photos[0].ImageID)
+		assert.Equal(t, b.ID, photos[1].ImageID)
+		assert.Equal(t, n.ID, photos[2].ImageID)
+	}
+}
+
+// Issue #2313: adopt had the same check-then-insert race as upload. A
+// concurrent upload that lands after adopt's pre-check fills the cap, and the
+// in-transaction recheck must reject the copy and remove its files.
+func TestAdoptImageIntoContact_RecheckRejectsCapFilledAfterPreCheck(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "n"}
+	require.NoError(t, svc.DB.Create(&note).Error)
+	src := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
+	capped := adoptServiceForTest(svc.DB, imaging.Store{Dir: dir}, 1, UserQuota{})
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	ctx := context.Background()
+
+	capped.beforeInsert = func() {
+		capped.beforeInsert = nil
+		_, err := capped.Upload(ctx, userID, owner, bytes.NewReader(imageTestJPEGVariant(t, 5)))
+		require.NoError(t, err)
+	}
+	userDir := filepath.Join(dir, "u"+strconv.FormatUint(uint64(userID), 10))
+	before, err := os.ReadDir(userDir)
+	require.NoError(t, err)
+
+	_, _, err = AdoptImageIntoContact(ctx, capped, userID, &contact, "note", note.ID, src.ID)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, string(apperrors.ReasonImageLimitReached), appErr.ReasonCode)
+	count, err := capped.Count(ctx, userID, owner)
+	require.NoError(t, err)
+	assert.Equal(t, int64(1), count, "only the concurrent upload's row exists")
+	after, err := os.ReadDir(userDir)
+	require.NoError(t, err)
+	assert.Len(t, after, len(before)+2, "the upload's full+thumb remain; the rejected copy's files are removed")
 }

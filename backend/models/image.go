@@ -1,6 +1,8 @@
 package models
 
 import (
+	"bytes"
+	"encoding/json"
 	"time"
 
 	"gorm.io/gorm"
@@ -136,9 +138,30 @@ type ImageCrop struct {
 // ContactImagePatchInput is the PATCH body for a gallery image. Only these
 // fields are writable (no mass assignment): sensitivity and the crop.
 type ContactImagePatchInput struct {
-	Sensitivity *string    `json:"sensitivity"`
-	Crop        *ImageCrop `json:"crop"`
-	// ResetCrop clears a stored crop. Kept separate from a nil Crop because
-	// encoding/json cannot distinguish an absent field from an explicit null.
-	ResetCrop bool `json:"reset_crop"`
+	Sensitivity *string      `json:"sensitivity"`
+	Crop        OptionalCrop `json:"crop"`
+}
+
+// OptionalCrop tells an absent "crop" (leave the stored crop alone) from an
+// explicit null (clear it) from an object (set it), which a plain pointer
+// cannot (ADR 0040 decision 8).
+type OptionalCrop struct {
+	Set   bool
+	Value *ImageCrop
+}
+
+// UnmarshalJSON records that the field was present and decodes null or an
+// object. It is only called when the key is in the body.
+func (o *OptionalCrop) UnmarshalJSON(b []byte) error {
+	o.Set = true
+	if bytes.Equal(bytes.TrimSpace(b), []byte("null")) {
+		o.Value = nil
+		return nil
+	}
+	var c ImageCrop
+	if err := json.Unmarshal(b, &c); err != nil {
+		return err
+	}
+	o.Value = &c
+	return nil
 }

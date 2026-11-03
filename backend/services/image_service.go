@@ -56,11 +56,11 @@ type ImageService[T any, P interface {
 	MaxBytes int64
 	Quota    UserQuota
 
-	// afterProcess, when set (tests only), runs after processUpload's checks
-	// and before the insert transaction, so a test can park every concurrent
-	// upload past its fast pre-check and prove the in-transaction recheck is
-	// the authority (issue #2313).
-	afterProcess func()
+	// beforeInsert, when set (tests only), runs after every fast pre-check and
+	// before the insert transaction, so a test can park concurrent requests
+	// past their pre-checks (or fill the cap) and prove the in-transaction
+	// recheck is the authority (issue #2313).
+	beforeInsert func()
 }
 
 // ContactImageService builds the contact-gallery service from config (ADR 0040 slice c).
@@ -141,7 +141,13 @@ func (s *ImageService[T, P]) ownerValue(owner OwnerRef) any {
 }
 
 func (s *ImageService[T, P]) baseQuery(ctx context.Context, userID uint, owner OwnerRef) *gorm.DB {
-	return s.DB.WithContext(ctx).Where("user_id = ? AND "+s.newRow().OwnerColumn()+" = ?", userID, s.ownerValue(owner))
+	return s.ownerQuery(ctx, s.DB, userID, owner)
+}
+
+// ownerQuery is baseQuery against an explicit handle, so the limit recheck can
+// run inside the insert transaction.
+func (s *ImageService[T, P]) ownerQuery(ctx context.Context, db *gorm.DB, userID uint, owner OwnerRef) *gorm.DB {
+	return db.WithContext(ctx).Where("user_id = ? AND "+s.newRow().OwnerColumn()+" = ?", userID, s.ownerValue(owner))
 }
 
 func (s *ImageService[T, P]) newRow() ImageRow {
@@ -172,13 +178,75 @@ func (s *ImageService[T, P]) Get(ctx context.Context, userID uint, owner OwnerRe
 	return &row, nil
 }
 
-// processUpload validates and processes one image without touching disk or the
-// database, so dedupe can decide before storing anything.
-func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*imaging.Result, error) {
-	if aerr := s.checkOwnerLimit(ctx, s.DB, userID, owner); aerr != nil {
-		return nil, aerr
+// checkLimit enforces the per-owner image cap (ADR 0040 decision 9). Against
+// s.DB it is only a fast rejection before the decode; insertWithinLimits reruns
+// it against the insert transaction as the authority (issue #2313).
+func (s *ImageService[T, P]) checkLimit(ctx context.Context, db *gorm.DB, userID uint, owner OwnerRef) error {
+	if s.Limit <= 0 {
+		return nil
 	}
+	var count int64
+	var model T
+	if err := s.ownerQuery(ctx, db, userID, owner).Model(&model).Count(&count).Error; err != nil {
+		return apperrors.ErrDatabase("Failed to check the image limit").WithError(err)
+	}
+	if count >= int64(s.Limit) {
+		return apperrors.ErrConflict("Image limit reached").WithReason(apperrors.ReasonImageLimitReached, map[string]any{"limit": s.Limit})
+	}
+	return nil
+}
 
+// checkCapacity enforces the per-user storage quota and the free-disk
+// preflight for n new bytes. Every path that adds stored image bytes (upload
+// and adopt) goes through it.
+func (s *ImageService[T, P]) checkCapacity(userID uint, n int) error {
+	if n < 0 {
+		n = 0
+	}
+	if s.Quota.Enabled() {
+		if qerr := s.Quota.CheckAttachmentUpload(s.DB, userID, int64(n)); qerr != nil {
+			return qerr
+		}
+	}
+	if s.Store.Dir != "" {
+		if err := diskspace.Require(s.Store.Dir, uint64(n)); err != nil {
+			return apperrors.ErrInsufficientStorage(err.Error()).WithReason(apperrors.ReasonImageInsufficientStorage, nil)
+		}
+	}
+	return nil
+}
+
+// findDuplicate returns the live image on this owner whose dHash is nearest to
+// dhash and within imaging.DedupeMaxHamming (lowest id wins a tie), or nil.
+// Only the contact gallery dedupes (ADR 0040 decision 9).
+func (s *ImageService[T, P]) findDuplicate(ctx context.Context, userID uint, owner OwnerRef, dhash int64) (*T, error) {
+	if s.Kind != OwnerKindContact {
+		return nil, nil
+	}
+	var rows []T
+	if err := s.baseQuery(ctx, userID, owner).Where("dhash IS NOT NULL").Order("id ASC").Find(&rows).Error; err != nil {
+		return nil, apperrors.ErrDatabase("Failed to check for a duplicate image").WithError(err)
+	}
+	best, bestDist := -1, imaging.DedupeMaxHamming+1
+	for i := range rows {
+		hash := P(&rows[i]).Fields().DHash
+		if hash == nil {
+			continue
+		}
+		if d := imaging.HammingDistance(*hash, dhash); d < bestDist {
+			best, bestDist = i, d
+		}
+	}
+	if best < 0 {
+		return nil, nil
+	}
+	return &rows[best], nil
+}
+
+// processUpload validates and processes one image without touching disk or the
+// database, so dedupe can decide before storing anything. It does not check the
+// owner cap: callers decide whether a duplicate is exempt from it.
+func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*imaging.Result, error) {
 	reader := src
 	if s.MaxBytes > 0 {
 		reader = io.LimitReader(src, s.MaxBytes+1)
@@ -195,40 +263,33 @@ func (s *ImageService[T, P]) processUpload(ctx context.Context, userID uint, own
 		return nil, imageError(err, s.Limits.MaxPixels, s.MaxBytes)
 	}
 
-	if s.Quota.Enabled() {
-		if qerr := s.Quota.CheckAttachmentUpload(s.DB, userID, int64(len(result.Full)+len(result.Thumb))); qerr != nil {
-			return nil, qerr
-		}
-	}
-	if s.Store.Dir != "" {
-		if err := diskspace.Require(s.Store.Dir, uint64(len(result.Full)+len(result.Thumb))); err != nil {
-			return nil, apperrors.ErrInsufficientStorage(err.Error()).WithReason(apperrors.ReasonImageInsufficientStorage, nil)
-		}
-	}
-	if s.afterProcess != nil {
-		s.afterProcess()
+	if err := s.checkCapacity(userID, len(result.Full)+len(result.Thumb)); err != nil {
+		return nil, err
 	}
 	return result, nil
 }
 
-// checkOwnerLimit returns the 409 image-limit error when the owner already
-// holds Limit live images. It runs twice per upload: against s.DB as a cheap
-// pre-check before the decode, and against the insert transaction as the
-// authoritative recheck.
-func (s *ImageService[T, P]) checkOwnerLimit(ctx context.Context, db *gorm.DB, userID uint, owner OwnerRef) *apperrors.AppError {
-	if s.Limit <= 0 {
-		return nil
+// insertWithinLimits inserts row after rechecking the owner cap and the
+// storage quota for n new bytes inside the insert transaction. The earlier
+// checks are only fast rejections that concurrent requests all pass;
+// _txlock=immediate serializes writers, so this count and the insert cannot
+// interleave with another request's (backend trap #9). Every path that adds a
+// gallery row (upload and adopt) goes through it.
+func (s *ImageService[T, P]) insertWithinLimits(ctx context.Context, userID uint, owner OwnerRef, n int, row P) error {
+	if s.beforeInsert != nil {
+		s.beforeInsert()
 	}
-	var count int64
-	var model T
-	q := db.WithContext(ctx).Model(&model).Where("user_id = ? AND "+s.newRow().OwnerColumn()+" = ?", userID, s.ownerValue(owner))
-	if err := q.Count(&count).Error; err != nil {
-		return apperrors.ErrDatabase("Failed to check the image limit").WithError(err)
-	}
-	if count >= int64(s.Limit) {
-		return apperrors.ErrConflict("Image limit reached").WithReason(apperrors.ReasonImageLimitReached, map[string]any{"limit": s.Limit})
-	}
-	return nil
+	return s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := s.checkLimit(ctx, tx, userID, owner); err != nil {
+			return err
+		}
+		if s.Quota.Enabled() {
+			if qerr := s.Quota.CheckAttachmentUpload(tx, userID, int64(n)); qerr != nil {
+				return qerr
+			}
+		}
+		return tx.Create(row).Error
+	})
 }
 
 // storeUpload writes the processed variants and inserts the row. A failed
@@ -258,22 +319,7 @@ func (s *ImageService[T, P]) storeUpload(ctx context.Context, userID uint, owner
 	f.TakenAt = result.TakenAt
 	f.TakenDate = result.TakenDate
 
-	// The pre-check in processUpload is only a fast rejection: concurrent
-	// uploads all pass it. The authority is this recheck inside the insert
-	// transaction; _txlock=immediate serializes writers, so the count and the
-	// insert cannot interleave with another upload's (backend trap #9).
-	err = s.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		if aerr := s.checkOwnerLimit(ctx, tx, userID, owner); aerr != nil {
-			return aerr
-		}
-		if s.Quota.Enabled() {
-			if qerr := s.Quota.CheckAttachmentUpload(tx, userID, int64(len(result.Full)+len(result.Thumb))); qerr != nil {
-				return qerr
-			}
-		}
-		return tx.Create(p).Error
-	})
-	if err != nil {
+	if err := s.insertWithinLimits(ctx, userID, owner, len(result.Full)+len(result.Thumb), p); err != nil {
 		_ = s.Store.Remove(userID, storedName)
 		_ = s.Store.Remove(userID, thumbName)
 		var appErr *apperrors.AppError
@@ -290,6 +336,9 @@ func (s *ImageService[T, P]) storeUpload(ctx context.Context, userID uint, owner
 // files are removed if the row insert fails, so a failed request leaves no
 // orphan behind (ADR 0040 decision 5).
 func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*T, error) {
+	if err := s.checkLimit(ctx, s.DB, userID, owner); err != nil {
+		return nil, err
+	}
 	result, err := s.processUpload(ctx, userID, owner, src)
 	if err != nil {
 		return nil, err
@@ -302,21 +351,22 @@ func (s *ImageService[T, P]) Upload(ctx context.Context, userID uint, owner Owne
 // of inserting a re-encoded copy (ADR 0040 decision 9). Other owner kinds
 // never dedupe. The bool reports whether an existing row was returned.
 func (s *ImageService[T, P]) UploadDeduped(ctx context.Context, userID uint, owner OwnerRef, src io.Reader) (*T, bool, error) {
+	// A duplicate is an idempotent retry, so it is exempt from the cap: the
+	// cap verdict is held back until dedupe has had its say.
+	limitErr := s.checkLimit(ctx, s.DB, userID, owner)
 	result, err := s.processUpload(ctx, userID, owner, src)
 	if err != nil {
 		return nil, false, err
 	}
-	if s.Kind == OwnerKindContact {
-		var rows []T
-		if err := s.baseQuery(ctx, userID, owner).Where("dhash IS NOT NULL").Find(&rows).Error; err != nil {
-			return nil, false, apperrors.ErrDatabase("Failed to check for a duplicate image").WithError(err)
-		}
-		for i := range rows {
-			hash := P(&rows[i]).Fields().DHash
-			if hash != nil && imaging.HammingDistance(*hash, result.DHash) <= imaging.DedupeMaxHamming {
-				return &rows[i], true, nil
-			}
-		}
+	dup, err := s.findDuplicate(ctx, userID, owner, result.DHash)
+	if err != nil {
+		return nil, false, err
+	}
+	if dup != nil {
+		return dup, true, nil
+	}
+	if limitErr != nil {
+		return nil, false, limitErr
 	}
 	row, err := s.storeUpload(ctx, userID, owner, result)
 	return row, false, err
@@ -338,13 +388,13 @@ func (s *ImageService[T, P]) Update(ctx context.Context, userID uint, owner Owne
 				WithReason(apperrors.ReasonValidationInvalid, map[string]any{"field": "sensitivity"})
 		}
 	}
-	if in.ResetCrop {
+	if in.Crop.Set && in.Crop.Value == nil {
 		updates["crop_x"] = nil
 		updates["crop_y"] = nil
 		updates["crop_w"] = nil
 		updates["crop_h"] = nil
-	} else if in.Crop != nil {
-		c := *in.Crop
+	} else if in.Crop.Set {
+		c := *in.Crop.Value
 		// Positive-form checks so NaN (every comparison false) is rejected.
 		const eps = 1e-9
 		if !(c.X >= 0 && c.Y >= 0 && c.W > 0 && c.H > 0 && c.X+c.W <= 1+eps && c.Y+c.H <= 1+eps) {
