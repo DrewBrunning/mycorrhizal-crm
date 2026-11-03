@@ -68,6 +68,12 @@ This file is the frontend contract. Android shares the trap IDs below.
   lock currently resolves postcss 8.5.31, which requests `nanoid ^3.3.20`, while the resolution keeps
   3.3.18; nanoid 3.3.20 also ships CommonJS (`main: index.cjs`). Re-verify the compatibility and
   patched-line claims before moving the pin.
+- **`glob` is forced to `^14.0.2` and each minimatch-10 consumer to `^11.0.1` in `resolutions`**
+  (GHSA-3g3m-2fjr-6pw4, GHSA-g3hv-75wg-m249; no backports, no parent requires the fixed majors yet).
+  minimatch is scoped per consumer, never global: `eslint-plugin-react`/`jsx-a11y` call
+  `require('minimatch')` as a function and v11 has no default export. Their 3.1.5 and `filelist`'s
+  5.1.9 lack the vulnerable `firstPhasePreProcess`, so those alerts are dismissed as not affected.
+  Drop each entry once its parent requires the fixed major.
 
 ## Web performance budgets
 

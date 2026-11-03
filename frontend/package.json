@@ -101,6 +101,15 @@
     "qs": "^6.16.1",
     "browserslist": "4.28.7",
     "undici": "^8.12.2",
-    "zod": "^4.6.6"
+    "zod": "^4.6.6",
+    "glob": "^14.0.2",
+    "**/eslint/minimatch": "^11.0.1",
+    "**/@eslint/config-array/minimatch": "^11.0.1",
+    "**/@typescript-eslint/typescript-estree/minimatch": "^11.0.1",
+    "**/@stryker-mutator/core/minimatch": "^11.0.1",
+    "**/@tufjs/models/minimatch": "^11.0.1",
+    "**/ignore-walk/minimatch": "^11.0.1",
+    "**/@npmcli/arborist/minimatch": "^11.0.1",
+    "**/@npmcli/map-workspaces/minimatch": "^11.0.1"
   }
 }
