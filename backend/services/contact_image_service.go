@@ -20,6 +20,13 @@ import (
 // thumbnail; the contact row is saved in one transaction so the revision/ETag
 // bump is visible to CardDAV.
 func SetContactMainImage(ctx context.Context, db *gorm.DB, store imaging.Store, userID uint, contact *models.Contact, image *models.ContactImage, photoDir string) (*models.Contact, error) {
+	// The derived avatar ships through CardDAV, vCard export and shares, and the
+	// outward photo filter for private/secret images is not built yet, so only
+	// normal-sensitivity images may become the main image (ADR 0040 decision 7).
+	if image.Sensitivity != models.ImageSensitivityNormal {
+		return nil, apperrors.ErrValidation("Only a normal-sensitivity image can be the main image").
+			WithReason(apperrors.ReasonValidationInvalid, map[string]any{"field": "image_id"})
+	}
 	full, err := store.Read(userID, image.StoredName)
 	if err != nil {
 		return nil, apperrors.ErrNotFound("Image file")
@@ -39,7 +46,13 @@ func SetContactMainImage(ctx context.Context, db *gorm.DB, store imaging.Store, 
 			WithReason(apperrors.ReasonPhotoProcessFailed, nil).WithError(err)
 	}
 
-	oldPhoto := contact.Photo
+	// A legacy photo (no main image) exists nowhere else, so it is never
+	// unlinked here; only a previously derived avatar is replaced (ADR 0040
+	// decision 10).
+	oldPhoto := ""
+	if contact.MainImageID != nil {
+		oldPhoto = contact.Photo
+	}
 	contact.MainImageID = &image.ID
 	contact.Photo = photoName
 	contact.PhotoThumbnail = thumb
@@ -125,7 +138,8 @@ func AdoptImageIntoContact(ctx context.Context, db *gorm.DB, store imaging.Store
 	case "activity":
 		var linked int64
 		if err := db.WithContext(ctx).Table("activity_contacts").
-			Where("activity_id = ? AND contact_id = ?", sourceID, contact.ID).Count(&linked).Error; err != nil {
+			Joins("JOIN activities ON activities.id = activity_contacts.activity_id AND activities.user_id = ? AND activities.deleted_at IS NULL", userID).
+			Where("activity_contacts.activity_id = ? AND activity_contacts.contact_id = ?", sourceID, contact.ID).Count(&linked).Error; err != nil {
 			return nil, apperrors.ErrDatabase("Failed to check the activity").WithError(err)
 		}
 		if linked == 0 {

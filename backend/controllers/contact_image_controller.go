@@ -56,7 +56,7 @@ func contactImageDTO(img models.ContactImage, contactID uint) ContactImageDTO {
 	}
 }
 
-// contactImageService builds the activity-image service from the request's
+// contactImageService builds the contact-image service from the request's
 // config and DB.
 func contactImageService(c *gin.Context) *services.ImageService[models.ContactImage, *models.ContactImage] {
 	cfg := currentConfig(c)
@@ -72,7 +72,7 @@ func contactImageService(c *gin.Context) *services.ImageService[models.ContactIm
 }
 
 // loadOwnedContact resolves a contact by id, scoped to the caller. Every
-// image route uses this first so a foreign activity is a 404 before any image
+// image route uses this first so a foreign contact is a 404 before any image
 // row is touched.
 func loadOwnedContact(c *gin.Context) (*models.Contact, bool) {
 	id, ok := requirePathUintID(c, "id")
@@ -84,25 +84,25 @@ func loadOwnedContact(c *gin.Context) (*models.Contact, bool) {
 	if !ok {
 		return nil, false
 	}
-	var activity models.Contact
-	if err := db.Where("user_id = ?", userID).First(&activity, id).Error; err != nil {
+	var contact models.Contact
+	if err := db.Where("user_id = ?", userID).First(&contact, id).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact").WithDetails("id", id))
 		} else {
-			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve activity").WithError(err))
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact").WithError(err))
 		}
 		return nil, false
 	}
-	return &activity, true
+	return &contact, true
 }
 
-func contactOwnerRef(activity *models.Contact) services.OwnerRef {
-	return services.OwnerRef{ID: activity.ID, UID: activity.VCardUID}
+func contactOwnerRef(contact *models.Contact) services.OwnerRef {
+	return services.OwnerRef{ID: contact.ID, UID: contact.VCardUID}
 }
 
 // UploadContactImage stores one image against a contact.
 func UploadContactImage(c *gin.Context) {
-	activity, ok := loadOwnedContact(c)
+	contact, ok := loadOwnedContact(c)
 	if !ok {
 		return
 	}
@@ -127,7 +127,7 @@ func UploadContactImage(c *gin.Context) {
 	defer file.Close()
 
 	svc := contactImageService(c)
-	img, duplicated, err := svc.UploadDeduped(c.Request.Context(), userID, contactOwnerRef(activity), file)
+	img, duplicated, err := svc.UploadDeduped(c.Request.Context(), userID, contactOwnerRef(contact), file)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.GetAppError(err))
 		return
@@ -136,12 +136,12 @@ func UploadContactImage(c *gin.Context) {
 	if duplicated {
 		status = http.StatusOK
 	}
-	c.JSON(status, gin.H{"image": contactImageDTO(*img, activity.ID), "deduplicated": duplicated})
+	c.JSON(status, gin.H{"image": contactImageDTO(*img, contact.ID), "deduplicated": duplicated})
 }
 
 // ListContactImages returns a contact's live images, newest first.
 func ListContactImages(c *gin.Context) {
-	activity, ok := loadOwnedContact(c)
+	contact, ok := loadOwnedContact(c)
 	if !ok {
 		return
 	}
@@ -150,14 +150,14 @@ func ListContactImages(c *gin.Context) {
 		return
 	}
 	svc := contactImageService(c)
-	rows, err := svc.List(c.Request.Context(), userID, contactOwnerRef(activity))
+	rows, err := svc.List(c.Request.Context(), userID, contactOwnerRef(contact))
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.GetAppError(err))
 		return
 	}
 	dtos := make([]ContactImageDTO, 0, len(rows))
 	for _, img := range rows {
-		dtos = append(dtos, contactImageDTO(img, activity.ID))
+		dtos = append(dtos, contactImageDTO(img, contact.ID))
 	}
 	c.JSON(http.StatusOK, gin.H{"images": dtos, "total": len(dtos)})
 }
@@ -165,7 +165,7 @@ func ListContactImages(c *gin.Context) {
 // DownloadContactImage serves the full variant or the thumbnail. Ownership is
 // checked before the file is opened or an ETag is honoured.
 func DownloadContactImage(c *gin.Context, thumbnail bool) {
-	activity, ok := loadOwnedContact(c)
+	contact, ok := loadOwnedContact(c)
 	if !ok {
 		return
 	}
@@ -179,7 +179,7 @@ func DownloadContactImage(c *gin.Context, thumbnail bool) {
 		return
 	}
 	svc := contactImageService(c)
-	img, err := svc.Get(c.Request.Context(), userID, contactOwnerRef(activity), uint(id))
+	img, err := svc.Get(c.Request.Context(), userID, contactOwnerRef(contact), uint(id))
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.GetAppError(err))
 		return
@@ -217,7 +217,7 @@ func DownloadContactImage(c *gin.Context, thumbnail bool) {
 // DeleteContactImage soft-deletes one image and removes its files after the
 // commit.
 func DeleteContactImage(c *gin.Context) {
-	activity, ok := loadOwnedContact(c)
+	contact, ok := loadOwnedContact(c)
 	if !ok {
 		return
 	}
@@ -231,13 +231,13 @@ func DeleteContactImage(c *gin.Context) {
 		return
 	}
 	svc := contactImageService(c)
-	if err := svc.Delete(c.Request.Context(), userID, contactOwnerRef(activity), uint(id)); err != nil {
+	if err := svc.Delete(c.Request.Context(), userID, contactOwnerRef(contact), uint(id)); err != nil {
 		apperrors.AbortWithError(c, apperrors.GetAppError(err))
 		return
 	}
-	if activity.MainImageID != nil && *activity.MainImageID == uint(id) {
+	if contact.MainImageID != nil && *contact.MainImageID == uint(id) {
 		db := c.MustGet("db").(*gorm.DB)
-		if _, err := services.ClearContactMainImage(c.Request.Context(), db, userID, activity, currentConfig(c).ProfilePhotoDir); err != nil {
+		if _, err := services.ClearContactMainImage(c.Request.Context(), db, userID, contact, currentConfig(c).ProfilePhotoDir); err != nil {
 			apperrors.AbortWithError(c, apperrors.GetAppError(err))
 			return
 		}

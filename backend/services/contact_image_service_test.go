@@ -3,6 +3,9 @@ package services
 import (
 	"bytes"
 	"context"
+	"os"
+	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -38,10 +41,14 @@ func TestSetAndClearContactMainImage(t *testing.T) {
 	assert.NotEmpty(t, got.Photo)
 	assert.NotEmpty(t, got.PhotoThumbnail)
 
+	avatar := filepath.Join(photoDir, got.Photo)
+	require.FileExists(t, avatar)
 	cleared, err := ClearContactMainImage(context.Background(), svc.DB, userID, &contact, photoDir)
 	require.NoError(t, err)
 	assert.Nil(t, cleared.MainImageID)
 	assert.Empty(t, cleared.Photo)
+	assert.Empty(t, cleared.PhotoThumbnail)
+	assert.NoFileExists(t, avatar, "clearing removes the derived avatar file")
 
 	// Clearing again is a no-op.
 	again, err := ClearContactMainImage(context.Background(), svc.DB, userID, &contact, photoDir)
@@ -51,23 +58,62 @@ func TestSetAndClearContactMainImage(t *testing.T) {
 
 func TestSetContactMainImage_MissingFileIsNotFound(t *testing.T) {
 	svc, contact, userID, dir := contactImageServiceEnv(t)
-	img := &models.ContactImage{ImageFields: models.ImageFields{StoredName: "missing.jpg"}}
+	img := &models.ContactImage{ImageFields: models.ImageFields{StoredName: "missing.jpg", Sensitivity: models.ImageSensitivityNormal}}
 	_, err := SetContactMainImage(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, img, t.TempDir())
 	var appErr *apperrors.AppError
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
 }
 
-func TestSetContactMainImage_ReplacesOldPhoto(t *testing.T) {
+func writePhotoFile(t *testing.T, dir, name string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	require.NoError(t, os.WriteFile(path, []byte("x"), 0o600))
+	return path
+}
+
+func TestSetContactMainImage_ReplacesDerivedAvatarButKeepsLegacyPhoto(t *testing.T) {
 	svc, contact, userID, dir := contactImageServiceEnv(t)
 	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
 	photoDir := t.TempDir()
+	store := imaging.Store{Dir: dir}
 	img, err := svc.Upload(context.Background(), userID, owner, bytes.NewReader(imageTestJPEG(t)))
 	require.NoError(t, err)
-	contact.Photo = "old-photo.jpg"
-	_, err = SetContactMainImage(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, img, photoDir)
+
+	// Legacy photo with no main image exists nowhere else: it must survive.
+	legacy := writePhotoFile(t, photoDir, "legacy.jpg")
+	contact.Photo = "legacy.jpg"
+	_, err = SetContactMainImage(context.Background(), svc.DB, store, userID, &contact, img, photoDir)
 	require.NoError(t, err)
-	assert.NotEqual(t, "old-photo.jpg", contact.Photo)
+	assert.FileExists(t, legacy, "legacy photo must not be unlinked")
+	firstAvatar := filepath.Join(photoDir, contact.Photo)
+	assert.FileExists(t, firstAvatar)
+
+	// A previously derived avatar is replaced and its file removed.
+	_, err = SetContactMainImage(context.Background(), svc.DB, store, userID, &contact, img, photoDir)
+	require.NoError(t, err)
+	if filepath.Join(photoDir, contact.Photo) != firstAvatar {
+		assert.NoFileExists(t, firstAvatar)
+	}
+	assert.FileExists(t, filepath.Join(photoDir, contact.Photo))
+}
+
+func TestSetContactMainImage_RejectsNonNormalSensitivity(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	img, err := svc.Upload(context.Background(), userID, owner, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+	for _, sens := range []string{models.ImageSensitivityPrivate, models.ImageSensitivitySecret} {
+		img.Sensitivity = sens
+		photoDir := t.TempDir()
+		_, err = SetContactMainImage(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, img, photoDir)
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr, sens)
+		assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode)
+		assert.Nil(t, contact.MainImageID)
+		entries, _ := os.ReadDir(photoDir)
+		assert.Empty(t, entries, "no avatar may be derived from a non-normal image")
+	}
 }
 
 func TestSetContactMainImage_SaveFailureRemovesDerivedPhoto(t *testing.T) {
@@ -76,10 +122,14 @@ func TestSetContactMainImage_SaveFailureRemovesDerivedPhoto(t *testing.T) {
 	img, err := svc.Upload(context.Background(), userID, owner, bytes.NewReader(imageTestJPEG(t)))
 	require.NoError(t, err)
 	require.NoError(t, svc.DB.Exec("DROP TABLE contacts").Error)
-	_, err = SetContactMainImage(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, img, t.TempDir())
+	photoDir := t.TempDir()
+	_, err = SetContactMainImage(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, img, photoDir)
 	var appErr *apperrors.AppError
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
+	entries, readErr := os.ReadDir(photoDir)
+	require.NoError(t, readErr)
+	assert.Empty(t, entries, "derived avatar must be removed when the contact save fails")
 }
 
 func TestClearContactMainImage_SaveFailure(t *testing.T) {
@@ -215,7 +265,7 @@ func TestImageExtension(t *testing.T) {
 func TestListContactPhotos_AggregatesAndOrders(t *testing.T) {
 	svc, contact, userID, dir := contactImageServiceEnv(t)
 	ctx := context.Background()
-	own, err := svc.Upload(ctx, userID, OwnerRef{ID: contact.ID, UID: contact.VCardUID}, bytes.NewReader(imageTestJPEG(t)))
+	_, err := svc.Upload(ctx, userID, OwnerRef{ID: contact.ID, UID: contact.VCardUID}, bytes.NewReader(imageTestJPEG(t)))
 	require.NoError(t, err)
 
 	note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "n"}
@@ -250,7 +300,6 @@ func TestListContactPhotos_AggregatesAndOrders(t *testing.T) {
 	assert.Equal(t, map[string]int{"contact": 1, "note": 1, "activity": 2}, kinds)
 	assert.True(t, labels["Hike"])
 	assert.True(t, labels["Activity"], "untitled activity falls back to a generic label")
-	_ = own
 
 	capped, err := ListContactPhotos(ctx, svc.DB, userID, &contact, 2)
 	require.NoError(t, err)
@@ -278,4 +327,141 @@ func TestActivityLabels_QueryFailureAndEmpty(t *testing.T) {
 	require.NoError(t, svc.DB.Exec("DROP TABLE activities").Error)
 	_, err = activityLabels(svc.DB, userID, []models.ActivityImage{{ActivityID: 1}})
 	assert.Error(t, err)
+}
+
+func TestClearContactMainImage_LeavesLegacyPhotoAlone(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	photoDir := t.TempDir()
+	legacy := writePhotoFile(t, photoDir, "legacy.jpg")
+	contact.Photo = "legacy.jpg"
+	contact.PhotoThumbnail = "thumb"
+	got, err := ClearContactMainImage(context.Background(), svc.DB, userID, &contact, photoDir)
+	require.NoError(t, err)
+	assert.Equal(t, "legacy.jpg", got.Photo)
+	assert.Equal(t, "thumb", got.PhotoThumbnail)
+	assert.FileExists(t, legacy)
+}
+
+func TestAdoptImageIntoContact_NeverLowersSensitivity(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "n"}
+	require.NoError(t, svc.DB.Create(&note).Error)
+	src := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
+	require.NoError(t, svc.DB.Model(&models.NoteImage{}).Where("id = ?", src.ID).Update("sensitivity", models.ImageSensitivitySecret).Error)
+	row, err := AdoptImageIntoContact(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, "note", note.ID, src.ID, 10)
+	require.NoError(t, err)
+	assert.Equal(t, models.ImageSensitivitySecret, row.Sensitivity)
+}
+
+func TestAdoptImageIntoContact_InsertFailureLeavesNoCopies(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "n"}
+	require.NoError(t, svc.DB.Create(&note).Error)
+	src := uploadNoteImage(t, svc.DB, dir, userID, note.ID)
+	userDir := filepath.Join(dir, "u"+strconv.FormatUint(uint64(userID), 10))
+	before, err := os.ReadDir(userDir)
+	require.NoError(t, err)
+	require.NoError(t, svc.DB.Exec("DROP TABLE contact_images").Error)
+	_, err = AdoptImageIntoContact(context.Background(), svc.DB, imaging.Store{Dir: dir}, userID, &contact, "note", note.ID, src.ID, 0)
+	require.Error(t, err)
+	after, err := os.ReadDir(userDir)
+	require.NoError(t, err)
+	assert.Len(t, after, len(before), "copied files must be removed when the insert fails")
+}
+
+func TestAdoptImageIntoContact_TrashedOrForeignActivityIs404(t *testing.T) {
+	asvc, activity, userID, dir := imageServiceEnv(t)
+	contact := models.Contact{UserID: userID, Firstname: "A", VCardUID: "44444444-4444-4444-8444-444444444444"}
+	require.NoError(t, asvc.DB.Create(&contact).Error)
+	src, err := asvc.Upload(context.Background(), userID, OwnerRef{ID: activity.ID}, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+	require.NoError(t, asvc.DB.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", activity.ID, contact.ID).Error)
+	store := imaging.Store{Dir: dir}
+	var appErr *apperrors.AppError
+
+	// Another user cannot adopt through this activity.
+	_, err = AdoptImageIntoContact(context.Background(), asvc.DB, store, userID+1000, &contact, "activity", activity.ID, src.ID, 10)
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code)
+
+	require.NoError(t, asvc.DB.Delete(&activity).Error)
+	_, err = AdoptImageIntoContact(context.Background(), asvc.DB, store, userID, &contact, "activity", activity.ID, src.ID, 10)
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeNotFound, appErr.Code, "an image of a trashed activity cannot be adopted")
+}
+
+func TestListContactPhotos_ScopedToOwnerAndContact(t *testing.T) {
+	svc, contact, userID, dir := contactImageServiceEnv(t)
+	ctx := context.Background()
+	store := imaging.Store{Dir: dir}
+	db := svc.DB
+
+	otherContact := models.Contact{UserID: userID, Firstname: "Other", VCardUID: "55555555-5555-4555-8555-555555555555"}
+	require.NoError(t, db.Create(&otherContact).Error)
+	stranger := models.User{Username: "stranger", Password: "password123!A", Email: "stranger@example.com"}
+	require.NoError(t, db.Create(&stranger).Error)
+	strangerContact := models.Contact{UserID: stranger.ID, Firstname: "S", VCardUID: "66666666-6666-4666-8666-666666666666"}
+	require.NoError(t, db.Create(&strangerContact).Error)
+
+	// Expected: exactly one note image and one activity image for `contact`.
+	note := models.Note{UserID: userID, ContactID: &contact.ID, Content: "mine"}
+	require.NoError(t, db.Create(&note).Error)
+	wantNote := uploadNoteImage(t, db, dir, userID, note.ID)
+	act := models.Activity{UserID: userID, Title: "mine", Date: Now()}
+	require.NoError(t, db.Create(&act).Error)
+	asvc := ActivityImageService(db, store, 10, 50_000_000, 20<<20, UserQuota{})
+	wantAct, err := asvc.Upload(ctx, userID, OwnerRef{ID: act.ID}, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+	require.NoError(t, db.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", act.ID, contact.ID).Error)
+
+	// Noise that must not appear.
+	otherNote := models.Note{UserID: userID, ContactID: &otherContact.ID, Content: "other contact"}
+	require.NoError(t, db.Create(&otherNote).Error)
+	uploadNoteImage(t, db, dir, userID, otherNote.ID)
+	otherAct := models.Activity{UserID: userID, Title: "other", Date: Now()}
+	require.NoError(t, db.Create(&otherAct).Error)
+	_, err = asvc.Upload(ctx, userID, OwnerRef{ID: otherAct.ID}, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+	require.NoError(t, db.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", otherAct.ID, otherContact.ID).Error)
+	_, err = svc.Upload(ctx, userID, OwnerRef{ID: otherContact.ID, UID: otherContact.VCardUID}, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+
+	trashedNote := models.Note{UserID: userID, ContactID: &contact.ID, Content: "trashed"}
+	require.NoError(t, db.Create(&trashedNote).Error)
+	uploadNoteImage(t, db, dir, userID, trashedNote.ID)
+	require.NoError(t, db.Delete(&trashedNote).Error)
+	trashedAct := models.Activity{UserID: userID, Title: "trashed", Date: Now()}
+	require.NoError(t, db.Create(&trashedAct).Error)
+	_, err = asvc.Upload(ctx, userID, OwnerRef{ID: trashedAct.ID}, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+	require.NoError(t, db.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", trashedAct.ID, contact.ID).Error)
+	require.NoError(t, db.Delete(&trashedAct).Error)
+
+	// A stranger's note filed under the contact id (cross-tenant row) must not leak.
+	strangerNote := models.Note{UserID: stranger.ID, ContactID: &contact.ID, Content: "foreign"}
+	require.NoError(t, db.Create(&strangerNote).Error)
+	uploadNoteImage(t, db, dir, stranger.ID, strangerNote.ID)
+
+	// Own gallery: one normal and one secret image (the owner's view returns both).
+	ownGallery, err := svc.Upload(ctx, userID, OwnerRef{ID: contact.ID, UID: contact.VCardUID}, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+	require.NoError(t, db.Model(&models.ContactImage{}).Where("id = ?", ownGallery.ID).Update("sensitivity", models.ImageSensitivitySecret).Error)
+
+	photos, err := ListContactPhotos(ctx, db, userID, &contact, 0)
+	require.NoError(t, err)
+	got := map[string]uint{}
+	for _, p := range photos {
+		got[p.Kind+":"+strconv.FormatUint(uint64(p.ImageID), 10)] = p.ImageID
+	}
+	want := map[string]uint{
+		"contact:" + strconv.FormatUint(uint64(ownGallery.ID), 10): ownGallery.ID,
+		"note:" + strconv.FormatUint(uint64(wantNote.ID), 10):      wantNote.ID,
+		"activity:" + strconv.FormatUint(uint64(wantAct.ID), 10):   wantAct.ID,
+	}
+	assert.Equal(t, want, got)
+	for _, p := range photos {
+		if p.Kind == "contact" {
+			assert.Equal(t, models.ImageSensitivitySecret, p.Sensitivity, "the owner's Photos tab includes secret images")
+		}
+	}
 }

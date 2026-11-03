@@ -72,15 +72,15 @@ func CheckImageDimensions(r io.Reader) error {
 	return nil
 }
 
-// SaveContactPhoto saves photo data to disk and generates a thumbnail.
-// Returns the photo filename (relative to photoDir) and a base64 data-URL
-// thumbnail suitable for storing directly on Contact.PhotoThumbnail.
 // CropRect is an optional fractional crop of the source image (ADR 0040
 // decision 10). Values are fractions of the full variant's width/height.
 type CropRect struct {
 	X, Y, W, H float64
 }
 
+// SaveContactPhoto saves photo data to disk and generates a thumbnail.
+// Returns the photo filename (relative to photoDir) and a base64 data-URL
+// thumbnail suitable for storing directly on Contact.PhotoThumbnail.
 func SaveContactPhoto(photoData []byte, mediaType string, photoDir string) (string, string, error) {
 	return SaveContactPhotoCropped(photoData, mediaType, nil, photoDir)
 }

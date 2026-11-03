@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/base64"
 	"image"
+	"image/color"
 	"image/jpeg"
+	"image/png"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -630,19 +632,43 @@ func TestApplyCrop_FallbackCopyPath(t *testing.T) {
 
 func TestSaveContactPhotoCropped_AppliesCrop(t *testing.T) {
 	t.Parallel()
+	// Left half red, right half blue. Cropping the left half must yield a red
+	// avatar; without the crop the centered square would be mixed.
+	src := image.NewRGBA(image.Rect(0, 0, 300, 200))
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 300; x++ {
+			if x < 150 {
+				src.Set(x, y, color.RGBA{R: 255, A: 255})
+			} else {
+				src.Set(x, y, color.RGBA{B: 255, A: 255})
+			}
+		}
+	}
 	var buf bytes.Buffer
-	if err := jpeg.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 300, 200)), nil); err != nil {
+	if err := png.Encode(&buf, src); err != nil {
 		t.Fatal(err)
 	}
 	dir := t.TempDir()
-	path, thumb, err := SaveContactPhotoCropped(buf.Bytes(), "image/jpeg", &CropRect{X: 0, Y: 0, W: 0.5, H: 1}, dir)
+	path, thumb, err := SaveContactPhotoCropped(buf.Bytes(), "image/png", &CropRect{X: 0, Y: 0, W: 0.5, H: 1}, dir)
 	if err != nil {
 		t.Fatalf("SaveContactPhotoCropped: %v", err)
 	}
-	if path == "" || thumb == "" {
-		t.Errorf("expected path and thumbnail, got %q / %d bytes", path, len(thumb))
+	if thumb == "" {
+		t.Error("expected a thumbnail")
 	}
-	if _, err := os.Stat(filepath.Join(dir, path)); err != nil {
-		t.Errorf("photo file missing: %v", err)
+	data, err := os.ReadFile(filepath.Join(dir, path))
+	if err != nil {
+		t.Fatalf("photo file missing: %v", err)
+	}
+	out, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("decode saved photo: %v", err)
+	}
+	b := out.Bounds()
+	for _, pt := range []image.Point{{b.Min.X + 2, b.Min.Y + 2}, {b.Max.X - 3, b.Max.Y - 3}, {b.Min.X + b.Dx()/2, b.Min.Y + b.Dy()/2}} {
+		r, _, bl, _ := out.At(pt.X, pt.Y).RGBA()
+		if r>>8 < 200 || bl>>8 > 60 {
+			t.Errorf("pixel %v = r%d b%d, want red (crop not applied)", pt, r>>8, bl>>8)
+		}
 	}
 }

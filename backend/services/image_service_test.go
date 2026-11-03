@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/jpeg"
+	"math"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -387,4 +388,59 @@ func TestImageService_UpdateBranches(t *testing.T) {
 	_, err = svc.Update(ctx, userID, owner, img.ID, models.ContactImagePatchInput{Sensitivity: &secret})
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
+}
+
+func TestImageService_UploadDedupedIsScopedToOwnerContact(t *testing.T) {
+	svc, contactA, userID, _ := contactImageServiceEnv(t)
+	ctx := context.Background()
+	data := imageTestJPEG(t)
+	contactB := models.Contact{UserID: userID, Firstname: "B", VCardUID: "77777777-7777-4777-8777-777777777777"}
+	require.NoError(t, svc.DB.Create(&contactB).Error)
+	stranger := models.User{Username: "dedupe-stranger", Password: "password123!A", Email: "dedupe-stranger@example.com"}
+	require.NoError(t, svc.DB.Create(&stranger).Error)
+	strangerContact := models.Contact{UserID: stranger.ID, Firstname: "S", VCardUID: "88888888-8888-4888-8888-888888888888"}
+	require.NoError(t, svc.DB.Create(&strangerContact).Error)
+
+	first, dup, err := svc.UploadDeduped(ctx, userID, OwnerRef{ID: contactA.ID, UID: contactA.VCardUID}, bytes.NewReader(data))
+	require.NoError(t, err)
+	require.False(t, dup)
+
+	// The same picture on another contact, or for another user, is a new row.
+	other, dup, err := svc.UploadDeduped(ctx, userID, OwnerRef{ID: contactB.ID, UID: contactB.VCardUID}, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.False(t, dup, "dedupe must not cross contacts")
+	assert.NotEqual(t, first.ID, other.ID)
+
+	foreign, dup, err := svc.UploadDeduped(ctx, stranger.ID, OwnerRef{ID: strangerContact.ID, UID: strangerContact.VCardUID}, bytes.NewReader(data))
+	require.NoError(t, err)
+	assert.False(t, dup, "dedupe must not cross users")
+	assert.Equal(t, stranger.ID, foreign.UserID)
+}
+
+func TestImageService_UpdateCropValidation(t *testing.T) {
+	svc, contact, userID, _ := contactImageServiceEnv(t)
+	owner := OwnerRef{ID: contact.ID, UID: contact.VCardUID}
+	img, err := svc.Upload(context.Background(), userID, owner, bytes.NewReader(imageTestJPEG(t)))
+	require.NoError(t, err)
+	nan := math.NaN()
+	for name, c := range map[string]models.ImageCrop{
+		"nan x":         {X: nan, Y: 0, W: 0.5, H: 0.5},
+		"nan w":         {X: 0, Y: 0, W: nan, H: 0.5},
+		"inf w":         {X: 0, Y: 0, W: math.Inf(1), H: 0.5},
+		"negative x":    {X: -0.1, Y: 0, W: 0.5, H: 0.5},
+		"zero width":    {X: 0, Y: 0, W: 0, H: 0.5},
+		"overflow in x": {X: 0.6, Y: 0, W: 0.5, H: 0.5},
+	} {
+		crop := c
+		_, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: &crop})
+		var appErr *apperrors.AppError
+		require.ErrorAs(t, err, &appErr, name)
+		assert.Equal(t, string(apperrors.ReasonValidationInvalid), appErr.ReasonCode, name)
+	}
+	// Float rounding at the edge is tolerated; the full image is a valid crop.
+	for _, c := range []models.ImageCrop{{X: 0.7, Y: 0, W: 0.30000000000000004, H: 1}, {X: 0, Y: 0, W: 1, H: 1}} {
+		crop := c
+		_, err := svc.Update(context.Background(), userID, owner, img.ID, models.ContactImagePatchInput{Crop: &crop})
+		require.NoError(t, err)
+	}
 }

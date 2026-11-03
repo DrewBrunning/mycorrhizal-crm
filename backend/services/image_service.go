@@ -304,7 +304,9 @@ func (s *ImageService[T, P]) Update(ctx context.Context, userID uint, owner Owne
 		updates["crop_h"] = nil
 	} else if in.Crop != nil {
 		c := *in.Crop
-		if c.X < 0 || c.Y < 0 || c.W <= 0 || c.H <= 0 || c.X+c.W > 1 || c.Y+c.H > 1 {
+		// Positive-form checks so NaN (every comparison false) is rejected.
+		const eps = 1e-9
+		if !(c.X >= 0 && c.Y >= 0 && c.W > 0 && c.H > 0 && c.X+c.W <= 1+eps && c.Y+c.H <= 1+eps) {
 			return nil, apperrors.ErrInvalidInput("crop", "crop fractions must be inside the image").
 				WithReason(apperrors.ReasonValidationInvalid, map[string]any{"field": "crop"})
 		}
