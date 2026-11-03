@@ -1,10 +1,12 @@
 name: Agent eval collector
 
-# Weekly trend collector for cmd/agenteval (issue #2030). It runs every
-# discovered task against the trusted main tree with a pinned profile and
-# compares each run to testdata/agent-eval/baseline.json. A regression fails the
-# matrix leg, so the nightly failure alarm opens an issue instead of letting the
-# trend rot silently.
+# Weekly trend collector for cmd/agenteval (issue #2030). It runs from the
+# trusted main tree (the current harness, specs and suites) but each task
+# evaluates its pinned base_ref, so it is a drift/canary check rather than a
+# validator of current agent-file changes. Each run is compared with a pinned
+# profile to testdata/agent-eval/baseline.json; a regression fails the matrix
+# leg, so the nightly failure alarm opens an issue instead of letting the trend
+# rot silently.
 #
 # Enabled when the AGENT_EVAL_PROFILE repository variable names a profile in
 # testdata/agent-eval/agents.yaml and AGENT_EVAL_MODEL_KEY is available to the
