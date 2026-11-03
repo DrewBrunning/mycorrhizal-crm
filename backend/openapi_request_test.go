@@ -118,6 +118,9 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /contact-shares":                     bindingFor(models.ContactShareInput{}),
 	"POST /contact-shares/{id}/confirm":        bindingFor(models.ImportConfirmRequest{}),
 	"PUT /contacts/{id}/field-values":          bindingFor(models.ContactFieldValuesInput{}),
+	"PATCH /contacts/{id}/images/{image_id}":   bindingFor(models.ContactImagePatchInput{}),
+	"POST /contacts/{id}/images/adopt":         {boundFieldsOverride: []string{"source_kind", "source_id", "image_id"}},
+	"PUT /contacts/{id}/main-image":            {boundFieldsOverride: []string{"image_id"}},
 	"PUT /contacts/{id}/field-visibility":      bindingFor(models.ContactFieldVisibilityInput{}),
 	"PATCH /users/hide-empty-fields":           bindingFor(models.HideEmptyFieldsInput{}),
 	"POST /contacts/{id}/addresses/geocode":    bindingFor(models.GeocodeDraftInput{}),
@@ -297,6 +300,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /notes/{id}/images":                           true, // multipart upload, own body cap
 	"POST /contacts/{id}/images":                        true, // multipart upload, own body cap
 	"POST /contacts/{id}/profile_picture":               true,
+	"DELETE /contacts/{id}/main-image":                  true,
 	"POST /households/{id}/suggest-relationships":       true,
 	"POST /households/suggest-addresses":                true,
 	"POST /reminders/{id}/complete":                     true,

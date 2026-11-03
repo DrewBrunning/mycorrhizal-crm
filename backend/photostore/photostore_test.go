@@ -5,7 +5,9 @@ import (
 	"context"
 	"encoding/base64"
 	"image"
+	"image/color"
 	"image/jpeg"
+	"image/png"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -577,5 +579,96 @@ func TestRemoveContactPhoto_PropagatesRemoveError(t *testing.T) {
 	}
 	if err := RemoveContactPhoto(dir, "d"); err == nil {
 		t.Fatal("expected error removing a non-empty directory")
+	}
+}
+
+// --- applyCrop / SaveContactPhotoCropped ---
+
+func TestApplyCrop_SubImagePath(t *testing.T) {
+	t.Parallel()
+	img := image.NewRGBA(image.Rect(0, 0, 100, 200))
+	got := applyCrop(img, CropRect{X: 0.1, Y: 0.25, W: 0.5, H: 0.5})
+	b := got.Bounds()
+	if b.Dx() != 50 || b.Dy() != 100 {
+		t.Errorf("applyCrop = %dx%d, want 50x100", b.Dx(), b.Dy())
+	}
+	if b.Min.X != 10 || b.Min.Y != 50 {
+		t.Errorf("applyCrop origin = (%d,%d), want (10,50)", b.Min.X, b.Min.Y)
+	}
+}
+
+func TestApplyCrop_ClampsToBounds(t *testing.T) {
+	t.Parallel()
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	got := applyCrop(img, CropRect{X: 0.5, Y: 0.5, W: 1, H: 1})
+	b := got.Bounds()
+	if b.Dx() != 50 || b.Dy() != 50 {
+		t.Errorf("applyCrop clamped = %dx%d, want 50x50", b.Dx(), b.Dy())
+	}
+}
+
+func TestApplyCrop_DegenerateLeavesImageUntouched(t *testing.T) {
+	t.Parallel()
+	img := image.NewRGBA(image.Rect(0, 0, 100, 100))
+	for _, c := range []CropRect{{W: 0, H: 0.5}, {W: 0.5, H: 0}, {X: 2, Y: 2, W: 0.5, H: 0.5}} {
+		if got := applyCrop(img, c); got.Bounds() != img.Bounds() {
+			t.Errorf("applyCrop(%+v) = %v, want unchanged %v", c, got.Bounds(), img.Bounds())
+		}
+	}
+}
+
+// nonSubImager has no SubImage method, forcing the pixel-copy fallback.
+type nonSubImager struct{ image.Image }
+
+func TestApplyCrop_FallbackCopyPath(t *testing.T) {
+	t.Parallel()
+	src := image.NewRGBA(image.Rect(0, 0, 40, 40))
+	got := applyCrop(nonSubImager{src}, CropRect{X: 0.25, Y: 0.25, W: 0.5, H: 0.5})
+	b := got.Bounds()
+	if b.Dx() != 20 || b.Dy() != 20 || b.Min.X != 0 || b.Min.Y != 0 {
+		t.Errorf("applyCrop fallback bounds = %v, want 20x20 at origin", b)
+	}
+}
+
+func TestSaveContactPhotoCropped_AppliesCrop(t *testing.T) {
+	t.Parallel()
+	// Left half red, right half blue. Cropping the left half must yield a red
+	// avatar; without the crop the centered square would be mixed.
+	src := image.NewRGBA(image.Rect(0, 0, 300, 200))
+	for y := 0; y < 200; y++ {
+		for x := 0; x < 300; x++ {
+			if x < 150 {
+				src.Set(x, y, color.RGBA{R: 255, A: 255})
+			} else {
+				src.Set(x, y, color.RGBA{B: 255, A: 255})
+			}
+		}
+	}
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, src); err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	path, thumb, err := SaveContactPhotoCropped(buf.Bytes(), "image/png", &CropRect{X: 0, Y: 0, W: 0.5, H: 1}, dir)
+	if err != nil {
+		t.Fatalf("SaveContactPhotoCropped: %v", err)
+	}
+	if thumb == "" {
+		t.Error("expected a thumbnail")
+	}
+	data, err := os.ReadFile(filepath.Join(dir, path))
+	if err != nil {
+		t.Fatalf("photo file missing: %v", err)
+	}
+	out, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		t.Fatalf("decode saved photo: %v", err)
+	}
+	b := out.Bounds()
+	for _, pt := range []image.Point{{b.Min.X + 2, b.Min.Y + 2}, {b.Max.X - 3, b.Max.Y - 3}, {b.Min.X + b.Dx()/2, b.Min.Y + b.Dy()/2}} {
+		r, _, bl, _ := out.At(pt.X, pt.Y).RGBA()
+		if r>>8 < 200 || bl>>8 > 60 {
+			t.Errorf("pixel %v = r%d b%d, want red (crop not applied)", pt, r>>8, bl>>8)
+		}
 	}
 }

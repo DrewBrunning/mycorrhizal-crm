@@ -141,7 +141,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `@maplibre/geojson-vt` | `6.3.0` | ISC | https://github.com/maplibre/geojson-vt |
 | `@maplibre/maplibre-gl-style-spec` | `26.4.4` | ISC | https://github.com/maplibre/maplibre-style-spec |
 | `@maplibre/mlt` | `1.3.0` | (MIT OR Apache-2.0) | https://github.com/maplibre/maplibre-tile-spec |
-| `@maplibre/vt-pbf` | `4.3.2` | MIT | https://github.com/maplibre/vt-pbf |
+| `@maplibre/vt-pbf` | `4.3.3` | MIT | https://github.com/maplibre/vt-pbf |
 | `@mdi/js` | `7.4.47` | Apache-2.0 | https://github.com/Templarian/MaterialDesign-JS |
 | `@mui/core-downloads-tracker` | `9.5.0` | MIT | https://github.com/mui/material-ui |
 | `@mui/icons-material` | `9.5.0` | MIT | https://github.com/mui/material-ui |
@@ -225,7 +225,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `lines-and-columns` | `1.2.4` | MIT | https://github.com/eventualbuddha/lines-and-columns |
 | `lodash-es` | `4.18.1` | MIT | https://github.com/lodash/lodash |
 | `loose-envify` | `1.4.0` | MIT | https://github.com/zertosh/loose-envify |
-| `maplibre-gl` | `6.15.0` | BSD-3-Clause | https://github.com/maplibre/maplibre-gl-js |
+| `maplibre-gl` | `6.16.0` | BSD-3-Clause | https://github.com/maplibre/maplibre-gl-js |
 | `minimist` | `1.2.8` | MIT | https://github.com/minimistjs/minimist |
 | `ms` | `2.1.3` | MIT | https://github.com/vercel/ms |
 | `murmurhash-js` | `1.0.0` | MIT | https://github.com/mikolalysenko/murmurhash-js |

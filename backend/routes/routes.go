@@ -297,7 +297,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/contacts/:id/images", controllers.ListContactImages)
 			protected.GET("/contacts/:id/images/:image_id/file", func(c *gin.Context) { controllers.DownloadContactImage(c, false) })
 			protected.GET("/contacts/:id/images/:image_id/thumbnail", func(c *gin.Context) { controllers.DownloadContactImage(c, true) })
+			protected.PATCH("/contacts/:id/images/:image_id", controllers.PatchContactImage)
 			protected.DELETE("/contacts/:id/images/:image_id", controllers.DeleteContactImage)
+			protected.POST("/contacts/:id/images/adopt", controllers.AdoptContactImage)
+			protected.PUT("/contacts/:id/main-image", controllers.PutContactMainImage)
+			protected.DELETE("/contacts/:id/main-image", controllers.DeleteContactMainImage)
+			protected.GET("/contacts/:id/photos", controllers.GetContactPhotos)
 			// Contact trash (issue #2002, ADR 0037).
 			protected.GET("/trash/contacts", controllers.ListTrashedContacts)
 			protected.DELETE("/trash/contacts", controllers.EmptyTrash)
