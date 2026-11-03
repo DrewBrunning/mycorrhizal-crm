@@ -25,7 +25,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-    "types": ["node"]
+    "types": ["node"],
+    "paths": { "@testdata/*": ["../testdata/*"] }
   },
   "include": ["src"],
   "exclude": ["node_modules"],

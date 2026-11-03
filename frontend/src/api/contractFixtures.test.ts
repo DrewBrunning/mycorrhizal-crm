@@ -31,18 +31,19 @@
 // not hand-written or hand-captured. When the spec's examples change, the
 // drift test backend/contract_fixtures_test.go fails until they are
 // regenerated.
+
+import activitiesListRaw from '@testdata/contract-fixtures/activities-list.json';
+import circlesListRaw from '@testdata/contract-fixtures/circles-list.json';
+import contactDetailRaw from '@testdata/contract-fixtures/contact-detail.json';
+import contactNotesRaw from '@testdata/contract-fixtures/contact-notes.json';
+import contactRemindersRaw from '@testdata/contract-fixtures/contact-reminders.json';
+import contactsListRaw from '@testdata/contract-fixtures/contacts-list.json';
+import dashboardRaw from '@testdata/contract-fixtures/dashboard.json';
+import lifeEventsListRaw from '@testdata/contract-fixtures/life-events-list.json';
+import occasionEventsListRaw from '@testdata/contract-fixtures/occasion-events-list.json';
+import relationshipEdgesListRaw from '@testdata/contract-fixtures/relationship-edges-list.json';
+import tagsListRaw from '@testdata/contract-fixtures/tags-list.json';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import activitiesListRaw from '../../../testdata/contract-fixtures/activities-list.json';
-import circlesListRaw from '../../../testdata/contract-fixtures/circles-list.json';
-import contactDetailRaw from '../../../testdata/contract-fixtures/contact-detail.json';
-import contactNotesRaw from '../../../testdata/contract-fixtures/contact-notes.json';
-import contactRemindersRaw from '../../../testdata/contract-fixtures/contact-reminders.json';
-import contactsListRaw from '../../../testdata/contract-fixtures/contacts-list.json';
-import dashboardRaw from '../../../testdata/contract-fixtures/dashboard.json';
-import lifeEventsListRaw from '../../../testdata/contract-fixtures/life-events-list.json';
-import occasionEventsListRaw from '../../../testdata/contract-fixtures/occasion-events-list.json';
-import relationshipEdgesListRaw from '../../../testdata/contract-fixtures/relationship-edges-list.json';
-import tagsListRaw from '../../../testdata/contract-fixtures/tags-list.json';
 import { getActivities } from './activities';
 import { listCircles } from './circles';
 import { getContactDetail } from './contactDetail';
