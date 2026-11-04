@@ -55,6 +55,7 @@ jobs:
           - container-hardening.yml
           - deploy-smoke.yml
           - differential-e2e.yml
+          - alpine-pin-bump.yml
           - docker-pin-check.yml
           - e2e-tests.yml
           - flake-ledger.yml

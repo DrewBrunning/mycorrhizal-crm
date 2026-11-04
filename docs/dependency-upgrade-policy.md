@@ -155,6 +155,14 @@ just by habit:
   the tag (e.g. `golang:1.27.3-alpine@sha256:…`). `hadolint`
   (`.github/workflows/sast.yml`) lints all three Dockerfiles on every
   relevant change and flags an unpinned `FROM`.
+- **Alpine `apk` packages are pinned exactly**, and Alpine prunes the old
+  version the moment it publishes a new one, so a pin can break a cold build
+  with no repository change. `alpine-pin-bump.yml` runs every six hours, asks
+  each Dockerfile's final-stage base image for the current version of every
+  pinned package (`.github/scripts/alpine-pin-bump.sh`), and opens or updates a
+  single `chore/alpine-pin-bump` PR when any moved. It uses the release GitHub
+  App's token so the PR gets its required checks; it never merges, and it does
+  not touch base-image digests.
 
 **The Go module graph must stay tidy (issue #1905).** A dependency bump — or
 the deletion of its last import — must leave both Go manifests tidy:
