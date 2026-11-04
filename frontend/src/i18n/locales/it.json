@@ -3215,7 +3215,12 @@
         "enable": "Invia promemoria via ntfy",
         "url": "URL server ntfy",
         "urlHint": "L'URL di base del tuo server ntfy, es. https://ntfy.sh",
-        "topic": "Argomento"
+        "topic": "Argomento",
+        "token": "Token di accesso ntfy",
+        "tokenHintNew": "Facoltativo. Serve solo se il tuo server ntfy richiede l'autenticazione per pubblicare.",
+        "tokenHintExisting": "Un token è già salvato. Lascia il campo vuoto per mantenerlo.",
+        "tokenHintRemoving": "Il token salvato verrà rimosso al salvataggio.",
+        "tokenRemove": "Rimuovi token"
       },
       "gotify": {
         "enable": "Invia promemoria via Gotify",

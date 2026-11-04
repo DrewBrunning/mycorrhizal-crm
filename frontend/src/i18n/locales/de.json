@@ -3115,7 +3115,12 @@
         "enable": "Erinnerungen per ntfy senden",
         "url": "ntfy-Server-URL",
         "urlHint": "Die Basis-URL deines ntfy-Servers, z. B. https://ntfy.sh",
-        "topic": "Thema"
+        "topic": "Thema",
+        "token": "ntfy-Zugriffstoken",
+        "tokenHintNew": "Optional. Nur nötig, wenn dein ntfy-Server zum Veröffentlichen eine Anmeldung verlangt.",
+        "tokenHintExisting": "Ein Token ist bereits gespeichert. Leer lassen, um es zu behalten.",
+        "tokenHintRemoving": "Das gespeicherte Token wird beim Speichern entfernt.",
+        "tokenRemove": "Token entfernen"
       },
       "gotify": {
         "enable": "Erinnerungen per Gotify senden",

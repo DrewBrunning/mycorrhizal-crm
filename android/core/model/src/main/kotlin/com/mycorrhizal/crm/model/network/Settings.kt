@@ -103,6 +103,7 @@ val ALL_TEST_CHANNELS: List<String> = listOf("ntfy", "gotify", "push")
 data class NotificationConfig(
     @Json(name = "ntfy_url") val ntfyUrl: String = "",
     @Json(name = "ntfy_topic") val ntfyTopic: String = "",
+    @Json(name = "ntfy_has_token") val ntfyHasToken: Boolean = false,
     @Json(name = "gotify_url") val gotifyUrl: String = "",
     @Json(name = "gotify_has_token") val gotifyHasToken: Boolean = false,
     @Json(name = "notify_ntfy") val notifyNtfy: Boolean = false,
@@ -123,6 +124,8 @@ data class NotificationConfig(
 data class NotificationConfigInput(
     @Json(name = "ntfy_url") val ntfyUrl: String? = null,
     @Json(name = "ntfy_topic") val ntfyTopic: String? = null,
+    @Json(name = "ntfy_token") val ntfyToken: String? = null,
+    @Json(name = "clear_ntfy_token") val clearNtfyToken: Boolean? = null,
     @Json(name = "gotify_url") val gotifyUrl: String? = null,
     @Json(name = "gotify_token") val gotifyToken: String? = null,
     @Json(name = "notify_ntfy") val notifyNtfy: Boolean? = null,

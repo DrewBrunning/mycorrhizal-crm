@@ -68,6 +68,7 @@ type fakeChannelServer struct {
 	hits     []string
 	bodyLens []int
 	bodies   []string
+	auths    []string
 	statuses map[string]int
 }
 
@@ -80,6 +81,7 @@ func newFakeChannelServer(t *testing.T, statuses map[string]int) *fakeChannelSer
 		f.hits = append(f.hits, r.URL.Path)
 		f.bodyLens = append(f.bodyLens, len(body))
 		f.bodies = append(f.bodies, string(body))
+		f.auths = append(f.auths, r.Header.Get("Authorization"))
 		status := http.StatusOK
 		for prefix, s := range statuses {
 			if strings.HasPrefix(r.URL.Path, prefix) {
@@ -1400,4 +1402,54 @@ func TestNotificationTestErrorMessage_LeavesOtherErrorsAlone(t *testing.T) {
 	cfg := config.Config{WebhookBlockPrivateURLs: true}
 	short := "ntfy is not configured — set a URL and topic and save first"
 	assert.Equal(t, short, NotificationTestErrorMessage(cfg, errors.New(short)))
+}
+
+// TestSaveNotificationConfig_NtfyToken covers issue #2339: the ntfy access
+// token is stored encrypted, an empty token on update keeps it, and the
+// send path authenticates with it as a Bearer credential.
+func TestSaveNotificationConfig_NtfyToken(t *testing.T) {
+	const secret = "test-jwt-secret-that-is-long-enough"
+	db := setupNotificationTestDB(t)
+	fake := newFakeChannelServer(t, nil)
+	user := newNotificationUser(t, db, false, false, false, "", "")
+
+	saved, err := SaveNotificationConfig(db, secret, user.ID, models.NotificationConfigInput{
+		NtfyURL: fake.URL(), NtfyTopic: "alerts", NtfyToken: "tk_secret",
+	})
+	require.NoError(t, err)
+	assert.True(t, saved.HasNtfyToken())
+	assert.NotContains(t, saved.NtfyTokenEncrypted, "tk_secret", "the raw token must never be stored")
+
+	// Empty token on update keeps the stored one.
+	_, err = SaveNotificationConfig(db, secret, user.ID, models.NotificationConfigInput{NtfyURL: fake.URL(), NtfyTopic: "alerts"})
+	require.NoError(t, err)
+	loaded, err := GetNotificationConfigForUser(db, user.ID)
+	require.NoError(t, err)
+	require.True(t, loaded.HasNtfyToken())
+
+	require.NoError(t, sendNtfyMessage(context.Background(), config.Config{JWTSecretKey: secret}, loaded, "t", "m"))
+	require.Len(t, fake.auths, 1)
+	assert.Equal(t, "Bearer tk_secret", fake.auths[0])
+
+	// ClearNtfyToken removes it; sends are then unauthenticated.
+	_, err = SaveNotificationConfig(db, secret, user.ID, models.NotificationConfigInput{NtfyURL: fake.URL(), NtfyTopic: "alerts", ClearNtfyToken: true})
+	require.NoError(t, err)
+	loaded, err = GetNotificationConfigForUser(db, user.ID)
+	require.NoError(t, err)
+	assert.False(t, loaded.HasNtfyToken())
+	require.NoError(t, sendNtfyMessage(context.Background(), config.Config{JWTSecretKey: secret}, loaded, "t", "m"))
+	assert.Equal(t, "", fake.auths[1])
+}
+
+// A token that cannot be decrypted (here: the JWT secret changed since it was
+// stored) fails the send with a clear error instead of posting unauthenticated.
+func TestSendNtfyMessage_UndecryptableTokenFails(t *testing.T) {
+	fake := newFakeChannelServer(t, nil)
+	enc, err := EncryptCredential("test-jwt-secret-that-is-long-enough", "tk_secret")
+	require.NoError(t, err)
+	nc := &models.NotificationConfig{NtfyURL: fake.URL(), NtfyTopic: "alerts", NtfyTokenEncrypted: enc}
+
+	err = sendNtfyMessage(context.Background(), config.Config{JWTSecretKey: "a-different-secret-entirely-xxxxxxxx"}, nc, "t", "m")
+	require.ErrorContains(t, err, "failed to decrypt ntfy token")
+	assert.Equal(t, 0, fake.count(), "nothing may be sent when the token cannot be decrypted")
 }

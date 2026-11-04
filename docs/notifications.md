@@ -11,7 +11,7 @@ Reminders can reach you through four channels. Email is configured on the server
 | Channel | Configured where | What you need |
 |---|---|---|
 | Email | Server, in `.env` | A [Resend](https://resend.com) API key, or SMTP host and credentials |
-| ntfy | Per user, in the app | Your ntfy server URL and a topic |
+| ntfy | Per user, in the app | Your ntfy server URL, a topic, and optionally an access token |
 | Gotify | Per user, in the app | Your Gotify server URL and an application token |
 | Browser push | Per user, in the app | Nothing — but the app must be served over HTTPS |
 
@@ -35,7 +35,7 @@ Sending email also requires a valid email address on your account.
 
 ## ntfy
 
-Enter your ntfy server's base URL (for example `https://ntfy.sh`, or your own instance) and the topic to publish to, then turn on **Send reminders via ntfy**.
+Enter your ntfy server's base URL (for example `https://ntfy.sh`, or your own instance) and the topic to publish to, then turn on **Send reminders via ntfy**. If your server requires authentication to publish, also paste an ntfy access token into **ntfy access token**; it is stored encrypted and sent as a `Bearer` credential. Leave the field empty to keep a stored token, or use **Remove token** and save to clear it.
 
 Subscribe to the same topic in the ntfy app or web UI to receive the messages. Note that on a public server such as ntfy.sh, anyone who knows the topic name can read it — choose an unguessable topic, or self-host.
 

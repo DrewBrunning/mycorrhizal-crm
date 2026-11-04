@@ -905,6 +905,11 @@
     <string name="settings_notifications_ntfy_enable">Send reminders via ntfy</string>
     <string name="settings_notifications_ntfy_url">ntfy server URL</string>
     <string name="settings_notifications_ntfy_topic">Topic</string>
+    <string name="settings_notifications_ntfy_token">ntfy access token</string>
+    <string name="settings_notifications_ntfy_token_hint_new">Optional. Needed only if your ntfy server requires authentication to publish.</string>
+    <string name="settings_notifications_ntfy_token_hint_existing">A token is already stored. Leave the field empty to keep it.</string>
+    <string name="settings_notifications_ntfy_token_hint_removing">The stored token will be removed when you save.</string>
+    <string name="settings_notifications_ntfy_token_remove">Remove token</string>
     <string name="settings_notifications_gotify">Gotify</string>
     <string name="settings_notifications_gotify_enable">Send reminders via Gotify</string>
     <string name="settings_notifications_gotify_url">Gotify server URL</string>

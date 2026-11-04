@@ -883,6 +883,11 @@
     <string name="settings_notifications_ntfy_enable">Envoyer les rappels via ntfy</string>
     <string name="settings_notifications_ntfy_url">URL du serveur ntfy</string>
     <string name="settings_notifications_ntfy_topic">Sujet</string>
+    <string name="settings_notifications_ntfy_token">Jeton d\'accès ntfy</string>
+    <string name="settings_notifications_ntfy_token_hint_new">Facultatif. Nécessaire uniquement si votre serveur ntfy exige une authentification pour publier.</string>
+    <string name="settings_notifications_ntfy_token_hint_existing">Un jeton est déjà enregistré. Laissez le champ vide pour le conserver.</string>
+    <string name="settings_notifications_ntfy_token_hint_removing">Le jeton enregistré sera supprimé à l\'enregistrement.</string>
+    <string name="settings_notifications_ntfy_token_remove">Supprimer le jeton</string>
     <string name="settings_notifications_gotify">Gotify</string>
     <string name="settings_notifications_gotify_enable">Envoyer les rappels via Gotify</string>
     <string name="settings_notifications_gotify_url">URL du serveur Gotify</string>

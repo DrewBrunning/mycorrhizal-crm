@@ -2222,11 +2222,13 @@ export type NotificationChannelHealth = {
 };
 
 export type NotificationConfigInput = {
+  clear_ntfy_token?: boolean;
   gotify_token?: string;
   gotify_url?: string;
   notify_gotify?: boolean | null;
   notify_ntfy?: boolean | null;
   notify_push?: boolean | null;
+  ntfy_token?: string;
   ntfy_topic?: string;
   ntfy_url?: string;
 };
@@ -2237,6 +2239,7 @@ export type NotificationConfigResponse = {
   notify_gotify?: boolean;
   notify_ntfy?: boolean;
   notify_push?: boolean;
+  ntfy_has_token?: boolean;
   ntfy_topic?: string;
   ntfy_url?: string;
   vapid_public_key?: string;

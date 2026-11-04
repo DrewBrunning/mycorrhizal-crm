@@ -19591,6 +19591,11 @@
       "name": "NotificationConfigInput",
       "properties": [
         {
+          "name": "clear_ntfy_token",
+          "type": "boolean",
+          "required": false
+        },
+        {
           "name": "gotify_token",
           "type": "string",
           "required": false
@@ -19613,6 +19618,11 @@
         {
           "name": "notify_push",
           "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "ntfy_token",
+          "type": "string",
           "required": false
         },
         {
@@ -19652,6 +19662,11 @@
         },
         {
           "name": "notify_push",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "ntfy_has_token",
           "type": "boolean",
           "required": false
         },

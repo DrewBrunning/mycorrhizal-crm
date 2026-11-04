@@ -9,6 +9,7 @@ export type NotificationChannel = 'email' | 'ntfy' | 'gotify' | 'push';
 export interface NotificationConfig {
   ntfy_url: string;
   ntfy_topic: string;
+  ntfy_has_token: boolean;
   gotify_url: string;
   gotify_has_token: boolean;
   notify_ntfy: boolean;
@@ -20,6 +21,10 @@ export interface NotificationConfig {
 export interface NotificationConfigInput {
   ntfy_url?: string;
   ntfy_topic?: string;
+  // Write-only: empty on update keeps the stored token.
+  ntfy_token?: string;
+  // True removes the stored ntfy token.
+  clear_ntfy_token?: boolean;
   gotify_url?: string;
   // Write-only: empty on update keeps the stored token.
   gotify_token?: string;

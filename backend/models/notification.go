@@ -61,6 +61,9 @@ type NotificationConfig struct {
 
 	NtfyURL   string `gorm:"column:ntfy_url;not null;default:''" json:"ntfy_url"`
 	NtfyTopic string `gorm:"column:ntfy_topic;not null;default:''" json:"ntfy_topic"`
+	// NtfyTokenEncrypted is the optional ntfy access token (issue #2339),
+	// encrypted like the Gotify token and never returned by the API.
+	NtfyTokenEncrypted string `gorm:"column:ntfy_token_encrypted;not null;default:''" json:"-"`
 
 	GotifyURL            string `gorm:"column:gotify_url;not null;default:''" json:"gotify_url"`
 	GotifyTokenEncrypted string `gorm:"column:gotify_token_encrypted;not null;default:''" json:"-"`
@@ -79,13 +82,22 @@ type NotificationConfig struct {
 // services/notification_service.go still re-checks scheme and host, since it
 // also enforces the non-empty host that a tag cannot express.
 type NotificationConfigInput struct {
-	NtfyURL      string `json:"ntfy_url" validate:"max=2000,httpurl"`
-	NtfyTopic    string `json:"ntfy_topic" validate:"max=200"`
-	GotifyURL    string `json:"gotify_url" validate:"max=2000,httpurl"`
-	GotifyToken  string `json:"gotify_token" validate:"max=512"`
-	NotifyNtfy   *bool  `json:"notify_ntfy,omitempty"`
-	NotifyGotify *bool  `json:"notify_gotify,omitempty"`
-	NotifyPush   *bool  `json:"notify_push,omitempty"`
+	NtfyURL   string `json:"ntfy_url" validate:"max=2000,httpurl"`
+	NtfyTopic string `json:"ntfy_topic" validate:"max=200"`
+	NtfyToken string `json:"ntfy_token" validate:"max=512"`
+	// ClearNtfyToken removes the stored ntfy token (an empty NtfyToken alone
+	// means "keep"); it wins over a non-empty NtfyToken.
+	ClearNtfyToken bool   `json:"clear_ntfy_token,omitempty"`
+	GotifyURL      string `json:"gotify_url" validate:"max=2000,httpurl"`
+	GotifyToken    string `json:"gotify_token" validate:"max=512"`
+	NotifyNtfy     *bool  `json:"notify_ntfy,omitempty"`
+	NotifyGotify   *bool  `json:"notify_gotify,omitempty"`
+	NotifyPush     *bool  `json:"notify_push,omitempty"`
+}
+
+// HasNtfyToken reports whether a usable (non-empty) encrypted ntfy token is stored.
+func (c *NotificationConfig) HasNtfyToken() bool {
+	return c.NtfyTokenEncrypted != ""
 }
 
 // HasGotifyToken reports whether a usable (non-empty) encrypted token is stored.
