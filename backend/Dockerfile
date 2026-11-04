@@ -62,7 +62,11 @@ FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cab
 # published 20261020-r0 and pruned the old one from alpine/v3.24/main, so the
 # old pin became unsatisfiable (`apk add`: "breaks: world[...]") -- the same
 # pruned-pin class as libssl3 above.
-RUN apk add --no-cache ca-certificates=20261020-r0 tzdata=2026e-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r0 libcrypto3=3.5.9-r0 zlib=1.3.2-r1
+# 2026-11-04: bumped tzdata 2026e-r0 -> 2026f-r0. Alpine published 2026f-r0 and
+# pruned 2026e-r0 from alpine/v3.24/main, so the old pin became unsatisfiable
+# ("tzdata-2026f-r0: breaks: world[tzdata=2026e-r0]") -- the same pruned-pin
+# class as libssl3 above.
+RUN apk add --no-cache ca-certificates=20261020-r0 tzdata=2026f-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r0 libcrypto3=3.5.9-r0 zlib=1.3.2-r1
 
 WORKDIR /app
 
