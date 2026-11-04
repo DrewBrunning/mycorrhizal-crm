@@ -179,6 +179,11 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 
 		// Provider-side errors (e.g. user denied consent)
 		if errParam := c.Query("error"); errParam != "" {
+			// The error code is IdP-supplied; bound it before logging.
+			if r := []rune(errParam); len(r) > 100 {
+				errParam = string(r[:100])
+			}
+			log.Warn().Str("idp_error", errParam).Msg("OIDC callback: provider returned an error")
 			oidcErrorRedirect(c, android, "oidc_denied")
 			return
 		}
@@ -267,6 +272,8 @@ func OIDCCallbackHandler(provider *services.OIDCProvider, cfg *config.Config) gi
 		user, err := services.FindOrProvisionUser(db, claims, cfg)
 		if err != nil {
 			if errors.Is(err, services.ErrOIDCUserNotFound) {
+				// No email/subject here: both are PII.
+				log.Warn().Msg("OIDC callback: no matching account and OIDC_AUTO_PROVISION is disabled")
 				oidcErrorRedirect(c, android, "oidc_no_account")
 				return
 			}

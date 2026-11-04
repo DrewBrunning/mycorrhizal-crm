@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -428,6 +429,21 @@ func androidCookieSet(state, nonce, pkce string) map[string]string {
 	}
 }
 
+// requireWarning asserts a warn-level record with the exact message, and that
+// its raw line contains wantField (skipped when empty).
+func requireWarning(t *testing.T, rec *logtest.Recorder, msg, wantField string) {
+	t.Helper()
+	for _, r := range rec.Warnings() {
+		if r.Message == msg {
+			if wantField != "" {
+				assert.Contains(t, r.Raw, wantField)
+			}
+			return
+		}
+	}
+	t.Errorf("expected warn log %q, got: %s", msg, rec.String())
+}
+
 func assertRedirectsTo(t *testing.T, w *httptest.ResponseRecorder, path string) {
 	t.Helper()
 	assert.Equal(t, http.StatusFound, w.Code)
@@ -438,6 +454,7 @@ func assertRedirectsTo(t *testing.T, w *httptest.ResponseRecorder, path string) 
 
 func TestOIDCCallbackHandler_ProviderDenied(t *testing.T) {
 	_, router := setupRouter(t)
+	rec := logtest.Capture(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
 
@@ -446,6 +463,22 @@ func TestOIDCCallbackHandler_ProviderDenied(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assertRedirectsTo(t, w, "/login?error=oidc_denied")
+	// Operators otherwise see only a login-page flash and an empty log.
+	requireWarning(t, rec, "OIDC callback: provider returned an error", "access_denied")
+}
+
+func TestOIDCCallbackHandler_ProviderDeniedLogsBoundedErrorCode(t *testing.T) {
+	_, router := setupRouter(t)
+	rec := logtest.Capture(t)
+	router.GET("/callback", OIDCCallbackHandler(nil, &config.Config{}))
+
+	long := strings.Repeat("é", 500)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, callbackRequest(nil, url.Values{"error": {long}}))
+
+	assertRedirectsTo(t, w, "/login?error=oidc_denied")
+	requireWarning(t, rec, "OIDC callback: provider returned an error", strings.Repeat("é", 100))
+	assert.NotContains(t, rec.String(), strings.Repeat("é", 101), "IdP-supplied code must be capped at 100 runes")
 }
 
 func TestOIDCCallbackHandler_MissingStateCookie(t *testing.T) {
@@ -616,6 +649,7 @@ func TestOIDCCallbackHandler_NoAccountAndAutoProvisionDisabled(t *testing.T) {
 	cfg.OIDC.AllowAutoProvision = false
 
 	_, router := setupRouter(t)
+	rec := logtest.Capture(t)
 	router.GET("/callback", OIDCCallbackHandler(provider, cfg))
 
 	req := callbackRequest(fullCookieSet("good-state", "matching-nonce", "good-pkce"),
@@ -624,6 +658,8 @@ func TestOIDCCallbackHandler_NoAccountAndAutoProvisionDisabled(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assertRedirectsTo(t, w, "/login?error=oidc_no_account")
+	requireWarning(t, rec, "OIDC callback: no matching account and OIDC_AUTO_PROVISION is disabled", "")
+	assert.NotContains(t, rec.String(), "unknown-oidc-user@example.com", "the email is PII and must not be logged")
 }
 
 func TestOIDCCallbackHandler_NoEmailWithAutoProvisionEnabled(t *testing.T) {
@@ -823,6 +859,7 @@ func TestOIDCCallbackHandler_AndroidSuccessDeepLink(t *testing.T) {
 }
 
 func TestOIDCCallbackHandler_AndroidProviderDeniedUsesDeepLink(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: OIDC callback: provider returned an error")
 	_, router := setupRouter(t)
 	cfg := &config.Config{}
 	router.GET("/callback", OIDCCallbackHandler(nil, cfg))
