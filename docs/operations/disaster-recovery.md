@@ -14,7 +14,7 @@ points at it rather than restating them.
 | | |
 |---|---|
 | **Scope** | A self-hosted single instance — the shipped all-in-one Docker image. There is no replica and no failover; recovery means **restore**. See [The single-instance reality](#the-single-instance-reality). |
-| **Companion docs** | `docs/deployment.md` → Backups (the authoritative backup/restore/verify *procedures* — the three-piece backup, `make backup`, `make backup-verify`, Restore); `docs/operations/migration-recovery.md` (MIG-05, issue [#440](https://github.com/DrewBrunning/mycorrhizal-crm/issues/440) — the migration-specific chapter: dirty schema, schema ahead of the binary, sub-floor, rolling back a bad release); `docs/security/incident-response.md` (issue [#509](https://github.com/DrewBrunning/mycorrhizal-crm/issues/509) — containment and credential/key rotation for a *compromise*, as opposed to a *loss*); `docs/upgrade-compatibility.md` (issue [#529](https://github.com/DrewBrunning/mycorrhizal-crm/issues/529) — the supported-upgrade range and the refusal states); `docs/security/data-retention-lifecycle.md` §10 (what a backup contains and how long copies of each data type survive). |
+| **Companion docs** | `docs/deployment.md` → Backups (the authoritative backup/restore/verify *procedures* — the four-piece backup, `make backup`, `make backup-verify`, Restore); `docs/operations/migration-recovery.md` (MIG-05, issue [#440](https://github.com/DrewBrunning/mycorrhizal-crm/issues/440) — the migration-specific chapter: dirty schema, schema ahead of the binary, sub-floor, rolling back a bad release); `docs/security/incident-response.md` (issue [#509](https://github.com/DrewBrunning/mycorrhizal-crm/issues/509) — containment and credential/key rotation for a *compromise*, as opposed to a *loss*); `docs/upgrade-compatibility.md` (issue [#529](https://github.com/DrewBrunning/mycorrhizal-crm/issues/529) — the supported-upgrade range and the refusal states); `docs/security/data-retention-lifecycle.md` §10 (what a backup contains and how long copies of each data type survive). |
 | **Policy anchors** | Upgrade floor is `v1.0.0` (issue [#529](https://github.com/DrewBrunning/mycorrhizal-crm/issues/529); raised from `v0.6.0` at the 1.0 major, issue [#1170](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1170)). Downgrade is unsupported; rollback is **install the previous version, restore the pre-upgrade backup**, and the upgrade path takes that backup automatically and fail-closed (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). Three fail-closed migration refusal states (MIG-04, issue [#439](https://github.com/DrewBrunning/mycorrhizal-crm/issues/439)) plus the pre-migration-backup gate (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). `make backup` owns the database snapshot; the operator owns the photo/attachment directories (BACKUP-02, issue [#454](https://github.com/DrewBrunning/mycorrhizal-crm/issues/454)). |
 
 ## The single-instance reality
@@ -56,7 +56,7 @@ recovery path below, and where it bites.
 |---|---|---|
 | **Planned rollback of a bad release** (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)) | **0.** The server writes a verified snapshot immediately before it applies any migration and refuses to migrate if it cannot. The rollback point is the instant before the upgrade ran — you lose only what was written while the bad release was up, and you lose it *visibly, by choice*. | Minutes. Deploy the previous image, restore the `pre-migration/` snapshot (a file copy), restore the photo/attachment directories from the routine backup, start. See `docs/operations/migration-recovery.md` → Rolling back a bad release. |
 | **Database corruption, host loss, a lost photo/attachment directory** | **= your backup interval.** The application ships **no backup scheduler** — routine backups are a cron *you* add (`docs/deployment.md` → Backups). Your backup interval *is* your RPO. The recommended daily cron means up to ~24 h of loss; an hourly cron means ~1 h. There is no default number to quote because there is no default schedule. | Under 30 minutes at MVP scale (100k contacts / ~450 MB) for a prepared operator with the backup set already on the host — the derivation and its per-step table are in `docs/deployment.md`. Add off-host fetch time on top. |
-| **Accidental deletion by the user** | **= your backup interval** (same as host loss). There is no self-service "undelete" — the supported recovery is a point-in-time restore. The soft-delete window keeps the row for `DELETED_RETENTION_DAYS` (default 30) as a sync tombstone, but the delete also hard-deletes join rows and removes attachment/photo files from disk immediately. See [Accidental deletion by the user](#scenario-accidental-deletion-by-the-user). | As above. A single accidental *edit* to a contact is different: `POST /api/v1/audit/:id/undo` reverts it in one call, no downtime. |
+| **Accidental deletion by the user** | **Zero for a deleted contact within the retention window**: it is in Trash and the user restores it in the app (ADR 0037, since v1.6.0); its files stay on disk until purge. **= your backup interval** for anything Trash does not cover: a purged contact (past `DELETED_RETENTION_DAYS`, default 30, or "delete forever"), and a note, activity, reminder or life event deleted on its own. See [Accidental deletion by the user](#scenario-accidental-deletion-by-the-user). | Trash restore: none. Otherwise as above. A single accidental *edit* to a contact is different: `POST /api/v1/audit/:id/undo` reverts it in one call, no downtime. |
 
 ### What dominates the restore clock
 
@@ -67,8 +67,8 @@ is almost entirely **outside** the application:
    network and where you keep backups; usually the largest term, and the
    application cannot make it smaller. If backups lived only on the lost host,
    this term is *infinite* — see [Loss of the host entirely](#scenario-loss-of-the-host-entirely).
-2. **Copy the three pieces into place** — `cp` the `.db`, `rsync` the photo and
-   attachment directories. The file directories dominate at scale (they are
+2. **Copy the four pieces into place** — `cp` the `.db`, `rsync` the photo,
+   attachment and gallery-image directories. The file directories dominate at scale (they are
    files, not rows, and are not compressed by the backup).
 3. **Startup migration**, if the snapshot predates the running binary — measured
    at seconds even for large databases (`docs/development/scale-testing.md`:
@@ -143,7 +143,7 @@ one is before you need it.
 | Input | What it is | Where it lives | Who maintains it |
 |---|---|---|---|
 | **Routine backup — database** | A `VACUUM INTO` snapshot, WAL-safe, verified with `PRAGMA integrity_check` before it is considered valid, and signed (a detached `<snapshot>.manifest.json`, issue [#943](https://github.com/DrewBrunning/mycorrhizal-crm/issues/943)) so `make backup-verify` can detect a tampered or substituted file. Keep the manifest with the snapshot. | `make backup` writes `<db-stem>-<YYYYMMDD-HHMMSS>.db` beside `SQLITE_DB_PATH`, or wherever `BACKUP_PATH` points. | **You** — via a cron you add. The app has no scheduler. |
-| **Routine backup — files** | Plain-directory copies of `PROFILE_PHOTO_DIR` and `ATTACHMENTS_DIR`. `make backup` does **not** touch these (BACKUP-02, issue [#454](https://github.com/DrewBrunning/mycorrhizal-crm/issues/454)); a file copy is already the right tool. | Wherever your `rsync`/`cp` puts them. | **You.** |
+| **Routine backup — files** | Plain-directory copies of `PROFILE_PHOTO_DIR`, `ATTACHMENTS_DIR` and `IMAGES_DIR`. `make backup` does **not** touch these (BACKUP-02, issue [#454](https://github.com/DrewBrunning/mycorrhizal-crm/issues/454)); a file copy is already the right tool. | Wherever your `rsync`/`cp` puts them. | **You.** |
 | **Pre-migration snapshot** | A verified database-only `VACUUM INTO` taken automatically before the server (or `make migrate-up`) applies any pending migration. The server **refuses to migrate if it cannot write one** (`ErrPreMigrationBackupFailed`, issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)). | A `pre-migration/` subdirectory beside `SQLITE_DB_PATH`, named `<db-stem>-pre-migration-<from>-to-<to>-<timestamp>.db`. `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves it. | **The application** writes it; **you** must keep a rotation cron away from the `pre-migration/` directory (issue [#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530): a purge must never delete the last rollback point). |
 | **Scheduled integrity check** | Four passes on one cadence: `PRAGMA integrity_check` + `PRAGMA foreign_key_check` against the live database, the application data-invariant pass, the FTS search-index consistency pass, and (issue [#952](https://github.com/DrewBrunning/mycorrhizal-crm/issues/952)) the tamper-evident audit hash chain (`models.VerifyAuditChain`). Any failure logs, records an `operational_check_result`, and fires `db.integrity_check_failed` (the chain pass with `kind: "audit_chain"`). | `DB_INTEGRITY_CHECK_ENABLED` (default on), `DB_INTEGRITY_CHECK_INTERVAL_HOURS` (default 24). | The application. |
 | **Scheduled restore drill** | Takes a fresh snapshot, restores it into a scratch database, compares every table's row count with live, reconciles attachment/photo rows against the live directories, and verifies the wrapped encryption key still unwraps. Fires `db.restore_drill_failed` on any mismatch, and records `duration_ms` on the `restore_test_completed` timeline row (the RTO drift signal — see [RPO and RTO](#rpo-and-rto)). | `DB_RESTORE_DRILL_ENABLED` (default on), `DB_RESTORE_DRILL_INTERVAL_HOURS` (default 168, i.e. weekly), `DB_RESTORE_DRILL_MAX_DURATION_SECONDS` (optional RTO budget). | The application. |
@@ -183,15 +183,16 @@ check, you also have the webhook timestamp bounding when it started.
    ```sh
    cp "$SQLITE_DB_PATH" /path/off-host/corrupt-$(date +%Y%m%d-%H%M%S).db
    ```
-4. **Restore the three pieces** exactly as `docs/deployment.md` → Restore
+4. **Restore the four pieces** exactly as `docs/deployment.md` → Restore
    describes: remove the live `.db` and any stale `-wal`/`-shm` sidecars, copy
-   the snapshot into place, `rsync --delete` the photo and attachment directories
-   from the same backup set.
+   the snapshot into place, `rsync --delete` the photo, attachment and
+   gallery-image directories from the same backup set.
    ```sh
    rm -f "$SQLITE_DB_PATH" "$SQLITE_DB_PATH-wal" "$SQLITE_DB_PATH-shm"
    cp /backups/mycorrhizal.db "$SQLITE_DB_PATH"
    rsync -a --delete /backups/photos/      "$PROFILE_PHOTO_DIR"/
    rsync -a --delete /backups/attachments/ "$ATTACHMENTS_DIR"/
+   rsync -a --delete /backups/images/      "$IMAGES_DIR"/
    ```
 5. **Start the instance.** `docker compose start` — migrations run automatically
    if the snapshot is older than the binary.
@@ -238,57 +239,83 @@ restored database forward again.
 
 ### Scenario: accidental deletion by the user
 
-A contact and its notes, activities, reminders, and life events were deleted by
-mistake (`DELETE /api/v1/contacts/:id`). Know what the soft-delete window does
-and does not give you, because it is easy to over-read.
+Something was deleted by mistake. What you can get back, and how, depends on
+**what** was deleted and **whether it has been purged yet**.
 
-**What the soft-delete window *is*.** The primary user-authored rows (contact,
-notes, activities, reminders, life events) are **soft-deleted** — `deleted_at`
-is set, the row stays in the database for `DELETED_RETENTION_DAYS` (default
-**30**), and then the purge job (`backend/services/purge_service.go`)
-**hard-deletes** it. During the window the row is a sync tombstone and it keeps
-the *content* present in the live database and in every new backup. That is the
-entire guarantee. (`DELETED_RETENTION_DAYS=0` disables the purge and keeps the
-rows forever; a negative value is rejected at startup.)
+**A deleted contact, within the retention window: restore it from Trash.**
+Since v1.6.0 (ADR 0037, issue #2002) deleting a contact moves it to Trash. The
+delete soft-deletes the contact and the content that belongs to it (notes,
+reminders, reminder completions, life events, preferences, gifts, attachments
+and the rest of the `ContactCascadeRegistry` soft steps) and writes a
+**deletion snapshot** (`contact_deletion_snapshots`) of the join rows it
+hard-deletes: relationship edges, activity, circle, household and tag
+memberships, field values, external identities and activities, occasion
+attendees and per-contact field visibility. The photo and attachment **files
+stay on disk** until purge. The user restores from **Trash** in the app, or
+through `GET /api/v1/trash/contacts` and
+`POST /api/v1/trash/contacts/:id/restore`. Restore brings back the contact,
+the children that the same delete trashed, and the snapshotted join rows. It
+reports anything it had to skip (`skipped: [{table, reason, count}]`): for
+example, a relationship whose other contact is gone, or an import link that
+a re-import has since claimed.
 
-**What it is *not*: a self-service undo.** There is **no undelete endpoint.**
-`POST /api/v1/audit/:id/undo` reverts an accidental **update** to a contact and
-**explicitly rejects delete events**. Recovering a deleted contact means a
-**point-in-time restore from a backup taken before the deletion**.
+A restore does **not** bring back:
 
-**Recoverable** (via that restore): everything in the pre-deletion backup — the
-primary rows, the **join rows** (relationship edges, circle/household/tag
-memberships, sync links) which the delete **hard-deleted with no window at all**,
-and the **attachment and profile-photo files**, which `DeleteContact` removes
-from disk at delete time (outside the transaction — "file deletion cannot be
-rolled back"), *provided* you also have a photo/attachment directory backup from
-before the deletion.
+- derived or review-queue state (notification deliveries, reach-out
+  suggestions, duplicate dismissals, sync conflicts); the schedulers recompute
+  it.
+- the contact's **feeds**: they are revoked at delete and stay revoked, and the
+  restore response lists them so they can be re-issued.
+- a child the user deleted on its own **before** deleting the contact. That
+  delete was not part of the contact's deletion batch.
+
+No downtime, no backup. The full rules are in
+`docs/adrs/0037-contact-trash-and-restore.md`.
+
+**Everything else needs a point-in-time restore from a backup:**
+
+- a contact that has been **purged**: past `DELETED_RETENTION_DAYS` (default
+  **30**; the purge job is `backend/services/purge_service.go`), or removed with
+  "delete forever" / "empty trash";
+- a **note, activity, reminder or life event deleted on its own**. These
+  soft-delete for the same retention window as sync tombstones, but there is no
+  Trash for them;
+- anything a user deleted that is not a contact or a contact's content.
+
+`POST /api/v1/audit/:id/undo` reverts an accidental **update** to a contact
+and **explicitly rejects delete events**; it is not an undelete.
+
+**Recoverable** from a backup taken before the deletion (or before the purge):
+everything in it, including the join rows and, *provided* you also have a
+photo/attachment/image directory backup from that time, the files. Purge
+removes a contact's photo and attachment files from disk after the purge
+transaction commits. A file-removal failure is logged and left to the orphan
+sweep.
 
 **Lost:**
 
 - Everything written anywhere on the instance since that backup (your RPO).
-- Attachment/photo **file content** if no directory backup predates the deletion
-  — a database-only restore brings the rows back pointing at missing files.
-- Everything, if you are past `DELETED_RETENTION_DAYS` *and* every backup that
-  predates the purge has also been deleted.
+- File content if no directory backup predates the purge. A database-only
+  restore brings the rows back pointing at missing files.
+- Everything, if every backup that predates the purge has also been deleted.
 
-Clearing `deleted_at` by hand on the soft-deleted rows is a partial, unsupported
-last resort: it does not bring back the hard-deleted join rows or the on-disk
-files, and it leaves the FTS index and change-feed cursors to reconcile. Prefer
-the restore.
+Clearing `deleted_at` by hand on soft-deleted rows is a partial, unsupported
+last resort: it does not bring back hard-deleted join rows, and it leaves the
+FTS index and change-feed cursors to reconcile. For a contact, use Trash; for
+everything else, prefer the restore.
 
-**Procedure.**
+**Procedure (backup restore).**
 
 1. **Identify the backup** whose timestamp is the latest one *before* the
-   deletion (check the audit log — `GET /api/v1/audit` — for the delete event's
-   `created_at`).
-2. **Restore that three-piece set** per `docs/deployment.md` → Restore (stop
-   server / replace `.db` + clear sidecars / `rsync --delete` both directories /
-   start). This is a point-in-time rollback: everything since that backup is
+   deletion or purge (check the audit log, `GET /api/v1/audit`, for the
+   delete or `purge` event's `created_at`).
+2. **Restore that backup set** per `docs/deployment.md` → Restore: stop the
+   server, replace the `.db` and clear its sidecars, `rsync --delete` each
+   file directory (`PROFILE_PHOTO_DIR`, `ATTACHMENTS_DIR`, `IMAGES_DIR`), then
+   start it. This is a point-in-time rollback: everything since that backup is
    lost.
-3. **Verify** — [Verifying a recovered instance](#verifying-a-recovered-instance)
-   — and confirm the specific contact, its relationships, and its attachments are
-   back.
+3. **Verify** ([Verifying a recovered instance](#verifying-a-recovered-instance)),
+   and confirm the specific records and their files are back.
 
 For an accidental **edit** (not a delete) to a contact, no restore is needed:
 
@@ -328,9 +355,9 @@ the scenario that decides whether your backup strategy was real.
    you keep secrets. The database backup does not contain them and a restore
    under a *different* `DATA_ENCRYPTION_KEY` fails closed at boot rather than
    serving garbage.
-3. **Restore the three pieces** from the off-host backup, per
+3. **Restore the four pieces** from the off-host backup, per
    `docs/deployment.md` → Restore (stop server / replace `.db` + clear sidecars /
-   `rsync --delete` both directories / start).
+   `rsync --delete` the three file directories / start).
 4. **Start**, let startup migrations run, and **verify** —
    [Verifying a recovered instance](#verifying-a-recovered-instance).
 5. Users log in again (a new or rotated `JWT_SECRET_KEY` invalidates old
@@ -345,7 +372,7 @@ the scenario that decides whether your backup strategy was real.
 
 ### Scenario: loss of an attachment or photo directory while the database survives
 
-The database is intact but `PROFILE_PHOTO_DIR` or `ATTACHMENTS_DIR` was lost,
+The database is intact but `PROFILE_PHOTO_DIR`, `ATTACHMENTS_DIR` or `IMAGES_DIR` was lost,
 partially deleted, or restored stale — a wrong `rsync`, a detached volume, a full
 disk that dropped writes. The database now has attachment/photo rows whose files
 are missing. The failure is silent until someone opens the affected attachment —
@@ -367,6 +394,7 @@ downloaded. There is no way to reconstruct a file's *content* from the database.
    SQLITE_DB_PATH="$SQLITE_DB_PATH" \
    PROFILE_PHOTO_DIR="$PROFILE_PHOTO_DIR" \
    ATTACHMENTS_DIR="$ATTACHMENTS_DIR" \
+   IMAGES_DIR="$IMAGES_DIR" \
      make backup-verify
    # names every live row with no backing file (exit non-zero); orphan files are
    # reported but do not fail the command.
@@ -375,7 +403,7 @@ downloaded. There is no way to reconstruct a file's *content* from the database.
 3. **Restore only the affected directory** from backup:
    ```sh
    rsync -a --delete /backups/attachments/ "$ATTACHMENTS_DIR"/
-   # or /backups/photos/ → "$PROFILE_PHOTO_DIR"
+   # or /backups/photos/ → "$PROFILE_PHOTO_DIR", /backups/images/ → "$IMAGES_DIR"
    ```
    The database is untouched — do **not** restore the `.db` for this scenario, or
    you will roll every row back to the directory backup's age for no reason.
@@ -409,6 +437,7 @@ the live database (if it still exists and is intact) is your only copy.
    SQLITE_DB_PATH=/backups/<candidate>.db \
    PROFILE_PHOTO_DIR=/backups/<photos-for-that-set> \
    ATTACHMENTS_DIR=/backups/<attachments-for-that-set> \
+   IMAGES_DIR=/backups/<images-for-that-set> \
      make backup-verify                                             # → no missing files
    ```
 2. Restore that set per `docs/deployment.md` → Restore.
@@ -547,7 +576,7 @@ from this document is a bug in this document; fix it here.
 | Migration interrupted | SIGKILL the process mid-migration, or `UPDATE schema_migrations SET dirty = 1` | `docs/operations/migration-recovery.md` → [Dirty schema](migration-recovery.md#dirty-schema), reached via [this doc's summary](#scenario-a-migration-interrupted-partway) | Restored DB reports `integrity_check=ok`, the expected version, `dirty=false` |
 | Bad release rollback | Deploy a newer image against a populated database (let it migrate), then decide to roll back | `docs/operations/migration-recovery.md` → [Rolling back a bad release](migration-recovery.md#rolling-back-a-bad-release-n1--n) | The instance serves the previous version's schema; row counts match the pre-migration snapshot's point |
 | Accidental edit (undoable) | Update a contact through the API; note the update event's ID from `GET /api/v1/audit` | [Accidental deletion](#scenario-accidental-deletion-by-the-user) → the edit-undo call | `POST /api/v1/audit/<id>/undo` returns 200 and the contact's previous field values are restored |
-| Accidental deletion | Delete a contact through the API; note the delete event's `created_at` | [Accidental deletion](#scenario-accidental-deletion-by-the-user) → point-in-time restore from a backup predating the delete | The contact, its relationships, and its attachments are back; you can state exactly what else the rollback cost. Confirm `POST /api/v1/audit/<delete-id>/undo` is refused ("undo supports update events only") — there is no undelete |
+| Accidental deletion | Delete a contact through the API, then a standalone note; note the note delete event's `created_at` | [Accidental deletion](#scenario-accidental-deletion-by-the-user) → restore the contact from Trash; point-in-time restore from a backup predating the note delete | The contact, its relationships, its notes and its attachments are back from Trash, and the restore response lists anything it skipped. The standalone note is back after the backup restore, and you can state exactly what else that rollback cost. Confirm `POST /api/v1/audit/<delete-id>/undo` is refused ("undo supports update events only") |
 | Host loss | Provision a fresh machine with none of the original config or volumes; restore from an off-host backup only | [Loss of the host entirely](#scenario-loss-of-the-host-entirely) | New instance passes all four checks in [Verifying a recovered instance](#verifying-a-recovered-instance); pre-existing account logs in |
 | File directory loss | `rm -rf "$ATTACHMENTS_DIR"/*` on a stopped instance | [Loss of an attachment or photo directory](#scenario-loss-of-an-attachment-or-photo-directory-while-the-database-survives) | `make backup-verify` reports no missing files after the directory-only restore; database rows unchanged |
 | Corrupted backup | Truncate the newest backup `.db`; keep an older valid one | [A corrupted or incomplete backup](#scenario-a-corrupted-or-incomplete-backup) | The newest snapshot is rejected by `PRAGMA integrity_check`; the older one restores and verifies |

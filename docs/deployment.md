@@ -253,7 +253,7 @@ into a `pre-migration/` directory beside `SQLITE_DB_PATH` (issue #530), and
 **refuses to migrate if it cannot** (`ErrPreMigrationBackupFailed`).
 `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves the target; nothing disables the
 backup. It is the database only — photos and attachments are unchanged by
-migrations — and it does not replace the routine three-piece `make backup`
+migrations — and it does not replace the routine four-piece `make backup`
 below. It is retained under your control: the app never deletes it. Keep the
 `pre-migration/` directory off any backup-rotation purge path, since it holds
 your rollback points.
@@ -360,7 +360,7 @@ not just a log-size knob. For the live tail of what the running container is wri
 
 ## Backups
 
-A backup is two (or three) independent pieces, and missing any of them means the backup is not a
+A backup is four independent pieces, and missing any of them means the backup is not a
 backup:
 
 | Piece | Where it lives | Docker volume |
@@ -375,12 +375,12 @@ the CLI; with neither set, an existing `images` sibling of the photo directory i
 image row must have its full and thumbnail file under `u<user id>/`. The daily `image_sweep` job removes
 files no row names, so a growing `IMAGES_DIR` with no rows is cleaned up automatically.
 
-Photos and attachments live **outside** the SQLite file, so backing up only the `.db` silently loses
-them. They are plain directories; a file-level copy (`rsync`/`cp`) is exactly right for them.
+Photos, attachments and gallery images live **outside** the SQLite file, so backing up only the `.db`
+silently loses them. They are plain directories; a file-level copy (`rsync`/`cp`) is exactly right for them.
 
 **Boundary (BACKUP-02, issue #454): the tool owns the database snapshot; the operator owns the
-photo/attachment directories.** `make backup` / `database.BackupSnapshot` deliberately produce and
-verify the database piece only — a plain file copy is already the right tool for two ordinary
+photo, attachment and image directories.** `make backup` / `database.BackupSnapshot` deliberately produce and
+verify the database piece only — a plain file copy is already the right tool for ordinary
 directories, and the all-in-one Docker image mounts them as separate volumes anyway. What the tool
 *does* own is checking that an assembled set is consistent, regardless of who assembled it: see
 "Verifying a backup set is complete" below. (`docs/operations/disaster-recovery.md` — BACKUP-03,
@@ -391,7 +391,7 @@ and its RPO/RTO; this paragraph is the citable decision it references.)
 server writes a verified database snapshot into a `pre-migration/` directory beside `SQLITE_DB_PATH`
 (`MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` moves it) and refuses to migrate if it cannot — it is the
 rollback point for a bad release (issue #530, `docs/operations/migration-recovery.md`). It covers
-the database only, so it is not a substitute for this three-piece backup; and the app never deletes
+the database only, so it is not a substitute for this four-piece backup; and the app never deletes
 it, so a rotation cron must leave the `pre-migration/` directory alone.
 
 ### Why you cannot just copy the `.db` file while the server runs
@@ -491,7 +491,8 @@ same at-rest key environment `make backup` used:
 
 ```sh
 SQLITE_DB_PATH=/backups/mycorrhizal.db DATA_ENCRYPTION_KEY=... \
-  PROFILE_PHOTO_DIR=/backups/photos ATTACHMENTS_DIR=/backups/attachments make backup-verify
+  PROFILE_PHOTO_DIR=/backups/photos ATTACHMENTS_DIR=/backups/attachments \
+  IMAGES_DIR=/backups/images make backup-verify
 ```
 
 To reconcile a **legacy, unsigned** set (one taken before snapshot signing
@@ -504,8 +505,11 @@ with `make backup` over trusting an unsigned one.
   names it (e.g. `missing attachment: 3f2c…-file (owner attachment#42)`) and exits non-zero.
 - An **orphan** file — present with no owning row — is reported but does not fail the command; it
   distinguishes a stale directory from a lost one (feeds DB-01, issue #460's orphan detection).
-- Soft-deleted rows are excluded on purpose: `DeleteContact` removes the on-disk file at delete
-  time, so a soft-deleted row with no file is the expected steady state, not a hole.
+- Soft-deleted attachment and photo rows are excluded. That is right for an attachment deleted on
+  its own, which removes its file at once, but not for a contact in **Trash**: since v1.6.0 (ADR
+  0037) a trashed contact keeps its photo and attachment files until purge so it can be restored,
+  and the check does not yet require them (issue #2367). Until that lands, a set missing a trashed
+  contact's files still verifies.
 
 Run it against every backup set you take, not just at restore time — a hole found the moment the
 backup is made is far cheaper than one found during a disaster.
@@ -523,7 +527,7 @@ backup is caught before it replaces the live instance (a legacy unsigned set mus
 `BACKUP_ALLOW_UNSIGNED=1`, deliberately).
 
 1. Stop the server: `docker compose stop`.
-2. Replace the three pieces from backup. For a database backup produced by `VACUUM INTO`, the
+2. Replace the four pieces from backup. For a database backup produced by `VACUUM INTO`, the
    snapshot file is self-contained — drop any `-wal`/`-shm` files that may sit beside the live
    database first:
    ```sh
@@ -531,8 +535,9 @@ backup is caught before it replaces the live instance (a legacy unsigned set mus
    cp /backups/mycorrhizal.db /path/to/data/mycorrhizal.db
    rsync -a --delete /backups/photos/ /path/to/photos/
    rsync -a --delete /backups/attachments/ /path/to/attachments/
+   rsync -a --delete /backups/images/ /path/to/images/
    ```
-   `rsync --delete` matters: it removes files that were added to the photo/attachment directories
+   `rsync --delete` matters: it removes files that were added to the file directories
    after the backup, so the directories match the snapshot instead of blending old and new.
 3. Start the server: `docker compose start`. Migrations run automatically on startup.
 4. **Rebuild the full-text search index.** A `VACUUM INTO` snapshot carries the FTS index, so a
@@ -558,7 +563,7 @@ backup is caught before it replaces the live instance (a legacy unsigned set mus
    [Derived-data inventory](derived-data-inventory.md).
 5. **Verify** — a restore that has never been tested is a hypothesis. Log in and check that a known
    contact, a recent note, and a reminder are present; run a search for a contact you know exists;
-   for the photo/attachment directories, open a contact's photo and download an attachment. The
+   for the file directories, open a contact's photo, a gallery or note photo, and download an attachment. The
    automated check behind this page's procedure is `frontend/e2e/backupRestore.spec.ts`, which backs
    up a populated instance, destroys the database and both directories, restores, and asserts every
    entity type survived.
@@ -647,7 +652,7 @@ this section is the citable derivation it references.
 |---|---|---|
 | **Planned upgrade rollback** (a bad release) | **0** | The pre-migration snapshot is taken automatically, verified, and fail-closed immediately before the first migration runs (issue #530) — nothing is committed between the snapshot and the upgrade. Rolling back is *deploy the previous binary + restore that snapshot* (`docs/operations/migration-recovery.md` → "Rolling back a bad release"). Non-disableable: `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` relocates it, nothing turns it off. |
 | **Host loss / database corruption / a lost photo or attachment directory** | **= your backup interval** | The app ships **no scheduled routine backup** — `make backup` plus the directory `rsync` are an operator cron (BACKUP-02, issue #454). A restore replaces the instance with the last set you captured, so everything written since is lost. With the recommended **daily** cron, RPO ≈ **24 h**. |
-| **Accidental deletion by the user** | **= your backup interval** (as host loss) | Soft delete keeps the row for `DELETED_RETENTION_DAYS` (default **30**) as a sync tombstone, **but there is no undelete**: `POST /api/v1/audit/:id/undo` reverts an accidental *edit* only (update events; it rejects deletes), and `DeleteContact` hard-deletes the contact's join rows and removes its attachment/photo files from disk immediately. Recovering a deleted contact is a point-in-time restore from a backup predating the deletion — see BACKUP-03. (*Archiving* a contact, by contrast, is reversible via `/unarchive`.) |
+| **Accidental deletion by the user** | **0** for a contact still in Trash; **= your backup interval** otherwise | Since v1.6.0 (ADR 0037) a deleted contact goes to **Trash**: the user restores it, with its notes, reminders, relationships, memberships and files, until it is purged (`DELETED_RETENTION_DAYS`, default **30**, or "delete forever"). After purge, and for a note, activity, reminder or life event deleted on its own, there is no undelete: `POST /api/v1/audit/:id/undo` reverts an accidental *edit* only (it rejects deletes), and recovery is a point-in-time restore from a backup predating the deletion or purge — see BACKUP-03. (*Archiving* a contact, by contrast, is reversible via `/unarchive`.) |
 
 The one freshness number the app enforces itself: the **`backup_stale` alert** fires when no
 successful operator backup (`make backup` — a `backup_completed` heartbeat) has been observed for
@@ -803,7 +808,7 @@ There is no partial/selective restore.
 snapshot into a scratch database weekly by default, compares every table's row count with the live
 database, and since issue #420 also verifies the snapshot's wrapped DEK unwraps under the current
 master key, so a rotated/lost key is caught weekly instead of at the moment of need; (2) for a real
-restore, stop the server, replace the three pieces, and verify a known contact/note/reminder plus a
+restore, stop the server, replace the four pieces, and verify a known contact/note/reminder plus a
 photo and an attachment (or run the `frontend/e2e/backupRestore.spec.ts` round trip on a throwaway
 copy first). Restoring into an environment whose master key differs from the snapshot's fails closed
 at boot — that is the intended signal to check keys before touching the live instance. The audit
@@ -835,7 +840,7 @@ signature before a restore.
 
 **What it does and does not cover.**
 
-- It covers the **database** piece only. The photo/attachment directories are outside the tool's
+- It covers the **database** piece only. The photo, attachment and image directories are outside the tool's
   boundary (BACKUP-02, issue #454) and stay unsigned; protect them like their retention — operator
   storage and, if you want integrity there, your own `sha256sum`/`gpg` inventory.
 - It does **not** stop replay of an older snapshot that is itself validly signed (a rollback to a
@@ -877,7 +882,7 @@ host means putting the backups somewhere the application holds **no credential t
 in rough order of strength for a single-instance self-hosted deployment:
 
 1. **Pull-based off-host copy (recommended default).** A separate backup host reaches *in* over SSH on
-   a schedule and copies the snapshot + the photo/attachment directories out; the Mycorrhizal host
+   a schedule and copies the snapshot + the photo, attachment and image directories out; the Mycorrhizal host
    holds no key, token, or mount that can reach the backup store. A compromise of the Mycorrhizal
    host cannot touch what is already off it, and cannot stop a future pull it does not know about.
    This is the cheapest to reason about: the trust flows one way, from the backup host to the app

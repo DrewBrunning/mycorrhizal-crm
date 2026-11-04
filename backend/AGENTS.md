@@ -52,7 +52,10 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
    `DeleteContact` and `DeleteUser` enumerate every dependent table explicitly — if you add an
    entity, add it there. The contact side is the declarative `services.ContactCascadeRegistry`
    (`services/contact_delete.go`, ADR 0035): add a `CascadeStep` (table, soft/hard, reason) and the
-   completeness test fails until any table referencing a contact is registered. `DeleteUser`'s
+   completeness test fails until any table referencing a contact is registered. A `hard` (or mutate)
+   step must also be captured in the Trash snapshot or carry a `SnapshotSkip` reason (ADR 0037;
+   `TestContactDeletionPayload_StepsAreSnapshottedOrSkippedWithReason`), and a trashed contact's files
+   stay on disk until purge removes them after commit — never delete them at delete time. `DeleteUser`'s
    `deleteUserCascade` is still hand-written. Assert with `Unscoped()` when you need to distinguish
    hard-deleted from merely soft-deleted rows — `db.Model(...).Count()` excludes soft-deleted rows.
 
