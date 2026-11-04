@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -464,6 +465,20 @@ func TestOIDCCallbackHandler_ProviderDenied(t *testing.T) {
 	assertRedirectsTo(t, w, "/login?error=oidc_denied")
 	// Operators otherwise see only a login-page flash and an empty log.
 	requireWarning(t, rec, "OIDC callback: provider returned an error", "access_denied")
+}
+
+func TestOIDCCallbackHandler_ProviderDeniedLogsBoundedErrorCode(t *testing.T) {
+	_, router := setupRouter(t)
+	rec := logtest.Capture(t)
+	router.GET("/callback", OIDCCallbackHandler(nil, &config.Config{}))
+
+	long := strings.Repeat("é", 500)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, callbackRequest(nil, url.Values{"error": {long}}))
+
+	assertRedirectsTo(t, w, "/login?error=oidc_denied")
+	requireWarning(t, rec, "OIDC callback: provider returned an error", strings.Repeat("é", 100))
+	assert.NotContains(t, rec.String(), strings.Repeat("é", 101), "IdP-supplied code must be capped at 100 runes")
 }
 
 func TestOIDCCallbackHandler_MissingStateCookie(t *testing.T) {
