@@ -11,7 +11,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "e3c681357998c672"
+        "config_hash": "e3c681357998c672",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "api-contract-change": {
         "status": "passed",
@@ -22,7 +24,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "d0503db33ba049b8"
+        "config_hash": "d0503db33ba049b8",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "api-contract-change-refuse": {
         "status": "passed",
@@ -33,7 +37,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "71622b27d7943b50"
+        "config_hash": "71622b27d7943b50",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "contact-data-fidelity": {
         "status": "passed",
@@ -44,7 +50,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "679f4e014bf61bb2"
+        "config_hash": "679f4e014bf61bb2",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "database-migration": {
         "status": "passed",
@@ -55,7 +63,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "9c1f0e7a6231307a"
+        "config_hash": "9c1f0e7a6231307a",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "database-migration-refuse": {
         "status": "passed",
@@ -66,7 +76,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "274cd2163f8d966b"
+        "config_hash": "274cd2163f8d966b",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "dependency-update-review": {
         "status": "passed",
@@ -77,7 +89,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "ba9177bff826944a"
+        "config_hash": "ba9177bff826944a",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "documentation-maintenance": {
         "status": "passed",
@@ -88,7 +102,8 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "3dba013e1d1469d6"
+        "config_hash": "3dba013e1d1469d6",
+        "verified": false
       },
       "localization-change": {
         "status": "passed",
@@ -99,7 +114,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "d67f77593c281c47"
+        "config_hash": "d67f77593c281c47",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "performance-investigation": {
         "status": "passed",
@@ -110,7 +127,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "a21f89b73542f110"
+        "config_hash": "a21f89b73542f110",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "relationship-semantics-change": {
         "status": "passed",
@@ -121,7 +140,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "9529484f45d55aef"
+        "config_hash": "9529484f45d55aef",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "release-readiness": {
         "status": "passed",
@@ -132,7 +153,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "85d662089a2f2b65"
+        "config_hash": "85d662089a2f2b65",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       },
       "security-sensitive-change": {
         "status": "passed",
@@ -143,7 +166,9 @@
         "hand_edited_generated": 0,
         "integrity_violations": 0,
         "unexpected_changes": 0,
-        "config_hash": "2f055383ddca6b1c"
+        "config_hash": "2f055383ddca6b1c",
+        "verified": true,
+        "promoted_from": "historical pinned-profile run"
       }
     }
   }

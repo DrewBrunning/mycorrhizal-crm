@@ -187,9 +187,11 @@ changes hidden in a commit). Use a pinned profile from
 `testdata/agent-eval/agents.yaml` (add a real profile if only the `dry-run`
 placeholder is committed), or explicit agent flags, to pin the agent; use
 `-skill` to shard a pass and `-timeout` to bound one prompt. It
-measures reported selection, not observed file access or task completion; the
-manual procedure below remains the record for the ambiguous pairs and for *why*
-a neighbour did or did not win.
+measures reported selection, not observed file access or task completion. That
+is a permanent limitation: agent CLIs expose different (or no) transcripts, and
+a disposable worktree cannot prove a read that left no change. The manual
+procedure below remains the record for the ambiguous pairs and for *why* a
+neighbour did or did not win; do not treat select mode as access evidence.
 
 Procedure (manual):
 
@@ -221,6 +223,14 @@ are warnings. A hard violation fails the run because a green suite earned by
 weakening the gate is not evidence the task was completed; a warning needs a
 human read and can be a legitimate choice for a specific task.
 
+A task may also declare `content_checks`: deterministic assertions over the
+files it changed (for example that the docs name the regeneration command and
+the never-hand-edit rule, or that every locale carries the new plural family).
+They complement the suite commands, which prove a gate still exits 0 but not
+that the requested behavior exists. A profile may set `version_command`; the
+harness runs it before the agent, records the observed CLI version, and fails on
+drift from the pinned `version`.
+
 A pinned-profile run can be compared with
 `testdata/agent-eval/baseline.json`; a profile/task without an entry has no
 baseline yet. Once a run is promoted, the committed summary records success,
@@ -229,7 +239,13 @@ integrity violations and refusal-task unexpected changes, so a baseline catches
 gate-weakening and refusal regressions, not just suite command failures. A
 committed-file test recomputes each entry's fingerprint from the committed
 profile, task and suite, so a stale or hand-edited `config_hash` fails
-`go test ./...`.
+`go test ./...`. Only `-write-baseline` or `-promote-artifact` from a passing
+pinned-profile artifact sets `verified`; a hand-edited hash is unverified even
+when the recomputation matches, and the comparison prints that warning.
+
+One run per task is a deterministic tripwire, not a confidence estimate. For a
+noisy task, run the stripped-context control or repeat the task manually and
+report the spread; never widen a budget or compare sub-command wall-clock.
 
 The promoted measurement is the `pinned-opencode` profile (opencode CLI `1.19.4`,
 model `deepseek/deepseek-flash`) with one entry per discovered task. The weekly
@@ -241,6 +257,15 @@ before invoking the agent so a delayed or manually dispatched run cannot pay
 the peak rate by accident. After a profile, prompt, spec or suite change,
 refresh the whole baseline with the loop in `testdata/agent-eval/README.md`; a
 non-passing run is refused, never promoted with `-force-baseline`.
+
+The weekly collector is a drift/canary check, not a validator of current
+agent-file changes: each task pins `base_ref`, so it re-runs a frozen snapshot
+of the suite, prompt and context. Keep the cadence weekly; if spend is reviewed
+again, fortnightly is the next step. It is never pull-request-triggered because
+the agent executes code with a model credential. A change-triggered path would
+need a post-merge `push` filtered to `AGENTS.md`, `.agents/skills/` and
+`testdata/agent-eval/` with `-base-ref "$GITHUB_SHA"`; PR evidence plus a manual
+dispatch is the supported path.
 
 ## Context-change evidence
 

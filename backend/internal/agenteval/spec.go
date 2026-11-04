@@ -29,23 +29,24 @@ var commitSHARe = regexp.MustCompile(`^[0-9a-f]{40}([0-9a-f]{24})?$`)
 
 // Spec is one task definition from testdata/agent-eval/<task>/spec.yaml.
 type Spec struct {
-	Name             string   `yaml:"name"`
-	Prompt           string   `yaml:"prompt"`
-	BaseRef          string   `yaml:"base_ref"`
-	Suite            string   `yaml:"suite"`
-	ExpectPaths      []string `yaml:"expect_paths"`
-	ForbidPaths      []string `yaml:"forbid_paths"`
-	Timeout          string   `yaml:"timeout"`
-	Requires         []string `yaml:"requires"`
-	Control          string   `yaml:"control"`
-	AgentCommand     string   `yaml:"agent_command"`
-	AgentName        string   `yaml:"agent_name"`
-	AgentModel       string   `yaml:"agent_model"`
-	AgentVersion     string   `yaml:"agent_version"`
-	SeedPatch        string   `yaml:"seed_patch"`
-	ExpectedFindings []string `yaml:"expected_findings"`
-	ExpectedAny      []string `yaml:"expected_any"`
-	ExpectNoChange   bool     `yaml:"expect_no_change"`
+	Name             string         `yaml:"name"`
+	Prompt           string         `yaml:"prompt"`
+	BaseRef          string         `yaml:"base_ref"`
+	Suite            string         `yaml:"suite"`
+	ExpectPaths      []string       `yaml:"expect_paths"`
+	ForbidPaths      []string       `yaml:"forbid_paths"`
+	Timeout          string         `yaml:"timeout"`
+	Requires         []string       `yaml:"requires"`
+	Control          string         `yaml:"control"`
+	AgentCommand     string         `yaml:"agent_command"`
+	AgentName        string         `yaml:"agent_name"`
+	AgentModel       string         `yaml:"agent_model"`
+	AgentVersion     string         `yaml:"agent_version"`
+	SeedPatch        string         `yaml:"seed_patch"`
+	ExpectedFindings []string       `yaml:"expected_findings"`
+	ExpectedAny      []string       `yaml:"expected_any"`
+	ContentChecks    []ContentCheck `yaml:"content_checks"`
+	ExpectNoChange   bool           `yaml:"expect_no_change"`
 
 	// TaskDir is the absolute task directory containing spec.yaml.
 	TaskDir string `yaml:"-"`
@@ -100,6 +101,9 @@ func parseSpec(body []byte, dir, name string, suites []string) (Spec, error) {
 		if _, err := globRegexp(pattern); err != nil {
 			return Spec{}, fmt.Errorf("invalid path glob %q: %w", pattern, err)
 		}
+	}
+	if err := ValidateContentChecks(spec.ContentChecks); err != nil {
+		return Spec{}, fmt.Errorf("spec.content_checks: %w", err)
 	}
 	spec.TimeoutValue = DefaultTimeout
 	if spec.Timeout != "" {

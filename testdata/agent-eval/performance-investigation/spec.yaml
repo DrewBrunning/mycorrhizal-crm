@@ -16,3 +16,10 @@ forbid_paths:
   - android/**
   - backend/database/migrations/**
   - .github/**
+content_checks:
+  - name: measures a search operation with constant growth
+    paths:
+      - backend/internal/perfbench/**
+    contains_all:
+      - search
+      - growthconstant

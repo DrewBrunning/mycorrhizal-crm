@@ -22,12 +22,13 @@ func TestLoadProfile(t *testing.T) {
 		"    name: opencode",
 		"    model: deepseek-flash",
 		"    version: \"1.2.3\"",
+		"    version_command: \"agent --version\"",
 	}, "\n"))
 	p, err := LoadProfile(root, "testdata/agent-eval/agents.yaml", "pinned")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.Name != "opencode" || p.Model != "deepseek-flash" || p.Version != "1.2.3" || p.DryRun {
+	if p.Name != "opencode" || p.Model != "deepseek-flash" || p.Version != "1.2.3" || p.VersionCommand != "agent --version" || p.DryRun {
 		t.Fatalf("profile = %+v", p)
 	}
 	if _, err := LoadProfile(root, "testdata/agent-eval/agents.yaml", "missing"); err == nil || !strings.Contains(err.Error(), "not defined") {
@@ -79,6 +80,7 @@ func TestProfileValidation(t *testing.T) {
 		{"latest tag", Profile{Command: "npx agent@latest {prompt}", Name: "n", Model: "m", Version: "1"}, "@latest"},
 		{"no prompt", Profile{Command: "true", Name: "n", Model: "m", Version: "1"}, "no {prompt}"},
 		{"none model", Profile{Command: "x {prompt}", Name: "n", Model: "none", Version: "1"}, "model none"},
+		{"version command prompt", Profile{Command: "x {prompt}", Name: "n", Model: "m", Version: "1", VersionCommand: "agent {prompt} --version"}, "version_command"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

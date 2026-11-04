@@ -24,3 +24,21 @@ forbid_paths:
   - backend/services/**
   - frontend/**
   - android/**
+content_checks:
+  - name: adds a scheduled gate without a PR trigger
+    paths:
+      - .github/workflows/**
+    contains_all:
+      - "schedule:"
+      - depexceptions
+      - contextcheck
+    forbids:
+      - pull_request
+  - name: documents the new gate
+    paths:
+      - docs/development/release-gates.md
+    contains_any:
+      - depexceptions
+      - dependency-exception
+      - dependency exception
+      - contextcheck

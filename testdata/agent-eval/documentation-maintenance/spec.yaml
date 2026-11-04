@@ -15,3 +15,31 @@ forbid_paths:
   - frontend/**
   - android/**
   - .github/**
+content_checks:
+  - name: names the regeneration command
+    paths:
+      - docs/**
+      - README-developer.md
+    contains_any:
+      - gen-schema-fixtures
+      - cmd/genschema
+      - genschema
+  - name: states the never-hand-edit rule
+    paths:
+      - docs/**
+      - README-developer.md
+    contains_any:
+      - hand-edit
+      - hand edit
+      - by hand
+  - name: identifies the schema drift
+    paths:
+      - docs/**
+      - README-developer.md
+    contains_any:
+      - drift
+      - mismatch
+      - does not match
+      - doesn't match
+      - out of date
+      - stale

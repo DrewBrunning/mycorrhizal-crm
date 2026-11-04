@@ -236,3 +236,23 @@ func TestFindingsSatisfiedAny(t *testing.T) {
 		t.Fatalf("ok=%v missing=%v", ok, missing)
 	}
 }
+
+func TestMarkdownRendersVersionContentAndBaselineEvidence(t *testing.T) {
+	art := Artifact{
+		Task:                 "demo",
+		Status:               "passed",
+		AgentName:            "agent",
+		AgentModel:           "model",
+		AgentVersion:         "1.2.3",
+		ObservedAgentVersion: "1.2.3",
+		AgentVersionDrift:    true,
+		Context:              &RunResult{ContentCheckFindings: []string{"missing text"}},
+		Baseline:             &BaselineComparison{Warnings: []string{"baseline entry is unverified"}},
+	}
+	got := Markdown(art)
+	for _, want := range []string{"Observed CLI: 1.2.3", "version drift", "Content check: missing text", "Warning: baseline entry is unverified"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("markdown missing %q:\n%s", want, got)
+		}
+	}
+}
