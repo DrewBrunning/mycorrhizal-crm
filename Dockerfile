@@ -159,9 +159,13 @@ FROM alpine:3.24@sha256:294b683cb724975bec92580e1e685676bd4b50bda910ddb8c51d4cab
 # published 1.30.6-r0 and pruned 1.30.4-r1 from alpine/v3.24/{main,community}
 # on both x86_64 and aarch64, so every image build failed with
 # "nginx-1.30.6-r0: breaks: world[nginx=1.30.4-r1]".
+# 2026-11-04: bumped tzdata 2026e-r0 -> 2026f-r0. Alpine published 2026f-r0 and
+# pruned 2026e-r0 from alpine/v3.24/main, so the old pin became unsatisfiable
+# ("tzdata-2026f-r0: breaks: world[tzdata=2026e-r0]") -- the same pruned-pin
+# class as libssl3 above.
 RUN apk add --no-cache \
     ca-certificates=20261020-r0 \
-    tzdata=2026e-r0 \
+    tzdata=2026f-r0 \
     nginx=1.30.6-r0 \
     supervisor=4.3.0-r1 \
     shadow=4.18.0-r1 \
