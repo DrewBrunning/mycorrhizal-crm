@@ -183,7 +183,7 @@ own topic, token and devices.
 | Channel | Configured | What you need |
 |---|---|---|
 | **Email** | Server (`.env`) | Either a [Resend](https://resend.com) API key, or SMTP host/credentials. |
-| **ntfy** | Per user, in-app | Your ntfy server URL and a topic. Works with the public ntfy.sh or a self-hosted instance. |
+| **ntfy** | Per user, in-app | Your ntfy server URL and a topic. Works with the public ntfy.sh or a self-hosted instance; an optional access token supports servers that require login to publish. |
 | **Gotify** | Per user, in-app | Your Gotify server URL and an application token. |
 | **Browser push** | Per user, in-app | Nothing to configure, but the app must be served over HTTPS. |
 

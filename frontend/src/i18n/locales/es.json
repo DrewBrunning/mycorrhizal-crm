@@ -3215,7 +3215,12 @@
         "enable": "Enviar recordatorios por ntfy",
         "url": "URL del servidor ntfy",
         "urlHint": "La URL base de tu servidor ntfy, p. ej. https://ntfy.sh",
-        "topic": "Tema"
+        "topic": "Tema",
+        "token": "Token de acceso de ntfy",
+        "tokenHintNew": "Opcional. Solo es necesario si tu servidor ntfy exige autenticación para publicar.",
+        "tokenHintExisting": "Ya hay un token guardado. Déjalo vacío para mantenerlo.",
+        "tokenHintRemoving": "El token guardado se eliminará al guardar.",
+        "tokenRemove": "Quitar token"
       },
       "gotify": {
         "enable": "Enviar recordatorios por Gotify",

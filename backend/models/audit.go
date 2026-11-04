@@ -120,6 +120,7 @@ var auditDenyList = map[string]bool{
 	"tokenhash":            true,
 	"passwordencrypted":    true,
 	"gotifytokenencrypted": true,
+	"ntfytokenencrypted":   true,
 	"oidccode":             true,
 	"oidcstate":            true,
 	"authorization":        true,

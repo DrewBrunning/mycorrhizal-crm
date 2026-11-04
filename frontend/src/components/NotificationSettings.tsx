@@ -76,6 +76,8 @@ export default function NotificationSettings() {
 
   const [ntfyUrl, setNtfyUrl] = useState('');
   const [ntfyTopic, setNtfyTopic] = useState('');
+  const [ntfyToken, setNtfyToken] = useState('');
+  const [clearNtfyToken, setClearNtfyToken] = useState(false);
   const [gotifyUrl, setGotifyUrl] = useState('');
   const [gotifyToken, setGotifyToken] = useState('');
   const [notifyNtfy, setNotifyNtfy] = useState(false);
@@ -105,6 +107,8 @@ export default function NotificationSettings() {
       setConfig(data);
       setNtfyUrl(data.ntfy_url || '');
       setNtfyTopic(data.ntfy_topic || '');
+      setNtfyToken('');
+      setClearNtfyToken(false);
       setGotifyUrl(data.gotify_url || '');
       setGotifyToken('');
       setNotifyNtfy(data.notify_ntfy);
@@ -153,6 +157,8 @@ export default function NotificationSettings() {
       const saved = await saveNotificationConfig({
         ntfy_url: ntfyUrl.trim(),
         ntfy_topic: ntfyTopic.trim(),
+        ntfy_token: ntfyToken.trim() || undefined,
+        clear_ntfy_token: clearNtfyToken || undefined,
         gotify_url: gotifyUrl.trim(),
         gotify_token: gotifyToken.trim() || undefined,
         notify_ntfy: notifyNtfy,
@@ -162,6 +168,8 @@ export default function NotificationSettings() {
       setConfig(saved);
       setNtfyUrl(saved.ntfy_url);
       setNtfyTopic(saved.ntfy_topic);
+      setNtfyToken('');
+      setClearNtfyToken(false);
       setGotifyUrl(saved.gotify_url);
       setGotifyToken('');
       setNotifyNtfy(saved.notify_ntfy);
@@ -187,6 +195,8 @@ export default function NotificationSettings() {
         await saveNotificationConfig({
           ntfy_url: ntfyUrl.trim(),
           ntfy_topic: ntfyTopic.trim(),
+          ntfy_token: ntfyToken.trim() || undefined,
+          clear_ntfy_token: clearNtfyToken || undefined,
           gotify_url: gotifyUrl.trim(),
           gotify_token: gotifyToken.trim() || undefined,
           notify_ntfy: notifyNtfy,
@@ -347,6 +357,42 @@ export default function NotificationSettings() {
                   size="small"
                   placeholder="my-reminders"
                 />
+                <TextField
+                  label={t('notifications.settings.ntfy.token')}
+                  type="password"
+                  value={ntfyToken}
+                  onChange={(e) => {
+                    setNtfyToken(e.target.value);
+                    setClearNtfyToken(false);
+                    setSaveError('');
+                    setTestResult(null);
+                  }}
+                  fullWidth
+                  size="small"
+                  helperText={
+                    clearNtfyToken
+                      ? t('notifications.settings.ntfy.tokenHintRemoving')
+                      : config?.ntfy_has_token
+                        ? t('notifications.settings.ntfy.tokenHintExisting')
+                        : t('notifications.settings.ntfy.tokenHintNew')
+                  }
+                />
+                {config?.ntfy_has_token && !clearNtfyToken && (
+                  <Box>
+                    <Button
+                      size="small"
+                      color="warning"
+                      onClick={() => {
+                        setClearNtfyToken(true);
+                        setNtfyToken('');
+                        setSaveError('');
+                        setTestResult(null);
+                      }}
+                    >
+                      {t('notifications.settings.ntfy.tokenRemove')}
+                    </Button>
+                  </Box>
+                )}
                 {ntfyPrivate && (
                   <Alert severity="warning" sx={{ py: 0 }}>
                     {t('notifications.settings.privateUrlWarning')}

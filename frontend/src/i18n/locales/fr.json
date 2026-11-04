@@ -3215,7 +3215,12 @@
         "enable": "Envoyer les rappels via ntfy",
         "url": "URL du serveur ntfy",
         "urlHint": "L'URL de base de votre serveur ntfy, p. ex. https://ntfy.sh",
-        "topic": "Sujet"
+        "topic": "Sujet",
+        "token": "Jeton d'accès ntfy",
+        "tokenHintNew": "Facultatif. Nécessaire uniquement si votre serveur ntfy exige une authentification pour publier.",
+        "tokenHintExisting": "Un jeton est déjà enregistré. Laissez le champ vide pour le conserver.",
+        "tokenHintRemoving": "Le jeton enregistré sera supprimé à l'enregistrement.",
+        "tokenRemove": "Supprimer le jeton"
       },
       "gotify": {
         "enable": "Envoyer les rappels via Gotify",

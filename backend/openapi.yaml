@@ -19024,6 +19024,8 @@ components:
       properties:
         ntfy_url: { type: string, format: uri, maxLength: 2000 }
         ntfy_topic: { type: string, maxLength: 200 }
+        ntfy_token: { type: string, maxLength: 512, description: "Optional ntfy access token, sent as a Bearer credential. Encrypted at rest. On update, an empty value leaves the stored token untouched." }
+        clear_ntfy_token: { type: boolean, description: "True removes the stored ntfy token." }
         gotify_url: { type: string, format: uri, maxLength: 2000 }
         gotify_token: { type: string, maxLength: 512, description: "Encrypted at rest. On update, an empty value leaves the stored token untouched." }
         notify_ntfy: { type: boolean, nullable: true }
@@ -19035,6 +19037,7 @@ components:
       properties:
         ntfy_url: { type: string }
         ntfy_topic: { type: string }
+        ntfy_has_token: { type: boolean }
         gotify_url: { type: string }
         gotify_has_token: { type: boolean }
         notify_ntfy: { type: boolean }

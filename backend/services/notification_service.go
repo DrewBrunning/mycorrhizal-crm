@@ -246,7 +246,17 @@ func sendNtfyMessage(ctx context.Context, cfg config.Config, nc *models.Notifica
 	if err != nil {
 		return err
 	}
-	return postNotificationJSON(ctx, cfg, target, payload, "", "")
+	// An access token (issue #2339) authenticates against a self-hosted ntfy
+	// that denies anonymous publish: https://docs.ntfy.sh/publish/#access-tokens
+	headerKey, headerValue := "", ""
+	if nc.HasNtfyToken() {
+		token, err := DecryptCredential(cfg.JWTSecretKey, nc.NtfyTokenEncrypted)
+		if err != nil {
+			return fmt.Errorf("failed to decrypt ntfy token: %w", err)
+		}
+		headerKey, headerValue = "Authorization", "Bearer "+token
+	}
+	return postNotificationJSON(ctx, cfg, target, payload, headerKey, headerValue)
 }
 
 func (ntfyNotificationSender) Send(ctx context.Context, db *gorm.DB, cfg config.Config, user models.User, reminders []models.Reminder) error {
@@ -1049,6 +1059,15 @@ func SaveNotificationConfig(db *gorm.DB, jwtSecret string, userID uint, input mo
 	nc.NtfyURL = ntfyURL
 	nc.NtfyTopic = input.NtfyTopic
 	nc.GotifyURL = gotifyURL
+	if input.ClearNtfyToken {
+		nc.NtfyTokenEncrypted = ""
+	} else if input.NtfyToken != "" {
+		enc, err := EncryptCredential(jwtSecret, input.NtfyToken)
+		if err != nil {
+			return nil, err
+		}
+		nc.NtfyTokenEncrypted = enc
+	}
 	if input.GotifyToken != "" {
 		enc, err := EncryptCredential(jwtSecret, input.GotifyToken)
 		if err != nil {
