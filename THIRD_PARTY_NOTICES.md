@@ -111,7 +111,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `@babel/helper-string-parser` | `7.29.7` | MIT | https://github.com/babel/babel |
 | `@babel/helper-validator-identifier` | `7.29.7` | MIT | https://github.com/babel/babel |
 | `@babel/parser` | `7.29.7` | MIT | https://github.com/babel/babel |
-| `@babel/runtime` | `7.29.7` | MIT | https://github.com/babel/babel |
+| `@babel/runtime` | `7.29.13` | MIT | https://github.com/babel/babel |
 | `@babel/runtime` | `8.0.7` | MIT | https://github.com/babel/babel |
 | `@babel/template` | `7.29.7` | MIT | https://github.com/babel/babel |
 | `@babel/traverse` | `7.29.7` | MIT | https://github.com/babel/babel |
@@ -207,8 +207,8 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `hasown` | `2.0.4` | MIT | https://github.com/inspect-js/hasOwn |
 | `hoist-non-react-statics` | `3.3.2` | BSD-3-Clause | https://github.com/mridgway/hoist-non-react-statics |
 | `html-parse-stringify` | `4.0.1` | MIT | https://github.com/i18next/html-parse-stringify |
-| `i18next` | `26.5.4` | MIT | https://github.com/i18next/i18next |
-| `i18next-browser-languagedetector` | `8.2.1` | MIT | https://github.com/i18next/i18next-browser-languageDetector |
+| `i18next` | `26.5.11` | MIT | https://github.com/i18next/i18next |
+| `i18next-browser-languagedetector` | `8.2.3` | MIT | https://github.com/i18next/i18next-browser-languageDetector |
 | `idb` | `7.1.1` | ISC | https://github.com/jakearchibald/idb |
 | `import-fresh` | `3.3.1` | MIT | https://github.com/sindresorhus/import-fresh |
 | `index-array-by` | `1.4.2` | MIT | https://github.com/vasturiano/index-array-by |
@@ -247,11 +247,11 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `react-dom` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-easy-crop` | `6.2.4` | MIT | https://github.com/ValentinH/react-easy-crop |
 | `react-force-graph-2d` | `1.29.2` | MIT | https://github.com/vasturiano/react-force-graph |
-| `react-i18next` | `17.1.0` | MIT | https://github.com/i18next/react-i18next |
+| `react-i18next` | `17.1.9` | MIT | https://github.com/i18next/react-i18next |
 | `react-is` | `16.13.1` | MIT | https://github.com/facebook/react |
 | `react-is` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-kapsule` | `2.6.0` | MIT | https://github.com/vasturiano/react-kapsule |
-| `react-router` | `8.5.0` | MIT | https://github.com/remix-run/react-router |
+| `react-router` | `8.5.1` | MIT | https://github.com/remix-run/react-router |
 | `react-transition-group` | `4.4.5` | BSD-3-Clause | https://github.com/reactjs/react-transition-group |
 | `require-from-string` | `2.0.2` | MIT | https://github.com/floatdrop/require-from-string |
 | `resolve` | `1.22.12` | MIT | https://github.com/browserify/resolve |
@@ -4997,12 +4997,12 @@ SOFTWARE.
 
 ### 107. MIT
 
-Applies to: `i18next-browser-languagedetector`
+Applies to: `i18next-browser-languagedetector`, `react-i18next`
 
 ```text
 The MIT License (MIT)
 
-Copyright (c) 2025 i18next
+Copyright (c) 2015-present i18next
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -6511,36 +6511,6 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ### 141. MIT
 
-Applies to: `react-i18next`
-
-```text
-The MIT License (MIT)
-
-Copyright (c) 2015-present i18next
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-### 142. MIT
-
 Applies to: `react-is`
 
 ```text
@@ -6569,7 +6539,7 @@ SOFTWARE.
 
 ---
 
-### 143. MIT
+### 142. MIT
 
 Applies to: `react-router`
 
@@ -6601,7 +6571,7 @@ SOFTWARE.
 
 ---
 
-### 144. BSD-3-Clause
+### 143. BSD-3-Clause
 
 Applies to: `react-transition-group`
 
@@ -6640,7 +6610,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 145. MIT
+### 144. MIT
 
 Applies to: `require-from-string`
 
@@ -6670,7 +6640,7 @@ THE SOFTWARE.
 
 ---
 
-### 146. MIT
+### 145. MIT
 
 Applies to: `resolve`
 
@@ -6700,7 +6670,7 @@ SOFTWARE.
 
 ---
 
-### 147. BSD-3-Clause
+### 146. BSD-3-Clause
 
 Applies to: `source-map`
 
@@ -6736,7 +6706,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 148. MIT
+### 147. MIT
 
 Applies to: `stylis`
 
@@ -6766,7 +6736,7 @@ SOFTWARE.
 
 ---
 
-### 149. MIT
+### 148. MIT
 
 Applies to: `supports-preserve-symlinks-flag`
 
@@ -6796,7 +6766,7 @@ SOFTWARE.
 
 ---
 
-### 150. MIT
+### 149. MIT
 
 Applies to: `tinycolor2`
 
@@ -6825,7 +6795,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-### 151. ISC
+### 150. ISC
 
 Applies to: `tinyqueue`
 
@@ -6849,7 +6819,7 @@ THIS SOFTWARE.
 
 ---
 
-### 152. Apache-2.0
+### 151. Apache-2.0
 
 Applies to: `typescript`
 
@@ -6913,7 +6883,7 @@ END OF TERMS AND CONDITIONS
 
 ---
 
-### 153. Apache-2.0
+### 152. Apache-2.0
 
 Applies to: `web-vitals`
 
@@ -7123,7 +7093,7 @@ Apache License
 
 ---
 
-### 154. MIT
+### 153. MIT
 
 Applies to: `workbox-core`, `workbox-expiration`, `workbox-precaching`, `workbox-routing`, `workbox-strategies`
 
@@ -7151,7 +7121,7 @@ THE SOFTWARE.
 
 ---
 
-### 155. ISC
+### 154. ISC
 
 Applies to: `yaml`
 
