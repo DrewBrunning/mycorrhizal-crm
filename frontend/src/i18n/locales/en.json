@@ -4065,6 +4065,7 @@
     "sourceNote": "Note",
     "title": "Photos",
     "uploadFailed": "Could not upload the photo.",
+    "uploadDuplicate": "That photo is already in the contact photos, so it was not added again.",
     "uploading": "Uploading..."
   }
 }

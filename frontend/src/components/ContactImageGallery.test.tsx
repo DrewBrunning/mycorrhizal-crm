@@ -72,7 +72,7 @@ describe('ContactImageGallery (Photos tab)', () => {
   beforeEach(() => {
     getContactPhotos.mockReset().mockResolvedValue(listOf(own));
     deleteContactImage.mockReset().mockResolvedValue(undefined);
-    uploadContactImage.mockReset().mockResolvedValue(own);
+    uploadContactImage.mockReset().mockResolvedValue({ image: own, deduplicated: false });
     setContactMainImage
       .mockReset()
       .mockResolvedValue({ message: 'ok', main_image_id: 9, revision: 8 });
@@ -337,6 +337,21 @@ describe('ContactImageGallery (Photos tab)', () => {
     await waitFor(() => expect(uploadContactImage).toHaveBeenCalledWith(4, file));
     await waitFor(() => expect(getContactPhotos).toHaveBeenCalledTimes(2));
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('says so when an upload matched a photo already in the gallery', async () => {
+    uploadContactImage.mockResolvedValue({ image: own, deduplicated: true });
+    const { container } = render(<ContactImageGallery contactId={4} editable />);
+    await screen.findByRole('img', { name: /contact photo/i });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(['x'], 'photo.jpg', { type: 'image/jpeg' })] },
+    });
+    expect(
+      await screen.findByText(
+        'That photo is already in the contact photos, so it was not added again.',
+      ),
+    ).toBeTruthy();
   });
 
   it('shows an upload error', async () => {

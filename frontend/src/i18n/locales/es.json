@@ -4170,6 +4170,7 @@
     "sourceNote": "Nota",
     "title": "Fotos",
     "uploadFailed": "No se pudo subir la foto.",
+    "uploadDuplicate": "Esa foto ya está en las fotos del contacto, así que no se ha vuelto a añadir.",
     "uploading": "Subiendo..."
   }
 }

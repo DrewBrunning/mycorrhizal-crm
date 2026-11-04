@@ -213,6 +213,51 @@ describe('useContactDetailData', () => {
     await act(() => result.current.reloadRecord());
     expect(result.current.record).toBe(record);
   });
+
+  // v1.6.0 review: picking, cropping or deleting the main gallery image left
+  // the header avatar showing the old picture until a full page reload.
+  test('reloadRecordAndPhoto re-resolves the avatar from the fresh record', async () => {
+    const createObjectURL = vi.fn(() => 'blob:new');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', { ...URL, createObjectURL, revokeObjectURL });
+    const { result } = renderHook(() => useContactDetailData('1'));
+    act(() => result.current.setProfilePic('blob:old'));
+
+    vi.mocked(getContactRecord).mockResolvedValue({ ...record, photo: '/photo' } as never);
+    vi.mocked(getContactProfilePicture).mockResolvedValue(new Blob(['x']));
+    await act(() => result.current.reloadRecordAndPhoto());
+    expect(result.current.profilePic).toBe('blob:new');
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:old');
+
+    // The main image was removed: the record has no photo, so the avatar clears.
+    vi.mocked(getContactRecord).mockResolvedValue(record);
+    await act(() => result.current.reloadRecordAndPhoto());
+    expect(result.current.profilePic).toBe('');
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:new');
+    vi.unstubAllGlobals();
+  });
+
+  test('reloadRecordAndPhoto keeps the record and avatar when a fetch fails', async () => {
+    const { result } = renderHook(() => useContactDetailData('1'));
+    act(() => result.current.setProfilePic('blob:old'));
+    vi.mocked(getContactRecord).mockRejectedValue(new Error('x'));
+    await act(() => result.current.reloadRecordAndPhoto());
+    expect(result.current.record).toBeNull();
+    expect(getContactProfilePicture).not.toHaveBeenCalled();
+
+    // The record loads but the picture fetch fails: the avatar stays.
+    vi.mocked(getContactRecord).mockResolvedValue({ ...record, photo: '/photo' } as never);
+    vi.mocked(getContactProfilePicture).mockRejectedValue(new Error('x'));
+    await act(() => result.current.reloadRecordAndPhoto());
+    expect(result.current.record).toEqual({ ...record, photo: '/photo' });
+    expect(result.current.profilePic).toBe('blob:old');
+  });
+
+  test('reloadRecordAndPhoto is a no-op without an id', async () => {
+    const { result } = renderHook(() => useContactDetailData(undefined));
+    await act(() => result.current.reloadRecordAndPhoto());
+    expect(getContactRecord).not.toHaveBeenCalled();
+  });
 });
 
 describe('useContactDetailLoader', () => {

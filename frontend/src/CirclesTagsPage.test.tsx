@@ -22,6 +22,7 @@ import {
 } from './api/tags';
 import CirclesTagsPage from './CirclesTagsPage';
 import { SnackbarProvider } from './context/SnackbarContext';
+import { DateFormatProvider } from './DateFormatProvider';
 
 vi.mock('./api/carddavSyncScope', () => ({ getCardDAVSyncScope: vi.fn() }));
 const getScopeMock = vi.mocked(getCardDAVSyncScope);
@@ -124,7 +125,9 @@ function renderPage(initialEntries: string[] = ['/circles-tags']) {
   return render(
     <MemoryRouter initialEntries={initialEntries}>
       <SnackbarProvider>
-        <CirclesTagsPage />
+        <DateFormatProvider>
+          <CirclesTagsPage />
+        </DateFormatProvider>
       </SnackbarProvider>
     </MemoryRouter>,
   );

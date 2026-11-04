@@ -55,7 +55,7 @@ export async function loginUser(identifier: string, password: string): Promise<L
     body: JSON.stringify({ identifier, password }),
   });
   if (!response.ok) {
-    throw new Error('Login failed');
+    throw new Error(await signInErrorMessage(response, 'Login failed'));
   }
   const data = await response.json();
 
@@ -93,18 +93,16 @@ export async function login2FA(code: string): Promise<LoginResponse> {
   if (!response.ok) {
     // A 429 is the account lockout from repeated bad codes — the backend
     // body carries the retry_after, so surface that instead of a generic
-    // "Invalid code" that would make a locked-out user keep guessing.
-    if (response.status === 429) {
-      let message = 'Too many failed attempts. Please try again later.';
-      try {
-        const data = await response.json();
-        message = serverErrorMessage(data) ?? message;
-      } catch {
-        // fall back to the generic lockout message
-      }
-      throw new Error(message);
-    }
-    throw new Error('Invalid code');
+    // "Invalid code" that would make a locked-out user keep guessing. Any
+    // other failure shows its localized reason code (issue #2101).
+    throw new Error(
+      await signInErrorMessage(
+        response,
+        response.status === 429
+          ? 'Too many failed attempts. Please try again later.'
+          : 'Invalid code',
+      ),
+    );
   }
   const data = await response.json();
 
@@ -127,7 +125,7 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
     credentials: 'include',
   });
   if (!begin.ok) {
-    throw new Error(await passkeyErrorMessage(begin, 'Unable to start passkey sign-in.'));
+    throw new Error(await signInErrorMessage(begin, 'Unable to start passkey sign-in.'));
   }
   const assertion = await getAssertion(await begin.json());
 
@@ -138,7 +136,7 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
     body: JSON.stringify(assertion),
   });
   if (!finish.ok) {
-    throw new Error(await passkeyErrorMessage(finish, 'Passkey could not be verified.'));
+    throw new Error(await signInErrorMessage(finish, 'Passkey could not be verified.'));
   }
   const data = await finish.json();
 
@@ -189,7 +187,10 @@ function serverErrorMessage(data: unknown): string | undefined {
   return typeof message === 'string' && message ? message : undefined;
 }
 
-async function passkeyErrorMessage(response: Response, fallback: string): Promise<string> {
+// The localized message for a failed sign-in response (password, 2FA code or
+// passkey), or `fallback` when the body carries neither a renderable reason
+// code nor a message.
+async function signInErrorMessage(response: Response, fallback: string): Promise<string> {
   try {
     const data = await response.json();
     const message = serverErrorMessage(data);

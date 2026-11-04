@@ -4065,6 +4065,7 @@
     "sourceNote": "Notiz",
     "title": "Fotos",
     "uploadFailed": "Das Foto konnte nicht hochgeladen werden.",
+    "uploadDuplicate": "Dieses Foto ist bereits in den Kontaktfotos und wurde nicht erneut hinzugefügt.",
     "uploading": "Wird hochgeladen..."
   }
 }
