@@ -103,7 +103,9 @@
         "integrity_violations": 0,
         "unexpected_changes": 0,
         "config_hash": "3dba013e1d1469d6",
-        "verified": false
+        "verified": true,
+        "promoted_at": "2026-11-03T23:43:46Z",
+        "promoted_from": "https://github.com/DrewBrunning/mycorrhizal-crm/actions/runs/41740566442"
       },
       "localization-change": {
         "status": "passed",
