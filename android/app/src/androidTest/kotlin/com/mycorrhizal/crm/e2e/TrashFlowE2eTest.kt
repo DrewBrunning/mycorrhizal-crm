@@ -61,12 +61,19 @@ class TrashFlowE2eTest : E2eBaseTest() {
         waitForTag("trash-purge-confirm")
         compose.onNodeWithTag("trash-purge-confirm").performClick()
 
-        compose.waitUntil(15_000) { !backend.contactExists(purge.id) }
+        // contactExists is already false for a trashed contact, so it cannot
+        // witness the purge; wait on the trash list itself.
+        compose.waitUntil(15_000) {
+            backend.trashEntries().none {
+                it.getJSONObject("contact").optLong("id") == purge.id
+            }
+        }
         assertTrue(
             "the purged contact must leave the trash",
             backend.trashEntries().none {
                 it.getJSONObject("contact").optLong("id") == purge.id
             }
         )
+        assertTrue("the purged contact must stay gone", !backend.contactExists(purge.id))
     }
 }

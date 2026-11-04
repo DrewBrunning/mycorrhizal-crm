@@ -521,10 +521,19 @@ done
 
 log "Triggering a manual sync"
 tap "Synchronize now"
-sleep 20
 
 log "Verifying synced contacts landed in the real Android ContactsContract"
-CONTACT_COUNT="$(adb shell content query --uri content://com.android.contacts/contacts --projection display_name 2>/dev/null | wc -l)"
+# Poll rather than a fixed sleep: a real nightly run (issue #2341) counted
+# 1 row after 20s while DAVx5 was still mid-sync on a contended emulator.
+# Wall-clock budget; a healthy run returns within a few polls.
+SYNC_WAIT_SECONDS=180
+SYNC_DEADLINE=$((SECONDS + SYNC_WAIT_SECONDS))
+while :; do
+	CONTACT_COUNT="$(adb shell content query --uri content://com.android.contacts/contacts --projection display_name 2>/dev/null | wc -l)"
+	[ "$CONTACT_COUNT" -ge 5 ] && break
+	[ "$SECONDS" -ge "$SYNC_DEADLINE" ] && break
+	sleep 5
+done
 log "ContactsContract row count: $CONTACT_COUNT"
 if [ "$CONTACT_COUNT" -lt 5 ]; then
 	log "ERROR: expected at least 5 synced contacts, found $CONTACT_COUNT — sync did not deliver data to the provider"
