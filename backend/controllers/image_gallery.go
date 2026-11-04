@@ -8,6 +8,7 @@ import (
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/imaging"
+	"mycorrhizal/models"
 	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
@@ -214,6 +215,38 @@ func serveImageDelete[T any, P interface {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "Image deleted"})
+}
+
+// serveImagePatch applies the PATCH allowlist (sensitivity and crop) to one
+// image of the owner (ADR 0040 decision 8). Unknown body fields are ignored:
+// the service writes only those two, never the bound struct.
+func serveImagePatch[T any, P interface {
+	*T
+	services.ImageRow
+}, O any, D any](c *gin.Context, spec gallerySpec[T, P, O, D]) {
+	owner, ok := spec.load(c)
+	if !ok {
+		return
+	}
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	id, ok := galleryImageID(c)
+	if !ok {
+		return
+	}
+	var input models.ContactImagePatchInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "invalid request body").WithReason(apperrors.ReasonValidationInvalidRequestBody, nil))
+		return
+	}
+	img, err := spec.service(c).Update(c.Request.Context(), userID, spec.ownerRef(owner), id, input)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.GetAppError(err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"image": spec.dto(*img, owner)})
 }
 
 func imageExt(mimeType string) string {

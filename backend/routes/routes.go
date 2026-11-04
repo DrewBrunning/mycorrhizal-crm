@@ -481,6 +481,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/notes/:id/images", controllers.ListNoteImages)
 			protected.GET("/notes/:id/images/:image_id/file", func(c *gin.Context) { controllers.DownloadNoteImage(c, false) })
 			protected.GET("/notes/:id/images/:image_id/thumbnail", func(c *gin.Context) { controllers.DownloadNoteImage(c, true) })
+			protected.PATCH("/notes/:id/images/:image_id", controllers.PatchNoteImage)
 			protected.DELETE("/notes/:id/images/:image_id", controllers.DeleteNoteImage)
 
 			// Activity routes
@@ -498,6 +499,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/activities/:id/images", controllers.ListActivityImages)
 			protected.GET("/activities/:id/images/:image_id/file", func(c *gin.Context) { controllers.DownloadActivityImage(c, false) })
 			protected.GET("/activities/:id/images/:image_id/thumbnail", func(c *gin.Context) { controllers.DownloadActivityImage(c, true) })
+			protected.PATCH("/activities/:id/images/:image_id", controllers.PatchActivityImage)
 			protected.DELETE("/activities/:id/images/:image_id", controllers.DeleteActivityImage)
 
 			// Circle routes

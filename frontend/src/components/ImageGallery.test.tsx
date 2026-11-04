@@ -14,12 +14,15 @@ import ImageGallery, {
 const getActivityImages = vi.fn();
 const deleteActivityImage = vi.fn();
 const uploadActivityImage = vi.fn();
+const patchActivityImage = vi.fn();
 const getNoteImages = vi.fn();
 const deleteNoteImage = vi.fn();
 const uploadNoteImage = vi.fn();
+const patchNoteImage = vi.fn();
 const getContactImages = vi.fn();
 const deleteContactImage = vi.fn();
 const uploadContactImage = vi.fn();
+const patchContactImage = vi.fn();
 
 vi.mock('../api/activities', async () => {
   const actual = await vi.importActual<typeof import('../api/activities')>('../api/activities');
@@ -28,6 +31,7 @@ vi.mock('../api/activities', async () => {
     getActivityImages: (...args: unknown[]) => getActivityImages(...args),
     deleteActivityImage: (...args: unknown[]) => deleteActivityImage(...args),
     uploadActivityImage: (...args: unknown[]) => uploadActivityImage(...args),
+    patchActivityImage: (...args: unknown[]) => patchActivityImage(...args),
   };
 });
 vi.mock('../api/notes', async () => {
@@ -37,6 +41,7 @@ vi.mock('../api/notes', async () => {
     getNoteImages: (...args: unknown[]) => getNoteImages(...args),
     deleteNoteImage: (...args: unknown[]) => deleteNoteImage(...args),
     uploadNoteImage: (...args: unknown[]) => uploadNoteImage(...args),
+    patchNoteImage: (...args: unknown[]) => patchNoteImage(...args),
   };
 });
 vi.mock('../api/contactImages', async () => {
@@ -47,6 +52,7 @@ vi.mock('../api/contactImages', async () => {
     getContactImages: (...args: unknown[]) => getContactImages(...args),
     deleteContactImage: (...args: unknown[]) => deleteContactImage(...args),
     uploadContactImage: (...args: unknown[]) => uploadContactImage(...args),
+    patchContactImage: (...args: unknown[]) => patchContactImage(...args),
   };
 });
 
@@ -58,6 +64,7 @@ interface OwnerCase {
   list: ReturnType<typeof vi.fn>;
   remove: ReturnType<typeof vi.fn>;
   upload: ReturnType<typeof vi.fn>;
+  patch: ReturnType<typeof vi.fn>;
 }
 
 const owners: OwnerCase[] = [
@@ -69,6 +76,7 @@ const owners: OwnerCase[] = [
     list: getActivityImages,
     remove: deleteActivityImage,
     upload: uploadActivityImage,
+    patch: patchActivityImage,
   },
   {
     name: 'note',
@@ -78,6 +86,7 @@ const owners: OwnerCase[] = [
     list: getNoteImages,
     remove: deleteNoteImage,
     upload: uploadNoteImage,
+    patch: patchNoteImage,
   },
   {
     name: 'contact',
@@ -87,6 +96,7 @@ const owners: OwnerCase[] = [
     list: getContactImages,
     remove: deleteContactImage,
     upload: uploadContactImage,
+    patch: patchContactImage,
   },
 ];
 
@@ -131,6 +141,7 @@ describe.each(owners)('ImageGallery ($name)', (owner) => {
       o.list.mockReset().mockResolvedValue({ images: [imageFor(o)], total: 1 });
       o.remove.mockReset().mockResolvedValue(undefined);
       o.upload.mockReset().mockResolvedValue(imageFor(o));
+      o.patch.mockReset().mockResolvedValue({ ...imageFor(o), sensitivity: 'private' });
     }
   });
 
@@ -228,6 +239,53 @@ describe.each(owners)('ImageGallery ($name)', (owner) => {
 
     fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  // v1.6.0 review: a note or activity photo's sensitivity could be read but
+  // not changed, and nothing showed it was private.
+  it('labels a private or secret photo, read-only too', async () => {
+    owner.list.mockResolvedValue({ images: [{ ...image, sensitivity: 'secret' }], total: 1 });
+    renderGallery(owner);
+    expect(await screen.findByText('Secret')).toBeInTheDocument();
+  });
+
+  it('changes a photo sensitivity from the viewer on the editable surface', async () => {
+    renderGallery(owner, { editable: true });
+    fireEvent.click(await screen.findByRole('img', { name: owner.altPattern }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Private' }));
+    await waitFor(() => expect(owner.patch).toHaveBeenCalledWith(4, 9, { sensitivity: 'private' }));
+    await waitFor(() =>
+      expect(within(dialog).getByRole('button', { name: 'Private' })).toHaveAttribute(
+        'aria-pressed',
+        'true',
+      ),
+    );
+    fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(screen.getByText('Private')).toBeInTheDocument();
+  });
+
+  it('shows an error when the sensitivity change fails', async () => {
+    owner.patch.mockRejectedValue(new Error('patch failed'));
+    renderGallery(owner, { editable: true });
+    fireEvent.click(await screen.findByRole('img', { name: owner.altPattern }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Secret' }));
+    expect(
+      await within(dialog).findByText("Could not change the photo's sensitivity."),
+    ).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Normal' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+  });
+
+  it('offers no sensitivity control on the read-only surface', async () => {
+    renderGallery(owner);
+    fireEvent.click(await screen.findByRole('img', { name: owner.altPattern }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).queryByRole('button', { name: 'Private' })).not.toBeInTheDocument();
   });
 
   it('has no delete control on the read-only surface', async () => {

@@ -119,6 +119,8 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /contact-shares/{id}/confirm":        bindingFor(models.ImportConfirmRequest{}),
 	"PUT /contacts/{id}/field-values":          bindingFor(models.ContactFieldValuesInput{}),
 	"PATCH /contacts/{id}/images/{image_id}":   bindingFor(models.ContactImagePatchInput{}),
+	"PATCH /notes/{id}/images/{image_id}":      bindingFor(models.ContactImagePatchInput{}),
+	"PATCH /activities/{id}/images/{image_id}": bindingFor(models.ContactImagePatchInput{}),
 	"POST /contacts/{id}/images/adopt":         {boundFieldsOverride: []string{"source_kind", "source_id", "image_id"}},
 	"PUT /contacts/{id}/main-image":            {boundFieldsOverride: []string{"image_id"}},
 	"PUT /contacts/{id}/field-visibility":      bindingFor(models.ContactFieldVisibilityInput{}),

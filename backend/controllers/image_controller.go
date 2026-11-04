@@ -107,3 +107,6 @@ func DownloadActivityImage(c *gin.Context, thumbnail bool) {
 // DeleteActivityImage soft-deletes one image and removes its files after the
 // commit.
 func DeleteActivityImage(c *gin.Context) { serveImageDelete(c, activityGallery) }
+
+// PatchActivityImage updates an activity image's sensitivity or crop.
+func PatchActivityImage(c *gin.Context) { serveImagePatch(c, activityGallery) }

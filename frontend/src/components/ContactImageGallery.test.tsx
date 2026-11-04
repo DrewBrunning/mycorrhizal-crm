@@ -275,6 +275,37 @@ describe('ContactImageGallery (Photos tab)', () => {
     expect(patchContactImage.mock.calls[0][2].crop.w).toBeCloseTo(0.25);
   });
 
+  // v1.6.0 review: the gallery showed a photo's sensitivity but had no way to change it.
+  it('marks an own photo private from its menu and refreshes the contact', async () => {
+    patchContactImage.mockResolvedValue({ ...own, sensitivity: 'private' });
+    const onContactChanged = vi.fn();
+    render(<ContactImageGallery contactId={4} editable onContactChanged={onContactChanged} />);
+    await openMenu('contact-photo-contact-9');
+    expect(screen.queryByRole('menuitem', { name: 'Mark as normal' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mark as private' }));
+    await waitFor(() =>
+      expect(patchContactImage).toHaveBeenCalledWith(4, 9, { sensitivity: 'private' }),
+    );
+    expect(await screen.findByText('Private')).toBeInTheDocument();
+    // A non-normal main image clears the avatar server-side, bumping the revision.
+    expect(onContactChanged).toHaveBeenCalled();
+  });
+
+  it('shows an error when the sensitivity change fails', async () => {
+    patchContactImage.mockRejectedValue(new Error('patch failed'));
+    render(<ContactImageGallery contactId={4} editable />);
+    await openMenu('contact-photo-contact-9');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mark as secret' }));
+    expect(await screen.findByText("Could not change the photo's sensitivity.")).toBeTruthy();
+  });
+
+  it('offers no sensitivity change for a note photo shown in the gallery', async () => {
+    getContactPhotos.mockResolvedValue(listOf(noteImage));
+    render(<ContactImageGallery contactId={4} editable />);
+    await openMenu('contact-photo-note-9');
+    expect(screen.queryByRole('menuitem', { name: 'Mark as private' })).not.toBeInTheDocument();
+  });
+
   it('clears the crop with an explicit null', async () => {
     getContactPhotos.mockResolvedValue(listOf({ ...own, crop: { x: 0, y: 0, w: 0.5, h: 1 } }));
     render(<ContactImageGallery contactId={4} editable />);

@@ -124,6 +124,9 @@ func DownloadNoteImage(c *gin.Context, thumbnail bool) { serveImageDownload(c, n
 // commit.
 func DeleteNoteImage(c *gin.Context) { serveImageDelete(c, noteGallery) }
 
+// PatchNoteImage updates a note image's sensitivity or crop.
+func PatchNoteImage(c *gin.Context) { serveImagePatch(c, noteGallery) }
+
 // NoteImageUploadBodyLimit exports the per-request upload cap for routes.
 func NoteImageUploadBodyLimit(cfg *config.Config) int64 { return ImageUploadBodyLimit(cfg) }
 
