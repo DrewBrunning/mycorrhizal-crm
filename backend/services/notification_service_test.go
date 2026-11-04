@@ -1440,3 +1440,16 @@ func TestSaveNotificationConfig_NtfyToken(t *testing.T) {
 	require.NoError(t, sendNtfyMessage(context.Background(), config.Config{JWTSecretKey: secret}, loaded, "t", "m"))
 	assert.Equal(t, "", fake.auths[1])
 }
+
+// A token that cannot be decrypted (here: the JWT secret changed since it was
+// stored) fails the send with a clear error instead of posting unauthenticated.
+func TestSendNtfyMessage_UndecryptableTokenFails(t *testing.T) {
+	fake := newFakeChannelServer(t, nil)
+	enc, err := EncryptCredential("test-jwt-secret-that-is-long-enough", "tk_secret")
+	require.NoError(t, err)
+	nc := &models.NotificationConfig{NtfyURL: fake.URL(), NtfyTopic: "alerts", NtfyTokenEncrypted: enc}
+
+	err = sendNtfyMessage(context.Background(), config.Config{JWTSecretKey: "a-different-secret-entirely-xxxxxxxx"}, nc, "t", "m")
+	require.ErrorContains(t, err, "failed to decrypt ntfy token")
+	assert.Equal(t, 0, fake.count(), "nothing may be sent when the token cannot be decrypted")
+}

@@ -1035,6 +1035,15 @@ func GetNotificationConfigForUser(db *gorm.DB, userID uint) (*models.Notificatio
 	return &nc, nil
 }
 
+// keepOrEncryptToken returns the stored ciphertext unchanged when no new token
+// was supplied (the write-only "empty keeps" rule), else the new ciphertext.
+func keepOrEncryptToken(jwtSecret, token, current string) (string, error) {
+	if token == "" {
+		return current, nil
+	}
+	return EncryptCredential(jwtSecret, token)
+}
+
 // SaveNotificationConfig upserts the user's channel config and applies the
 // per-user channel toggles (which live on users, so they are updated in the
 // same call the Settings form makes). A non-empty GotifyToken is encrypted at
@@ -1059,22 +1068,16 @@ func SaveNotificationConfig(db *gorm.DB, jwtSecret string, userID uint, input mo
 	nc.NtfyURL = ntfyURL
 	nc.NtfyTopic = input.NtfyTopic
 	nc.GotifyURL = gotifyURL
+	ntfyEnc, ntfyErr := keepOrEncryptToken(jwtSecret, input.NtfyToken, nc.NtfyTokenEncrypted)
+	gotifyEnc, gotifyErr := keepOrEncryptToken(jwtSecret, input.GotifyToken, nc.GotifyTokenEncrypted)
+	if err := errors.Join(ntfyErr, gotifyErr); err != nil {
+		return nil, err
+	}
+	nc.NtfyTokenEncrypted = ntfyEnc
 	if input.ClearNtfyToken {
 		nc.NtfyTokenEncrypted = ""
-	} else if input.NtfyToken != "" {
-		enc, err := EncryptCredential(jwtSecret, input.NtfyToken)
-		if err != nil {
-			return nil, err
-		}
-		nc.NtfyTokenEncrypted = enc
 	}
-	if input.GotifyToken != "" {
-		enc, err := EncryptCredential(jwtSecret, input.GotifyToken)
-		if err != nil {
-			return nil, err
-		}
-		nc.GotifyTokenEncrypted = enc
-	}
+	nc.GotifyTokenEncrypted = gotifyEnc
 	if err := db.Save(nc).Error; err != nil {
 		return nil, err
 	}
