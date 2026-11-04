@@ -8217,36 +8217,6 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ### 142. MIT
 
-Applies to: `react-i18next`
-
-```text
-The MIT License (MIT)
-
-Copyright (c) 2015-present i18next
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
-
----
-
-### 143. MIT
-
 Applies to: `react-is`
 
 ```text
@@ -8275,7 +8245,7 @@ SOFTWARE.
 
 ---
 
-### 144. MIT
+### 143. MIT
 
 Applies to: `react-router`
 
@@ -8307,7 +8277,7 @@ SOFTWARE.
 
 ---
 
-### 145. BSD-3-Clause
+### 144. BSD-3-Clause
 
 Applies to: `react-transition-group`
 
@@ -8346,7 +8316,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 146. MIT
+### 145. MIT
 
 Applies to: `require-from-string`
 
@@ -8376,7 +8346,7 @@ THE SOFTWARE.
 
 ---
 
-### 147. MIT
+### 146. MIT
 
 Applies to: `resolve`
 
@@ -8406,7 +8376,7 @@ SOFTWARE.
 
 ---
 
-### 148. BSD-3-Clause
+### 147. BSD-3-Clause
 
 Applies to: `source-map`
 
@@ -8442,7 +8412,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ---
 
-### 149. MIT
+### 148. MIT
 
 Applies to: `stylis`
 
@@ -8472,7 +8442,7 @@ SOFTWARE.
 
 ---
 
-### 150. MIT
+### 149. MIT
 
 Applies to: `supports-preserve-symlinks-flag`
 
@@ -8502,7 +8472,7 @@ SOFTWARE.
 
 ---
 
-### 151. MIT
+### 150. MIT
 
 Applies to: `tinycolor2`
 
@@ -8531,7 +8501,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ---
 
-### 152. ISC
+### 151. ISC
 
 Applies to: `tinyqueue`
 
@@ -8555,7 +8525,7 @@ THIS SOFTWARE.
 
 ---
 
-### 153. Apache-2.0
+### 152. Apache-2.0
 
 Applies to: `typescript`
 
@@ -8619,7 +8589,7 @@ END OF TERMS AND CONDITIONS
 
 ---
 
-### 154. Apache-2.0
+### 153. Apache-2.0
 
 Applies to: `web-vitals`
 
@@ -8829,7 +8799,7 @@ Apache License
 
 ---
 
-### 155. MIT
+### 154. MIT
 
 Applies to: `workbox-core`, `workbox-expiration`, `workbox-precaching`, `workbox-routing`, `workbox-strategies`
 
@@ -8857,7 +8827,7 @@ THE SOFTWARE.
 
 ---
 
-### 156. ISC
+### 155. ISC
 
 Applies to: `yaml`
 
