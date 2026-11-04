@@ -860,6 +860,11 @@
     <string name="settings_notifications_ntfy_enable">Erinnerungen per ntfy senden</string>
     <string name="settings_notifications_ntfy_url">ntfy-Server-URL</string>
     <string name="settings_notifications_ntfy_topic">Thema</string>
+    <string name="settings_notifications_ntfy_token">ntfy-Zugriffstoken</string>
+    <string name="settings_notifications_ntfy_token_hint_new">Optional. Nur nötig, wenn dein ntfy-Server zum Veröffentlichen eine Anmeldung verlangt.</string>
+    <string name="settings_notifications_ntfy_token_hint_existing">Ein Token ist bereits gespeichert. Leer lassen, um es zu behalten.</string>
+    <string name="settings_notifications_ntfy_token_hint_removing">Das gespeicherte Token wird beim Speichern entfernt.</string>
+    <string name="settings_notifications_ntfy_token_remove">Token entfernen</string>
     <string name="settings_notifications_gotify">Gotify</string>
     <string name="settings_notifications_gotify_enable">Erinnerungen per Gotify senden</string>
     <string name="settings_notifications_gotify_url">Gotify-Server-URL</string>

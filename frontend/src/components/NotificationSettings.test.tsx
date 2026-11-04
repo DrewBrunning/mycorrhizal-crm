@@ -34,6 +34,7 @@ function mockFetchByUrl(handlers: Record<string, (init?: RequestInit) => unknown
 const emptyConfig = {
   ntfy_url: '',
   ntfy_topic: '',
+  ntfy_has_token: false,
   gotify_url: '',
   gotify_has_token: false,
   notify_ntfy: false,
@@ -343,4 +344,41 @@ test('registered mobile devices (M2) are listed, can be removed, and unblock the
   await waitFor(() => expect(deleteId).toBe(3));
 
   confirmSpy.mockRestore();
+});
+
+test('ntfy access token is sent when entered and omitted when empty', async () => {
+  let putBody: Record<string, unknown> | null = null;
+  mockFetchByUrl({
+    '/notifications/config': (init?: RequestInit) => {
+      if (init && init.method === 'PUT') {
+        putBody = JSON.parse(String(init.body));
+        return { ...emptyConfig, ntfy_has_token: true };
+      }
+      return emptyConfig;
+    },
+    '/notifications/push-subscriptions': () => ({ subscriptions: [] }),
+    '/notifications/devices': () => ({ devices: [] }),
+  });
+
+  render(
+    <SnackbarProvider>
+      <NotificationSettings />
+    </SnackbarProvider>,
+  );
+
+  await waitFor(() => expect(screen.getByLabelText('ntfy access token')).toBeInTheDocument());
+  fireEvent.change(screen.getByLabelText('ntfy access token'), { target: { value: 'tk_abc' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save notification settings' }));
+
+  await waitFor(() => expect(putBody).not.toBeNull());
+  expect(putBody).toMatchObject({ ntfy_token: 'tk_abc' });
+  // After saving, the field is cleared and a remove control appears.
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Remove token' })).toBeInTheDocument(),
+  );
+  putBody = null;
+  fireEvent.click(screen.getByRole('button', { name: 'Remove token' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save notification settings' }));
+  await waitFor(() => expect(putBody).not.toBeNull());
+  expect(putBody).toMatchObject({ clear_ntfy_token: true });
 });

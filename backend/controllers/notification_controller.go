@@ -34,6 +34,7 @@ const (
 type notificationConfigResponse struct {
 	NtfyURL        string `json:"ntfy_url"`
 	NtfyTopic      string `json:"ntfy_topic"`
+	NtfyHasToken   bool   `json:"ntfy_has_token"`
 	GotifyURL      string `json:"gotify_url"`
 	GotifyHasToken bool   `json:"gotify_has_token"`
 	NotifyNtfy     bool   `json:"notify_ntfy"`
@@ -52,6 +53,7 @@ func buildNotificationConfigResponse(nc *models.NotificationConfig, user models.
 	if nc != nil {
 		resp.NtfyURL = nc.NtfyURL
 		resp.NtfyTopic = nc.NtfyTopic
+		resp.NtfyHasToken = nc.HasNtfyToken()
 		resp.GotifyURL = nc.GotifyURL
 		resp.GotifyHasToken = nc.HasGotifyToken()
 	}

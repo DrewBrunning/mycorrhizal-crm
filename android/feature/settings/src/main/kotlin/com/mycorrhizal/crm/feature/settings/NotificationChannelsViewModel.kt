@@ -26,6 +26,11 @@ data class NotificationChannelsUiState(
     // ntfy
     val ntfyUrl: String = "",
     val ntfyTopic: String = "",
+    val ntfyHasToken: Boolean = false,
+    /** Write-only: what the user typed this session. Empty on save keeps the stored token. */
+    val ntfyToken: String = "",
+    /** The user asked to remove the stored token; applied on the next save. */
+    val clearNtfyToken: Boolean = false,
     val notifyNtfy: Boolean = false,
     // gotify
     val gotifyUrl: String = "",
@@ -64,6 +69,7 @@ class NotificationChannelsViewModel @Inject constructor(
                             isLoading = false,
                             ntfyUrl = config.ntfyUrl,
                             ntfyTopic = config.ntfyTopic,
+                            ntfyHasToken = config.ntfyHasToken,
                             notifyNtfy = config.notifyNtfy,
                             gotifyUrl = config.gotifyUrl,
                             gotifyHasToken = config.gotifyHasToken,
@@ -86,6 +92,20 @@ class NotificationChannelsViewModel @Inject constructor(
     fun onNtfyTopicChange(value: String) = _uiState.update {
         it.copy(
             ntfyTopic = value,
+            testResult = emptyMap()
+        )
+    }
+    fun onNtfyTokenChange(value: String) = _uiState.update {
+        it.copy(
+            ntfyToken = value,
+            clearNtfyToken = false,
+            testResult = emptyMap()
+        )
+    }
+    fun onClearNtfyToken() = _uiState.update {
+        it.copy(
+            ntfyToken = "",
+            clearNtfyToken = true,
             testResult = emptyMap()
         )
     }
@@ -124,6 +144,8 @@ class NotificationChannelsViewModel @Inject constructor(
                 NotificationConfigInput(
                     ntfyUrl = s.ntfyUrl.trim().ifBlank { null },
                     ntfyTopic = s.ntfyTopic.trim().ifBlank { null },
+                    ntfyToken = if (s.clearNtfyToken) null else s.ntfyToken.trim().ifBlank { null },
+                    clearNtfyToken = if (s.clearNtfyToken) true else null,
                     gotifyUrl = s.gotifyUrl.trim().ifBlank { null },
                     gotifyToken = s.gotifyToken.trim().ifBlank { null },
                     notifyNtfy = s.notifyNtfy,
@@ -136,13 +158,16 @@ class NotificationChannelsViewModel @Inject constructor(
                             isSaving = false,
                             ntfyUrl = config.ntfyUrl,
                             ntfyTopic = config.ntfyTopic,
+                            ntfyHasToken = config.ntfyHasToken,
                             notifyNtfy = config.notifyNtfy,
                             gotifyUrl = config.gotifyUrl,
                             gotifyHasToken = config.gotifyHasToken,
                             notifyGotify = config.notifyGotify,
                             // The token is write-only — clear what the user typed
                             // so it never lingers in state (mirrors web).
-                            gotifyToken = ""
+                            gotifyToken = "",
+                            ntfyToken = "",
+                            clearNtfyToken = false
                         )
                     }
                 }
@@ -167,6 +192,8 @@ class NotificationChannelsViewModel @Inject constructor(
                 NotificationConfigInput(
                     ntfyUrl = s.ntfyUrl.trim().ifBlank { null },
                     ntfyTopic = s.ntfyTopic.trim().ifBlank { null },
+                    ntfyToken = if (s.clearNtfyToken) null else s.ntfyToken.trim().ifBlank { null },
+                    clearNtfyToken = if (s.clearNtfyToken) true else null,
                     gotifyUrl = s.gotifyUrl.trim().ifBlank { null },
                     gotifyToken = s.gotifyToken.trim().ifBlank { null },
                     notifyNtfy = s.notifyNtfy,
