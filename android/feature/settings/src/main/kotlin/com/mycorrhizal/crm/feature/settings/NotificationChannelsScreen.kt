@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -87,6 +88,8 @@ fun NotificationChannelsScreen(
             state = state,
             onNtfyUrlChange = viewModel::onNtfyUrlChange,
             onNtfyTopicChange = viewModel::onNtfyTopicChange,
+            onNtfyTokenChange = viewModel::onNtfyTokenChange,
+            onClearNtfyToken = viewModel::onClearNtfyToken,
             onNotifyNtfyChange = viewModel::onNotifyNtfyChange,
             onGotifyUrlChange = viewModel::onGotifyUrlChange,
             onGotifyTokenChange = viewModel::onGotifyTokenChange,
@@ -105,6 +108,8 @@ fun NotificationChannelsContent(
     modifier: Modifier = Modifier,
     onNtfyUrlChange: (String) -> Unit = {},
     onNtfyTopicChange: (String) -> Unit = {},
+    onNtfyTokenChange: (String) -> Unit = {},
+    onClearNtfyToken: () -> Unit = {},
     onNotifyNtfyChange: (Boolean) -> Unit = {},
     onGotifyUrlChange: (String) -> Unit = {},
     onGotifyTokenChange: (String) -> Unit = {},
@@ -173,6 +178,35 @@ fun NotificationChannelsContent(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
             )
+            OutlinedTextField(
+                value = state.ntfyToken,
+                onValueChange = onNtfyTokenChange,
+                label = { Text(stringResource(R.string.settings_notifications_ntfy_token)) },
+                singleLine = true,
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                supportingText = {
+                    Text(
+                        stringResource(
+                            when {
+                                state.clearNtfyToken ->
+                                    R.string.settings_notifications_ntfy_token_hint_removing
+
+                                state.ntfyHasToken ->
+                                    R.string.settings_notifications_ntfy_token_hint_existing
+
+                                else -> R.string.settings_notifications_ntfy_token_hint_new
+                            }
+                        )
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (state.ntfyHasToken && !state.clearNtfyToken) {
+                TextButton(onClick = onClearNtfyToken) {
+                    Text(stringResource(R.string.settings_notifications_ntfy_token_remove))
+                }
+            }
             TestButton(
                 enabled =
                     state.notifyNtfy && state.ntfyUrl.isNotBlank() && state.ntfyTopic.isNotBlank(),

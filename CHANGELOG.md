@@ -19,7 +19,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - **ntfy access token** ([#2339](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2339)): the ntfy settings accept an optional access token, so reminders can be
-  sent through a self-hosted ntfy server that requires authentication to publish. Web only for now.
+  sent through a self-hosted ntfy server that requires authentication to publish. Web and Android.
 - **Contact trash** ([#2002](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2002)): deleted contacts go to a Trash page on web and Android, where you
   can restore them or delete them permanently. They are purged after `DELETED_RETENTION_DAYS`.
 - **Images on activities, notes and contacts** ([#2004](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2004)): attach images to activities and notes,

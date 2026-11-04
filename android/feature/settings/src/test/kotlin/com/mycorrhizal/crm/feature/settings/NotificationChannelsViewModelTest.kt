@@ -27,6 +27,7 @@ class NotificationChannelsViewModelTest {
         ntfyUrl: String = "",
         ntfyTopic: String = "",
         notifyNtfy: Boolean = false,
+        ntfyHasToken: Boolean = false,
         gotifyUrl: String = "",
         gotifyHasToken: Boolean = false,
         notifyGotify: Boolean = false
@@ -34,6 +35,7 @@ class NotificationChannelsViewModelTest {
         ntfyUrl = ntfyUrl,
         ntfyTopic = ntfyTopic,
         notifyNtfy = notifyNtfy,
+        ntfyHasToken = ntfyHasToken,
         gotifyUrl = gotifyUrl,
         gotifyHasToken = gotifyHasToken,
         notifyGotify = notifyGotify
@@ -126,6 +128,54 @@ class NotificationChannelsViewModelTest {
             assertEquals("tok-123", captured.last().gotifyToken)
             assertEquals("", vm.uiState.value.gotifyToken)
             assertTrue(vm.uiState.value.gotifyHasToken)
+        }
+
+    @Test
+    fun `a typed ntfy token is sent on save and cleared from state afterwards`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val captured =
+                mutableListOf<com.mycorrhizal.crm.model.network.NotificationConfigInput>()
+            coEvery { repository.config() } returns Result.success(config())
+            coEvery { repository.save(any()) } answers {
+                captured.add(firstArg())
+                Result.success(config(ntfyUrl = "https://ntfy.example.com", ntfyHasToken = true))
+            }
+            val vm = NotificationChannelsViewModel(repository)
+            advanceUntilIdle()
+
+            vm.onNtfyUrlChange("https://ntfy.example.com")
+            vm.onNtfyTokenChange("tk_abc")
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals("tk_abc", captured.last().ntfyToken)
+            assertEquals(null, captured.last().clearNtfyToken)
+            assertEquals("", vm.uiState.value.ntfyToken)
+            assertTrue(vm.uiState.value.ntfyHasToken)
+        }
+
+    @Test
+    fun `removing the ntfy token sends the clear flag and not the token`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val captured =
+                mutableListOf<com.mycorrhizal.crm.model.network.NotificationConfigInput>()
+            coEvery { repository.config() } returns Result.success(config(ntfyHasToken = true))
+            coEvery { repository.save(any()) } answers {
+                captured.add(firstArg())
+                Result.success(config(ntfyHasToken = false))
+            }
+            val vm = NotificationChannelsViewModel(repository)
+            advanceUntilIdle()
+
+            vm.onNtfyTokenChange("typed")
+            vm.onClearNtfyToken()
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals(true, captured.last().clearNtfyToken)
+            assertEquals(null, captured.last().ntfyToken)
+            assertEquals(false, vm.uiState.value.ntfyHasToken)
+            assertEquals(false, vm.uiState.value.clearNtfyToken)
         }
 
     @Test
