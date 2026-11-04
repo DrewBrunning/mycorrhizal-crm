@@ -1,0 +1,111 @@
+name: Alpine apk pin bump
+
+# The Dockerfiles pin every `apk add` package to an exact version (hadolint
+# DL3018). Alpine publishes a new version and prunes the old one from the index
+# at the same moment, so a pin goes from valid to unsatisfiable between two
+# builds ("breaks: world[...]", #1062/#1131, tzdata 2026e -> 2026f). There is no
+# earlier warning to be had, so this keeps the recovery PR ready instead:
+# every six hours it asks each Dockerfile's final-stage base image for the
+# current version of every pinned package and, when any moved, opens (or
+# updates) one PR that bumps them. docker-pin-check.yml remains the cache-busted
+# build that proves a pin is still installable.
+#
+# The PR is opened with the release GitHub App's token, not GITHUB_TOKEN: a PR
+# opened with GITHUB_TOKEN triggers no workflows, so it would never get its
+# required checks. One-time setup is release.yml's (RELEASE_APP_ID variable +
+# RELEASE_APP_PRIVATE_KEY secret), plus the App needs Pull requests: write on
+# this repository. Merging stays a human decision.
+#
+# Base-image digests (`FROM ...@sha256:`) are not touched here.
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  bump:
+    name: Bump apk pins
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Mint GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Checkout main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          persist-credentials: false
+
+      - name: Bump pins to the current Alpine index
+        run: |
+          bash .github/scripts/alpine-pin-bump.sh \
+            Dockerfile backend/Dockerfile frontend/Dockerfile \
+            | sed "s|^|- |" >"$RUNNER_TEMP/bumps.txt"
+
+      - name: Open, update or close the bump PR
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO: ${{ github.repository }}
+          BRANCH: chore/alpine-pin-bump
+        run: |
+          set -euo pipefail
+          existing="$(gh pr list --repo "$REPO" --head "$BRANCH" --state open --json number --jq '.[0].number // empty')"
+
+          if [ ! -s "$RUNNER_TEMP/bumps.txt" ]; then
+            echo "All apk pins are current."
+            if [ -n "$existing" ]; then
+              gh pr close "$existing" --repo "$REPO" --delete-branch \
+                --comment "main's apk pins are current again (fixed elsewhere); closing."
+            fi
+            exit 0
+          fi
+
+          {
+            echo "## What / why"
+            echo
+            echo "Alpine published newer versions of exact-pinned \`apk\` packages and pruned the old ones, so a cold image build fails with \`breaks: world[...]\`. Bumps:"
+            echo
+            cat "$RUNNER_TEMP/bumps.txt"
+            echo
+            echo "Opened by \`.github/workflows/alpine-pin-bump.yml\`; each pin comes from \`apk search -e\` against the Dockerfile's own final-stage base image. Base-image digests are unchanged. The image build / reproducibility checks on this PR prove the new pins install."
+            echo
+            echo "no-changelog: base-image package pins, no user-visible effect"
+          } >"$RUNNER_TEMP/body.md"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$BRANCH"
+          git add Dockerfile backend/Dockerfile frontend/Dockerfile
+          {
+            echo "chore(docker): bump Alpine apk pins"
+            echo
+            cat "$RUNNER_TEMP/bumps.txt"
+          } >"$RUNNER_TEMP/commit.txt"
+          git commit -s -F "$RUNNER_TEMP/commit.txt"
+
+          # The branch is owned by this workflow: it is rebuilt from main on
+          # every run, so a stale one is replaced rather than merged.
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" "HEAD:refs/heads/${BRANCH}"
+
+          if [ -n "$existing" ]; then
+            # `gh pr edit --body` is a silent no-op on this repo (Projects-classic GraphQL error).
+            gh api -X PATCH "repos/${REPO}/pulls/${existing}" -F "body=@${RUNNER_TEMP}/body.md" --silent
+          else
+            gh pr create --repo "$REPO" --base main --head "$BRANCH" \
+              --title "chore(docker): bump Alpine apk pins" --body-file "$RUNNER_TEMP/body.md"
+          fi

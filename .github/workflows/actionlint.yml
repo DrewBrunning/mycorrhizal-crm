@@ -188,6 +188,13 @@ jobs:
 
       # Issue #1487: pins the Go-floor leg's bounded retry -- one flaky package
       # re-runs once; a build error, a wide failure or a repeat failure still fails.
+      # Pins the apk pin bumper: a stale pin is rewritten (single- and
+      # multi-line RUN apk add, final stage only), a dated comment is inserted,
+      # virtual names resolve to their provider, and an up-to-date file is
+      # byte-identical.
+      - name: Test alpine-pin-bump script
+        run: bash .github/scripts/tests/alpine-pin-bump.test.sh
+
       - name: Test go-test-retry-failed script
         run: bash .github/scripts/tests/go-test-retry-failed.test.sh
 
