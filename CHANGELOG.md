@@ -70,11 +70,13 @@ adheres to [Semantic Versioning](https://semver.org/).
 ### Deprecated
 
 - **Flat lockout and sign-in error bodies** ([#2107](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2107)): the account-lockout `429` and two OIDC
-  errors will use the standard error format in v2.0.0, not before 2027-01-27. Clients that read
+  errors will use the standard error format in v2.0.0, not before 2027-02-04. Clients that read
   both shapes keep working. See [the deprecation list](docs/deprecations.md).
 
 ### Fixed
 
+- **The hobby preference `Sunset` header now names 2027-01-21** ([#1738](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1738)),
+  the date in the deprecation list, instead of two days earlier.
 - **"Export as JSContact" exported every contact** ([#2196](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2196)); it now exports the one you chose.
 - **CardDAV deletes, creates and updates now behave like the app**: they use the trash, respect
   the contact limit, and fire webhooks (([#2249](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2249)), ([#2261](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2261)), ([#2255](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2255))).

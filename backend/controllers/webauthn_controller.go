@@ -380,7 +380,7 @@ func abortLoginLocked(c *gin.Context, secs int) {
 // flatLockoutDeprecationSunset is the earliest removal of the flat lockout body
 // (docs/deprecations.md, id flat-lockout-429-body; issue #2107). v2.0.0 (#2108)
 // replaces it with the error envelope, code ACCOUNT_LOCKED.
-const flatLockoutDeprecationSunset = "Wed, 27 Jan 2027 00:00:00 GMT"
+const flatLockoutDeprecationSunset = "Thu, 04 Feb 2027 00:00:00 GMT"
 
 // abortLocked is the shared 429 lockout body; only the human message varies.
 // It is a flat body, not the error envelope (moving it is breaking, #2108), so
