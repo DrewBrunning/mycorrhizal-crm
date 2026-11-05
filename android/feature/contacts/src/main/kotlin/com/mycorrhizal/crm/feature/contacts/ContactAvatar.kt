@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.ui.LocalServerUrl
+import com.mycorrhizal.crm.ui.resolveServerUri
 
 /**
  * A contact's circular avatar. Renders a photo from:
@@ -97,28 +98,9 @@ fun ContactAvatar(
     }
 }
 
-/**
- * Resolves a photo URI for the image loader (M5 §3.1): relative profile-photo
- * paths (the M6 wire format) are prefixed with the configured [serverOrigin]
- * when known, else the placeholder origin — in both cases the shared OkHttp
- * stack's BaseUrlInterceptor points the request at the configured server and
- * the AuthInterceptor attaches the JWT. Resolving to the REAL origin keeps the
- * Coil disk-cache key per-server (a placeholder-keyed cache would serve one
- * instance's avatar to another). Absolute http(s) URLs and `data:` URIs pass
- * through untouched; blank input resolves to null.
- */
-internal fun resolvePhotoUri(uri: String?, serverOrigin: String): String? {
-    if (uri == null) return null
-    val trimmed = uri.trim()
-    if (trimmed.isEmpty()) return null
-    return if (trimmed.startsWith("/")) {
-        val origin = serverOrigin.trim().trimEnd('/').takeIf { it.isNotBlank() }
-            ?: com.mycorrhizal.crm.network.ApiClient.PLACEHOLDER_ORIGIN
-        origin + trimmed
-    } else {
-        trimmed
-    }
-}
+/** The M5 §3.1 profile-photo resolution; see [resolveServerUri]. */
+internal fun resolvePhotoUri(uri: String?, serverOrigin: String): String? =
+    resolveServerUri(uri, serverOrigin)
 
 /** Decodes a `data:image/...;base64,<data>` URI into an [ImageBitmap], or null. */
 private fun decodeDataUri(uri: String): ImageBitmap? {
