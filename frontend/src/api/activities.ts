@@ -258,6 +258,23 @@ export async function uploadActivityImage(
   return body.image;
 }
 
+// PATCH .../images/:image_id writes only the allowlisted fields (ADR 0040
+// decision 8); an activity photo has no avatar, so only sensitivity is sent here.
+export async function patchActivityImage(
+  activityId: string | number,
+  imageId: number,
+  patch: { sensitivity: ActivityImage['sensitivity'] },
+): Promise<ActivityImage> {
+  const response = await apiFetch(`${API_BASE_URL}/activities/${activityId}/images/${imageId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const body: { image: ActivityImage } = await response.json();
+  return body.image;
+}
+
 export async function deleteActivityImage(
   activityId: string | number,
   imageId: number,

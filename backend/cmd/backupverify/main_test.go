@@ -355,3 +355,60 @@ func TestRunChecksImagesDirFromEnvAndSiblingDefault(t *testing.T) {
 	errOut.Reset()
 	assert.Equal(t, 2, run(nil, &out, &errOut))
 }
+
+// trashEncrypted adds a trashed contact whose deletion snapshot is encrypted
+// under the at-rest key the test environment resolves (issue #2367), with one
+// batch attachment whose file is not in the set.
+func trashEncrypted(t *testing.T, dbPath string) {
+	t.Helper()
+	db, err := database.OpenMigratedFile(dbPath)
+	require.NoError(t, err)
+	kek, err := atrest.EncryptionKey()
+	require.NoError(t, err)
+	require.NoError(t, atrest.Initialize(db, kek))
+	defer atrest.ResetForTest()
+	require.NoError(t, db.Exec(
+		`INSERT INTO users (id, username, email, password) VALUES (1, 'u', 'u@example.com', 'x')`).Error)
+	require.NoError(t, db.Exec(
+		`INSERT INTO contacts (id, firstname, user_id, vcard_uid, deleted_at) VALUES (9, 'T', 1, 'uid-t', CURRENT_TIMESTAMP)`).Error)
+	require.NoError(t, db.Exec(
+		`INSERT INTO attachments (id, user_id, contact_vcard_uid, stored_name, original_name, content_type, size_bytes, deleted_at)
+		 VALUES (5, 1, 'uid-t', 'trashed-attachment', 'd.pdf', 'application/pdf', 1, CURRENT_TIMESTAMP)`).Error)
+	payload, err := atrest.Encrypt(`{"soft":{"attachments":["5"]}}`)
+	require.NoError(t, err)
+	require.NoError(t, db.Exec(
+		`INSERT INTO contact_deletion_snapshots (id, created_at, updated_at, user_id, contact_id, contact_vcard_uid, trashed_at, payload_version, payload)
+		 VALUES ('s', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 9, 'uid-t', CURRENT_TIMESTAMP, 1, ?)`, payload).Error)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+	signSet(t, dbPath)
+}
+
+func TestRunTrashedContactAttachmentIsRequired(t *testing.T) {
+	dbPath, photoDir, attachmentsDir := setupSet(t)
+	trashEncrypted(t, dbPath)
+	t.Setenv("SQLITE_DB_PATH", dbPath)
+	t.Setenv("PROFILE_PHOTO_DIR", photoDir)
+	t.Setenv("ATTACHMENTS_DIR", attachmentsDir)
+
+	var out, errOut bytes.Buffer
+	code := run(nil, &out, &errOut)
+
+	assert.Equal(t, 1, code, "stderr: %s", errOut.String())
+	assert.Contains(t, out.String(), "trashed-attachment")
+}
+
+func TestRunUnresolvableMasterKeyExitsTwo(t *testing.T) {
+	dbPath, photoDir, attachmentsDir := setupSet(t)
+	t.Setenv("SQLITE_DB_PATH", dbPath)
+	t.Setenv("PROFILE_PHOTO_DIR", photoDir)
+	t.Setenv("ATTACHMENTS_DIR", attachmentsDir)
+	t.Setenv("DATA_ENCRYPTION_KEY", "not-base64-32-bytes")
+
+	var out, errOut bytes.Buffer
+	code := run(nil, &out, &errOut)
+
+	assert.Equal(t, 2, code)
+	assert.Contains(t, errOut.String(), "backupverify:")
+}

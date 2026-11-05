@@ -166,9 +166,9 @@
     },
     "src/api/activities.ts": {
       "lines": 100,
-      "linesTotal": 51,
+      "linesTotal": 55,
       "branches": 100,
-      "branchesTotal": 32
+      "branchesTotal": 34
     },
     "src/api/admin.ts": {
       "lines": 100,
@@ -466,9 +466,9 @@
     },
     "src/api/notes.ts": {
       "lines": 100,
-      "linesTotal": 51,
+      "linesTotal": 55,
       "branches": 100,
-      "branchesTotal": 34
+      "branchesTotal": 36
     },
     "src/api/notificationHealth.ts": {
       "lines": 100,
@@ -825,10 +825,10 @@
       "branchesTotal": 163
     },
     "src/components/ContactImageGallery.tsx": {
-      "lines": 94.44,
-      "linesTotal": 126,
-      "branches": 90.47,
-      "branchesTotal": 84
+      "lines": 94.89,
+      "linesTotal": 137,
+      "branches": 88.37,
+      "branchesTotal": 86
     },
     "src/components/ContactInformation.tsx": {
       "lines": 75.73,
@@ -1078,9 +1078,9 @@
     },
     "src/components/ImageGallery.tsx": {
       "lines": 100,
-      "linesTotal": 64,
-      "branches": 93.75,
-      "branchesTotal": 32
+      "linesTotal": 85,
+      "branches": 95.74,
+      "branchesTotal": 47
     },
     "src/components/ImmichPersonSearchDialog.tsx": {
       "lines": 93.54,

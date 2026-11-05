@@ -48,11 +48,14 @@
 package atrest
 
 import (
+	"context"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -492,6 +495,11 @@ func Decrypt(stored string) (string, error) {
 		// rather than return ciphertext as if it were plaintext.
 		return "", ErrNotInitialized
 	}
+	return openStored(engine.dek, stored)
+}
+
+// openStored decrypts one prefixed value under dek.
+func openStored(dek []byte, stored string) (string, error) {
 	rest := strings.TrimPrefix(stored, ciphertextPrefix)
 	kid, payload, ok := strings.Cut(rest, ":")
 	if !ok || kid != keyID {
@@ -501,11 +509,55 @@ func Decrypt(stored string) (string, error) {
 	if err != nil {
 		return "", ErrMalformed
 	}
-	pt, err := open(engine.dek, raw)
+	pt, err := open(dek, raw)
 	if err != nil {
 		return "", fmt.Errorf("atrest: decryption failed (wrong key or corrupted data): %w", err)
 	}
 	return string(pt), nil
+}
+
+// Opener decrypts values stored in one specific database (a backup snapshot)
+// with the DEK unwrapped from that database's own data_encryption_keys row. It
+// never arms the process-wide engine and never writes, so an offline verifier
+// (database.VerifyBackupSet, issue #2367) can read an encrypted column of a
+// read-only snapshot without the side effects of Initialize.
+type Opener struct {
+	dek []byte
+}
+
+// NewOpener reads the wrapped DEK through db (read-only) and unwraps it under
+// kek. Semantics mirror VerifyBackupDecryptable: a nil kek or a database with
+// no wrapped DEK yields an Opener that passes plaintext through and fails
+// closed (ErrNotInitialized) on ciphertext; a DEK that does not unwrap under
+// kek is an error.
+func NewOpener(ctx context.Context, db *sql.DB, kek []byte) (*Opener, error) {
+	if kek == nil {
+		return &Opener{}, nil
+	}
+	var wrapped []byte
+	err := db.QueryRowContext(ctx, `SELECT wrapped_dek FROM data_encryption_keys WHERE key_id = ?`, keyID).Scan(&wrapped)
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		return &Opener{}, nil
+	case err != nil:
+		return nil, fmt.Errorf("atrest: read data_encryption_keys: %w", err)
+	}
+	dek, err := unwrap(kek, wrapped)
+	if err != nil {
+		return nil, fmt.Errorf("atrest: the database's data-encryption key does not unwrap under this master key (wrong DATA_ENCRYPTION_KEY?): %w", err)
+	}
+	return &Opener{dek: dek}, nil
+}
+
+// Decrypt is Decrypt against this Opener's database rather than the engine.
+func (o *Opener) Decrypt(stored string) (string, error) {
+	if !strings.HasPrefix(stored, ciphertextPrefix) {
+		return stored, nil
+	}
+	if o.dek == nil {
+		return "", ErrNotInitialized
+	}
+	return openStored(o.dek, stored)
 }
 
 // seal is AES-256-GCM: fresh random nonce, ciphertext+tag appended.
