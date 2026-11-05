@@ -11,7 +11,7 @@ test layer is the lowest one that can catch that failure (`docs/development/test
 | Retype / reinterpret | up/add + lossless conversion + drop, down reverses if lossless | values decode to the same meaning after `up → down → up` | dump; require an explicit decision if lossless is impossible |
 | Drop column/entity | up drops, down recreates | only after a recorded decision; down proves the schema, not the lost rows | dump; call out in the release note |
 | New index/constraint | up creates, down drops | the migration succeeds on populated rows; duplicate-key failures are explicit | dump if shipped |
-| New entity | up creates, down drops | cascade registration test and delete semantics | dump; update `docs/security/pii-inventory.md` |
+| New entity | up creates, down drops | contact and user cascade coverage (`backend/controllers/delete_cascade_coverage_test.go`) and delete semantics; rows that own files on disk also need the backup-completeness check (`backend/database/backup_completeness.go`) | dump; update `docs/security/pii-inventory.md` and, for a new storage directory, `docs/security/data-retention-lifecycle.md` |
 | Backfill-only | up rewrites rows, down is a no-op or reversal | before/after query count and values on a populated fixture | dump if the schema moves |
 
 ## Owning tests

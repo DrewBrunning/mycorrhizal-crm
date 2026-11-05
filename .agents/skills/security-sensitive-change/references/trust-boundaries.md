@@ -7,7 +7,7 @@ Do not copy the checklist; the ASVS/MASVS files are canonical.
 |---|---|---|
 | Auth/session | credentials, cookies, JWT, reset/verify tokens | login/lockout/expiry/rotation negative tests; `middleware/` clock boundaries |
 | Every user-scoped route | path/body IDs, query filters | ownership scoped by `user_id` (or `Contact.VCardUID`); `backend/routes/authorization_matrix_test.go` (live router) and `backend/routes/ownership_matrix_test.go` (body-carried IDs) |
-| Uploads | filename, MIME, bytes, remote URL | size/type allowlist, path containment (`backend/internal/fsguard`), no `os/exec` |
+| Uploads | filename, MIME, bytes, remote URL | size/type allowlist, decoded-pixel bound for images (`backend/services/image_service.go`), server-generated filenames, path containment (`backend/internal/fsguard`), no `os/exec` |
 | Imports (vCard/JSContact/CSV/iCal) | untrusted structured data | parser bounds, formula neutralization on CSV export, no template execution |
 | Exports/shares/sync | the data leaving the instance | sensitivity filtered in the query; only the three documented full-fidelity exceptions |
 | Outbound integrations | target URL, redirects, response body | SSRF-guarded dialer, size/time limits, no secret reflection |

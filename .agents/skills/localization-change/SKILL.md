@@ -30,7 +30,11 @@ add a second key list.
    (`frontend/src/i18n/keyUsage.test.ts`) fails on an unused key.
 5. If the change affects date/number formatting, update
    `frontend/src/i18n/muiLocale.ts` and its test rather than hardcoding a locale.
-6. Run the locale test and the type check; both are the DoD.
+6. Android strings live in `android/core/ui/src/main/res/values*/strings.xml`
+   with the same five locales; a new Android string gets all five in the same
+   change. `LocalesConsistencyTest` (`android/core/ui/src/test/`) enforces the
+   key set; run `cd android && ./gradlew :core:ui:testDebugUnitTest` for it.
+7. Run the locale test and the type check; both are the DoD.
 
 ## DoD
 

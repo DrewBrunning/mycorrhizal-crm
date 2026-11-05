@@ -25,13 +25,17 @@ sub-floor database must still refuse to migrate.
 4. If a column is renamed/dropped/retyped, write the backfill and a
    data-preservation test beside `backend/database/migrate_datapreservation_test.go`.
 5. If a new entity is added, register its contact cascade in
-   `backend/services/contact_delete.go` (ADR 0035) and decide soft vs hard
-   delete once, on the model (`docs/adrs/0004-soft-vs-hard-delete-semantics.md`).
+   `backend/services/contact_delete.go` (ADR 0035), add it to the hand-written
+   user cascade in `backend/controllers/user_delete_cascade.go`
+   (`delete_cascade_coverage_test.go` fails until both are swept), and decide
+   soft vs hard delete once, on the model
+   (`docs/adrs/0004-soft-vs-hard-delete-semantics.md`).
 6. Open the [migration test matrix](references/migration-test-matrix.md) before
    choosing tests: it maps the change class to the up/down shape, the
    data-preservation proof, and the release/schema-dump impact.
-7. At release time, run the schema-dump generator and commit any diff with the
-   registration in `backend/internal/schemafixture/releases.go`.
+7. Do not register the release yourself: dispatching `release.yml` appends
+   `backend/internal/schemafixture/releases.go`, runs the schema-dump generator
+   and commits the dump. By hand only when the workflow cannot run.
 
 ## DoD
 

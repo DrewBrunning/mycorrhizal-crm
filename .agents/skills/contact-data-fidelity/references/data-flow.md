@@ -34,6 +34,12 @@ explicit include flag (`?include_sensitive=true` for query surfaces, or the same
 field in a share/MCP request). The CSV export, account bundle and contact map
 are deliberate full-fidelity exceptions; do not "fix" them.
 
+Two v1.6.0 layers sit beside sensitivity, never in place of it. The CardDAV
+sync scope (`backend/services/carddav_sync_scope.go`) can only narrow what a
+sync client sees. Per-contact field visibility
+(`backend/models/contact_field_override.go`) is display state outside the
+neutral `Card`, so it never reaches an exporter, sync, a share or MCP.
+
 ## Where the tests live
 
 - Neutral model and projections: `backend/models/contact_record_reverse_test.go`,
