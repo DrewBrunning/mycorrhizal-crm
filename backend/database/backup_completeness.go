@@ -35,9 +35,9 @@ import (
 // (DeleteAttachment, or a contact soft-deleted before Trash existed) removes
 // the on-disk file at once, so a soft-deleted row with no file is the expected
 // steady state. A contact in the Trash (ADR 0037) is different: it keeps its
-// profile photo and the attachment files of its own deletion batch until
-// purge, so a Trash restore can bring them back. Those files are required like
-// a live row's (issue #2367). The batch is recorded in the contact's
+// profile photo and the attachment and image files (its gallery and its
+// notes' images) of its own deletion batch until purge, so a Trash restore can
+// bring them back. Those files are required like a live row's (issue #2367). The batch is recorded in the contact's
 // deletion snapshot, whose payload is encrypted at rest, so verifying a set
 // that has trashed contacts needs the server's master key.
 
@@ -66,15 +66,16 @@ type BackupSetReport struct {
 	// looked at, so "0 missing" can be told apart from "nothing checked".
 	AttachmentsScanned int
 	PhotosScanned      int
-	// ImagesScanned is the live gallery-image row count (all three owner
-	// kinds) checked against IMAGES_DIR; zero when no images directory was
-	// given to VerifyBackupSetWithImages.
+	// ImagesScanned is the required gallery-image row count (all three owner
+	// kinds: live rows plus a trashed contact's batch) checked against
+	// IMAGES_DIR; zero when no images directory was given to
+	// VerifyBackupSetWithImages.
 	ImagesScanned int
 
 	MissingAttachments []MissingRef
 	MissingPhotos      []MissingRef
-	// MissingImages names live image rows whose full or thumbnail file is
-	// absent; StoredName is "u<user id>/<file>", relative to IMAGES_DIR.
+	// MissingImages names required image rows whose full or thumbnail file
+	// is absent; StoredName is "u<user id>/<file>", relative to IMAGES_DIR.
 	MissingImages []MissingRef
 
 	OrphanAttachmentFiles []string
@@ -155,8 +156,8 @@ func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport,
 
 // VerifyBackupSetWithImages is VerifyBackupSet plus the gallery-image
 // directory (IMAGES_DIR, ADR 0040 decision 5): every live activity, note and
-// contact image row must resolve to its full and thumbnail file under
-// imagesDir/u<user id>/. An empty imagesDir skips the image check. A snapshot
+// contact image row, and every image in a trashed contact's deletion batch,
+// must resolve to its full and thumbnail file under imagesDir/u<user id>/. An empty imagesDir skips the image check. A snapshot
 // taken before the gallery tables existed has nothing to reconcile.
 //
 // openSnapshot decrypts trashed contacts' deletion snapshots; callers bind it
@@ -200,12 +201,12 @@ func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir strin
 	if err != nil {
 		return nil, err
 	}
-	trashPhotos, trashAtt, err := trashedContactRefs(sqlDB, openSnapshot)
+	trash, err := trashedContactRefs(sqlDB, openSnapshot)
 	if err != nil {
 		return nil, err
 	}
-	attRefs = append(attRefs, trashAtt...)
-	photoRefs = append(photoRefs, trashPhotos...)
+	attRefs = append(attRefs, trash.attachments...)
+	photoRefs = append(photoRefs, trash.photos...)
 	report.AttachmentsScanned = len(attRefs)
 	report.MissingAttachments = missingRefs(attRefs, attachmentsDir)
 	orphanAtt, err := orphanFiles(attachmentsDir, referencedNames(attRefs))
@@ -229,7 +230,7 @@ func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir strin
 	report.OrphanPhotoFiles = orphanPhoto
 
 	if imagesDir != "" {
-		if err := verifyImages(sqlDB, imagesDir, report); err != nil {
+		if err := verifyImages(sqlDB, imagesDir, trash, report); err != nil {
 			return nil, err
 		}
 	}
@@ -244,10 +245,10 @@ var imageTables = []string{"activity_images", "note_images", "contact_images"}
 // verifyImages reconciles the gallery tables against imagesDir. Live rows must
 // have both files; any file no row (live or soft-deleted, which keeps its
 // files until purge) names is an informational orphan.
-func verifyImages(db *sql.DB, imagesDir string, report *BackupSetReport) error {
+func verifyImages(db *sql.DB, imagesDir string, trash trashRefs, report *BackupSetReport) error {
 	referenced := map[string]bool{}
 	for _, table := range imageTables {
-		if err := scanImageTable(db, table, imagesDir, referenced, report); err != nil {
+		if err := scanImageTable(db, table, imagesDir, trash, referenced, report); err != nil {
 			return err
 		}
 	}
@@ -398,11 +399,12 @@ func orphanFiles(dir string, referenced map[string]bool) ([]string, error) {
 	return orphans, nil
 }
 
-// scanImageTable reconciles one image table: live rows must have both files
-// under imagesDir/u<user id>/, and every named file is recorded in referenced.
+// scanImageTable reconciles one image table: live rows, and rows in a trashed
+// contact's deletion batch, must have both files under imagesDir/u<user id>/,
+// and every named file is recorded in referenced.
 // A snapshot without the table (taken before the gallery existed) has nothing
 // to check.
-func scanImageTable(db *sql.DB, table, imagesDir string, referenced map[string]bool, report *BackupSetReport) error {
+func scanImageTable(db *sql.DB, table, imagesDir string, trash trashRefs, referenced map[string]bool, report *BackupSetReport) error {
 	// #nosec G202 -- table comes from the fixed imageTables list, never input.
 	rows, err := db.QueryContext(context.Background(),
 		"SELECT id, user_id, stored_name, thumb_name, deleted_at IS NULL FROM "+table)
@@ -420,17 +422,18 @@ func scanImageTable(db *sql.DB, table, imagesDir string, referenced map[string]b
 		if err := rows.Scan(&id, &userID, &stored, &thumb, &live); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
 			return fmt.Errorf("scan %s row: %w", table, err)
 		}
+		required := live || trash.requiresImage(table, id, userID)
 		for _, name := range []string{stored, thumb} {
 			rel := fmt.Sprintf("u%d/%s", userID, filepath.Base(name))
 			referenced[rel] = true
-			if !live {
+			if !required {
 				continue
 			}
 			if _, err := os.Stat(filepath.Join(imagesDir, filepath.FromSlash(rel))); err != nil {
 				report.MissingImages = append(report.MissingImages, MissingRef{Kind: "image", StoredName: rel, Owner: fmt.Sprintf("%s#%d", table, id)})
 			}
 		}
-		if live {
+		if required {
 			report.ImagesScanned++
 		}
 	}

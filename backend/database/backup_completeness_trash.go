@@ -5,13 +5,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 )
 
 // The Trash half of VerifyBackupSet (issue #2367): a trashed contact (ADR
-// 0037) keeps its photo and the attachment files of its deletion batch until
-// purge, so they are required like a live row's. See the package comment in
-// backup_completeness.go.
+// 0037) keeps its photo and the attachment and image files of its deletion
+// batch until purge, so they are required like a live row's. See the package
+// comment in backup_completeness.go.
 
 // Decrypter opens one at-rest-encrypted column value (an *atrest.Opener).
 type Decrypter interface {
@@ -42,36 +43,65 @@ type trashedContact struct {
 	payload      string
 }
 
+// trashRefs is what the Trash still owns on disk.
+type trashRefs struct {
+	photos, attachments []MissingRef
+	// images maps an image table (contact_images, note_images) to the ids
+	// of its rows in a deletion batch, each with the batch's user id.
+	images map[string]map[string]int64
+}
+
+// requiresImage reports whether the image row id of table, owned by userID,
+// is in a trashed contact's deletion batch.
+func (r trashRefs) requiresImage(table string, id, userID int64) bool {
+	owner, ok := r.images[table][strconv.FormatInt(id, 10)]
+	return ok && owner == userID
+}
+
+// trashedImageTables are the image tables the contact cascade soft-deletes
+// with a contact (ADR 0040): its gallery, and its notes' images. Activity
+// images belong to an activity, which a contact delete does not trash.
+var trashedImageTables = []string{"contact_images", "note_images"}
+
 // trashedContactRefs returns the files the Trash still owns: each trashed
-// contact's photo, and the attachments of its own deletion batch
-// (payload.soft["attachments"], the set purge removes). Rows the user deleted
-// on their own are not in a batch, and their files are already gone. A
-// snapshot taken before the Trash existed has nothing to reconcile.
-func trashedContactRefs(db *sql.DB, openSnapshot SnapshotOpener) (photos, attachments []MissingRef, err error) {
+// contact's photo, and the attachments and images of its own deletion batch
+// (payload.soft, the set purge removes). Rows the user deleted on their own
+// are not in a batch. A snapshot taken before the Trash existed has nothing to
+// reconcile.
+func trashedContactRefs(db *sql.DB, openSnapshot SnapshotOpener) (trashRefs, error) {
 	ctx := context.Background()
+	out := trashRefs{images: map[string]map[string]int64{}}
 	trashed, err := listTrashedContacts(ctx, db)
 	if err != nil || len(trashed) == 0 {
-		return nil, nil, err
+		return out, err
 	}
 	var opener Decrypter = plaintext{}
 	if openSnapshot != nil {
 		if opener, err = openSnapshot(ctx, db); err != nil {
-			return nil, nil, fmt.Errorf("verify trashed contacts: %w", err)
+			return out, fmt.Errorf("verify trashed contacts: %w", err)
 		}
 	}
 	for _, tc := range trashed {
-		photos = appendPhotoRefs(photos, tc.owner, tc.photo, tc.thumb)
-		ids, err := batchAttachmentIDs(opener, tc)
+		out.photos = appendPhotoRefs(out.photos, tc.owner, tc.photo, tc.thumb)
+		batch, err := batchIDs(opener, tc)
 		if err != nil {
-			return nil, nil, err
+			return out, err
 		}
-		refs, err := batchAttachmentRefs(ctx, db, tc.userID, ids)
+		refs, err := batchAttachmentRefs(ctx, db, tc.userID, batch["attachments"])
 		if err != nil {
-			return nil, nil, err
+			return out, err
 		}
-		attachments = append(attachments, refs...)
+		out.attachments = append(out.attachments, refs...)
+		for _, table := range trashedImageTables {
+			for _, id := range batch[table] {
+				if out.images[table] == nil {
+					out.images[table] = map[string]int64{}
+				}
+				out.images[table][id] = tc.userID
+			}
+		}
 	}
-	return photos, attachments, nil
+	return out, nil
 }
 
 func listTrashedContacts(ctx context.Context, db *sql.DB) ([]trashedContact, error) {
@@ -99,9 +129,10 @@ func listTrashedContacts(ctx context.Context, db *sql.DB) ([]trashedContact, err
 	return out, nil
 }
 
-// batchAttachmentIDs decrypts and decodes one deletion snapshot's payload.
-// An unreadable payload fails the check rather than silently trusting it.
-func batchAttachmentIDs(opener Decrypter, tc trashedContact) ([]string, error) {
+// batchIDs decrypts and decodes one deletion snapshot's payload into its
+// soft batch (table -> row ids). An unreadable payload fails the check rather
+// than silently trusting it.
+func batchIDs(opener Decrypter, tc trashedContact) (map[string][]string, error) {
 	plain, err := opener.Decrypt(tc.payload)
 	if err != nil {
 		return nil, fmt.Errorf("trashed contact %s: decrypt deletion snapshot (%s): %w", tc.owner, keyHint, err)
@@ -112,7 +143,7 @@ func batchAttachmentIDs(opener Decrypter, tc trashedContact) ([]string, error) {
 	if err := json.Unmarshal([]byte(plain), &payload); err != nil {
 		return nil, fmt.Errorf("trashed contact %s: decode deletion snapshot (%s): %w", tc.owner, keyHint, err)
 	}
-	return payload.Soft["attachments"], nil
+	return payload.Soft, nil
 }
 
 // batchAttachmentRefs returns a reference per attachment row of the given
