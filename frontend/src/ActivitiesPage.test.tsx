@@ -160,15 +160,21 @@ test('typing a search term debounces before issuing a new request', async () => 
   await waitFor(() => {
     expect(screen.getByText('Coffee catch-up')).toBeDefined();
   });
-  const countBeforeTyping = calls.length;
+  // Count only activity-list requests: each row's image gallery and the
+  // GeoPulse config load on their own schedule, and under a slow run (Stryker's
+  // instrumented dry run, #2382) the gallery's request can land after the row
+  // renders, during the change event below.
+  const listRequests = () =>
+    calls.filter((c) => c.method === 'GET' && c.url.includes('/activities?')).length;
+  const listRequestsBeforeTyping = listRequests();
 
   fireEvent.change(screen.getByLabelText('Search activities...'), {
     target: { value: 'Coffee' },
   });
 
-  // The 400ms debounce hasn't elapsed yet -- no new request should have gone
-  // out synchronously off the keystroke.
-  expect(calls.length).toBe(countBeforeTyping);
+  // The 400ms debounce hasn't elapsed yet -- no new list request should have
+  // gone out synchronously off the keystroke.
+  expect(listRequests()).toBe(listRequestsBeforeTyping);
 
   await waitFor(
     () => {
