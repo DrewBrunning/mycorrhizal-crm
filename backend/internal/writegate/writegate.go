@@ -1,4 +1,4 @@
-// Package writegate serves SQLite writers in arrival order.
+// Package writegate keeps SQLite writers from being starved of the write lock.
 //
 // SQLite allows one writer at a time, and the app's DSN makes every
 // transaction take the write lock up front (_txlock=immediate, backend trap 9).
@@ -9,11 +9,12 @@
 // writer can wait out the whole busy_timeout and fail with SQLITE_BUSY (a 503
 // DATABASE_BUSY) while the queue ahead of it at any moment was short.
 //
-// A Gate puts a FIFO queue in front of the write lock inside this process: a
-// GORM transaction (and therefore its BEGIN IMMEDIATE) starts only once the
-// gate is held, and the gate passes to the longest waiter when the transaction
-// commits or rolls back. The queue is an explicit list under a mutex rather
-// than a channel's blocked senders, whose order the Go spec does not promise. SQLite's own locking still applies on
+// A Gate puts a queue in front of the write lock inside this process: a GORM
+// transaction (and therefore its BEGIN IMMEDIATE) starts only once the gate is
+// held, and the longest waiter is woken when the transaction commits or rolls
+// back. Like sync.Mutex, it lets a running writer take a free gate first for
+// throughput, and switches to strict arrival order once a waiter has been
+// overtaken for a tenth of the timeout, so none is starved into SQLITE_BUSY. SQLite's own locking still applies on
 // top, so writers outside the gate — another process, a raw *sql.DB
 // transaction — stay correct, just not queued.
 package writegate
@@ -37,13 +38,40 @@ import (
 // string-matching callers (the job lock retry, loadsmoke, perfbench) look for.
 var ErrQueueTimeout = errors.New("database is locked (timed out waiting for the write queue)")
 
-// Gate is a FIFO write queue for one database file.
+// Gate is a write queue for one database file. It runs like sync.Mutex:
+//
+//   - Normal mode: a release frees the gate and wakes the longest waiter, which
+//     competes with writers arriving at that moment. A writer that is already
+//     running usually wins, so the write lock does not idle while a woken
+//     goroutine is scheduled.
+//   - Starvation mode: once a woken writer loses after waiting starveAfter, each
+//     release hands the gate straight to the longest waiter and new arrivals
+//     queue behind it, so no writer can be overtaken past starveAfter plus the
+//     queue ahead of it. The gate returns to normal mode when the queue empties
+//     or a writer is handed the gate having waited less than starveAfter.
 type Gate struct {
-	timeout time.Duration
+	timeout     time.Duration
+	starveAfter time.Duration
 
-	mu      sync.Mutex
-	held    bool
-	waiters list.List // of chan struct{}, closed to hand the gate over
+	mu       sync.Mutex
+	held     bool
+	starving bool
+	waiters  list.List // of *waiter, longest-waiting first
+}
+
+// waiter is one writer blocked in acquire.
+type waiter struct {
+	wake    chan struct{} // closed when this writer is woken or handed the gate
+	granted bool          // the gate was handed over, not just freed
+	since   time.Time     // when the writer started waiting, kept across re-queues
+}
+
+// starvationFraction sets starveAfter as a share of the timeout: a writer is
+// overtaken for at most a tenth of its budget before it is served in order.
+const starvationFraction = 10
+
+func newGate(timeout time.Duration) *Gate {
+	return &Gate{timeout: timeout, starveAfter: timeout / starvationFraction}
 }
 
 var (
@@ -65,51 +93,93 @@ func For(path string, timeout time.Duration) *Gate {
 	if g, ok := registry[key]; ok {
 		return g
 	}
-	g := &Gate{timeout: timeout}
+	g := newGate(timeout)
 	registry[key] = g
 	return g
 }
 
-// acquire waits for the gate in arrival order. It gives up with ctx's error
-// when the caller's context ends, or with ErrQueueTimeout after the gate's
-// timeout.
+// acquire waits for the gate. It gives up with ctx's error when the caller's
+// context ends, or with ErrQueueTimeout after the gate's timeout.
 func (g *Gate) acquire(ctx context.Context) error {
 	g.mu.Lock()
-	if !g.held && g.waiters.Len() == 0 {
+	if !g.held && !g.starving {
 		g.held = true
 		g.mu.Unlock()
 		return nil
 	}
-	turn := make(chan struct{})
-	e := g.waiters.PushBack(turn)
+	w := &waiter{since: time.Now()}
+	g.enqueueLocked(w, false)
 	g.mu.Unlock()
 
 	timer := time.NewTimer(g.timeout)
 	defer timer.Stop()
-	var err error
-	select {
-	case <-turn:
-		return nil
-	case <-ctx.Done():
-		err = ctx.Err()
-	case <-timer.C:
-		err = ErrQueueTimeout
+	for {
+		select {
+		case <-w.wake:
+			g.mu.Lock()
+			if w.granted {
+				g.mu.Unlock()
+				return nil
+			}
+			// Woken by a release in normal mode: compete for the free gate.
+			if !g.held {
+				g.held = true
+				g.mu.Unlock()
+				return nil
+			}
+			// A running writer took it first. Waited too long: stop that.
+			if time.Since(w.since) >= g.starveAfter {
+				g.starving = true
+			}
+			g.enqueueLocked(w, true)
+			g.mu.Unlock()
+		case <-ctx.Done():
+			return g.giveUp(w, ctx.Err())
+		case <-timer.C:
+			return g.giveUp(w, ErrQueueTimeout)
+		}
 	}
+}
 
+// enqueueLocked queues w with a fresh wake channel: at the back when it has
+// just arrived, at the front when it was woken and lost the race, since it
+// has still waited longest.
+func (g *Gate) enqueueLocked(w *waiter, front bool) {
+	w.wake = make(chan struct{})
+	if front {
+		g.waiters.PushFront(w)
+	} else {
+		g.waiters.PushBack(w)
+	}
+}
+
+// giveUp takes w out of the queue after its timeout or context ended.
+func (g *Gate) giveUp(w *waiter, err error) error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	select {
-	case <-turn:
-		// The gate was handed over as we gave up: pass it on, or the
-		// writers behind us would wait for a release that never comes.
-		g.releaseLocked()
+	case <-w.wake:
+		if w.granted {
+			// The gate was handed over as we gave up: pass it on, or the
+			// writers behind us would wait for a release that never comes.
+			g.releaseLocked()
+		} else if !g.held {
+			// We were woken to compete for a free gate: wake the next
+			// waiter in our place.
+			g.wakeFrontLocked()
+		}
 	default:
-		g.waiters.Remove(e)
+		for e := g.waiters.Front(); e != nil; e = e.Next() {
+			if e.Value.(*waiter) == w {
+				g.waiters.Remove(e)
+				break
+			}
+		}
 	}
 	return err
 }
 
-// release hands the gate to the longest waiter, or frees it.
+// release frees the gate or hands it to the longest waiter.
 func (g *Gate) release() {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -117,12 +187,29 @@ func (g *Gate) release() {
 }
 
 func (g *Gate) releaseLocked() {
-	if front := g.waiters.Front(); front != nil {
-		g.waiters.Remove(front)
-		close(front.Value.(chan struct{})) // g.held stays true: ownership moves
-		return
+	if g.starving {
+		if front := g.waiters.Front(); front != nil {
+			g.waiters.Remove(front)
+			w := front.Value.(*waiter)
+			w.granted = true // g.held stays true: ownership moves
+			close(w.wake)
+			if g.waiters.Len() == 0 || time.Since(w.since) < g.starveAfter {
+				g.starving = false
+			}
+			return
+		}
+		g.starving = false
 	}
 	g.held = false
+	g.wakeFrontLocked()
+}
+
+// wakeFrontLocked wakes the longest waiter to compete for the free gate.
+func (g *Gate) wakeFrontLocked() {
+	if front := g.waiters.Front(); front != nil {
+		g.waiters.Remove(front)
+		close(front.Value.(*waiter).wake)
+	}
 }
 
 // Pool is the gorm.ConnPool the app's GORM handle runs on. Reads go straight

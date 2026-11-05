@@ -37,6 +37,13 @@ func queued(g *Gate) int {
 	return g.waiters.Len()
 }
 
+// starving reports whether the gate is in strict hand-over mode.
+func starving(g *Gate) bool {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return g.starving
+}
+
 // held reports whether the gate is currently taken, without waiting.
 func held(g *Gate) bool {
 	g.mu.Lock()
@@ -54,8 +61,8 @@ func TestForSharesOneGatePerFile(t *testing.T) {
 	require.NotSame(t, a, c)
 }
 
-func TestWritersAreAdmittedInArrivalOrder(t *testing.T) {
-	g := &Gate{timeout: 5 * time.Second}
+func TestWaitersAreWokenInArrivalOrder(t *testing.T) {
+	g := newGate(5 * time.Second)
 	require.NoError(t, g.acquire(context.Background()))
 
 	const waiters = 8
@@ -200,7 +207,7 @@ func TestDBReturnsTheUnderlyingHandle(t *testing.T) {
 }
 
 func TestTimedOutWaiterLeavesTheQueue(t *testing.T) {
-	g := &Gate{timeout: 20 * time.Millisecond}
+	g := newGate(20 * time.Millisecond)
 	require.NoError(t, g.acquire(context.Background()))
 	require.ErrorIs(t, g.acquire(context.Background()), ErrQueueTimeout)
 	require.Zero(t, queued(g), "a writer that gave up must not be handed the gate later")
@@ -210,29 +217,139 @@ func TestTimedOutWaiterLeavesTheQueue(t *testing.T) {
 	g.release()
 }
 
+// park starts acquire on g in the background and returns once it is queued.
+func park(t *testing.T, g *Gate) <-chan error {
+	t.Helper()
+	before := queued(g)
+	done := make(chan error, 1)
+	go func() { done <- g.acquire(context.Background()) }()
+	require.Eventually(t, func() bool { return queued(g) == before+1 }, time.Second, time.Millisecond)
+	return done
+}
+
+func TestARunningWriterMayTakeAFreedGate(t *testing.T) {
+	g := newGate(time.Minute)
+	require.NoError(t, g.acquire(context.Background()))
+	done := park(t, g)
+
+	g.mu.Lock()
+	g.releaseLocked() // normal mode: frees the gate and wakes the waiter
+	require.False(t, g.held, "normal mode frees the gate rather than handing it over")
+	g.held = true // a writer already on the CPU takes it before the waiter runs
+	g.mu.Unlock()
+
+	require.Eventually(t, func() bool { return queued(g) == 1 }, time.Second, time.Millisecond,
+		"the woken waiter lost the race and queues again")
+	require.False(t, starving(g), "it has not waited starveAfter yet")
+	g.release()
+	require.NoError(t, <-done)
+	g.release()
+	require.False(t, held(g))
+}
+
+func TestAnOvertakenWaiterSwitchesToStrictOrder(t *testing.T) {
+	g := newGate(time.Minute)
+	g.starveAfter = 0 // any lost race counts as starvation
+	require.NoError(t, g.acquire(context.Background()))
+	first := park(t, g)
+	second := park(t, g)
+
+	g.mu.Lock()
+	g.releaseLocked()
+	g.held = true // the first waiter is overtaken
+	g.mu.Unlock()
+	require.Eventually(t, func() bool { return starving(g) && queued(g) == 2 }, time.Second, time.Millisecond)
+
+	require.ErrorIs(t, g.acquire(ctxWithin(t, 20*time.Millisecond)), context.DeadlineExceeded,
+		"in starvation mode a new arrival queues instead of taking the gate")
+
+	g.release() // hands the gate straight to the first waiter
+	require.NoError(t, <-first)
+	require.True(t, held(g))
+	require.True(t, starving(g), "the second waiter is still queued and the first waited past starveAfter")
+	g.release()
+	require.NoError(t, <-second)
+	require.False(t, starving(g), "the queue emptied")
+	g.release()
+	require.False(t, held(g))
+}
+
+func TestStarvationEndsForAFreshWaiter(t *testing.T) {
+	g := newGate(time.Minute)
+	require.NoError(t, g.acquire(context.Background()))
+	first := park(t, g)
+	second := park(t, g)
+	g.mu.Lock()
+	g.starving = true
+	g.mu.Unlock()
+
+	g.release() // the first waiter waited far less than starveAfter
+	require.NoError(t, <-first)
+	require.False(t, starving(g), "a hand-over to a writer that barely waited ends starvation mode")
+	g.release()
+	require.NoError(t, <-second)
+	g.release()
+}
+
+// ctxWithin returns a context that ends after d.
+func ctxWithin(t *testing.T, d time.Duration) context.Context {
+	ctx, cancel := context.WithTimeout(context.Background(), d)
+	t.Cleanup(cancel)
+	return ctx
+}
+
 // A waiter that gives up in the same moment the gate is handed to it must
 // pass the gate on rather than strand everyone behind it.
 func TestHandoverRacingATimeoutIsNotLost(t *testing.T) {
 	const timeout = 100 * time.Millisecond
-	g := &Gate{timeout: timeout}
+	g := newGate(timeout)
 	require.NoError(t, g.acquire(context.Background()))
-	done := make(chan error, 1)
-	go func() { done <- g.acquire(context.Background()) }()
-	require.Eventually(t, func() bool { return queued(g) == 1 }, timeout/2, time.Millisecond)
+	done := park(t, g)
+	behind := park(t, g)
 	g.mu.Lock()
-	time.Sleep(2 * timeout) // the waiter's timer fires; it now blocks on mu
-	g.releaseLocked()       // hand the gate to the waiter as it gives up
+	g.starving = true
+	time.Sleep(2 * timeout) // both timers fire; the waiters block on mu
+	g.releaseLocked()       // hand the gate to the first waiter as it gives up
 	g.mu.Unlock()
 
-	if err := <-done; err == nil {
-		// The waiter saw its turn before its timer: it owns the gate.
-		require.True(t, held(g))
-		g.release()
-	} else {
-		require.ErrorIs(t, err, ErrQueueTimeout)
+	for _, ch := range []<-chan error{done, behind} {
+		if err := <-ch; err == nil {
+			// This waiter saw its turn before its timer: it owns the gate.
+			require.True(t, held(g))
+			g.release()
+		} else {
+			require.ErrorIs(t, err, ErrQueueTimeout)
+		}
 	}
 	require.False(t, held(g), "the gate must not leak")
 	require.Zero(t, queued(g))
+}
+
+// A waiter woken to compete for a free gate that gives up instead must wake
+// the next waiter, or the free gate would sit unclaimed.
+func TestWakeRacingATimeoutIsPassedOn(t *testing.T) {
+	g := newGate(time.Minute)
+	require.NoError(t, g.acquire(context.Background()))
+	ctx, cancel := context.WithCancel(context.Background())
+	gaveUp := make(chan error, 1)
+	go func() { gaveUp <- g.acquire(ctx) }()
+	require.Eventually(t, func() bool { return queued(g) == 1 }, time.Second, time.Millisecond)
+	next := park(t, g)
+
+	g.mu.Lock()
+	cancel()
+	time.Sleep(50 * time.Millisecond) // the first waiter's ctx fires; it blocks on mu
+	g.releaseLocked()                 // frees the gate and wakes the first waiter
+	g.mu.Unlock()
+
+	if err := <-gaveUp; err == nil {
+		g.release() // it saw the wake first and took the gate
+	} else {
+		require.ErrorIs(t, err, context.Canceled)
+	}
+	require.NoError(t, <-next, "the next waiter must be woken")
+	g.release()
+	require.False(t, held(g))
 }
 
 func TestFailedBeginReleasesTheGate(t *testing.T) {
@@ -275,4 +392,19 @@ func TestTxForwardsStatements(t *testing.T) {
 	require.NoError(t, tx.StmtContext(ctx, stmt).QueryRowContext(ctx).Scan(&n))
 	require.Equal(t, 1, n)
 	require.NoError(t, tx.Rollback())
+}
+
+// Every starving waiter can give up, leaving starvation mode set with nobody
+// to hand the gate to: the release must free it and end the mode.
+func TestStarvationWithAnEmptyQueueFreesTheGate(t *testing.T) {
+	g := newGate(time.Minute)
+	require.NoError(t, g.acquire(context.Background()))
+	g.mu.Lock()
+	g.starving = true
+	g.mu.Unlock()
+	g.release()
+	require.False(t, held(g))
+	require.False(t, starving(g))
+	require.NoError(t, g.acquire(context.Background()), "a new writer takes the free gate at once")
+	g.release()
 }
