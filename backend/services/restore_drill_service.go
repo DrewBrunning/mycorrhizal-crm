@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"mycorrhizal/atrest"
 	"mycorrhizal/config"
@@ -205,7 +206,16 @@ func checkBackupSetCompleteness(snapshotPath string, cfg config.Config) (ok bool
 	if info, statErr := os.Stat(imagesDir); statErr != nil || !info.IsDir() {
 		imagesDir = ""
 	}
-	report, err := database.VerifyBackupSetWithImages(snapshotPath, cfg.ProfilePhotoDir, cfg.AttachmentsDir, imagesDir)
+	// The master key decrypts the Trash's deletion snapshots, which name the
+	// attachment files a trashed contact still owns (issue #2367).
+	kek, err := atrest.ResolveMasterKey(cfg.DataEncryptionKey, cfg.DataEncryptionKeyFile, cfg.JWTSecretKey)
+	if err != nil {
+		return false, "", fmt.Errorf("resolve at-rest master key: %w", err)
+	}
+	openSnapshot := func(ctx context.Context, db *sql.DB) (database.Decrypter, error) {
+		return atrest.NewOpener(ctx, db, kek)
+	}
+	report, err := database.VerifyBackupSetWithImages(snapshotPath, cfg.ProfilePhotoDir, cfg.AttachmentsDir, imagesDir, openSnapshot)
 	if err != nil {
 		return false, "", fmt.Errorf("verify backup set completeness: %w", err)
 	}

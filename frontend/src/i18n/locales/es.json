@@ -4125,6 +4125,17 @@
     "queued_other": "{{count}} fotos seleccionadas",
     "queued_many": "{{count}} fotos seleccionadas"
   },
+  "imageSensitivity": {
+    "label": "Confidencialidad",
+    "normal": "Normal",
+    "private": "Privada",
+    "secret": "Secreta",
+    "help": "Las fotos privadas y secretas se quedan en la aplicación y en tus copias de seguridad. Todo lo que sale de la aplicación, como la sincronización, los elementos compartidos o las exportaciones, las omite salvo que decidas incluirlas.",
+    "failed": "No se pudo cambiar la confidencialidad de la foto.",
+    "markNormal": "Marcar como normal",
+    "markPrivate": "Marcar como privada",
+    "markSecret": "Marcar como secreta"
+  },
   "noteImages": {
     "add": "Añadir fotos",
     "queued_one": "{{count}} foto seleccionada",

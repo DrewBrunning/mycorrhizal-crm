@@ -4125,6 +4125,17 @@
     "queued_other": "{{count}} foto selezionate",
     "queued_many": "{{count}} foto selezionate"
   },
+  "imageSensitivity": {
+    "label": "Riservatezza",
+    "normal": "Normale",
+    "private": "Privata",
+    "secret": "Segreta",
+    "help": "Le foto private e segrete restano nell'app e nei tuoi backup. Tutto ciò che esce dall'app, come la sincronizzazione, le condivisioni o le esportazioni, le esclude a meno che tu non scelga di includerle.",
+    "failed": "Impossibile modificare la riservatezza della foto.",
+    "markNormal": "Segna come normale",
+    "markPrivate": "Segna come privata",
+    "markSecret": "Segna come segreta"
+  },
   "noteImages": {
     "add": "Aggiungi foto",
     "queued_one": "{{count}} foto selezionata",

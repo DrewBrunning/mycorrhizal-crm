@@ -504,8 +504,13 @@ with `make backup` over trusting an unsigned one.
   names it (e.g. `missing attachment: 3f2c…-file (owner attachment#42)`) and exits non-zero.
 - An **orphan** file — present with no owning row — is reported but does not fail the command; it
   distinguishes a stale directory from a lost one (feeds DB-01, issue #460's orphan detection).
-- Soft-deleted rows are excluded on purpose: `DeleteContact` removes the on-disk file at delete
-  time, so a soft-deleted row with no file is the expected steady state, not a hole.
+- Soft-deleted rows are excluded, except a contact in **Trash**. An attachment deleted on its own
+  removes its file at once, so its row with no file is the expected steady state. A trashed contact
+  (ADR 0037) keeps its photo and the attachment files of its deletion until purge, so it can be
+  restored, and those files are required like a live row's (issue #2367). The Trash records which
+  attachments those are in an encrypted snapshot, so verifying a set that has trashed contacts needs
+  the server's master key (`DATA_ENCRYPTION_KEY`, or the `JWT_SECRET_KEY` fallback), the same key
+  the signature check uses.
 
 Run it against every backup set you take, not just at restore time — a hole found the moment the
 backup is made is far cheaper than one found during a disaster.
