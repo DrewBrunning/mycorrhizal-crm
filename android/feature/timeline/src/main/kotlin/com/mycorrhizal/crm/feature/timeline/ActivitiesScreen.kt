@@ -369,7 +369,8 @@ fun ActivityListItem(
                         ImageThumbnail(
                             model = image.thumbnailUrl,
                             contentDescription = stringResource(R.string.activity_images_alt),
-                            size = 64.dp
+                            size = 64.dp,
+                            sensitivity = image.sensitivity
                         )
                     }
                 }

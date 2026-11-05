@@ -3163,5 +3163,9 @@
     <string name="contact_images_sensitivity_title">Photo sensitivity</string>
     <string name="contact_images_sensitivity_normal">Normal</string>
     <string name="contact_images_sensitivity_main_note">A private or secret photo cannot be the main photo; raising it removes it as the main photo.</string>
+    <!-- #2369: the note/activity photo viewer's sensitivity control (web imageSensitivity.*). -->
+    <string name="image_sensitivity_label">Sensitivity</string>
+    <string name="image_sensitivity_help">Private and secret photos stay in the app and in your backups. Anything that leaves the app, such as sync, shares or exports, leaves them out unless you choose to include them.</string>
+    <string name="image_sensitivity_failed">Could not change the photo\'s sensitivity.</string>
     <string name="contact_images_delete_source_confirm">Delete this photo? It will also be removed from its note or activity.</string>
 </resources>

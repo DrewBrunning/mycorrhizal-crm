@@ -1647,6 +1647,21 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     suspend fun deleteActivityImage(activityId: Int, imageId: Int): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$activityId/images/$imageId")
 
+    /** PATCH /api/v1/activities/{id}/images/{imageId} with only `sensitivity` (#2369). */
+    suspend fun patchActivityImageSensitivity(
+        activityId: Int,
+        imageId: Int,
+        sensitivity: String
+    ): Result<ActivityImage> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH/$activityId/images/$imageId".toHttpUrl())
+            .patch("""{"sensitivity":"$sensitivity"}""".toRequestBody(jsonMediaType))
+            .build()
+        return execute(request) { _, body ->
+            moshi.adapter(UploadActivityImageResponse::class.java).fromJson(body)?.image
+        }
+    }
+
     /** GET the stored full variant bytes; [path] is the server's ready-made relative URL. */
     suspend fun downloadActivityImage(path: String): Result<ByteArray> =
         executeGetBytes("$PLACEHOLDER_ORIGIN$path")
@@ -1696,6 +1711,21 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         fileBytes = bytes
     ) { _, body ->
         moshi.adapter(UploadNoteImageResponse::class.java).fromJson(body)?.image
+    }
+
+    /** PATCH /api/v1/notes/{id}/images/{imageId} with only `sensitivity` (#2369). */
+    suspend fun patchNoteImageSensitivity(
+        noteId: Int,
+        imageId: Int,
+        sensitivity: String
+    ): Result<NoteImage> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$NOTES_PATH/$noteId/images/$imageId".toHttpUrl())
+            .patch("""{"sensitivity":"$sensitivity"}""".toRequestBody(jsonMediaType))
+            .build()
+        return execute(request) { _, body ->
+            moshi.adapter(UploadNoteImageResponse::class.java).fromJson(body)?.image
+        }
     }
 
     suspend fun deleteNoteImage(noteId: Int, imageId: Int): Result<Unit> =

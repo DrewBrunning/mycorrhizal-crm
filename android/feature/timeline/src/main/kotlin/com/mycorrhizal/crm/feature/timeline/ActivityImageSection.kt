@@ -15,6 +15,8 @@ fun ActivityImageSection(
     busy: Boolean,
     onAdd: () -> Unit,
     onDelete: (Int) -> Unit,
+    onSetSensitivity: (Int, String) -> Unit,
+    sensitivityFailedImageId: Int?,
     modifier: Modifier = Modifier
 ) {
     OwnerImageSection(
@@ -22,6 +24,7 @@ fun ActivityImageSection(
         imageId = { it.id },
         thumbnailUrl = { it.thumbnailUrl },
         fileUrl = { it.fileUrl },
+        sensitivity = { it.sensitivity },
         labels = OwnerImageLabels(
             add = stringResource(R.string.activity_images_add),
             empty = stringResource(R.string.activity_images_empty),
@@ -34,6 +37,8 @@ fun ActivityImageSection(
         busy = busy,
         onAdd = onAdd,
         onDelete = onDelete,
+        onSetSensitivity = onSetSensitivity,
+        sensitivityFailedImageId = sensitivityFailedImageId,
         modifier = modifier
     )
 }

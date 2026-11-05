@@ -6650,6 +6650,36 @@ class ApiClientTest {
             assertEquals("private", image.sensitivity)
         }
 
+    // #2369 Android parity: note and activity images take the same
+    // sensitivity-only PATCH as contact images.
+    @Test
+    fun `note image sensitivity patch sends only sensitivity`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody("""{"image":{"id":9,"note_id":4,"sensitivity":"secret"}}""")
+        )
+        val image = client.patchNoteImageSensitivity(4, 9, "secret").getOrThrow()
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/notes/4/images/9", request.path)
+        assertEquals("""{"sensitivity":"secret"}""", request.body.readUtf8())
+        assertEquals(9, image.id)
+        assertEquals("secret", image.sensitivity)
+    }
+
+    @Test
+    fun `activity image sensitivity patch sends only sensitivity`() = runBlocking {
+        server.enqueue(
+            MockResponse().setBody("""{"image":{"id":5,"activity_id":2,"sensitivity":"private"}}""")
+        )
+        val image = client.patchActivityImageSensitivity(2, 5, "private").getOrThrow()
+        val request = server.takeRequest()
+        assertEquals("PATCH", request.method)
+        assertEquals("/api/v1/activities/2/images/5", request.path)
+        assertEquals("""{"sensitivity":"private"}""", request.body.readUtf8())
+        assertEquals(5, image.id)
+        assertEquals("private", image.sensitivity)
+    }
+
     @Test
     fun `contact record carries main_image_id`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"id":5,"revision":7,"main_image_id":9}"""))

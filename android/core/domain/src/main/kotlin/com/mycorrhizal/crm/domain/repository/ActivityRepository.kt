@@ -74,4 +74,11 @@ interface ActivityRepository {
 
     /** Delete one image (soft delete server-side; files are removed after commit). */
     suspend fun deleteImage(activityId: Int, imageId: Int): Result<Unit>
+
+    /** Set one image's sensitivity (`normal|private|secret`); returns the updated row (#2369). */
+    suspend fun setImageSensitivity(
+        activityId: Int,
+        imageId: Int,
+        sensitivity: String
+    ): Result<ActivityImage>
 }

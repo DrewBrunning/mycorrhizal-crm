@@ -783,6 +783,79 @@ class ActivityFormViewModelTest {
         assertEquals("boom", vm.uiState.value.error?.message)
     }
 
+    // #2369 Android parity: the editable lightbox PATCHes an image's sensitivity.
+    @Test
+    fun `setting an image's sensitivity stores the server's row`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.get(1)
+        } returns Result.success(Activity(id = 1, title = "Trip"))
+        coEvery { activityRepository.listImages(1) } returns Result.success(
+            listOf(
+                ActivityImage(id = 9, activityId = 1, sensitivity = "normal"),
+                ActivityImage(id = 10, activityId = 1, sensitivity = "normal")
+            )
+        )
+        coEvery { activityRepository.setImageSensitivity(1, 9, "secret") } returns
+            Result.success(ActivityImage(id = 9, activityId = 1, sensitivity = "secret"))
+
+        val vm = createViewModel(activityId = 1)
+        advanceUntilIdle()
+        vm.setImageSensitivity(9, "secret")
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf("secret", "normal"),
+            vm.uiState.value.images.map { it.sensitivity }
+        )
+        assertNull(vm.uiState.value.sensitivityFailedImageId)
+        assertFalse(vm.uiState.value.imagesBusy)
+    }
+
+    @Test
+    fun `a failed sensitivity change keeps the row and flags the image`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.get(1)
+        } returns Result.success(Activity(id = 1, title = "Trip"))
+        coEvery { activityRepository.listImages(1) } returns Result.success(
+            listOf(ActivityImage(id = 9, activityId = 1, sensitivity = "normal"))
+        )
+        coEvery { activityRepository.setImageSensitivity(1, 9, "private") } returns
+            Result.failure(com.mycorrhizal.crm.network.ApiError.Client(500, "boom"))
+
+        val vm = createViewModel(activityId = 1)
+        advanceUntilIdle()
+        vm.setImageSensitivity(9, "private")
+        advanceUntilIdle()
+
+        assertEquals("normal", vm.uiState.value.images.single().sensitivity)
+        assertEquals(9, vm.uiState.value.sensitivityFailedImageId)
+        assertFalse(vm.uiState.value.imagesBusy)
+    }
+
+    @Test
+    fun `choosing the current sensitivity sends nothing`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            activityRepository.get(1)
+        } returns Result.success(Activity(id = 1, title = "Trip"))
+        coEvery { activityRepository.listImages(1) } returns Result.success(
+            listOf(ActivityImage(id = 9, activityId = 1, sensitivity = null))
+        )
+
+        val vm = createViewModel(activityId = 1)
+        advanceUntilIdle()
+        // A missing sensitivity reads as normal, as the server stores it.
+        vm.setImageSensitivity(9, "normal")
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { activityRepository.setImageSensitivity(any(), any(), any()) }
+    }
+
     @Test
     fun `edit upload failure surfaces the error`() = runTest(
         mainDispatcherRule.testDispatcher

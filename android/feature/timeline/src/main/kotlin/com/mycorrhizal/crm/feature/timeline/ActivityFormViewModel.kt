@@ -61,6 +61,8 @@ data class ActivityFormState(
     val pendingImages: List<PendingActivityImage> = emptyList(),
     val imagesLoading: Boolean = false,
     val imagesBusy: Boolean = false,
+    /** #2369: the image whose last sensitivity change failed; its viewer shows the error. */
+    val sensitivityFailedImageId: Int? = null,
     val contactSearchQuery: String = "",
     val contactSearchResults: List<ContactSummary> = emptyList(),
     val contactSearchLoading: Boolean = false,
@@ -105,6 +107,7 @@ data class ActivityFormState(
         images = emptyList(),
         imagesLoading = false,
         imagesBusy = false,
+        sensitivityFailedImageId = null,
         baseline = null
     )
 
@@ -369,6 +372,32 @@ class ActivityFormViewModel @Inject constructor(
             }
             _uiState.update { it.copy(imagesBusy = false, error = failed) }
             loadImages()
+        }
+    }
+
+    /**
+     * #2369: set a server-side image's sensitivity (edit mode). Like a delete it
+     * applies at once, not on save; the row is replaced with the server's copy.
+     */
+    fun setImageSensitivity(imageId: Int, sensitivity: String) {
+        val id = activityId ?: return
+        val current = _uiState.value.images.firstOrNull { it.id == imageId } ?: return
+        if (current.sensitivity.orEmpty().ifEmpty { SENSITIVITY_NORMAL } == sensitivity) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(imagesBusy = true, sensitivityFailedImageId = null) }
+            activityRepository.setImageSensitivity(id, imageId, sensitivity).fold(
+                onSuccess = { updated ->
+                    _uiState.update { state ->
+                        state.copy(
+                            images = state.images.map { if (it.id == imageId) updated else it }
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(sensitivityFailedImageId = imageId) }
+                }
+            )
+            _uiState.update { it.copy(imagesBusy = false) }
         }
     }
 

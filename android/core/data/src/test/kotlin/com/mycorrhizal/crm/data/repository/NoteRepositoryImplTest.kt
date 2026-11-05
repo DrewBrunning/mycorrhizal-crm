@@ -333,4 +333,15 @@ class NoteRepositoryImplTest {
 
         assertTrue(repository.deleteImage(3, 9).isSuccess)
     }
+
+    @Test
+    fun `setImageSensitivity forwards the image id and level`() = runTest {
+        coEvery { apiClient.patchNoteImageSensitivity(3, 9, "secret") } returns Result.success(
+            NoteImage(id = 9, noteId = 3, sensitivity = "secret")
+        )
+
+        val result = repository.setImageSensitivity(3, 9, "secret")
+
+        assertEquals("secret", result.getOrThrow().sensitivity)
+    }
 }

@@ -100,6 +100,12 @@ class NoteRepositoryImpl @Inject constructor(
     override suspend fun deleteImage(noteId: Int, imageId: Int): Result<Unit> =
         apiClient.deleteNoteImage(noteId, imageId)
 
+    override suspend fun setImageSensitivity(
+        noteId: Int,
+        imageId: Int,
+        sensitivity: String
+    ): Result<NoteImage> = apiClient.patchNoteImageSensitivity(noteId, imageId, sensitivity)
+
     private fun Note.toCached(): CachedNote = CachedNote(
         id = id,
         content = content,

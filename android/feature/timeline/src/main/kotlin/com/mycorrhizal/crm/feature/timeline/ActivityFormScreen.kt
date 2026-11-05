@@ -120,6 +120,7 @@ fun ActivityFormScreen(
                 )
             },
             onDeleteImage = viewModel::deleteImage,
+            onSetImageSensitivity = viewModel::setImageSensitivity,
             modifier = Modifier.padding(padding)
         )
     }
@@ -154,7 +155,8 @@ fun ActivityFormContent(
     onRemoveParticipant: (Int) -> Unit,
     modifier: Modifier = Modifier,
     onAddImages: () -> Unit = {},
-    onDeleteImage: (Int) -> Unit = {}
+    onDeleteImage: (Int) -> Unit = {},
+    onSetImageSensitivity: (Int, String) -> Unit = { _, _ -> }
 ) {
     Column(
         modifier = modifier
@@ -270,7 +272,9 @@ fun ActivityFormContent(
             loading = state.imagesLoading,
             busy = state.imagesBusy,
             onAdd = onAddImages,
-            onDelete = onDeleteImage
+            onDelete = onDeleteImage,
+            onSetSensitivity = onSetImageSensitivity,
+            sensitivityFailedImageId = state.sensitivityFailedImageId
         )
     }
 }
