@@ -635,3 +635,15 @@ func TestCheckBackupSetCompletenessPropagatesVerifyError(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "verify backup set completeness")
 }
+
+// The drill resolves the master key for the Trash's deletion snapshots
+// (issue #2367); an unresolvable key is a hard error, never "complete".
+func TestCheckBackupSetCompletenessUnresolvableMasterKeyErrors(t *testing.T) {
+	_, _, err := checkBackupSetCompleteness(filepath.Join(t.TempDir(), "snap.db"), config.Config{
+		ProfilePhotoDir:   t.TempDir(),
+		AttachmentsDir:    t.TempDir(),
+		DataEncryptionKey: "not-base64-32-bytes",
+	})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "resolve at-rest master key")
+}

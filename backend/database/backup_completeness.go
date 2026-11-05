@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -31,10 +32,15 @@ import (
 //     and feeds the orphan detection in DB-01 (issue #460) — never a failure
 //     on its own.
 //
-// Soft-deleted rows are deliberately excluded: DeleteContact and
-// deleteContactAttachmentFiles (controllers/contact_controller.go) remove the
-// on-disk file at delete time, so a soft-deleted row with no file is the
-// expected steady state, not a hole in the backup.
+// Soft-deleted rows are excluded, with one exception. A standalone delete
+// (DeleteAttachment, or a contact soft-deleted before Trash existed) removes
+// the on-disk file at once, so a soft-deleted row with no file is the expected
+// steady state. A contact in the Trash (ADR 0037) is different: it keeps its
+// profile photo and the attachment files of its own deletion batch until
+// purge, so a Trash restore can bring them back. Those files are required like
+// a live row's (issue #2367). The batch is recorded in the contact's
+// deletion snapshot, whose payload is encrypted at rest, so verifying a set
+// that has trashed contacts needs the server's master key.
 
 // MissingRef names one live database row whose backing file is absent from the
 // backup set, so an operator (or a failing restore drill) can point at exactly
@@ -140,8 +146,12 @@ func (r *BackupSetReport) String() string {
 // snapshot's header on open (changing its bytes and breaking the detached
 // signature, issue #943) — and no migrations are run: a backup set must be
 // verifiable without mutating the snapshot.
+//
+// It has no snapshot decrypter, so a set whose Trash holds an encrypted
+// deletion snapshot fails closed; callers with the key use
+// VerifyBackupSetWithImages.
 func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport, error) {
-	return VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, "")
+	return VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, "", nil)
 }
 
 // VerifyBackupSetWithImages is VerifyBackupSet plus the gallery-image
@@ -149,7 +159,11 @@ func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport,
 // contact image row must resolve to its full and thumbnail file under
 // imagesDir/u<user id>/. An empty imagesDir skips the image check. A snapshot
 // taken before the gallery tables existed has nothing to reconcile.
-func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir string) (*BackupSetReport, error) {
+//
+// openSnapshot decrypts trashed contacts' deletion snapshots; callers bind it
+// to atrest.NewOpener with the server's master key. nil reads the payloads as
+// plaintext, which fails closed on an encrypted one.
+func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir string, openSnapshot SnapshotOpener) (*BackupSetReport, error) {
 	if photoDir == "" || attachmentsDir == "" {
 		return nil, fmt.Errorf("verify backup set: both a photo directory and an attachments directory are required")
 	}
@@ -183,6 +197,11 @@ func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir strin
 	if err != nil {
 		return nil, err
 	}
+	trashPhotos, trashAtt, err := trashedContactRefs(sqlDB, openSnapshot)
+	if err != nil {
+		return nil, err
+	}
+	attRefs = append(attRefs, trashAtt...)
 	report.AttachmentsScanned = len(attRefs)
 	report.MissingAttachments = missingRefs(attRefs, attachmentsDir)
 	orphanAtt, err := orphanFiles(attachmentsDir, referencedNames(attRefs))
@@ -195,6 +214,7 @@ func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir strin
 	if err != nil {
 		return nil, err
 	}
+	photoRefs = append(photoRefs, trashPhotos...)
 	// PhotosScanned counts distinct contact rows with a photo, not individual
 	// file references (a row can name both a full photo and a thumbnail file).
 	seenOwners := map[string]bool{}
@@ -318,15 +338,160 @@ func livePhotoRefs(db *sql.DB) ([]MissingRef, error) {
 		if err := rows.Scan(&owner, &photo, &thumb); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
 			return nil, fmt.Errorf("scan contact photo row: %w", err)
 		}
-		if photo != "" {
-			refs = append(refs, MissingRef{Kind: "contact_photo", StoredName: photo, Owner: owner})
-		}
-		if thumb != "" && !strings.HasPrefix(thumb, "data:") {
-			refs = append(refs, MissingRef{Kind: "contact_photo", StoredName: thumb, Owner: owner})
-		}
+		refs = appendPhotoRefs(refs, owner, photo, thumb)
 	}
 	if err := rows.Err(); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
 		return nil, fmt.Errorf("iterate contact photo rows: %w", err)
+	}
+	return refs, nil
+}
+
+// appendPhotoRefs adds a contact's full photo and, when it is a filename
+// rather than an inline "data:" URL, its thumbnail.
+func appendPhotoRefs(refs []MissingRef, owner, photo, thumb string) []MissingRef {
+	if photo != "" {
+		refs = append(refs, MissingRef{Kind: "contact_photo", StoredName: photo, Owner: owner})
+	}
+	if thumb != "" && !strings.HasPrefix(thumb, "data:") {
+		refs = append(refs, MissingRef{Kind: "contact_photo", StoredName: thumb, Owner: owner})
+	}
+	return refs
+}
+
+// Decrypter opens one at-rest-encrypted column value (an *atrest.Opener).
+type Decrypter interface {
+	Decrypt(stored string) (string, error)
+}
+
+// SnapshotOpener builds the Decrypter for a snapshot from its read-only
+// handle, so the DEK comes from the snapshot's own data_encryption_keys row.
+// It is a parameter rather than a direct atrest call because atrest's own
+// tests import this package.
+type SnapshotOpener func(ctx context.Context, db *sql.DB) (Decrypter, error)
+
+// trashedContact is one Trash entry: a soft-deleted contact with a deletion
+// snapshot (ADR 0037).
+type trashedContact struct {
+	userID       int64
+	owner        string
+	photo, thumb string
+	payload      string
+}
+
+// trashedContactRefs returns the files the Trash still owns: each trashed
+// contact's photo, and the attachments of its own deletion batch
+// (payload.soft["attachments"], the set purge removes). Rows the user deleted
+// on their own are not in a batch, and their files are already gone. A
+// snapshot taken before the Trash existed has nothing to reconcile.
+func trashedContactRefs(db *sql.DB, openSnapshot SnapshotOpener) (photos, attachments []MissingRef, err error) {
+	ctx := context.Background()
+	trashed, err := listTrashedContacts(ctx, db)
+	if err != nil || len(trashed) == 0 {
+		return nil, nil, err
+	}
+	var opener Decrypter = plaintext{}
+	if openSnapshot != nil {
+		if opener, err = openSnapshot(ctx, db); err != nil {
+			return nil, nil, fmt.Errorf("verify trashed contacts: %w", err)
+		}
+	}
+	for _, tc := range trashed {
+		photos = appendPhotoRefs(photos, tc.owner, tc.photo, tc.thumb)
+		ids, err := batchAttachmentIDs(opener, tc)
+		if err != nil {
+			return nil, nil, err
+		}
+		refs, err := batchAttachmentRefs(ctx, db, tc.userID, ids)
+		if err != nil {
+			return nil, nil, err
+		}
+		attachments = append(attachments, refs...)
+	}
+	return photos, attachments, nil
+}
+
+func listTrashedContacts(ctx context.Context, db *sql.DB) ([]trashedContact, error) {
+	rows, err := db.QueryContext(ctx, `
+		SELECT c.user_id, COALESCE(NULLIF(c.vcard_uid, ''), 'contact#' || c.id),
+		       COALESCE(c.photo, ''), COALESCE(c.photo_thumbnail, ''), s.payload
+		FROM contact_deletion_snapshots s
+		JOIN contacts c ON c.id = s.contact_id AND c.user_id = s.user_id
+		WHERE c.deleted_at IS NOT NULL
+		ORDER BY c.id`)
+	if err != nil {
+		if strings.Contains(err.Error(), "no such table") {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("query trashed contacts: %w", err)
+	}
+	defer rows.Close()
+	var out []trashedContact
+	for rows.Next() {
+		var tc trashedContact
+		if err := rows.Scan(&tc.userID, &tc.owner, &tc.photo, &tc.thumb, &tc.payload); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
+			return nil, fmt.Errorf("scan trashed contact row: %w", err)
+		}
+		out = append(out, tc)
+	}
+	if err := rows.Err(); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
+		return nil, fmt.Errorf("iterate trashed contact rows: %w", err)
+	}
+	return out, nil
+}
+
+// plaintext is the Decrypter used without a snapshot opener.
+type plaintext struct{}
+
+func (plaintext) Decrypt(stored string) (string, error) { return stored, nil }
+
+// keyHint ends every snapshot-read failure: the usual cause is a missing or
+// different master key.
+const keyHint = "set DATA_ENCRYPTION_KEY (or JWT_SECRET_KEY) to the server's value to verify the Trash's files"
+
+// batchAttachmentIDs decrypts and decodes one deletion snapshot's payload.
+// An unreadable payload fails the check rather than silently trusting it.
+func batchAttachmentIDs(opener Decrypter, tc trashedContact) ([]string, error) {
+	plain, err := opener.Decrypt(tc.payload)
+	if err != nil {
+		return nil, fmt.Errorf("trashed contact %s: decrypt deletion snapshot (%s): %w", tc.owner, keyHint, err)
+	}
+	var payload struct {
+		Soft map[string][]string `json:"soft"`
+	}
+	if err := json.Unmarshal([]byte(plain), &payload); err != nil {
+		return nil, fmt.Errorf("trashed contact %s: decode deletion snapshot (%s): %w", tc.owner, keyHint, err)
+	}
+	return payload.Soft["attachments"], nil
+}
+
+// batchAttachmentRefs returns a reference per attachment row of the given
+// ids, scoped to the snapshot's user.
+func batchAttachmentRefs(ctx context.Context, db *sql.DB, userID int64, ids []string) ([]MissingRef, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	args := make([]any, 0, len(ids)+1)
+	args = append(args, userID)
+	for _, id := range ids {
+		args = append(args, id)
+	}
+	// #nosec G202 -- only "?" placeholders are concatenated; the ids are bound.
+	rows, err := db.QueryContext(ctx, `SELECT id, stored_name FROM attachments WHERE user_id = ? AND stored_name <> '' AND id IN (?`+strings.Repeat(",?", len(ids)-1)+`) ORDER BY id`, args...)
+	if err != nil { // # pragma: no cover — listTrashedContacts already proved the snapshot readable; the attachments table predates the Trash
+		return nil, fmt.Errorf("query trashed contact attachments: %w", err)
+	}
+	defer rows.Close()
+	var refs []MissingRef
+	for rows.Next() {
+		var id int64
+		var storedName string
+		if err := rows.Scan(&id, &storedName); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
+			return nil, fmt.Errorf("scan attachment row: %w", err)
+		}
+		refs = append(refs, MissingRef{Kind: "attachment", StoredName: storedName, Owner: fmt.Sprintf("attachment#%d", id)})
+	}
+	if err := rows.Err(); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
+		return nil, fmt.Errorf("iterate attachment rows: %w", err)
 	}
 	return refs, nil
 }
