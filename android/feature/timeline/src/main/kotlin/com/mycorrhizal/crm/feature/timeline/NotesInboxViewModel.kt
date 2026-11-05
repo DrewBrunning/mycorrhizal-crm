@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.NotesScope
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +26,8 @@ import kotlinx.coroutines.launch
 data class NotesInboxUiState(
     val scope: NotesScope = NotesScope.ALL,
     val notes: List<Note> = emptyList(),
+    /** Each row's photos, loaded after its page (web `NotesPage` parity); absent = none shown. */
+    val imagesByNote: Map<Int, List<NoteImage>> = emptyMap(),
     val total: Int = 0,
     val nextCursor: String? = null,
     val isLoading: Boolean = false,
@@ -80,6 +83,7 @@ class NotesInboxViewModel @Inject constructor(private val noteRepository: NoteRe
                             nextCursor = page.nextCursor
                         )
                     }
+                    loadImagesFor(page.notes)
                 },
                 onError = { error ->
                     hasLoaded = true
@@ -117,11 +121,30 @@ class NotesInboxViewModel @Inject constructor(private val noteRepository: NoteRe
                             nextCursor = page.nextCursor
                         )
                     }
+                    loadImagesFor(page.notes)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoadingMore = false, error = error) }
                 }
             )
+        }
+    }
+
+    private fun loadImagesFor(notes: List<Note>) {
+        if (notes.isEmpty()) return
+        viewModelScope.launch {
+            val loaded = buildMap {
+                for (note in notes) {
+                    // A failed thumbnail fetch must not fail the list; the row just
+                    // renders without images.
+                    runCatching { noteRepository.listImages(note.id) }
+                        .getOrNull()
+                        ?.onSuccess { put(note.id, it) }
+                }
+            }
+            if (loaded.isNotEmpty()) {
+                _uiState.update { it.copy(imagesByNote = it.imagesByNote + loaded) }
+            }
         }
     }
 

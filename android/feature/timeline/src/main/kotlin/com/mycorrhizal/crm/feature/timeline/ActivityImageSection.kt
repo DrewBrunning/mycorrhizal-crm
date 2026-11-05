@@ -42,3 +42,16 @@ fun ActivityImageSection(
         modifier = modifier
     )
 }
+
+/** Read-only thumbnails for an activity row ([OwnerImageRow]). */
+@Composable
+fun ActivityImageRow(images: List<ActivityImage>, modifier: Modifier = Modifier) {
+    OwnerImageRow(
+        images = images,
+        thumbnailUrl = { it.thumbnailUrl },
+        fileUrl = { it.fileUrl },
+        sensitivity = { it.sensitivity },
+        contentDescription = stringResource(R.string.activity_images_alt),
+        modifier = modifier
+    )
+}

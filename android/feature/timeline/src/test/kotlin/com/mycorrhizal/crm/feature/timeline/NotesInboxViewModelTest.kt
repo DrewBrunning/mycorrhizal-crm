@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.NotesScope
 import com.mycorrhizal.crm.domain.repository.UnfiledNotesPage
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -269,4 +270,45 @@ class NotesInboxViewModelTest {
             assertEquals(listOf(2), vm.uiState.value.notes.map { it.id })
             assertEquals(1, vm.uiState.value.total)
         }
+
+    // v1.6.0 parity with web's /notes page: each row shows its photos. A row
+    // whose image fetch fails just shows none; the list itself still loads.
+    @Test
+    fun `loads each note's photos after the list`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
+            UnfiledNotesPage(
+                notes = listOf(
+                    Note(id = 3, content = "Buy milk"),
+                    Note(id = 4, content = "Call mom")
+                ),
+                nextCursor = "c2",
+                total = 3
+            )
+        )
+        coEvery { noteRepository.listImages(3) } returns
+            Result.success(listOf(NoteImage(id = 9, noteId = 3, sensitivity = "secret")))
+        coEvery { noteRepository.listImages(4) } returns
+            Result.failure(ApiError.Server(500, "thumbs down"))
+        coEvery { noteRepository.listNotes(NotesScope.ALL, cursor = "c2") } returns Result.success(
+            UnfiledNotesPage(
+                notes = listOf(Note(id = 5, content = "Gift idea")),
+                nextCursor = null,
+                total = 3
+            )
+        )
+        coEvery { noteRepository.listImages(5) } returns
+            Result.success(listOf(NoteImage(id = 12, noteId = 5)))
+
+        val vm = NotesInboxViewModel(noteRepository)
+        advanceUntilIdle()
+
+        assertEquals(listOf(9), vm.uiState.value.imagesByNote[3]?.map { it.id })
+        assertNull(vm.uiState.value.imagesByNote[4])
+        assertNull(vm.uiState.value.error)
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf(12), vm.uiState.value.imagesByNote[5]?.map { it.id })
+    }
 }

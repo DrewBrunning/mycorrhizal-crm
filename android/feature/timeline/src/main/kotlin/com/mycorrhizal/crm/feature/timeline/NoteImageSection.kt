@@ -1,17 +1,8 @@
 package com.mycorrhizal.crm.feature.timeline
 
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.ui.R
 
@@ -52,32 +43,15 @@ fun NoteImageSection(
     )
 }
 
-/**
- * Read-only thumbnails for a note row, with the same lightbox as the editor
- * (without its sensitivity control) and the same private/secret badge.
- * A plain scrolling Row, not a LazyRow: ListItem measures its supporting
- * content with intrinsics, which a SubcomposeLayout-backed list rejects.
- */
+/** Read-only thumbnails for a note row ([OwnerImageRow]). */
 @Composable
 fun NoteImageRow(images: List<NoteImage>, modifier: Modifier = Modifier) {
-    if (images.isEmpty()) return
-    var viewing by remember { mutableStateOf<NoteImage?>(null) }
-    val alt = stringResource(R.string.note_images_alt)
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        modifier = modifier.horizontalScroll(rememberScrollState())
-    ) {
-        images.forEach { image ->
-            ImageThumbnail(
-                model = image.thumbnailUrl,
-                contentDescription = alt,
-                size = 64.dp,
-                sensitivity = image.sensitivity,
-                onClick = { viewing = image }
-            )
-        }
-    }
-    viewing?.let { image ->
-        ImageLightbox(url = image.fileUrl, contentDescription = alt, onDismiss = { viewing = null })
-    }
+    OwnerImageRow(
+        images = images,
+        thumbnailUrl = { it.thumbnailUrl },
+        fileUrl = { it.fileUrl },
+        sensitivity = { it.sensitivity },
+        contentDescription = stringResource(R.string.note_images_alt),
+        modifier = modifier
+    )
 }

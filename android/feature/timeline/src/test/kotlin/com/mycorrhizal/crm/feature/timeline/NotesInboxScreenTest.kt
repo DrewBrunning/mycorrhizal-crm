@@ -17,6 +17,7 @@ import com.mycorrhizal.crm.domain.repository.NotesScope
 import com.mycorrhizal.crm.domain.repository.UnfiledNotesPage
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -408,5 +409,23 @@ class NotesInboxScreenTest {
         composeTestRule.onNodeWithText("Loose note").assertIsDisplayed()
         composeTestRule.onNodeWithText("1 total").assertIsDisplayed()
         composeTestRule.onNodeWithText("Unassigned notes").assertIsDisplayed()
+    }
+
+    // v1.6.0 parity with web's /notes page: a row shows its photos, badged when
+    // private or secret.
+    @Test
+    fun `a note row shows its photos with the sensitivity badge`() {
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(Note(id = 3, content = "Buy milk")),
+                imagesByNote = mapOf(
+                    3 to listOf(NoteImage(id = 9, noteId = 3, sensitivity = "private"))
+                )
+            )
+        )
+
+        composeTestRule.onNodeWithContentDescription("Note photo").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Private").assertIsDisplayed()
     }
 }

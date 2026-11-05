@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -22,6 +23,8 @@ import kotlinx.coroutines.launch
  */
 data class ActivitiesInboxUiState(
     val activities: List<Activity> = emptyList(),
+    /** Each row's photos, loaded after its page (web `ActivitiesPage` parity); absent = none shown. */
+    val imagesByActivity: Map<Int, List<ActivityImage>> = emptyMap(),
     val nextCursor: String? = null,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
@@ -65,6 +68,7 @@ class ActivitiesInboxViewModel @Inject constructor(
                             nextCursor = page.nextCursor
                         )
                     }
+                    loadImagesFor(page.activities)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }
@@ -98,11 +102,30 @@ class ActivitiesInboxViewModel @Inject constructor(
                             nextCursor = page.nextCursor
                         )
                     }
+                    loadImagesFor(page.activities)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoadingMore = false, error = error) }
                 }
             )
+        }
+    }
+
+    private fun loadImagesFor(activities: List<Activity>) {
+        if (activities.isEmpty()) return
+        viewModelScope.launch {
+            val loaded = buildMap {
+                for (activity in activities) {
+                    // A failed thumbnail fetch must not fail the list; the row just
+                    // renders without images.
+                    runCatching { activityRepository.listImages(activity.id) }
+                        .getOrNull()
+                        ?.onSuccess { put(activity.id, it) }
+                }
+            }
+            if (loaded.isNotEmpty()) {
+                _uiState.update { it.copy(imagesByActivity = it.imagesByActivity + loaded) }
+            }
         }
     }
 
@@ -134,7 +157,8 @@ class ActivitiesInboxViewModel @Inject constructor(
                     _uiState.update { state ->
                         state.copy(
                             deletingId = null,
-                            activities = state.activities.filterNot { it.id == id }
+                            activities = state.activities.filterNot { it.id == id },
+                            imagesByActivity = state.imagesByActivity - id
                         )
                     }
                 },
