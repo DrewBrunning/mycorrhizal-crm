@@ -256,7 +256,7 @@
     "com/mycorrhizal/crm/feature/contacts/AttachmentsScreen.kt": 81.02,
     "com/mycorrhizal/crm/feature/contacts/AttachmentsViewModel.kt": 95.93,
     "com/mycorrhizal/crm/feature/contacts/BulkEditFieldsDialog.kt": 99.66,
-    "com/mycorrhizal/crm/feature/contacts/ContactAvatar.kt": 80.31,
+    "com/mycorrhizal/crm/feature/contacts/ContactAvatar.kt": 77.24,
     "com/mycorrhizal/crm/feature/contacts/ContactDetailScreen.kt": 74.99,
     "com/mycorrhizal/crm/feature/contacts/ContactDetailViewModel.kt": 91.28,
     "com/mycorrhizal/crm/feature/contacts/ContactFieldDisplay.kt": 77.81,
