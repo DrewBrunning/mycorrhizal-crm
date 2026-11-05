@@ -108,6 +108,8 @@ decided in one place.
 | [OIDC single sign-on provider](#oidc) | required-when-enabled | bidirectional | interactive | remote-authoritative | blocked-workflow | 15s | guarded-when-enabled | No retry. |
 | [Have I Been Pwned — breached-password check](#hibp) | optional | outbound | interactive | enrichment | degraded-feature | 5s | fixed-endpoint | No retry. |
 | [GitHub releases — update-availability check](#update-check) | optional | outbound | interactive | enrichment | degraded-feature | 3s | guarded-always | No retry. |
+| [Meerkat live-API import](#meerkat-api) | optional | outbound | interactive | none | blocked-workflow | 30s | guarded-when-enabled | Up to 3 retries (4 attempts) per request on 429 or 5xx, in-process within the call; the delay is the Retry-After seconds when sent (default 2s, capped at 90s). |
+| [Monica live-API import](#monica) | optional | outbound | interactive | none | blocked-workflow | 30s | guarded-when-enabled | Up to 3 retries (4 attempts) per request on 429 or 5xx, in-process within the call; the delay is the Retry-After seconds when sent (default 2s, capped at 90s). |
 
 ## SSRF is a property of this whole surface
 
@@ -121,7 +123,7 @@ claiming a guarded posture actually references `SafeDialContext` in its source.
 | Posture | Meaning | Integrations |
 |---|---|---|
 | `guarded-always` | every connection through `SafeDialContext`, unconditionally | `immich`, `geocoder`, `paperless`, `seafile`, `webdav`, `update-check` |
-| `guarded-when-enabled` | guarded only when the operator opts in (`*_BLOCK_PRIVATE_URLS`) | `carddav`, `caldav`, `geopulse`, `webhooks`, `ntfy`, `gotify`, `webpush`, `oidc` |
+| `guarded-when-enabled` | guarded only when the operator opts in (`*_BLOCK_PRIVATE_URLS`) | `carddav`, `caldav`, `geopulse`, `webhooks`, `ntfy`, `gotify`, `webpush`, `oidc`, `meerkat-api`, `monica` |
 | `fixed-endpoint` | no user-supplied URL — compiled-in vendor/operator host, no SSRF surface | `email-resend`, `email-smtp`, `hibp` |
 
 `fixed-endpoint` rows (Resend, SMTP, HIBP) are recorded rather than omitted: they
@@ -610,6 +612,60 @@ Asks the GitHub releases API whether a newer release of this project exists, for
 | `malformed-response` | transient | An unparseable release body → treated as 'could not determine'; never surfaced as a spurious 'update available'. |
 | `rate-limited` | transient | GitHub 403/429 with rate-limit headers → treated as unavailable for this load; the 6h memoization of the last success already keeps call volume trivially low. |
 | `remote-resource-deleted` | permanent-until-human | A 404 for the releases endpoint (repo moved/renamed) → treated as 'could not determine'; it is a build-time constant, so this would be a project bug, not a runtime condition. |
+
+### Meerkat live-API import
+
+<a id="meerkat-api"></a>
+
+Reads a running Meerkat CRM instance over its REST API during the import assistant (issue #2013), then feeds the same mapper/preview/apply engine as the uploaded-database path.
+
+- **Criticality** — optional. A one-off migration aid; the database-file upload path does the same import without any network call, and contacts exist without it.
+- **Direction** — outbound. Read-only against Meerkat's data: GET requests plus a POST /login and a best-effort POST /logout for password sessions. Nothing is ever written to the Meerkat instance's contact data.
+- **Cadence** — interactive. Runs only while a user drives the import wizard: Connect inline in the request, then a background fetch for that session and a post-commit photo tail. There is no scheduler entry.
+- **Data authority** — none. A one-shot copy into this app. Meerkat stays the system of record until the user applies the preview; afterwards nothing syncs back, so there is no standing authority question.
+- **Failure impact** — blocked-workflow. The user sees the failure in the wizard at once and cannot proceed with the live-API path (the upload path remains). Nothing is written to local contacts until the user applies the previewed plan, so a failure never leaves a half-import.
+- **Timeout** — 30s. meerkatapi.requestTimeout on the http.Client bounds each request. Above it, services.meerkatConnectTimeout (60s) bounds Connect's probe requests, the post-commit photo tail has a context deadline of 60s + 3s per contact, and the response body is capped (16 MiB per page, 10 MiB per picture).
+- **Retry budget** — Up to 3 retries (4 attempts) per request on 429 or 5xx, in-process within the call; the delay is the Retry-After seconds when sent (default 2s, capped at 90s). A login 429 is never retried (it means the account is locked). Client-side throttle of one request per 100ms (burst 5). Nothing is persisted: after the budget is spent the session fails and the user restarts the fetch.
+- **SSRF** — guarded-when-enabled. meerkatapi.NewClient wires httputil.SafeDialContext onto the transport only when MEERKAT_BLOCK_PRIVATE_URLS is set; default off so a LAN Meerkat works. The user supplies the base URL, so the redirect policy matters: redirects are never followed (http.ErrUseLastResponse), so the bearer credential is never replayed to another host and a hostile server cannot steer the dialer inward. Credentials are session-only (memory, dropped on Close) and URLs with userinfo are rejected.
+- **Source** — `backend/meerkatapi/client.go`, `backend/services/meerkat_import_api.go`
+- **Failure behavior verified by** — #2013; meerkatapi/client_test.go and client_status_test.go (status mapping, retry budget, redirect and private-address refusal, timeout wiring); services/meerkat_import_api_test.go.
+
+| Failure mode | Class | Required behavior |
+|---|---|---|
+| `unreachable-host` | transient | Request returns ErrUnreachable (no URL or header detail); Connect or the background fetch fails, the session records a failed phase with a generic 'could not be reached, use the database upload' message, and nothing local is written; the credential is dropped. |
+| `timeout` | transient | The 30s per-request http.Client timeout (or the 60s Connect deadline) fires and surfaces as ErrUnreachable, the same as an unreachable host; the fetch fails cleanly with no partial import. |
+| `auth-expiry` | permanent-until-human | 401 (and 403) map to ErrUnauthorized: 'Meerkat rejected the credentials'. A login 429 is ErrLocked ('temporarily locked, wait'). Neither is retried; the user re-enters credentials. A credential is also never sent to a host whose /health does not answer like Meerkat. |
+| `authz-revoked` | permanent-until-human | Not distinguished from auth expiry: a 403 is folded into ErrUnauthorized and shows the same 'rejected the credentials' message. |
+| `malformed-response` | transient | A non-JSON, oversized (>16 MiB) or unexpected-status body returns ErrInvalidData ('response could not be read, use the database upload'); a server that does not look like Meerkat gets ErrNotMeerkat. The snapshot is built only after a full successful walk, so a garbled page fails the fetch rather than importing a partial account. |
+| `rate-limited` | transient | 429 is retried honouring Retry-After (capped at 90s) up to 3 times; if still limited the call fails as ErrUnreachable ('rate limited'). 5xx is retried on the same budget and fails the same way. |
+| `remote-resource-deleted` | permanent-until-human | A 404 on a data page is ErrNotFound and fails the fetch; a 404 on a contact's profile picture means 'no picture' and is logged and counted as a failed photo, never fatal and never a local deletion. A login 404 means the host is not Meerkat (ErrNotMeerkat). |
+
+### Monica live-API import
+
+<a id="monica"></a>
+
+Reads a running Monica instance over its REST API for the import assistant (issue #549): contacts, activities, notes, reminders, calls, tasks, gifts, debts, relationships and avatars.
+
+- **Criticality** — optional. A one-off migration aid; the Monica export file import covers the same ground and contacts exist without it.
+- **Direction** — outbound. Strictly read-only: every request is a GET. Nothing is written to Monica.
+- **Cadence** — interactive. Runs only while a user drives the import wizard: connect and count inline, then a background fetch for that session and a post-commit avatar tail. There is no scheduler entry.
+- **Data authority** — none. A one-shot copy into this app; Monica remains the system of record and nothing syncs back after the user applies the preview.
+- **Failure impact** — blocked-workflow. The wizard shows the failure immediately and the live-API path cannot proceed. Local contacts are written only when the user applies the previewed plan, so a failed fetch never leaves a half-import.
+- **Timeout** — 30s. monica.requestTimeout on the http.Client bounds each request; the response body is capped at 10 MiB per page or avatar, and the paging loop stops at 1000 pages.
+- **Retry budget** — Up to 3 retries (4 attempts) per request on 429 or 5xx, in-process within the call; the delay is the Retry-After seconds when sent (default 2s, capped at 90s). Client-side throttle of one request per second to stay under Monica's 60/minute limit. Nothing is persisted: after the budget is spent the fetch fails and the user restarts it.
+- **SSRF** — guarded-when-enabled. monica.NewClient wires httputil.SafeDialContext only when MONICA_BLOCK_PRIVATE_URLS is set; default off so a LAN Monica works. The user supplies the base URL. Unlike the Meerkat client, redirects are followed (Go's default policy, up to 10 hops): with the guard on, every hop is re-resolved and pinned to a public address, and Go strips the Authorization header on a cross-host hop. FetchAvatar only attaches the bearer token when the avatar host equals the Monica host. The token is held in memory for the session only and URLs are validated as http(s).
+- **Source** — `backend/monica/client.go`, `backend/services/monica_import_session.go`
+- **Failure behavior verified by** — #549; monica/client_test.go (status mapping, retry budget, private-address refusal, token scoping, timeout wiring); services/monica_import_session tests.
+
+| Failure mode | Class | Required behavior |
+|---|---|---|
+| `unreachable-host` | transient | Returns ErrUnreachable; the connect step or background fetch fails, the session moves to a failed phase with 'The Monica instance could not be reached', and nothing local is written. A failed avatar fetch is logged and skipped, never fatal. |
+| `timeout` | transient | The 30s per-request http.Client timeout fires and surfaces as ErrUnreachable, the same as an unreachable host; the fetch fails cleanly with no partial import. |
+| `auth-expiry` | permanent-until-human | 401 (and 403) map to ErrUnauthorized: 'Monica rejected the API token'. It is never retried; the user re-enters the token. |
+| `authz-revoked` | permanent-until-human | Not distinguished from auth expiry: a 403 is folded into ErrUnauthorized and shows the same 'rejected the API token' message. |
+| `malformed-response` | transient | Invalid JSON or an unexpected non-200 status returns ErrInvalidData ('did not respond like a Monica API, check the URL'); the snapshot is built only after every page succeeds, so a garbled page fails the fetch rather than importing a partial account. |
+| `rate-limited` | transient | 429 and 5xx are retried up to 3 times honouring Retry-After (capped at 90s); if still failing the call returns ErrUnreachable ('rate limited' or 'server error') and the fetch fails. |
+| `remote-resource-deleted` | permanent-until-human | Not distinguished: a 404 on an endpoint is ErrInvalidData (the host is not a Monica API); a 404 on an avatar URL is a skipped, logged photo. The list endpoints are account-wide, so a record deleted mid-walk simply does not appear; nothing local is ever deleted on that basis. |
 
 ## Adding an integration
 

@@ -108,8 +108,8 @@ func TestRegistryInvariants(t *testing.T) {
 			t.Errorf("%s: SourceFiles is empty", in.ID)
 		}
 		for _, f := range in.SourceFiles {
-			if !strings.HasPrefix(f, "services/") {
-				t.Errorf("%s: SourceFiles entry %q must be under services/", in.ID, f)
+			if strings.HasPrefix(f, "/") || strings.Contains(f, "..") || !strings.HasSuffix(f, ".go") || strings.HasSuffix(f, "_test.go") {
+				t.Errorf("%s: SourceFiles entry %q must be a backend-relative non-test .go path (e.g. services/x.go, meerkatapi/client.go)", in.ID, f)
 			}
 			if _, err := os.Stat(filepath.Join("..", f)); err != nil {
 				t.Errorf("%s: SourceFiles entry %q does not exist: %v", in.ID, f, err)
@@ -198,38 +198,64 @@ var outboundClientSignal = regexp.MustCompile(strings.Join([]string{
 	`carddav\.NewClient`,
 }, "|"))
 
-// servicesWithOutboundClient scans backend/services for non-test files whose
-// source trips outboundClientSignal, returning basenames.
-func servicesWithOutboundClient(t *testing.T) map[string]bool {
+// outboundScanSkipDirs are directory names the outbound-client scan never
+// descends into: fixtures and semgrep rule tests contain deliberate unguarded
+// clients, and vendored/third-party trees are not our code.
+var outboundScanSkipDirs = map[string]bool{
+	"testdata":     true,
+	".semgrep":     true,
+	"vendor":       true,
+	"node_modules": true,
+}
+
+// backendFilesWithOutboundClient walks every non-test .go file under backend/
+// and returns the backend-relative, slash-separated paths (e.g.
+// "services/immich_client.go", "meerkatapi/client.go") whose source trips
+// outboundClientSignal. The scan covers the whole backend, not just
+// backend/services, because integrations also live in their own packages
+// (meerkatapi, monica); a services-only scan let those ship with no row.
+func backendFilesWithOutboundClient(t *testing.T) map[string]bool {
 	t.Helper()
-	dir := filepath.Join("..", "services")
-	ents, err := os.ReadDir(dir)
-	if err != nil {
-		t.Fatalf("reading %s: %v", dir, err)
-	}
+	root := ".."
 	got := map[string]bool{}
-	for _, e := range ents {
-		name := e.Name()
-		if e.IsDir() || !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		body, err := os.ReadFile(filepath.Join(dir, name))
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
-			t.Fatalf("reading %s: %v", name, err)
+			return err
+		}
+		if d.IsDir() {
+			if path != root && (outboundScanSkipDirs[d.Name()] || strings.HasPrefix(d.Name(), ".")) {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(d.Name(), ".go") || strings.HasSuffix(d.Name(), "_test.go") {
+			return nil
+		}
+		body, err := os.ReadFile(path)
+		if err != nil {
+			return err
 		}
 		if outboundClientSignal.Match(body) {
-			got[name] = true
+			rel, err := filepath.Rel(root, path)
+			if err != nil {
+				return err
+			}
+			got[filepath.ToSlash(rel)] = true
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walking backend for outbound clients: %v", err)
 	}
 	return got
 }
 
 // TestEveryOutboundClientIsClassified is the "a new integration added without a
 // matrix row fails a structural check" requirement (issue #464). Every
-// backend/services file that opens an outbound client must be claimed by a
+// non-test file under backend/ (any package) that opens an outbound client must be claimed by a
 // Registry() entry, or listed in nonIntegrationClients with a reason.
 func TestEveryOutboundClientIsClassified(t *testing.T) {
-	got := servicesWithOutboundClient(t)
+	got := backendFilesWithOutboundClient(t)
 	if len(got) < 10 {
 		t.Fatalf("outbound-client scan matched only %d files — the signal regex is probably broken", len(got))
 	}
@@ -237,7 +263,7 @@ func TestEveryOutboundClientIsClassified(t *testing.T) {
 	claimed := map[string]bool{}
 	for _, in := range Registry() {
 		for _, f := range in.SourceFiles {
-			claimed[filepath.Base(f)] = true
+			claimed[f] = true
 		}
 	}
 
@@ -248,7 +274,7 @@ func TestEveryOutboundClientIsClassified(t *testing.T) {
 		if _, ok := nonIntegrationClients[name]; ok {
 			continue
 		}
-		t.Errorf("backend/services/%s opens an outbound client but no integrations.Registry() "+
+		t.Errorf("backend/%s opens an outbound client but no integrations.Registry() "+
 			"entry claims it — add a row to entries.go (or, if it reuses another integration's "+
 			"transport, an entry to nonIntegrationClients with a reason)", name)
 	}
@@ -258,7 +284,7 @@ func TestEveryOutboundClientIsClassified(t *testing.T) {
 // nonIntegrationClients that no longer trips the signal — so suppressions
 // cannot pile up (same discipline as the crypto-surface ignore file).
 func TestNonIntegrationAllowlistIsLive(t *testing.T) {
-	got := servicesWithOutboundClient(t)
+	got := backendFilesWithOutboundClient(t)
 	require.NotEmpty(t, nonIntegrationClients)
 	for name, reason := range nonIntegrationClients {
 		if strings.TrimSpace(reason) == "" {
@@ -278,13 +304,12 @@ func TestClaimedSourceFilesDoNotOverlap(t *testing.T) {
 	owners := map[string][]string{}
 	for _, in := range Registry() {
 		for _, f := range in.SourceFiles {
-			b := filepath.Base(f)
-			owners[b] = append(owners[b], in.ID)
+			owners[f] = append(owners[f], in.ID)
 		}
 	}
 	allowedSharers := map[string]bool{
-		"notification_service.go": true, // ntfy, gotify, webpush are one dispatcher
-		"mailer.go":               true, // email-resend, email-smtp are one SendEmail
+		"services/notification_service.go": true, // ntfy, gotify, webpush are one dispatcher
+		"services/mailer.go":               true, // email-resend, email-smtp are one SendEmail
 	}
 	for f, ids := range owners {
 		if len(ids) > 1 && !allowedSharers[f] {

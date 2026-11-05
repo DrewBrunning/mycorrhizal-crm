@@ -61,6 +61,12 @@ var realServerCoverage = map[string]realServerEntry{
 		"The SMTP transport, which shares the message builder, has a real-server test."},
 	"hibp": {Exclusion: "Have I Been Pwned's range API is a hosted third-party service; the k-anonymity request/response shape is documented and stable, " +
 		"the call is opt-in and fail-open, and hitting it from CI nightly adds rate-limit risk for no new signal."},
+	"meerkat-api": {Exclusion: "Meerkat is a self-hosted CRM with no published image wired into CI that boots with a seeded account and API token, so a " +
+		"real-server leg would need a bespoke harness for a one-off import assistant. The client is exercised against internal/meerkatapifake, an " +
+		"httptest stand-in for the v1.5-v1.7 API slice the importer reads, in meerkatapi/client_test.go."},
+	"monica": {Exclusion: "Monica's official image needs a database, an app key and a seeded account with an API token before it answers /api, which is a " +
+		"bespoke harness for a one-off, read-only migration aid. The client is exercised against httptest servers shaped like Monica's paged " +
+		"responses in monica/client_test.go."},
 	"update-check": {Exclusion: "The update check reads GitHub's releases API, a hosted service we cannot stand up; it is opt-in, fail-safe, and a response " +
 		"change degrades to 'unknown' (BuildUpdateCheckStatus), never to a wrong 'update available'."},
 }

@@ -507,6 +507,42 @@ integration in the classification registry to its <a id> on this page. -->
   of it being down is simply no "newer release" line. Disabling the env var is
   the whole removal.
 
+### Meerkat live-API import
+
+<a id="meerkat-api"></a>
+
+- **What it does.** The import assistant can read a running Meerkat instance
+  over its REST API (read-only) instead of an uploaded database file. The
+  credential (API token, or username and password) is held in memory for the
+  import session only and is never stored; a password login is logged out
+  when the session ends. Nothing is written locally until the user applies the
+  previewed plan.
+- **Optional.** Yes: the database-file upload does the same import with no
+  network call.
+- **Configured by.** The **user**, per import, by entering the instance URL.
+  The **operator** may set `MEERKAT_BLOCK_PRIVATE_URLS`.
+- **Ownership / symptoms / removal.** Mycorrhizal owns calling it. Symptoms are
+  a wizard error ("could not be reached", "rejected the credentials", or "URL
+  resolves to a private address, which this server blocks"). There is nothing
+  to remove; it only runs while a user drives the wizard.
+
+### Monica live-API import
+
+<a id="monica"></a>
+
+- **What it does.** The import assistant can read a running Monica instance
+  over its REST API (read-only: contacts, activities, notes, reminders, calls,
+  tasks, gifts, debts, relationships and avatars). The API token is held in
+  memory for the import session only and is never stored. Nothing is written
+  locally until the user applies the previewed plan.
+- **Optional.** Yes: the Monica export-file import covers the same ground.
+- **Configured by.** The **user**, per import, by entering the instance URL and
+  API token. The **operator** may set `MONICA_BLOCK_PRIVATE_URLS`.
+- **Ownership / symptoms / removal.** Mycorrhizal owns calling it. Symptoms are
+  a wizard error ("could not be reached", "rejected the API token", or "URL
+  resolves to a private address, which this server blocks"). There is nothing
+  to remove; it only runs while a user drives the wizard.
+
 ## The SSRF boundary
 
 Server-side URL handling refuses private/loopback destinations so a
@@ -524,9 +560,10 @@ per-integration posture; what an operator experiences is one of three:
   targets work out of the box). Enable the knob and a URL that resolves to a
   private address is refused with a clear error before any request is made.
   Rows in this posture today: **CardDAV subscriptions, CalDAV, webhooks, ntfy,
-  Gotify, Web Push, OIDC**. The webhook/notification/push family share the
+  Gotify, Web Push, OIDC, Meerkat import, Monica import**. The webhook/notification/push family share the
   `WEBHOOK_BLOCK_PRIVATE_URLS` knob; CardDAV/CalDAV share `CALDAV_BLOCK_PRIVATE_URLS`;
-  OIDC has `OIDC_BLOCK_PRIVATE_URLS`.
+  OIDC has `OIDC_BLOCK_PRIVATE_URLS`; the import assistants have
+  `MEERKAT_BLOCK_PRIVATE_URLS` and `MONICA_BLOCK_PRIVATE_URLS`.
 - **`fixed-endpoint`** — no user-supplied URL at all (compiled-in vendor/operator
   host), so there is no dialer to guard: **Resend, SMTP, HIBP**.
 

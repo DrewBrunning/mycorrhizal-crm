@@ -38,6 +38,11 @@ const (
 	maxPages = 1000
 )
 
+// RequestTimeout is the per-request deadline the client's http.Client uses,
+// exported so services' matrix reconcile test can bind the integration
+// matrix row to the code (issue #464).
+const RequestTimeout = requestTimeout
+
 // Client is a rate-limited, read-only Monica API client. Monica enforces
 // 60 requests/minute, so requests are throttled to ~1/second.
 type Client struct {

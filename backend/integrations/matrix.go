@@ -245,6 +245,8 @@ func Registry() []Integration {
 		oidcIntegration(),
 		hibpIntegration(),
 		updateCheckIntegration(),
+		meerkatAPIIntegration(),
+		monicaIntegration(),
 	}
 }
 
@@ -264,5 +266,20 @@ func ByID(id string) (Integration, bool) {
 // structural test uses this as the allowlist and also fails on a dead entry
 // (a file here that no longer trips the signal), so it cannot rot.
 var nonIntegrationClients = map[string]string{
-	"diagnostics.go": "issue #423 admin health sweep — time-bounded reachability probes that reuse the per-integration clients (integrationProbeTimeout), not a new external system",
+	"services/diagnostics.go": "issue #423 admin health sweep — time-bounded reachability probes that reuse the per-integration clients (integrationProbeTimeout), not a new external system",
+
+	"httputil/fetch.go": "the shared SSRF-guarded image fetch helper (buildImageClient: SafeDialContext always on, redirects re-validated and capped at 3, 15s timeout) behind photo-proxy and photo-import. It fetches an ad-hoc user-supplied image URL, not a configured remote system, so there is no sync, credential, cadence or data-authority to classify; its guard is pinned by the httputil fetch tests and the unguarded-dialer semgrep rule",
+
+	"config/config.go":        "configuration struct only; a comment mentions httputil.SafeDialContext, no client is opened",
+	"integrations/entries.go": "this registry; row prose mentions client constructors, no client is opened",
+	"integrations/matrix.go":  "this registry; doc comments mention SafeDialContext, no client is opened",
+	"integrations/render.go":  "the matrix doc generator; emitted text mentions SafeDialContext, no client is opened",
+
+	"cmd/bolacheck/main.go":            "build/test tooling (BOLA check driver run against a test instance), not a server or request path",
+	"cmd/deploysmoke/main.go":          "build/test tooling (post-deploy smoke test run by operators or CI against their own instance), not a server or request path",
+	"cmd/loadsmoke/main.go":            "build/test tooling (load smoke run in CI against a test instance), not a server or request path",
+	"internal/soak/run.go":             "build/test tooling (soak harness scraping a test instance's /metrics), not a server or request path",
+	"internal/soak/workload.go":        "build/test tooling (soak workload driving a test instance), not a server or request path",
+	"internal/realrelease/client.go":   "build/test tooling (release-candidate client driving a test instance, optionally in-process), not a server or request path",
+	"internal/flakeledger/ghclient.go": "CI tooling (flake ledger reading GitHub Actions run history), not a server or request path",
 }
