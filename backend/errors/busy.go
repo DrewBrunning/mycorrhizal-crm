@@ -7,6 +7,8 @@ import (
 
 	sqlitedriver "github.com/glebarez/go-sqlite"
 	sqlite3 "modernc.org/sqlite/lib"
+
+	"mycorrhizal/internal/writegate"
 )
 
 // ErrCodeDatabaseBusy signals that the request's write could not get
@@ -37,7 +39,14 @@ func ErrDatabaseBusy() *AppError {
 // primary code in their low byte and count too. The concrete driver type is
 // matched rather than an `interface{ Code() int }` so an unrelated error that
 // happens to expose a Code method can never be mistaken for a lock timeout.
+//
+// A writer that waited busy_timeout in the in-process write queue
+// (writegate.ErrQueueTimeout) never reached SQLite's lock, but it is the same
+// overload and counts too.
 func IsDatabaseBusy(err error) bool {
+	if errors.Is(err, writegate.ErrQueueTimeout) {
+		return true
+	}
 	var se *sqlitedriver.Error
 	if !errors.As(err, &se) {
 		return false
