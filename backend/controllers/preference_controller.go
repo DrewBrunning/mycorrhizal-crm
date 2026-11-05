@@ -19,7 +19,7 @@ import (
 // The Sunset date is the register row's earliest permitted removal
 // (docs/deprecations.md, id preference-category-hobby).
 const (
-	hobbyPreferenceDeprecationSunset = "Tue, 19 Jan 2027 00:00:00 GMT"
+	hobbyPreferenceDeprecationSunset = "Thu, 21 Jan 2027 00:00:00 GMT"
 )
 
 // signalHobbyPreferenceDeprecation writes the deprecation headers when any of
