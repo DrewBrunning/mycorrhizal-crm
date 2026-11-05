@@ -193,9 +193,11 @@ test('/circles?tab=tags: a 500 shows the shared error, not the empty tags copy',
   render(
     <ThemeProvider theme={lightTheme}>
       <SnackbarProvider>
-        <MemoryRouter initialEntries={['/circles?tab=tags']}>
-          <CirclesTagsPage />
-        </MemoryRouter>
+        <DateFormatProvider>
+          <MemoryRouter initialEntries={['/circles?tab=tags']}>
+            <CirclesTagsPage />
+          </MemoryRouter>
+        </DateFormatProvider>
       </SnackbarProvider>
     </ThemeProvider>,
   );

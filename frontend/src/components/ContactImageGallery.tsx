@@ -122,11 +122,14 @@ export default function ContactImageGallery({
     setError('');
     setNotice('');
     try {
+      let deduplicated = false;
       for (const file of Array.from(files)) {
-        await uploadContactImage(contactId, file);
+        const result = await uploadContactImage(contactId, file);
+        deduplicated ||= result.deduplicated;
       }
       await load();
       onChanged?.();
+      if (deduplicated) setNotice(t('contactImages.uploadDuplicate'));
     } catch (err) {
       console.error('Failed to upload contact image:', err);
       setError(t('contactImages.uploadFailed'));

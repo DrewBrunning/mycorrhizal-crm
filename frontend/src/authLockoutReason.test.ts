@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { login2FA, loginWithPasskey } from './auth';
+import { login2FA, loginUser, loginWithPasskey } from './auth';
 import { stubWebAuthn, unstubWebAuthn } from './webauthnTestUtils';
 
 afterEach(() => {
@@ -249,5 +249,91 @@ describe('lockout 429 reason codes', () => {
     );
     await expect(loginWithPasskey()).rejects.toThrow('Too many failed attempts. Try again in 90 s');
     await expect(loginWithPasskey()).rejects.toThrow('No passkey is registered for this account');
+  });
+});
+
+// v1.6.0 review: the password sign-in and a rejected 2FA code threw a fixed
+// English string, so the #2101 reason codes (and the lockout's retry time)
+// never reached the user on the most common sign-in path.
+describe('password sign-in and 2FA code reason codes', () => {
+  const envelope = (reasonCode: string, message = 'Server English text') => ({
+    error: { code: 'X', message, reason_code: reasonCode },
+    request_id: 'req-1',
+  });
+
+  test('loginUser localizes a rejected password from its reason code', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 401,
+        json: async () => envelope('auth_invalid_credentials'),
+      }),
+    );
+    await expect(loginUser('alice', 'wrong')).rejects.toThrow('Invalid email or password');
+  });
+
+  test('loginUser shows the lockout retry time from the flat 429 body', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        json: async () => ({
+          error: 'Account temporarily locked',
+          message: 'Too many failed login attempts. Please try again later.',
+          retry_after: 90,
+          reason_code: 'auth_account_locked',
+          reason_params: { retry_after: 90 },
+        }),
+      }),
+    );
+    await expect(loginUser('alice', 'wrong')).rejects.toThrow(
+      'Too many failed attempts. Try again in 90 s',
+    );
+  });
+
+  test('loginUser falls back to the server message, then the generic text', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 400,
+          json: async () => ({ error: { code: 'X', message: 'Server says no' } }),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 502,
+          json: async () => {
+            throw new Error('not json');
+          },
+        }),
+    );
+    await expect(loginUser('alice', 'pw')).rejects.toThrow('Server says no');
+    await expect(loginUser('alice', 'pw')).rejects.toThrow('Login failed');
+  });
+
+  test('login2FA localizes a rejected code and keeps the generic fallback', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          json: async () => envelope('auth_two_factor_code_invalid'),
+        })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 401,
+          json: async () => {
+            throw new Error('not json');
+          },
+        }),
+    );
+    await expect(login2FA('000000')).rejects.toThrow('Invalid code. Please try again.');
+    await expect(login2FA('000000')).rejects.toThrow('Invalid code');
   });
 });

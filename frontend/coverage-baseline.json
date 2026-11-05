@@ -39,8 +39,8 @@
       "branchesTotal": 38
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.6,
-      "linesTotal": 403,
+      "lines": 86.38,
+      "linesTotal": 404,
       "branches": 75.34,
       "branchesTotal": 288
     },
@@ -255,9 +255,9 @@
       "branchesTotal": 6
     },
     "src/api/contactImages.ts": {
-      "lines": 60.71,
+      "lines": 82.14,
       "linesTotal": 28,
-      "branches": 43.75,
+      "branches": 50,
       "branchesTotal": 16
     },
     "src/api/contactMerge.ts": {
@@ -615,10 +615,10 @@
       "branchesTotal": 4
     },
     "src/auth.ts": {
-      "lines": 98.86,
-      "linesTotal": 88,
-      "branches": 98.48,
-      "branchesTotal": 66
+      "lines": 98.78,
+      "linesTotal": 82,
+      "branches": 98.43,
+      "branchesTotal": 64
     },
     "src/components/AcceptContactShareDialog.tsx": {
       "lines": 94.28,
@@ -765,10 +765,10 @@
       "branchesTotal": 12
     },
     "src/components/CircleDetailDialog.tsx": {
-      "lines": 95.65,
-      "linesTotal": 46,
-      "branches": 95.45,
-      "branchesTotal": 44
+      "lines": 95.74,
+      "linesTotal": 47,
+      "branches": 95.65,
+      "branchesTotal": 46
     },
     "src/components/CircleTagEntityList.tsx": {
       "lines": 100,
@@ -1690,9 +1690,9 @@
     },
     "src/hooks/useContactDetailData.ts": {
       "lines": 100,
-      "linesTotal": 90,
-      "branches": 97.87,
-      "branchesTotal": 47
+      "linesTotal": 101,
+      "branches": 96.36,
+      "branchesTotal": 55
     },
     "src/hooks/useContactDialogs.ts": {
       "lines": 100,

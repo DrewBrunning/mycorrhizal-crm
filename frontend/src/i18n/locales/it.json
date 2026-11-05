@@ -4181,6 +4181,7 @@
     "sourceNote": "Nota",
     "title": "Foto",
     "uploadFailed": "Impossibile caricare la foto.",
+    "uploadDuplicate": "Questa foto è già tra le foto del contatto, quindi non è stata aggiunta di nuovo.",
     "uploading": "Caricamento in corso..."
   }
 }

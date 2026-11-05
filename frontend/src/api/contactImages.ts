@@ -101,7 +101,7 @@ export async function getContactImages(contactId: string | number): Promise<Cont
 export async function uploadContactImage(
   contactId: string | number,
   file: File,
-): Promise<ContactImage> {
+): Promise<{ image: ContactImage; deduplicated: boolean }> {
   const form = new FormData();
   form.append('file', file);
   const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/images`, {
@@ -109,8 +109,10 @@ export async function uploadContactImage(
     body: form,
   });
   if (!response.ok) throw await parseErrorResponse(response);
-  const body: { image: ContactImage } = await response.json();
-  return body.image;
+  // A near-duplicate of an existing gallery image returns that image with
+  // `deduplicated: true` instead of storing a second copy (ADR 0040).
+  const body: { image: ContactImage; deduplicated?: boolean } = await response.json();
+  return { image: body.image, deduplicated: body.deduplicated === true };
 }
 
 export async function deleteContactImage(
