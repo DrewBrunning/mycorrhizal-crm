@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { errorEnvelope, mockApi, setupMswServer } from '../test/mswServer';
 import { ApiError, isPreconditionFailed } from './client';
 import {
@@ -7,9 +7,11 @@ import {
   getContactPhotos,
   patchContactImage,
   setContactMainImage,
+  uploadContactImage,
 } from './contactImages';
 
 setupMswServer();
+afterEach(() => vi.unstubAllGlobals());
 
 describe('contact gallery API (ADR 0040 slice c)', () => {
   test('getContactPhotos GETs the aggregated /photos list', async () => {
@@ -85,6 +87,20 @@ describe('contact gallery API (ADR 0040 slice c)', () => {
     expect(out).toEqual({ image: { id: 12 }, deduplicated: true });
     expect(calls[0].body).toEqual({ source_kind: 'note', source_id: 3, image_id: 5 });
   });
+
+  // v1.6.0 review: the upload dropped the dHash dedupe flag, so re-uploading a
+  // photo already in the gallery looked like it silently did nothing.
+  test.each([
+    [{ image: { id: 12 }, deduplicated: true }, true],
+    [{ image: { id: 13 } }, false],
+  ])(
+    'uploadContactImage returns the image and the dedupe flag (%j)',
+    async (body, deduplicated) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce({ ok: true, json: async () => body }));
+      const file = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+      expect(await uploadContactImage(4, file)).toEqual({ image: body.image, deduplicated });
+    },
+  );
 
   test('adoptContactImage maps the 409 image-cap error', async () => {
     mockApi('post', '/contacts/4/images/adopt', errorEnvelope(409, 'CONFLICT', 'gallery full'));
