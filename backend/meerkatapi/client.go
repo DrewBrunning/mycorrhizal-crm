@@ -54,6 +54,11 @@ const (
 	pageSize      = 100 // Meerkat caps `limit` at 100
 )
 
+// RequestTimeout is the per-request deadline the client's http.Client uses,
+// exported so services' matrix reconcile test can bind the integration
+// matrix row to the code (issue #464).
+const RequestTimeout = requestTimeout
+
 // maxPages bounds how many page requests one fetch makes, so a server that
 // keeps returning new contacts cannot loop it forever. It is far above what
 // the account-size caps allow; reaching it is reported as an error. A var so

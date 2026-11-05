@@ -33,10 +33,12 @@
 //
 // # The structural check
 //
-// TestEveryOutboundClientIsClassified walks backend/services, finds every
-// non-test file that opens an outbound network client, and fails if one is not
+// TestEveryOutboundClientIsClassified walks every package under backend/, finds
+// every non-test file that opens an outbound network client, and fails if one is not
 // claimed by a Registry() entry (or listed, with a reason, in
 // nonIntegrationClients). Adding a new client without a matrix row breaks the
 // build at the moment of introduction — the mechanism the ASVS verification
-// report's §9 "outbound HTTP client" row asks for, scoped to services/.
+// report's §9 "outbound HTTP client" row asks for. The walk covers the whole
+// backend (not only services/) so clients in their own packages, such as
+// meerkatapi and monica, cannot ship without a row.
 package integrations
