@@ -39,9 +39,9 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
    (`internal/lint/gormerr`) enforces it in CI and the pre-commit hook.
    Likewise `go run ./cmd/reasoncodecheck ./...` (`internal/lint/reasoncode`, ADR 0038): a
    user-facing `apperrors.Err*` must be chained `.WithReason(...)`; unmigrated sites are a per-file
-   counted ratchet in `internal/lint/reasoncode/allowlist.txt` (lower it with `-write-allowlist`). It must
-   reach empty by v1.6.0: `release.yml` runs `reasoncodecheck -release-tag` and refuses a v1.6.0+ tag
-   (RCs included) while any entry remains (ADR 0038, issue #2093).
+   counted ratchet in `internal/lint/reasoncode/allowlist.txt` (lower it with `-write-allowlist`). It
+   reached empty in v1.6.0 and must stay empty: `release.yml` runs `reasoncodecheck -release-tag` and
+   refuses a v1.6.0+ tag (RCs included) while any entry remains (ADR 0038, issue #2093).
 
 5. <a id="trap-5"></a>**Ownership is enforced at the data-access boundary.** Every user-scoped
    handler must scope by `user_id` (or `Contact.VCardUID` for graph entities). Treat a missing or
@@ -61,9 +61,9 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
 
 7. <a id="trap-7"></a>**Soft vs hard delete is a property of the model, not the call site.** Decide
    once when you create the entity. **Content the user authored** (`Contact`, `Note`, `Activity`,
-   `Reminder`, `LifeEvent`) soft-deletes; **edge/join-shaped rows** (`RelationshipEdge`,
-   `CircleMember`, `ContactTag`, `HouseholdMember`, `ContactSyncLink`, `CalendarEventLink`,
-   `FieldValue`) hard-delete. A soft-deleted row still occupies every unique index, so every
+   `Reminder`, `LifeEvent`, and the `ImageFields` image rows) soft-deletes; **edge/join-shaped rows**
+   (`RelationshipEdge`, `CircleMember`, `ContactTag`, `HouseholdMember`, `ContactSyncLink`,
+   `CalendarEventLink`, `FieldValue`, `ContactFieldOverride`) hard-delete. A soft-deleted row still occupies every unique index, so every
    natural-key table hard-deletes; where an entity must soft-delete *and* carry a unique key, make
    the index partial (`... WHERE deleted_at IS NULL`, as `idx_contacts_vcard_uid_user` does). Do not
    vary this by operation — the failure is silent. `gorm.Model` only works on uint-PK entities; for

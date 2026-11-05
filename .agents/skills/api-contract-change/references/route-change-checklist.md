@@ -15,7 +15,7 @@ Update every matrix the route belongs to; do not add a parallel list.
 | Idempotency | `backend/controllers/idempotency_e2e_test.go`, ADR 0010 | a retry returns the original result, not a second effect |
 | Conditional writes | `backend/controllers/conditional_write_*_test.go`, ADR 0008 | `If-Match`/revision comparison and 409 semantics |
 | Pagination | handler + spec + frontend client | stable ordering and cursor/limit bounds |
-| Errors | `apperrors`, spec responses | same code/status/envelope for the same failure |
+| Errors | `apperrors`, spec responses, `backend/errors/reasons.go` (ADR 0038) | same code/status/envelope for the same failure; a user-facing error chains `.WithReason(...)` (`reasoncodecheck`), and a new reason code gets its five-locale web and Android strings (`backend/internal/compatci/web_error_reason_test.go`, `backend/internal/compatci/android_error_reason_test.go`) |
 | Android fixtures | `android/core/network/src/test/kotlin/com/mycorrhizal/crm/network/ContractFixtureTest.kt` | read the same committed JSON as web |
 | API fuzzing | `schemathesis.yml`, `backend/cmd/schemagate` | no unhandled 500 or spec violation |
 
