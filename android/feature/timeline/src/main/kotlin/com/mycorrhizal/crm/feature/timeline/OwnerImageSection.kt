@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil3.compose.AsyncImage
+import com.mycorrhizal.crm.ui.LocalServerUrl
+import com.mycorrhizal.crm.ui.resolveServerUri
 
 /** A rounded, cropped thumbnail; clickable only when [onClick] is given. */
 @Composable
@@ -43,7 +45,7 @@ fun ImageThumbnail(
     onClick: (() -> Unit)? = null
 ) {
     AsyncImage(
-        model = model,
+        model = resolveServerUri(model, LocalServerUrl.current),
         contentDescription = contentDescription,
         contentScale = ContentScale.Crop,
         modifier = modifier
@@ -59,7 +61,7 @@ fun ImageThumbnail(
 fun ImageLightbox(url: String?, contentDescription: String, onDismiss: () -> Unit) {
     Dialog(onDismissRequest = onDismiss) {
         AsyncImage(
-            model = url,
+            model = resolveServerUri(url, LocalServerUrl.current),
             contentDescription = contentDescription,
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxWidth().padding(8.dp)
@@ -69,9 +71,10 @@ fun ImageLightbox(url: String?, contentDescription: String, onDismiss: () -> Uni
 
 /**
  * ADR 0040: the thumbnails-plus-edit-controls strip shared by the activity and
- * note forms (#2312). Coil resolves the server-relative URLs through the shared
- * okhttp client. The owner wrappers only supply the model type, URL accessors
- * and strings.
+ * note forms (#2312). [ImageThumbnail] and [ImageLightbox] resolve the
+ * server-relative URLs against [LocalServerUrl] for the shared okhttp
+ * client. The owner wrappers only supply the model type, URL accessors and
+ * strings.
  */
 @Composable
 fun <T> OwnerImageSection(

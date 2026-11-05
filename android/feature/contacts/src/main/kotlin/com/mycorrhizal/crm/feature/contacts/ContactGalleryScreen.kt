@@ -66,6 +66,7 @@ import com.mycorrhizal.crm.feature.timeline.ImageLightbox
 import com.mycorrhizal.crm.model.network.ContactPhoto
 import com.mycorrhizal.crm.model.network.ImageCrop
 import com.mycorrhizal.crm.model.network.PhotoSource
+import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -376,7 +377,7 @@ private fun PhotoTile(
             .testTag("contact-photo-${photo.key}")
     ) {
         AsyncImage(
-            model = photo.thumbnailUrl,
+            model = resolvePhotoUri(photo.thumbnailUrl, LocalServerUrl.current),
             contentDescription = stringResource(R.string.contact_images_alt),
             contentScale = ContentScale.Crop,
             modifier = Modifier.fillMaxSize()
