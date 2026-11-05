@@ -245,13 +245,14 @@ Something was deleted by mistake. What you can get back, and how, depends on
 **A deleted contact, within the retention window: restore it from Trash.**
 Since v1.6.0 (ADR 0037, issue #2002) deleting a contact moves it to Trash. The
 delete soft-deletes the contact and the content that belongs to it (notes,
-reminders, reminder completions, life events, preferences, gifts, attachments
-and the rest of the `ContactCascadeRegistry` soft steps) and writes a
+reminders, reminder completions, life events, preferences, gifts, attachments,
+gallery photos, the notes' photos and the rest of the `ContactCascadeRegistry`
+soft steps) and writes a
 **deletion snapshot** (`contact_deletion_snapshots`) of the join rows it
 hard-deletes: relationship edges, activity, circle, household and tag
 memberships, field values, external identities and activities, occasion
-attendees and per-contact field visibility. The photo and attachment **files
-stay on disk** until purge. The user restores from **Trash** in the app, or
+attendees and per-contact field visibility. The photo, attachment and image
+**files stay on disk** until purge. The user restores from **Trash** in the app, or
 through `GET /api/v1/trash/contacts` and
 `POST /api/v1/trash/contacts/:id/restore`. Restore brings back the contact,
 the children that the same delete trashed, and the snapshotted join rows. It
@@ -288,8 +289,8 @@ and **explicitly rejects delete events**; it is not an undelete.
 **Recoverable** from a backup taken before the deletion (or before the purge):
 everything in it, including the join rows and, *provided* you also have a
 photo/attachment/image directory backup from that time, the files. Purge
-removes a contact's photo and attachment files from disk after the purge
-transaction commits. A file-removal failure is logged and left to the orphan
+removes a contact's photo, attachment and image files (gallery and note photos)
+from disk after the purge transaction commits. A file-removal failure is logged and left to the orphan
 sweep.
 
 **Lost:**
