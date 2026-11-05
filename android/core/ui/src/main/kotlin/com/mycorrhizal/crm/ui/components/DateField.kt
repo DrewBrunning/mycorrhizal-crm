@@ -105,6 +105,9 @@ fun DateField(
     var draft by remember { mutableStateOf<String?>(null) }
     var focused by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<DateTypingError?>(null) }
+    // A date-time's stored time, held while the typed date is emptied mid-edit
+    // so a retyped date keeps it (the emptied value itself has no time).
+    var heldTime by remember { mutableStateOf<LocalTime?>(null) }
     val hasValue = !value.isNullOrBlank()
     val clear = {
         if (onClear != null) onClear() else onValueChange("")
@@ -122,7 +125,7 @@ fun DateField(
     fun report(day: TypedDate.Day) {
         val picked = DateFieldValue.pick(
             date = day.date,
-            time = if (mode.allowsTime) stored.time else null,
+            time = if (mode.allowsTime) stored.time ?: heldTime else null,
             mode = mode,
             yearUnknown = day.yearUnknown,
             zone = zone
@@ -136,8 +139,13 @@ fun DateField(
         draft = text
         error = null
         when (val typed = parseTyped(text)) {
-            TypedDate.Empty -> if (hasValue) clear()
+            TypedDate.Empty -> if (hasValue) {
+                heldTime = stored.time ?: heldTime
+                clear()
+            }
+
             is TypedDate.Day -> report(typed)
+
             TypedDate.Invalid, TypedDate.OutOfRange -> Unit
         }
     }
@@ -146,6 +154,7 @@ fun DateField(
     // invalid one keeps its text, shows an error and never touches the value.
     fun settle() {
         val text = draft ?: return
+        heldTime = null
         when (val typed = parseTyped(text)) {
             TypedDate.Empty -> draft = null
 
