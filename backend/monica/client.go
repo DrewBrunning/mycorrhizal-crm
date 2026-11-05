@@ -38,6 +38,11 @@ const (
 	maxPages = 1000
 )
 
+// RequestTimeout is the per-request deadline the client's http.Client uses,
+// exported so services' matrix reconcile test can bind the integration
+// matrix row to the code (issue #464).
+const RequestTimeout = requestTimeout
+
 // Client is a rate-limited, read-only Monica API client. Monica enforces
 // 60 requests/minute, so requests are throttled to ~1/second.
 type Client struct {
@@ -91,6 +96,11 @@ func NewClient(baseURL, token string, blockPrivate bool) (*Client, error) {
 		http: &http.Client{
 			Timeout:   requestTimeout,
 			Transport: transport,
+			// Never follow redirects (as meerkatapi does): the user supplies
+			// the base URL, so a redirect must not replay the bearer token to
+			// another host or steer the guarded dialer elsewhere. A 3xx is
+			// reported as a non-Monica response ("check the URL").
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
 		limiter: newLimiter(),
 	}, nil

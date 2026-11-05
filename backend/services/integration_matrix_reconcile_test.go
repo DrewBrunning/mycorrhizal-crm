@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"mycorrhizal/integrations"
+	"mycorrhizal/meerkatapi"
+	"mycorrhizal/monica"
 )
 
 // TestIntegrationMatrixTimeoutsMatchCode is issue #464's "How to verify" bullet
@@ -34,6 +36,8 @@ func TestIntegrationMatrixTimeoutsMatchCode(t *testing.T) {
 		"oidc":         oidcRequestTimeout,
 		"hibp":         hibpClient.Timeout,
 		"update-check": updateCheckTimeout,
+		"meerkat-api":  meerkatapi.RequestTimeout,
+		"monica":       monica.RequestTimeout,
 	}
 
 	// Both guarded and unguarded webhook delivery clients must share the timeout
