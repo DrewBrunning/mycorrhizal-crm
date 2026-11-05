@@ -281,6 +281,30 @@ describe.each(owners)('ImageGallery ($name)', (owner) => {
     );
   });
 
+  it('ignores a click on the already-selected sensitivity', async () => {
+    renderGallery(owner, { editable: true });
+    fireEvent.click(await screen.findByRole('img', { name: owner.altPattern }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Normal' }));
+    expect(owner.patch).not.toHaveBeenCalled();
+  });
+
+  it('updates only the changed photo and notifies the parent', async () => {
+    const onChanged = vi.fn();
+    const other = { ...image, id: 10, sensitivity: 'private' as const };
+    owner.list.mockResolvedValue({ images: [image, other], total: 2 });
+    renderGallery(owner, { editable: true, onChanged });
+    const thumbs = await screen.findAllByRole('img', { name: owner.altPattern });
+    fireEvent.click(thumbs[0]);
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Secret' }));
+    await waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    // The untouched photo keeps its own label.
+    expect(screen.getAllByText('Private')).toHaveLength(2);
+  });
+
   it('offers no sensitivity control on the read-only surface', async () => {
     renderGallery(owner);
     fireEvent.click(await screen.findByRole('img', { name: owner.altPattern }));

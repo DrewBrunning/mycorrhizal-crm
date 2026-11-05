@@ -224,11 +224,11 @@ func serveImagePatch[T any, P interface {
 	*T
 	services.ImageRow
 }, O any, D any](c *gin.Context, spec gallerySpec[T, P, O, D]) {
-	owner, ok := spec.load(c)
+	userID, ok := currentUserID(c)
 	if !ok {
 		return
 	}
-	userID, ok := currentUserID(c)
+	owner, ok := spec.load(c)
 	if !ok {
 		return
 	}

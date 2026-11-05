@@ -105,10 +105,10 @@
       "branchesTotal": 0
     },
     "src/NotesPage.tsx": {
-      "lines": 87.95,
-      "linesTotal": 83,
-      "branches": 93.24,
-      "branchesTotal": 74
+      "lines": 92.68,
+      "linesTotal": 82,
+      "branches": 94.28,
+      "branchesTotal": 70
     },
     "src/OccasionsPage.tsx": {
       "lines": 85.1,
@@ -166,9 +166,9 @@
     },
     "src/api/activities.ts": {
       "lines": 100,
-      "linesTotal": 51,
+      "linesTotal": 55,
       "branches": 100,
-      "branchesTotal": 32
+      "branchesTotal": 34
     },
     "src/api/admin.ts": {
       "lines": 100,
@@ -255,10 +255,10 @@
       "branchesTotal": 6
     },
     "src/api/contactImages.ts": {
-      "lines": 33.33,
-      "linesTotal": 12,
-      "branches": 16.66,
-      "branchesTotal": 6
+      "lines": 60.71,
+      "linesTotal": 28,
+      "branches": 43.75,
+      "branchesTotal": 16
     },
     "src/api/contactMerge.ts": {
       "lines": 100,
@@ -466,9 +466,9 @@
     },
     "src/api/notes.ts": {
       "lines": 100,
-      "linesTotal": 51,
+      "linesTotal": 55,
       "branches": 100,
-      "branchesTotal": 34
+      "branchesTotal": 36
     },
     "src/api/notificationHealth.ts": {
       "lines": 100,
@@ -617,7 +617,7 @@
     "src/auth.ts": {
       "lines": 98.86,
       "linesTotal": 88,
-      "branches": 98.48,
+      "branches": 100,
       "branchesTotal": 66
     },
     "src/components/AcceptContactShareDialog.tsx": {
@@ -639,10 +639,10 @@
       "branchesTotal": 104
     },
     "src/components/AddNoteDialog.tsx": {
-      "lines": 86.74,
-      "linesTotal": 83,
-      "branches": 78,
-      "branchesTotal": 50
+      "lines": 89.28,
+      "linesTotal": 84,
+      "branches": 82.75,
+      "branchesTotal": 58
     },
     "src/components/AddressFields.tsx": {
       "lines": 100,
@@ -823,6 +823,12 @@
       "linesTotal": 117,
       "branches": 91.41,
       "branchesTotal": 163
+    },
+    "src/components/ContactImageGallery.tsx": {
+      "lines": 94.89,
+      "linesTotal": 137,
+      "branches": 88.37,
+      "branchesTotal": 86
     },
     "src/components/ContactInformation.tsx": {
       "lines": 75.73,
@@ -1064,11 +1070,17 @@
       "branches": 84.61,
       "branchesTotal": 26
     },
+    "src/components/ImageCropDialog.tsx": {
+      "lines": 100,
+      "linesTotal": 13,
+      "branches": 75,
+      "branchesTotal": 8
+    },
     "src/components/ImageGallery.tsx": {
       "lines": 100,
-      "linesTotal": 64,
-      "branches": 93.75,
-      "branchesTotal": 32
+      "linesTotal": 85,
+      "branches": 95.74,
+      "branchesTotal": 47
     },
     "src/components/ImmichPersonSearchDialog.tsx": {
       "lines": 93.54,
@@ -1251,10 +1263,10 @@
       "branchesTotal": 23
     },
     "src/components/NotificationSettings.tsx": {
-      "lines": 77.69,
-      "linesTotal": 139,
-      "branches": 63.3,
-      "branchesTotal": 109
+      "lines": 79.73,
+      "linesTotal": 153,
+      "branches": 67.74,
+      "branchesTotal": 124
     },
     "src/components/OccasionEventAttendeesDialog.tsx": {
       "lines": 100,
@@ -2281,6 +2293,12 @@
       "linesTotal": 21,
       "branches": 100,
       "branchesTotal": 16
+    },
+    "src/utils/imageCrop.ts": {
+      "lines": 100,
+      "linesTotal": 12,
+      "branches": 100,
+      "branchesTotal": 13
     },
     "src/utils/linkResolution.ts": {
       "lines": 100,

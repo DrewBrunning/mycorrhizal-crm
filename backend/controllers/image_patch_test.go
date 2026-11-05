@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"testing"
 
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -176,5 +177,18 @@ func TestImagePatch_OwnershipIs404(t *testing.T) {
 			sens, _ := tc.stored(t, db, id)
 			assert.Equal(t, "normal", sens)
 		})
+	}
+}
+
+func TestImagePatch_RequiresAnAuthenticatedUser(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	db := dbtest.New(t)
+	router := gin.New()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() })
+	router.PATCH("/notes/:id/images/:image_id", PatchNoteImage)
+	router.PATCH("/activities/:id/images/:image_id", PatchActivityImage)
+	for _, url := range []string{"/notes/1/images/1", "/activities/1/images/1"} {
+		rec := patchImage(router, url, `{"sensitivity":"secret"}`)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code, url)
 	}
 }
