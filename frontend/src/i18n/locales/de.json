@@ -4021,6 +4021,17 @@
     "queued_one": "{{count}} Foto ausgewählt",
     "queued_other": "{{count}} Fotos ausgewählt"
   },
+  "imageSensitivity": {
+    "label": "Vertraulichkeit",
+    "normal": "Normal",
+    "private": "Privat",
+    "secret": "Geheim",
+    "help": "Private und geheime Fotos bleiben in der App und in Ihren Sicherungen. Alles, was die App verlässt, etwa Synchronisierung, Freigaben oder Exporte, lässt sie weg, sofern Sie sie nicht ausdrücklich einschließen.",
+    "failed": "Die Vertraulichkeit des Fotos konnte nicht geändert werden.",
+    "markNormal": "Als normal markieren",
+    "markPrivate": "Als privat markieren",
+    "markSecret": "Als geheim markieren"
+  },
   "noteImages": {
     "add": "Fotos hinzufügen",
     "queued_one": "{{count}} Foto ausgewählt",
@@ -4065,6 +4076,7 @@
     "sourceNote": "Notiz",
     "title": "Fotos",
     "uploadFailed": "Das Foto konnte nicht hochgeladen werden.",
+    "uploadDuplicate": "Dieses Foto ist bereits in den Kontaktfotos und wurde nicht erneut hinzugefügt.",
     "uploading": "Wird hochgeladen..."
   }
 }

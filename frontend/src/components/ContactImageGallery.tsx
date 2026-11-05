@@ -24,6 +24,7 @@ import {
   deleteContactImage,
   getContactPhotos,
   type ImageCrop,
+  type ImageSensitivity,
   patchContactImage,
   setContactMainImage,
   uploadContactImage,
@@ -45,6 +46,13 @@ interface ContactImageGalleryProps {
   // so the parent refetches the record and passes a fresh revision/main id.
   onContactChanged?: () => void;
 }
+
+// Literal keys so the i18n key-usage scan sees them.
+const SENSITIVITY_MENU: { value: ImageSensitivity; label: string }[] = [
+  { value: 'normal', label: 'imageSensitivity.markNormal' },
+  { value: 'private', label: 'imageSensitivity.markPrivate' },
+  { value: 'secret', label: 'imageSensitivity.markSecret' },
+];
 
 const photoKey = (photo: ContactPhoto) => `${photo.source.kind}-${photo.id}`;
 
@@ -114,11 +122,14 @@ export default function ContactImageGallery({
     setError('');
     setNotice('');
     try {
+      let deduplicated = false;
       for (const file of Array.from(files)) {
-        await uploadContactImage(contactId, file);
+        const result = await uploadContactImage(contactId, file);
+        deduplicated ||= result.deduplicated;
       }
       await load();
       onChanged?.();
+      if (deduplicated) setNotice(t('contactImages.uploadDuplicate'));
     } catch (err) {
       console.error('Failed to upload contact image:', err);
       setError(t('contactImages.uploadFailed'));
@@ -193,6 +204,26 @@ export default function ContactImageGallery({
         throw err;
       }
     }, 'Failed to save crop:');
+
+  const handleSensitivity = (photo: ContactPhoto, sensitivity: ImageSensitivity) =>
+    run(async () => {
+      try {
+        const updated = await patchContactImage(contactId, photo.id, { sensitivity });
+        setPhotos((prev) =>
+          prev.map((item) =>
+            photoKey(item) === photoKey(photo)
+              ? { ...item, sensitivity: updated.sensitivity ?? sensitivity }
+              : item,
+          ),
+        );
+        // A private or secret main image stops being the avatar server-side,
+        // which bumps the contact revision.
+        onContactChanged?.();
+      } catch (err) {
+        setError(t('imageSensitivity.failed'));
+        throw err;
+      }
+    }, 'Failed to change image sensitivity:');
 
   const handleAdopt = (photo: ContactPhoto) =>
     run(async () => {
@@ -347,6 +378,16 @@ export default function ContactImageGallery({
             <MenuItem key="crop" onClick={choose(() => setCropping(menu.photo))}>
               {t('contactImages.crop')}
             </MenuItem>,
+            ...SENSITIVITY_MENU.filter(({ value }) => value !== menu.photo.sensitivity).map(
+              ({ value, label }) => (
+                <MenuItem
+                  key={`sensitivity-${value}`}
+                  onClick={choose(() => handleSensitivity(menu.photo, value))}
+                >
+                  {t(label)}
+                </MenuItem>
+              ),
+            ),
             <MenuItem key="delete" onClick={choose(() => handleDelete(menu.photo))}>
               {t('contactImages.delete')}
             </MenuItem>,

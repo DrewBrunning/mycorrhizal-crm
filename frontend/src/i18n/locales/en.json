@@ -4021,6 +4021,17 @@
     "queued_one": "{{count}} photo selected",
     "queued_other": "{{count}} photos selected"
   },
+  "imageSensitivity": {
+    "label": "Sensitivity",
+    "normal": "Normal",
+    "private": "Private",
+    "secret": "Secret",
+    "help": "Private and secret photos stay in the app and in your backups. Anything that leaves the app, such as sync, shares or exports, leaves them out unless you choose to include them.",
+    "failed": "Could not change the photo's sensitivity.",
+    "markNormal": "Mark as normal",
+    "markPrivate": "Mark as private",
+    "markSecret": "Mark as secret"
+  },
   "noteImages": {
     "add": "Add photos",
     "queued_one": "{{count}} photo selected",
@@ -4065,6 +4076,7 @@
     "sourceNote": "Note",
     "title": "Photos",
     "uploadFailed": "Could not upload the photo.",
+    "uploadDuplicate": "That photo is already in the contact photos, so it was not added again.",
     "uploading": "Uploading..."
   }
 }

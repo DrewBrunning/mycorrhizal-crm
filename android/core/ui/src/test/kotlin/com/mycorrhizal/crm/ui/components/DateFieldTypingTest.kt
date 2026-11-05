@@ -246,6 +246,23 @@ class DateFieldTypingTest {
         }
     }
 
+    // v1.6.0 review (#2304): backspacing the whole date and typing a new one
+    // briefly empties the field, which used to drop the stored time, so the
+    // retyped date saved at midnight.
+    @Test
+    fun `a date-time field keeps its time when the date is emptied and retyped`() {
+        val saved = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        try {
+            setField(initial = "2026-11-04T23:03:00Z", mode = DateFieldMode.DATE_TIME)
+            type("")
+            type("05.11.2026")
+            assertEquals(listOf("", "2026-11-05T23:03:00Z"), emitted)
+        } finally {
+            TimeZone.setDefault(saved)
+        }
+    }
+
     @Test
     fun `a date-time field without a time emits the date-only shape`() {
         setField(initial = "", mode = DateFieldMode.DATE_TIME_OPTIONAL)

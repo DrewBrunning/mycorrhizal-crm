@@ -327,21 +327,21 @@ func TestVerifyBackupSetWithImages_CompleteAndMissingAndOrphan(t *testing.T) {
 	require.NoError(t, os.MkdirAll(imagesDir, 0o750))
 	s.addNoteImage(t, imagesDir, "a", true)
 
-	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir, nil)
 	require.NoError(t, err)
 	assert.True(t, report.Complete(), report.String())
 	assert.Equal(t, 1, report.ImagesScanned)
 
 	// An orphan file is informational only.
 	require.NoError(t, os.WriteFile(filepath.Join(imagesDir, "u1", "stray.jpg"), []byte("x"), 0o600))
-	report, err = database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	report, err = database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir, nil)
 	require.NoError(t, err)
 	assert.True(t, report.Complete())
 	assert.Equal(t, []string{"u1/stray.jpg"}, report.OrphanImageFiles)
 
 	// A missing thumbnail is a real hole in the set.
 	require.NoError(t, os.Remove(filepath.Join(imagesDir, "u1", "a_t.jpg")))
-	report, err = database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	report, err = database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir, nil)
 	require.NoError(t, err)
 	assert.False(t, report.Complete())
 	require.Len(t, report.MissingImages, 1)
@@ -355,7 +355,7 @@ func TestVerifyBackupSetWithImages_SnapshotWithoutImageTablesIsClean(t *testing.
 	require.NoError(t, s.db.Exec(`DROP TABLE note_images`).Error)
 	require.NoError(t, s.db.Exec(`DROP TABLE activity_images`).Error)
 	imagesDir := t.TempDir()
-	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir, nil)
 	require.NoError(t, err, "a pre-gallery snapshot has no image tables")
 	assert.True(t, report.Complete())
 	assert.Zero(t, report.ImagesScanned)
@@ -371,7 +371,7 @@ func TestVerifyBackupSet_IgnoresImagesWhenNoDirGiven(t *testing.T) {
 
 func TestVerifyBackupSetWithImages_RejectsMissingDirAndIgnoresStrayEntries(t *testing.T) {
 	s := newBackupSet(t)
-	_, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, filepath.Join(t.TempDir(), "absent"))
+	_, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, filepath.Join(t.TempDir(), "absent"), nil)
 	require.Error(t, err, "an explicit images directory that does not exist is an error")
 
 	imagesDir := t.TempDir()
@@ -384,7 +384,7 @@ func TestVerifyBackupSetWithImages_RejectsMissingDirAndIgnoresStrayEntries(t *te
 	require.NoError(t, s.db.Create(&img).Error)
 	require.NoError(t, s.db.Delete(&img).Error)
 
-	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir)
+	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir, nil)
 	require.NoError(t, err)
 	assert.True(t, report.Complete(), report.String())
 	assert.Zero(t, report.ImagesScanned)
@@ -408,7 +408,7 @@ func TestVerifyBackupSetWithImages_BrokenImageTableIsAnError(t *testing.T) {
 			for _, stmt := range ddl {
 				require.NoError(t, s.db.Exec(stmt).Error)
 			}
-			_, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, t.TempDir())
+			_, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, t.TempDir(), nil)
 			require.Error(t, err)
 		})
 	}

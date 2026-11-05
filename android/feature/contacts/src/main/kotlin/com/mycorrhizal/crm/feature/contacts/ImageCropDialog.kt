@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import coil3.compose.AsyncImage
 import com.mycorrhizal.crm.model.network.ContactPhoto
 import com.mycorrhizal.crm.model.network.ImageCrop
+import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.R
 
 /**
@@ -86,7 +87,7 @@ private fun CropPreview(photo: ContactPhoto, crop: ImageCrop, aspect: Float) {
     val outline = MaterialTheme.colorScheme.primary
     Box(modifier = Modifier.fillMaxWidth().aspectRatio(aspect).testTag("crop-preview")) {
         AsyncImage(
-            model = photo.thumbnailUrl,
+            model = resolvePhotoUri(photo.thumbnailUrl, LocalServerUrl.current),
             contentDescription = stringResource(R.string.contact_images_alt),
             contentScale = ContentScale.FillBounds,
             modifier = Modifier.fillMaxSize()

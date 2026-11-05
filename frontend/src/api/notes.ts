@@ -224,6 +224,23 @@ export async function uploadNoteImage(noteId: string | number, file: File): Prom
   return body.image;
 }
 
+// PATCH .../images/:image_id writes only the allowlisted fields (ADR 0040
+// decision 8); a note photo has no avatar, so only sensitivity is sent here.
+export async function patchNoteImage(
+  noteId: string | number,
+  imageId: number,
+  patch: { sensitivity: NoteImage['sensitivity'] },
+): Promise<NoteImage> {
+  const response = await apiFetch(`${API_BASE_URL}/notes/${noteId}/images/${imageId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(patch),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const body: { image: NoteImage } = await response.json();
+  return body.image;
+}
+
 export async function deleteNoteImage(noteId: string | number, imageId: number): Promise<void> {
   const response = await apiFetch(`${API_BASE_URL}/notes/${noteId}/images/${imageId}`, {
     method: 'DELETE',

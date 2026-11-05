@@ -279,6 +279,37 @@
       ]
     },
     {
+      "method": "PATCH",
+      "path": "/activities/{id}/images/{image_id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "image_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactImagePatchInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "DELETE",
       "path": "/activities/{id}/images/{image_id}",
       "parameters": [
@@ -6885,6 +6916,37 @@
         },
         {
           "status": "413",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/notes/{id}/images/{image_id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "image_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactImagePatchInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
           "schema": "ref:Error"
         }
       ]

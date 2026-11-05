@@ -72,7 +72,7 @@ describe('ContactImageGallery (Photos tab)', () => {
   beforeEach(() => {
     getContactPhotos.mockReset().mockResolvedValue(listOf(own));
     deleteContactImage.mockReset().mockResolvedValue(undefined);
-    uploadContactImage.mockReset().mockResolvedValue(own);
+    uploadContactImage.mockReset().mockResolvedValue({ image: own, deduplicated: false });
     setContactMainImage
       .mockReset()
       .mockResolvedValue({ message: 'ok', main_image_id: 9, revision: 8 });
@@ -275,6 +275,37 @@ describe('ContactImageGallery (Photos tab)', () => {
     expect(patchContactImage.mock.calls[0][2].crop.w).toBeCloseTo(0.25);
   });
 
+  // v1.6.0 review: the gallery showed a photo's sensitivity but had no way to change it.
+  it('marks an own photo private from its menu and refreshes the contact', async () => {
+    patchContactImage.mockResolvedValue({ ...own, sensitivity: 'private' });
+    const onContactChanged = vi.fn();
+    render(<ContactImageGallery contactId={4} editable onContactChanged={onContactChanged} />);
+    await openMenu('contact-photo-contact-9');
+    expect(screen.queryByRole('menuitem', { name: 'Mark as normal' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mark as private' }));
+    await waitFor(() =>
+      expect(patchContactImage).toHaveBeenCalledWith(4, 9, { sensitivity: 'private' }),
+    );
+    expect(await screen.findByText('Private')).toBeInTheDocument();
+    // A non-normal main image clears the avatar server-side, bumping the revision.
+    expect(onContactChanged).toHaveBeenCalled();
+  });
+
+  it('shows an error when the sensitivity change fails', async () => {
+    patchContactImage.mockRejectedValue(new Error('patch failed'));
+    render(<ContactImageGallery contactId={4} editable />);
+    await openMenu('contact-photo-contact-9');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Mark as secret' }));
+    expect(await screen.findByText("Could not change the photo's sensitivity.")).toBeTruthy();
+  });
+
+  it('offers no sensitivity change for a note photo shown in the gallery', async () => {
+    getContactPhotos.mockResolvedValue(listOf(noteImage));
+    render(<ContactImageGallery contactId={4} editable />);
+    await openMenu('contact-photo-note-9');
+    expect(screen.queryByRole('menuitem', { name: 'Mark as private' })).not.toBeInTheDocument();
+  });
+
   it('clears the crop with an explicit null', async () => {
     getContactPhotos.mockResolvedValue(listOf({ ...own, crop: { x: 0, y: 0, w: 0.5, h: 1 } }));
     render(<ContactImageGallery contactId={4} editable />);
@@ -337,6 +368,21 @@ describe('ContactImageGallery (Photos tab)', () => {
     await waitFor(() => expect(uploadContactImage).toHaveBeenCalledWith(4, file));
     await waitFor(() => expect(getContactPhotos).toHaveBeenCalledTimes(2));
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('says so when an upload matched a photo already in the gallery', async () => {
+    uploadContactImage.mockResolvedValue({ image: own, deduplicated: true });
+    const { container } = render(<ContactImageGallery contactId={4} editable />);
+    await screen.findByRole('img', { name: /contact photo/i });
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(input, {
+      target: { files: [new File(['x'], 'photo.jpg', { type: 'image/jpeg' })] },
+    });
+    expect(
+      await screen.findByText(
+        'That photo is already in the contact photos, so it was not added again.',
+      ),
+    ).toBeTruthy();
   });
 
   it('shows an upload error', async () => {

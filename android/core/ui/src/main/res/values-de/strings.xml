@@ -3146,5 +3146,8 @@
     <string name="contact_images_sensitivity_title">Sensibilität des Fotos</string>
     <string name="contact_images_sensitivity_normal">Normal</string>
     <string name="contact_images_sensitivity_main_note">Ein privates oder geheimes Foto kann nicht das Hauptfoto sein; wird es heraufgestuft, ist es nicht mehr das Hauptfoto.</string>
+    <string name="image_sensitivity_label">Vertraulichkeit</string>
+    <string name="image_sensitivity_help">Private und geheime Fotos bleiben in der App und in Ihren Sicherungen. Alles, was die App verlässt, etwa Synchronisierung, Freigaben oder Exporte, lässt sie weg, sofern Sie sie nicht ausdrücklich einschließen.</string>
+    <string name="image_sensitivity_failed">Die Vertraulichkeit des Fotos konnte nicht geändert werden.</string>
     <string name="contact_images_delete_source_confirm">Dieses Foto löschen? Es wird auch aus der zugehörigen Notiz oder Aktivität entfernt.</string>
 </resources>

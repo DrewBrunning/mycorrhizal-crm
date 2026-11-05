@@ -26,7 +26,10 @@
 // The signature is verified with a key derived from the at-rest master key, so
 // verification must run with the same key environment the server (and `make
 // backup`) use. BACKUP_ALLOW_UNSIGNED=1 tolerates an unsigned (legacy) set
-// instead of failing closed; a present-but-invalid manifest still fails.
+// instead of failing closed; a present-but-invalid manifest still fails. The
+// same master key decrypts the Trash's deletion snapshots, which name the
+// attachment files a trashed contact still owns (issue #2367); a set whose
+// Trash cannot be read under it exits 2.
 //
 // Exit status 0 means the set is complete and authenticated; 1 means it is
 // not (a missing attachment/photo file, an unsigned set without the opt-out,
@@ -35,6 +38,8 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io"
@@ -72,7 +77,14 @@ func run(args []string, out, errOut io.Writer) int {
 	// (→ exit 1). Authentication follows, so a tampered snapshot is reported
 	// even when its rows happen to reconcile.
 	imagesDir := resolveImagesDir(photoDir)
-	report, err := database.VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir)
+	// The master key also decrypts the Trash's deletion snapshots, which name
+	// the attachment files a trashed contact still owns (issue #2367).
+	masterKey, err := atrest.EncryptionKey()
+	if err != nil {
+		fmt.Fprintln(errOut, "backupverify:", err)
+		return 2
+	}
+	report, err := database.VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir, snapshotOpener(masterKey))
 	if err != nil {
 		fmt.Fprintln(errOut, "backupverify:", err)
 		return 2
@@ -165,6 +177,13 @@ func resolveImagesDir(photoDir string) string {
 		return def
 	}
 	return ""
+}
+
+// snapshotOpener binds the verifier's snapshot decrypter to the master key.
+func snapshotOpener(masterKey []byte) database.SnapshotOpener {
+	return func(ctx context.Context, db *sql.DB) (database.Decrypter, error) {
+		return atrest.NewOpener(ctx, db, masterKey)
+	}
 }
 
 func firstNonEmpty(vals ...string) string {

@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.domain.repository.GeoPulseRepository
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.GeoPulseConfigResponse
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -207,5 +208,67 @@ class ActivitiesInboxViewModelTest {
         val vm = vmWithGeoPulse(Result.failure(ApiError.Server(500, "boom")))
         advanceUntilIdle()
         assertFalse(vm.uiState.value.geoPulseConfigured)
+    }
+
+    // v1.6.0 parity with web's /activities page: each row shows its photos. A
+    // row whose image fetch fails just shows none; the list itself still loads.
+    @Test
+    fun `loads each activity's photos after the list`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { activityRepository.listAll() } returns Result.success(
+            ActivitiesPage(
+                activitiesRaw = listOf(
+                    Activity(id = 1, title = "Trip"),
+                    Activity(id = 2, title = "Call")
+                ),
+                nextCursor = "c2"
+            )
+        )
+        coEvery { activityRepository.listImages(1) } returns
+            Result.success(listOf(ActivityImage(id = 9, activityId = 1, sensitivity = "private")))
+        coEvery { activityRepository.listImages(2) } returns
+            Result.failure(ApiError.Server(500, "thumbs down"))
+        coEvery { activityRepository.listAll(cursor = "c2") } returns Result.success(
+            ActivitiesPage(
+                activitiesRaw = listOf(Activity(id = 3, title = "Lunch")),
+                nextCursor = null
+            )
+        )
+        coEvery { activityRepository.listImages(3) } returns
+            Result.success(listOf(ActivityImage(id = 11, activityId = 3)))
+
+        val vm = ActivitiesInboxViewModel(activityRepository, geoPulseRepository)
+        advanceUntilIdle()
+
+        assertEquals(listOf(9), vm.uiState.value.imagesByActivity[1]?.map { it.id })
+        assertNull(vm.uiState.value.imagesByActivity[2])
+        assertNull(vm.uiState.value.error)
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf(11), vm.uiState.value.imagesByActivity[3]?.map { it.id })
+        assertEquals(listOf(9), vm.uiState.value.imagesByActivity[1]?.map { it.id })
+    }
+
+    @Test
+    fun `deleting an activity drops its photos`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { activityRepository.listAll() } returns Result.success(
+            ActivitiesPage(
+                activitiesRaw = listOf(Activity(id = 1, title = "Trip")),
+                nextCursor = null
+            )
+        )
+        coEvery { activityRepository.listImages(1) } returns
+            Result.success(listOf(ActivityImage(id = 9, activityId = 1)))
+        coEvery { activityRepository.delete(1, any()) } returns Result.success(Unit)
+
+        val vm = ActivitiesInboxViewModel(activityRepository, geoPulseRepository)
+        advanceUntilIdle()
+        vm.delete(1)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.imagesByActivity.isEmpty())
     }
 }

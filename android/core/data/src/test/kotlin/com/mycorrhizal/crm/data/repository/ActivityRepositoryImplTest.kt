@@ -365,4 +365,15 @@ class ActivityRepositoryImplTest {
         )
         assertTrue(repository.deleteImage(1, 9).isSuccess)
     }
+
+    @Test
+    fun `setImageSensitivity forwards the image id and level`() = runTest {
+        coEvery { apiClient.patchActivityImageSensitivity(3, 9, "secret") } returns Result.success(
+            ActivityImage(id = 9, activityId = 3, sensitivity = "secret")
+        )
+
+        val result = repository.setImageSensitivity(3, 9, "secret")
+
+        assertEquals("secret", result.getOrThrow().sensitivity)
+    }
 }

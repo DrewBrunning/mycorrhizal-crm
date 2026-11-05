@@ -6448,6 +6448,35 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      summary: Update a note image's sensitivity or crop
+      operationId: patchNoteImage
+      tags: [Activities]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactImagePatchInput" }
+      responses:
+        "200":
+          description: The updated image.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [image]
+                properties:
+                  image: { $ref: "#/components/schemas/NoteImage" }
+        "400":
+          description: Invalid sensitivity or crop rectangle.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404":
+          description: Note or image not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
   /notes/{id}/images/{image_id}/file:
     parameters:
       - name: id
@@ -6599,6 +6628,35 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/MessageResponse" }
+        "404":
+          description: Activity or image not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    patch:
+      summary: Update a activity image's sensitivity or crop
+      operationId: patchActivityImage
+      tags: [Activities]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ContactImagePatchInput" }
+      responses:
+        "200":
+          description: The updated image.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [image]
+                properties:
+                  image: { $ref: "#/components/schemas/ActivityImage" }
+        "400":
+          description: Invalid sensitivity or crop rectangle.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404":
           description: Activity or image not found.
           content:

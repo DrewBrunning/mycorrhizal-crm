@@ -31,10 +31,15 @@ import (
 //     and feeds the orphan detection in DB-01 (issue #460) — never a failure
 //     on its own.
 //
-// Soft-deleted rows are deliberately excluded: DeleteContact and
-// deleteContactAttachmentFiles (controllers/contact_controller.go) remove the
-// on-disk file at delete time, so a soft-deleted row with no file is the
-// expected steady state, not a hole in the backup.
+// Soft-deleted rows are excluded, with one exception. A standalone delete
+// (DeleteAttachment, or a contact soft-deleted before Trash existed) removes
+// the on-disk file at once, so a soft-deleted row with no file is the expected
+// steady state. A contact in the Trash (ADR 0037) is different: it keeps its
+// profile photo and the attachment files of its own deletion batch until
+// purge, so a Trash restore can bring them back. Those files are required like
+// a live row's (issue #2367). The batch is recorded in the contact's
+// deletion snapshot, whose payload is encrypted at rest, so verifying a set
+// that has trashed contacts needs the server's master key.
 
 // MissingRef names one live database row whose backing file is absent from the
 // backup set, so an operator (or a failing restore drill) can point at exactly
@@ -140,8 +145,12 @@ func (r *BackupSetReport) String() string {
 // snapshot's header on open (changing its bytes and breaking the detached
 // signature, issue #943) — and no migrations are run: a backup set must be
 // verifiable without mutating the snapshot.
+//
+// It has no snapshot decrypter, so a set whose Trash holds an encrypted
+// deletion snapshot fails closed; callers with the key use
+// VerifyBackupSetWithImages.
 func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport, error) {
-	return VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, "")
+	return VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, "", nil)
 }
 
 // VerifyBackupSetWithImages is VerifyBackupSet plus the gallery-image
@@ -149,7 +158,11 @@ func VerifyBackupSet(dbPath, photoDir, attachmentsDir string) (*BackupSetReport,
 // contact image row must resolve to its full and thumbnail file under
 // imagesDir/u<user id>/. An empty imagesDir skips the image check. A snapshot
 // taken before the gallery tables existed has nothing to reconcile.
-func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir string) (*BackupSetReport, error) {
+//
+// openSnapshot decrypts trashed contacts' deletion snapshots; callers bind it
+// to atrest.NewOpener with the server's master key. nil reads the payloads as
+// plaintext, which fails closed on an encrypted one.
+func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir string, openSnapshot SnapshotOpener) (*BackupSetReport, error) {
 	if photoDir == "" || attachmentsDir == "" {
 		return nil, fmt.Errorf("verify backup set: both a photo directory and an attachments directory are required")
 	}
@@ -183,6 +196,16 @@ func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir strin
 	if err != nil {
 		return nil, err
 	}
+	photoRefs, err := livePhotoRefs(sqlDB)
+	if err != nil {
+		return nil, err
+	}
+	trashPhotos, trashAtt, err := trashedContactRefs(sqlDB, openSnapshot)
+	if err != nil {
+		return nil, err
+	}
+	attRefs = append(attRefs, trashAtt...)
+	photoRefs = append(photoRefs, trashPhotos...)
 	report.AttachmentsScanned = len(attRefs)
 	report.MissingAttachments = missingRefs(attRefs, attachmentsDir)
 	orphanAtt, err := orphanFiles(attachmentsDir, referencedNames(attRefs))
@@ -191,10 +214,6 @@ func VerifyBackupSetWithImages(dbPath, photoDir, attachmentsDir, imagesDir strin
 	}
 	report.OrphanAttachmentFiles = orphanAtt
 
-	photoRefs, err := livePhotoRefs(sqlDB)
-	if err != nil {
-		return nil, err
-	}
 	// PhotosScanned counts distinct contact rows with a photo, not individual
 	// file references (a row can name both a full photo and a thumbnail file).
 	seenOwners := map[string]bool{}
@@ -318,17 +337,24 @@ func livePhotoRefs(db *sql.DB) ([]MissingRef, error) {
 		if err := rows.Scan(&owner, &photo, &thumb); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
 			return nil, fmt.Errorf("scan contact photo row: %w", err)
 		}
-		if photo != "" {
-			refs = append(refs, MissingRef{Kind: "contact_photo", StoredName: photo, Owner: owner})
-		}
-		if thumb != "" && !strings.HasPrefix(thumb, "data:") {
-			refs = append(refs, MissingRef{Kind: "contact_photo", StoredName: thumb, Owner: owner})
-		}
+		refs = appendPhotoRefs(refs, owner, photo, thumb)
 	}
 	if err := rows.Err(); err != nil { // # pragma: no cover — see the matching note in liveAttachmentRefs
 		return nil, fmt.Errorf("iterate contact photo rows: %w", err)
 	}
 	return refs, nil
+}
+
+// appendPhotoRefs adds a contact's full photo and, when it is a filename
+// rather than an inline "data:" URL, its thumbnail.
+func appendPhotoRefs(refs []MissingRef, owner, photo, thumb string) []MissingRef {
+	if photo != "" {
+		refs = append(refs, MissingRef{Kind: "contact_photo", StoredName: photo, Owner: owner})
+	}
+	if thumb != "" && !strings.HasPrefix(thumb, "data:") {
+		refs = append(refs, MissingRef{Kind: "contact_photo", StoredName: thumb, Owner: owner})
+	}
+	return refs
 }
 
 // missingRefs returns the subset of refs whose file is absent from dir.

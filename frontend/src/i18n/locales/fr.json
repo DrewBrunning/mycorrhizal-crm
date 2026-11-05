@@ -4125,6 +4125,17 @@
     "queued_other": "{{count}} photos sélectionnées",
     "queued_many": "{{count}} de photos sélectionnées"
   },
+  "imageSensitivity": {
+    "label": "Confidentialité",
+    "normal": "Normale",
+    "private": "Privée",
+    "secret": "Secrète",
+    "help": "Les photos privées et secrètes restent dans l’application et dans vos sauvegardes. Tout ce qui quitte l’application, comme la synchronisation, les partages ou les exports, les exclut sauf si vous choisissez de les inclure.",
+    "failed": "Impossible de modifier la confidentialité de la photo.",
+    "markNormal": "Marquer comme normale",
+    "markPrivate": "Marquer comme privée",
+    "markSecret": "Marquer comme secrète"
+  },
   "noteImages": {
     "add": "Ajouter des photos",
     "queued_one": "{{count}} photo sélectionnée",
@@ -4170,6 +4181,7 @@
     "sourceNote": "Note",
     "title": "Photos",
     "uploadFailed": "Impossible de téléverser la photo.",
+    "uploadDuplicate": "Cette photo figure déjà dans les photos du contact ; elle n’a donc pas été ajoutée à nouveau.",
     "uploading": "Téléversement..."
   }
 }

@@ -3,10 +3,13 @@ import PhotoLibraryIcon from '@mui/icons-material/PhotoLibrary';
 import {
   Box,
   Button,
+  Chip,
   CircularProgress,
   Dialog,
   DialogContent,
   IconButton,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -16,6 +19,7 @@ import {
   activityImageSrc,
   deleteActivityImage,
   getActivityImages,
+  patchActivityImage,
   uploadActivityImage,
 } from '../api/activities';
 import {
@@ -23,6 +27,8 @@ import {
   contactImageSrc,
   deleteContactImage,
   getContactImages,
+  type ImageSensitivity,
+  patchContactImage,
   uploadContactImage,
 } from '../api/contactImages';
 import {
@@ -30,6 +36,7 @@ import {
   getNoteImages,
   type NoteImage,
   noteImageSrc,
+  patchNoteImage,
   uploadNoteImage,
 } from '../api/notes';
 
@@ -38,13 +45,25 @@ interface GalleryImage {
   id: number;
   file_url: string;
   thumbnail_url: string;
+  sensitivity: ImageSensitivity;
 }
+
+const SENSITIVITIES: ImageSensitivity[] = ['normal', 'private', 'secret'];
+
+// Literal keys so the i18n key-usage scan sees them.
+const SENSITIVITY_LABELS = {
+  normal: 'imageSensitivity.normal',
+  private: 'imageSensitivity.private',
+  secret: 'imageSensitivity.secret',
+} as const;
 
 /** One owner's API functions; the gallery itself is owner-agnostic. */
 export interface ImageGalleryApi<I extends GalleryImage> {
   list: (ownerId: number) => Promise<{ images: I[] }>;
   upload: (ownerId: number, file: File) => Promise<unknown>;
   remove: (ownerId: number, imageId: number) => Promise<unknown>;
+  /** PATCHes the allowlisted sensitivity and returns the updated row. */
+  setSensitivity: (ownerId: number, imageId: number, sensitivity: ImageSensitivity) => Promise<I>;
   /** Resolves a server-relative file/thumbnail URL against the API origin. */
   src: (path: string) => string;
 }
@@ -92,6 +111,7 @@ export const activityImageGalleryApi: ImageGalleryApi<ActivityImage> = {
   list: (id) => getActivityImages(id),
   upload: (id, file) => uploadActivityImage(id, file),
   remove: (id, imageId) => deleteActivityImage(id, imageId),
+  setSensitivity: (id, imageId, sensitivity) => patchActivityImage(id, imageId, { sensitivity }),
   src: activityImageSrc,
 };
 
@@ -99,6 +119,7 @@ export const noteImageGalleryApi: ImageGalleryApi<NoteImage> = {
   list: (id) => getNoteImages(id),
   upload: (id, file) => uploadNoteImage(id, file),
   remove: (id, imageId) => deleteNoteImage(id, imageId),
+  setSensitivity: (id, imageId, sensitivity) => patchNoteImage(id, imageId, { sensitivity }),
   src: noteImageSrc,
 };
 
@@ -106,6 +127,7 @@ export const contactImageGalleryApi: ImageGalleryApi<ContactImage> = {
   list: (id) => getContactImages(id),
   upload: (id, file) => uploadContactImage(id, file),
   remove: (id, imageId) => deleteContactImage(id, imageId),
+  setSensitivity: (id, imageId, sensitivity) => patchContactImage(id, imageId, { sensitivity }),
   src: contactImageSrc,
 };
 
@@ -139,6 +161,7 @@ export default function ImageGallery<I extends GalleryImage>({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [viewing, setViewing] = useState<I | null>(null);
+  const [sensitivityError, setSensitivityError] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -192,6 +215,27 @@ export default function ImageGallery<I extends GalleryImage>({
     }
   };
 
+  const handleSensitivity = async (image: I, sensitivity: ImageSensitivity) => {
+    setBusy(true);
+    setSensitivityError('');
+    try {
+      const updated = await api.setSensitivity(ownerId, image.id, sensitivity);
+      setImages((prev) => prev.map((item) => (item.id === image.id ? updated : item)));
+      setViewing(updated);
+      onChanged?.();
+    } catch (err) {
+      console.error(`Failed to update ${labels.kind} image sensitivity:`, err);
+      setSensitivityError(t('imageSensitivity.failed'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const closeViewer = () => {
+    setViewing(null);
+    setSensitivityError('');
+  };
+
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
@@ -236,6 +280,15 @@ export default function ImageGallery<I extends GalleryImage>({
                   <DeleteIcon fontSize="small" />
                 </IconButton>
               )}
+              {image.sensitivity !== 'normal' && (
+                <Chip
+                  size="small"
+                  variant="outlined"
+                  color={image.sensitivity === 'secret' ? 'error' : 'warning'}
+                  label={t(SENSITIVITY_LABELS[image.sensitivity])}
+                  sx={{ display: 'flex', mt: 0.25, maxWidth: 88 }}
+                />
+              )}
             </Box>
           ))}
         </Box>
@@ -269,17 +322,49 @@ export default function ImageGallery<I extends GalleryImage>({
         </Typography>
       )}
 
-      <Dialog open={viewing !== null} onClose={() => setViewing(null)} maxWidth="lg">
+      <Dialog open={viewing !== null} onClose={closeViewer} maxWidth="lg">
         <DialogContent sx={{ p: 0, bgcolor: 'common.black' }}>
           {viewing && (
             <Box
               component="img"
               src={api.src(viewing.file_url)}
               alt={t(labels.alt)}
-              sx={{ maxWidth: '90vw', maxHeight: '90vh', display: 'block' }}
+              sx={{ maxWidth: '90vw', maxHeight: '80vh', display: 'block', mx: 'auto' }}
             />
           )}
         </DialogContent>
+        {viewing && editable && (
+          <Box sx={{ p: 1.5 }}>
+            <ToggleButtonGroup
+              size="small"
+              exclusive
+              value={viewing.sensitivity}
+              disabled={busy}
+              aria-label={t('imageSensitivity.label')}
+              onChange={(_event, value: ImageSensitivity | null) => {
+                if (value && value !== viewing.sensitivity) void handleSensitivity(viewing, value);
+              }}
+            >
+              {SENSITIVITIES.map((value) => (
+                <ToggleButton key={value} value={value}>
+                  {t(SENSITIVITY_LABELS[value])}
+                </ToggleButton>
+              ))}
+            </ToggleButtonGroup>
+            <Typography
+              variant="caption"
+              color="text.secondary"
+              sx={{ display: 'block', mt: 0.5, maxWidth: 480 }}
+            >
+              {t('imageSensitivity.help')}
+            </Typography>
+            {sensitivityError && (
+              <Typography variant="caption" color="error" role="alert" sx={{ display: 'block' }}>
+                {sensitivityError}
+              </Typography>
+            )}
+          </Box>
+        )}
       </Dialog>
     </Box>
   );

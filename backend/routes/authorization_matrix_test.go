@@ -444,6 +444,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/notes/:id/images/:image_id/file":      {class: classItem, probe: "/api/v1/notes/" + s.note + "/images/" + fabricatedNum + "/file"},
 		"GET /api/v1/notes/:id/images/:image_id/thumbnail": {class: classItem, probe: "/api/v1/notes/" + s.note + "/images/" + fabricatedNum + "/thumbnail"},
 		"DELETE /api/v1/notes/:id/images/:image_id":        {class: classItem, probe: "/api/v1/notes/" + s.note + "/images/" + fabricatedNum},
+		"PATCH /api/v1/notes/:id/images/:image_id":         {class: classItem, probe: "/api/v1/notes/" + s.note + "/images/" + fabricatedNum},
 
 		// --- activities -----------------------------------------------------
 		"POST /api/v1/activities":                               {class: classProtected},
@@ -456,6 +457,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/activities/:id/images/:image_id/file":      {class: classItem, probe: "/api/v1/activities/" + s.activity + "/images/" + fabricatedNum + "/file"},
 		"GET /api/v1/activities/:id/images/:image_id/thumbnail": {class: classItem, probe: "/api/v1/activities/" + s.activity + "/images/" + fabricatedNum + "/thumbnail"},
 		"DELETE /api/v1/activities/:id/images/:image_id":        {class: classItem, probe: "/api/v1/activities/" + s.activity + "/images/" + fabricatedNum},
+		"PATCH /api/v1/activities/:id/images/:image_id":         {class: classItem, probe: "/api/v1/activities/" + s.activity + "/images/" + fabricatedNum},
 
 		// --- circles --------------------------------------------------------
 		"POST /api/v1/circles":                          {class: classProtected},

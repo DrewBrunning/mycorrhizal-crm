@@ -63,6 +63,8 @@ data class NoteFormState(
     val pendingImages: List<PendingNoteImage> = emptyList(),
     val imagesLoading: Boolean = false,
     val imagesBusy: Boolean = false,
+    /** #2369: the image whose last sensitivity change failed; its viewer shows the error. */
+    val sensitivityFailedImageId: Int? = null,
     /** Issue #1751: the editable state the form opened with, for [isDirty]. */
     val baseline: NoteFormState? = null
 ) {
@@ -85,6 +87,7 @@ data class NoteFormState(
         pendingImages = emptyList(),
         imagesLoading = false,
         imagesBusy = false,
+        sensitivityFailedImageId = null,
         baseline = null
     )
 
@@ -305,6 +308,32 @@ class NoteFormViewModel @Inject constructor(
             }
             _uiState.update { it.copy(imagesBusy = false, error = failed) }
             loadImages()
+        }
+    }
+
+    /**
+     * #2369: set a server-side image's sensitivity (edit mode). Like a delete it
+     * applies at once, not on save; the row is replaced with the server's copy.
+     */
+    fun setImageSensitivity(imageId: Int, sensitivity: String) {
+        val id = noteId ?: return
+        val current = _uiState.value.images.firstOrNull { it.id == imageId } ?: return
+        if (current.sensitivity.orEmpty().ifEmpty { SENSITIVITY_NORMAL } == sensitivity) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(imagesBusy = true, sensitivityFailedImageId = null) }
+            noteRepository.setImageSensitivity(id, imageId, sensitivity).fold(
+                onSuccess = { updated ->
+                    _uiState.update { state ->
+                        state.copy(
+                            images = state.images.map { if (it.id == imageId) updated else it }
+                        )
+                    }
+                },
+                onFailure = {
+                    _uiState.update { it.copy(sensitivityFailedImageId = imageId) }
+                }
+            )
+            _uiState.update { it.copy(imagesBusy = false) }
         }
     }
 
