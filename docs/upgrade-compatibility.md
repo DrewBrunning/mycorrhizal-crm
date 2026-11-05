@@ -49,7 +49,7 @@ and **refuses to migrate if it cannot write one** (issue #530). That snapshot is
 the rollback point — downgrade is unsupported, so getting back to the previous
 version means installing it and restoring this snapshot. It covers the database
 only; photos and attachments are unchanged by migrations, so a full rollback
-still restores those from the routine three-piece backup
+still restores those from the routine four-piece backup
 (`docs/deployment.md` → Backups).
 
 An upgrade does not change `FRONTEND_URL`, but if you change it in the same maintenance window
@@ -152,8 +152,8 @@ Upgrade this instance to v1.0.0 first, then run this version again — see docs/
 ### Two-step upgrade for a pre-floor instance
 
 1. Back up the database and the file directories (`docs/deployment.md` →
-   Backups — the three-piece backup: database, `PROFILE_PHOTO_DIR`,
-   `ATTACHMENTS_DIR`).
+   Backups — the four-piece backup: database, `PROFILE_PHOTO_DIR`,
+   `ATTACHMENTS_DIR`, `IMAGES_DIR`).
 2. Deploy the `v1.0.0` release (image `ghcr.io/<org>/mycorrhizal-crm:1.0.0` —
    the published tag drops the leading `v` — or equivalent). Its startup
    migrations move the database to the `v1.0.0` schema (`000057`).
