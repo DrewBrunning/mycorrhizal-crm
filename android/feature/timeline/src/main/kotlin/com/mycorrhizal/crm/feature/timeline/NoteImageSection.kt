@@ -24,6 +24,8 @@ fun NoteImageSection(
     busy: Boolean,
     onAdd: () -> Unit,
     onDelete: (Int) -> Unit,
+    onSetSensitivity: (Int, String) -> Unit,
+    sensitivityFailedImageId: Int?,
     modifier: Modifier = Modifier
 ) {
     OwnerImageSection(
@@ -31,6 +33,7 @@ fun NoteImageSection(
         imageId = { it.id },
         thumbnailUrl = { it.thumbnailUrl },
         fileUrl = { it.fileUrl },
+        sensitivity = { it.sensitivity },
         labels = OwnerImageLabels(
             add = stringResource(R.string.note_images_add),
             empty = stringResource(R.string.note_images_empty),
@@ -43,12 +46,15 @@ fun NoteImageSection(
         busy = busy,
         onAdd = onAdd,
         onDelete = onDelete,
+        onSetSensitivity = onSetSensitivity,
+        sensitivityFailedImageId = sensitivityFailedImageId,
         modifier = modifier
     )
 }
 
 /**
- * Read-only thumbnails for a note row, with the same lightbox as the editor.
+ * Read-only thumbnails for a note row, with the same lightbox as the editor
+ * (without its sensitivity control) and the same private/secret badge.
  * A plain scrolling Row, not a LazyRow: ListItem measures its supporting
  * content with intrinsics, which a SubcomposeLayout-backed list rejects.
  */
@@ -66,6 +72,7 @@ fun NoteImageRow(images: List<NoteImage>, modifier: Modifier = Modifier) {
                 model = image.thumbnailUrl,
                 contentDescription = alt,
                 size = 64.dp,
+                sensitivity = image.sensitivity,
                 onClick = { viewing = image }
             )
         }

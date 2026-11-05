@@ -897,6 +897,59 @@ class NoteFormViewModelTest {
         coVerify { noteRepository.createUnassigned(match<NoteInput> { it.awaitingImages == null }) }
     }
 
+    // #2369 Android parity: the editable lightbox PATCHes an image's sensitivity.
+    @Test
+    fun `setting an image's sensitivity stores the server's row`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { noteRepository.get(3) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z")
+        )
+        coEvery { noteRepository.listImages(3) } returns Result.success(
+            listOf(
+                NoteImage(id = 9, noteId = 3, sensitivity = "normal"),
+                NoteImage(id = 10, noteId = 3, sensitivity = "normal")
+            )
+        )
+        coEvery { noteRepository.setImageSensitivity(3, 9, "private") } returns
+            Result.success(NoteImage(id = 9, noteId = 3, sensitivity = "private"))
+
+        val vm = createViewModel(noteId = 3)
+        advanceUntilIdle()
+        vm.setImageSensitivity(9, "private")
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf("private", "normal"),
+            vm.uiState.value.images.map { it.sensitivity }
+        )
+        assertNull(vm.uiState.value.sensitivityFailedImageId)
+        assertFalse(vm.uiState.value.imagesBusy)
+    }
+
+    @Test
+    fun `a failed sensitivity change keeps the row and flags the image`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { noteRepository.get(3) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z")
+        )
+        coEvery { noteRepository.listImages(3) } returns Result.success(
+            listOf(NoteImage(id = 9, noteId = 3, sensitivity = "normal"))
+        )
+        coEvery { noteRepository.setImageSensitivity(3, 9, "secret") } returns
+            Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = createViewModel(noteId = 3)
+        advanceUntilIdle()
+        vm.setImageSensitivity(9, "secret")
+        advanceUntilIdle()
+
+        assertEquals("normal", vm.uiState.value.images.single().sensitivity)
+        assertEquals(9, vm.uiState.value.sensitivityFailedImageId)
+        assertFalse(vm.uiState.value.imagesBusy)
+    }
+
     @Test
     fun `deleting an image removes it from the form`() = runTest(
         mainDispatcherRule.testDispatcher

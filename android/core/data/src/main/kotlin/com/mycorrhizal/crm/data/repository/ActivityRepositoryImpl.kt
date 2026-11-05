@@ -119,4 +119,14 @@ class ActivityRepositoryImpl @Inject constructor(
 
     override suspend fun deleteImage(activityId: Int, imageId: Int): Result<Unit> =
         apiClient.deleteActivityImage(activityId, imageId)
+
+    override suspend fun setImageSensitivity(
+        activityId: Int,
+        imageId: Int,
+        sensitivity: String
+    ): Result<ActivityImage> = apiClient.patchActivityImageSensitivity(
+        activityId,
+        imageId,
+        sensitivity
+    )
 }
