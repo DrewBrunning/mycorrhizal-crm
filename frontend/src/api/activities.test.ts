@@ -10,6 +10,7 @@ import {
   getActivity,
   getActivityImages,
   getContactActivities,
+  patchActivityImage,
   updateActivity,
   uploadActivityImage,
 } from './activities';
@@ -292,9 +293,29 @@ describe('activity images', () => {
     expect(deleteInit.method).toBe('DELETE');
   });
 
+  // v1.6.0 review: ADR 0040 PATCH existed only for contact photos.
+  test('PATCHes a sensitivity change as JSON and returns the image', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ image: { ...image, sensitivity: 'secret' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(patchActivityImage(4, 9, { sensitivity: 'secret' })).resolves.toMatchObject({
+      id: 9,
+      sensitivity: 'secret',
+    });
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/activities/4/images/9');
+    expect(init.method).toBe('PATCH');
+    expect(JSON.parse(init.body)).toEqual({ sensitivity: 'secret' });
+  });
+
   test('propagates an error from every image route', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse()));
     await expect(getActivityImages(4)).rejects.toMatchObject({ status: 400 });
+    await expect(patchActivityImage(4, 9, { sensitivity: 'private' })).rejects.toMatchObject({
+      status: 400,
+    });
     await expect(uploadActivityImage(4, new File(['x'], 'x.jpg'))).rejects.toMatchObject({
       status: 400,
     });

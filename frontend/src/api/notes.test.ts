@@ -11,6 +11,7 @@ import {
   getNoteImages,
   getUnassignedNotes,
   noteImageSrc,
+  patchNoteImage,
   updateNote,
   uploadNoteImage,
 } from './notes';
@@ -192,6 +193,25 @@ describe('note image upload', () => {
     expect(init.method).toBe('POST');
     expect(init.body).toBeInstanceOf(FormData);
     vi.unstubAllGlobals();
+  });
+
+  // v1.6.0 review: ADR 0040 PATCH existed only for contact photos.
+  test('PATCHes a sensitivity change and returns the image', async () => {
+    const calls = mockApi('patch', '/notes/4/images/9', {
+      image: { id: 9, sensitivity: 'private' },
+    });
+    await expect(patchNoteImage(4, 9, { sensitivity: 'private' })).resolves.toEqual({
+      id: 9,
+      sensitivity: 'private',
+    });
+    expect(calls[0].body).toEqual({ sensitivity: 'private' });
+  });
+
+  test('maps PATCH errors', async () => {
+    mockApi('patch', '/notes/4/images/9', errorEnvelope(404, 'NOT_FOUND', 'gone'));
+    await expect(patchNoteImage(4, 9, { sensitivity: 'secret' })).rejects.toMatchObject({
+      status: 404,
+    });
   });
 
   test('maps upload errors', async () => {
