@@ -38,6 +38,25 @@ import (
 // string-matching callers (the job lock retry, loadsmoke, perfbench) look for.
 var ErrQueueTimeout = errors.New("database is locked (timed out waiting for the write queue)")
 
+// priorityKey marks a context whose writes take the gate's priority lane.
+type priorityKey struct{}
+
+// WithPriority returns ctx marked so a write made with it goes ahead of every
+// ordinary waiter for the gate. It is for a writer that is itself one serial
+// stream — the audit recorder appends one event at a time under its chain
+// lock — and that would otherwise wait a full queue for every write and fall
+// arbitrarily far behind. A priority writer can take at most every other turn
+// while it stays serial, so it cannot starve ordinary writers.
+func WithPriority(ctx context.Context) context.Context {
+	return context.WithValue(ctx, priorityKey{}, true)
+}
+
+// IsPriority reports whether ctx was marked by WithPriority.
+func IsPriority(ctx context.Context) bool {
+	v, _ := ctx.Value(priorityKey{}).(bool)
+	return v
+}
+
 // Gate is a write queue for one database file. It runs like sync.Mutex:
 //
 //   - Normal mode: a release frees the gate and wakes the longest waiter, which
@@ -64,6 +83,8 @@ type waiter struct {
 	wake    chan struct{} // closed when this writer is woken or handed the gate
 	granted bool          // the gate was handed over, not just freed
 	since   time.Time     // when the writer started waiting, kept across re-queues
+	// priority waiters queue ahead of ordinary ones (WithPriority).
+	priority bool
 }
 
 // starvationFraction sets starveAfter as a share of the timeout: a writer is
@@ -107,7 +128,7 @@ func (g *Gate) acquire(ctx context.Context) error {
 		g.mu.Unlock()
 		return nil
 	}
-	w := &waiter{since: time.Now()}
+	w := &waiter{since: time.Now(), priority: IsPriority(ctx)}
 	g.enqueueLocked(w, false)
 	g.mu.Unlock()
 
@@ -141,14 +162,26 @@ func (g *Gate) acquire(ctx context.Context) error {
 	}
 }
 
-// enqueueLocked queues w with a fresh wake channel: at the back when it has
-// just arrived, at the front when it was woken and lost the race, since it
-// has still waited longest.
+// enqueueLocked queues w with a fresh wake channel: at the front when it was
+// woken and lost the race, since it has still waited longest; a new priority
+// writer behind any other priority writers but ahead of every ordinary one;
+// any other new writer at the back.
 func (g *Gate) enqueueLocked(w *waiter, front bool) {
 	w.wake = make(chan struct{})
-	if front {
+	switch {
+	case front:
 		g.waiters.PushFront(w)
-	} else {
+	case w.priority:
+		var last *list.Element
+		for e := g.waiters.Front(); e != nil && e.Value.(*waiter).priority; e = e.Next() {
+			last = e
+		}
+		if last == nil {
+			g.waiters.PushFront(w)
+		} else {
+			g.waiters.InsertAfter(w, last)
+		}
+	default:
 		g.waiters.PushBack(w)
 	}
 }

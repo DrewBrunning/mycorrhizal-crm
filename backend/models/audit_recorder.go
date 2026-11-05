@@ -1,12 +1,14 @@
 package models
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"mycorrhizal/internal/auditwire"
 	"mycorrhizal/internal/fireandforget"
+	"mycorrhizal/internal/writegate"
 	"mycorrhizal/logger"
 
 	"gorm.io/gorm"
@@ -211,8 +213,21 @@ func (a *auditLogger) enqueue(entityType, entityID, operation string, userID uin
 	// same way it covers webhook deliveries and session touches (issue #703).
 	fireandforget.Run(func() {
 		defer a.wg.Done()
-		a.persist(db, entityType, entityID, operation, userID, snapshotJSON)
+		a.persist(withPriorityWrites(db), entityType, entityID, operation, userID, snapshotJSON)
 	})
+}
+
+// withPriorityWrites returns db with its writes in the write gate's priority
+// lane. Async appends are one serial stream (chainMu); in the fair write queue
+// each would wait behind every request write, and under sustained load the
+// stream fell arbitrarily far behind — ~2,200 events after a 12 s loadsmoke
+// run, one blocked goroutine each. Serial, it takes at most every other turn.
+func withPriorityWrites(db *gorm.DB) *gorm.DB {
+	ctx := context.Background()
+	if db.Statement != nil && db.Statement.Context != nil {
+		ctx = db.Statement.Context
+	}
+	return db.WithContext(writegate.WithPriority(ctx))
 }
 
 // persist appends one event to the hash chain. The chain append (read previous

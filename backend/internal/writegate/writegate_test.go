@@ -408,3 +408,46 @@ func TestStarvationWithAnEmptyQueueFreesTheGate(t *testing.T) {
 	require.NoError(t, g.acquire(context.Background()), "a new writer takes the free gate at once")
 	g.release()
 }
+
+// A priority writer goes ahead of every ordinary waiter: the audit recorder's
+// appends are one serial stream, and queued behind every request write they
+// fall arbitrarily far behind under sustained load.
+func TestPriorityWriterGoesAheadOfTheQueue(t *testing.T) {
+	g := newGate(time.Minute)
+	require.NoError(t, g.acquire(context.Background()))
+
+	var (
+		mu    sync.Mutex
+		order []string
+	)
+	admit := func(name string, ctx context.Context) <-chan struct{} {
+		before := queued(g)
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			require.NoError(t, g.acquire(ctx))
+			mu.Lock()
+			order = append(order, name)
+			mu.Unlock()
+			g.release()
+		}()
+		require.Eventually(t, func() bool { return queued(g) == before+1 }, time.Second, time.Millisecond)
+		return done
+	}
+	a := admit("a", context.Background())
+	b := admit("b", context.Background())
+	p1 := admit("p1", WithPriority(context.Background()))
+	p2 := admit("p2", WithPriority(context.Background()))
+
+	g.release()
+	for _, done := range []<-chan struct{}{a, b, p1, p2} {
+		<-done
+	}
+	require.Equal(t, []string{"p1", "p2", "a", "b"}, order,
+		"priority writers go first, in arrival order among themselves")
+}
+
+func TestWithPriorityMarksTheContext(t *testing.T) {
+	require.False(t, IsPriority(context.Background()))
+	require.True(t, IsPriority(WithPriority(context.Background())))
+}

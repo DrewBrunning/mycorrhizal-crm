@@ -77,8 +77,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 - **The hobby preference `Sunset` header now names 2027-01-21** ([#1738](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1738)),
   the date in the deprecation list, instead of two days earlier.
-- **Busy servers no longer turn away an unlucky save**: concurrent saves now wait their turn in
-  order, so on slow storage one write is no longer starved into a "database busy" error.
+- **Busy servers no longer turn away an unlucky save**: concurrent saves wait their turn, so slow
+  storage no longer starves one into a "database busy" error, and the audit log keeps up under load.
 - **"Export as JSContact" exported every contact** ([#2196](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2196)); it now exports the one you chose.
 - **CardDAV deletes, creates and updates now behave like the app**: they use the trash, respect
   the contact limit, and fire webhooks (([#2249](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2249)), ([#2261](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2261)), ([#2255](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2255))).
