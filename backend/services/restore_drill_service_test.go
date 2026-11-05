@@ -16,6 +16,7 @@ import (
 
 	"mycorrhizal/atrest"
 	"mycorrhizal/config"
+	"mycorrhizal/database"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -646,4 +647,30 @@ func TestCheckBackupSetCompletenessUnresolvableMasterKeyErrors(t *testing.T) {
 	})
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "resolve at-rest master key")
+}
+
+// The drill reads the Trash's deletion snapshots with the configured master
+// key, so a trashed contact's photo missing from the set fails the drill
+// (issue #2367).
+func TestCheckBackupSetCompletenessRequiresTrashedContactPhoto(t *testing.T) {
+	snap := filepath.Join(t.TempDir(), "snap.db")
+	db, err := database.InitDB(snap)
+	require.NoError(t, err)
+	require.NoError(t, db.Exec(`INSERT INTO users (id, username, email, password) VALUES (1, 'u', 'u@example.com', 'x')`).Error)
+	require.NoError(t, db.Exec(`INSERT INTO contacts (id, firstname, user_id, vcard_uid, photo, deleted_at)
+		VALUES (9, 'T', 1, 'uid-t', 'trashed.jpg', CURRENT_TIMESTAMP)`).Error)
+	require.NoError(t, db.Exec(`INSERT INTO contact_deletion_snapshots (id, created_at, updated_at, user_id, contact_id, contact_vcard_uid, trashed_at, payload_version, payload)
+		VALUES ('s', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1, 9, 'uid-t', CURRENT_TIMESTAMP, 1, '{"soft":{}}')`).Error)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	ok, detail, err := checkBackupSetCompleteness(snap, config.Config{
+		ProfilePhotoDir: t.TempDir(),
+		AttachmentsDir:  t.TempDir(),
+		JWTSecretKey:    "restore-drill-test-secret-key-at-least-32-chars",
+	})
+	require.NoError(t, err)
+	assert.False(t, ok)
+	assert.Contains(t, detail, "trashed.jpg")
 }

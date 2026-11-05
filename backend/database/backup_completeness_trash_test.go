@@ -11,6 +11,7 @@ import (
 
 	"mycorrhizal/atrest"
 	"mycorrhizal/database"
+	"mycorrhizal/internal/dbtest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -159,4 +160,28 @@ func TestVerifyBackupSetUnreadableTrashPayloadFailsClosed(t *testing.T) {
 	_, err := s.verifyWithKey(t, nil)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "uid-trashed")
+}
+
+// Without a decrypter the payload is read as plaintext; a trashed contact
+// with no attachments in its batch still owns its photo.
+func TestVerifyBackupSetTrashedContactWithoutAttachments(t *testing.T) {
+	s := newBackupSet(t)
+	s.trashContact(t, `{"soft":{},"hard":{}}`)
+	require.NoError(t, os.WriteFile(filepath.Join(s.photoDir, "trashed_photo.jpg"), []byte("jpeg"), 0o600))
+
+	report := s.verify(t)
+
+	assert.True(t, report.Complete(), report.String())
+	assert.Equal(t, 1, report.PhotosScanned)
+	assert.Equal(t, 0, report.AttachmentsScanned)
+}
+
+// A snapshot taken before the Trash existed has no snapshot table.
+func TestVerifyBackupSetPreTrashSnapshotHasNothingToReconcile(t *testing.T) {
+	s := newBackupSet(t)
+	dbtest.HideTable(t, s.db, "contact_deletion_snapshots")
+
+	report := s.verify(t)
+
+	assert.True(t, report.Complete(), report.String())
 }
