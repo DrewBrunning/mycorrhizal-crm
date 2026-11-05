@@ -287,3 +287,17 @@ func TestVerifyBackupSetTrashedImageIDsAreUserScoped(t *testing.T) {
 	assert.True(t, report.Complete(), report.String())
 	assert.Equal(t, 0, report.ImagesScanned)
 }
+
+// A batch-attachment query that fails is an error, not a silent pass. The
+// live-attachment query reads only id and stored_name, so an attachments
+// table without user_id lets it run and the batch query fail.
+func TestVerifyBackupSetFailingTrashAttachmentQueryIsAnError(t *testing.T) {
+	s := newBackupSet(t)
+	s.trashContact(t, batchPayload(7))
+	require.NoError(t, s.db.Exec(`DROP TABLE attachments`).Error)
+	require.NoError(t, s.db.Exec(`CREATE TABLE attachments (id integer, stored_name text, deleted_at datetime)`).Error)
+
+	_, err := s.verifyWithKey(t, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "user_id")
+}
