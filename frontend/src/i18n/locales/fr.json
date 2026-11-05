@@ -4181,6 +4181,7 @@
     "sourceNote": "Note",
     "title": "Photos",
     "uploadFailed": "Impossible de téléverser la photo.",
+    "uploadDuplicate": "Cette photo figure déjà dans les photos du contact ; elle n’a donc pas été ajoutée à nouveau.",
     "uploading": "Téléversement..."
   }
 }

@@ -166,6 +166,26 @@ export function useContactDetailData(id: string | undefined) {
     }
   }, [id]);
 
+  // reloadRecord plus the header avatar, for changes that can move the main
+  // image (gallery set-as-main, crop, delete). The old object URL is revoked
+  // once replaced; a failed picture fetch leaves the avatar showing.
+  const reloadRecordAndPhoto = useCallback(async () => {
+    if (!id) return;
+    let fresh: ContactRecordResponse;
+    try {
+      fresh = await getContactRecord(id);
+    } catch {
+      return;
+    }
+    setRecord(fresh);
+    const pic = await fetchProfilePictureUrl(id, !!fresh.photo);
+    if (pic === undefined) return;
+    setProfilePic((prev) => {
+      if (prev && prev !== pic) URL.revokeObjectURL(prev);
+      return pic;
+    });
+  }, [id]);
+
   return {
     record,
     setRecord,
@@ -183,6 +203,7 @@ export function useContactDetailData(id: string | undefined) {
     applyCore,
     refreshNotesAndActivities,
     reloadRecord,
+    reloadRecordAndPhoto,
   };
 }
 

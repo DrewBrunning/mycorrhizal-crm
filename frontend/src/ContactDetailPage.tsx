@@ -372,6 +372,7 @@ export default function ContactDetailPage() {
     applyCore,
     refreshNotesAndActivities,
     reloadRecord,
+    reloadRecordAndPhoto,
   } = useContactDetailData(id);
 
   // Issue #1997: per-contact field visibility. The server resolves per-contact
@@ -1820,7 +1821,7 @@ export default function ContactDetailPage() {
             editable
             mainImageId={record.main_image_id}
             revision={record.revision}
-            onContactChanged={() => void reloadRecord()}
+            onContactChanged={() => void reloadRecordAndPhoto()}
           />
         </PanelCard>
       </SectionGroup>

@@ -17,6 +17,7 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { Activity } from '../api/activities';
 import {
   CIRCLE_COLORS,
   CIRCLE_DESCRIPTION_MAX,
@@ -27,8 +28,11 @@ import {
   getCircleTimeline,
 } from '../api/circles';
 import type { TimelineItem } from '../api/timeline';
+import { useDateFormat } from '../DateFormatProvider';
+import { formatActivityDateRange } from '../utils/activityRange';
 import { circleColorHex } from '../utils/circleColors';
 import { handleFetchError } from '../utils/errorHandler';
+import { calendarDateOnly } from '../utils/localDate';
 
 // Issue #1995: edit a circle's description/colour and see its members' merged
 // timeline ("aggregate" Part 2 decision: no circle-owned notes/activities).
@@ -57,6 +61,7 @@ export default function CircleDetailDialog({
   onSave,
 }: CircleDetailDialogProps) {
   const { t } = useTranslation();
+  const { formatDate, dateFormat } = useDateFormat();
   const [name, setName] = useState(circle?.name ?? '');
   const [description, setDescription] = useState(circle?.description ?? '');
   const [color, setColor] = useState<CircleColor>(circle?.color ?? '');
@@ -181,7 +186,15 @@ export default function CircleDetailDialog({
                   <ListItem key={`${item.type}-${item.id}`} disableGutters divider>
                     <ListItemText
                       primary={summarize(item)}
-                      secondary={`${t(`circlesTags.timelineTypes.${item.type}`)} · ${new Date(item.date).toLocaleDateString()}`}
+                      secondary={`${t(`circlesTags.timelineTypes.${item.type}`)} · ${
+                        item.type === 'activity'
+                          ? formatActivityDateRange(
+                              item.date,
+                              (item.data as Activity).end_date,
+                              dateFormat,
+                            )
+                          : formatDate(calendarDateOnly(item.date))
+                      }`}
                       slotProps={{ primary: { sx: { overflowWrap: 'anywhere' } } }}
                     />
                   </ListItem>
