@@ -11,6 +11,7 @@ import androidx.compose.ui.test.swipeDown
 import com.mycorrhizal.crm.domain.repository.ActivityRepository
 import com.mycorrhizal.crm.model.network.ActivitiesPage
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -301,5 +302,28 @@ class ActivitiesInboxScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("Coffee with Dana").assertIsDisplayed()
+    }
+
+    // v1.6.0 parity with web's /activities page: a row shows its photos, badged
+    // when private or secret; tapping one opens the viewer, not the form.
+    @Test
+    fun `an activity row shows its photos with the sensitivity badge`() {
+        var opened = 0
+        setContent(
+            ActivitiesInboxUiState(
+                isLoading = false,
+                activities = listOf(Activity(id = 1, title = "Trip")),
+                imagesByActivity = mapOf(
+                    1 to listOf(ActivityImage(id = 9, activityId = 1, sensitivity = "secret"))
+                )
+            ),
+            onActivityClick = { opened++ }
+        )
+
+        composeTestRule.onNodeWithText("Secret").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Activity photo").performClick()
+
+        assertEquals(0, opened)
+        composeTestRule.onNodeWithTag("image-sensitivity-normal").assertDoesNotExist()
     }
 }

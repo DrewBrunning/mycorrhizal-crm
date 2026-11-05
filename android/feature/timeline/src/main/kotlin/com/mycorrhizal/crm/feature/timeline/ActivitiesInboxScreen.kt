@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.util.ActivityDateRange
 import com.mycorrhizal.crm.ui.LocalDateFormat
@@ -180,6 +181,7 @@ fun ActivitiesInboxScreenContent(
                             items(state.activities, key = { it.id }) { activity ->
                                 InboxActivityRow(
                                     activity = activity,
+                                    images = state.imagesByActivity[activity.id].orEmpty(),
                                     onClick = { onActivityClick(activity.id) },
                                     onContactClick = onContactClick,
                                     onDelete = { pendingDelete = activity },
@@ -257,6 +259,7 @@ fun ActivitiesInboxScreenContent(
 @Composable
 private fun InboxActivityRow(
     activity: Activity,
+    images: List<ActivityImage>,
     onClick: () -> Unit,
     onContactClick: (Int) -> Unit,
     onDelete: () -> Unit,
@@ -314,6 +317,8 @@ private fun InboxActivityRow(
                     }
                 }
             }
+            // v1.6.0: the row's photos, as on web's /activities page.
+            ActivityImageRow(images, modifier = Modifier.padding(top = 6.dp))
         }
         AccessibleIconButton(onClick = onDelete, enabled = !isDeleting) {
             Icon(

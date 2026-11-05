@@ -44,6 +44,7 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.domain.repository.NotesScope
 import com.mycorrhizal.crm.model.network.Note
+import com.mycorrhizal.crm.model.network.NoteImage
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
@@ -207,6 +208,7 @@ fun NotesInboxScreenContent(
                             items(state.notes, key = { it.id }) { note ->
                                 InboxNoteRow(
                                     note = note,
+                                    images = state.imagesByNote[note.id].orEmpty(),
                                     onClick = { onNoteClick(note.id) },
                                     onContactClick = onContactClick
                                 )
@@ -266,6 +268,7 @@ private fun NotesScopeFilter(scope: NotesScope, onScopeChange: (NotesScope) -> U
 @Composable
 private fun InboxNoteRow(
     note: Note,
+    images: List<NoteImage>,
     onClick: () -> Unit,
     onContactClick: (Int) -> Unit,
     modifier: Modifier = Modifier
@@ -285,7 +288,7 @@ private fun InboxNoteRow(
                 overflow = TextOverflow.Ellipsis
             )
         },
-        supportingContent = if (date != null || note.contact != null) {
+        supportingContent = if (date != null || note.contact != null || images.isNotEmpty()) {
             {
                 Column {
                     date?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
@@ -298,6 +301,8 @@ private fun InboxNoteRow(
                             modifier = Modifier.heightIn(min = 48.dp)
                         )
                     }
+                    // v1.6.0: the row's photos, as on web's /notes page.
+                    NoteImageRow(images, modifier = Modifier.padding(top = 6.dp))
                 }
             }
         } else {

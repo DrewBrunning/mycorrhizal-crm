@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.timeline
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
@@ -282,6 +284,46 @@ fun <T> OwnerImageSection(
             onSetSensitivity = { onSetSensitivity(id, it) },
             busy = busy,
             sensitivityFailed = sensitivityFailedImageId == id
+        )
+    }
+}
+
+/**
+ * Read-only thumbnails for a list row: the private/secret badge and the
+ * viewer, without the edit surface's sensitivity control. A plain scrolling
+ * Row, not a LazyRow: ListItem measures its supporting content with
+ * intrinsics, which a SubcomposeLayout-backed list rejects.
+ */
+@Composable
+fun <T> OwnerImageRow(
+    images: List<T>,
+    thumbnailUrl: (T) -> String?,
+    fileUrl: (T) -> String?,
+    sensitivity: (T) -> String?,
+    contentDescription: String,
+    modifier: Modifier = Modifier
+) {
+    if (images.isEmpty()) return
+    var viewing by remember { mutableStateOf<T?>(null) }
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = modifier.horizontalScroll(rememberScrollState())
+    ) {
+        images.forEach { image ->
+            ImageThumbnail(
+                model = thumbnailUrl(image),
+                contentDescription = contentDescription,
+                size = 64.dp,
+                sensitivity = sensitivity(image),
+                onClick = { viewing = image }
+            )
+        }
+    }
+    viewing?.let { image ->
+        ImageLightbox(
+            url = fileUrl(image),
+            contentDescription = contentDescription,
+            onDismiss = { viewing = null }
         )
     }
 }
