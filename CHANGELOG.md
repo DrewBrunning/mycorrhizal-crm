@@ -10,11 +10,15 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-> **Upgrade**: database migrations run automatically on first start. If you sync contacts over
+> **Upgrade**: database migrations run automatically on first start. Images are stored in a new
+> directory, `IMAGES_DIR` (by default an `images` folder beside your photo folder): add it to your
+> backups ([Backups](docs/deployment.md#backups)). `make backup-verify` now also checks the files of
+> contacts in Trash, which needs the server's `DATA_ENCRYPTION_KEY` (or `JWT_SECRET_KEY`).
+> Narrowing the CardDAV sync scope makes sync clients remove the excluded contacts from the device;
+> the server keeps them ([Sync Behavior](docs/carddav.md#sync-behavior)). If you sync contacts over
 > CardDAV and deleted any from a sync client on v1.5.1 or earlier, those contacts have no trash
 > entry and an incomplete cleanup; there is a repair (see
 > [the CardDAV delete repair guide](docs/operations/carddav-delete-repair.md)).
-> Nothing else is required.
 
 ### Added
 
@@ -23,8 +27,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Contact trash** ([#2002](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2002)): deleted contacts go to a Trash page on web and Android, where you
   can restore them or delete them permanently. They are purged after `DELETED_RETENTION_DAYS`.
 - **Images on activities, notes and contacts** ([#2004](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2004)): attach images to activities and notes,
-  keep a photo gallery per contact with a chosen main image, and see every image from a contact's
-  notes and activities in one place. Web and Android.
+  keep a photo gallery per contact with a chosen main image, see every image from a contact's notes
+  and activities in one place, and mark any image private or secret. Web and Android.
 - **CardDAV sync scope** ([#1993](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1993)): choose which circles sync to your phone or other CardDAV
   clients. Everything still syncs by default.
 - **Per-contact field visibility** ([#1997](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1997)): hide or show a field on a single contact, and hide
