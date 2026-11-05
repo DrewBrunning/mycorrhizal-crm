@@ -7,6 +7,7 @@ import (
 
 	"mycorrhizal/internal/auditwire"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/writegate"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -234,4 +235,34 @@ func TestAuditRecorder_RecomputeWithoutRecorderStillWorks(t *testing.T) {
 	db := dbtest.New(t)
 	require.NoError(t, RecomputeAuditChain(db))
 	assert.NoError(t, RecomputeAuditChain(nil))
+}
+
+// TestAuditRecorder_AsyncAppendsUseThePriorityWriteLane: every async audit
+// append is serialized on chainMu, so it is one stream of writes; queued
+// behind every request write in the fair write gate it fell ~2,200 events
+// behind a 12 s loadsmoke run. Its inserts must ask for the gate's priority
+// lane (writegate.WithPriority).
+func TestAuditRecorder_AsyncAppendsUseThePriorityWriteLane(t *testing.T) {
+	db := dbtest.New(t, dbtest.WithAsyncAudit())
+	var mu sync.Mutex
+	var auditInserts, prioritized int
+	require.NoError(t, db.Callback().Create().Before("gorm:create").Register("test:audit_priority", func(tx *gorm.DB) {
+		if tx.Statement.Table != "audit_events" {
+			return
+		}
+		mu.Lock()
+		defer mu.Unlock()
+		auditInserts++
+		if writegate.IsPriority(tx.Statement.Context) {
+			prioritized++
+		}
+	}))
+	u := mustUser(t, db, "prio")
+	require.NoError(t, db.Create(&Contact{UserID: u.ID, Firstname: "Prio"}).Error)
+	AuditRecorderFor(db).Flush()
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.Positive(t, auditInserts)
+	assert.Equal(t, auditInserts, prioritized, "every async audit insert must use the priority write lane")
 }

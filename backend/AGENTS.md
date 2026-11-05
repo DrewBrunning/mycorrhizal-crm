@@ -79,7 +79,9 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
    `_txlock=immediate`.** SQLite does not invoke the busy handler when a deferred transaction
    upgrades its read lock to a write lock — it fails instantly. `openDSN` takes the write lock up
    front; WAL keeps readers unaffected. Pinned by `database/concurrent_write_test.go`. Don't remove
-   the flag.
+   the flag. SQLite's busy handler polls rather than queues, so `openGormDB` also puts writers
+   through `internal/writegate`'s FIFO gate (`database/writer_fairness_test.go`); open app
+   handles through it, never a bare `gorm.Open`.
 
 10. <a id="trap-10"></a>**Never call `time.Now()` (or `time.Since`/`time.Until`) in
     `controllers`, `services` or `middleware` — read the injected clock** (issue #1494;

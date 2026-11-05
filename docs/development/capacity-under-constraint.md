@@ -115,8 +115,28 @@ more `SQLITE_BUSY` pressure, which **is** reproduced:
 - `backend/database/concurrent_write_test.go` — `_txlock=immediate` +
   `busy_timeout` make concurrent writers queue, never error (backend/AGENTS.md
   backend trap #9).
+- `backend/database/writer_fairness_test.go` — the queue is first come, first
+  served. SQLite's busy handler polls (sleeps of 1 ms up to 100 ms) instead of
+  queueing, so on slow storage a writer could be overtaken until it waited out
+  the whole `busy_timeout` while the queue ahead of it was short (the release
+  battery's `loadsmoke` saw 1–2 such 503s on slow runners).
+  `backend/internal/writegate` puts an in-process gate in front of the write
+  lock for every GORM transaction and autocommit write. Like `sync.Mutex`, a
+  running writer may take a free gate, and once a waiter has been overtaken
+  for a tenth of the timeout the gate hands over in strict arrival order. A
+  writer outside it (another process, a raw `*sql.DB` transaction) still gets
+  SQLite's own locking, just not the queue.
+- The async audit recorder appends one event at a time under its chain lock,
+  so its writes take the gate's priority lane (`writegate.WithPriority`,
+  `models/audit_recorder_test.go#TestAuditRecorder_AsyncAppendsUseThePriorityWriteLane`).
+  Without it, in the fair queue each append waited behind every request
+  write. Before the gate the busy handler starved the audit writer too:
+  `loadsmoke`'s many-users run on four cores ended with about 7,000 audit
+  events still queued, one blocked goroutine each, lost if the process
+  stopped. With the lane, the audit log keeps up with the writes.
 - Past the queue: a write still waiting when the 5 s `busy_timeout` expires
-  gets `SQLITE_BUSY`, which the API answers as a retryable **503
+  gets `SQLITE_BUSY` (or `writegate.ErrQueueTimeout` if it never reached the
+  lock), which the API answers as a retryable **503
   `DATABASE_BUSY` with `Retry-After: 1`** instead of a generic 500
   (`errors.IsDatabaseBusy`, issue #1720) — pinned end to end by
   `backend/controllers/database_busy_test.go`, which really holds the write lock

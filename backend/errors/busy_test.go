@@ -14,6 +14,8 @@ import (
 	_ "github.com/glebarez/go-sqlite" // registers the "sqlite" driver
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"mycorrhizal/internal/writegate"
 )
 
 // realDriverError returns a genuine error from the SQLite driver this app
@@ -55,6 +57,8 @@ func TestIsDatabaseBusy(t *testing.T) {
 
 	assert.True(t, IsDatabaseBusy(busy))
 	assert.True(t, IsDatabaseBusy(fmt.Errorf("update contact: %w", busy)), "a %%w-wrapped busy error still counts")
+	assert.True(t, IsDatabaseBusy(fmt.Errorf("update contact: %w", writegate.ErrQueueTimeout)),
+		"a writer that timed out in the write queue is the same overload as a lock timeout")
 
 	assert.False(t, IsDatabaseBusy(nil))
 	assert.False(t, IsDatabaseBusy(fmt.Errorf("database is locked")), "a look-alike string is not the driver's error")

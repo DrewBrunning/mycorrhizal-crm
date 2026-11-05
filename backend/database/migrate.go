@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"mycorrhizal/internal/faults"
+	"mycorrhizal/internal/writegate"
 	"mycorrhizal/logger"
 	"strconv"
 	"strings"
@@ -67,7 +68,43 @@ var migrationsFS embed.FS
 // concurrent writers queue for up to busy_timeout instead of erroring.
 // Readers are unaffected: WAL keeps them lock-free.
 func openDSN(dbPath string) string {
-	return dbPath + "?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_txlock=immediate"
+	return openDSNWithBusyTimeout(dbPath, busyTimeout)
+}
+
+// busyTimeout is how long a write waits for SQLite's write lock (openDSN's
+// busy_timeout pragma) before failing with SQLITE_BUSY, which the API maps to
+// a 503 DATABASE_BUSY (errors.IsDatabaseBusy).
+const busyTimeout = 5 * time.Second
+
+// openDSNWithBusyTimeout is openDSN with an explicit busy_timeout, so a test
+// can exercise lock contention without waiting out the production 5s.
+func openDSNWithBusyTimeout(dbPath string, timeout time.Duration) string {
+	return fmt.Sprintf("%s?_pragma=journal_mode(WAL)&_pragma=foreign_keys(1)&_pragma=busy_timeout(%d)&_txlock=immediate",
+		dbPath, timeout.Milliseconds())
+}
+
+// openGormDB opens the app's GORM handle on dbPath with openDSN's pragmas
+// (busy_timeout set to timeout) and logger l. Every GORM connection the app
+// writes through is opened here.
+//
+// Writers queue on the file's writegate.Gate before taking SQLite's write
+// lock, so they are served in arrival order: SQLite's busy handler polls
+// rather than queues, and under steady contention on slow storage it let one
+// writer wait out the whole busy_timeout while others overtook it
+// (TestConcurrentWritersAreServedFairly). The gate's timeout is the same
+// budget, and a gate timeout maps to the same 503 DATABASE_BUSY.
+func openGormDB(dbPath string, timeout time.Duration, l gormLogger.Interface) (*gorm.DB, error) {
+	sqlDB, err := sql.Open(sqlite.DriverName, openDSNWithBusyTimeout(dbPath, timeout))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+	pool := writegate.NewPool(sqlDB, writegate.For(dbPath, timeout))
+	db, err := gorm.Open(sqlite.Dialector{Conn: pool}, &gorm.Config{Logger: l})
+	if err != nil {
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("failed to connect with GORM: %w", err)
+	}
+	return db, nil
 }
 
 // openReadOnlyDSN opens a database for inspection without mutating it. It is
@@ -131,13 +168,7 @@ func InitDB(dbPath string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	// Open GORM connection
-	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{Logger: newGormLogger(os.Stdout)})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect with GORM: %w", err)
-	}
-
-	return db, nil
+	return openGormDB(dbPath, busyTimeout, newGormLogger(os.Stdout))
 }
 
 // OpenMigratedFile opens dbPath with this app's standard connection pragmas
@@ -162,11 +193,7 @@ func OpenMigratedFileWithLogger(dbPath string, l gormLogger.Interface) (*gorm.DB
 	if l == nil {
 		l = newGormLogger(os.Stdout)
 	}
-	db, err := gorm.Open(sqlite.Open(openDSN(dbPath)), &gorm.Config{Logger: l})
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect with GORM: %w", err)
-	}
-	return db, nil
+	return openGormDB(dbPath, busyTimeout, l)
 }
 
 // newMigrator builds a golang-migrate instance over the EMBEDDED migrations FS
