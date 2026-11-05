@@ -185,3 +185,119 @@ func TestVerifyBackupSetPreTrashSnapshotHasNothingToReconcile(t *testing.T) {
 
 	assert.True(t, report.Complete(), report.String())
 }
+
+// Issue #2367's image half: the contact cascade soft-deletes a trashed
+// contact's gallery images and its notes' images with it (ADR 0040), and a
+// Trash restore revives them, so the files their deletion batch names
+// (payload.soft["contact_images"] / ["note_images"]) are required like a live
+// image's. An image deleted on its own is not in the batch.
+
+// addDeletedImage inserts a soft-deleted image row for user 1 into table
+// (contact_images or note_images) and returns its id. ownerCol/ownerVal tie
+// it to the trashed contact (contact_vcard_uid) or a note (note_id).
+func (s *backupSet) addDeletedImage(t *testing.T, table, ownerCol string, ownerVal any, name string) int64 {
+	t.Helper()
+	// #nosec G202 -- table and column are fixed test literals.
+	require.NoError(t, s.db.Exec(
+		`INSERT INTO `+table+` (user_id, uuid, `+ownerCol+`, stored_name, thumb_name, mime_type, thumb_mime_type,
+		 width, height, size_bytes, thumb_size_bytes, sensitivity, deleted_at)
+		 VALUES (1, ?, ?, ?, ?, 'image/jpeg', 'image/jpeg', 1, 1, 1, 1, 'normal', CURRENT_TIMESTAMP)`,
+		name, ownerVal, name+".jpg", name+"_t.jpg").Error)
+	var id int64
+	// #nosec G202 -- table is a fixed test literal.
+	require.NoError(t, s.db.Raw(`SELECT id FROM `+table+` WHERE uuid = ?`, name).Scan(&id).Error)
+	return id
+}
+
+func imageBatchPayload(contactImageID, noteImageID int64) string {
+	return `{"soft":{"contact_images":["` + strconv.FormatInt(contactImageID, 10) +
+		`"],"note_images":["` + strconv.FormatInt(noteImageID, 10) + `"]},"hard":{},"self_contact":false}`
+}
+
+func (s *backupSet) addDeletedNote(t *testing.T) {
+	t.Helper()
+	require.NoError(t, s.db.Exec(
+		`INSERT INTO notes (id, user_id, content, date, deleted_at) VALUES (60, 1, 'n', '2024-01-01', CURRENT_TIMESTAMP)`).Error)
+}
+
+func (s *backupSet) verifyImagesWithKey(t *testing.T, imagesDir string) *database.BackupSetReport {
+	t.Helper()
+	report, err := database.VerifyBackupSetWithImages(s.dbPath, s.photoDir, s.attachmentsDir, imagesDir, openerFor(nil))
+	require.NoError(t, err)
+	return report
+}
+
+func TestVerifyBackupSetRequiresTrashedContactImages(t *testing.T) {
+	s := newBackupSet(t)
+	s.addDeletedNote(t)
+	gallery := s.addDeletedImage(t, "contact_images", "contact_vcard_uid", "uid-trashed", "gallery")
+	notePhoto := s.addDeletedImage(t, "note_images", "note_id", 60, "notephoto")
+	// Deleted on its own before the contact: not in the batch.
+	s.addDeletedImage(t, "contact_images", "contact_vcard_uid", "uid-trashed", "standalone")
+	s.trashContact(t, imageBatchPayload(gallery, notePhoto))
+	require.NoError(t, os.WriteFile(filepath.Join(s.photoDir, "trashed_photo.jpg"), []byte("jpeg"), 0o600))
+	imagesDir := t.TempDir()
+
+	report := s.verifyImagesWithKey(t, imagesDir)
+
+	assert.False(t, report.Complete(), report.String())
+	var missing []string
+	for _, m := range report.MissingImages {
+		missing = append(missing, m.StoredName)
+	}
+	assert.ElementsMatch(t, []string{
+		"u1/gallery.jpg", "u1/gallery_t.jpg", "u1/notephoto.jpg", "u1/notephoto_t.jpg",
+	}, missing)
+	assert.Equal(t, 2, report.ImagesScanned)
+}
+
+func TestVerifyBackupSetTrashedContactImagesPresentAreComplete(t *testing.T) {
+	s := newBackupSet(t)
+	s.addDeletedNote(t)
+	gallery := s.addDeletedImage(t, "contact_images", "contact_vcard_uid", "uid-trashed", "gallery")
+	notePhoto := s.addDeletedImage(t, "note_images", "note_id", 60, "notephoto")
+	s.trashContact(t, imageBatchPayload(gallery, notePhoto))
+	require.NoError(t, os.WriteFile(filepath.Join(s.photoDir, "trashed_photo.jpg"), []byte("jpeg"), 0o600))
+	imagesDir := t.TempDir()
+	require.NoError(t, os.MkdirAll(filepath.Join(imagesDir, "u1"), 0o750))
+	for _, f := range []string{"gallery.jpg", "gallery_t.jpg", "notephoto.jpg", "notephoto_t.jpg"} {
+		require.NoError(t, os.WriteFile(filepath.Join(imagesDir, "u1", f), []byte("img"), 0o600))
+	}
+
+	report := s.verifyImagesWithKey(t, imagesDir)
+
+	assert.True(t, report.Complete(), report.String())
+	assert.Empty(t, report.OrphanImageFiles)
+	assert.Equal(t, 2, report.ImagesScanned)
+}
+
+// A batch id is scoped to the snapshot's user: another user's image with
+// that id is not the Trash's to require.
+func TestVerifyBackupSetTrashedImageIDsAreUserScoped(t *testing.T) {
+	s := newBackupSet(t)
+	require.NoError(t, s.db.Exec(
+		`INSERT INTO users (id, username, email, password) VALUES (2, 'v', 'v@example.com', 'x')`).Error)
+	other := s.addDeletedImage(t, "contact_images", "contact_vcard_uid", "uid-other", "otheruser")
+	require.NoError(t, s.db.Exec(`UPDATE contact_images SET user_id = 2 WHERE id = ?`, other).Error)
+	s.trashContact(t, `{"soft":{"contact_images":["`+strconv.FormatInt(other, 10)+`"]},"hard":{}}`)
+	require.NoError(t, os.WriteFile(filepath.Join(s.photoDir, "trashed_photo.jpg"), []byte("jpeg"), 0o600))
+
+	report := s.verifyImagesWithKey(t, t.TempDir())
+
+	assert.True(t, report.Complete(), report.String())
+	assert.Equal(t, 0, report.ImagesScanned)
+}
+
+// A batch-attachment query that fails is an error, not a silent pass. The
+// live-attachment query reads only id and stored_name, so an attachments
+// table without user_id lets it run and the batch query fail.
+func TestVerifyBackupSetFailingTrashAttachmentQueryIsAnError(t *testing.T) {
+	s := newBackupSet(t)
+	s.trashContact(t, batchPayload(7))
+	require.NoError(t, s.db.Exec(`DROP TABLE attachments`).Error)
+	require.NoError(t, s.db.Exec(`CREATE TABLE attachments (id integer, stored_name text, deleted_at datetime)`).Error)
+
+	_, err := s.verifyWithKey(t, nil)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "user_id")
+}
