@@ -542,6 +542,9 @@ integration in the classification registry to its <a id> on this page. -->
   a wizard error ("could not be reached", "rejected the API token", or "URL
   resolves to a private address, which this server blocks"). There is nothing
   to remove; it only runs while a user drives the wizard.
+  Monica redirects are never followed (your API token would travel with
+  them), so a wrong http/https or path in the URL shows as "did not respond
+  like a Monica API — check the URL".
 
 ## The SSRF boundary
 

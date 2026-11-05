@@ -96,6 +96,11 @@ func NewClient(baseURL, token string, blockPrivate bool) (*Client, error) {
 		http: &http.Client{
 			Timeout:   requestTimeout,
 			Transport: transport,
+			// Never follow redirects (as meerkatapi does): the user supplies
+			// the base URL, so a redirect must not replay the bearer token to
+			// another host or steer the guarded dialer elsewhere. A 3xx is
+			// reported as a non-Monica response ("check the URL").
+			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
 		limiter: newLimiter(),
 	}, nil

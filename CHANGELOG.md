@@ -91,6 +91,8 @@ adheres to [Semantic Versioning](https://semver.org/).
   image files of purged contacts (([#2310](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2310))).
 - **Other accounts' import sessions are indistinguishable from missing ones** ([#2203](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2203)).
 - **Image uploads enforce per-owner limits reliably** ([#2313](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2313)).
+- **The Monica import no longer follows redirects** ([#2386](https://github.com/DrewBrunning/mycorrhizal-crm/pull/2386)), so your API token is only sent to the
+  address you entered. If your Monica URL redirects (for example http to https), enter the final address.
 - **Updated dependencies** clear known security advisories.
 
 ### Internal
