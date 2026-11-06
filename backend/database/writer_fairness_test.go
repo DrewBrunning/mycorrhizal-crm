@@ -28,14 +28,31 @@ import (
 //
 // The test scales the production numbers down: each write holds the lock for
 // ~writeHold, so with every writer queued the longest fair wait is about
-// (writers-1) × writeHold — under half of busy. Any SQLITE_BUSY therefore
-// means a writer was overtaken, not that the database was overloaded.
+// (writers-1) × writeHold plus the gate's starvation window. Any SQLITE_BUSY
+// therefore means a writer was overtaken, not that the database was
+// overloaded.
+//
+// "Not overloaded" is only true while a write really holds the lock for about
+// writeHold. The hold is the sleep plus the commit, and on a loaded CI runner
+// (the cross-package coverage pass runs four packages at once with atomic
+// coverage on every one) the sleep overshoots and the commit waits on the disk,
+// so a hold of ~18ms is realistic: 23 × 18ms is already past a 400ms budget
+// with nobody overtaken, which is how this test flaked on unrelated PRs
+// (issue #2398). busy is therefore several times the nominal queue, and the
+// slow-hold case below pins that. A writer that is genuinely starved still
+// waits out any budget: with the gate bypassed, ~6% of writes time out even at
+// 2s (checked by hand when busy was widened).
 func TestConcurrentWritersAreServedFairly(t *testing.T) {
+	const writeHold = 6 * time.Millisecond
+	t.Run("nominal hold", func(t *testing.T) { runWriterFairness(t, writeHold) })
+	t.Run("slow runner hold", func(t *testing.T) { runWriterFairness(t, 3*writeHold) })
+}
+
+func runWriterFairness(t *testing.T, writeHold time.Duration) {
 	const (
-		writers   = 24
-		writeHold = 6 * time.Millisecond
-		busy      = 400 * time.Millisecond
-		runFor    = 3 * time.Second
+		writers = 24
+		busy    = 2 * time.Second
+		runFor  = 3 * time.Second
 	)
 	if (writers-1)*writeHold*2 >= busy {
 		t.Fatalf("test misconfigured: a fair queue (%v) must fit well inside busy (%v)", (writers-1)*writeHold, busy)
