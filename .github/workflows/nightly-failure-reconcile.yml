@@ -73,6 +73,7 @@ jobs:
           - sast.yml
           - soak.yml
           - schemathesis.yml
+          - playwright-cache-warm.yml
           - scorecard.yml
           - security-cadence.yml
           - stryker.yml
