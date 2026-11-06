@@ -57,7 +57,14 @@ func SweepImages(ctx context.Context, db *gorm.DB, cfg config.Config) (ImageSwee
 		return res, fmt.Errorf("image sweep: find empty notes: %w", err) // # pragma: no cover — defensive: a healthy migrated schema and a readable image directory do not fail here
 	}
 	for i := range notes {
-		if err := db.WithContext(ctx).Delete(&notes[i]).Error; err != nil {
+		// ADR 0042 decision 10: a note's standing-share grants end with it.
+		if err := db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			if err := tx.Delete(&notes[i]).Error; err != nil {
+				return err
+			}
+			_, err := RevokeShareGrantsForEntity(tx, notes[i].UserID, models.ShareGrantEntityNote, notes[i].UUID, Now())
+			return err
+		}); err != nil {
 			logger.Ctx(ctx).Warn().Err(err).Uint("note_id", notes[i].ID).Msg("image sweep: failed to soft-delete empty note") // # pragma: no cover — defensive: a healthy migrated schema and a readable image directory do not fail here
 			continue
 		}

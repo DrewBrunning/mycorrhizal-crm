@@ -124,6 +124,34 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
   `TestContactShare_PayloadUnchangedAcrossLifecycleTransitions`) and surfaced to the sender by
   `frontend/src/components/ShareContactDialog.tsx`'s `frozenNotice`.
 
+### Standing-share grants and blocks (`ShareGrant`, `ShareBlock`, issue #2289, ADR 0042)
+
+`ShareGrant` (`backend/models/share_grant.go`) is the authorization record for a live, read-only share of
+one entity (contact, note, activity or circle) to another user. It is **not a copy**: it stores who may
+read what (`from_user_id`, `to_user_id`, `entity_type`, `entity_id`, `sections`, status and instants),
+never content, so deleting a row destroys no one's data. It has no `deleted_at` (ADR 0004, ADR 0042
+decision 13): `status` is its lifecycle and tombstone. `ShareBlock` is an edge row (hard delete).
+
+- **Where / who**: `share_grants` scoped to `from_user_id`/`to_user_id`; `share_blocks` scoped to
+  `blocker_user_id`/`blocked_user_id`. Both foreign keys cascade from `users`.
+- **Retention**: pending and active rows are never purged by retention. Terminal rows (`declined`,
+  `revoked`, `expired`) are kept for `SHARE_GRANT_RETENTION_DAYS` (default 30, same semantics as
+  `CONTACT_SHARE_RETENTION_DAYS`) so the owner can see the outcome, then hard-deleted by a scheduled
+  job. **The schema, models and cascade land in #2289; the purge job and the retention variable ship
+  with the lifecycle work of #1998**, so until then no terminal row is created by the application.
+- **Deletion / propagation**: deleting a contact, note, activity or circle revokes the owner's live
+  grants on it with reason `entity_deleted` (`services.RevokeShareGrantsForEntity`; for contacts a
+  `CascadeMutate` step in `ContactCascadeRegistry`). `DeleteUser` and `DeleteOwnAccount` hard-delete
+  every grant where the user is either party and every block naming them on either side
+  (`controllers/user_delete_cascade.go`). Restoring a trashed contact does not re-arm a grant.
+- **Backups**: yes. A backup carries grant and block rows; restoring one resurrects grants whose source
+  entity or user may be gone, which the read path fails closed on (it requires a live owner-scoped
+  source row). The account bundle excludes both tables because user ids do not transfer between
+  instances.
+- **Verification**: `backend/database/migrate_share_grants_test.go`, `backend/models/share_grant_test.go`,
+  `backend/services/share_grant_revoke_test.go`, `backend/controllers/share_grant_entity_delete_test.go`
+  and the `share_grants`/`share_blocks` rows of `backend/controllers/delete_cascade_coverage_test.go`.
+
 ## 2. Edge- and join-shaped rows
 
 `RelationshipEdge`, `CircleMember`, `ContactTag`, `HouseholdMember`, `ContactSyncLink`,

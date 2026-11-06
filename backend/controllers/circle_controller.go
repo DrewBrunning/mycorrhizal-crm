@@ -283,7 +283,15 @@ func DeleteCircle(c *gin.Context) {
 		return
 	}
 
-	if err := db.Delete(&circle).Error; err != nil {
+	// ADR 0042 decision 10: deleting the circle ends its standing-share grants,
+	// in the same transaction so the two cannot diverge.
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&circle).Error; err != nil {
+			return err
+		}
+		_, err := services.RevokeShareGrantsForEntity(tx, userID, models.ShareGrantEntityCircle, circle.ID, services.Now())
+		return err
+	}); err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete circle").WithError(err))
 		return
 	}

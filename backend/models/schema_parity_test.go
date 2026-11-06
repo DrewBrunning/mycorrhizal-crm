@@ -57,6 +57,8 @@ var registeredModels = []any{
 	&CircleMember{},
 	&Contact{},
 	&ContactShare{},
+	&ShareGrant{},
+	&ShareBlock{},
 	&ContactSubscription{},
 	&ContactSyncConflict{},
 	&ContactSyncLink{},

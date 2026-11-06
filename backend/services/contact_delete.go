@@ -280,6 +280,15 @@ func ContactCascadeRegistry() []CascadeStep {
 			Reason: "issue #382, ADR 0030 decision 6: revoked, not deleted -- the row stays for the audit trail and undo must not silently re-arm an export; account-aggregate feeds untouched",
 		},
 		{
+			Table: "share_grants", Mode: CascadeMutate,
+			Apply: func(tx *gorm.DB, t ContactCascadeTarget, now time.Time) error {
+				_, err := RevokeShareGrantsForEntity(tx, t.UserID, models.ShareGrantEntityContact, t.VCardUID, now)
+				return err
+			},
+			SnapshotSkip: "restore does not re-arm access: a person re-issues the grant (ADR 0042 decision 10, following ADR 0030 decision 6 and ADR 0037 decision 3)",
+			Reason:       "issue #2289, ADR 0042 decision 10: live grants on the deleted contact are revoked with reason entity_deleted, not deleted -- the row is the owner's history and a grant has no deleted_at; terminal rows are purged after the retention window",
+		},
+		{
 			Table: "dismissed_duplicate_pairs", NewModel: func() any { return &models.DismissedDuplicatePair{} },
 			Mode: CascadeHard,
 			Match: func(t ContactCascadeTarget) (string, []any) {
