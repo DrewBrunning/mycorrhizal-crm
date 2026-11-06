@@ -179,6 +179,7 @@ import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.contactFieldLabel
 import com.mycorrhizal.crm.ui.components.healthBandColor
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.components.looksLikeEmail
 import com.mycorrhizal.crm.ui.components.scoreReasonText
 import com.mycorrhizal.crm.ui.components.targetStatusBand
 import com.mycorrhizal.crm.ui.components.targetStatusLabel
@@ -2685,11 +2686,22 @@ private fun EmailRow(email: Email) {
         // M7: the type is `contexts[0]` (web parity — the form's type dropdown writes
         // there), with `label` as a fallback for legacy flat-Type data (backend's
         // buildEmails maps ContactEmail.Type -> Email.Label).
-        ValueWithType(
-            value = address,
-            typeToken = email.contexts?.firstOrNull() ?: email.label,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            ValueWithType(
+                value = address,
+                typeToken = email.contexts?.firstOrNull() ?: email.label,
+                modifier = Modifier.fillMaxWidth()
+            )
+            // Issue #2377: informational only, so a malformed imported/synced
+            // address is easy to spot and fix by hand. Nothing is changed.
+            if (!looksLikeEmail(address)) {
+                Text(
+                    text = stringResource(R.string.contact_email_looks_invalid),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
         if (address.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.emailIntent(address)) }) {
                 Icon(

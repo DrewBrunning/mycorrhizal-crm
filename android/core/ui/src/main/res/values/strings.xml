@@ -363,6 +363,7 @@
     <string name="contact_item_grammatical_gender">grammatical gender</string>
     <string name="contact_item_anniversary">anniversary</string>
     <string name="contact_example_email">name@example.com</string>
+    <string name="contact_email_looks_invalid">Doesn\'t look like an email address. Please check it.</string>
     <string name="contact_example_phone">+1 555 123 4567</string>
     <string name="contact_phone_format_hint">International format recommended.</string>
     <string name="contact_example_online_service">https://… or user@server</string>

@@ -6,6 +6,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertAny
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
@@ -743,6 +744,28 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithContentDescription(
             "Copy email"
         ).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a stored email that does not look like an address is called out but still shown`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                emails = listOf(
+                    Email(address = "imported-junk"),
+                    Email(address = "dana@example.com")
+                )
+            )
+        )
+        setContent(ContactDetailUiState(contact = contact))
+
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasText("imported-junk"))
+        composeTestRule.onNodeWithText("imported-junk").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText(
+            "Doesn't look like an email address. Please check it."
+        ).assertCountEquals(1)
     }
 
     @Test

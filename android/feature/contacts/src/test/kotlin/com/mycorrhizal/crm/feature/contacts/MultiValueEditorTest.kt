@@ -338,4 +338,57 @@ class MultiValueEditorTest {
         composeTestRule.onNodeWithText("No hint")
             .assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.ContentType))
     }
+
+    private fun setEmailEditor(items: List<Email>, onChange: (List<Email>) -> Unit = {}) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MultiValueEditor(
+                    items = items,
+                    spec = EmailSpec,
+                    onChange = onChange,
+                    label = "Email"
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `a malformed email shows a non-blocking hint and still reports edits`() {
+        val calls = mutableListOf<List<Email>>()
+        setEmailEditor(listOf(Email(address = "not-an-email")), onChange = { calls += it })
+
+        composeTestRule.onNodeWithText(
+            "Doesn't look like an email address. Please check it."
+        ).assertIsDisplayed()
+        // Warning only: typing is never blocked or rewritten.
+        composeTestRule.onNodeWithContentDescription("Email").performTextReplacement("still-bad")
+        assertEquals("still-bad", calls.last().single().address)
+    }
+
+    @Test
+    fun `a valid or blank email shows no hint`() {
+        setEmailEditor(listOf(Email(address = "dana@example.com"), Email(address = "")))
+
+        composeTestRule.onAllNodesWithText(
+            "Doesn't look like an email address. Please check it."
+        ).assertCountEquals(0)
+    }
+
+    @Test
+    fun `non-email specs are never checked for an email shape`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MultiValueEditor(
+                    items = listOf(Phone(number = "not-an-email")),
+                    spec = PhoneSpec,
+                    onChange = {},
+                    label = "Phone"
+                )
+            }
+        }
+
+        composeTestRule.onAllNodesWithText(
+            "Doesn't look like an email address. Please check it."
+        ).assertCountEquals(0)
+    }
 }
