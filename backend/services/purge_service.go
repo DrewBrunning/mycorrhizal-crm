@@ -51,6 +51,10 @@ var purgedSoftDeleteModels = []any{
 	&models.ActivityImage{},
 	&models.NoteImage{},
 	&models.ContactImage{},
+	// Reusable entities (ADR 0043): soft-deleted entities and links age out here;
+	// the orphan cleanups below remove their snapshots, field values and dismissals.
+	&models.Entity{},
+	&models.ContactEntityLink{},
 	// Occasions (ADR 0024/0026): user-authored, soft-deleted. Issue #1310:
 	// these were missing, so a deleted contact's obligations outlived the
 	// contact as orphans and soft-deleted events were kept forever.
@@ -84,6 +88,7 @@ type contactUIDCleanup struct {
 var purgeContactUIDCleanups = []contactUIDCleanup{
 	{"occasion_event_attendees", []string{"entity_id"}},
 	{"contact_images", []string{"contact_vcard_uid"}},
+	{"contact_entity_links", []string{"contact_vcard_uid"}},
 	{"circle_members", []string{"member_vcard_uid"}},
 	{"contact_tags", []string{"contact_vcard_uid"}},
 	{"household_members", []string{"member_vcard_uid"}},
@@ -236,6 +241,23 @@ func PurgeSoftDeletedRows(db *gorm.DB, cfg config.Config) error {
 			// lifetime; keyed by the contact row id, owner-checked via user_id.
 			"DELETE FROM contact_deletion_snapshots WHERE contact_id IN (SELECT id FROM contacts WHERE deleted_at IS NOT NULL AND deleted_at < ? AND contacts.user_id = contact_deletion_snapshots.user_id)",
 			[]interface{}{cutoff}, "contact_deletion_snapshots",
+		},
+		{
+			// ADR 0043: rows keyed by a purged (hard-gone) entity id.
+			"DELETE FROM entity_deletion_snapshots WHERE NOT EXISTS (SELECT 1 FROM entities e WHERE e.id = entity_deletion_snapshots.entity_id AND e.user_id = entity_deletion_snapshots.user_id)",
+			nil, "entity_deletion_snapshots",
+		},
+		{
+			"DELETE FROM contact_entity_links WHERE NOT EXISTS (SELECT 1 FROM entities e WHERE e.id = contact_entity_links.entity_id AND e.user_id = contact_entity_links.user_id)",
+			nil, "contact_entity_links(orphan)",
+		},
+		{
+			"DELETE FROM dismissed_entity_pairs WHERE NOT EXISTS (SELECT 1 FROM entities e WHERE e.id = dismissed_entity_pairs.id_low AND e.user_id = dismissed_entity_pairs.user_id) OR NOT EXISTS (SELECT 1 FROM entities e WHERE e.id = dismissed_entity_pairs.id_high AND e.user_id = dismissed_entity_pairs.user_id)",
+			nil, "dismissed_entity_pairs",
+		},
+		{
+			"DELETE FROM field_values WHERE field_definition_id IN (SELECT id FROM field_definitions WHERE target IN ('organisation', 'place', 'pet')) AND NOT EXISTS (SELECT 1 FROM entities e WHERE e.id = field_values.entity_id AND e.user_id = field_values.user_id)",
+			nil, "field_values(entity)",
 		},
 		// contact_sync_links is deliberately NOT cleaned here (ADR 0037
 		// decision 7): the link outlives the purged contact as the tombstone

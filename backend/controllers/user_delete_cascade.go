@@ -394,6 +394,15 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err
 	}
 
+	// Reusable entities (issue #2295, ADR 0043): all four tables, hard, before
+	// contacts. Links first, then their entities; field values of entities were
+	// removed with the user's field values above.
+	for _, model := range []any{&models.ContactEntityLink{}, &models.EntityDeletionSnapshot{}, &models.DismissedEntityPair{}, &models.Entity{}} {
+		if err := tx.Unscoped().Where("user_id = ?", userID).Delete(model).Error; err != nil {
+			return err
+		}
+	}
+
 	// Delete contacts (hard)
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.Contact{}).Error; err != nil {
 		return err

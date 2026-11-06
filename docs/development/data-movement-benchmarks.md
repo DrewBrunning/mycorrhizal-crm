@@ -20,32 +20,32 @@ Profiles are the PERF-01 dataset shapes (issue #468): smoke, typical. `large` is
 behind `MYCORRHIZAL_LARGE_TESTS=1`. Regenerate with `make gen-perf-baseline`
 (add `-large` for the `large` column).
 
-_Last generated: 2026-11-02._
+_Last generated: 2026-11-06._
 
 ## Measurements
 
 | Operation | Kind | Profile | Contacts | Rows touched | Duration | Peak heap | Peak extra disk | Output |
 |---|---|---|--:|--:|--:|--:|--:|--:|
-| `import.vcf` | import | smoke | 350 | 175 | 575.7ms | 7.5MiB | 1.4MiB | 42.1KiB |
-| `import.vcf` | import | typical | 945 | 945 | 14.80s | 21.2MiB | 4.9MiB | 227.8KiB |
-| `export.bundle` | export | smoke | 350 | 170 | 11.7ms | 4.9MiB | 0B | 105.4KiB |
-| `export.bundle` | export | typical | 945 | 918 | 60.9ms | 30.9MiB | 0B | 713.6KiB |
-| `export.account_bundle` | export | smoke | 350 | 170 | 39.9ms | 5.0MiB | 0B | 276.5KiB |
-| `export.account_bundle` | export | typical | 945 | 918 | 345.8ms | 16.6MiB | 0B | 1.5MiB |
-| `export.vcard4` | export | smoke | 350 | 170 | 42.1ms | 6.4MiB | 0B | 84.8KiB |
-| `export.vcard4` | export | typical | 945 | 918 | 361.2ms | 14.7MiB | 0B | 466.8KiB |
-| `export.jscontact` | export | smoke | 350 | 170 | 38.0ms | 6.2MiB | 0B | 179.5KiB |
-| `export.jscontact` | export | typical | 945 | 918 | 355.6ms | 14.0MiB | 0B | 984.4KiB |
-| `fts.rebuild` | maintenance | smoke | 350 | 580 | 8.2ms | 22.0KiB | 245.4KiB | 0B |
-| `fts.rebuild` | maintenance | typical | 945 | 1566 | 19.3ms | 22.0KiB | 470.7KiB | 0B |
-| `backup.vacuum_into` | backup | smoke | 350 | 170 | 43.4ms | 41.9KiB | 2.8MiB | 2.7MiB |
-| `backup.vacuum_into` | backup | typical | 945 | 918 | 64.2ms | 36.9KiB | 10.1MiB | 5.0MiB |
-| `restore.snapshot` | restore | smoke | 350 | 350 | 19.9ms | 227.9KiB | 2.7MiB | 2.7MiB |
-| `restore.snapshot` | restore | typical | 945 | 945 | 35.8ms | 247.4KiB | 5.1MiB | 5.0MiB |
-| `delete_cascade.hub` | delete | smoke | 350 | 12 | 8.6ms | 1.9MiB | 394.3KiB | 0B |
-| `delete_cascade.hub` | delete | typical | 945 | 36 | 11.6ms | 2.0MiB | 523.0KiB | 0B |
-| `duplicates.find_pairs` | maintenance | smoke | 350 | 275 | 4.6ms | 1.3MiB | 0B | 0B |
-| `duplicates.find_pairs` | maintenance | typical | 945 | 9504 | 24.4ms | 6.8MiB | 0B | 0B |
+| `import.vcf` | import | smoke | 350 | 175 | 572.5ms | 7.6MiB | 1.4MiB | 42.1KiB |
+| `import.vcf` | import | typical | 945 | 945 | 16.47s | 25.0MiB | 4.5MiB | 227.8KiB |
+| `export.bundle` | export | smoke | 350 | 170 | 13.7ms | 4.9MiB | 0B | 105.4KiB |
+| `export.bundle` | export | typical | 945 | 918 | 73.7ms | 29.3MiB | 0B | 713.6KiB |
+| `export.account_bundle` | export | smoke | 350 | 170 | 44.9ms | 4.9MiB | 0B | 276.6KiB |
+| `export.account_bundle` | export | typical | 945 | 918 | 465.2ms | 22.6MiB | 0B | 1.5MiB |
+| `export.vcard4` | export | smoke | 350 | 170 | 48.7ms | 6.7MiB | 0B | 84.8KiB |
+| `export.vcard4` | export | typical | 945 | 918 | 469.8ms | 15.5MiB | 0B | 466.8KiB |
+| `export.jscontact` | export | smoke | 350 | 170 | 46.7ms | 5.5MiB | 0B | 179.5KiB |
+| `export.jscontact` | export | typical | 945 | 918 | 432.7ms | 17.0MiB | 0B | 984.4KiB |
+| `fts.rebuild` | maintenance | smoke | 350 | 580 | 7.2ms | 22.2KiB | 237.4KiB | 0B |
+| `fts.rebuild` | maintenance | typical | 945 | 1566 | 22.3ms | 32.1KiB | 478.8KiB | 0B |
+| `backup.vacuum_into` | backup | smoke | 350 | 170 | 31.8ms | 25.4KiB | 2.8MiB | 2.8MiB |
+| `backup.vacuum_into` | backup | typical | 945 | 918 | 54.2ms | 28.8KiB | 5.2MiB | 5.1MiB |
+| `restore.snapshot` | restore | smoke | 350 | 350 | 20.1ms | 230.9KiB | 2.8MiB | 2.8MiB |
+| `restore.snapshot` | restore | typical | 945 | 945 | 32.1ms | 244.3KiB | 5.2MiB | 5.1MiB |
+| `delete_cascade.hub` | delete | smoke | 350 | 12 | 10.5ms | 1.9MiB | 382.2KiB | 0B |
+| `delete_cascade.hub` | delete | typical | 945 | 36 | 9.9ms | 2.0MiB | 523.0KiB | 0B |
+| `duplicates.find_pairs` | maintenance | smoke | 350 | 275 | 4.3ms | 1.3MiB | 0B | 0B |
+| `duplicates.find_pairs` | maintenance | typical | 945 | 9504 | 24.8ms | 13.5MiB | 0B | 0B |
 
 "Peak heap" is the highest `runtime.MemStats.HeapAlloc` seen during the operation,
 above a GC'd baseline taken just before it. "Peak extra disk" is the largest the
@@ -69,16 +69,16 @@ anchor profile in release validation.
 
 | Operation | Scales | Contacts x | Work x | Peak heap x | Peak disk x | Duration x | Class | Expected |
 |---|---|--:|--:|--:|--:|--:|---|---|
-| `backup.vacuum_into` | smoke→typical | 2.70 | 5.40 | 0.88 | 3.68 | 1.48 | constant | constant |
-| `delete_cascade.hub` | smoke→typical | 2.70 | 3.00 | 1.09 | 1.33 | 1.35 | constant | constant |
-| `duplicates.find_pairs` | smoke→typical | 2.70 | 34.56 | 5.22 | 1.00 | 5.31 | linear | superlinear |
-| `export.account_bundle` | smoke→typical | 2.70 | 5.40 | 3.33 | 1.00 | 8.67 | linear | linear |
-| `export.bundle` | smoke→typical | 2.70 | 5.40 | 6.30 | 1.00 | 5.20 | linear | linear |
-| `export.jscontact` | smoke→typical | 2.70 | 5.40 | 2.27 | 1.00 | 9.37 | linear | linear |
-| `export.vcard4` | smoke→typical | 2.70 | 5.40 | 2.31 | 1.00 | 8.58 | linear | linear |
-| `fts.rebuild` | smoke→typical | 2.70 | 2.70 | 1.00 | 1.92 | 2.35 | constant | constant |
-| `import.vcf` | smoke→typical | 2.70 | 5.40 | 2.84 | 3.50 | 25.71 | linear | superlinear |
-| `restore.snapshot` | smoke→typical | 2.70 | 2.70 | 1.09 | 1.89 | 1.80 | constant | constant |
+| `backup.vacuum_into` | smoke→typical | 2.70 | 5.40 | 1.13 | 1.85 | 1.70 | constant | constant |
+| `delete_cascade.hub` | smoke→typical | 2.70 | 3.00 | 1.05 | 1.37 | 0.95 | constant | constant |
+| `duplicates.find_pairs` | smoke→typical | 2.70 | 34.56 | 10.33 | 1.00 | 5.81 | superlinear | superlinear |
+| `export.account_bundle` | smoke→typical | 2.70 | 5.40 | 4.60 | 1.00 | 10.36 | linear | linear |
+| `export.bundle` | smoke→typical | 2.70 | 5.40 | 5.95 | 1.00 | 5.39 | linear | linear |
+| `export.jscontact` | smoke→typical | 2.70 | 5.40 | 3.07 | 1.00 | 9.26 | linear | linear |
+| `export.vcard4` | smoke→typical | 2.70 | 5.40 | 2.31 | 1.00 | 9.65 | linear | linear |
+| `fts.rebuild` | smoke→typical | 2.70 | 2.70 | 1.44 | 2.02 | 3.08 | constant | constant |
+| `import.vcf` | smoke→typical | 2.70 | 5.40 | 3.28 | 3.21 | 28.77 | linear | superlinear |
+| `restore.snapshot` | smoke→typical | 2.70 | 2.70 | 1.06 | 1.86 | 1.60 | constant | constant |
 
 **Super-linear peak memory (recorded findings):** `duplicates.find_pairs`, `import.vcf`.
 `duplicates.find_pairs` expands O(cluster²) pairs in memory; `import.vcf` holds
@@ -96,14 +96,14 @@ What an operator must have free *before* starting each operation. An operator at
 
 | Operation | Extra disk needed | Measured peak extra disk (largest profile) |
 |---|---|--:|
-| `import.vcf` | None on disk; peak RAM grows FASTER than the batch — ParseVCF holds the whole parsed batch and its preview pass is O(n²) in the row count. | 4.9MiB |
+| `import.vcf` | None on disk; peak RAM grows FASTER than the batch — ParseVCF holds the whole parsed batch and its preview pass is O(n²) in the row count. | 4.5MiB |
 | `export.bundle` | None (streamed to the client). Server RAM ≈ the whole serialized bundle — it is buffered before the first byte is sent. | 0B |
 | `export.account_bundle` | None (streamed to the client). Server RAM ≈ the whole serialized bundle — it is buffered before the first byte is sent; embedded photos dominate it. | 0B |
 | `export.vcard4` | None (streamed to the client). Server RAM ≈ the whole VCF, buffered before send. | 0B |
 | `export.jscontact` | None (streamed to the client). Server RAM ≈ the whole JSContact set, buffered before send. | 0B |
-| `fts.rebuild` | Transient: a second copy of the three FTS index rows in the -wal until the single rebuild transaction commits. | 470.7KiB |
-| `backup.vacuum_into` | A full second copy of the database: free space ≥ the live DB size (VACUUM INTO writes the whole file). | 10.1MiB |
-| `restore.snapshot` | A full second copy of the database (the restore target). Photos and attachments are copied separately and may dominate at size — measured here as DB-only. | 5.1MiB |
+| `fts.rebuild` | Transient: a second copy of the three FTS index rows in the -wal until the single rebuild transaction commits. | 478.8KiB |
+| `backup.vacuum_into` | A full second copy of the database: free space ≥ the live DB size (VACUUM INTO writes the whole file). | 5.2MiB |
+| `restore.snapshot` | A full second copy of the database (the restore target). Photos and attachments are copied separately and may dominate at size — measured here as DB-only. | 5.2MiB |
 | `delete_cascade.hub` | None. Runs in one transaction — see the write-lock column for how long other writes queue behind it. | 523.0KiB |
 | `duplicates.find_pairs` | None on disk; peak RAM grows with the NUMBER OF PAIRS, which is quadratic in the size of a duplicate cluster. | 0B |
 
@@ -123,12 +123,12 @@ operation's whole duration — that is an outage, not a background task.
 | Operation | Profile | Probe writes completed | Max write stall | Stalled out (>5s) |
 |---|---|--:|--:|:-:|
 | `import.vcf` | smoke | 106 | 53.4ms | no |
-| `import.vcf` | typical | 2903 | 328.8ms | no |
+| `import.vcf` | typical | 3224 | 428.9ms | no |
 | `fts.rebuild` | smoke | 1 | 3.2ms | no |
-| `fts.rebuild` | typical | 1 | 18.3ms | no |
-| `backup.vacuum_into` | smoke | 8 | 325.5µs | no |
-| `backup.vacuum_into` | typical | 12 | 210.6µs | no |
-| `delete_cascade.hub` | smoke | 2 | 8.3ms | no |
+| `fts.rebuild` | typical | 2 | 21.7ms | no |
+| `backup.vacuum_into` | smoke | 6 | 223.1µs | no |
+| `backup.vacuum_into` | typical | 10 | 1.2ms | no |
+| `delete_cascade.hub` | smoke | 2 | 1.1ms | no |
 | `delete_cascade.hub` | typical | 1 | 8.3ms | no |
 
 `fts.rebuild` holds the write lock for its whole single transaction by design
