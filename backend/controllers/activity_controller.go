@@ -425,7 +425,15 @@ func DeleteActivity(c *gin.Context) {
 		return
 	}
 
-	if err := db.Delete(&activity).Error; err != nil {
+	// ADR 0042 decision 10: deleting the activity ends its standing-share
+	// grants, in the same transaction so the two cannot diverge.
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Delete(&activity).Error; err != nil {
+			return err
+		}
+		_, err := services.RevokeShareGrantsForEntity(tx, userID, models.ShareGrantEntityActivity, activity.UUID, services.Now())
+		return err
+	}); err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete activity").WithError(err))
 		return
 	}

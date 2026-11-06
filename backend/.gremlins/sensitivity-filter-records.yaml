@@ -86,6 +86,7 @@ unleash:
         - ^revision_cas\.go$
         - ^seafile_config\.go$
         - ^session\.go$
+        - ^share_grant\.go$
         - ^source_import\.go$
         - ^storage_sample\.go$
         - ^sync_health\.go$

@@ -120,6 +120,8 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"reach_out_cursors":          goCascadeUser,
 	"recovery_codes":             goCascadeUser,
 	"seafile_configs":            goCascadeUser,
+	"share_blocks":               goCascadeUser,
+	"share_grants":               goCascadeUser,
 	"sessions":                   goCascadeUser,
 	"tags":                       goCascadeUser,
 	"users":                      goCascadeUser,
@@ -644,7 +646,16 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	share := models.ContactShare{FromUserID: target.ID, ToUserID: admin.ID, ContactDisplayName: "x", Payload: "[]"}
 	require.NoError(t, db.Create(&share).Error)
 
+	// Standing shares (ADR 0042): one grant each way plus a block each way, so
+	// the sweep must remove rows where the target is either party.
+	require.NoError(t, db.Create(&models.ShareGrant{FromUserID: target.ID, ToUserID: admin.ID, EntityType: models.ShareGrantEntityContact, EntityID: uid, Status: models.ShareGrantStatusActive}).Error)
+	require.NoError(t, db.Create(&models.ShareGrant{FromUserID: admin.ID, ToUserID: target.ID, EntityType: models.ShareGrantEntityContact, EntityID: "other-uid", Status: models.ShareGrantStatusPending}).Error)
+	require.NoError(t, db.Create(&models.ShareBlock{BlockerUserID: target.ID, BlockedUserID: admin.ID}).Error)
+	require.NoError(t, db.Create(&models.ShareBlock{BlockerUserID: admin.ID, BlockedUserID: target.ID}).Error)
+
 	seeded := []seedRow{
+		scopedCount("share_grants", &models.ShareGrant{}, "from_user_id = ? OR to_user_id = ?", target.ID, target.ID),
+		scopedCount("share_blocks", &models.ShareBlock{}, "blocker_user_id = ? OR blocked_user_id = ?", target.ID, target.ID),
 		scopedCount("activities", &models.Activity{}, "user_id = ?", target.ID),
 		scopedCount("activity_images", &models.ActivityImage{}, "user_id = ?", target.ID),
 		rawCount("activity_contacts", "activity_id = ?", activity.ID),

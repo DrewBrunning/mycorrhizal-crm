@@ -44,6 +44,7 @@ var purgeUIDColumnExcluded = map[string]string{
 	"life_event_suggestion_resolutions": "hard-deleted by DeleteContact (user_id + uid scoped); not swept by the purge",
 	"life_events":                       "soft-deleted and purged by deleted_at (purgedSoftDeleteModels), row-keyed",
 	"reach_out_suggestions":             "hard-deleted by DeleteContact (user_id + uid scoped); not swept by the purge",
+	"share_grants":                      "ADR 0042: authorization history with no deleted_at; revoked (entity_deleted) by the DeleteContact cascade and hard-deleted by the share-grant retention purge, never swept by contact UID",
 	"users":                             "self_contact_vcard_uid is a pointer on the user, not a contact-owned row",
 }
 

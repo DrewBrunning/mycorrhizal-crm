@@ -86,6 +86,19 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 		return err
 	}
 
+	// Delete standing-share grants where the user is either party, and share
+	// blocks naming them on either side (ADR 0042 decision 13). Hard: a grant
+	// has no deleted_at (its status is the lifecycle), and an outgoing grant
+	// must stop authorizing reads the moment its owner is gone while an
+	// incoming one has no recipient left. Both tables also carry ON DELETE
+	// CASCADE FKs; the explicit pass keeps the manual checklist complete.
+	if err := tx.Where("from_user_id = ? OR to_user_id = ?", userID, userID).Delete(&models.ShareGrant{}).Error; err != nil {
+		return err
+	}
+	if err := tx.Where("blocker_user_id = ? OR blocked_user_id = ?", userID, userID).Delete(&models.ShareBlock{}).Error; err != nil {
+		return err
+	}
+
 	// Delete note images (hard — account gone, no tombstoning needed; ADR 0040).
 	if err := tx.Unscoped().Where("user_id = ?", userID).Delete(&models.NoteImage{}).Error; err != nil {
 		return err
