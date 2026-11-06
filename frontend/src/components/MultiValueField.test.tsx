@@ -139,3 +139,27 @@ test('free-text type mode renders a plain input and accepts custom tokens', () =
   fireEvent.change(typeInput, { target: { value: 'impp-y' } });
   expect(onChange).toHaveBeenCalledWith([{ type: 'impp-y', value: 'user@example.com' }]);
 });
+
+test('an email row that does not look like an address shows a non-blocking hint', () => {
+  const { onChange } = renderEditor({
+    valueType: 'email',
+    value: [value({ value: 'not-an-email' })],
+  });
+
+  expect(screen.getByText(/doesn't look like an email address/i)).toBeInTheDocument();
+  // Warning only: typing is never blocked or rewritten.
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'still-bad' } });
+  expect(onChange).toHaveBeenCalledWith([{ type: 'home', value: 'still-bad' }]);
+});
+
+test('a valid or empty email row shows no hint, and non-email fields are never checked', () => {
+  renderEditor({
+    valueType: 'email',
+    value: [value(), value({ value: '' })],
+  });
+  expect(screen.queryByText(/doesn't look like an email address/i)).not.toBeInTheDocument();
+  cleanup();
+
+  renderEditor({ valueType: 'text', value: [value({ value: 'not-an-email' })] });
+  expect(screen.queryByText(/doesn't look like an email address/i)).not.toBeInTheDocument();
+});

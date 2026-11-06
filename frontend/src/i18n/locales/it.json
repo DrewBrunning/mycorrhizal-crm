@@ -320,6 +320,7 @@
     "phone": "Telefono",
     "birthday": "Compleanno",
     "birthdayFormat": "L'anno è opzionale, ad es. 1990-06-15 o --12-25 (anno sconosciuto). Controlla le Impostazioni per il formato data.",
+    "emailLooksInvalid": "Non sembra un indirizzo e-mail. Controllala.",
     "formatExamples": {
       "phone": "+1 555 123 4567",
       "phoneHint": "Formato internazionale consigliato.",

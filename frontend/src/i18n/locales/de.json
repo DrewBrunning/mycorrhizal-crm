@@ -313,6 +313,7 @@
     "phone": "Telefon",
     "birthday": "Geburtstag",
     "birthdayFormat": "Jahr optional, z. B. 1990-06-15 oder --12-25 (Jahr unbekannt). Datumsformat siehe Einstellungen.",
+    "emailLooksInvalid": "Sieht nicht wie eine E-Mail-Adresse aus. Bitte prüfen.",
     "formatExamples": {
       "phone": "+1 555 123 4567",
       "phoneHint": "Internationales Format empfohlen.",

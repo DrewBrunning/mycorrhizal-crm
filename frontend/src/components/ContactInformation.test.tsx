@@ -279,6 +279,19 @@ test('a multi-token fax number (features: [voice, fax]) does not get a call acti
   expect(within(row).queryByLabelText(/^Call /)).toBeNull();
 });
 
+test('a stored email that does not look like an address is called out, but still shown', () => {
+  renderInformation({
+    emails: [
+      { address: 'imported-junk', contexts: ['home'] },
+      { address: 'alice@example.com', contexts: ['work'] },
+    ],
+  });
+  const row = fieldRow('Email');
+
+  expect(within(row).getByText(/imported-junk/)).toBeInTheDocument();
+  expect(within(row).getAllByText(/doesn't look like an email address/i)).toHaveLength(1);
+});
+
 test('an email is itself a mailto: link, plus a copy action', () => {
   renderInformation({ emails: [{ address: 'alice@example.com', contexts: ['home'] }] });
   const row = fieldRow('Email');
