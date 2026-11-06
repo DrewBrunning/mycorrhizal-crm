@@ -109,6 +109,8 @@ var mergeCoverage = map[string]mergeClass{
 	// --- retained history -------------------------------------------------
 	"contact_deletion_snapshots": {disposition: mergeRetained, keyCol: "contact_vcard_uid",
 		reason: "ADR 0037: written only by a user-initiated DeleteContact, never by a merge; a merge loser is deliberately not restorable from the trash"},
+	"share_grants": {disposition: mergeRetained, keyCol: "entity_id",
+		reason: "ADR 0042 decision 10: a grant is the owner's authorization history, not contact data. The merge loser is deleted through the same cascade as any contact delete, which revokes its live grants (entity_deleted); the revoked row keeps naming the loser and is purged after the retention window. Access is never silently transferred to the keeper"},
 	"audit_events": {disposition: mergeRetained, keyCol: "entity_id",
 		reason: "append-only audit trail (ADR: audit is never rewritten); the merge itself is recorded on the keeper"},
 }

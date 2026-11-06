@@ -46,6 +46,7 @@ func TestMigrationsAddNoteImages(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NoError(t, sqlDB.Close())
+	require.NoError(t, MigrateDown(dbPath)) // 000090_share_grants
 	require.NoError(t, MigrateDown(dbPath)) // 000089_ntfy_access_token
 	require.NoError(t, MigrateDown(dbPath)) // 000088_contact_images
 	require.NoError(t, MigrateDown(dbPath))
