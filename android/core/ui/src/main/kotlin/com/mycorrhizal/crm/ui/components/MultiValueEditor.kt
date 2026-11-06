@@ -201,6 +201,13 @@ interface MultiValueSpec<T> {
      * Only Email/Phone set it.
      */
     val contentType: ContentType? get() = null
+
+    /**
+     * Issue #2377: true when a malformed value should show a non-blocking
+     * "doesn't look like an email address" hint. Only [EmailSpec] sets it; the
+     * value is still saved either way.
+     */
+    val warnsOnMalformedEmail: Boolean get() = false
 }
 
 object EmailSpec : MultiValueSpec<Email> {
@@ -220,6 +227,7 @@ object EmailSpec : MultiValueSpec<Email> {
     override val valueExample = R.string.contact_example_email
     override val itemLabel = R.string.contact_item_email
     override val contentType = ContentType.EmailAddress
+    override val warnsOnMalformedEmail = true
 }
 
 object PhoneSpec : MultiValueSpec<Phone> {
@@ -557,7 +565,13 @@ private fun <T> MultiValueRow(
 ) {
     val valueLabel = stringResource(spec.valueLabel)
     val valueExample = spec.valueExample?.let { stringResource(it) }
-    val valueHint = spec.valueHint?.let { stringResource(it) }
+    // Issue #2377: warn, never block. The malformed-email hint takes the
+    // supporting-text slot (EmailSpec has no other hint).
+    val valueHint = if (spec.warnsOnMalformedEmail && !looksLikeEmail(spec.value(item))) {
+        stringResource(R.string.contact_email_looks_invalid)
+    } else {
+        spec.valueHint?.let { stringResource(it) }
+    }
     val itemLabel = stringResource(spec.itemLabel)
     val valueDescription =
         if (showRowNumber) {

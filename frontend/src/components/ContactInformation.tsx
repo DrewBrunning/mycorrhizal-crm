@@ -52,6 +52,7 @@ import { hasVisibleFields } from '../contactSectionVisibility';
 import { useDateFormat } from '../DateFormatProvider';
 import { useLinkFieldTypes } from '../hooks/useLinkFieldTypes';
 import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
+import { looksLikeEmail } from '../utils/emailFormat';
 import {
   buildAddressLink,
   buildMailtoLink,
@@ -369,6 +370,11 @@ export default function ContactInformation({
                   {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
                 </Typography>
               </Box>
+              {!looksLikeEmail(r.value) && (
+                <Typography variant="caption" sx={{ color: 'warning.main' }}>
+                  {t('contacts.emailLooksInvalid')}
+                </Typography>
+              )}
             </Box>
             <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>
               <CopyButton value={r.value} label={`${t('contactDetail.email')} ${r.value}`} />

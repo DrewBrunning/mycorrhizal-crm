@@ -365,6 +365,7 @@
     <string name="contact_item_grammatical_gender">género gramatical</string>
     <string name="contact_item_anniversary">aniversario</string>
     <string name="contact_example_email">name@example.com</string>
+    <string name="contact_email_looks_invalid">No parece una dirección de correo electrónico. Revísala.</string>
     <string name="contact_example_phone">+1 555 123 4567</string>
     <string name="contact_phone_format_hint">Se recomienda el formato internacional.</string>
     <string name="contact_example_online_service">https://… o user@server</string>

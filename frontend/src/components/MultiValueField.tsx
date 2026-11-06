@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import type { ContactValue } from '../api/contacts';
 import { CONTACT_TYPE_OPTIONS } from '../contactFields';
 import { useRowKeys } from '../hooks/useRowKeys';
+import { looksLikeEmail } from '../utils/emailFormat';
 
 interface MultiValueFieldProps {
   label: string;
@@ -55,6 +56,8 @@ export default function MultiValueField({
           ? t('contacts.formatExamples.url')
           : undefined;
   const valueHelperText = valueType === 'tel' ? t('contacts.formatExamples.phoneHint') : undefined;
+
+  const emailLooksOff = (v: string) => valueType === 'email' && !looksLikeEmail(v);
 
   const updateRow = (index: number, patch: Partial<ContactValue>) => {
     onChange(value.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -138,6 +141,10 @@ export default function MultiValueField({
               placeholder={valuePlaceholder}
               value={row.value}
               onChange={(e) => updateRow(index, { value: e.target.value })}
+              // Warn, never block (issue #2377): the value is still saved.
+              color={emailLooksOff(row.value) ? 'warning' : undefined}
+              focused={emailLooksOff(row.value) ? true : undefined}
+              helperText={emailLooksOff(row.value) ? t('contacts.emailLooksInvalid') : undefined}
             />
             <IconButton
               size="small"

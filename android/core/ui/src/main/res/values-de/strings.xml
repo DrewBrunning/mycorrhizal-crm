@@ -357,6 +357,7 @@
     <string name="contact_item_grammatical_gender">grammatisches Geschlecht</string>
     <string name="contact_item_anniversary">Jahrestag</string>
     <string name="contact_example_email">name@example.com</string>
+    <string name="contact_email_looks_invalid">Sieht nicht wie eine E-Mail-Adresse aus. Bitte prüfen.</string>
     <string name="contact_example_phone">+1 555 123 4567</string>
     <string name="contact_phone_format_hint">Internationales Format empfohlen.</string>
     <string name="contact_example_online_service">https://… oder user@server</string>
