@@ -16,6 +16,9 @@
 //  2. High/Medium alerts on the *app* are failures unless an entry in the
 //     ignore-list accepts them (plugin id + risk + URL regex), with the
 //     justification logged so acceptances stay visible.
+//     One narrow built-in acceptance exists (issue #2391): a plugin-10062 PII
+//     Disclosure finding whose evidence is nothing but the last group of a
+//     UUID in the response (a request ID echoed in the body), see acceptPIIUUID.
 //  3. Anything else (Low/Info, non-high-risk) is ignored — the gate is on
 //     High/Medium, matching the issue's ask.
 //
@@ -128,6 +131,12 @@ type zapAlert struct {
 
 type zapInstance struct {
 	URI string `json:"uri"`
+	// Evidence and the response fields are filled by the traditional-json-plus
+	// report template (zap/zap-dast.yaml); the plain template omits the
+	// response. Only the plugin-10062 UUID check reads them.
+	Evidence       string `json:"evidence"`
+	ResponseHeader string `json:"responseheader"`
+	ResponseBody   string `json:"responsebody"`
 }
 
 // --- ignore-list model ---
@@ -167,6 +176,11 @@ func run(getenv func(string) string) error {
 				if alert.PluginID == cfg.selfTestRule {
 					canarySelfTestSeen = true
 				}
+				continue
+			}
+			if ok, reason := acceptPIIUUID(alert); ok {
+				fmt.Printf("[ACCEPT] %s (%s) on %s — %s\n",
+					alert.Alert, riskNames[alert.RiskCode], site.Name, reason)
 				continue
 			}
 			if rule, ok := matchIgnore(rules, alert); ok {
@@ -313,4 +327,46 @@ func readIgnoreList(path string) ([]ignoreRule, error) {
 		return nil, err
 	}
 	return rules, nil
+}
+
+// piiPluginID is ZAP's PII Disclosure passive rule.
+const piiPluginID = "10062"
+
+// uuidRe matches a canonical UUID and captures its last (12-hex) group.
+var uuidRe = regexp.MustCompile(`(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-([0-9a-f]{12})\b`)
+
+// acceptPIIUUID accepts a plugin-10062 finding only when EVERY instance's
+// evidence is purely the last group of a UUID in that instance's response and
+// every occurrence of the evidence in the response is inside such a UUID. A
+// random request ID whose last group is 12 decimal digits can pass ZAP's card
+// regexes plus Luhn (issue #2391); a genuine free-standing number, or one that
+// also appears outside a UUID, is not accepted. It fails closed when the
+// response is absent from the report.
+func acceptPIIUUID(alert zapAlert) (bool, string) {
+	if alert.PluginID != piiPluginID || len(alert.Instances) == 0 {
+		return false, ""
+	}
+	for _, inst := range alert.Instances {
+		if !evidenceOnlyInUUIDs(inst.Evidence, inst.ResponseHeader+"\n"+inst.ResponseBody) {
+			return false, ""
+		}
+	}
+	return true, "false positive: the matched digits are only the last group of a UUID (request ID) in the response (issue #2391)"
+}
+
+func evidenceOnlyInUUIDs(evidence, text string) bool {
+	if evidence == "" || text == "" {
+		return false
+	}
+	total := strings.Count(text, evidence)
+	if total == 0 {
+		return false
+	}
+	inUUID := 0
+	for _, m := range uuidRe.FindAllStringSubmatch(text, -1) {
+		if m[1] == evidence {
+			inUUID++
+		}
+	}
+	return inUUID == total
 }

@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -343,5 +345,116 @@ func TestMain_ExitCodes(t *testing.T) {
 				t.Fatalf("exit = %d, want %d", got, tc.want)
 			}
 		})
+	}
+}
+
+// --- plugin 10062 (PII Disclosure) UUID false positive, issue #2391 ---
+
+// pii10062Report builds a report whose app site carries one 10062 high finding
+// with the given evidence and response body, plus the canary self-test alert so
+// only the 10062 verdict decides the run.
+func pii10062Report(evidence, responseBody string) string {
+	return `{"site":[
+ {"@name":"http://localhost:7300","alerts":[{"pluginid":"10062","alert":"PII Disclosure","riskcode":"3","riskdesc":"High (High)",
+   "instances":[{"uri":"http://localhost:7300/api/v1/users/2fa/status","evidence":"` + evidence + `","responsebody":` + jsonString(responseBody) + `}]}]},
+ {"@name":"http://localhost:7301","alerts":[{"pluginid":"40012","alert":"Cross Site Scripting (Reflected)","riskcode":"3","riskdesc":"High (Medium)",
+   "instances":[{"uri":"http://localhost:7301/reflected?q=x"}]}]}
+]}`
+}
+
+func jsonString(s string) string {
+	b, _ := json.Marshal(s)
+	return string(b)
+}
+
+func TestRun_PII10062EvidenceIsUUIDLastGroupIsAccepted(t *testing.T) {
+	// The exact v1.6.0 finding: Maestro BIN 584111 read out of the last group of
+	// the request ID echoed in a 401 body.
+	body := `{"error":"unauthorized","request_id":"a0769ac2-74a0-4ba6-8869-584111881481"}`
+	report, ignore := writeConfigFiles(t, pii10062Report("584111881481", body), "# no rules\n")
+	out := captureStdout(t, func() {
+		if err := run(gateEnv(report, ignore)); err != nil {
+			t.Fatalf("run() = %v, want nil: the evidence is only a UUID's last group", err)
+		}
+	})
+	if !strings.Contains(out, "[ACCEPT]") || !strings.Contains(out, "UUID") {
+		t.Errorf("stdout %q lacks an ACCEPT line naming the UUID reason", out)
+	}
+}
+
+func TestRun_PII10062RealCardNumberIsRejected(t *testing.T) {
+	body := `{"card":"4111111111111111"}`
+	report, ignore := writeConfigFiles(t, pii10062Report("4111111111111111", body), "# no rules\n")
+	err := run(gateEnv(report, ignore))
+	if err == nil || !strings.Contains(err.Error(), "10062") {
+		t.Fatalf("run() = %v, want a 10062 failure for a free-standing card number", err)
+	}
+}
+
+func TestRun_PII10062EvidenceAlsoOutsideUUIDIsRejected(t *testing.T) {
+	// The same digits appear once inside a UUID and once on their own: the
+	// stand-alone occurrence could be a real number, so the finding stands.
+	body := `{"request_id":"a0769ac2-74a0-4ba6-8869-584111881481","note":"584111881481"}`
+	report, ignore := writeConfigFiles(t, pii10062Report("584111881481", body), "# no rules\n")
+	if err := run(gateEnv(report, ignore)); err == nil {
+		t.Fatal("run() = nil, want failure: evidence also appears outside a UUID")
+	}
+}
+
+func TestRun_PII10062WithoutResponseBodyIsRejected(t *testing.T) {
+	// No response text to prove the UUID context: fail closed.
+	report, ignore := writeConfigFiles(t, pii10062Report("584111881481", ""), "# no rules\n")
+	if err := run(gateEnv(report, ignore)); err == nil {
+		t.Fatal("run() = nil, want failure: nothing proves the evidence is UUID-embedded")
+	}
+}
+
+func TestRun_PII10062UUIDRuleDoesNotCoverOtherPlugins(t *testing.T) {
+	body := `{"request_id":"a0769ac2-74a0-4ba6-8869-584111881481"}`
+	rep := strings.Replace(pii10062Report("584111881481", body), `"pluginid":"10062"`, `"pluginid":"10099"`, 1)
+	report, ignore := writeConfigFiles(t, rep, "# no rules\n")
+	if err := run(gateEnv(report, ignore)); err == nil {
+		t.Fatal("run() = nil, want failure: only plugin 10062 gets the UUID exemption")
+	}
+}
+
+// captureStdout runs fn with os.Stdout redirected and returns what it printed.
+func captureStdout(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+	fn()
+	_ = w.Close()
+	b, _ := io.ReadAll(r)
+	return string(b)
+}
+
+func TestAcceptPIIUUID_FailsClosedOnDegenerateInput(t *testing.T) {
+	uuid := "a0769ac2-74a0-4ba6-8869-584111881481"
+	cases := map[string]zapAlert{
+		"no instances": {PluginID: "10062"},
+		"empty evidence": {PluginID: "10062", Instances: []zapInstance{
+			{ResponseBody: uuid}}},
+		"evidence absent from response": {PluginID: "10062", Instances: []zapInstance{
+			{Evidence: "999999999999", ResponseBody: uuid}}},
+		"evidence matches a non-final UUID group": {PluginID: "10062", Instances: []zapInstance{
+			{Evidence: "74a0", ResponseBody: uuid}}},
+		"second instance not UUID-embedded": {PluginID: "10062", Instances: []zapInstance{
+			{Evidence: "584111881481", ResponseBody: uuid},
+			{Evidence: "584111881481", ResponseBody: "584111881481"}}},
+	}
+	for name, a := range cases {
+		if ok, _ := acceptPIIUUID(a); ok {
+			t.Errorf("%s: accepted, want rejected", name)
+		}
+	}
+	if ok, _ := acceptPIIUUID(zapAlert{PluginID: "10062", Instances: []zapInstance{
+		{Evidence: "584111881481", ResponseHeader: "X-Request-ID: " + uuid}}}); !ok {
+		t.Error("UUID in the response header (X-Request-ID) must be accepted")
 	}
 }
