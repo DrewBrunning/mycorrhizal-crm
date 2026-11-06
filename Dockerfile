@@ -163,6 +163,7 @@ FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c03
 # pruned 2026e-r0 from alpine/v3.24/main, so the old pin became unsatisfiable
 # ("tzdata-2026f-r0: breaks: world[tzdata=2026e-r0]") -- the same pruned-pin
 # class as libssl3 above.
+# 2026-11-06 (alpine-pin-bump, automated): zlib 1.3.2-r1 -> 1.4-r0. Alpine pruned the old version from the index.
 RUN apk add --no-cache \
     ca-certificates=20261020-r0 \
     tzdata=2026f-r0 \
@@ -172,7 +173,7 @@ RUN apk add --no-cache \
     libc6-compat=1.1.0-r4 \
     libssl3=3.5.9-r0 \
     libcrypto3=3.5.9-r0 \
-    zlib=1.3.2-r1 \
+    zlib=1.4-r0 \
     && rm -f /var/log/apk.log \
     && find / -xdev -type f \( -perm -4000 -o -perm -2000 \) -exec chmod a-s {} +
 
