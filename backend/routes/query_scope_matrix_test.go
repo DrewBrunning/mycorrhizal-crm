@@ -104,6 +104,7 @@ type qsActor struct {
 	c1, c2, c3, cArch, cTomb models.Contact
 
 	circleID1, circleID2     string
+	entityID1                string
 	circleName1, circleName2 string
 	householdID1             string
 	householdID2             string
@@ -172,6 +173,14 @@ func qsSeedActor(t *testing.T, db *gorm.DB, cfg *config.Config, name, tag string
 		return c.ID, c.Name
 	}
 	a.circleID1, a.circleName1 = mkCircle(1, a.c1)
+
+	// One organisation linked to c1 only (issue #2297: GET /contacts?entity_id=).
+	org := models.Entity{UserID: a.user.ID, Kind: models.EntityKindOrganisation, Name: tag + "-org1"}
+	require.NoError(t, db.Create(&org).Error)
+	require.NoError(t, db.Create(&models.ContactEntityLink{UserID: a.user.ID, ContactVCardUID: a.c1.VCardUID,
+		EntityID: org.ID, Kind: org.Kind, Role: "employee", Sensitivity: "normal"}).Error)
+	a.entityID1 = org.ID
+	a.note("entity1", org.ID, true)
 	a.circleID2, a.circleName2 = mkCircle(2, a.c2)
 
 	mkHousehold := func(n int, member models.Contact) string {
@@ -481,6 +490,14 @@ func buildQueryScopeRows() []qsRow {
 			name: "contacts ?circle=", path: "/api/v1/contacts",
 			params: []string{"circle"}, reads: []string{"GetContacts:circle"},
 			query:  func(a *qsActor) string { return "circle=" + a.circleName1 },
+			in:     qsMk("contact-c1"),
+			out:    qsMk("contact-c2", "contact-c3"),
+			baseIn: qsMk("contact-c1", "contact-c2", "contact-c3"),
+		},
+		qsRow{
+			name: "contacts ?entity_id=", path: "/api/v1/contacts",
+			params: []string{"entity_id"}, reads: []string{"GetContacts:entity_id"},
+			query:  func(a *qsActor) string { return "entity_id=" + a.entityID1 },
 			in:     qsMk("contact-c1"),
 			out:    qsMk("contact-c2", "contact-c3"),
 			baseIn: qsMk("contact-c1", "contact-c2", "contact-c3"),

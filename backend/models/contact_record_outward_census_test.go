@@ -215,6 +215,14 @@ var outwardProjectionSites = []outwardSiteRow{
 			"ApplyRecordToContact in the same transaction. No outward copy.",
 	},
 	{
+		file: "controllers/contact_entity_link_controller.go", fn: "AdoptContactEntityLink",
+		class: outwardSiteInternal,
+		reason: "Adopt (issue #2297, ADR 0043 decision 3): reads the owner's own " +
+			"persisted card with no projections (nil db), appends the entity's " +
+			"organisation/address and saves it back through ApplyRecordToContact. " +
+			"The record is never sent outward.",
+	},
+	{
 		file: "services/wedding_sync.go", fn: "SyncWeddingFromLifeEvent",
 		class: outwardSiteInternal,
 		reason: "Read-modify-write of a contact's own card to mirror a " +
