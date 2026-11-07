@@ -279,7 +279,8 @@ version (e.g. `v0.6.6`). It registers the release's schema fixture
 pushes a lightweight tag at that commit. The tag push triggers
 [docker-publish.yml](.github/workflows/docker-publish.yml), which builds and signs the three
 Docker images and the release APK, mints SBOMs + SLSA provenance, and creates the GitHub Release
-with generated notes. See `docs/security/release-verification.md` → "How a release is cut".
+from the version's `CHANGELOG.md` section (rename `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD` first;
+the workflow refuses to tag without it). See `docs/security/release-verification.md` → "How a release is cut".
 
 - **Version**: `vMAJOR.MINOR.PATCH`, and a tag that does not exist yet. A patch release that ships
   no new migration is fine — it shares its predecessor's schema (the fixture dump is byte-identical

@@ -6,17 +6,17 @@ nav_order: 13
 # Changelog policy
 
 **This is the canonical changelog statement (REL-05, issue #449).** It defines
-what the changelog *is* for this project, how the "what changed" list is
-produced, where the operator-facing part comes from, when a change must carry
-one, and where the record begins. `.github/release.yml`, `cmd/releasenotes`, and
+what the changelog *is* for this project, how the Release notes are produced,
+where operator actions go, when a change must carry an entry, and where the
+record begins. `cmd/changelogsection` and
 the `changelog-note` job in `.github/workflows/unit-tests.yml` are defined
 against this document; a change here is a change to those, and vice versa (see
 [Document consistency](#document-consistency)).
 
 This page is contributor- and maintainer-facing. Users and operators read the
-curated [`CHANGELOG.md`](../CHANGELOG.md) at the repository root; the
-machine-assembled record is on each
-[GitHub Release](https://github.com/DrewBrunning/mycorrhizal-crm/releases).
+curated [`CHANGELOG.md`](../CHANGELOG.md) at the repository root; each
+[GitHub Release](https://github.com/DrewBrunning/mycorrhizal-crm/releases)
+carries a copy of its section.
 
 ## What the changelog is
 
@@ -28,28 +28,21 @@ There are two records, with different audiences:
    bullet per user-visible change, grouped by release. Every user-visible change
    adds its entry to `[Unreleased]` in the same pull request, so contributors see
    what is coming and the release section is already written at tag time.
-2. **The GitHub Release notes** — the complete, traceable record, assembled from
-   two sources:
-   - **What changed** — GitHub's own release-notes generator
-     (`generate_release_notes`), turned into labelled sections by
-     `.github/release.yml`. One section per category, populated from the labels
-     on the pull requests merged since the previous release.
-   - **Operator notes** — an **Upgrade notes** section, a **Security-relevant
-     changes** section when a change affects the security posture, and a
-     **Breaking changes** section when applicable, **hand-written in each pull
-     request's description** and harvested at release time by `cmd/releasenotes`
-     into the top of the release body. Security-relevant changes are their own
-     section (not folded into the upgrade notes) so a new default-off guard, a
-     changed floor, or a new required config cannot be missed among feature
-     notes (issue #953).
+2. **The GitHub Release notes** — a copy. `docker-publish.yml` writes the
+   Release body from the `CHANGELOG.md` section for the tag (via
+   `cmd/changelogsection`), plus the Docker image block and a compare link to the
+   previous tag, which keeps every pull request reachable. Relative links become
+   absolute links to the tagged tree. A final tag needs its `## [X.Y.Z]`
+   section; `release.yml` refuses to tag without one, and the Release job fails
+   on a missing or empty section. A release candidate publishes `[X.Y.Z]` if it
+   exists, else `[Unreleased]`. `promote-rc.yml` publishes the RC commit's
+   `[X.Y.Z]` section and refuses to promote without one, so rename
+   `[Unreleased]` before the last RC.
 
-The generated list answers *what changed*; only a human can answer *what an
-operator must do about it*, which is why the operator notes are never generated
-from a diff. `CHANGELOG.md` is the curated summary of both. Until the release
-workflow copies the changelog section into the release body (tracked in
-[#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242)), the two
-are maintained side by side: the PR-body operator notes still feed the release,
-and the `CHANGELOG.md` entry feeds the file.
+GitHub's generated "What's Changed" list and the harvest of `## Upgrade notes`
+blocks from PR bodies ([#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242))
+no longer feed the Release. Operator actions go in the `> **Upgrade**` blockquote
+of the changelog section.
 
 ## Writing `CHANGELOG.md` entries
 
@@ -82,25 +75,7 @@ Format: `- **Bold lead phrase** ([#123](https://github.com/DrewBrunning/mycorrhi
   `Internal` cap, in CI and the pre-commit hook. Released sections are not
   checked.
 
-## Categories
-
-`.github/release.yml` defines these sections, each filled by a PR label:
-
-| Section | Label |
-|---|---|
-| Security | `security` |
-| Breaking Changes | `breaking-change` |
-| Deprecated | `deprecation` |
-| Added | `enhancement` |
-| Fixed | `bug` |
-| Dependencies | `dependencies` |
-| Documentation | `documentation` |
-| Other Changes | `*` (catch-all — every merged PR appears somewhere) |
-
-The `breaking-change` and `deprecation` labels are created when the first such
-change ships; until then those sections simply stay empty. The **Breaking
-changes** operator section (part 2) is harvested from PR *bodies* and does not
-depend on the label.
+## Related policies
 
 `Deprecated` entries are also recorded in
 [`deprecations.md`](deprecations.md) (MAINT-01, issue #490); `Breaking Changes`
@@ -136,23 +111,13 @@ fails a PR that touches those paths, does not change `CHANGELOG.md`, and has no
 Internal refactors, test-only changes and other changes with no user-visible
 effect need no entry.
 
-## Upgrade notes are always answered
-
-`cmd/releasenotes` always emits an **Upgrade notes** section. When no PR in the
-range contributed one, it emits:
-
-> None — no action required for an instance already on ≥ v1.0.0.
-
-So every release states the operator position explicitly rather than by
-omission.
-
 ## Skip-version upgrades
 
 Self-hosted operators skip versions — `v1.0.0 → current` directly is supported
-([`upgrade-compatibility.md`](upgrade-compatibility.md), issue #529). Because
-every release body carries an **Upgrade notes** section, the accumulated
-operator actions across a range are read release-by-release down the
-[Releases page](https://github.com/DrewBrunning/mycorrhizal-crm/releases). The
+([`upgrade-compatibility.md`](upgrade-compatibility.md), issue #529). The
+accumulated operator actions across a range are read section by section, newest
+first, in [`CHANGELOG.md`](../CHANGELOG.md): each release's `> **Upgrade**`
+blockquote states what an operator must do. The
 one known cross-version upgrade defect (a crash upgrading into `v0.6.1`–`v0.6.8`
 from `≤ v0.6.0` with audit history, fixed in `v0.6.9`) is documented in
 [`upgrade-compatibility.md`](upgrade-compatibility.md) and repeated in the
@@ -161,13 +126,9 @@ affected releases' notes.
 ## Versions and issue links
 
 The version a set of notes belongs to is the **git tag**
-([`versioning-policy.md`](versioning-policy.md), REL-01). Publication and note
-assembly happen together: the harvest runs inside the release build
-(`docker-publish.yml`, `create-release`), so a release cannot be published
-without its notes. Each generated line links its PR, and each harvested block is
-prefixed with its `#NNN` link — which is how the `0.9.x` release-candidate
-traceability requirement (issues #503/#504), *every change traceable to a
-finding*, becomes checkable rather than aspirational.
+([`versioning-policy.md`](versioning-policy.md), REL-01). A release cannot be
+tagged or published without its changelog section, and the Release body links
+the compare view, so every change stays traceable to a pull request.
 
 ## Where the record begins
 
@@ -180,18 +141,8 @@ upgrades from below the floor in one hop anyway.
 
 ## Document consistency
 
-- `.github/release.yml`'s category set is pinned by
-  `backend/internal/releasenotes` (`RequiredCategories`);
-  `TestReleaseConfigHasRequiredCategories` fails the build if a section is
-  dropped or the `*` catch-all loses its label.
-- `cmd/releasenotes` (harvest + assembly, including the **Security-relevant
-  changes** section) is covered by `backend/internal/releasenotes` unit tests.
-- `CHANGELOG.md` entries are not machine-checked yet; a lint check for
-  `[Unreleased]` is part of the follow-up in
-  [#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242).
-- `changelog-note` in `.github/workflows/unit-tests.yml` enforces the
-  operator-note requirement on every pull request; its accepted heading set is
-  the three operator sections above.
+- `cmd/changelogsection` is covered by its unit tests; `release.yml` and
+  `docker-publish.yml` both call it.
 
 These run in the normal `go test ./...` and CI, so the policy cannot drift from
 the tooling without a red build.

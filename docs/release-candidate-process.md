@@ -87,9 +87,9 @@ trail, not the taste.
    `vX.Y.0` milestone.
 2. **The fix** is a PR into `release/vX.Y.0` closing that issue (criterion above).
 3. **The next RC** is cut with `release.yml` (`version: vX.Y.Z-rc.(N+1)`, `ref: release/vX.Y.0`).
-4. **Traceability is automatic.** Each RC's GitHub Release notes are generated from the merged
-   PRs and categorised by [`.github/release.yml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/release.yml);
-   every PR links its `rc-finding` issue. Add a short `## RC changes` section to the release body
+4. **Traceability is automatic.** Each RC's GitHub Release notes are the `[Unreleased]` section of
+   `CHANGELOG.md` (or `[X.Y.Z]` once renamed; promotion requires it); every PR links its
+   `rc-finding` issue. Add a short `## RC changes` section to the release body
    naming the findings this RC closes.
 5. Successive RCs get **smaller**. An RC whose diff is larger than its predecessor's, or which
    introduces a new `sev1`/`sev2`, is a signal the series is not converging.
