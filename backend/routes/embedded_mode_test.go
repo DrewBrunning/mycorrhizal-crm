@@ -64,6 +64,8 @@ func TestRegisterRoutes_EmbeddedOmitsNetworkSurfaces(t *testing.T) {
 		"GET /api/v1/feeds/atom",
 		"GET /api/v1/contact-shares/incoming",
 		"POST /api/v1/contact-shares",
+		"GET /api/v1/share-grants/incoming", // ADR 0042: single-user embedded mode has no one to share with
+		"POST /api/v1/share-grants",
 		"GET /api/v1/webhooks",
 		"POST /api/v1/webhooks",
 		"GET /api/v1/auth/device/grants",

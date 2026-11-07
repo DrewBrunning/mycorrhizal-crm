@@ -681,12 +681,18 @@ func RecipientView(db *gorm.DB, g *models.ShareGrant, now time.Time) ShareGrantR
 	}
 }
 
-// IncomingVisible is the WHERE fragment for the recipient's list: pending and
-// active only, never blocked, and not past either expiry.
-func IncomingVisible(q *gorm.DB, userID uint, now time.Time) *gorm.DB {
-	return q.Where("to_user_id = ? AND status IN ? AND (expires_at IS NULL OR expires_at > ?) AND (status <> ? OR created_at > ?)",
-		userID, []string{models.ShareGrantStatusPending, models.ShareGrantStatusActive}, now,
-		models.ShareGrantStatusPending, now.Add(-ShareGrantPendingTTL))
+// OutgoingShareGrantsQuery is the owner's list scope: their own rows only.
+func OutgoingShareGrantsQuery(db *gorm.DB, userID uint) *gorm.DB {
+	return db.Model(&models.ShareGrant{}).Where("from_user_id = ?", userID)
+}
+
+// IncomingShareGrantsQuery is the recipient's list scope: pending and active
+// only, never blocked, and not past either expiry.
+func IncomingShareGrantsQuery(db *gorm.DB, userID uint, now time.Time) *gorm.DB {
+	return db.Model(&models.ShareGrant{}).
+		Where("to_user_id = ? AND status IN ? AND (expires_at IS NULL OR expires_at > ?) AND (status <> ? OR created_at > ?)",
+			userID, []string{models.ShareGrantStatusPending, models.ShareGrantStatusActive}, now,
+			models.ShareGrantStatusPending, now.Add(-ShareGrantPendingTTL))
 }
 
 // --- content ------------------------------------------------------------

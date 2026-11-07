@@ -83,9 +83,9 @@ func markShareGrantReconfirm(tx *gorm.DB, ownerID uint, vcardUID, section string
 // hasLiveContactGrant reports whether ownerID has a live contact grant on
 // vcardUID ("" = any contact). It gates every hook so the common no-grant
 // path costs one indexed existence query.
-func hasLiveContactGrant(tx *gorm.DB, ownerID uint, vcardUID string) bool {
+func hasLiveContactGrant(tx *gorm.DB, ownerID uint, vcardUID string) (bool, error) {
 	if ownerID == 0 {
-		return false
+		return false, nil
 	}
 	q := tx.Session(&gorm.Session{NewDB: true}).Table("share_grants").
 		Where("from_user_id = ? AND entity_type = ? AND status IN ?", ownerID, ShareGrantEntityContact, liveShareGrantStatuses)
@@ -94,9 +94,11 @@ func hasLiveContactGrant(tx *gorm.DB, ownerID uint, vcardUID string) bool {
 	}
 	var n int64
 	if err := q.Limit(1).Count(&n).Error; err != nil {
-		return true // fail closed: run the full path
+		// A failed lookup must fail the write: skipping the marker would leave
+		// a reclassified item exposed (and swallow a database error).
+		return false, err
 	}
-	return n > 0
+	return n > 0, nil
 }
 
 func containsString(list []string, s string) bool {
@@ -141,15 +143,15 @@ func reclassified(oldS, newS string) bool {
 // --- RelationshipEdge (related_to) ---
 
 func (r *RelationshipEdge) BeforeSave(tx *gorm.DB) error {
-	if hasLiveContactGrant(tx, r.UserID, "") {
-		captureSensitivity(tx, "relationship_edges", r.ID, r.ID == "" || !rowExists(tx, "relationship_edges", r.ID))
-	}
-	return nil
+	return beforeSensitivityWrite(tx, r.UserID, "relationship_edges", r.ID)
 }
 
 func (r *RelationshipEdge) AfterSave(tx *gorm.DB) error {
-	if r.ID == "" || !hasLiveContactGrant(tx, r.UserID, "") {
+	if r.ID == "" {
 		return nil
+	}
+	if live, err := hasLiveContactGrant(tx, r.UserID, ""); err != nil || !live {
+		return err
 	}
 	if !reclassified(oldSensitivity(tx, "relationship_edges"), sensitivityOf(tx, "relationship_edges", "id", r.ID)) {
 		return nil
@@ -166,15 +168,15 @@ func (r *RelationshipEdge) AfterSave(tx *gorm.DB) error {
 // --- Preference (personal_info) ---
 
 func (p *Preference) BeforeSave(tx *gorm.DB) error {
-	if hasLiveContactGrant(tx, p.UserID, "") {
-		captureSensitivity(tx, "preferences", p.ID, p.ID == "" || !rowExists(tx, "preferences", p.ID))
-	}
-	return nil
+	return beforeSensitivityWrite(tx, p.UserID, "preferences", p.ID)
 }
 
 func (p *Preference) AfterSave(tx *gorm.DB) error {
-	if p.ID == "" || !hasLiveContactGrant(tx, p.UserID, p.EntityID) {
+	if p.ID == "" {
 		return nil
+	}
+	if live, err := hasLiveContactGrant(tx, p.UserID, p.EntityID); err != nil || !live {
+		return err
 	}
 	if !reclassified(oldSensitivity(tx, "preferences"), sensitivityOf(tx, "preferences", "id", p.ID)) {
 		return nil
@@ -185,20 +187,31 @@ func (p *Preference) AfterSave(tx *gorm.DB) error {
 // --- FieldDefinition (custom_fields) ---
 
 func (d *FieldDefinition) BeforeSave(tx *gorm.DB) error {
-	if hasLiveContactGrant(tx, d.UserID, "") {
-		captureSensitivity(tx, "field_definitions", d.ID, d.ID == "" || !rowExists(tx, "field_definitions", d.ID))
-	}
-	return nil
+	return beforeSensitivityWrite(tx, d.UserID, "field_definitions", d.ID)
 }
 
 func (d *FieldDefinition) AfterSave(tx *gorm.DB) error {
-	if d.ID == "" || !hasLiveContactGrant(tx, d.UserID, "") {
+	if d.ID == "" {
 		return nil
+	}
+	if live, err := hasLiveContactGrant(tx, d.UserID, ""); err != nil || !live {
+		return err
 	}
 	if !reclassified(oldSensitivity(tx, "field_definitions"), sensitivityOf(tx, "field_definitions", "id", d.ID)) {
 		return nil
 	}
 	return markShareGrantReconfirm(tx, d.UserID, "", SectionCustomFields)
+}
+
+// beforeSensitivityWrite captures the pre-write sensitivity when the owner has
+// a live contact grant; a failed lookup fails the write.
+func beforeSensitivityWrite(tx *gorm.DB, ownerID uint, table, id string) error {
+	live, err := hasLiveContactGrant(tx, ownerID, "")
+	if err != nil || !live {
+		return err
+	}
+	captureSensitivity(tx, table, id, id == "" || !rowExists(tx, table, id))
+	return nil
 }
 
 func rowExists(tx *gorm.DB, table string, id any) bool {
@@ -214,8 +227,11 @@ func rowExists(tx *gorm.DB, table string, id any) bool {
 // was normal (or unknown) before moves the contact's addresses section into
 // re-confirmation.
 func (c *Contact) markAddressReclassification(tx *gorm.DB) error {
-	if c.ID == 0 || !hasLiveContactGrant(tx, c.UserID, c.VCardUID) {
+	if c.ID == 0 {
 		return nil
+	}
+	if live, err := hasLiveContactGrant(tx, c.UserID, c.VCardUID); err != nil || !live {
+		return err
 	}
 	var raw sql.NullString
 	if err := tx.Session(&gorm.Session{NewDB: true}).Table("contacts").Select("addresses").Where("id = ?", c.ID).Limit(1).Scan(&raw).Error; err != nil {

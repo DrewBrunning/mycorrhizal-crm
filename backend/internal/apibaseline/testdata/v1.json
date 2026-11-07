@@ -8685,6 +8685,308 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/share-grants",
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        }
+      ],
+      "request_body": "ref:ShareGrantInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/share-grants/blocks",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/share-grants/blocks/{user_id}",
+      "parameters": [
+        {
+          "name": "user_id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "204",
+          "schema": ""
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/share-grants/incoming",
+      "parameters": [
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "order",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/share-grants/outgoing",
+      "parameters": [
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "order",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        }
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/share-grants/{id}",
+      "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ShareGrantPatchInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/share-grants/{id}/accept",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/share-grants/{id}/content",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/share-grants/{id}/decline",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ShareGrantDeclineInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/share-grants/{id}/leave",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/share-grants/{id}/reconfirm",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/share-grants/{id}/revoke",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/tags",
       "parameters": [
@@ -21856,6 +22158,304 @@
           "name": "user_agent",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ShareBlock",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "username",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ShareGrantContent",
+      "properties": [
+        {
+          "name": "activity",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "circle",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "contact",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "entity_type",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "contact",
+            "note",
+            "activity",
+            "circle"
+          ]
+        },
+        {
+          "name": "grant_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "note",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "owner_username",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ShareGrantDeclineInput",
+      "properties": [
+        {
+          "name": "block",
+          "type": "boolean",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ShareGrantInput",
+      "properties": [
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "entity_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "contact",
+            "note",
+            "activity",
+            "circle"
+          ]
+        },
+        {
+          "name": "expires_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sections",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "to_user_id",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ShareGrantOwnerView",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "entity_type",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "contact",
+            "note",
+            "activity",
+            "circle"
+          ]
+        },
+        {
+          "name": "expires_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "member_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "reconfirm_sections",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "responded_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "revision",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "revoked_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "revoked_reason",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "owner_revoked",
+            "entity_deleted",
+            "recipient_deleted"
+          ]
+        },
+        {
+          "name": "sections",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "pending",
+            "active",
+            "declined",
+            "revoked",
+            "expired"
+          ]
+        },
+        {
+          "name": "to_user_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "to_username",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ShareGrantPatchInput",
+      "properties": [
+        {
+          "name": "expires_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sections",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ShareGrantRecipientView",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "entity_type",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "contact",
+            "note",
+            "activity",
+            "circle"
+          ]
+        },
+        {
+          "name": "expires_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "from_username",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "responded_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sections",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "pending",
+            "active",
+            "declined",
+            "revoked",
+            "expired"
+          ]
         }
       ]
     },

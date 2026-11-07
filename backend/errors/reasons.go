@@ -37,7 +37,7 @@ var reasonAreas = []string{
 	"geocoder",
 	"image",
 	"note",
-	"share_grant",
+	"share", // share_grant_* codes (ADR 0042): the area is the first segment
 }
 
 // Reason constants. Each must be a key of reasonRegistry (and vice versa);
@@ -620,7 +620,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonContactCadencePolicyAlreadyExists:         {Template: "Cadence policy already exists"},
 	ReasonCalendarSubscriptionNotFound:              {Template: "Calendar subscription not found"},
 	ReasonCircleNotFound:                            {Template: "Circle not found"},
-	ReasonShareGrantNotFound:                        {Template: "Share not found"},
+	ReasonShareGrantNotFound:                        {Template: "Share grant not found"},
 	ReasonShareGrantStateConflict:                   {Template: "This share can no longer be changed that way"},
 	ReasonShareGrantWideningRefused:                 {Template: "A share can only be narrowed; create a new share to grant more"},
 	ReasonShareGrantAlreadyExists:                   {Template: "That is already shared with this person"},

@@ -62,7 +62,7 @@ func ListOutgoingShareGrants(c *gin.Context) {
 		return
 	}
 	now := shareGrantNow(c)
-	rows, next, limit, appErr := listShareGrantRows(c, db, func(q *gorm.DB) *gorm.DB { return q.Where("from_user_id = ?", userID) })
+	rows, next, limit, appErr := listShareGrantRows(c, db, services.OutgoingShareGrantsQuery(db, userID))
 	if appErr != nil {
 		apperrors.AbortWithError(c, appErr)
 		return
@@ -83,7 +83,7 @@ func ListIncomingShareGrants(c *gin.Context) {
 		return
 	}
 	now := shareGrantNow(c)
-	rows, next, limit, appErr := listShareGrantRows(c, db, func(q *gorm.DB) *gorm.DB { return services.IncomingVisible(q, userID, now) })
+	rows, next, limit, appErr := listShareGrantRows(c, db, services.IncomingShareGrantsQuery(db, userID, now))
 	if appErr != nil {
 		apperrors.AbortWithError(c, appErr)
 		return
@@ -96,14 +96,14 @@ func ListIncomingShareGrants(c *gin.Context) {
 }
 
 // listShareGrantRows runs the cursor-paginated list. scope supplies the
-// caller's role predicate; it is the only place the user enters the query.
+// caller's role predicate, built by the service; the user never enters a query here.
 // There is deliberately no total: a count must never include other rows.
-func listShareGrantRows(c *gin.Context, db *gorm.DB, scope func(*gorm.DB) *gorm.DB) ([]models.ShareGrant, string, int, *apperrors.AppError) {
+func listShareGrantRows(c *gin.Context, db *gorm.DB, scoped *gorm.DB) ([]models.ShareGrant, string, int, *apperrors.AppError) {
 	params, err := GetCursorParams(c)
 	if err != nil {
 		return nil, "", 0, err
 	}
-	q := scope(db.Model(&models.ShareGrant{}))
+	q := scoped
 	desc := params.Order == "desc"
 	if params.Cursor != nil {
 		pred, t, idv := cursorPredicate("share_grants", params.Cursor, params.Cursor.ID, desc)
