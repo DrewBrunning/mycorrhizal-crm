@@ -72,6 +72,7 @@ const importResult = {
   updated: 0,
   skipped: 0,
   errors: [] as string[],
+  issues: [],
 };
 
 const csvFile = new File(['first,email\nAlice,a@b.com'], 'contacts.csv', { type: 'text/csv' });

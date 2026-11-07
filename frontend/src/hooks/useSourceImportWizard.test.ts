@@ -137,6 +137,7 @@ const doneResult = {
   updated: 1,
   skipped: 0,
   errors: [] as string[],
+  issues: [],
   relationships_created: 0,
   notes_created: 1,
   activities_created: 0,
