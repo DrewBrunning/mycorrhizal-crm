@@ -710,6 +710,16 @@ func TestLoadConfig_ContactShareRetentionDays(t *testing.T) {
 	assert.Equal(t, 60, cfg.ContactShareRetentionDays)
 }
 
+func TestLoadConfig_ShareGrantRetentionDays(t *testing.T) {
+	t.Setenv("JWT_SECRET_KEY", "test-jwt-secret-0123456789abcdef0123456789abcdef")
+	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
+	t.Setenv("SQLITE_DB_PATH", "/tmp/test.db")
+	t.Setenv("FRONTEND_URL", "http://localhost:5173")
+	assert.Equal(t, 30, LoadConfig().ShareGrantRetentionDays, "default matches CONTACT_SHARE_RETENTION_DAYS")
+	t.Setenv("SHARE_GRANT_RETENTION_DAYS", "7")
+	assert.Equal(t, 7, LoadConfig().ShareGrantRetentionDays)
+}
+
 func TestLoadConfig_WebhookDeliveryRetentionDays(t *testing.T) {
 	t.Setenv("JWT_SECRET_KEY", "test-secret-key-that-is-long-enough-32")
 	t.Setenv("PROFILE_PHOTO_DIR", "/tmp/photos")
@@ -763,7 +773,7 @@ func TestValidate_APIRateLimitInterval(t *testing.T) {
 
 func TestValidate_ExtraRetentionDaysFields(t *testing.T) {
 	for _, field := range []string{
-		"AUDIT_RETENTION_DAYS", "CONTACT_SHARE_RETENTION_DAYS", "SYSTEM_EVENT_RETENTION_DAYS",
+		"AUDIT_RETENTION_DAYS", "CONTACT_SHARE_RETENTION_DAYS", "SHARE_GRANT_RETENTION_DAYS", "SYSTEM_EVENT_RETENTION_DAYS",
 		"WEBHOOK_DELIVERY_RETENTION_DAYS", "JOB_RUN_RETENTION_DAYS",
 	} {
 		t.Run(field, func(t *testing.T) {
@@ -787,6 +797,8 @@ func setRetentionField(cfg *Config, field string, days int) {
 		cfg.AuditRetentionDays = days
 	case "CONTACT_SHARE_RETENTION_DAYS":
 		cfg.ContactShareRetentionDays = days
+	case "SHARE_GRANT_RETENTION_DAYS":
+		cfg.ShareGrantRetentionDays = days
 	case "SYSTEM_EVENT_RETENTION_DAYS":
 		cfg.SystemEventRetentionDays = days
 	case "WEBHOOK_DELIVERY_RETENTION_DAYS":

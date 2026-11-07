@@ -211,7 +211,6 @@ func ReconfirmShareGrant(c *gin.Context) {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}
-	models.RecordShareGrantAudit(db, g, userID, models.AuditOpUpdate)
 	c.JSON(http.StatusOK, gin.H{"share_grant": services.OwnerView(db, g, now)})
 }
 

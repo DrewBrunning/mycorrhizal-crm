@@ -3,6 +3,7 @@ package services
 import (
 	"time"
 
+	"mycorrhizal/logger"
 	"mycorrhizal/models"
 
 	"gorm.io/gorm"
@@ -28,6 +29,13 @@ import (
 // the number of grants revoked.
 func RevokeShareGrantsForEntity(tx *gorm.DB, ownerID uint, entityType, entityID string, now time.Time) (int64, error) {
 	now = now.UTC() // stored instants are compared as UTC text (issue #2290)
+	var before []struct{ ID, Status string }
+	if err := tx.Model(&models.ShareGrant{}).Select("id, status").
+		Where("from_user_id = ? AND entity_type = ? AND entity_id = ? AND status IN ?",
+			ownerID, entityType, entityID, models.ShareGrantLiveStatuses).
+		Scan(&before).Error; err != nil {
+		return 0, err
+	}
 	res := tx.Table("share_grants").
 		Where("from_user_id = ? AND entity_type = ? AND entity_id = ? AND status IN ?",
 			ownerID, entityType, entityID, models.ShareGrantLiveStatuses).
@@ -38,5 +46,29 @@ func RevokeShareGrantsForEntity(tx *gorm.DB, ownerID uint, entityType, entityID 
 			"updated_at":     now,
 			"revision":       gorm.Expr("revision + 1"),
 		})
-	return res.RowsAffected, res.Error
+	if res.Error != nil || res.RowsAffected == 0 {
+		return res.RowsAffected, res.Error
+	}
+	// Audit each party's trail and notify the recipient (ADR 0042 decision 11).
+	// Both are best-effort and never fail the delete; a blocked grant stays
+	// invisible to the recipient.
+	wasBlocked := make(map[string]bool, len(before))
+	ids := make([]string, 0, len(before))
+	for _, b := range before {
+		ids = append(ids, b.ID)
+		wasBlocked[b.ID] = b.Status == models.ShareGrantStatusBlocked
+	}
+	var rows []models.ShareGrant
+	if err := tx.Where("id IN ?", ids).Find(&rows).Error; err != nil {
+		logger.Warn().Err(err).Msg("share grant: failed to load revoked grants for audit")
+		return res.RowsAffected, nil // the revoke itself succeeded
+	}
+	for i := range rows {
+		g := rows[i]
+		auditShareGrant(tx, &g, models.AuditOpRevoke, wasBlocked[g.ID])
+		if !wasBlocked[g.ID] {
+			notifyShareGrant(tx, &g, models.ShareGrantNoticeRevoked)
+		}
+	}
+	return res.RowsAffected, nil
 }

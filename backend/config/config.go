@@ -123,6 +123,7 @@ type Config struct {
 	DeleteRetentionDays          int      `cfgreg:"env=DELETED_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days soft-deleted rows survive before the purge job hard-deletes them"`
 	AuditRetentionDays           int      `cfgreg:"env=AUDIT_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=90;required=false;restart=true;desc=Days audit events survive before the retention purge removes them"`
 	ContactShareRetentionDays    int      `cfgreg:"env=CONTACT_SHARE_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days a ContactShare snapshot survives before the purge job hard-deletes it"`
+	ShareGrantRetentionDays      int      `cfgreg:"env=SHARE_GRANT_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days a terminal (declined, revoked, expired) standing-share grant survives before the lifecycle job hard-deletes it; active and pending grants are never purged"`
 	SystemEventRetentionDays     int      `cfgreg:"env=SYSTEM_EVENT_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days system_events rows survive before the retention purge removes them"`
 	WebhookDeliveryRetentionDays int      `cfgreg:"env=WEBHOOK_DELIVERY_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days webhook_deliveries rows survive before the purge job hard-deletes them"`
 	JobRunRetentionDays          int      `cfgreg:"env=JOB_RUN_RETENTION_DAYS;type=int;range=>=0, 0 disables the purge;default=30;required=false;restart=true;desc=Days job_runs rows survive before the retention purge removes them"`
@@ -477,6 +478,7 @@ func baseConfig() *Config {
 		DeleteRetentionDays:           30,
 		AuditRetentionDays:            90,
 		ContactShareRetentionDays:     30,
+		ShareGrantRetentionDays:       30,
 		SystemEventRetentionDays:      30,
 		WebhookDeliveryRetentionDays:  30,
 		JobRunRetentionDays:           30,
@@ -668,6 +670,7 @@ func LoadConfig() *Config {
 	cfg.DeleteRetentionDays = getIntEnv("DELETED_RETENTION_DAYS", cfg.DeleteRetentionDays)
 	cfg.AuditRetentionDays = getIntEnv("AUDIT_RETENTION_DAYS", cfg.AuditRetentionDays)
 	cfg.ContactShareRetentionDays = getIntEnv("CONTACT_SHARE_RETENTION_DAYS", cfg.ContactShareRetentionDays)
+	cfg.ShareGrantRetentionDays = getIntEnv("SHARE_GRANT_RETENTION_DAYS", cfg.ShareGrantRetentionDays)
 	cfg.SystemEventRetentionDays = getIntEnv("SYSTEM_EVENT_RETENTION_DAYS", cfg.SystemEventRetentionDays)
 	cfg.WebhookDeliveryRetentionDays = getIntEnv("WEBHOOK_DELIVERY_RETENTION_DAYS", cfg.WebhookDeliveryRetentionDays)
 	cfg.JobRunRetentionDays = getIntEnv("JOB_RUN_RETENTION_DAYS", cfg.JobRunRetentionDays)
@@ -1516,6 +1519,7 @@ func (c *Config) Validate() []ValidationError {
 	}{
 		{"AUDIT_RETENTION_DAYS", c.AuditRetentionDays},
 		{"CONTACT_SHARE_RETENTION_DAYS", c.ContactShareRetentionDays},
+		{"SHARE_GRANT_RETENTION_DAYS", c.ShareGrantRetentionDays},
 		{"SYSTEM_EVENT_RETENTION_DAYS", c.SystemEventRetentionDays},
 		{"WEBHOOK_DELIVERY_RETENTION_DAYS", c.WebhookDeliveryRetentionDays},
 		{"JOB_RUN_RETENTION_DAYS", c.JobRunRetentionDays},
