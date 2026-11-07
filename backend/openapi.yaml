@@ -2247,6 +2247,22 @@ paths:
         - name: circle
           in: query
           schema: { type: string }
+        - name: offset
+          in: query
+          description: >
+            Skip this many rows of the chosen sort order before the page starts
+            (0 to 100000, default 0). An alternative to cursor for jumping to a
+            page number; combining a non-zero offset with cursor or since is a
+            400. Out-of-range or non-integer values are a 400.
+          schema: { type: integer, minimum: 0, maximum: 100000, default: 0 }
+        - name: include_total
+          in: query
+          description: >
+            When true, the response carries total: the exact number of
+            contacts matching every filter, independent of cursor/offset/limit.
+            Opt-in because counting is the cost cursor pagination avoids.
+            Any value other than true/false is a 400.
+          schema: { type: boolean, default: false }
         - name: circle_legacy
           in: query
           description: >
@@ -2309,6 +2325,9 @@ paths:
                     type: string
                     description: Resume token for the next page; empty when there are no more rows.
                   limit: { type: integer }
+                  total:
+                    type: integer
+                    description: Present only when include_total=true; the size of the whole filtered set.
                   hidden_count:
                     type: integer
                     description: >

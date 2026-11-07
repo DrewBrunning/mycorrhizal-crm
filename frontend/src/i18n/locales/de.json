@@ -275,6 +275,14 @@
   },
   "contacts": {
     "title": "Kontakte",
+    "pagination": {
+      "rowsPerPage": "Kontakte pro Seite",
+      "displayedRows": "{{from}}–{{to}} von {{total}}",
+      "first": "Zur ersten Seite",
+      "previous": "Zur vorherigen Seite",
+      "next": "Zur nächsten Seite",
+      "last": "Zur letzten Seite"
+    },
     "search": "Kontakte suchen",
     "searchPlaceholder": "Kontakte durchsuchen…",
     "searchClear": "Löschen",

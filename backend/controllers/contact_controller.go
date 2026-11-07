@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -198,6 +199,10 @@ func applyContactSearch(query *gorm.DB, userID uint, searchTerm string) *gorm.DB
 	return query.Where(clause, args...)
 }
 
+// maxContactOffset bounds ?offset= so a hostile value can't make SQLite walk
+// an unbounded skip; 100000 rows is far past any personal address book.
+const maxContactOffset = 100000
+
 func GetContacts(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 
@@ -290,6 +295,34 @@ func GetContacts(c *gin.Context) {
 	params, err := GetCursorParamsForSort(c, sort)
 	if err != nil {
 		apperrors.AbortWithError(c, err)
+		return
+	}
+
+	// #2188: ?offset= and ?include_total=true are additive, opt-in params that
+	// let the web Contacts page render page numbers and a total count over the
+	// cursor-ordered list. Absent, the response is byte-identical to before.
+	// offset is an alternative to ?cursor= / ?since= (a position can't be both
+	// "after this row" and "N rows in"), so combining them is a 400.
+	offset := 0
+	if raw := c.Query("offset"); raw != "" {
+		n, convErr := strconv.Atoi(raw)
+		if convErr != nil || n < 0 || n > maxContactOffset {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("offset", fmt.Sprintf("offset must be an integer between 0 and %d", maxContactOffset)).WithReason(apperrors.ReasonValidationInvalid, nil))
+			return
+		}
+		if n > 0 && (c.Query("cursor") != "" || params.Since) {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("offset", "offset cannot be combined with cursor or since").WithReason(apperrors.ReasonValidationInvalid, nil))
+			return
+		}
+		offset = n
+	}
+	includeTotal := false
+	switch c.Query("include_total") {
+	case "", "false":
+	case "true":
+		includeTotal = true
+	default:
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("include_total", "must be one of: true, false").WithReason(apperrors.ReasonValidationInvalid, nil))
 		return
 	}
 
@@ -462,6 +495,16 @@ func GetContacts(c *gin.Context) {
 		query = query.Where(contactInfoClause)
 	}
 
+	// #2188: exact total of the filtered set (after every filter, before the
+	// cursor/offset), opt-in because COUNT(*) is the cost cursor paging avoids.
+	total := int64(0)
+	if includeTotal {
+		if err := query.Session(&gorm.Session{}).Count(&total).Error; err != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count contacts").WithError(err))
+			return
+		}
+	}
+
 	// T17: resume-after cursor. Default order is (updated_at, id), so the
 	// cursor position maps directly onto the ordering. T73: sort=name uses
 	// the (sort_name, id) key and its own cursor shape — never mixed. Applied
@@ -520,6 +563,9 @@ func GetContacts(c *gin.Context) {
 		query = cursorOrderBy(query, "contacts", desc)
 	}
 	query = query.Limit(params.Limit + 1)
+	if offset > 0 {
+		query = query.Offset(offset)
+	}
 	if err := query.Find(&contacts).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contacts").WithError(err))
 		return
@@ -555,6 +601,9 @@ func GetContacts(c *gin.Context) {
 		if hasContactInfo {
 			resp["hidden_count"] = hiddenCount
 		}
+		if includeTotal {
+			resp["total"] = total
+		}
 		c.JSON(http.StatusOK, resp)
 		return
 	}
@@ -571,6 +620,9 @@ func GetContacts(c *gin.Context) {
 	}
 	if hasContactInfo {
 		resp["hidden_count"] = hiddenCount
+	}
+	if includeTotal {
+		resp["total"] = total
 	}
 	c.JSON(http.StatusOK, resp)
 }

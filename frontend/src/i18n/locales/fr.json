@@ -281,6 +281,14 @@
   },
   "contacts": {
     "title": "Contacts",
+    "pagination": {
+      "rowsPerPage": "Contacts par page",
+      "displayedRows": "{{from}}–{{to}} sur {{total}}",
+      "first": "Aller à la première page",
+      "previous": "Aller à la page précédente",
+      "next": "Aller à la page suivante",
+      "last": "Aller à la dernière page"
+    },
     "search": "Rechercher des contacts",
     "searchPlaceholder": "Rechercher des contacts…",
     "searchClear": "Effacer",
