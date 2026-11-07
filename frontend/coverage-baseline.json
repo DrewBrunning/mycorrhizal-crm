@@ -51,10 +51,10 @@
       "branchesTotal": 37
     },
     "src/ContactsPage.tsx": {
-      "lines": 90.14,
-      "linesTotal": 203,
-      "branches": 84.67,
-      "branchesTotal": 137
+      "lines": 90.9,
+      "linesTotal": 253,
+      "branches": 85.79,
+      "branchesTotal": 169
     },
     "src/DashboardPage.tsx": {
       "lines": 77.71,
@@ -166,9 +166,9 @@
     },
     "src/api/activities.ts": {
       "lines": 100,
-      "linesTotal": 55,
+      "linesTotal": 57,
       "branches": 100,
-      "branchesTotal": 34
+      "branchesTotal": 36
     },
     "src/api/admin.ts": {
       "lines": 100,
@@ -291,10 +291,10 @@
       "branchesTotal": 6
     },
     "src/api/contacts.ts": {
-      "lines": 98.73,
-      "linesTotal": 238,
-      "branches": 94.62,
-      "branchesTotal": 409
+      "lines": 98.75,
+      "linesTotal": 240,
+      "branches": 94.67,
+      "branchesTotal": 413
     },
     "src/api/contractConformance.ts": {
       "lines": 0,
@@ -617,7 +617,7 @@
     "src/auth.ts": {
       "lines": 98.78,
       "linesTotal": 82,
-      "branches": 98.43,
+      "branches": 100,
       "branchesTotal": 64
     },
     "src/components/AcceptContactShareDialog.tsx": {
@@ -728,6 +728,12 @@
       "branches": 94.59,
       "branchesTotal": 37
     },
+    "src/components/BulkMergeDialog.tsx": {
+      "lines": 97.05,
+      "linesTotal": 34,
+      "branches": 82.6,
+      "branchesTotal": 23
+    },
     "src/components/CadenceDialog.tsx": {
       "lines": 94.87,
       "linesTotal": 39,
@@ -825,16 +831,16 @@
       "branchesTotal": 163
     },
     "src/components/ContactImageGallery.tsx": {
-      "lines": 94.89,
-      "linesTotal": 137,
-      "branches": 88.37,
-      "branchesTotal": 86
+      "lines": 95,
+      "linesTotal": 140,
+      "branches": 88.63,
+      "branchesTotal": 88
     },
     "src/components/ContactInformation.tsx": {
       "lines": 75.73,
       "linesTotal": 136,
-      "branches": 75.33,
-      "branchesTotal": 223
+      "branches": 75.55,
+      "branchesTotal": 225
     },
     "src/components/ContactMap.tsx": {
       "lines": 100,
@@ -1197,10 +1203,10 @@
       "branchesTotal": 32
     },
     "src/components/MergeContactsDialog.tsx": {
-      "lines": 93.97,
+      "lines": 95.18,
       "linesTotal": 83,
-      "branches": 88.42,
-      "branchesTotal": 121
+      "branches": 88.61,
+      "branchesTotal": 123
     },
     "src/components/MonicaImportDialog.tsx": {
       "lines": 95.65,
@@ -1209,10 +1215,10 @@
       "branchesTotal": 13
     },
     "src/components/MultiValueField.tsx": {
-      "lines": 96.42,
-      "linesTotal": 28,
-      "branches": 88.23,
-      "branchesTotal": 34
+      "lines": 96.55,
+      "linesTotal": 29,
+      "branches": 90.47,
+      "branchesTotal": 42
     },
     "src/components/MycorrhizalImportDialog.tsx": {
       "lines": 91.89,
@@ -1762,7 +1768,7 @@
     },
     "src/hooks/useContacts.ts": {
       "lines": 100,
-      "linesTotal": 40,
+      "linesTotal": 42,
       "branches": 100,
       "branchesTotal": 25
     },
@@ -2269,6 +2275,12 @@
       "linesTotal": 6,
       "branches": 100,
       "branchesTotal": 4
+    },
+    "src/utils/emailFormat.ts": {
+      "lines": 100,
+      "linesTotal": 3,
+      "branches": 100,
+      "branchesTotal": 2
     },
     "src/utils/emptyValue.ts": {
       "lines": 100,
