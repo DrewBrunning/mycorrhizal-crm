@@ -294,3 +294,92 @@ test('a path that merely shares a string prefix with a nav item is not current f
   visit('/contacts-archive');
   expect(currentNavPaths()).toEqual([]);
 });
+
+// #2175: Shares, Audit log, Data, Users, System events and System status are
+// sub-items of Settings. URLs are unchanged; the group highlights with its child.
+const SETTINGS_CHILD_ROUTES: { path: string; label: string; adminOnly: boolean }[] = [
+  { path: '/shares', label: 'Shares', adminOnly: false },
+  { path: '/audit', label: 'Audit log', adminOnly: false },
+  { path: '/settings/data', label: 'Data', adminOnly: false },
+  { path: '/users', label: 'Users', adminOnly: true },
+  { path: '/system-events', label: 'System events', adminOnly: true },
+  { path: '/system-status', label: 'System status', adminOnly: true },
+];
+
+function navLink(label: string): HTMLElement {
+  const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+  const link = Array.from(nav.querySelectorAll('a')).find((a) => a.textContent === label);
+  if (!link) throw new Error(`no nav link ${label}`);
+  return link;
+}
+
+test.each(SETTINGS_CHILD_ROUTES)(
+  '$path highlights Settings and its own sub-item, only one as current page',
+  ({ path, label }) => {
+    vi.mocked(isAdmin).mockReturnValue(true);
+    setLoggedInUser(true);
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    renderApp();
+
+    expect(currentNavPaths()).toEqual([path]);
+    expect(navLink(label)).toHaveClass('Mui-selected');
+    expect(navLink('Settings')).toHaveClass('Mui-selected');
+    // The group is open on a child route so the user sees where they are.
+    expect(screen.getByRole('button', { name: 'Settings sub-pages' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  },
+);
+
+test('Settings does not highlight on an unrelated route and its group starts collapsed', () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/contacts');
+  expect(navLink('Settings')).not.toHaveClass('Mui-selected');
+  expect(screen.getByRole('button', { name: 'Settings sub-pages' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+});
+
+test('the Settings toggle expands and collapses the sub-items', () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/contacts');
+  const toggle = screen.getByRole('button', { name: 'Settings sub-pages' });
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  expect(navLink('Audit log')).toHaveAttribute('href', '/audit');
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('admin-only sub-items are absent for non-admins and present for admins', () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/settings');
+  for (const { label, adminOnly } of SETTINGS_CHILD_ROUTES) {
+    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    const present = Array.from(nav.querySelectorAll('a')).some((a) => a.textContent === label);
+    expect(present).toBe(!adminOnly);
+  }
+  cleanup();
+  vi.mocked(isAdmin).mockReturnValue(true);
+  setLoggedInUser(true);
+  renderApp();
+  expect(navLink('Users')).toHaveAttribute('href', '/users');
+  expect(navLink('System status')).toHaveAttribute('href', '/system-status');
+});
+
+test('browser Back and Forward keep the highlight in step with the URL', async () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/audit');
+  expect(currentNavPaths()).toEqual(['/audit']);
+  fireEvent.click(navLink('Data'));
+  await waitFor(() => expect(currentNavPaths()).toEqual(['/settings/data']));
+  await act(async () => {
+    window.history.back();
+    await new Promise((r) => setTimeout(r, 50));
+  });
+  await waitFor(() => expect(currentNavPaths()).toEqual(['/audit']));
+  expect(navLink('Settings')).toHaveClass('Mui-selected');
+});
