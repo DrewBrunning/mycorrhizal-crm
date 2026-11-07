@@ -941,3 +941,177 @@ func TestShareGrant_ExpiryComparisonIsZoneSafe(t *testing.T) {
 	e.clock.Advance(90 * time.Minute) // 13:30Z
 	assert.Equal(t, 404, e.do(e.B, http.MethodGet, "/share-grants/"+id+"/content", nil).Code)
 }
+
+// ---------------------------------------------------------------- coverage of edge paths
+
+func TestShareGrant_EveryRouteRequiresAuthentication(t *testing.T) {
+	e := newSGEnv(t)
+	id := "00000000-0000-4000-8000-000000000000"
+	for _, r := range []struct{ method, path string }{
+		{http.MethodPost, "/share-grants"}, {http.MethodGet, "/share-grants/outgoing"},
+		{http.MethodGet, "/share-grants/incoming"}, {http.MethodGet, "/share-grants/blocks"},
+		{http.MethodDelete, "/share-grants/blocks/1"}, {http.MethodPatch, "/share-grants/" + id},
+		{http.MethodPost, "/share-grants/" + id + "/accept"}, {http.MethodGet, "/share-grants/" + id + "/content"},
+	} {
+		body := any(nil)
+		if r.method == http.MethodPost && r.path == "/share-grants" {
+			body = map[string]any{"to_user_id": 1, "entity_type": "note", "entity_id": "x"}
+		}
+		if r.method == http.MethodPatch {
+			body = map[string]any{"sections": []string{"emails"}}
+		}
+		assert.Equal(t, http.StatusUnauthorized, e.do(models.User{}, r.method, r.path, body).Code, r.method+" "+r.path)
+	}
+}
+
+func TestShareGrantLists_CursorPaginationAndBadCursor(t *testing.T) {
+	e := newSGEnv(t)
+	for i := 0; i < 3; i++ {
+		n := e.note(e.A, "n"+strconv.Itoa(i))
+		e.grant(e.A, e.B, "note", n.UUID, nil)
+	}
+	for _, p := range []struct {
+		who  models.User
+		path string
+	}{{e.A, "/share-grants/outgoing"}, {e.B, "/share-grants/incoming"}} {
+		seen := map[string]bool{}
+		cursor := ""
+		for page := 0; page < 5; page++ {
+			url := p.path + "?limit=2"
+			if cursor != "" {
+				url += "&cursor=" + cursor
+			}
+			w := e.do(p.who, http.MethodGet, url, nil)
+			require.Equal(t, 200, w.Code, w.Body.String())
+			var out struct {
+				ShareGrants []struct{ ID string } `json:"share_grants"`
+				NextCursor  string                `json:"next_cursor"`
+			}
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
+			for _, g := range out.ShareGrants {
+				assert.False(t, seen[g.ID], "no row repeats across pages")
+				seen[g.ID] = true
+			}
+			if out.NextCursor == "" {
+				break
+			}
+			cursor = out.NextCursor
+		}
+		assert.Len(t, seen, 3, p.path)
+		assert.Equal(t, 400, e.do(p.who, http.MethodGet, p.path+"?cursor=!!!", nil).Code)
+	}
+}
+
+func TestShareGrantDecline_MalformedBodyAndBadBlockID(t *testing.T) {
+	e := newSGEnv(t)
+	n := e.note(e.A, "n")
+	id := e.grant(e.A, e.B, "note", n.UUID, nil)
+	req, _ := http.NewRequest(http.MethodPost, "/share-grants/"+id+"/decline", bytes.NewBufferString("{not json"))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Test-User", strconv.Itoa(int(e.B.ID)))
+	w := httptest.NewRecorder()
+	e.router.ServeHTTP(w, req)
+	assert.Equal(t, 400, w.Code)
+	assert.Equal(t, "pending", e.status(id), "a malformed body changes nothing")
+	assert.Equal(t, 400, e.do(e.B, http.MethodDelete, "/share-grants/blocks/not-a-number", nil).Code)
+}
+
+func TestShareGrantPatch_EmptyBodyAndUnknownRoutesBehaviour(t *testing.T) {
+	e := newSGEnv(t)
+	id, _ := e.activeContactGrant([]string{"emails"})
+	assert.Equal(t, 400, e.do(e.A, http.MethodPatch, "/share-grants/"+id, map[string]any{}).Code, "nothing to update")
+	// Terminal grants cannot be patched, reconfirmed or revoked-again-as-declined.
+	require.Equal(t, 200, e.do(e.B, http.MethodPost, "/share-grants/"+id+"/leave", nil).Code)
+	assert.Equal(t, 409, e.do(e.A, http.MethodPatch, "/share-grants/"+id, map[string]any{"sections": []string{"emails"}}).Code)
+	assert.Equal(t, 409, e.do(e.A, http.MethodPost, "/share-grants/"+id+"/reconfirm", nil).Code)
+	assert.Equal(t, 409, e.do(e.B, http.MethodPost, "/share-grants/"+id+"/leave", nil).Code)
+}
+
+func TestShareGrantOwnerView_BlockedExpiredAndCircleCount(t *testing.T) {
+	e := newSGEnv(t)
+	circ := e.circle(e.A, "Team")
+	m := e.contact(e.A, "Mia")
+	require.NoError(t, e.db.Create(&models.CircleMember{CircleID: circ.ID, UserID: e.A.ID, MemberVCardUID: m.VCardUID}).Error)
+	id := e.grant(e.A, e.B, "circle", circ.ID, nil)
+	body := e.do(e.A, http.MethodGet, "/share-grants/outgoing", nil).Body.String()
+	assert.Contains(t, body, `"member_count":1`)
+	// A pending grant past its TTL reads as expired to its owner.
+	e.clock.Advance(31 * 24 * time.Hour)
+	assert.Contains(t, e.do(e.A, http.MethodGet, "/share-grants/outgoing", nil).Body.String(), `"status":"expired"`)
+	_ = id
+	// The same for a blocked grant (the sender sees the pending/expired view only).
+	require.NoError(t, e.db.Create(&models.ShareBlock{BlockerUserID: e.C.ID, BlockedUserID: e.A.ID}).Error)
+	n := e.note(e.A, "n")
+	w := e.do(e.A, http.MethodPost, "/share-grants", map[string]any{"to_user_id": e.C.ID, "entity_type": "note", "entity_id": n.UUID})
+	require.Equal(t, 201, w.Code)
+	e.clock.Advance(31 * 24 * time.Hour)
+	assert.Contains(t, e.do(e.A, http.MethodGet, "/share-grants/outgoing", nil).Body.String(), `"status":"expired"`)
+}
+
+// A failed database lookup must surface as an error, never as a quiet 200/404
+// that would leak or hide state.
+func TestShareGrant_DatabaseFailuresAreServerErrors(t *testing.T) {
+	cases := map[string]struct {
+		hide   []string
+		method string
+		path   func(id string) string
+		body   any
+		as     func(e *sgEnv) models.User
+	}{
+		"create":           {[]string{"share_grants"}, http.MethodPost, func(string) string { return "/share-grants" }, nil, func(e *sgEnv) models.User { return e.A }},
+		"outgoing":         {[]string{"share_grants"}, http.MethodGet, func(string) string { return "/share-grants/outgoing" }, nil, func(e *sgEnv) models.User { return e.A }},
+		"incoming":         {[]string{"share_grants"}, http.MethodGet, func(string) string { return "/share-grants/incoming" }, nil, func(e *sgEnv) models.User { return e.B }},
+		"content":          {[]string{"share_grants"}, http.MethodGet, func(id string) string { return "/share-grants/" + id + "/content" }, nil, func(e *sgEnv) models.User { return e.B }},
+		"accept":           {[]string{"share_grants"}, http.MethodPost, func(id string) string { return "/share-grants/" + id + "/accept" }, nil, func(e *sgEnv) models.User { return e.B }},
+		"decline":          {[]string{"share_grants"}, http.MethodPost, func(id string) string { return "/share-grants/" + id + "/decline" }, nil, func(e *sgEnv) models.User { return e.B }},
+		"leave":            {[]string{"share_grants"}, http.MethodPost, func(id string) string { return "/share-grants/" + id + "/leave" }, nil, func(e *sgEnv) models.User { return e.B }},
+		"revoke":           {[]string{"share_grants"}, http.MethodPost, func(id string) string { return "/share-grants/" + id + "/revoke" }, nil, func(e *sgEnv) models.User { return e.A }},
+		"reconfirm":        {[]string{"share_grants"}, http.MethodPost, func(id string) string { return "/share-grants/" + id + "/reconfirm" }, nil, func(e *sgEnv) models.User { return e.A }},
+		"patch":            {[]string{"share_grants"}, http.MethodPatch, func(id string) string { return "/share-grants/" + id }, map[string]any{"sections": []string{"emails"}}, func(e *sgEnv) models.User { return e.A }},
+		"blocks":           {[]string{"share_blocks"}, http.MethodGet, func(string) string { return "/share-grants/blocks" }, nil, func(e *sgEnv) models.User { return e.B }},
+		"unblock":          {[]string{"share_blocks"}, http.MethodDelete, func(string) string { return "/share-grants/blocks/1" }, nil, func(e *sgEnv) models.User { return e.B }},
+		"create-no-users":  {[]string{"users"}, http.MethodPost, func(string) string { return "/share-grants" }, nil, func(e *sgEnv) models.User { return e.A }},
+		"create-no-blocks": {[]string{"share_blocks"}, http.MethodPost, func(string) string { return "/share-grants" }, nil, func(e *sgEnv) models.User { return e.A }},
+	}
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			e := newSGEnv(t)
+			cnt := e.contact(e.A, "Alice")
+			id := e.grant(e.A, e.B, "contact", cnt.VCardUID, []string{"emails"})
+			require.Equal(t, 200, e.do(e.B, http.MethodPost, "/share-grants/"+id+"/accept", nil).Code)
+			n := e.note(e.A, "fresh")
+			for _, tbl := range c.hide {
+				dbtest.HideTable(t, e.db, tbl)
+			}
+			body := c.body
+			if name == "create" || name == "create-no-users" || name == "create-no-blocks" {
+				body = map[string]any{"to_user_id": e.B.ID, "entity_type": "note", "entity_id": n.UUID}
+			}
+			w := e.do(c.as(e), c.method, c.path(id), body)
+			assert.GreaterOrEqual(t, w.Code, 500, w.Body.String())
+		})
+	}
+}
+
+func TestShareGrantContent_EntityTablesMissingFailClosed(t *testing.T) {
+	for _, typ := range []string{"note", "activity", "circle", "contact"} {
+		t.Run(typ, func(t *testing.T) {
+			e := newSGEnv(t)
+			var id string
+			var table string
+			switch typ {
+			case "note":
+				id, table = e.grant(e.A, e.B, "note", e.note(e.A, "n").UUID, nil), "notes"
+			case "activity":
+				id, table = e.grant(e.A, e.B, "activity", e.activity(e.A, "a").UUID, nil), "activities"
+			case "circle":
+				id, table = e.grant(e.A, e.B, "circle", e.circle(e.A, "c").ID, nil), "circles"
+			default:
+				id, table = e.grant(e.A, e.B, "contact", e.contact(e.A, "c").VCardUID, []string{"emails"}), "contacts"
+			}
+			require.Equal(t, 200, e.do(e.B, http.MethodPost, "/share-grants/"+id+"/accept", nil).Code)
+			dbtest.HideTable(t, e.db, table)
+			assert.GreaterOrEqual(t, e.do(e.B, http.MethodGet, "/share-grants/"+id+"/content", nil).Code, 500)
+		})
+	}
+}

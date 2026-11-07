@@ -277,6 +277,24 @@ func pgSpecs() []pgSpec {
 			},
 		},
 		{
+			name: "share-grants-incoming", oapi: "/share-grants/incoming", path: uidPath("/api/v1/share-grants/incoming"), key: "share_grants", idKey: "id",
+			kind: pgTime, table: "share_grants",
+			create: func(f *pgFix, userID uint, s pgSeed) string {
+				g := models.ShareGrant{FromUserID: f.other, ToUserID: userID, EntityType: models.ShareGrantEntityNote, EntityID: uuid.NewString(), Status: models.ShareGrantStatusPending}
+				pgMustCreate(f.t, f.db, &g)
+				return g.ID
+			},
+		},
+		{
+			name: "share-grants-outgoing", oapi: "/share-grants/outgoing", path: uidPath("/api/v1/share-grants/outgoing"), key: "share_grants", idKey: "id",
+			kind: pgTime, table: "share_grants",
+			create: func(f *pgFix, userID uint, s pgSeed) string {
+				g := models.ShareGrant{FromUserID: userID, ToUserID: f.other, EntityType: models.ShareGrantEntityNote, EntityID: uuid.NewString(), Status: models.ShareGrantStatusPending}
+				pgMustCreate(f.t, f.db, &g)
+				return g.ID
+			},
+		},
+		{
 			name: "life-events", oapi: "/life-events", path: uidPath("/api/v1/life-events"), key: "life_events", idKey: "id",
 			kind: pgTime, table: "life_events", since: true, softDelete: true,
 			create: func(f *pgFix, userID uint, s pgSeed) string {

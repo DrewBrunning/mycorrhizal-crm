@@ -230,6 +230,18 @@ func (c *Contact) markAddressReclassification(tx *gorm.DB) error {
 	if c.ID == 0 {
 		return nil
 	}
+	// A marker is only ever needed for an address that is non-normal now, so
+	// the common save (all addresses normal) costs no extra query.
+	anyNonNormal := false
+	for _, a := range c.Addresses {
+		if a.Sensitivity != "" && a.Sensitivity != RelationshipSensitivityNormal {
+			anyNonNormal = true
+			break
+		}
+	}
+	if !anyNonNormal {
+		return nil
+	}
 	if live, err := hasLiveContactGrant(tx, c.UserID, c.VCardUID); err != nil || !live {
 		return err
 	}
