@@ -447,6 +447,13 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	// silently delete it. Normal addresses are left entirely to the client.
 	record.Card.Addresses = models.PreserveSensitiveAddresses(contact.Card.Addresses, record.Card.Addresses)
 
+	// A client that strips element IDs (vCard 3.0, native address books) echoes
+	// the projected primary-entity ORG/ADR back without its ent- ID; drop an
+	// entry that is only that echo so an unchanged PUT is a no-op on the stored
+	// Card (issue #2298). Entries carrying ent- IDs are dropped inside
+	// ApplyRecordToContact. Runs on the stored contact, before the apply.
+	models.SuppressEntityProjectionEcho(b.getDB(ctx), &contact, record)
+
 	// The same full-overwrite rule applies to personalInfo (issue #1738): an
 	// above-normal hobby is withheld by RecordForContactForSync, so this PUT
 	// cannot have seen it. Re-attach those entries (with their CRM metadata)

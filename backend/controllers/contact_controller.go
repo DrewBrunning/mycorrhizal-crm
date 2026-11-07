@@ -819,6 +819,9 @@ func UpdateContact(c *gin.Context) {
 
 	contact.Gender = input.Gender
 	ambientBefore := contact.Ambient
+	// Echo suppression for a client that stripped the projected ORG/ADR's
+	// element ID (issue #2298); ent- IDs are dropped in ApplyRecordToContact.
+	models.SuppressEntityProjectionEcho(db, &contact, record)
 	models.ApplyRecordToContact(&contact, record, currentConfig(c).ProfilePhotoDir)
 
 	if contact.Firstname == "" {

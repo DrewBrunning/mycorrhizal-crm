@@ -95,6 +95,7 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 		}
 		card.RelatedTo = projectRelationshipEdges(db, c.UserID, c.VCardUID, card.RelatedTo, includeSensitive)
 		card.Keywords = projectTags(db, c.UserID, c.VCardUID, card.Keywords)
+		projectPrimaryEntities(db, c.UserID, c.VCardUID, &card, includeSensitive)
 		card.PersonalInfo = projectPreferences(db, c.UserID, c.VCardUID, card.PersonalInfo, includeSensitive)
 		passthrough := c.Passthrough
 		passthrough.VCard = projectCustomFields(db, c.UserID, c.VCardUID, passthrough.VCard, includeSensitive)
@@ -123,6 +124,7 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 	if record != nil {
 		record.Card.RelatedTo = projectRelationshipEdges(db, userID, record.UID, record.Card.RelatedTo, includeSensitive)
 		record.Card.Keywords = projectTags(db, userID, record.UID, record.Card.Keywords)
+		projectPrimaryEntities(db, userID, record.UID, &record.Card, includeSensitive)
 		record.Card.PersonalInfo = projectPreferences(db, userID, record.UID, record.Card.PersonalInfo, includeSensitive)
 		if sel != nil && !sel.IncludeSensitive {
 			record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta = filterSensitivePersonalInfo(record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta)

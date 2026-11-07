@@ -65,6 +65,15 @@ func ApplyRecordToContact(c *Contact, r *contactmodel.Record, photoDir string) {
 	// rationale and the field-by-field scope.
 	r = contactmodel.NormalizeRecord(r)
 
+	// Echo suppression, ID half (issue #2298, ADR 0043 decision 3): an ORG/ADR
+	// entry carrying the reserved ent- element ID is a read-time projection of
+	// a primary entity link, never a contact value. Drop it here so no inbound
+	// path (CardDAV/WebDAV PUT, VCF import, REST nested writes, or an internal
+	// read-edit-apply round trip) can write the projection into the stored
+	// Card. The value-based half for ID-stripping clients needs the database
+	// and lives in SuppressEntityProjectionEcho.
+	r = StripProjectedEntityIDs(r)
+
 	previousPersonalInfoMeta := c.CRM.PersonalInfoMeta
 	card := r.Card
 	proj := contactmodel.DeriveProjection(r)

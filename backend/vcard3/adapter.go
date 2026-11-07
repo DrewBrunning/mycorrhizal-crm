@@ -86,6 +86,7 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 	}
 
 	// --- Organizations ---
+	orgEmitted := false
 	for _, org := range r.Card.Organizations {
 		parts := []string{org.Name}
 		for _, u := range org.Units {
@@ -107,6 +108,16 @@ func (Adapter) Export(r *contactmodel.Record) ([]byte, []contactmodel.Diagnostic
 		if !hasContent {
 			continue
 		}
+		// A projected primary-entity organisation (reserved ent- ID, ADR 0043
+		// decision 3) never displaces the contact's own ORG on vCard 3.0: when an
+		// own ORG already leads, the projection is not emitted and a warn names
+		// it. Nothing is lost -- the projection is read-time and the entity stays
+		// the source of truth.
+		if orgEmitted && strings.HasPrefix(org.ID, contactmodel.EntityProjectionIDPrefix) {
+			warn(&diags, "org", "vCard 3.0 carries the contact's own ORG; the projected primary organisation entity \""+org.Name+"\" was not emitted")
+			continue
+		}
+		orgEmitted = true
 		card.Add(PropOrg, &vcard.Field{Value: joinComponents(parts)})
 	}
 
