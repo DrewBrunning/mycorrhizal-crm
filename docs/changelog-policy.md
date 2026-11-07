@@ -171,15 +171,12 @@ finding*, becomes checkable rather than aspirational.
 
 ## Where the record begins
 
-`CHANGELOG.md` begins at `v1.0.0` (the current supported-upgrade floor); earlier
-releases are not backfilled there. The GitHub Release record begins at `v0.6.0` — the
-[supported-upgrade floor](upgrade-compatibility.md) when this
-policy landed (issue #529; the floor is now `v1.0.0`, issue #1170).
-Releases from `v0.6.0` onward carry an **Upgrade notes** section (the
-`v0.6.0`–`v0.6.12` releases were backfilled with one when this policy landed).
-Earlier releases have generated notes only; reconstructing twenty pre-floor
-releases is not worth it, and nothing supported upgrades from below the floor in
-one hop anyway.
+`CHANGELOG.md` begins at `v0.6.0`, the first release with a supported-upgrade
+floor ([`upgrade-compatibility.md`](upgrade-compatibility.md)). The `v0.6.x` to
+`v0.9.0` sections were backfilled from the GitHub Release notes and are
+shorter and more technical than later ones; the word limits apply to
+`[Unreleased]` only. Earlier releases are not backfilled, and nothing supported
+upgrades from below the floor in one hop anyway.
 
 ## Document consistency
 
