@@ -80,6 +80,9 @@ func TestAuthorizationMatrix_BOLAValidBodyMutations(t *testing.T) {
 	require.NoError(t, db.First(&activityBefore, "id = ?", res.activity).Error)
 	var entityBefore models.Entity
 	require.NoError(t, db.First(&entityBefore, "id = ?", res.entity).Error)
+	primaryTrue := true
+	var entityLinkBefore models.ContactEntityLink
+	require.NoError(t, db.First(&entityLinkBefore, "id = ?", res.entityLink).Error)
 	var lifeEventBefore models.LifeEvent
 	require.NoError(t, db.First(&lifeEventBefore, "id = ?", res.lifeEvent).Error)
 	var reminderBefore models.Reminder
@@ -139,6 +142,19 @@ func TestAuthorizationMatrix_BOLAValidBodyMutations(t *testing.T) {
 				require.NoError(t, db.First(&after, "id = ?", res.entity).Error)
 				assert.Equal(t, entityBefore.Name, after.Name)
 				assert.Equal(t, entityBefore.Revision, after.Revision)
+			},
+		},
+		{
+			name:     "contact-entity-link",
+			path:     "/api/v1/contacts/" + res.contact + "/entity-links/" + res.entityLink,
+			intruder: models.ContactEntityLinkInput{Role: "owner", IsPrimary: &primaryTrue},
+			owner:    models.ContactEntityLinkInput{Role: "owner"},
+			unchanged: func(t *testing.T) {
+				var after models.ContactEntityLink
+				require.NoError(t, db.First(&after, "id = ?", res.entityLink).Error)
+				assert.Equal(t, entityLinkBefore.Role, after.Role)
+				assert.Equal(t, entityLinkBefore.IsPrimary, after.IsPrimary)
+				assert.Equal(t, entityLinkBefore.Revision, after.Revision)
 			},
 		},
 		{
