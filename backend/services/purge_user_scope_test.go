@@ -38,6 +38,7 @@ var purgeUIDColumnExcluded = map[string]string{
 	"attachments":                       "soft-deleted and purged by deleted_at (purgedSoftDeleteModels), row-keyed rather than UID-swept",
 	"audit_events":                      "append-only audit log; never hard-deleted by the purge",
 	"contact_field_overrides":           "issue #1997: hard-deleted by DeleteContact (user_id + uid scoped) and restored from the deletion snapshot; nothing can write one for a trashed contact, so there is nothing for the purge to sweep",
+	"entity_deletion_snapshots":         "ADR 0043: entity_id here is an entities.id (not a contact UID); swept by the entity-keyed orphan cleanup in PurgeSoftDeletedRows",
 	"contact_deletion_snapshots":        "ADR 0037: keyed by contact row id and swept by a dedicated user-scoped cleanup in PurgeSoftDeletedRows",
 	"contacts":                          "the parent; purged last, row by row, by its own deleted_at",
 	"feeds":                             "change-feed bookkeeping keyed by entity id, not a contact-owned row",
@@ -46,6 +47,13 @@ var purgeUIDColumnExcluded = map[string]string{
 	"reach_out_suggestions":             "hard-deleted by DeleteContact (user_id + uid scoped); not swept by the purge",
 	"share_grants":                      "ADR 0042: authorization history with no deleted_at; revoked (entity_deleted) by the DeleteContact cascade and hard-deleted by the share-grant retention purge, never swept by contact UID",
 	"users":                             "self_contact_vcard_uid is a pointer on the user, not a contact-owned row",
+}
+
+// purgeUIDColumnNotContact lists individual "table.column" entries that look
+// like a contact reference by name but hold another key. The rest of the
+// table's columns are still checked.
+var purgeUIDColumnNotContact = map[string]string{
+	"contact_entity_links.entity_id": "ADR 0043: an entities.id; removed with its entity by the entity-keyed orphan cleanup in PurgeSoftDeletedRows (the contact side is contact_vcard_uid)",
 }
 
 func TestPurgeContactUIDCleanups_CoverEveryUIDColumnedTable(t *testing.T) {
@@ -78,6 +86,9 @@ func TestPurgeContactUIDCleanups_CoverEveryUIDColumnedTable(t *testing.T) {
 		if !assert.Contains(t, covered, f.T,
 			"table %s has VCardUID-shaped column %s but is neither in purgeContactUIDCleanups (owner-scoped, "+
 				"issue #1351) nor purgeUIDColumnExcluded with a reason", f.T, f.C) {
+			continue
+		}
+		if _, ok := purgeUIDColumnNotContact[f.T+"."+f.C]; ok {
 			continue
 		}
 		assert.True(t, covered[f.T][f.C], "%s.%s is a VCardUID-shaped column missing from its purgeContactUIDCleanups entry", f.T, f.C)
@@ -144,9 +155,26 @@ func (s *rowSeeder) tableColumns(table string) []seedColumn {
 	return cols
 }
 
+// seedTableDefaults gives a table's CHECK-constrained columns a valid value
+// (the generic filler cannot satisfy a closed-enum CHECK). The composite
+// contact_entity_links -> entities foreign key needs the parent to share the
+// kind, so both default to the same one (ADR 0043).
+var seedTableDefaults = map[string]map[string]any{
+	"entities":             {"kind": "organisation"},
+	"contact_entity_links": {"kind": "organisation", "role": "employee"},
+}
+
 // insert adds a row to table with the given overrides and returns its id.
 func (s *rowSeeder) insert(table string, over map[string]any) any {
 	s.t.Helper()
+	merged := map[string]any{}
+	for k, v := range seedTableDefaults[table] {
+		merged[k] = v
+	}
+	for k, v := range over {
+		merged[k] = v
+	}
+	over = merged
 	cols := s.tableColumns(table)
 	var fks []seedFK
 	require.NoError(s.t, s.db.Raw(`SELECT "from" AS "from", "table" AS "table" FROM pragma_foreign_key_list(?)`, table).Scan(&fks).Error)

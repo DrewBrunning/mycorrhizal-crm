@@ -1007,6 +1007,17 @@ func MigrateDown(dbPath string) error {
 	}
 	defer closeMigrator(m)
 
+	// A rollback the SQL itself would refuse is refused here first: any error
+	// raised mid-migration leaves golang-migrate's schema_migrations row dirty,
+	// and a deliberate "no, this would delete your data" must not.
+	if version, dirty, verr := m.Version(); verr == nil && !dirty {
+		if guard, ok := migrateDownGuards[version]; ok {
+			if err := guard(sqlDB); err != nil {
+				return err
+			}
+		}
+	}
+
 	if err := m.Steps(-1); err != nil {
 		return fmt.Errorf("failed to rollback migration: %w", err)
 	}
@@ -1073,4 +1084,24 @@ func AppliedMigrationVersion(db *gorm.DB) (version uint, dirty bool, ok bool, er
 		return 0, false, false, nil
 	}
 	return row.Version, row.Dirty, true, nil
+}
+
+// migrateDownGuards maps a migration version to a pre-flight run by
+// MigrateDown before that migration's .down.sql. Only a migration whose
+// rollback would destroy user data registers one; the .down.sql keeps its own
+// SQL guard as the backstop for any caller that drives the migrator directly.
+var migrateDownGuards = map[uint]func(*sql.DB) error{
+	// 000091_reusable_entities (issue #2295, ADR 0043 decision 9).
+	91: func(db *sql.DB) error {
+		var n int
+		if err := db.QueryRow(`SELECT (SELECT COUNT(*) FROM entities)
+			+ (SELECT COUNT(*) FROM contact_entity_links)
+			+ (SELECT COUNT(*) FROM field_definitions WHERE target <> 'contact')`).Scan(&n); err != nil {
+			return fmt.Errorf("failed to check for entity data before rolling back 000091: %w", err)
+		}
+		if n > 0 {
+			return fmt.Errorf("cannot roll back 000091_reusable_entities: %d entity, link or non-contact field definition row(s) exist and rolling back would delete them; delete and purge the entities and their custom field definitions first", n)
+		}
+		return nil
+	},
 }

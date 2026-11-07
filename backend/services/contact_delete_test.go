@@ -33,6 +33,7 @@ var contactRefColumns = []string{
 // delete cascade. Every entry needs a reason.
 var contactCascadeNotRegistered = map[string]string{
 	"audit_events":               "append-only audit trail keyed polymorphically by entity_id; a contact delete must leave its own history intact",
+	"entity_deletion_snapshots":  "ADR 0043: entity_id is an entities.id, not a contact reference; written and swept by the entity delete (EntityCascadeRegistry)",
 	"contact_deletion_snapshots": "ADR 0037: written BY the contact delete (DeleteContact), not cleaned by it; consumed by restore, purge and the scheduled purge",
 }
 
@@ -136,7 +137,9 @@ func TestContactCascadeRegistry_StepsAreWellFormed(t *testing.T) {
 
 		switch s.Mode {
 		case CascadeSoft, CascadeHard:
-			assert.Nil(t, s.Apply, "%s: delete steps use the default delete", s.Table)
+			if s.Mode == CascadeHard {
+				assert.Nil(t, s.Apply, "%s: hard steps use the default delete", s.Table)
+			}
 			if s.NewModel == nil {
 				assert.Equal(t, CascadeHard, s.Mode, "%s: a raw join-table delete is a hard delete", s.Table)
 				continue

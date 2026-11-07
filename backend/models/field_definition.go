@@ -68,15 +68,15 @@ type FieldDefinition struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	UserID uint   `gorm:"not null;index;uniqueIndex:idx_field_definition_user_key,priority:1" json:"-"`
+	UserID uint   `gorm:"not null;index;uniqueIndex:idx_field_definitions_user_key,priority:1" json:"-"`
 	Label  string `gorm:"not null" json:"label" validate:"required,max=200"`
 
 	// Key is the stable machine name (the map key / API field name) -- unique
 	// per user (see UserID's matching uniqueIndex tag above), since two
 	// definitions with the same key would be ambiguous to reference.
-	Key string `gorm:"not null;uniqueIndex:idx_field_definition_user_key,priority:2" json:"key" validate:"required,max=100"`
+	Key string `gorm:"not null;uniqueIndex:idx_field_definitions_user_key,priority:3" json:"key" validate:"required,max=100"`
 
-	Target string `gorm:"not null" json:"target" validate:"required,oneof=contact"`
+	Target string `gorm:"not null;uniqueIndex:idx_field_definitions_user_key,priority:2" json:"target" validate:"required,oneof=contact"`
 	Type   string `gorm:"not null" json:"type" validate:"required,oneof=string text number boolean date datetime uri email phone enum"`
 
 	Constraints FieldConstraints `gorm:"type:text;serializer:json" json:"constraints,omitempty"`
