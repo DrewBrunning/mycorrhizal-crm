@@ -61,7 +61,8 @@ class ActivityRepositoryImpl @Inject constructor(
             cursor = cursor,
             limit = limit,
             includeContacts = true,
-            search = search
+            search = search,
+            sortByDate = true
         )
         result.getOrNull()?.let { page -> dao.upsertAll(page.activities.map { it.toCached() }) }
         return result

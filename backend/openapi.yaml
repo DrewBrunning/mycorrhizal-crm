@@ -5839,9 +5839,22 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: sort
+          in: query
+          description: >
+            Cursor order for the list (issue #2360). updated_at (default) is
+            the sync order — (updated_at, id), last-modified first under
+            order=desc — that existing clients rely on. date orders by the
+            activity's own date (newest first under order=desc) with an id
+            tiebreak, so editing an old activity does not move it; resume
+            cursors take their own (date, id) shape and are not
+            interchangeable with updated_at cursors. sort=date cannot be
+            combined with ?since= (400, sync state is updated_at-ordered),
+            and an unrecognized value is a 400.
+          schema: { type: string, enum: [updated_at, date], default: updated_at }
         - name: order
           in: query
-          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          description: Direction for the cursor order (updated_at or date, per sort). since forces asc.
           schema: { type: string, enum: [asc, desc], default: desc }
         - name: include
           in: query

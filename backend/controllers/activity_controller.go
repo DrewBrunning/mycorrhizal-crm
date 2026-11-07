@@ -157,9 +157,26 @@ func GetActivities(c *gin.Context) {
 	// T17: cursor pagination on (updated_at, id); ?since= turns the endpoint
 	// into a change feed including soft-deleted rows (tombstones). An exact
 	// `total` count is deliberately gone — activities accumulate without bound.
-	params, err := GetCursorParams(c)
+	//
+	// Issue #2360: ?sort=date is the human list order — by the activity's own
+	// date, newest first, with its own (date, id) cursor — so editing an old
+	// activity does not move it. Default stays the sync order (MAINT-02).
+	sort, err := parseActivitySort(c)
 	if err != nil {
 		apperrors.AbortWithError(c, err)
+		return
+	}
+	dateSorted := sort == "date"
+	params, err := GetCursorParamsForActivitySort(c, sort)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	// Decided like contacts' sort=name+since: a sync client asking for a
+	// date-ordered change feed would quietly diverge, so it is a 400: with
+	// since=, updated_at is the only valid sort.
+	if params.Since && dateSorted {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("sort", "must be one of: updated_at").WithReason(apperrors.ReasonValidationSortInvalid, map[string]any{"supported": "updated_at"}))
 		return
 	}
 	if err := CheckFeedCursorAge(c, params); err != nil {
@@ -250,7 +267,15 @@ func GetActivities(c *gin.Context) {
 	// columns are all present in activities.* so the SELECT DISTINCT search
 	// branch stays valid.
 	desc := params.Order == "desc"
-	if params.Cursor != nil {
+	if params.DateCursor != nil {
+		id, ok := parseCursorID(params.DateCursor)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
+			return
+		}
+		pred, t, idv := dateCursorPredicate("activities", params.DateCursor, id, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	} else if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
 			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
@@ -260,8 +285,13 @@ func GetActivities(c *gin.Context) {
 		baseQuery = baseQuery.Where(pred, t, idv)
 	}
 
-	query := cursorOrderBy(baseQuery.Session(&gorm.Session{}), "activities", desc).
-		Limit(params.Limit + 1)
+	query := baseQuery.Session(&gorm.Session{})
+	if dateSorted {
+		query = dateCursorOrderBy(query, "activities", desc)
+	} else {
+		query = cursorOrderBy(query, "activities", desc)
+	}
+	query = query.Limit(params.Limit + 1)
 
 	if includeContacts {
 		query = query.Preload("Contacts", func(db *gorm.DB) *gorm.DB {
@@ -277,7 +307,12 @@ func GetActivities(c *gin.Context) {
 	nextCursor := ""
 	if len(activities) > params.Limit {
 		activities = activities[:params.Limit]
-		nextCursor = EncodeCursor(activities[len(activities)-1].UpdatedAt, activities[len(activities)-1].ID)
+		last := activities[len(activities)-1]
+		if dateSorted {
+			nextCursor = EncodeDateCursor(last.Date, last.ID)
+		} else {
+			nextCursor = EncodeCursor(last.UpdatedAt, last.ID)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{

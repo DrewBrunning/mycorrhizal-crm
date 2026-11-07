@@ -44,6 +44,9 @@ export interface GetActivitiesParams {
   search?: string;
   fromDate?: string;
   toDate?: string;
+  // #2360: 'date' lists by the activity's own date (newest first); the default
+  // server order is last-modified, which is sync order, not a human list order.
+  sort?: 'date' | 'updated_at';
 }
 
 // Get a page of activities, resumable via next_cursor (T17)
@@ -70,6 +73,10 @@ export async function getActivities(params: GetActivitiesParams): Promise<Activi
 
   if (params.toDate) {
     queryParams.append('toDate', params.toDate);
+  }
+
+  if (params.sort) {
+    queryParams.append('sort', params.sort);
   }
 
   const response = await apiFetch(`${API_BASE_URL}/activities?${queryParams.toString()}`, {
