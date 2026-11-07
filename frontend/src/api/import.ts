@@ -124,6 +124,8 @@ export interface ImportFixedAssignment {
 export interface FixedAssignmentIds {
   assign_circle_ids?: string[];
   assign_tag_ids?: string[];
+  // Issue #2186: corrections to error rows, sent with the confirm request.
+  row_edits?: ImportRowEdit[];
 }
 
 // Action for a specific row
@@ -149,6 +151,27 @@ export interface ImportFieldMapping {
   type?: string;
 }
 
+// Issue #2186: the user's correction to a preview row that failed validation.
+// An absent field is left unchanged; an empty email/phone removes the
+// offending entry. The server re-validates at confirm.
+export interface ImportRowEdit {
+  row_index: number;
+  firstname?: string;
+  lastname?: string;
+  email?: string;
+  phone?: string;
+}
+
+// Issue #2187: one row that was not (fully) imported. `row` is 1-based.
+export interface ImportRowIssue {
+  row: number;
+  name: string;
+  email: string;
+  phone: string;
+  status: 'skipped' | 'failed';
+  reason: string;
+}
+
 // Final import result
 export interface ImportResult {
   total_processed: number;
@@ -156,6 +179,7 @@ export interface ImportResult {
   updated: number;
   skipped: number;
   errors: string[];
+  issues: ImportRowIssue[];
 }
 
 // One persisted import outcome (issue #651). Mirrors backend models.ImportRun
@@ -358,6 +382,7 @@ export async function confirmVCFImport(
   sessionId: string,
   actions: RowImportAction[],
   fieldMappings: ImportFieldMapping[] = [],
+  rowEdits: ImportRowEdit[] = [],
 ): Promise<ImportResult> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/import/vcf/confirm`, {
     method: 'POST',
@@ -366,6 +391,7 @@ export async function confirmVCFImport(
       session_id: sessionId,
       actions,
       field_mappings: fieldMappings,
+      ...(rowEdits.length > 0 ? { row_edits: rowEdits } : {}),
     }),
   });
 

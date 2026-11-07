@@ -457,7 +457,15 @@
           "url": "Website",
           "impp": "IM"
         },
-        "allResolved": "Alle Konflikte gelöst – überprüfen Sie die Entscheidungen unten."
+        "allResolved": "Alle Konflikte gelöst – überprüfen Sie die Entscheidungen unten.",
+        "fixRow": "Diese Zeile korrigieren",
+        "editFix": "Korrektur bearbeiten",
+        "fixSaved": "Korrektur gespeichert – wird beim Import erneut geprüft",
+        "fixFirstName": "Vorname",
+        "fixLastName": "Nachname",
+        "fixEmail": "E-Mail",
+        "fixPhone": "Telefon",
+        "saveFix": "Korrektur speichern"
       },
       "result": {
         "title": "Import abgeschlossen",
@@ -468,8 +476,15 @@
         "updated_other": "{{count}} Kontakte aktualisiert",
         "skipped_one": "{{count}} Zeile übersprungen",
         "skipped_other": "{{count}} Zeilen übersprungen",
-        "errors": "Fehler",
-        "done": "Fertig"
+        "done": "Fertig",
+        "issuesTitle": "Nicht importierte Zeilen",
+        "downloadCsv": "Als CSV herunterladen",
+        "colRow": "Zeile",
+        "colName": "Kontakt",
+        "colStatus": "Ergebnis",
+        "colReason": "Grund",
+        "statusFailed": "Fehlgeschlagen",
+        "statusSkipped": "Übersprungen"
       },
       "errors": {
         "invalidFile": "Bitte wählen Sie eine gültige CSV-Datei",

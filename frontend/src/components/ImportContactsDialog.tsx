@@ -50,6 +50,8 @@ import {
   type ImportMergeDiff,
   type ImportPreviewResponse,
   type ImportResult,
+  type ImportRowEdit,
+  type ImportRowIssue,
   type ImportRowPreview,
   type ImportUploadResponse,
   REPEATABLE_VALUE_FIELDS,
@@ -62,6 +64,7 @@ import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
 import { isContactPickerSupported, pickContactsAsVCardFile } from '../utils/contactPicker';
 import { EMPTY_VALUE } from '../utils/emptyValue';
 import { getErrorMessage } from '../utils/errorHandler';
+import { importIssuesToCsv } from '../utils/importReportCsv';
 import AppDialog from './AppDialog';
 import ImportFixedAssignmentPicker from './ImportFixedAssignmentPicker';
 
@@ -123,6 +126,9 @@ export default function ImportContactsDialog({
   // #2184: the summary badges double as filters; null shows every row.
   const [previewFilter, setPreviewFilter] = useState<PreviewFilter | null>(null);
 
+  // Issue #2186: corrections to rows that failed validation, by row_index.
+  const [rowEdits, setRowEdits] = useState<Map<number, ImportRowEdit>>(new Map());
+
   // Result state
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
 
@@ -144,6 +150,7 @@ export default function ImportContactsDialog({
     setFixedTagIds([]);
     setPreviewResponse(null);
     setRowActions(new Map());
+    setRowEdits(new Map());
     setPreviewPage(0);
     setPreviewFilter(null);
     setImportResult(null);
@@ -304,6 +311,7 @@ export default function ImportContactsDialog({
         initialActions.set(row.row_index, row.suggested_action);
       });
       setRowActions(initialActions);
+      setRowEdits(new Map());
 
       setStep('preview');
       setActiveStep(2);
@@ -319,6 +327,13 @@ export default function ImportContactsDialog({
     const newActions = new Map(rowActions);
     newActions.set(rowIndex, action);
     setRowActions(newActions);
+  };
+
+  // Issue #2186: saving a fix keeps the row (the server re-validates it at
+  // confirm and reports it if it is still invalid).
+  const handleRowEditSave = (edit: ImportRowEdit) => {
+    setRowEdits((prev) => new Map(prev).set(edit.row_index, edit));
+    handleRowActionChange(edit.row_index, 'add');
   };
 
   // T56 bulk controls: apply one action across the whole preview in a single
@@ -357,12 +372,22 @@ export default function ImportContactsDialog({
         actions.push({ row_index: rowIndex, action: action as 'skip' | 'add' | 'update' });
       });
 
+      // Issue #2186: send only the edits for rows that are still imported.
+      const edits = [...rowEdits.values()].filter((e) => rowActions.get(e.row_index) !== 'skip');
+
       // Use appropriate confirm endpoint based on import type
+      const hasFixed = fixedCircleIds.length > 0 || fixedTagIds.length > 0;
+      const csvExtras = {
+        ...(hasFixed ? fixedIds() : {}),
+        ...(edits.length > 0 ? { row_edits: edits } : {}),
+      };
       const result =
         importType === 'vcf'
-          ? await confirmVCFImport(previewResponse.session_id, actions, fieldMappings)
-          : fixedCircleIds.length > 0 || fixedTagIds.length > 0
-            ? await confirmImport(previewResponse.session_id, actions, fixedIds())
+          ? edits.length > 0
+            ? await confirmVCFImport(previewResponse.session_id, actions, fieldMappings, edits)
+            : await confirmVCFImport(previewResponse.session_id, actions, fieldMappings)
+          : Object.keys(csvExtras).length > 0
+            ? await confirmImport(previewResponse.session_id, actions, csvExtras)
             : await confirmImport(previewResponse.session_id, actions);
 
       setImportResult(result);
@@ -936,6 +961,8 @@ export default function ImportContactsDialog({
               row={row}
               action={rowActions.get(row.row_index) ?? row.suggested_action}
               onActionChange={(action) => handleRowActionChange(row.row_index, action)}
+              edit={rowEdits.get(row.row_index)}
+              onEditSave={handleRowEditSave}
             />
           ))}
         </Box>
@@ -951,6 +978,19 @@ export default function ImportContactsDialog({
         )}
       </Box>
     );
+  };
+
+  // Issue #2187: save the skipped/failed rows as a CSV.
+  const downloadIssuesCsv = (issues: ImportRowIssue[]) => {
+    const blob = new Blob([importIssuesToCsv(issues)], { type: 'text/csv;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'import-report.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   // Render result step
@@ -987,17 +1027,46 @@ export default function ImportContactsDialog({
           </Typography>
         </Box>
 
-        {importResult.errors.length > 0 && (
+        {importResult.issues.length > 0 && (
           <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle2" color="error" gutterBottom>
-              {t('contacts.import.result.errors', 'Errors')}:
-            </Typography>
-            {importResult.errors.map((error, index) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: import error strings, no stable id
-              <Typography key={index} variant="body2" color="error">
-                {error}
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Typography variant="subtitle2" color="error">
+                {t('contacts.import.result.issuesTitle', 'Rows not imported')}
               </Typography>
-            ))}
+              <Button size="small" onClick={() => downloadIssuesCsv(importResult.issues)}>
+                {t('contacts.import.result.downloadCsv', 'Download as CSV')}
+              </Button>
+            </Box>
+            <TableContainer sx={{ maxHeight: 260 }}>
+              <Table
+                size="small"
+                stickyHeader
+                aria-label={t('contacts.import.result.issuesTitle', 'Rows not imported')}
+              >
+                <TableHead>
+                  <TableRow>
+                    <TableCell>{t('contacts.import.result.colRow', 'Row')}</TableCell>
+                    <TableCell>{t('contacts.import.result.colName', 'Contact')}</TableCell>
+                    <TableCell>{t('contacts.import.result.colStatus', 'Result')}</TableCell>
+                    <TableCell>{t('contacts.import.result.colReason', 'Reason')}</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {importResult.issues.map((issue) => (
+                    <TableRow key={`${issue.row}-${issue.status}-${issue.reason}`}>
+                      <TableCell>{issue.row}</TableCell>
+                      <TableCell>{issue.name || '—'}</TableCell>
+                      <TableCell>
+                        {issue.status === 'failed'
+                          ? t('contacts.import.result.statusFailed', 'Failed')
+                          : t('contacts.import.result.statusSkipped', 'Skipped')}
+                      </TableCell>
+                      <TableCell>{issue.reason}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
           </Box>
         )}
       </Box>
@@ -1113,8 +1182,9 @@ export default function ImportContactsDialog({
                 ? t('contacts.import.preview.importing', 'Importing…')
                 : t('contacts.import.preview.applyDecisions', 'Apply Decisions ({{count}})', {
                     count:
-                      previewResponse?.rows.filter((r) => r.validation_errors.length === 0)
-                        .length ?? 0,
+                      previewResponse?.rows.filter(
+                        (r) => r.validation_errors.length === 0 || rowEdits.has(r.row_index),
+                      ).length ?? 0,
                   })}
             </Button>
           </>
@@ -1324,13 +1394,26 @@ function ImportRowCard({
   row,
   action,
   onActionChange,
+  edit,
+  onEditSave,
 }: {
   row: ImportRowPreview;
   action: string;
   onActionChange: (action: 'skip' | 'add' | 'update') => void;
+  edit?: ImportRowEdit;
+  onEditSave: (edit: ImportRowEdit) => void;
 }) {
   const { t } = useTranslation();
   const hasErrors = row.validation_errors.length > 0;
+  // Issue #2186: a saved fix re-enables the row's decision buttons.
+  const fixed = hasErrors && !!edit;
+  const [fixing, setFixing] = useState(false);
+  const [draft, setDraft] = useState({
+    firstname: edit?.firstname ?? row.parsed_contact.firstname ?? '',
+    lastname: edit?.lastname ?? row.parsed_contact.lastname ?? '',
+    email: edit?.email ?? row.parsed_contact.email ?? '',
+    phone: edit?.phone ?? row.parsed_contact.phone ?? '',
+  });
   const name =
     [row.parsed_contact.firstname, row.parsed_contact.lastname].filter(Boolean).join(' ').trim() ||
     t('contacts.import.preview.unnamed', 'Unnamed');
@@ -1450,6 +1533,61 @@ function ImportRowCard({
           )}
 
           {!hasErrors && row.merge_diff && <ImportMergeDiffSummary diff={row.merge_diff} />}
+
+          {hasErrors && !fixing && (
+            <Box sx={{ mt: 0.5, display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Button size="small" onClick={() => setFixing(true)}>
+                {fixed
+                  ? t('contacts.import.preview.editFix', 'Edit fix')
+                  : t('contacts.import.preview.fixRow', 'Fix this row')}
+              </Button>
+              {fixed && (
+                <Typography variant="caption" sx={{ color: 'success.main' }}>
+                  {t('contacts.import.preview.fixSaved', 'Fix saved — checked again on import')}
+                </Typography>
+              )}
+            </Box>
+          )}
+          {hasErrors && fixing && (
+            <Box sx={{ mt: 1, display: 'grid', gap: 1, gridTemplateColumns: { sm: '1fr 1fr' } }}>
+              {(
+                [
+                  ['firstname', t('contacts.import.preview.fixFirstName', 'First name')],
+                  ['lastname', t('contacts.import.preview.fixLastName', 'Last name')],
+                  ['email', t('contacts.import.preview.fixEmail', 'Email')],
+                  ['phone', t('contacts.import.preview.fixPhone', 'Phone')],
+                ] as const
+              ).map(([key, label]) => (
+                <TextField
+                  key={key}
+                  size="small"
+                  label={label}
+                  value={draft[key]}
+                  onChange={(e) => setDraft((d) => ({ ...d, [key]: e.target.value }))}
+                />
+              ))}
+              <Box sx={{ display: 'flex', gap: 1, gridColumn: '1 / -1' }}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  onClick={() => {
+                    // Only the fields the user actually changed are sent.
+                    const next: ImportRowEdit = { row_index: row.row_index };
+                    for (const key of ['firstname', 'lastname', 'email', 'phone'] as const) {
+                      if (draft[key] !== (row.parsed_contact[key] ?? '')) next[key] = draft[key];
+                    }
+                    onEditSave(next);
+                    setFixing(false);
+                  }}
+                >
+                  {t('contacts.import.preview.saveFix', 'Save fix')}
+                </Button>
+                <Button size="small" onClick={() => setFixing(false)}>
+                  {t('common.cancel', 'Cancel')}
+                </Button>
+              </Box>
+            </Box>
+          )}
         </Box>
       </Box>
       <ToggleButtonGroup
@@ -1474,7 +1612,7 @@ function ImportRowCard({
           '& .MuiToggleButton-root.Mui-selected:hover': { bgcolor: 'primary.dark' },
         }}
       >
-        <ToggleButton value="add" disabled={hasErrors}>
+        <ToggleButton value="add" disabled={hasErrors && !fixed}>
           {isDuplicate
             ? t('contacts.import.preview.actionKeepBoth', 'Keep both')
             : t('contacts.import.preview.actionKeep', 'Keep')}
@@ -1484,7 +1622,7 @@ function ImportRowCard({
             {t('contacts.import.preview.actionMerge', 'Merge')}
           </ToggleButton>
         )}
-        <ToggleButton value="skip" disabled={hasErrors}>
+        <ToggleButton value="skip" disabled={hasErrors && !fixed}>
           {isDuplicate
             ? t('contacts.import.preview.actionDiscard', 'Discard new')
             : t('contacts.import.preview.actionSkip', 'Skip')}

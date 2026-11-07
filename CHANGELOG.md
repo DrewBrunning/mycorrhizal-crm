@@ -22,7 +22,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
-- **Contacts list pages** ([#2188](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2188)): the web Contacts page now has page controls with the total number of contacts and a page-size choice (25, 50 or 100; 50 by default, up from 10) instead of a Load more button. The page and size are kept in the address, so reloading or going back returns you to the same spot. Selecting contacts applies to the current page and is cleared when you change page.
+- **Fix and review failed import rows** ([#2186](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2186), [#2187](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2187)): on the web, you can correct rows with errors during import review, and a contact with no name now takes its email or phone as its name. The final report lists every skipped or failed contact with the reason, with a CSV download.
+- **Contacts list pages** ([#2188](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2188)): the web Contacts page now has page controls with a total count and a page size of 25, 50 or 100, replacing Load more. Reloading keeps your page; selection applies to the current page.
 - **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
 - **ntfy access token** ([#2339](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2339)): the ntfy settings accept an optional access token, so reminders can be
   sent through a self-hosted ntfy server that requires authentication to publish. Web and Android.

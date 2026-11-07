@@ -472,7 +472,15 @@
           "url": "sito web",
           "impp": "IM"
         },
-        "allResolved": "Tutti i conflitti risolti: rivedi le decisioni qui sotto."
+        "allResolved": "Tutti i conflitti risolti: rivedi le decisioni qui sotto.",
+        "fixRow": "Correggi questa riga",
+        "editFix": "Modifica correzione",
+        "fixSaved": "Correzione salvata: verrà ricontrollata durante l’importazione",
+        "fixFirstName": "Nome",
+        "fixLastName": "Cognome",
+        "fixEmail": "E-mail",
+        "fixPhone": "Telefono",
+        "saveFix": "Salva correzione"
       },
       "result": {
         "title": "Importazione Completata",
@@ -486,8 +494,15 @@
         "skipped_one": "{{count}} riga saltata",
         "skipped_other": "{{count}} righe saltate",
         "skipped_many": "{{count}} righe saltate",
-        "errors": "Errori",
-        "done": "Fatto"
+        "done": "Fatto",
+        "issuesTitle": "Righe non importate",
+        "downloadCsv": "Scarica come CSV",
+        "colRow": "Riga",
+        "colName": "Contatto",
+        "colStatus": "Esito",
+        "colReason": "Motivo",
+        "statusFailed": "Non riuscita",
+        "statusSkipped": "Saltata"
       },
       "errors": {
         "invalidFile": "Seleziona un file CSV valido",
