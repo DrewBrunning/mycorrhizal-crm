@@ -3,9 +3,13 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -388,6 +392,7 @@ func TestContactEntityLink_ForeignResourcesAre404AndWriteNothing(t *testing.T) {
 	myOrg := e.org(t, "Acme")
 	myLink := e.addLink(t, mine, map[string]any{"entity_id": myOrg.ID, "role": "employee"})
 	_, fc, fent, fl := e.foreign(t)
+	sibling := e.contact(t, func(c *models.Contact) { c.Firstname = "Sibling" })
 
 	var before int64
 	require.NoError(t, e.db.Model(&models.ContactEntityLink{}).Count(&before).Error)
@@ -412,6 +417,9 @@ func TestContactEntityLink_ForeignResourcesAre404AndWriteNothing(t *testing.T) {
 		{"adopt own link via foreign contact", http.MethodPost, linkPath(fc, myLink.ID, "adopt"), nil},
 		{"from-existing on foreign contact", http.MethodPost, linkPath(fc, "from-existing"), map[string]any{"source": map[string]any{"kind": "organization", "id": "x"}, "role": "employee"}},
 		{"from-existing with foreign entity", http.MethodPost, linkPath(mine, "from-existing"), map[string]any{"source": map[string]any{"kind": "organization", "id": "x"}, "entity_id": fent.ID, "role": "employee"}},
+		{"update own link via a sibling own contact", http.MethodPut, linkPath(sibling, myLink.ID), map[string]any{"role": "owner"}},
+		{"delete own link via a sibling own contact", http.MethodDelete, linkPath(sibling, myLink.ID), nil},
+		{"adopt own link via a sibling own contact", http.MethodPost, linkPath(sibling, myLink.ID, "adopt"), nil},
 		{"unknown contact", http.MethodGet, "/contacts/999999/entity-links", nil},
 		{"non-numeric contact", http.MethodGet, "/contacts/abc/entity-links", nil},
 	}
@@ -433,6 +441,8 @@ func TestContactEntityLink_ForeignResourcesAre404AndWriteNothing(t *testing.T) {
 	var mine2 models.ContactEntityLink
 	require.NoError(t, e.db.First(&mine2, "id = ?", myLink.ID).Error)
 	assert.False(t, mine2.DeletedAt.Valid, "my link survived the cross-contact delete attempt")
+	assert.Equal(t, "employee", mine2.Role, "my link was not edited through another contact's path")
+	assert.Equal(t, mine.VCardUID, mine2.ContactVCardUID)
 
 	// the filter by a foreign entity id returns nothing, never the foreign contact
 	w := e.do(http.MethodGet, "/contacts?entity_id="+fent.ID, nil)
@@ -743,4 +753,71 @@ func TestContactEntityLink_WorksWithoutAnInstalledClock(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+// "Today" is the owner's calendar day (ADR 0015 rule 4), not UTC: at 23:30 UTC
+// on 15 June it is already 16 June in Auckland.
+func TestContactEntityLink_TodayIsTheOwnersCalendarDay(t *testing.T) {
+	e := newLinkEnv(t)
+	e.clk.Set(time.Date(2026, time.June, 15, 23, 30, 0, 0, time.UTC))
+	c := e.contact(t, nil)
+	org := e.org(t, "Acme")
+	endsOn15th := map[string]any{"end": map[string]any{"year": 2026, "month": 6, "day": 15}}
+
+	l := e.addLink(t, c, map[string]any{"entity_id": org.ID, "role": "employee", "is_primary": true, "period": endsOn15th})
+	assert.True(t, l.Current, "UTC reminder zone: still the 15th")
+
+	// Re-serve the listing with an Auckland reminder zone on the request.
+	e.router.GET("/auckland/contacts/:id/entity-links", func(ctx *gin.Context) {
+		cfg := currentConfig(ctx)
+		cfg.ReminderTimezone = "Pacific/Auckland"
+		ctx.Set("cfg", cfg)
+		ListContactEntityLinks(ctx)
+	})
+	w := e.do(http.MethodGet, fmt.Sprintf("/auckland/contacts/%d/entity-links", c.ID), nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var r models.ContactEntityLinksResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &r))
+	require.Len(t, r.Links, 1)
+	assert.False(t, r.Links[0].Current, "in the owner's zone it is the 16th: the link ended yesterday")
+	assert.True(t, r.Links[0].IsPrimary, "is_primary is retained")
+	assert.Equal(t, "", r.Links[0].ProjectsAs)
+}
+
+// Adopt and link-from-existing are explicit user actions (ADR 0043 decision 3):
+// nothing but their own route registration may reach the handlers, so an import,
+// a sync or a merge can never trigger them.
+func TestContactEntityLink_AdoptAndFromExistingAreOnlyReachedByTheirRoutes(t *testing.T) {
+	handlers := []string{"AdoptContactEntityLink", "LinkContactEntityFromExisting"}
+	allowed := map[string]bool{
+		"contact_entity_link_controller.go": true,
+		"routes.go":                         true,
+	}
+	root := ".."
+	var offenders []string
+	require.NoError(t, filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			if n := d.Name(); n == "node_modules" || n == ".git" || n == "testdata" {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") || allowed[d.Name()] {
+			return nil
+		}
+		src, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return rerr
+		}
+		for _, h := range handlers {
+			if strings.Contains(string(src), h) {
+				offenders = append(offenders, path+" references "+h)
+			}
+		}
+		return nil
+	}))
+	assert.Empty(t, offenders, "adopt/from-existing must only be reachable from their routes")
 }
