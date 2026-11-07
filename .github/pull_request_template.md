@@ -76,19 +76,13 @@ The PR body is the handoff. Do not have the agent watch or poll the PR
 with the failing job link and the exact reproduce command above.
 -->
 
-## Upgrade notes
+## Changelog
 
 <!--
-Does this change affect a self-hosted operator? It does if it touches a database
-migration, a configuration variable (name / default / meaning), observable
-behaviour, or anything an operator must do before or after upgrading.
+Does this change affect users or self-hosted operators? Add one entry to
+`CHANGELOG.md` under `[Unreleased]` (format: docs/changelog-policy.md). It
+becomes the release notes. Operator actions go in an `> **Upgrade**` blockquote.
 
-  - If yes: describe what the operator must do. This block is harvested verbatim
-    into the release notes (REL-05, docs/changelog-policy.md). Add a
-    `## Breaking changes` block too if the change is breaking.
-  - If no: replace this whole section with a single line:
+If there is no user-visible effect, replace this whole section with:
       no-changelog: <short reason>
-
-Purely internal / test-only / most bug fixes need neither — just delete this
-section and set the right label.
 -->
