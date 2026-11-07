@@ -164,3 +164,15 @@ func TestGetActivitiesSortDateRejectsNonNumericCursorID(t *testing.T) {
 	code, _ := getActivityDatePage(t, router, "sort=date&cursor="+cursor)
 	assert.Equal(t, http.StatusBadRequest, code)
 }
+
+// Same guard on the default (updated_at) order.
+func TestGetActivitiesRejectsNonNumericCursorID(t *testing.T) {
+	db, router := setupRouter(t)
+	var user models.User
+	db.First(&user)
+	router.GET("/activities", GetActivities)
+
+	cursor := encodeRawURL("2026-06-01T00:00:00Z|abc")
+	code, _ := getActivityDatePage(t, router, "cursor="+cursor)
+	assert.Equal(t, http.StatusBadRequest, code)
+}
