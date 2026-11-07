@@ -19,7 +19,7 @@ export type FieldType =
   | 'phone'
   | 'enum';
 
-export type FieldDefinitionTarget = 'contact';
+export type FieldDefinitionTarget = 'contact' | 'organisation' | 'place' | 'pet';
 export type FieldSensitivity = 'normal' | 'private' | 'secret';
 
 // The complete FieldType token set, mirrored by hand from the backend's

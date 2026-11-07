@@ -4533,6 +4533,297 @@
     },
     {
       "method": "GET",
+      "path": "/entities",
+      "parameters": [
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "order",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "q",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:EntityListResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/entities",
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        }
+      ],
+      "request_body": "ref:EntityInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:Entity"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/entities/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:Entity"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/entities/{id}",
+      "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:EntityInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:Entity"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/entities/{id}",
+      "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:EntityDeleteResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/entities/{id}/contacts",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:EntityContactsResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/entities/{id}/field-values",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/entities/{id}/field-values",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactFieldValuesInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/entities/{id}/restore",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:EntityRestoreResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/export",
       "parameters": null,
       "responses": [
@@ -15524,6 +15815,256 @@
       ]
     },
     {
+      "name": "Entity",
+      "properties": [
+        {
+          "name": "core",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "organisation",
+            "place",
+            "pet"
+          ]
+        },
+        {
+          "name": "link_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "projection_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "revision",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityContactLink",
+      "properties": [
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "contact_vcard_uid",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "firstname",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "is_primary",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "lastname",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "link_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "period",
+          "type": "ref:TemporalRange",
+          "required": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "role_label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EntityContactsResponse",
+      "properties": [
+        {
+          "name": "contacts",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityDeleteResponse",
+      "properties": [
+        {
+          "name": "link_count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "projection_count",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityInput",
+      "properties": [
+        {
+          "name": "core",
+          "type": "object",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "organisation",
+            "place",
+            "pet"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EntityListResponse",
+      "properties": [
+        {
+          "name": "entities",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "next_cursor",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityRestoreResponse",
+      "properties": [
+        {
+          "name": "entity",
+          "type": "ref:Entity",
+          "required": true
+        },
+        {
+          "name": "same_name_live",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "skipped",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityRestoreSkip",
+      "properties": [
+        {
+          "name": "count",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "table",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "EntryPeriod",
       "properties": [
         {
@@ -16085,7 +16626,10 @@
           "type": "string",
           "required": true,
           "enum": [
-            "contact"
+            "contact",
+            "organisation",
+            "place",
+            "pet"
           ]
         },
         {
@@ -16155,7 +16699,10 @@
           "type": "string",
           "required": false,
           "enum": [
-            "contact"
+            "contact",
+            "organisation",
+            "place",
+            "pet"
           ]
         },
         {

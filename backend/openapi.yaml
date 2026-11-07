@@ -130,6 +130,8 @@ tags:
     description: Import sessions for CSV, vCard, JSContact, Monica, Meerkat, and account bundles.
   - name: Integrations
     description: Immich, Paperless, GeoPulse, Seafile, Nextcloud, and external identities.
+  - name: Entities
+    description: Reusable organisations, places and pets shared by many contacts (ADR 0043).
   - name: Life Events
     description: Life events and suggestions.
   - name: Notes
@@ -7857,6 +7859,377 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   # --- Custom field definitions ---
+  # --- Reusable entities (issue #2296, ADR 0043) ---
+  /entities:
+    get:
+      summary: List reusable entities (organisations, places, pets)
+      operationId: listEntities
+      tags:
+        - Entities
+      description: |
+        The caller's live entities, newest-updated first, cursor-paginated. This is the owner's own
+        surface, so every sensitivity is returned; `sensitivity` is a plain filter, not an access gate.
+      parameters:
+        - name: kind
+          in: query
+          schema: { type: string, enum: [organisation, place, pet] }
+        - name: q
+          in: query
+          description: Case-insensitive substring match on the normalized name (NFC, lower-cased; LIKE metacharacters are literal).
+          schema: { type: string }
+        - name: sensitivity
+          in: query
+          schema: { type: string, enum: [normal, private, secret] }
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+      responses:
+        "200":
+          description: A page of entities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityListResponse"
+        "400":
+          description: Invalid kind, sensitivity or cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Create an entity
+      operationId: createEntity
+      tags:
+        - Entities
+      description: |
+        `kind` is required and immutable. `core` is validated per kind (unknown keys are rejected); a
+        place's address sensitivity belongs in `sensitivity`, not in `core`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntityInput"
+      responses:
+        "201":
+          description: Entity created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entity"
+        "400":
+          description: Validation failed (reason codes entity_kind_required, entity_core_invalid, validation_*).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get an entity
+      operationId: getEntity
+      tags:
+        - Entities
+      description: Includes `link_count` and `projection_count` (contacts that currently receive a projected ORG/ADR from this entity).
+      responses:
+        "200":
+          description: The entity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entity"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found (also for another user's or a deleted entity).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update an entity
+      operationId: updateEntity
+      tags:
+        - Entities
+      description: |
+        Writes name, core and sensitivity only. An omitted `core` or `sensitivity` is kept. `kind`, when
+        sent, must equal the stored kind (reason `entity_kind_immutable`).
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntityInput"
+      responses:
+        "200":
+          description: The updated entity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entity"
+        "400":
+          description: Validation failed, or kind change attempted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision; nothing was changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete an entity (soft delete with cascade)
+      operationId: deleteEntity
+      tags:
+        - Entities
+      description: |
+        One transaction (ADR 0043 decision 6): soft-deletes the entity and its live contact links
+        (one batch id), hard-deletes its custom field values into an encrypted deletion snapshot.
+        The response reports how many contacts lose a projection. Undo with `POST /entities/{id}/restore`.
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityDeleteResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision; nothing was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/{id}/restore:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Restore a deleted entity
+      operationId: restoreEntity
+      tags:
+        - Entities
+      description: |
+        Revives the entity, the links deleted with it, and its field values from the deletion snapshot.
+        A primary link that would now collide is revived non-primary; a link whose contact is gone stays
+        deleted; both are reported in `skipped`. A live entity with the same normalized name is not a
+        conflict (`same_name_live` is a warning).
+      responses:
+        "200":
+          description: Restored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityRestoreResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such entity in the caller's trash.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The deletion snapshot version is not supported by this server (entity_snapshot_unsupported).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/{id}/contacts:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List the contacts linked to an entity
+      operationId: listEntityContacts
+      tags:
+        - Entities
+      description: Live links to live contacts, with role, dates and primary flag.
+      responses:
+        "200":
+          description: The linked contacts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityContactsResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/{id}/field-values:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List an entity's custom field values
+      operationId: listEntityFieldValues
+      tags:
+        - Entities
+      responses:
+        "200":
+          description: The entity's field values.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [field_values]
+                properties:
+                  field_values:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FieldValue"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Replace an entity's custom field values (full replace)
+      operationId: replaceEntityFieldValues
+      tags:
+        - Entities
+      description: |
+        Every `field_definition_id` must be the caller's own and target this entity's kind
+        (`contact_field_definition_target_mismatch` otherwise). Values are validated by the definition's
+        type and constraints. An empty array clears every value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactFieldValuesInput"
+      responses:
+        "200":
+          description: Field values saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, field_values]
+                properties:
+                  message: { type: string, example: "Field values saved successfully" }
+                  field_values:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FieldValue"
+        "400":
+          description: Unknown/unowned definition, wrong target, or a value fails validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /field-definitions:
     get:
       summary: List field definitions
@@ -18745,6 +19118,94 @@ components:
         photo_thumbnail: { type: string }
         subscription_name: { type: string }
 
+    # --- Reusable entities (issue #2296, ADR 0043) ---
+    Entity:
+      type: object
+      required: [id, kind, name, core, sensitivity, revision, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [organisation, place, pet] }
+        name: { type: string, maxLength: 200 }
+        core:
+          type: object
+          additionalProperties: true
+          description: >
+            Kind-specific JSON. organisation: {organization: {name, units, sortAs}, url, notes};
+            place: {address: <neutral Address without sensitivity>, notes}; pet: {species, breed,
+            birth, death, notes}. Unknown keys are rejected on write.
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        revision: { type: integer, format: int64, description: "Revision token for If-Match (ADR 0006)." }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        link_count: { type: integer, description: "Live contact links. Present on GET /entities/{id} only." }
+        projection_count: { type: integer, description: "Contacts currently receiving a projected ORG/ADR from this entity. Present on GET /entities/{id} only." }
+    EntityInput:
+      type: object
+      required: [name]
+      properties:
+        kind: { type: string, enum: [organisation, place, pet], description: "Required on create; immutable (on update it must equal the stored kind)." }
+        name: { type: string, maxLength: 200 }
+        core: { type: object, additionalProperties: true }
+        sensitivity: { type: string, enum: [normal, private, secret], description: "Defaults to normal on create; kept when omitted on update." }
+    EntityListResponse:
+      type: object
+      required: [entities, next_cursor, limit]
+      properties:
+        entities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Entity"
+        next_cursor: { type: string, description: "Empty when there are no more rows." }
+        limit: { type: integer }
+    EntityDeleteResponse:
+      type: object
+      required: [message, link_count, projection_count]
+      properties:
+        message: { type: string }
+        link_count: { type: integer, description: "Live links tombstoned with the entity." }
+        projection_count: { type: integer, description: "Contacts that lose a projected ORG/ADR (live primary link, period includes today)." }
+    EntityRestoreSkip:
+      type: object
+      required: [table, reason, count]
+      properties:
+        table: { type: string }
+        reason: { type: string, description: "primary_demoted, entity_deleted, contact_deleted or definition_gone." }
+        count: { type: integer }
+    EntityRestoreResponse:
+      type: object
+      required: [entity, skipped, same_name_live]
+      properties:
+        entity:
+          $ref: "#/components/schemas/Entity"
+        skipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityRestoreSkip"
+        same_name_live: { type: boolean, description: "Another live entity of the same kind has the same normalized name (a warning, not a conflict)." }
+    EntityContactLink:
+      type: object
+      required: [link_id, contact_id, contact_vcard_uid, firstname, lastname, role, role_label, is_primary, sensitivity]
+      properties:
+        link_id: { type: string, format: uuid }
+        contact_id: { type: integer }
+        contact_vcard_uid: { type: string }
+        firstname: { type: string }
+        lastname: { type: string }
+        role: { type: string }
+        role_label: { type: string }
+        is_primary: { type: boolean }
+        period:
+          $ref: "#/components/schemas/TemporalRange"
+        sensitivity: { type: string, enum: [normal, private, secret] }
+    EntityContactsResponse:
+      type: object
+      required: [contacts]
+      properties:
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityContactLink"
+
     # --- Custom fields ---
     FieldDefinition:
       type: object
@@ -18755,7 +19216,7 @@ components:
         updated_at: { type: string, format: date-time }
         label: { type: string, maxLength: 200 }
         key: { type: string, maxLength: 100 }
-        target: { type: string, enum: [contact] }
+        target: { type: string, enum: [contact, organisation, place, pet], description: "What the definition attaches to. Immutable after create. A non-contact target must use the internal-only projection." }
         type: { type: string, enum: [string, text, number, boolean, date, datetime, uri, email, phone, enum] }
         constraints:
           $ref: "#/components/schemas/FieldConstraints"
@@ -18783,7 +19244,7 @@ components:
       properties:
         label: { type: string, maxLength: 200 }
         key: { type: string, maxLength: 100 }
-        target: { type: string, enum: [contact] }
+        target: { type: string, enum: [contact, organisation, place, pet], description: "Defaults to contact. Immutable after create." }
         type: { type: string, enum: [string, text, number, boolean, date, datetime, uri, email, phone, enum] }
         constraints:
           $ref: "#/components/schemas/FieldConstraints"
