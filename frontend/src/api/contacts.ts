@@ -512,7 +512,12 @@ export function formatAnniversaryDate(date: CardAnniversaryDate | undefined): st
 export function parseAnniversaryDate(value: string): CardAnniversaryDate {
   const yearLess = /^--(\d{2})-(\d{2})$/.exec(value);
   if (yearLess) {
-    return { partial: { month: parseInt(yearLess[1], 10), day: parseInt(yearLess[2], 10) } };
+    return {
+      partial: {
+        month: parseInt(yearLess[1], 10),
+        day: parseInt(yearLess[2], 10),
+      },
+    };
   }
   const full = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
   if (full) {
@@ -865,7 +870,12 @@ export function getOrganizationFields(organizations: CardOrganization[] | undefi
 }
 export function withOrganization(organization: string, department: string): CardOrganization[] {
   return organization
-    ? [{ name: organization, units: department ? [{ name: department }] : undefined }]
+    ? [
+        {
+          name: organization,
+          units: department ? [{ name: department }] : undefined,
+        },
+      ]
     : [];
 }
 
@@ -994,7 +1004,16 @@ export function toContactRecordInput(data: Partial<Contact>): ContactRecordInput
     data.addresses && data.addresses.length > 0
       ? data.addresses
       : data.address
-        ? [{ type: '', street: data.address, city: '', region: '', postal: '', country: '' }]
+        ? [
+            {
+              type: '',
+              street: data.address,
+              city: '',
+              region: '',
+              postal: '',
+              country: '',
+            },
+          ]
         : [];
 
   const emails = valuesToCardEmails(emailValues);
@@ -1050,6 +1069,9 @@ export interface ContactsResponse {
   // up the exact count on large tables.
   next_cursor: string;
   limit: number;
+  // #2188: exact size of the filtered set; present only when the request set
+  // includeTotal.
+  total?: number;
   // T103: present only while ?has_contact_info=true — how many contacts
   // matched the other filters but were excluded by the contact-info
   // predicate, so the UI can disclose that rows are hidden.
@@ -1060,6 +1082,11 @@ export interface GetContactsParams {
   // Opaque resume token returned as next_cursor by the previous page.
   cursor?: string;
   limit?: number;
+  // #2188: rows to skip before the page starts (an alternative to cursor for
+  // jumping to a page number; the server rejects both together).
+  offset?: number;
+  // #2188: ask the server for the exact filtered total (response.total).
+  includeTotal?: boolean;
   search?: string;
   circle?: string;
   // Sort key (T73 / #1762): "updated_at" (default, the (updated_at, id)
@@ -1084,6 +1111,8 @@ export async function getContacts(params: GetContactsParams): Promise<ContactsRe
   const {
     cursor,
     limit = 25,
+    offset,
+    includeTotal,
     search = '',
     circle = '',
     sort,
@@ -1099,6 +1128,8 @@ export async function getContacts(params: GetContactsParams): Promise<ContactsRe
   });
 
   if (cursor) queryParams.append('cursor', cursor);
+  if (offset) queryParams.append('offset', offset.toString());
+  if (includeTotal) queryParams.append('include_total', 'true');
   if (search) queryParams.append('search', search);
   if (circle) queryParams.append('circle', circle);
   if (sort) queryParams.append('sort', sort);
@@ -1121,12 +1152,14 @@ export async function getContacts(params: GetContactsParams): Promise<ContactsRe
     contacts: ContactSummaryDTO[];
     next_cursor: string;
     limit: number;
+    total?: number;
     hidden_count?: number;
   } = await response.json();
   return {
     contacts: data.contacts.map(summaryToLegacyContact),
     next_cursor: data.next_cursor,
     limit: data.limit,
+    total: data.total,
     hidden_count: data.hidden_count,
   };
 }
@@ -1184,7 +1217,9 @@ export async function getContactsByUid(uids: string[]): Promise<Map<string, Cont
 // in the app itself round-trips a full record through the flat Contact shape
 // anymore.
 export async function getContactRecord(id: string | number): Promise<ContactRecordResponse> {
-  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${id}`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
@@ -1327,7 +1362,9 @@ export async function getContactsByLegacyCircle(
 // type's capital ID). Do NOT route this through toLegacyContact/
 // ContactRecordResponse -- there is no card/crm nesting to unwrap here.
 export async function getRandomContacts(): Promise<Contact[]> {
-  const response = await apiFetch(`${API_BASE_URL}/contacts/random`, { headers: getAuthHeaders() });
+  const response = await apiFetch(`${API_BASE_URL}/contacts/random`, {
+    headers: getAuthHeaders(),
+  });
 
   if (!response.ok) {
     throw await parseErrorResponse(response);
