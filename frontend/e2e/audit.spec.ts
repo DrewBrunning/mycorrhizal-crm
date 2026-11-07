@@ -37,6 +37,8 @@ test.describe('Audit log', () => {
 
       // The page is reachable from app navigation, not a dead URL.
       await page.goto('/');
+      // #2175: Audit log is a sub-item of Settings; open the group first.
+      await page.getByRole('button', { name: 'Settings sub-pages' }).click();
       await page.getByRole('link', { name: 'Audit log' }).click();
       await expect(page).toHaveURL(/\/audit/);
       await expect(page.getByRole('heading', { name: 'Audit log' })).toBeVisible();
