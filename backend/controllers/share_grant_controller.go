@@ -263,3 +263,41 @@ func DeleteShareBlock(c *gin.Context) {
 	}
 	c.Status(http.StatusNoContent)
 }
+
+// ListShareGrantNotifications — GET /share-grants/notifications (recipient):
+// the in-app badge (pending_count) and the caller's newest unread notices.
+// Payloads are sender username and entity type only (ADR 0042 decision 11).
+func ListShareGrantNotifications(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	count, err := services.PendingShareGrantCount(db, userID, shareGrantNow(c))
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count pending shares").WithError(err))
+		return
+	}
+	notices, err := services.ListShareGrantNotices(db, userID)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load share notifications").WithError(err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"pending_count": count, "notifications": notices})
+}
+
+// MarkShareGrantNotificationsRead — POST /share-grants/notifications/read
+// (recipient): marks every unread notice of the caller read.
+func MarkShareGrantNotificationsRead(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	marked, err := services.MarkShareGrantNoticesRead(db, userID, shareGrantNow(c))
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to mark share notifications read").WithError(err))
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"marked": marked})
+}
