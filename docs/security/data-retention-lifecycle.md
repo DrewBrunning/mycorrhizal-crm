@@ -149,7 +149,7 @@ decision 13): `status` is its lifecycle and tombstone. `ShareBlock` is an edge r
   (`controllers/user_delete_cascade.go`); before the delete, each live incoming grant writes a `revoke`
   audit event with reason `recipient_deleted` on the owner's trail. Restoring a trashed contact does
   not re-arm a grant; the restore response lists the grants the delete revoked
-  (`revoked_share_grants`) so the person can issue them again.
+  (`revoked_grants`) so the person can issue them again.
 - **Audit and notices (ADR 0042 decision 11)**: every transition writes a `share_grant` audit event
   (`create`, `update`, `revoke`, `accept`, `decline`, `expire`, `reconfirm`) on the trail of each party
   entitled to know it; snapshots carry grant fields only, never entity content, ids or labels, and a

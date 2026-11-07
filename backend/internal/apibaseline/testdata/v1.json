@@ -8775,6 +8775,36 @@
     },
     {
       "method": "GET",
+      "path": "/share-grants/notifications",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/share-grants/notifications/read",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "object"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/share-grants/outgoing",
       "parameters": [
         {
@@ -11194,6 +11224,7 @@
             "tag",
             "household",
             "reminder",
+            "share_grant",
             "user",
             "auth",
             "api_token",
@@ -11231,7 +11262,13 @@
             "role_change",
             "two_factor_admin_reset",
             "webauthn_register",
-            "webauthn_revoke"
+            "webauthn_revoke",
+            "restore",
+            "purge",
+            "accept",
+            "decline",
+            "expire",
+            "reconfirm"
           ]
         },
         {
@@ -22274,6 +22311,46 @@
       ]
     },
     {
+      "name": "ShareGrantNotification",
+      "properties": [
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "entity_type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "contact",
+            "note",
+            "activity",
+            "circle"
+          ]
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "pending",
+            "revoked"
+          ]
+        },
+        {
+          "name": "sender_username",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "ShareGrantOwnerView",
       "properties": [
         {
@@ -22952,6 +23029,11 @@
           "required": true
         },
         {
+          "name": "revoked_grants",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
           "name": "skipped",
           "type": "array\u003cobject\u003e",
           "required": true
@@ -22973,6 +23055,41 @@
         },
         {
           "name": "table",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "TrashRevokedShareGrant",
+      "properties": [
+        {
+          "name": "expires_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "revoked_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "sections",
+          "type": "array\u003cstring\u003e",
+          "required": true
+        },
+        {
+          "name": "to_user_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "to_username",
           "type": "string",
           "required": true
         }

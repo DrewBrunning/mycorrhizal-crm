@@ -66,6 +66,9 @@ type RestoreSkip struct {
 type RestoreResult struct {
 	Contact models.Contact `json:"-"`
 	Skipped []RestoreSkip  `json:"skipped"`
+	// RevokedGrants are the standing-share grants this contact's delete
+	// revoked; restore lists them but never re-arms them (ADR 0042 decision 10).
+	RevokedGrants []models.TrashRevokedShareGrant `json:"-"`
 }
 
 // snapshotRestorer describes how one hard-cascade table is restored.
@@ -311,6 +314,11 @@ func RestoreContact(db *gorm.DB, userID, contactID uint, now time.Time) (*Restor
 		}
 		models.RecordAuditEvent(tx, models.AuditEntityContact, contact.VCardUID, models.AuditOpRestore, userID)
 		res.Contact = contact
+		revoked, err := revokedShareGrantsForRestore(tx, userID, contact.VCardUID, snap.TrashedAt)
+		if err != nil {
+			return err
+		}
+		res.RevokedGrants = revoked
 		return nil
 	})
 	if err != nil {
@@ -603,4 +611,30 @@ func collectContactFiles(tx *gorm.DB, userID uint, contact models.Contact, share
 		files.Images = appendImageFiles(files.Images, r.UserID, r.StoredName, r.ThumbName)
 	}
 	return nil
+}
+
+// revokedShareGrantsForRestore lists the owner's grants on the contact that
+// the delete that created this trash entry revoked: reason entity_deleted and
+// revoked at or after the moment of trashing (older revokes belong to an
+// earlier delete/restore cycle the person already saw). Owner-scoped.
+func revokedShareGrantsForRestore(tx *gorm.DB, userID uint, vcardUID string, trashedAt time.Time) ([]models.TrashRevokedShareGrant, error) {
+	var rows []models.ShareGrant
+	if err := tx.Where("from_user_id = ? AND entity_type = ? AND entity_id = ? AND status = ? AND revoked_reason = ? AND revoked_at >= ?",
+		userID, models.ShareGrantEntityContact, vcardUID, models.ShareGrantStatusRevoked,
+		models.ShareGrantReasonEntityDeleted, trashedAt.UTC()).Order("created_at, id").Find(&rows).Error; err != nil {
+		return nil, err
+	}
+	out := make([]models.TrashRevokedShareGrant, 0, len(rows))
+	for i := range rows {
+		g := rows[i]
+		sections := g.Sections
+		if sections == nil {
+			sections = []string{}
+		}
+		out = append(out, models.TrashRevokedShareGrant{
+			ID: g.ID, ToUserID: g.ToUserID, ToUsername: usernameOf(tx, g.ToUserID),
+			Sections: sections, ExpiresAt: g.ExpiresAt, RevokedAt: g.RevokedAt,
+		})
+	}
+	return out, nil
 }

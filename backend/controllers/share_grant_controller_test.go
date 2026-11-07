@@ -69,6 +69,8 @@ func newSGEnv(t *testing.T) *sgEnv {
 	sg.POST("", middleware.ValidateJSONMiddleware(&models.ShareGrantInput{}), CreateShareGrant)
 	sg.GET("/outgoing", ListOutgoingShareGrants)
 	sg.GET("/incoming", ListIncomingShareGrants)
+	sg.GET("/notifications", ListShareGrantNotifications)
+	sg.POST("/notifications/read", MarkShareGrantNotificationsRead)
 	sg.GET("/blocks", ListShareBlocks)
 	sg.DELETE("/blocks/:user_id", DeleteShareBlock)
 	sg.PATCH("/:id", middleware.ValidateJSONMiddleware(&models.ShareGrantPatchInput{}), UpdateShareGrant)
