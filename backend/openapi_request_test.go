@@ -160,6 +160,9 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /field-definitions":                         bindingFor(models.FieldDefinitionInput{}),
 	"PUT /field-definitions/{id}":                     bindingFor(models.FieldDefinitionInput{}),
 	"PUT /field-definitions/reorder":                  bindingFor(models.FieldDefinitionReorderInput{}),
+	"POST /entities":                                  bindingFor(models.EntityInput{}),
+	"PUT /entities/{id}":                              bindingFor(models.EntityInput{}),
+	"PUT /entities/{id}/field-values":                 bindingFor(models.ContactFieldValuesInput{}),
 	"POST /life-events":                               bindingFor(models.LifeEventInput{}),
 	"PUT /life-events/{id}":                           bindingFor(models.LifeEventInput{}),
 	"POST /life-event-suggestions/resolve":            bindingFor(models.LifeEventSuggestionResolutionInput{}),
@@ -267,6 +270,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 // route the live router registers — enforced by TestOpenAPIRequestFieldCoverage's
 // completeness net.
 var noBodyMutatingRoutes = map[string]bool{
+	"POST /entities/{id}/restore":       true, // issue #2296: path-only action
 	"POST /trash/contacts/{id}/restore": true, // issue #2002: path-only action
 	"POST /logout":                      true,
 	"POST /users/2fa/setup":             true,

@@ -227,6 +227,33 @@ func db03MatrixCases() []matrixCase {
 			},
 		},
 		{
+			name:      "INV-D3/entity field value references an entity that never existed",
+			invariant: "INV-D3", wantCheck: "field_value.orphaned_entity", repairable: true,
+			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
+				def := models.FieldDefinition{UserID: ds.User.ID, Label: "Industry", Key: "industry_d3", Target: models.FieldDefinitionTargetOrganisation,
+					Type: models.FieldTypeString, Projection: "internal-only", Sensitivity: "normal"}
+				require.NoError(t, db.Create(&def).Error)
+				require.NoError(t, db.Create(&models.FieldValue{
+					FieldDefinitionID: def.ID, UserID: ds.User.ID, EntityID: randUID("35"), Value: json.RawMessage(`"x"`),
+				}).Error)
+			},
+		},
+		{
+			name:      "INV-D7/entity field value points at a soft-deleted entity",
+			invariant: "INV-D7", wantCheck: "field_value.entity_deleted_or_wrong_kind", repairable: false,
+			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {
+				def := models.FieldDefinition{UserID: ds.User.ID, Label: "Industry", Key: "industry_d7", Target: models.FieldDefinitionTargetOrganisation,
+					Type: models.FieldTypeString, Projection: "internal-only", Sensitivity: "normal"}
+				require.NoError(t, db.Create(&def).Error)
+				ent := models.Entity{UserID: ds.User.ID, Kind: models.EntityKindOrganisation, Name: "Acme"}
+				require.NoError(t, db.Create(&ent).Error)
+				require.NoError(t, db.Create(&models.FieldValue{
+					FieldDefinitionID: def.ID, UserID: ds.User.ID, EntityID: ent.ID, Value: json.RawMessage(`"x"`),
+				}).Error)
+				require.NoError(t, db.Delete(&ent).Error)
+			},
+		},
+		{
 			name:      "INV-D4/external identity references a contact that no longer exists",
 			invariant: "INV-D4", wantCheck: "external_identity.dangling_contact", repairable: false,
 			mutate: func(t *testing.T, db *gorm.DB, ds *canonicalfixture.Dataset) {

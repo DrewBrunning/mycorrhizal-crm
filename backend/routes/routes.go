@@ -569,6 +569,17 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/contacts/:id/field-values", middleware.ValidateJSONMiddleware(&models.ContactFieldValuesInput{}), controllers.ReplaceContactFieldValues)
 
 			// LifeEvent routes
+			// Reusable entities (issue #2296, ADR 0043 decision 10).
+			protected.POST("/entities", middleware.ValidateJSONMiddleware(&models.EntityInput{}), controllers.CreateEntity)
+			protected.GET("/entities", controllers.ListEntities)
+			protected.GET("/entities/:id", controllers.GetEntity)
+			protected.PUT("/entities/:id", middleware.ValidateJSONMiddleware(&models.EntityInput{}), controllers.UpdateEntity)
+			protected.DELETE("/entities/:id", controllers.DeleteEntity)
+			protected.POST("/entities/:id/restore", controllers.RestoreEntity)
+			protected.GET("/entities/:id/contacts", controllers.ListEntityContacts)
+			protected.GET("/entities/:id/field-values", controllers.ListEntityFieldValues)
+			protected.PUT("/entities/:id/field-values", middleware.ValidateJSONMiddleware(&models.ContactFieldValuesInput{}), controllers.ReplaceEntityFieldValues)
+
 			protected.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), controllers.CreateLifeEvent)
 			protected.GET("/life-events", controllers.ListLifeEvents)
 			protected.GET("/life-events/:id", controllers.GetLifeEvent)
