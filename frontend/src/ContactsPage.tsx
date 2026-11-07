@@ -169,6 +169,19 @@ export default function ContactsPage() {
     );
   }, [setSearchParams]);
 
+  const paginationItemLabels = (type: 'first' | 'last' | 'next' | 'previous') => {
+    switch (type) {
+      case 'first':
+        return t('contacts.pagination.first');
+      case 'last':
+        return t('contacts.pagination.last');
+      case 'next':
+        return t('contacts.pagination.next');
+      default:
+        return t('contacts.pagination.previous');
+    }
+  };
+
   const goToPage = (nextPage: number, replace = false) => {
     setSearchParams(
       (prev) => {
@@ -1008,7 +1021,7 @@ export default function ContactsPage() {
                   total: count,
                 })
               }
-              getItemAriaLabel={(type) => t(`contacts.pagination.${type}`)}
+              getItemAriaLabel={(type) => paginationItemLabels(type)}
               slotProps={{
                 select: {
                   SelectDisplayProps: {

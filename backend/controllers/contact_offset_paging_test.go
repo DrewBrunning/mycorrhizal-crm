@@ -72,6 +72,23 @@ func TestGetContacts_OffsetAndTotal(t *testing.T) {
 		assert.Equal(t, float64(1), body["total"])
 	})
 
+	t.Run("total and offset work with includes", func(t *testing.T) {
+		code, body := offsetPage(t, router, "limit=3&offset=3&include_total=true&includes=notes&sort=name&order=asc")
+		require.Equal(t, 200, code)
+		assert.Equal(t, float64(7), body["total"])
+		assert.Len(t, body["contacts"].([]any), 3)
+	})
+
+	t.Run("offset with a valid cursor or since is 400", func(t *testing.T) {
+		_, first := offsetPage(t, router, "limit=2&sort=name&order=asc")
+		cur, _ := first["next_cursor"].(string)
+		require.NotEmpty(t, cur)
+		code, _ := offsetPage(t, router, "limit=2&sort=name&order=asc&offset=2&cursor="+cur)
+		assert.Equal(t, http.StatusBadRequest, code)
+		code, _ = offsetPage(t, router, "offset=2&since=2020-01-01T00:00:00Z")
+		assert.Equal(t, http.StatusBadRequest, code)
+	})
+
 	t.Run("bad values are 400", func(t *testing.T) {
 		for _, q := range []string{"offset=-1", "offset=abc", "include_total=maybe", "offset=2&cursor=abc"} {
 			code, _ := offsetPage(t, router, q)
