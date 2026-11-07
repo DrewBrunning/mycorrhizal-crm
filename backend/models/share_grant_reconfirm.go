@@ -315,9 +315,6 @@ func RecordShareGrantAudit(tx *gorm.DB, g *ShareGrant, actorID uint, op string) 
 // one-time ContactShare (issue #2294). The snapshot is id and status only:
 // never the payload or the contact's name.
 func RecordContactShareAudit(tx *gorm.DB, id, status string, actorID uint, op string) {
-	snap, err := json.Marshal(map[string]any{"id": id, "status": status})
-	if err != nil {
-		return
-	}
+	snap, _ := json.Marshal(map[string]any{"id": id, "status": status}) // a string map cannot fail to marshal
 	recordAudit(tx, AuditEntityContactShare, id, op, actorID, string(snap))
 }
