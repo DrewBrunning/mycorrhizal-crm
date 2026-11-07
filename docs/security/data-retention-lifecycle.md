@@ -137,13 +137,26 @@ decision 13): `status` is its lifecycle and tombstone. `ShareBlock` is an edge r
 - **Retention**: pending and active rows are never purged by retention. Terminal rows (`declined`,
   `revoked`, `expired`) are kept for `SHARE_GRANT_RETENTION_DAYS` (default 30, same semantics as
   `CONTACT_SHARE_RETENTION_DAYS`) so the owner can see the outcome, then hard-deleted by a scheduled
-  job. **The schema, models and cascade land in #2289; the purge job and the retention variable ship
-  with the lifecycle work of #1998**, so until then no terminal row is created by the application.
+  hourly `share_grant_lifecycle` job (issue #2291; it also moves grants past `expires_at`, and pending
+  grants unanswered for 30 days, to `expired`, writing the audit event). The window anchors on the
+  row's last update, i.e. the moment it became terminal. `SHARE_GRANT_RETENTION_DAYS=0` disables the
+  purge. Read-path expiry never depends on the job. The job also purges `share_grant_notifications`
+  rows older than the same window.
 - **Deletion / propagation**: deleting a contact, note, activity or circle revokes the owner's live
   grants on it with reason `entity_deleted` (`services.RevokeShareGrantsForEntity`; for contacts a
   `CascadeMutate` step in `ContactCascadeRegistry`). `DeleteUser` and `DeleteOwnAccount` hard-delete
   every grant where the user is either party and every block naming them on either side
-  (`controllers/user_delete_cascade.go`). Restoring a trashed contact does not re-arm a grant.
+  (`controllers/user_delete_cascade.go`); before the delete, each live incoming grant writes a `revoke`
+  audit event with reason `recipient_deleted` on the owner's trail. Restoring a trashed contact does
+  not re-arm a grant; the restore response lists the grants the delete revoked
+  (`revoked_share_grants`) so the person can issue them again.
+- **Audit and notices (ADR 0042 decision 11)**: every transition writes a `share_grant` audit event
+  (`create`, `update`, `revoke`, `accept`, `decline`, `expire`, `reconfirm`) on the trail of each party
+  entitled to know it; snapshots carry grant fields only, never entity content, ids or labels, and a
+  blocked grant never reaches the recipient's trail. `share_grant_notifications` holds the recipient's
+  in-app notices (new pending grant, revoke): sender id, entity type and kind only; it is hard-deleted
+  by the job after the retention window, by `DeleteUser`/`DeleteOwnAccount` for either party, and is
+  excluded from the account bundle.
 - **Backups**: yes. A backup carries grant and block rows; restoring one resurrects grants whose source
   entity or user may be gone, which the read path fails closed on (it requires a live owner-scoped
   source row). The account bundle excludes both tables because user ids do not transfer between

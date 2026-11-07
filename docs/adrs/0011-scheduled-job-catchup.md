@@ -73,6 +73,7 @@ Per-job windows after this change:
 |---|---|---|
 | `daily_reminders`, `cadence_overdue`, `reach_out_detection`, `audit_purge`, `system_event_purge`, `job_run_purge`, `purge_deleted`, `storage_sample`, `image_sweep` | 24h | 23h30m |
 | `idempotency_key_purge` | 6h | 5h30m |
+| `share_grant_lifecycle` | 1h | 45m (period − period/4) |
 | `calendar_sync` | `CALDAV_SYNC_INTERVAL_HOURS` (default 6h) | period − 30m |
 | `immich_sync` | `IMMICH_SYNC_INTERVAL_HOURS` (default 6h) | period − 30m |
 | `db_integrity_check` | `DB_INTEGRITY_CHECK_INTERVAL_HOURS` (default 24h) | period − 30m |
