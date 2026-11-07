@@ -136,6 +136,11 @@ func sectionsInvalid(msg string) *apperrors.AppError {
 // CreateShareGrant creates a pending grant (or, when the recipient has
 // blocked the sender, an internal `blocked` grant the sender sees as pending).
 func CreateShareGrant(db *gorm.DB, ownerID uint, in models.ShareGrantInput, now time.Time) (*models.ShareGrant, *apperrors.AppError) {
+	now = now.UTC()
+	if in.ExpiresAt != nil {
+		exp := in.ExpiresAt.UTC()
+		in.ExpiresAt = &exp
+	}
 	if in.ToUserID == ownerID {
 		return nil, apperrors.ErrValidation("cannot share with yourself").
 			WithReason(apperrors.ReasonValidationInvalid, map[string]any{"field": "to_user_id"})
@@ -218,6 +223,7 @@ func CreateShareGrant(db *gorm.DB, ownerID uint, in models.ShareGrantInput, now 
 			FromUserID: ownerID, ToUserID: in.ToUserID,
 			EntityType: in.EntityType, EntityID: in.EntityID,
 			Sections: sections, Status: status, ExpiresAt: in.ExpiresAt,
+			CreatedAt: now, UpdatedAt: now,
 		}
 		// Select-list create: only service-owned/allowlisted columns are written.
 		if err := tx.Select("ID", "FromUserID", "ToUserID", "EntityType", "EntityID", "Sections",
@@ -287,6 +293,7 @@ func reload(db *gorm.DB, id string) (*models.ShareGrant, *apperrors.AppError) {
 // AcceptShareGrant (recipient): pending -> active, idempotent on active,
 // 409 on a terminal grant, 404 when time has expired it.
 func AcceptShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*models.ShareGrant, *apperrors.AppError) {
+	now = now.UTC()
 	g, appErr := loadForRole(db, "to_user_id", userID, id)
 	if appErr != nil {
 		return nil, appErr
@@ -319,6 +326,7 @@ func AcceptShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*mode
 // DeclineShareGrant (recipient): pending -> declined; with block it also
 // records the block and ends every pending/active grant from that sender.
 func DeclineShareGrant(db *gorm.DB, userID uint, id string, block bool, now time.Time) (*models.ShareGrant, *apperrors.AppError) {
+	now = now.UTC()
 	g, appErr := loadForRole(db, "to_user_id", userID, id)
 	if appErr != nil {
 		return nil, appErr
@@ -370,6 +378,7 @@ func applyBlock(tx *gorm.DB, blockerID, blockedID uint, now time.Time) error {
 
 // LeaveShareGrant (recipient): pending or active -> declined.
 func LeaveShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*models.ShareGrant, *apperrors.AppError) {
+	now = now.UTC()
 	g, appErr := loadForRole(db, "to_user_id", userID, id)
 	if appErr != nil {
 		return nil, appErr
@@ -396,6 +405,7 @@ func LeaveShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*model
 // RevokeShareGrant (owner): live -> revoked, idempotent on an owner-revoked
 // grant, 409 on declined/expired.
 func RevokeShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*models.ShareGrant, *apperrors.AppError) {
+	now = now.UTC()
 	g, appErr := loadForRole(db, "from_user_id", userID, id)
 	if appErr != nil {
 		return nil, appErr
@@ -425,6 +435,7 @@ func RevokeShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*mode
 // ReconfirmShareGrant (owner) clears the re-confirmation markers so the
 // withheld sections are served again (ADR 0042 decision 5).
 func ReconfirmShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*models.ShareGrant, *apperrors.AppError) {
+	now = now.UTC()
 	g, appErr := loadForRole(db, "from_user_id", userID, id)
 	if appErr != nil {
 		return nil, appErr
@@ -447,6 +458,7 @@ func ReconfirmShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*m
 // Widening is 409; ifMatch (the raw header, "" = unconditional) is checked
 // against revision by checkRevision.
 func UpdateShareGrant(db *gorm.DB, userID uint, id string, in models.ShareGrantPatchInput, checkRevision func(current int64) bool, now time.Time) (*models.ShareGrant, *apperrors.AppError) {
+	now = now.UTC()
 	g, appErr := loadForRole(db, "from_user_id", userID, id)
 	if appErr != nil {
 		return nil, appErr
@@ -463,7 +475,7 @@ func UpdateShareGrant(db *gorm.DB, userID uint, id string, in models.ShareGrantP
 		if in.ExpiresAt.Value == nil {
 			set["expires_at"] = gorm.Expr("NULL")
 		} else {
-			set["expires_at"] = *in.ExpiresAt.Value
+			set["expires_at"] = in.ExpiresAt.Value.UTC()
 		}
 	}
 	if in.Sections != nil {
@@ -689,6 +701,7 @@ func OutgoingShareGrantsQuery(db *gorm.DB, userID uint) *gorm.DB {
 // IncomingShareGrantsQuery is the recipient's list scope: pending and active
 // only, never blocked, and not past either expiry.
 func IncomingShareGrantsQuery(db *gorm.DB, userID uint, now time.Time) *gorm.DB {
+	now = now.UTC()
 	return db.Model(&models.ShareGrant{}).
 		Where("to_user_id = ? AND status IN ? AND (expires_at IS NULL OR expires_at > ?) AND (status <> ? OR created_at > ?)",
 			userID, []string{models.ShareGrantStatusPending, models.ShareGrantStatusActive}, now,
@@ -745,6 +758,7 @@ type ShareGrantContent struct {
 // loads the grant with every condition in a single statement. No row is the
 // identical 404.
 func ResolveActiveShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*models.ShareGrant, *apperrors.AppError) {
+	now = now.UTC() // stored instants are UTC text; compare like with like
 	var g models.ShareGrant
 	err := db.Where("id = ? AND to_user_id = ? AND status = ? AND (expires_at IS NULL OR expires_at > ?)",
 		id, userID, models.ShareGrantStatusActive, now).First(&g).Error

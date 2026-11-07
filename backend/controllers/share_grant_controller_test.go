@@ -917,3 +917,27 @@ func TestShareGrantCreate_ClientCannotSetStatusOrSender(t *testing.T) {
 	assert.Empty(t, g.ReconfirmSections)
 	assert.Equal(t, int64(1), g.Revision)
 }
+
+// Stored instants are compared as text, so a client-supplied offset must be
+// normalized: 16:30+05:00 is 11:30Z, already past at 12:00Z.
+func TestShareGrant_ExpiryComparisonIsZoneSafe(t *testing.T) {
+	e := newSGEnv(t)
+	n := e.note(e.A, "n")
+	w := e.do(e.A, http.MethodPost, "/share-grants", map[string]any{
+		"to_user_id": e.B.ID, "entity_type": "note", "entity_id": n.UUID, "expires_at": "2026-11-07T16:30:00+05:00"})
+	assert.Equal(t, 400, w.Code, "an instant already in the past is rejected whatever its offset: "+w.Body.String())
+
+	// 18:00+05:00 is 13:00Z: valid now, expired once the clock passes 13:00Z.
+	w = e.do(e.A, http.MethodPost, "/share-grants", map[string]any{
+		"to_user_id": e.B.ID, "entity_type": "note", "entity_id": n.UUID, "expires_at": "2026-11-07T18:00:00+05:00"})
+	require.Equal(t, 201, w.Code, w.Body.String())
+	var out struct {
+		ShareGrant struct{ ID string } `json:"share_grant"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
+	id := out.ShareGrant.ID
+	require.Equal(t, 200, e.do(e.B, http.MethodPost, "/share-grants/"+id+"/accept", nil).Code)
+	require.Equal(t, 200, e.do(e.B, http.MethodGet, "/share-grants/"+id+"/content", nil).Code)
+	e.clock.Advance(90 * time.Minute) // 13:30Z
+	assert.Equal(t, 404, e.do(e.B, http.MethodGet, "/share-grants/"+id+"/content", nil).Code)
+}

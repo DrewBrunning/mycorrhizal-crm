@@ -57,7 +57,7 @@ func markShareGrantReconfirm(tx *gorm.DB, ownerID uint, vcardUID, section string
 	if err := q.Find(&grants).Error; err != nil {
 		return err
 	}
-	now := time.Now()
+	now := time.Now().UTC()
 	for _, g := range grants {
 		if !containsString(g.Sections, section) || containsString(g.ReconfirmSections, section) {
 			continue

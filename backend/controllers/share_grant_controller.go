@@ -31,7 +31,7 @@ func NoStoreMiddleware() gin.HandlerFunc {
 	}
 }
 
-func shareGrantNow(c *gin.Context) (now time.Time) { return clock.FromContext(c).Now() }
+func shareGrantNow(c *gin.Context) (now time.Time) { return clock.FromContext(c).Now().UTC() }
 
 // CreateShareGrant — POST /share-grants (owner).
 func CreateShareGrant(c *gin.Context) {
