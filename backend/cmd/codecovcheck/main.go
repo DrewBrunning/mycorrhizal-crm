@@ -19,6 +19,9 @@
 //     patch areas, so adding an area to one without the other can't strand
 //     its required codecov/patch/<area> context on a PR that uploads no
 //     coverage.
+//  4. The workflow_run poster (.github/workflows/codecov-patch-stub-workflow-run.yml,
+//     fork/Dependabot PRs) posts for the same areas, and the stub's if:
+//     guards every filter the poster's verdict uses.
 //
 // Exit 0: consistent. Exit 1: at least one finding. Exit 2: could not run.
 package main
@@ -103,8 +106,24 @@ func runAt(w io.Writer, root string) int {
 		findings = append(findings, covgate.CrossCheckStubAreas(codecovAreas, stubAreas)...)
 	}
 
+	findings = append(findings, covgate.CheckStubGuardsCoverUploadFilters(workflowBytes)...)
+
+	// 4. The workflow_run poster for fork/Dependabot PRs (whose own run
+	//    cannot post statuses) posts for the same areas.
+	// #nosec G304 -- root is findRepoRoot's output (or a test temp dir), the leaf is a constant
+	posterBytes, err := os.ReadFile(filepath.Join(root, covgate.PosterWorkflowFile))
+	if err != nil {
+		fmt.Fprintln(w, "cannot read "+covgate.PosterWorkflowFile+": "+err.Error())
+		return 2
+	}
+	posterAreas, f := covgate.ExtractPosterAreas(posterBytes)
+	findings = append(findings, f...)
+	if len(f) == 0 && codecovAreas != nil {
+		findings = append(findings, covgate.CrossCheckStubAreas(codecovAreas, posterAreas)...)
+	}
+
 	if len(findings) == 0 {
-		fmt.Fprintf(w, "codecov.yml OK: patch-status targets match %s, every ignore: entry is justified, the codecov-patch-stub areas match\n", docFile)
+		fmt.Fprintf(w, "codecov.yml OK: patch-status targets match %s, every ignore: entry is justified, the codecov-patch-stub and workflow_run poster areas match\n", docFile)
 		return 0
 	}
 	sort.Strings(findings)

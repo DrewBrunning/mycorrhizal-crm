@@ -68,7 +68,7 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
   `./gradlew detekt --auto-correct` fixes formatting. Lint warnings are errors; `android/lint.xml`
   lists the reasoned exceptions.
 - **Always:** `citecheck` (including the ASVS/MASVS census test), `depexceptions`, `deprecations`,
-  `docscheck`, `contextcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
+  `docscheck`, `contextcheck`, `changelogcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
   `nightlyalertcheck`, `mainalertcheck`, `androidskipcheck`.
 - **`pre-merge-commit`:** reruns the pre-commit checks on a clean merge commit (git skips
   `pre-commit` there), catching merge-skew in generated artifacts.

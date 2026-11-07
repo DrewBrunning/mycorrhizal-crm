@@ -274,6 +274,11 @@ jobs:
         working-directory: backend
         run: go run ./cmd/contextcheck
 
+      # Issue #2242: CHANGELOG.md [Unreleased] follows docs/changelog-policy.md.
+      - name: Lint CHANGELOG.md (changelogcheck)
+        working-directory: backend
+        run: go run ./cmd/changelogcheck
+
       # REL-03 (#447): .github/release-gates.json is well-formed, every gate
       # names a real workflow, and release-gates.md's table matches it.
       - name: Verify release-gate registry

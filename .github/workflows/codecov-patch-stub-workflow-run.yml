@@ -1,0 +1,96 @@
+name: Codecov no-op statuses (fork and Dependabot PRs)
+
+# Issue #1188 follow-up. unit-tests.yml's `codecov-patch-stub` job posts the
+# no-op codecov/patch/<area> statuses for a PR that triggers no
+# coverage-uploading suite (docs-only, infra-only, codecov.yml itself). It is
+# skipped when the PR's head repo is not this repository, because a fork PR's
+# GITHUB_TOKEN is read-only -- so a docs-only fork PR (#2402) sat on three
+# required contexts at "Expected" forever. Codecov's own
+# `flag_coverage_not_uploaded_behavior: pass` does not help: Codecov posts
+# nothing for a commit it never received an upload for.
+#
+# This workflow is the write-capable counterpart. It reacts to the completed
+# `Unit Tests` pull_request run and posts the same statuses.
+#
+# Security posture (same shape as pr-failure-alert.yml): the job executes no
+# PR code. It checks out the default branch (a workflow_run checkout resolves
+# there, never to the triggering run's head), builds codecovstub from that
+# checkout, and decides from the PR file list (pulls API) against the default
+# branch's .github/filters.yaml -- nothing the PR's own run emitted (artifacts,
+# job names, outputs) is trusted, since a fork controls its own workflow
+# files. Event-derived values reach scripts only through env. The job token is
+# scoped to pull-requests: read + statuses: write; top-level contents is read.
+#
+# PATCH_AREAS must equal codecov.yml's coverage.status.patch keys;
+# cmd/codecovcheck fails on drift.
+on:
+  # zizmor: ignore[dangerous-triggers] workflow_run is the point of this
+  # workflow, same rationale as pr-failure-alert.yml: only `pull_request`
+  # runs are admitted, no PR code is checked out or run, and the checkout
+  # resolves to this workflow's own default-branch content.
+  workflow_run:
+    workflows:
+      - Unit Tests
+    types: [completed]
+
+  # Manual test path: dispatch against a real open PR number. `dry_run`
+  # defaults to true, so it logs the statuses it would post and mutates
+  # nothing.
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'An open PR number'
+        required: true
+      dry_run:
+        description: 'Log the intended statuses without posting them'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  post:
+    name: Post no-op Codecov statuses
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.event == 'pull_request' &&
+       github.event.workflow_run.conclusion == 'success')
+    permissions:
+      contents: read
+      pull-requests: read
+      statuses: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache: false
+
+      - name: Build codecovstub from the default branch
+        working-directory: backend
+        env:
+          OUT: ${{ runner.temp }}/codecovstub
+        run: go build -o "$OUT" ./cmd/codecovstub
+
+      - name: Post a success status for every unmeasured codecov area
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          PATCH_AREAS: backend frontend android
+          CODECOVSTUB_BIN: ${{ runner.temp }}/codecovstub
+          FILTERS_FILE: .github/filters.yaml
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: .github/scripts/codecov-stub/post-noop-statuses.sh

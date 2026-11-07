@@ -216,6 +216,7 @@ run "depexceptions (dependency-exception ledger)" backend go run ./cmd/depexcept
 run "deprecations (deprecation register)" backend go run ./cmd/deprecations
 run "docscheck (docs structure/links/drift)" backend go run ./cmd/docscheck
 run "contextcheck (AGENTS.md file set, aliases, budgets, registry parity)" backend go run ./cmd/contextcheck
+run "changelogcheck (CHANGELOG.md [Unreleased] lint)" backend go run ./cmd/changelogcheck
 run "releasegatecheck (release-gate registry)" backend go run ./cmd/releasegatecheck
 run "governancecheck (governance settings)" backend go run ./cmd/governancecheck
 run "pragmacheck (coverage-override markers carry a reason)" backend go run ./cmd/pragmacheck
