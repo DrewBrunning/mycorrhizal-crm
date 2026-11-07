@@ -48,6 +48,7 @@ import { type FieldDefinition, getFieldDefinitions } from './api/fieldDefinition
 import AddContactDialog from './components/AddContactDialog';
 import BulkActionsBar from './components/BulkActionsBar';
 import BulkEditFieldsDialog, { type BulkFieldsPayload } from './components/BulkEditFieldsDialog';
+import BulkMergeDialog from './components/BulkMergeDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import MergeContactsDialog from './components/MergeContactsDialog';
@@ -137,6 +138,8 @@ export default function ContactsPage() {
   // the loaded page rather than a fresh lookup, since selection is keyed by
   // VCardUID but the merge endpoint takes numeric IDs (Contact.ID).
   const [mergePair, setMergePair] = useState<{ a: Contact; b: Contact } | null>(null);
+  // #2197: three or more selected contacts go through the primary-picker flow.
+  const [mergeGroup, setMergeGroup] = useState<Contact[] | null>(null);
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() =>
     resolveEnabledFields(null),
   );
@@ -500,7 +503,7 @@ export default function ContactsPage() {
   // --- T92 bulk merge ------------------------------------------------------
 
   const handleBulkMerge = () => {
-    // The button only enables at exactly two selected, but the selection is
+    // The button only enables at two or more selected, but the selection is
     // keyed by uid and the rows carry it -- resolve defensively. A selection
     // can outlive the rows it points at: a sort change deliberately keeps the
     // selection (T77) while the refetched page may not carry all of it, so
@@ -508,12 +511,23 @@ export default function ContactsPage() {
     // button is exactly the failure this codebase avoids -- say so and clear
     // the stale selection so the user can pick a fresh pair.
     const selectedContacts = contacts.filter((c) => !!c.uid && selectedUids.has(c.uid));
-    if (selectedContacts.length !== 2) {
+    if (selectedContacts.length < 2 || selectedContacts.length !== selectedUids.size) {
       window.alert(t('bulk.mergeSelectionStale'));
       setSelectedUids(new Set());
       return;
     }
-    setMergePair({ a: selectedContacts[0], b: selectedContacts[1] });
+    if (selectedContacts.length === 2) {
+      setMergePair({ a: selectedContacts[0], b: selectedContacts[1] });
+    } else {
+      setMergeGroup(selectedContacts);
+    }
+  };
+
+  // The group flow ends once, with how many merges were committed. Refetch
+  // and clear the selection only when something actually merged.
+  const handleMergeGroupFinished = async (mergedCount: number) => {
+    setMergeGroup(null);
+    if (mergedCount > 0) await handleMerged();
   };
 
   const handleMergeClosed = () => setMergePair(null);
@@ -1093,6 +1107,9 @@ export default function ContactsPage() {
         open={reviewDuplicatesOpen}
         onClose={() => setReviewDuplicatesOpen(false)}
       />
+      {mergeGroup && (
+        <BulkMergeDialog open contacts={mergeGroup} onFinish={handleMergeGroupFinished} />
+      )}
       {mergePair && (
         <MergeContactsDialog
           open

@@ -11,8 +11,8 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
  * Bulk merge from the contacts list (T92 — T92). Merge is pairwise, so the
- * Contacts page's bulk bar only enables it at exactly two selected rows:
- * anything else (one, or three-plus) is disabled with an explanatory tooltip.
+ * Contacts page's bulk bar enables it from two selected rows:
+ * a single row is disabled with an explanatory tooltip.
  * Selecting two opens MergeContactsDialog in pair mode (neither row is
  * privileged — the user picks the keeper and can swap), and a successful merge
  * must refetch the list and clear the selection so the dead loser row can't
@@ -28,7 +28,37 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
  * depends on whatever else is in the shared test account.
  */
 test.describe('Bulk merge from the contacts list', () => {
-  test('enables only at exactly two selected and merges the pair, refreshing the list', async ({
+  test('selecting the first row does not shift the rows (#2365)', async ({ page, request }) => {
+    const runId = `BulkShift${Date.now()}`;
+    const a = await createTestContact(request, {
+      firstname: `${E2E_CONTACT_PREFIX}${runId}A`,
+      lastname: 'Shift',
+    });
+    const b = await createTestContact(request, {
+      firstname: `${E2E_CONTACT_PREFIX}${runId}B`,
+      lastname: 'Shift',
+    });
+    try {
+      await page.goto(`/contacts?search=${encodeURIComponent(runId)}`);
+      await waitForLoading(page);
+      const first = page.getByLabel(`Select ${E2E_CONTACT_PREFIX}${runId}A Shift`);
+      const second = page.getByLabel(`Select ${E2E_CONTACT_PREFIX}${runId}B Shift`);
+      await expect(first).toBeVisible({ timeout: 10000 });
+      const before = await second.boundingBox();
+
+      await first.click();
+      await expect(selectedText(page, '1 selected')).toBeVisible();
+      const after = await second.boundingBox();
+
+      expect(before).not.toBeNull();
+      expect(after).toEqual(before);
+    } finally {
+      await deleteTestContact(request, a.ID);
+      await deleteTestContact(request, b.ID);
+    }
+  });
+
+  test('enables from two selected and merges the pair, refreshing the list', async ({
     page,
     request,
   }) => {
@@ -75,17 +105,18 @@ test.describe('Bulk merge from the contacts list', () => {
       // actionability check (nothing intercepts the pointer) can never pass —
       // the mouse still lands, which is what opens the tooltip.
       await bulkMergeButton.hover({ force: true });
-      await expect(page.getByText('Select exactly two contacts to merge.')).toBeVisible();
+      await expect(page.getByText('Select at least two contacts to merge.')).toBeVisible();
 
       // Two selected: Merge enables.
       await page.getByLabel(loserLabel).click();
       await expect(selectedText(page, '2 selected')).toBeVisible();
       await expect(bulkMergeButton).toBeEnabled();
 
-      // Three selected: disabled again — merge is strictly pairwise.
+      // Three selected: still enabled (#2197 — merge takes two or more; the
+      // three-contact walk-through is covered by the component tests).
       await page.getByLabel(thirdLabel).click();
       await expect(selectedText(page, '3 selected')).toBeVisible();
-      await expect(bulkMergeButton).toBeDisabled();
+      await expect(bulkMergeButton).toBeEnabled();
       // Back to the merge pair.
       await page.getByLabel(thirdLabel).click();
       await expect(selectedText(page, '2 selected')).toBeVisible();

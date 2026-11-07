@@ -923,6 +923,60 @@ test('selecting exactly two contacts and merging opens the pair-mode dialog, the
   expect(within(dialog).queryByText('Keep Alice')).not.toBeInTheDocument();
 });
 
+// #2197: three or more selected contacts fold into one primary, one pair at a
+// time through the same preview/commit endpoints as the pairwise flow.
+test('merging three selected contacts picks a primary and folds the others in one by one (#2197)', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [
+      contact(1, 'uid-1', 'Alice'),
+      contact(2, 'uid-2', 'Bob'),
+      contact(3, 'uid-3', 'Carol'),
+    ],
+    next_cursor: '',
+    limit: 50,
+  });
+  vi.mocked(previewContactMerge).mockImplementation(
+    async (keepId, mergeId) =>
+      ({ ...noConflictPreview, keep_id: keepId, merge_id: mergeId }) as never,
+  );
+  vi.mocked(commitContactMerge).mockResolvedValue({
+    message: 'merged',
+    contact: {},
+  } as never);
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  fireEvent.click(screen.getByLabelText('Select Bob'));
+  fireEvent.click(screen.getByLabelText('Select Carol'));
+  fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+
+  // Step 1: choose which contact survives. Pick Carol.
+  const chooser = await screen.findByRole('dialog');
+  fireEvent.click(within(chooser).getByRole('radio', { name: 'Carol' }));
+  fireEvent.click(within(chooser).getByRole('button', { name: 'Continue' }));
+
+  // Step 2/3: each other contact is merged into Carol (id 3).
+  let dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByText('Merge 1 of 2')).toBeInTheDocument();
+  let commit = within(dialog).getByRole('button', { name: 'Merge' });
+  await waitFor(() => expect(commit).not.toBeDisabled());
+  fireEvent.click(commit);
+  await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(3, 1, {}));
+
+  await waitFor(() => expect(screen.getByText('Merge 2 of 2')).toBeInTheDocument());
+  dialog = screen.getByRole('dialog');
+  commit = within(dialog).getByRole('button', { name: 'Merge' });
+  await waitFor(() => expect(commit).not.toBeDisabled());
+  fireEvent.click(commit);
+  await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(3, 2, {}));
+
+  // Done: dialog gone, selection cleared, list refetched.
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(selectedText('3 selected')).toBeUndefined();
+  expect(getContacts).toHaveBeenCalledTimes(2);
+});
+
 // Selection is keyed by VCardUID specifically so it survives pagination, and
 // the merge resolves the pair from the *loaded* `contacts` array — so it must
 // work across the page boundary too (Alice on page one, Carol on page two).
