@@ -10,6 +10,12 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
+
+## [1.6.0] - 2026-11-06
+
 > **Upgrade**: database migrations run automatically on first start. Images are stored in a new
 > directory, `IMAGES_DIR` (by default an `images` folder beside your photo folder): add it to your
 > backups ([Backups](docs/deployment.md#backups)). `make backup-verify` now also checks the files of
