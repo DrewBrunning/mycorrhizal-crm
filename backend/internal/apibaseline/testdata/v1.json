@@ -17356,6 +17356,11 @@
           "required": false
         },
         {
+          "name": "row_edits",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "session_id",
           "type": "string",
           "required": true
@@ -17553,6 +17558,11 @@
           "required": false
         },
         {
+          "name": "issues",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "skipped",
           "type": "integer",
           "required": false
@@ -17566,6 +17576,75 @@
           "name": "updated",
           "type": "integer",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ImportRowEdit",
+      "properties": [
+        {
+          "name": "email",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "firstname",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "lastname",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "row_index",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ImportRowIssue",
+      "properties": [
+        {
+          "name": "email",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "row",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "skipped",
+            "failed"
+          ]
         }
       ]
     },
@@ -18938,6 +19017,11 @@
         {
           "name": "images_rejected",
           "type": "integer",
+          "required": false
+        },
+        {
+          "name": "issues",
+          "type": "array\u003cobject\u003e",
           "required": false
         },
         {

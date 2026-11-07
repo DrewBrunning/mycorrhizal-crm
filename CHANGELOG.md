@@ -28,6 +28,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Fix and review failed import rows** ([#2186](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2186), [#2187](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2187)): on the web, you can correct rows with errors during import review, and a contact with no name now takes its email or phone as its name. The final report lists every skipped or failed contact with the reason, with a CSV download.
+- **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
 - **ntfy access token** ([#2339](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2339)): the ntfy settings accept an optional access token, so reminders can be
   sent through a self-hosted ntfy server that requires authentication to publish. Web and Android.
 - **Contact trash** ([#2002](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2002)): deleted contacts go to a Trash page on web and Android, where you

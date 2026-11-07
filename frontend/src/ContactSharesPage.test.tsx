@@ -161,7 +161,7 @@ test('accepting opens the preview dialog and confirming completes the import', a
     }),
     '/contact-shares/share-1/confirm': (_url, init) => {
       confirmedActions = JSON.parse(init?.body as string).actions;
-      return { total_processed: 1, created: 1, updated: 0, skipped: 0, errors: [] };
+      return { total_processed: 1, created: 1, updated: 0, skipped: 0, errors: [], issues: [] };
     },
   });
   renderPage();

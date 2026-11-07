@@ -190,6 +190,7 @@ func sourceImportResultFromReport(report *ImportReport, totalRows int) models.So
 			Updated:        report.ContactsUpdated,
 			Skipped:        report.ContactsSkipped,
 			Errors:         errs,
+			Issues:         []models.ImportRowIssue{},
 		},
 		RelationshipsCreated: report.RelationshipsCreated,
 		NotesCreated:         report.NotesCreated,

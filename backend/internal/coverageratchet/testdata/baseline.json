@@ -32,6 +32,7 @@
     "cmd/backupverify/main.go": 100,
     "cmd/bolacheck/main.go": 82.19,
     "cmd/bypassedcheck/main.go": 96.49,
+    "cmd/changelogcheck/main.go": 98.3,
     "cmd/citecheck/anchor.go": 96.72,
     "cmd/citecheck/main.go": 92.24,
     "cmd/codecovcheck/main.go": 92.73,

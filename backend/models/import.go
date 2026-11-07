@@ -232,6 +232,23 @@ type ImportConfirmRequest struct {
 	// takes this body (CSV, VCF, JSContact, records, shares).
 	AssignCircleIDs []string `json:"assign_circle_ids,omitempty" validate:"omitempty,max=50,dive,uuid"`
 	AssignTagIDs    []string `json:"assign_tag_ids,omitempty" validate:"omitempty,max=50,dive,uuid"`
+
+	// RowEdits (issue #2186) lets the review step fix a row that failed
+	// validation instead of only skipping it. Each edit applies to the named
+	// row's parsed contact before the row is re-validated at confirm; a row that
+	// still fails validation is skipped and reported in ImportResult.Issues. A
+	// row with validation errors and no edit is never imported.
+	RowEdits []ImportRowEdit `json:"row_edits,omitempty" validate:"omitempty,max=5000,dive"`
+}
+
+// ImportRowEdit is the user's correction to one preview row. A nil field means
+// "leave unchanged"; a non-nil empty Email/Phone removes the offending entry.
+type ImportRowEdit struct {
+	RowIndex  int     `json:"row_index" validate:"min=0"`
+	Firstname *string `json:"firstname,omitempty" validate:"omitempty,max=100"`
+	Lastname  *string `json:"lastname,omitempty" validate:"omitempty,max=100"`
+	Email     *string `json:"email,omitempty" validate:"omitempty,max=254"`
+	Phone     *string `json:"phone,omitempty" validate:"omitempty,max=50"`
 }
 
 // ImportFieldMapping is one decision from the issue #514 wizard step: what to
@@ -268,6 +285,24 @@ type ImportResult struct {
 	Updated        int      `json:"updated"`
 	Skipped        int      `json:"skipped"`
 	Errors         []string `json:"errors"`
+
+	// Issues (issue #2187) lists every skipped or failed row with the reason, so
+	// the user can fix them without repeating the import. Never omitted: an
+	// import with nothing to report returns [] (frontend trap #8).
+	Issues []ImportRowIssue `json:"issues"`
+}
+
+// ImportRowIssue is one row that was not (fully) imported. Row is 1-based, the
+// same numbering as the "Row N:" prefix in ImportResult.Errors. Status is
+// "skipped" or "failed". The Contact* fields echo what the row held so the
+// report can be exported as a CSV and the row found in the source file.
+type ImportRowIssue struct {
+	Row    int    `json:"row"`
+	Name   string `json:"name"`
+	Email  string `json:"email"`
+	Phone  string `json:"phone"`
+	Status string `json:"status"`
+	Reason string `json:"reason"`
 }
 
 // ImportSession stores temporary import data server-side (not persisted to DB)

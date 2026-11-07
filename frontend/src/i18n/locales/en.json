@@ -449,7 +449,15 @@
           "url": "website",
           "impp": "IM"
         },
-        "allResolved": "All conflicts resolved — review the decisions below."
+        "allResolved": "All conflicts resolved — review the decisions below.",
+        "fixRow": "Fix this row",
+        "editFix": "Edit fix",
+        "fixSaved": "Fix saved — checked again on import",
+        "fixFirstName": "First name",
+        "fixLastName": "Last name",
+        "fixEmail": "Email",
+        "fixPhone": "Phone",
+        "saveFix": "Save fix"
       },
       "result": {
         "title": "Import Complete",
@@ -460,8 +468,15 @@
         "updated_other": "{{count}} contacts updated",
         "skipped_one": "{{count}} row skipped",
         "skipped_other": "{{count}} rows skipped",
-        "errors": "Errors",
-        "done": "Done"
+        "done": "Done",
+        "issuesTitle": "Rows not imported",
+        "downloadCsv": "Download as CSV",
+        "colRow": "Row",
+        "colName": "Contact",
+        "colStatus": "Result",
+        "colReason": "Reason",
+        "statusFailed": "Failed",
+        "statusSkipped": "Skipped"
       },
       "errors": {
         "invalidFile": "Please select a valid CSV file",
