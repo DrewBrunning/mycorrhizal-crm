@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -200,4 +201,95 @@ func TestConfirmVCF_RowEditNamesNamelessCard(t *testing.T) {
 	assert.Equal(t, "Acme Corp", got.Firstname)
 	assert.Equal(t, "Acme Corp", got.FN)
 	assert.Empty(t, contact.Firstname, "the session's stored contact is not mutated by an edit")
+}
+
+func TestApplyImportRowEdit_PhoneAndCardEntries(t *testing.T) {
+	base := models.Contact{
+		Phones: []models.ContactPhone{{Value: "+14155550101"}, {Value: "abc"}},
+		Emails: []models.ContactEmail{{Value: "ok@example.com"}},
+	}
+	base.Card.Phones = []contactmodel.Phone{{Number: "+14155550101"}, {Number: "abc"}}
+	base.Card.Emails = []contactmodel.Email{{Address: "ok@example.com"}}
+
+	// Replaces the first INVALID phone, leaves the valid one, mirrors the Card.
+	fixed := applyImportRowEdit(base, models.ImportRowEdit{Phone: strp("+14155550102")})
+	assert.Equal(t, "+14155550101", fixed.Phones[0].Value)
+	assert.Equal(t, "+14155550102", fixed.Phones[1].Value)
+	assert.Equal(t, "+14155550102", fixed.Card.Phones[1].Number)
+	assert.Equal(t, "abc", base.Phones[1].Value, "the original is not mutated")
+
+	// An empty phone removes the invalid entry from flat and Card.
+	cleared := applyImportRowEdit(base, models.ImportRowEdit{Phone: strp("")})
+	require.Len(t, cleared.Phones, 1)
+	require.Len(t, cleared.Card.Phones, 1)
+	assert.Equal(t, "+14155550101", cleared.Phone)
+
+	// An email edit with no invalid entry replaces the first one and the Card copy.
+	swapped := applyImportRowEdit(base, models.ImportRowEdit{Email: strp("new@example.com")})
+	assert.Equal(t, "new@example.com", swapped.Email)
+	assert.Equal(t, "new@example.com", swapped.Card.Emails[0].Address)
+
+	// Removing the only email empties the flat primary.
+	none := applyImportRowEdit(base, models.ImportRowEdit{Email: strp("")})
+	assert.Empty(t, none.Emails)
+	assert.Empty(t, none.Email)
+}
+
+func TestApplyImportRowEdit_AddsMissingEmailPhoneAndNames(t *testing.T) {
+	base := models.Contact{Firstname: "Ann", Lastname: "Old"}
+	base.Card.Name = &contactmodel.Name{Components: []contactmodel.NameComponent{
+		{Kind: "given", Value: "Ann"}, {Kind: "surname", Value: "Old"},
+	}}
+	fixed := applyImportRowEdit(base, models.ImportRowEdit{
+		Lastname: strp("New"), Email: strp("a@example.com"), Phone: strp("+14155550104"),
+	})
+	assert.Equal(t, "New", fixed.Lastname)
+	assert.Equal(t, "Ann New", fixed.Card.Name.Full)
+	assert.Equal(t, "Old", base.Card.Name.Components[1].Value, "the original Card name is not mutated")
+	assert.Equal(t, "a@example.com", fixed.Card.Emails[0].Address)
+	assert.Equal(t, "+14155550104", fixed.Card.Phones[0].Number)
+
+	// Clearing the surname drops the component.
+	cleared := applyImportRowEdit(base, models.ImportRowEdit{Lastname: strp("")})
+	assert.Len(t, cleared.Card.Name.Components, 1)
+}
+
+func TestReportRowFailure_AddsErrorAndIssue(t *testing.T) {
+	res := models.ImportResult{Errors: []string{}, Issues: []models.ImportRowIssue{}}
+	p := models.ImportRowPreview{RowIndex: 4, ParsedContact: map[string]interface{}{"email": "z@example.com"}}
+	reportRowFailure(testImportLogger(), &res, p, "create contact", assert.AnError)
+	assert.Equal(t, []string{"Row 5: Failed to create contact"}, res.Errors)
+	require.Len(t, res.Issues, 1)
+	assert.Equal(t, models.ImportRowIssue{Row: 5, Name: "z@example.com", Email: "z@example.com", Status: "failed", Reason: "Failed to create contact"}, res.Issues[0])
+}
+
+func TestConfirm_UpdateWithoutMatchIsReportedAsFailed(t *testing.T) {
+	f := newErrorRowFixture(t, [][]string{{"Ann", "Ok", "ann@example.com", "", ""}})
+	res := f.confirm(t, []models.RowImportAction{{RowIndex: 0, Action: "update"}}, nil)
+	require.Len(t, res.Issues, 1)
+	assert.Equal(t, "failed", res.Issues[0].Status)
+	assert.Contains(t, res.Issues[0].Reason, "no existing contact")
+}
+
+func TestConfirm_SkippedErrorRowReportsItsValidationErrors(t *testing.T) {
+	f := newErrorRowFixture(t, [][]string{{"", "", "", "", "Acme"}})
+	res := f.confirm(t, []models.RowImportAction{{RowIndex: 0, Action: "skip"}}, nil)
+	require.Len(t, res.Issues, 1)
+	assert.Equal(t, "First name is required", res.Issues[0].Reason)
+	assert.Equal(t, "", res.Issues[0].Name)
+}
+
+func TestConfirm_VCFSessionOnCSVEndpointAppliesRowEdits(t *testing.T) {
+	db := dbtest.New(t)
+	user := newImportHistoryUser(t, db, "vcf-on-confirm")
+	m := NewImportSessionManager()
+	contact := &models.Contact{Organization: "Acme"}
+	prev := models.ImportRowPreview{RowIndex: 0, ValidationErrors: []string{"First name is required"}, SuggestedAction: "skip"}
+	id := m.CreateVCFSession(user.ID, []VCFContactData{{Contact: contact}}, []models.ImportRowPreview{prev})
+	res, appErr := m.Confirm(db, user.ID, models.ImportConfirmRequest{
+		SessionID: id, Actions: []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+		RowEdits: []models.ImportRowEdit{{RowIndex: 0, Firstname: strp("Acme Corp")}},
+	}, testImportLogger())
+	require.Nil(t, appErr)
+	assert.Equal(t, 1, res.Created)
 }

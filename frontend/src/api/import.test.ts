@@ -201,6 +201,16 @@ describe('confirmVCFImport', () => {
     expect(result).toEqual(importResult);
   });
 
+  test('sends the issue #2186 row edits only when there are some', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(importResult));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await confirmVCFImport('sess-1', [], [], [{ row_index: 2, firstname: 'Acme' }]);
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body).row_edits).toEqual([{ row_index: 2, firstname: 'Acme' }]);
+  });
+
   test('sends the issue #514 field mappings when provided', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(importResult));
     vi.stubGlobal('fetch', fetchMock);
