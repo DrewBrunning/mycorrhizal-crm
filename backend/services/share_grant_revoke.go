@@ -27,6 +27,7 @@ import (
 // revision (ADR 0006) and updated_at so the change is observable. It returns
 // the number of grants revoked.
 func RevokeShareGrantsForEntity(tx *gorm.DB, ownerID uint, entityType, entityID string, now time.Time) (int64, error) {
+	now = now.UTC() // stored instants are compared as UTC text (issue #2290)
 	res := tx.Table("share_grants").
 		Where("from_user_id = ? AND entity_type = ? AND entity_id = ? AND status IN ?",
 			ownerID, entityType, entityID, models.ShareGrantLiveStatuses).

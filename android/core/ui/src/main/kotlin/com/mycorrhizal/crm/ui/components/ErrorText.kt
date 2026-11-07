@@ -1144,6 +1144,26 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_contact_share_already_responded
         )
 
+        ErrorReasonCode.SHARE_GRANT_NOT_FOUND -> stringResource(
+            R.string.error_reason_share_grant_not_found
+        )
+
+        ErrorReasonCode.SHARE_GRANT_STATE_CONFLICT -> stringResource(
+            R.string.error_reason_share_grant_state_conflict
+        )
+
+        ErrorReasonCode.SHARE_GRANT_WIDENING_REFUSED -> stringResource(
+            R.string.error_reason_share_grant_widening_refused
+        )
+
+        ErrorReasonCode.SHARE_GRANT_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_share_grant_already_exists
+        )
+
+        ErrorReasonCode.SHARE_GRANT_PENDING_LIMIT -> stringResource(
+            R.string.error_reason_share_grant_pending_limit
+        )
+
         ErrorReasonCode.CONTACT_SHARE_SESSION_MISMATCH -> stringResource(
             R.string.error_reason_contact_share_session_mismatch
         )

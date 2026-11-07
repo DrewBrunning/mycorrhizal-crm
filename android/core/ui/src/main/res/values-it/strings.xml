@@ -2998,6 +2998,11 @@
     <string name="error_reason_contact_share_with_self">Non puoi condividere un contatto con te stesso</string>
     <string name="error_reason_contact_share_section_unknown">sezione dei campi di esportazione sconosciuta \"%1$s\"</string>
     <string name="error_reason_contact_share_already_responded">Hai già risposto a questa condivisione</string>
+    <string name="error_reason_share_grant_not_found">Condivisione non trovata</string>
+    <string name="error_reason_share_grant_state_conflict">Questa condivisione non può più essere modificata così</string>
+    <string name="error_reason_share_grant_widening_refused">Una condivisione può solo essere ristretta; crea una nuova condivisione per condividere di più</string>
+    <string name="error_reason_share_grant_already_exists">Già condiviso con questa persona</string>
+    <string name="error_reason_share_grant_pending_limit">Troppe condivisioni sono in attesa di risposta</string>
     <string name="error_reason_contact_share_session_mismatch">La sessione non appartiene a questa condivisione</string>
     <string name="error_reason_immich_api_key_invalid">La chiave API di Immich non è valida, è scaduta o non è configurata</string>
     <string name="error_reason_immich_base_url_invalid">L\'URL di base di Immich non è valida</string>

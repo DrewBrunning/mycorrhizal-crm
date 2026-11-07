@@ -91,6 +91,8 @@ unleash:
         - ^seafile_config\.go$
         - ^session\.go$
         - ^share_grant\.go$
+        - ^share_grant_dto\.go$
+        - ^share_grant_reconfirm\.go$
         - ^source_import\.go$
         - ^storage_sample\.go$
         - ^sync_health\.go$
