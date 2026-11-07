@@ -98,6 +98,8 @@ tags:
     description: Client-facing instance configuration.
   - name: Contact Shares
     description: Contact sharing between users.
+  - name: Share Grants
+    description: Standing read-only live shares between users (ADR 0042).
   - name: Contact Subscriptions
     description: Per-contact CardDAV/CalDAV subscription settings.
   - name: Contacts
@@ -130,6 +132,8 @@ tags:
     description: Import sessions for CSV, vCard, JSContact, Monica, Meerkat, and account bundles.
   - name: Integrations
     description: Immich, Paperless, GeoPulse, Seafile, Nextcloud, and external identities.
+  - name: Entities
+    description: Reusable organisations, places and pets shared by many contacts (ADR 0043).
   - name: Life Events
     description: Life events and suggestions.
   - name: Notes
@@ -4880,6 +4884,418 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Standing shares (ADR 0042, issue #2290) ---
+  /share-grants:
+    post:
+      summary: Create a standing share (owner)
+      operationId: createShareGrant
+      tags:
+        - Share Grants
+      description: >-
+        Grants one recipient on this instance read-only live access to a contact (named
+        sections only), note, activity or circle you own. The grant starts `pending` and
+        exposes nothing until the recipient accepts. If the recipient has blocked you the
+        response is still `201` with status `pending` and nothing is delivered. There is
+        no `include_sensitive`: private and secret items are never shared.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareGrantInput"
+      responses:
+        "201":
+          description: Grant created (pending).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantOwnerView"
+        "400":
+          description: Unknown or missing sections, sections on a non-contact entity, expiry in the past, or to_user_id equals the caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The entity is not yours, does not exist, or the recipient does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A live grant of this entity to this recipient already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Too many grants are waiting for a response (per recipient or overall).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/outgoing:
+    get:
+      summary: List grants you have sent (owner)
+      operationId: listOutgoingShareGrants
+      tags:
+        - Share Grants
+      description: Cursor-paginated. A grant the recipient has blocked you from reads as `pending`. There is deliberately no total.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+      responses:
+        "200":
+          description: A page of your outgoing grants.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShareGrantOwnerView"
+                  next_cursor: { type: string }
+                  limit: { type: integer }
+  /share-grants/incoming:
+    get:
+      summary: List grants shared with you (recipient)
+      operationId: listIncomingShareGrants
+      tags:
+        - Share Grants
+      description: Pending and active grants only. There is deliberately no total.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+      responses:
+        "200":
+          description: A page of your incoming grants.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShareGrantRecipientView"
+                  next_cursor: { type: string }
+                  limit: { type: integer }
+  /share-grants/blocks:
+    get:
+      summary: List the senders you have blocked (recipient)
+      operationId: listShareBlocks
+      tags:
+        - Share Grants
+      responses:
+        "200":
+          description: Your block list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  blocks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShareBlock"
+  /share-grants/blocks/{user_id}:
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      summary: Unblock a sender (recipient)
+      operationId: deleteShareBlock
+      tags:
+        - Share Grants
+      description: Removes only your own block of that user; absent is a no-op.
+      responses:
+        "204":
+          description: Unblocked.
+  /share-grants/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Change expiry or narrow the sections of a grant (owner)
+      operationId: updateShareGrant
+      tags:
+        - Share Grants
+      description: Only `expires_at` (set, or null to clear) and a narrowing `sections` list are accepted. Widening is `409`; create a new grant instead.
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareGrantPatchInput"
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantOwnerView"
+        "400":
+          description: Unknown or empty sections, sections on a non-contact grant, expiry in the past, or an empty body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The grant is terminal, or the change would widen the sections.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision; the grant was not changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/accept:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Accept a grant (recipient)
+      operationId: acceptShareGrant
+      tags:
+        - Share Grants
+      description: "Pending to active; idempotent on an active grant."
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantRecipientView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/decline:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Decline a pending grant, optionally blocking the sender (recipient)
+      operationId: declineShareGrant
+      tags:
+        - Share Grants
+      description: "With {block: true} the sender is blocked and every pending or active grant from them ends."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareGrantDeclineInput"
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantRecipientView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/leave:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Stop receiving a grant (recipient)
+      operationId: leaveShareGrant
+      tags:
+        - Share Grants
+      description: "Pending or active to declined."
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantRecipientView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/revoke:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Revoke a grant (owner)
+      operationId: revokeShareGrant
+      tags:
+        - Share Grants
+      description: "Takes effect on the recipient's next request. Idempotent on an already-revoked grant. Data the recipient already saw cannot be recalled."
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantOwnerView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/reconfirm:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Re-confirm withheld sections (owner)
+      operationId: reconfirmShareGrant
+      tags:
+        - Share Grants
+      description: "Clears reconfirm_sections: sections withheld because an item became private or secret are served again."
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantOwnerView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/content:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Read the granted entity (recipient)
+      operationId: getShareGrantContent
+      tags:
+        - Share Grants
+      description: >-
+        The single recipient read route. Resolved per request: revocation, expiry, entity
+        deletion and field changes take effect on the next call. Responses are
+        `Cache-Control: no-store` with no ETag. Normal-sensitivity data only.
+      responses:
+        "200":
+          description: The projection for the grant's entity type.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant_content:
+                    $ref: "#/components/schemas/ShareGrantContent"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   # --- Relationship edges ---
   /relationship-edges:
     get:
@@ -7876,6 +8292,377 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   # --- Custom field definitions ---
+  # --- Reusable entities (issue #2296, ADR 0043) ---
+  /entities:
+    get:
+      summary: List reusable entities (organisations, places, pets)
+      operationId: listEntities
+      tags:
+        - Entities
+      description: |
+        The caller's live entities, newest-updated first, cursor-paginated. This is the owner's own
+        surface, so every sensitivity is returned; `sensitivity` is a plain filter, not an access gate.
+      parameters:
+        - name: kind
+          in: query
+          schema: { type: string, enum: [organisation, place, pet] }
+        - name: q
+          in: query
+          description: Case-insensitive substring match on the normalized name (NFC, lower-cased; LIKE metacharacters are literal).
+          schema: { type: string }
+        - name: sensitivity
+          in: query
+          schema: { type: string, enum: [normal, private, secret] }
+        - name: cursor
+          in: query
+          description: Opaque resume token from the previous page's next_cursor.
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+      responses:
+        "200":
+          description: A page of entities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityListResponse"
+        "400":
+          description: Invalid kind, sensitivity or cursor.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Create an entity
+      operationId: createEntity
+      tags:
+        - Entities
+      description: |
+        `kind` is required and immutable. `core` is validated per kind (unknown keys are rejected); a
+        place's address sensitivity belongs in `sensitivity`, not in `core`.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntityInput"
+      responses:
+        "201":
+          description: Entity created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entity"
+        "400":
+          description: Validation failed (reason codes entity_kind_required, entity_core_invalid, validation_*).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Get an entity
+      operationId: getEntity
+      tags:
+        - Entities
+      description: Includes `link_count` and `projection_count` (contacts that currently receive a projected ORG/ADR from this entity).
+      responses:
+        "200":
+          description: The entity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entity"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found (also for another user's or a deleted entity).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Update an entity
+      operationId: updateEntity
+      tags:
+        - Entities
+      description: |
+        Writes name, core and sensitivity only. An omitted `core` or `sensitivity` is kept. `kind`, when
+        sent, must equal the stored kind (reason `entity_kind_immutable`).
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntityInput"
+      responses:
+        "200":
+          description: The updated entity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Entity"
+        "400":
+          description: Validation failed, or kind change attempted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision; nothing was changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Delete an entity (soft delete with cascade)
+      operationId: deleteEntity
+      tags:
+        - Entities
+      description: |
+        One transaction (ADR 0043 decision 6): soft-deletes the entity and its live contact links
+        (one batch id), hard-deletes its custom field values into an encrypted deletion snapshot.
+        The response reports how many contacts lose a projection. Undo with `POST /entities/{id}/restore`.
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityDeleteResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision; nothing was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/{id}/restore:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Restore a deleted entity
+      operationId: restoreEntity
+      tags:
+        - Entities
+      description: |
+        Revives the entity, the links deleted with it, and its field values from the deletion snapshot.
+        A primary link that would now collide is revived non-primary; a link whose contact is gone stays
+        deleted; both are reported in `skipped`. A live entity with the same normalized name is not a
+        conflict (`same_name_live` is a warning).
+      responses:
+        "200":
+          description: Restored.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityRestoreResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: No such entity in the caller's trash.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The deletion snapshot version is not supported by this server (entity_snapshot_unsupported).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/{id}/contacts:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List the contacts linked to an entity
+      operationId: listEntityContacts
+      tags:
+        - Entities
+      description: Live links to live contacts, with role, dates and primary flag.
+      responses:
+        "200":
+          description: The linked contacts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityContactsResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/{id}/field-values:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: List an entity's custom field values
+      operationId: listEntityFieldValues
+      tags:
+        - Entities
+      responses:
+        "200":
+          description: The entity's field values.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [field_values]
+                properties:
+                  field_values:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FieldValue"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      summary: Replace an entity's custom field values (full replace)
+      operationId: replaceEntityFieldValues
+      tags:
+        - Entities
+      description: |
+        Every `field_definition_id` must be the caller's own and target this entity's kind
+        (`contact_field_definition_target_mismatch` otherwise). Values are validated by the definition's
+        type and constraints. An empty array clears every value.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactFieldValuesInput"
+      responses:
+        "200":
+          description: Field values saved.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message, field_values]
+                properties:
+                  message: { type: string, example: "Field values saved successfully" }
+                  field_values:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/FieldValue"
+        "400":
+          description: Unknown/unowned definition, wrong target, or a value fails validation.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Entity not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /field-definitions:
     get:
       summary: List field definitions
@@ -16917,6 +17704,115 @@ components:
         total: { type: integer }
         next_cursor: { type: string }
         limit: { type: integer }
+    ShareGrantInput:
+      type: object
+      required: [to_user_id, entity_type, entity_id]
+      properties:
+        to_user_id: { type: integer }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        entity_id:
+          type: string
+          description: Contact vcard_uid, or the note/activity/circle UUID. Resolved against your own data.
+        sections:
+          type: array
+          items: { type: string }
+          description: Required and non-empty for a contact; must be omitted or empty for other types.
+        expires_at: { type: string, format: date-time, nullable: true }
+    ShareGrantPatchInput:
+      type: object
+      properties:
+        expires_at: { type: string, format: date-time, nullable: true }
+        sections:
+          type: array
+          items: { type: string }
+          description: Must be a non-empty subset of the current sections.
+    ShareGrantDeclineInput:
+      type: object
+      properties:
+        block: { type: boolean }
+    ShareGrantOwnerView:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        to_user_id: { type: integer }
+        to_username: { type: string }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        entity_id: { type: string }
+        label: { type: string }
+        sections:
+          type: array
+          items: { type: string }
+        reconfirm_sections:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [pending, active, declined, revoked, expired] }
+        expires_at: { type: string, format: date-time, nullable: true }
+        responded_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        revoked_reason: { type: string, nullable: true, enum: [owner_revoked, entity_deleted, recipient_deleted] }
+        member_count: { type: integer, nullable: true, description: "Live non-archived member count; circles only." }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        revision: { type: integer, format: int64 }
+    ShareGrantRecipientView:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        from_username: { type: string }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        label: { type: string, description: "Computed per request; a note is just Note." }
+        sections:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [pending, active, declined, revoked, expired] }
+        expires_at: { type: string, format: date-time, nullable: true }
+        responded_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    ShareBlock:
+      type: object
+      properties:
+        user_id: { type: integer }
+        username: { type: string }
+        created_at: { type: string, format: date-time }
+    ShareGrantContent:
+      type: object
+      description: Exactly one of contact, note, activity or circle is present, matching entity_type.
+      properties:
+        grant_id: { type: string, format: uuid }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        owner_username: { type: string }
+        contact:
+          type: object
+          description: JSContact card limited to the granted sections, normal sensitivity only.
+          additionalProperties: true
+        note:
+          type: object
+          properties:
+            content: { type: string }
+            date: { type: string, format: date-time }
+        activity:
+          type: object
+          properties:
+            title: { type: string }
+            description: { type: string }
+            location: { type: string }
+            date: { type: string, format: date-time }
+            end_date: { type: string, format: date-time, nullable: true }
+            type: { type: string }
+        circle:
+          type: object
+          properties:
+            name: { type: string }
+            description: { type: string }
+            color: { type: string }
+            member_count: { type: integer }
+            members_truncated: { type: boolean }
+            members:
+              type: array
+              items:
+                type: object
+                properties:
+                  display_name: { type: string }
     BulkContactOperationInput:
       type: object
       description: One bulk action across many contacts (N5). Targets are Contact.VCardUID values.
@@ -18764,6 +19660,94 @@ components:
         photo_thumbnail: { type: string }
         subscription_name: { type: string }
 
+    # --- Reusable entities (issue #2296, ADR 0043) ---
+    Entity:
+      type: object
+      required: [id, kind, name, core, sensitivity, revision, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [organisation, place, pet] }
+        name: { type: string, maxLength: 200 }
+        core:
+          type: object
+          additionalProperties: true
+          description: >
+            Kind-specific JSON. organisation: {organization: {name, units, sortAs}, url, notes};
+            place: {address: <neutral Address without sensitivity>, notes}; pet: {species, breed,
+            birth, death, notes}. Unknown keys are rejected on write.
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        revision: { type: integer, format: int64, description: "Revision token for If-Match (ADR 0006)." }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        link_count: { type: integer, description: "Live contact links. Present on GET /entities/{id} only." }
+        projection_count: { type: integer, description: "Contacts currently receiving a projected ORG/ADR from this entity. Present on GET /entities/{id} only." }
+    EntityInput:
+      type: object
+      required: [name]
+      properties:
+        kind: { type: string, enum: [organisation, place, pet], description: "Required on create; immutable (on update it must equal the stored kind)." }
+        name: { type: string, maxLength: 200 }
+        core: { type: object, additionalProperties: true }
+        sensitivity: { type: string, enum: [normal, private, secret], description: "Defaults to normal on create; kept when omitted on update." }
+    EntityListResponse:
+      type: object
+      required: [entities, next_cursor, limit]
+      properties:
+        entities:
+          type: array
+          items:
+            $ref: "#/components/schemas/Entity"
+        next_cursor: { type: string, description: "Empty when there are no more rows." }
+        limit: { type: integer }
+    EntityDeleteResponse:
+      type: object
+      required: [message, link_count, projection_count]
+      properties:
+        message: { type: string }
+        link_count: { type: integer, description: "Live links tombstoned with the entity." }
+        projection_count: { type: integer, description: "Contacts that lose a projected ORG/ADR (live primary link, period includes today)." }
+    EntityRestoreSkip:
+      type: object
+      required: [table, reason, count]
+      properties:
+        table: { type: string }
+        reason: { type: string, description: "primary_demoted, entity_deleted, contact_deleted or definition_gone." }
+        count: { type: integer }
+    EntityRestoreResponse:
+      type: object
+      required: [entity, skipped, same_name_live]
+      properties:
+        entity:
+          $ref: "#/components/schemas/Entity"
+        skipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityRestoreSkip"
+        same_name_live: { type: boolean, description: "Another live entity of the same kind has the same normalized name (a warning, not a conflict)." }
+    EntityContactLink:
+      type: object
+      required: [link_id, contact_id, contact_vcard_uid, firstname, lastname, role, role_label, is_primary, sensitivity]
+      properties:
+        link_id: { type: string, format: uuid }
+        contact_id: { type: integer }
+        contact_vcard_uid: { type: string }
+        firstname: { type: string }
+        lastname: { type: string }
+        role: { type: string }
+        role_label: { type: string }
+        is_primary: { type: boolean }
+        period:
+          $ref: "#/components/schemas/TemporalRange"
+        sensitivity: { type: string, enum: [normal, private, secret] }
+    EntityContactsResponse:
+      type: object
+      required: [contacts]
+      properties:
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityContactLink"
+
     # --- Custom fields ---
     FieldDefinition:
       type: object
@@ -18774,7 +19758,7 @@ components:
         updated_at: { type: string, format: date-time }
         label: { type: string, maxLength: 200 }
         key: { type: string, maxLength: 100 }
-        target: { type: string, enum: [contact] }
+        target: { type: string, enum: [contact, organisation, place, pet], description: "What the definition attaches to. Immutable after create. A non-contact target must use the internal-only projection." }
         type: { type: string, enum: [string, text, number, boolean, date, datetime, uri, email, phone, enum] }
         constraints:
           $ref: "#/components/schemas/FieldConstraints"
@@ -18802,7 +19786,7 @@ components:
       properties:
         label: { type: string, maxLength: 200 }
         key: { type: string, maxLength: 100 }
-        target: { type: string, enum: [contact] }
+        target: { type: string, enum: [contact, organisation, place, pet], description: "Defaults to contact. Immutable after create." }
         type: { type: string, enum: [string, text, number, boolean, date, datetime, uri, email, phone, enum] }
         constraints:
           $ref: "#/components/schemas/FieldConstraints"
@@ -19602,6 +20586,27 @@ components:
           maxItems: 50
           items: { type: string, format: uuid }
           description: Issue #2000 — as assign_circle_ids, for tags.
+        row_edits:
+          type: array
+          maxItems: 5000
+          items: { $ref: "#/components/schemas/ImportRowEdit" }
+          description: >
+            Issue #2186 — corrections to preview rows that failed validation.
+            A row with validation errors is imported only when it carries an edit
+            that makes it valid; otherwise it is skipped and listed in
+            ImportResult.issues.
+    ImportRowEdit:
+      type: object
+      required: [row_index]
+      description: >
+        Issue #2186 — the user's correction to one preview row. An absent field
+        is left unchanged; an empty email or phone removes the offending entry.
+      properties:
+        row_index: { type: integer, minimum: 0 }
+        firstname: { type: string, maxLength: 100 }
+        lastname: { type: string, maxLength: 100 }
+        email: { type: string, maxLength: 254 }
+        phone: { type: string, maxLength: 50 }
     ImportFieldMapping:
       type: object
       required: [property_name, action]
@@ -19632,6 +20637,24 @@ components:
         updated: { type: integer }
         skipped: { type: integer }
         errors: { type: array, items: { type: string } }
+        issues:
+          type: array
+          description: >
+            Issue #2187 — every skipped or failed row with the reason ([] when
+            there is nothing to report).
+          items: { $ref: "#/components/schemas/ImportRowIssue" }
+
+    ImportRowIssue:
+      type: object
+      required: [row, name, email, phone, status, reason]
+      description: One row that was not (fully) imported.
+      properties:
+        row: { type: integer, description: "1-based row number, as in the 'Row N:' prefix of ImportResult.errors." }
+        name: { type: string, description: "Display name; falls back to the email, then the phone, then empty." }
+        email: { type: string }
+        phone: { type: string }
+        status: { type: string, enum: [skipped, failed] }
+        reason: { type: string }
 
     ImportRun:
       type: object

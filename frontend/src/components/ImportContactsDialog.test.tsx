@@ -176,6 +176,7 @@ test('CSV upload walks through mapping, preview, and confirm', async () => {
     updated: 0,
     skipped: 0,
     errors: [],
+    issues: [],
   });
 
   const onImportComplete = vi.fn();
@@ -322,6 +323,7 @@ test('confirm sends the promotion decisions as field_mappings', async () => {
     updated: 0,
     skipped: 0,
     errors: [],
+    issues: [],
   });
   await loadVcfWithCandidates([{ name: 'x-hometown', value: 'Springfield' }]);
 
@@ -361,6 +363,7 @@ test('unmatched properties default to keep-as-passthrough on confirm', async () 
     updated: 0,
     skipped: 0,
     errors: [],
+    issues: [],
   });
   await loadVcfWithCandidates([{ name: 'x-hometown', value: 'Springfield' }]);
 
@@ -642,6 +645,7 @@ test('resolve all as merged applies each row suggested action', async () => {
     updated: 1,
     skipped: 0,
     errors: [],
+    issues: [],
   });
 
   renderDialog();
@@ -683,6 +687,7 @@ test('skip all marks every valid row as skip', async () => {
     updated: 0,
     skipped: 2,
     errors: [],
+    issues: [],
   });
 
   renderDialog();
@@ -821,6 +826,7 @@ test('fixed circles/tags are sent on preview and confirm and summarised (issue #
     updated: 0,
     skipped: 0,
     errors: [],
+    issues: [],
   });
   renderDialog();
   selectFile(new File(['Name\nAda'], 'contacts.csv', { type: 'text/csv' }));
@@ -970,6 +976,7 @@ test('the submitted payload keeps the existing add/update/skip shape', async () 
     updated: 1,
     skipped: 3,
     errors: [],
+    issues: [],
   });
   await loadMixedPreview();
   fireEvent.click(within(card('Newbie One')).getByRole('button', { name: 'Skip' }));
@@ -983,4 +990,90 @@ test('the submitted payload keeps the existing add/update/skip shape', async () 
     { row_index: 2, action: 'add' },
     { row_index: 3, action: 'skip' },
   ]);
+});
+
+// Issue #2186: an error row can be fixed in the review step instead of only
+// being skipped; the fix travels as row_edits and the row is imported.
+test('an error row can be fixed inline and is confirmed with a row edit', async () => {
+  await loadPreview([
+    row({
+      row_index: 0,
+      parsed_contact: { firstname: '', lastname: '', organization: 'Acme' },
+      validation_errors: ['First name is required'],
+      suggested_action: 'skip',
+    }),
+  ]);
+  vi.mocked(confirmVCFImport).mockResolvedValue({
+    total_processed: 1,
+    created: 1,
+    updated: 0,
+    skipped: 0,
+    errors: [],
+    issues: [],
+  });
+
+  // Keep/Skip stay disabled until the row is fixed.
+  expect(screen.getByRole('button', { name: 'Keep' })).toBeDisabled();
+  fireEvent.click(screen.getByRole('button', { name: 'Fix this row' }));
+  fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Acme Corp' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save fix' }));
+
+  expect(screen.getByRole('button', { name: 'Keep' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: 'Keep' })).toHaveAttribute('aria-pressed', 'true');
+
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
+  await waitFor(() => expect(confirmVCFImport).toHaveBeenCalled());
+  expect(confirmVCFImport).toHaveBeenCalledWith(
+    'sess-test',
+    [{ row_index: 0, action: 'add' }],
+    [],
+    [{ row_index: 0, firstname: 'Acme Corp' }],
+  );
+});
+
+// Issue #2187: the final report names each skipped/failed row with its reason
+// and offers a CSV download.
+test('the result step lists skipped and failed rows with reasons and offers a CSV', async () => {
+  await loadPreview([row({ parsed_contact: { firstname: 'Ada' } })]);
+  vi.mocked(confirmVCFImport).mockResolvedValue({
+    total_processed: 2,
+    created: 0,
+    updated: 0,
+    skipped: 2,
+    errors: ['Row 2: Failed to create contact'],
+    issues: [
+      {
+        row: 1,
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        phone: '',
+        status: 'skipped',
+        reason: 'Invalid email format',
+      },
+      {
+        row: 2,
+        name: 'Bob',
+        email: '',
+        phone: '',
+        status: 'failed',
+        reason: 'Failed to create contact',
+      },
+    ],
+  });
+  const createObjectURL = vi.fn(() => 'blob:report');
+  const revokeObjectURL = vi.fn();
+  Object.assign(URL, { createObjectURL, revokeObjectURL });
+
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
+  await waitFor(() => expect(screen.getByText('Rows not imported')).toBeInTheDocument());
+
+  const table = screen.getByRole('table', { name: 'Rows not imported' });
+  expect(within(table).getByText('Ada Lovelace')).toBeInTheDocument();
+  expect(within(table).getByText('Invalid email format')).toBeInTheDocument();
+  expect(within(table).getByText('Failed to create contact')).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Download as CSV' }));
+  expect(createObjectURL).toHaveBeenCalledTimes(1);
+  const blob = (createObjectURL.mock.calls[0] as unknown as [Blob])[0];
+  expect(await blob.text()).toContain('Row,Name,Email,Phone,Status,Reason');
 });

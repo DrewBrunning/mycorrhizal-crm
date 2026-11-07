@@ -234,6 +234,15 @@ func pgSpecs() []pgSpec {
 			},
 		},
 		{
+			name: "entities", oapi: "/entities", path: uidPath("/api/v1/entities"), key: "entities", idKey: "id",
+			kind: pgTime, table: "entities",
+			create: func(f *pgFix, userID uint, s pgSeed) string {
+				e := models.Entity{UserID: userID, Kind: models.EntityKindOrganisation, Name: f.newUID("org")}
+				pgMustCreate(f.t, f.db, &e)
+				return e.ID
+			},
+		},
+		{
 			name: "field-definitions", oapi: "/field-definitions", path: uidPath("/api/v1/field-definitions"), key: "field_definitions", idKey: "id",
 			kind: pgPosition, table: "field_definitions",
 			create: func(f *pgFix, userID uint, s pgSeed) string {
@@ -274,6 +283,24 @@ func pgSpecs() []pgSpec {
 				sh := models.ContactShare{FromUserID: userID, ToUserID: f.other, ContactDisplayName: "x", Payload: "{}", Status: "pending"}
 				pgMustCreate(f.t, f.db, &sh)
 				return sh.ID
+			},
+		},
+		{
+			name: "share-grants-incoming", oapi: "/share-grants/incoming", path: uidPath("/api/v1/share-grants/incoming"), key: "share_grants", idKey: "id",
+			kind: pgTime, table: "share_grants",
+			create: func(f *pgFix, userID uint, s pgSeed) string {
+				g := models.ShareGrant{FromUserID: f.other, ToUserID: userID, EntityType: models.ShareGrantEntityNote, EntityID: uuid.NewString(), Status: models.ShareGrantStatusPending}
+				pgMustCreate(f.t, f.db, &g)
+				return g.ID
+			},
+		},
+		{
+			name: "share-grants-outgoing", oapi: "/share-grants/outgoing", path: uidPath("/api/v1/share-grants/outgoing"), key: "share_grants", idKey: "id",
+			kind: pgTime, table: "share_grants",
+			create: func(f *pgFix, userID uint, s pgSeed) string {
+				g := models.ShareGrant{FromUserID: userID, ToUserID: f.other, EntityType: models.ShareGrantEntityNote, EntityID: uuid.NewString(), Status: models.ShareGrantStatusPending}
+				pgMustCreate(f.t, f.db, &g)
+				return g.ID
 			},
 		},
 		{

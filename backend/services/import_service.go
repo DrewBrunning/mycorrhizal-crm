@@ -1527,6 +1527,15 @@ func BuildImportRowPreview(
 	// the format validators below never have to reason about hostile bytes.
 	diags = append(diags, SanitizeImportedContact(contact)...)
 
+	// Issue #2186: a contact with no name but an email or phone is named
+	// after it instead of being rejected.
+	if applyImportNameFallback(contact) {
+		diags = append(diags, contactmodel.Diagnostic{
+			Severity: "info", Concept: "name",
+			Message: "The name was empty; the first email or phone number is used as the name",
+		})
+	}
+
 	preview := models.ImportRowPreview{
 		RowIndex:              rowIdx,
 		ParsedContact:         ContactToPreviewMap(contact),

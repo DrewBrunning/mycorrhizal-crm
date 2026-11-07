@@ -78,6 +78,8 @@ func TestAuthorizationMatrix_BOLAValidBodyMutations(t *testing.T) {
 	require.NoError(t, db.First(&noteBefore, "id = ?", res.note).Error)
 	var activityBefore models.Activity
 	require.NoError(t, db.First(&activityBefore, "id = ?", res.activity).Error)
+	var entityBefore models.Entity
+	require.NoError(t, db.First(&entityBefore, "id = ?", res.entity).Error)
 	var lifeEventBefore models.LifeEvent
 	require.NoError(t, db.First(&lifeEventBefore, "id = ?", res.lifeEvent).Error)
 	var reminderBefore models.Reminder
@@ -125,6 +127,18 @@ func TestAuthorizationMatrix_BOLAValidBodyMutations(t *testing.T) {
 				assert.Equal(t, activityBefore.Title, after.Title)
 				assert.Equal(t, activityBefore.Date.Unix(), after.Date.Unix())
 				assert.Equal(t, activityBefore.Revision, after.Revision)
+			},
+		},
+		{
+			name:     "entity",
+			path:     "/api/v1/entities/" + res.entity,
+			intruder: models.EntityInput{Name: "intruder rename"},
+			owner:    models.EntityInput{Name: "owner rename"},
+			unchanged: func(t *testing.T) {
+				var after models.Entity
+				require.NoError(t, db.First(&after, "id = ?", res.entity).Error)
+				assert.Equal(t, entityBefore.Name, after.Name)
+				assert.Equal(t, entityBefore.Revision, after.Revision)
 			},
 		},
 		{

@@ -280,6 +280,38 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_trash_snapshot_unsupported
         )
 
+        ErrorReasonCode.ENTITY_NOT_FOUND -> stringResource(
+            R.string.error_reason_entity_not_found
+        )
+
+        ErrorReasonCode.ENTITY_KIND_REQUIRED -> stringResource(
+            R.string.error_reason_entity_kind_required
+        )
+
+        ErrorReasonCode.ENTITY_KIND_IMMUTABLE -> stringResource(
+            R.string.error_reason_entity_kind_immutable
+        )
+
+        ErrorReasonCode.ENTITY_CORE_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_entity_core_invalid, it) }
+
+        ErrorReasonCode.ENTITY_SNAPSHOT_UNSUPPORTED -> stringResource(
+            R.string.error_reason_entity_snapshot_unsupported
+        )
+
+        ErrorReasonCode.CONTACT_FIELD_DEFINITION_TARGET_IMMUTABLE -> stringResource(
+            R.string.error_reason_contact_field_definition_target_immutable
+        )
+
+        ErrorReasonCode.CONTACT_FIELD_DEFINITION_PROJECTION_TARGET_INVALID -> stringResource(
+            R.string.error_reason_contact_field_definition_projection_target_invalid
+        )
+
+        ErrorReasonCode.CONTACT_FIELD_DEFINITION_TARGET_MISMATCH -> stringResource(
+            R.string.error_reason_contact_field_definition_target_mismatch
+        )
+
         ErrorReasonCode.CIRCLE_COLOR_INVALID -> stringResource(
             R.string.error_reason_circle_color_invalid
         )
@@ -1142,6 +1174,26 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.CONTACT_SHARE_ALREADY_RESPONDED -> stringResource(
             R.string.error_reason_contact_share_already_responded
+        )
+
+        ErrorReasonCode.SHARE_GRANT_NOT_FOUND -> stringResource(
+            R.string.error_reason_share_grant_not_found
+        )
+
+        ErrorReasonCode.SHARE_GRANT_STATE_CONFLICT -> stringResource(
+            R.string.error_reason_share_grant_state_conflict
+        )
+
+        ErrorReasonCode.SHARE_GRANT_WIDENING_REFUSED -> stringResource(
+            R.string.error_reason_share_grant_widening_refused
+        )
+
+        ErrorReasonCode.SHARE_GRANT_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_share_grant_already_exists
+        )
+
+        ErrorReasonCode.SHARE_GRANT_PENDING_LIMIT -> stringResource(
+            R.string.error_reason_share_grant_pending_limit
         )
 
         ErrorReasonCode.CONTACT_SHARE_SESSION_MISMATCH -> stringResource(

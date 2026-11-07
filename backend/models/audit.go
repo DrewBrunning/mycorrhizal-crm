@@ -66,6 +66,8 @@ const (
 	AuditEntityTag       = "tag"
 	AuditEntityHousehold = "household"
 	AuditEntityReminder  = "reminder"
+	// AuditEntityShareGrant is a standing-share grant (ADR 0042, issue #2290).
+	AuditEntityShareGrant = "share_grant"
 
 	AuditEntityUser     = "user"
 	AuditEntityAuth     = "auth"

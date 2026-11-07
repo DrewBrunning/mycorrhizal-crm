@@ -2790,6 +2790,14 @@
     <string name="error_reason_validation_cursor_malformed">L\'id del cursore non è valido</string>
     <string name="error_reason_trash_uid_in_use">Un contatto attivo usa già l\'UID di questo contatto; uniscilo o eliminalo prima</string>
     <string name="error_reason_trash_snapshot_unsupported">L\'istantanea di eliminazione di questo contatto non è supportata da questa versione; può comunque essere eliminato definitivamente</string>
+    <string name="error_reason_entity_not_found">Entità non trovata</string>
+    <string name="error_reason_entity_kind_required">kind è obbligatorio e deve essere organisation, place o pet</string>
+    <string name="error_reason_entity_kind_immutable">Il tipo di un\'entità non può essere modificato; eliminala e creane una nuova</string>
+    <string name="error_reason_entity_core_invalid">%1$s</string>
+    <string name="error_reason_entity_snapshot_unsupported">Lo snapshot di eliminazione di questa entità non è supportato da questa versione</string>
+    <string name="error_reason_contact_field_definition_target_immutable">La destinazione di una definizione di campo non può essere modificata</string>
+    <string name="error_reason_contact_field_definition_projection_target_invalid">Solo le definizioni di campo dei contatti possono usare una proiezione vcard; usa internal-only</string>
+    <string name="error_reason_contact_field_definition_target_mismatch">La definizione di campo non si applica a questo tipo di record</string>
     <string name="error_reason_circle_color_invalid">Il colore deve essere uno dei colori della tavolozza</string>
     <string name="error_reason_circle_sync_scope_out_of_scope">Il contatto è fuori dall\'ambito di sincronizzazione CardDAV di questo dispositivo</string>
     <string name="error_reason_circle_sync_scope_no_default">Nessun cerchio predefinito è configurato per l\'ambito di sincronizzazione CardDAV</string>
@@ -2998,6 +3006,11 @@
     <string name="error_reason_contact_share_with_self">Non puoi condividere un contatto con te stesso</string>
     <string name="error_reason_contact_share_section_unknown">sezione dei campi di esportazione sconosciuta \"%1$s\"</string>
     <string name="error_reason_contact_share_already_responded">Hai già risposto a questa condivisione</string>
+    <string name="error_reason_share_grant_not_found">Condivisione non trovata</string>
+    <string name="error_reason_share_grant_state_conflict">Questa condivisione non può più essere modificata così</string>
+    <string name="error_reason_share_grant_widening_refused">Una condivisione può solo essere ristretta; crea una nuova condivisione per condividere di più</string>
+    <string name="error_reason_share_grant_already_exists">Già condiviso con questa persona</string>
+    <string name="error_reason_share_grant_pending_limit">Troppe condivisioni sono in attesa di risposta</string>
     <string name="error_reason_contact_share_session_mismatch">La sessione non appartiene a questa condivisione</string>
     <string name="error_reason_immich_api_key_invalid">La chiave API di Immich non è valida, è scaduta o non è configurata</string>
     <string name="error_reason_immich_base_url_invalid">L\'URL di base di Immich non è valida</string>

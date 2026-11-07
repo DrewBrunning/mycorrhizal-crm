@@ -117,6 +117,10 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /import/mycorrhizal/confirm":         bindingFor(models.SourceImportConfirmRequest{}),
 	"POST /contact-shares":                     bindingFor(models.ContactShareInput{}),
 	"POST /contact-shares/{id}/confirm":        bindingFor(models.ImportConfirmRequest{}),
+	"POST /share-grants":                       bindingFor(models.ShareGrantInput{}),
+	"PATCH /share-grants/{id}":                 bindingFor(models.ShareGrantPatchInput{}),
+	// Optional body bound by the handler's own ShouldBindJSON (no validate pass).
+	"POST /share-grants/{id}/decline":          {structType: reflect.TypeOf(models.ShareGrantDeclineInput{})},
 	"PUT /contacts/{id}/field-values":          bindingFor(models.ContactFieldValuesInput{}),
 	"PATCH /contacts/{id}/images/{image_id}":   bindingFor(models.ContactImagePatchInput{}),
 	"PATCH /notes/{id}/images/{image_id}":      bindingFor(models.ContactImagePatchInput{}),
@@ -160,6 +164,9 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /field-definitions":                         bindingFor(models.FieldDefinitionInput{}),
 	"PUT /field-definitions/{id}":                     bindingFor(models.FieldDefinitionInput{}),
 	"PUT /field-definitions/reorder":                  bindingFor(models.FieldDefinitionReorderInput{}),
+	"POST /entities":                                  bindingFor(models.EntityInput{}),
+	"PUT /entities/{id}":                              bindingFor(models.EntityInput{}),
+	"PUT /entities/{id}/field-values":                 bindingFor(models.ContactFieldValuesInput{}),
 	"POST /life-events":                               bindingFor(models.LifeEventInput{}),
 	"PUT /life-events/{id}":                           bindingFor(models.LifeEventInput{}),
 	"POST /life-event-suggestions/resolve":            bindingFor(models.LifeEventSuggestionResolutionInput{}),
@@ -267,6 +274,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 // route the live router registers — enforced by TestOpenAPIRequestFieldCoverage's
 // completeness net.
 var noBodyMutatingRoutes = map[string]bool{
+	"POST /entities/{id}/restore":       true, // issue #2296: path-only action
 	"POST /trash/contacts/{id}/restore": true, // issue #2002: path-only action
 	"POST /logout":                      true,
 	"POST /users/2fa/setup":             true,
@@ -295,6 +303,10 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /import/mycorrhizal/cancel":                   true,
 	"POST /contact-shares/{id}/accept":                  true,
 	"POST /contact-shares/{id}/decline":                 true,
+	"POST /share-grants/{id}/accept":                    true,
+	"POST /share-grants/{id}/leave":                     true,
+	"POST /share-grants/{id}/revoke":                    true,
+	"POST /share-grants/{id}/reconfirm":                 true,
 	"POST /relationship-edges/suggest":                  true,
 	"PATCH /relationship-edges/{id}/accept":             true,
 	"POST /contacts/{id}/attachments":                   true,

@@ -60,6 +60,7 @@ var Allowlist = map[string]string{
 	"ImportConfirmRequest.FieldMappings":   "request-only DTO -- the client's issue #514 custom-field promotion decisions, submitted at confirm; never returned in a response",
 	"ImportConfirmRequest.AssignCircleIDs": "request-only DTO -- issue #2000 fixed circle/tag ids the client submits; never returned in a response",
 	"ImportConfirmRequest.AssignTagIDs":    "request-only DTO -- issue #2000 fixed circle/tag ids the client submits; never returned in a response",
+	"ImportConfirmRequest.RowEdits":        "request-only DTO -- issue #2186 corrections to error rows the client submits at confirm; never returned in a response",
 	"ImportPreviewRequest.AssignCircleIDs": "request-only DTO -- issue #2000 fixed circle/tag ids the client submits; never returned in a response",
 	"ImportPreviewRequest.AssignTagIDs":    "request-only DTO -- issue #2000 fixed circle/tag ids the client submits; never returned in a response",
 	"CadencePolicyInput.QualifyingTypes":   "request-only DTO (POST/PUT cadence-policy body); never returned in a response",

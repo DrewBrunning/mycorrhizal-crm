@@ -105,9 +105,17 @@ func repairClasses() []repairClass {
 		{
 			check: "field_value.orphaned",
 			table: "field_values",
-			where: `NOT EXISTS (SELECT 1 FROM contacts c WHERE c.vcard_uid = field_values.entity_id AND c.user_id = field_values.user_id)
+			where: `(NOT EXISTS (SELECT 1 FROM contacts c WHERE c.vcard_uid = field_values.entity_id AND c.user_id = field_values.user_id)
+			      AND NOT EXISTS (SELECT 1 FROM field_definitions dt WHERE dt.id = field_values.field_definition_id AND dt.target <> 'contact'))
 			     OR NOT EXISTS (SELECT 1 FROM field_definitions d WHERE d.id = field_values.field_definition_id)`,
 			desc: "field values whose contact or definition no longer exists",
+		},
+		{
+			check: "field_value.orphaned_entity",
+			table: "field_values",
+			where: `EXISTS (SELECT 1 FROM field_definitions d WHERE d.id = field_values.field_definition_id AND d.target <> 'contact')
+			     AND NOT EXISTS (SELECT 1 FROM entities e WHERE e.id = field_values.entity_id AND e.user_id = field_values.user_id)`,
+			desc: "entity field values whose entity no longer exists",
 		},
 	}
 }

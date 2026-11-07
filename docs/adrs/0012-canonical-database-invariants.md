@@ -199,6 +199,10 @@ in CI via `RunDataIntegrityChecks`.
   `contact_tags` / `field_values` rows whose contact (`*_vcard_uid` / `entity_id`) resolves to no
   row (`join_row.orphaned`, repairable) or a soft-deleted one (INV-D7). The parent-entity side
   (`circle_id`, `tag_id`, …) is FK-backed and covered by the storage pass's `foreign_key_check`.
+  A `field_values` row whose definition targets an entity kind (ADR 0043 decision 5) keys `entity_id` by an
+  `entities.id`: `checkOrphanedContactRefs` skips those, and `checkEntityFieldValues` reports one whose entity
+  row is gone (`field_value.orphaned_entity`, repairable) or is soft-deleted / of a different kind than the
+  definition targets (INV-D7, `field_value.entity_deleted_or_wrong_kind`).
 
 #### INV-D4 — No dangling external or cross-table references
 

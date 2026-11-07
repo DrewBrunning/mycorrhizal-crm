@@ -35,6 +35,7 @@ unleash:
         - ^device_grant_controller\.go$
         - ^diagnostics_controller\.go$
         - ^duplicate_controller\.go$
+        - ^entity_controller\.go$
         - ^error_aggregation_controller\.go$
         - ^export_controller\.go$
         - ^export_csv_extra_sections\.go$
@@ -83,6 +84,7 @@ unleash:
         - ^search_controller\.go$
         - ^second_factor_proof\.go$
         - ^session_controller\.go$
+        - ^share_grant_controller\.go$
         - ^subsystem_health_controller\.go$
         - ^sync_conflict_controller\.go$
         - ^system_event_controller\.go$
