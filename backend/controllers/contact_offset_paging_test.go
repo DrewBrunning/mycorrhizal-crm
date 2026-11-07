@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"fmt"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"net/http"
 	"net/http/httptest"
@@ -95,4 +96,18 @@ func TestGetContacts_OffsetAndTotal(t *testing.T) {
 			assert.Equal(t, http.StatusBadRequest, code, q)
 		}
 	})
+}
+
+// A storage failure surfaces as a 500 on both the count and the page query.
+func TestGetContacts_OffsetAndTotalDatabaseErrors(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test (or its test config) legitimately logs: Request error")
+	db, router := setupRouter(t)
+	router.GET("/contacts", GetContacts)
+	require.NoError(t, db.Exec("PRAGMA foreign_keys = OFF").Error)
+	require.NoError(t, db.Migrator().DropTable("contacts"))
+
+	code, _ := offsetPage(t, router, "include_total=true")
+	assert.Equal(t, http.StatusInternalServerError, code)
+	code, _ = offsetPage(t, router, "offset=5")
+	assert.Equal(t, http.StatusInternalServerError, code)
 }
