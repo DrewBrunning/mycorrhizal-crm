@@ -401,6 +401,12 @@ func DeriveSortName(lastname, firstname string) string {
 func (c *Contact) BeforeSave(tx *gorm.DB) error {
 	c.deriveDenormalized()
 
+	// ADR 0042 decision 5: an address reclassified to private/secret withholds
+	// the addresses section of any live standing-share grant until re-confirmed.
+	if err := c.markAddressReclassification(tx); err != nil {
+		return err
+	}
+
 	// T18 audit: mark create-vs-update and capture the pre-update snapshot.
 	auditBeforeSave[Contact](tx, AuditEntityContact, c.ID, c.ID == 0)
 
