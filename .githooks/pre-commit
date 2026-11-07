@@ -226,12 +226,11 @@ run "androidskipcheck (Android E2E expected-skips allowlist resolves)" backend g
 
 if [ "$changelog_relevant" = true ]; then
   echo ""
-  echo "${YELLOW}${BOLD}## Reminder: Upgrade notes${RESET}"
+  echo "${YELLOW}${BOLD}## Reminder: changelog${RESET}"
   echo "${YELLOW}You staged a migration, backend/config/config.go, or .env.example.${RESET}"
-  echo "${YELLOW}This can't be checked locally (the real gate reads the PR description,"
-  echo "which doesn't exist yet) — but before opening/updating the PR, add an"
-  echo "'## Upgrade notes' block (and '## Breaking changes' if it applies), or"
-  echo "a 'no-changelog: <reason>' line if genuinely nothing is needed."
+  echo "${YELLOW}Add an entry to CHANGELOG.md under [Unreleased] (with an Upgrade"
+  echo "blockquote if the operator must act), or put a 'no-changelog: <reason>'"
+  echo "line in the PR description if genuinely nothing is needed."
   echo "See docs/changelog-policy.md.${RESET}"
 fi
 

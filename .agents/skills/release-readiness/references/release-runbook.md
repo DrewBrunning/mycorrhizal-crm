@@ -20,8 +20,8 @@ list here.
 5. Attest or skip each applicable manual gate in `.github/manual-gates.json`.
    `manualgatecheck validate` checks the ledger shape; `status`/`check` answer
    whether the evidence is fresh for this commit.
-6. Verify the PR/release body: `## Upgrade notes` or `no-changelog:`, plus
-   `## Breaking changes` where MAINT-02 requires it.
+6. Verify `CHANGELOG.md` has the `## [X.Y.Z]` section (with an `> **Upgrade**`
+   blockquote and breaking changes where MAINT-02 requires them).
 
 ## Dispatch
 
@@ -42,7 +42,7 @@ list here.
 | ASVS obligation fails | no §10 row since the last tag | do the verification pass or use the acknowledged-current path with a reason |
 | manual gate fails | missing/stale attestation or unreported applicable gate | re-run `scripts/android-local-mode-device-test.sh --record` or record a reasoned skip |
 | release-gate fails | a required per-PR check is red on the release commit | fix it and cut again; do not override silently |
-| release notes missing notes | PR body lacked Upgrade notes | add them before merging future PRs; for this release, record the note in the dispatch release body |
+| release notes missing notes | changelog entry missing | add the entry to the release section before tagging; after tagging, edit the Release body |
 
 ## Evidence
 

@@ -27,8 +27,8 @@ the operator notes. Read `docs/development/release-gates.md` and
 5. Attest or explicitly skip every manual gate that applies
    (`.github/manual-gates.json`, `attest_manual_gates`). A skip needs a reason;
    it is not a pass.
-6. Ensure the PR body has `## Upgrade notes` (or `no-changelog:`) and, when
-   applicable, breaking-change/security sections.
+6. Ensure `CHANGELOG.md` has the section for this release (rename
+   `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD` and start a new `[Unreleased]`); `release.yml` refuses to tag without it.
 7. Run the release gates from the runbook and record failures as failures.
 
 ## DoD
