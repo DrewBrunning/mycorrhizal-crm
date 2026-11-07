@@ -11,12 +11,10 @@ import { API_BASE_URL } from './global-setup';
 // N5 bulk operations. Uses
 // a `?search=` filter to scope the contacts list to exactly this test's own
 // throwaway contacts, rather than relying on "select all" over whatever else
-// happens to be seeded/leftover in the shared test account -- the list page
-// size is 10, so 11 unique contacts reliably span two pages.
+// happens to be seeded/leftover in the shared test account. Selection is
+// per page (#2188), so the 11 contacts fit on one page (default size 50).
 test.describe('Bulk operations', () => {
-  test('select across two pages, bulk-tag, then bulk-delete with confirmation', async ({
-    page,
-  }) => {
+  test('select a page, bulk-tag, then bulk-delete with confirmation', async ({ page }) => {
     const runId = `BulkE2E${Date.now()}`;
     const contacts = [];
     for (let i = 0; i < 11; i++) {
@@ -36,13 +34,7 @@ test.describe('Bulk operations', () => {
       await page.goto(`/contacts?search=${encodeURIComponent(runId)}&has_contact_info=false`);
       await waitForLoading(page);
 
-      // Select all of page one (10 of the 11).
-      await page.getByLabel(/^select all$/i).click();
-      await expect(selectedText(page, '10 selected')).toBeVisible();
-
-      // Load page two and select-all again to cover the boundary.
-      await page.getByRole('button', { name: /load more/i }).click();
-      await waitForLoading(page);
+      // Select all 11 on the page.
       await page.getByLabel(/^select all$/i).click();
       await expect(selectedText(page, '11 selected')).toBeVisible();
 
@@ -64,10 +56,6 @@ test.describe('Bulk operations', () => {
 
       // Bulk delete: select all again, confirm the dialog names the count,
       // then accept it -- the most destructive bulk action in the app.
-      await page.getByLabel(/^select all$/i).click();
-      await expect(selectedText(page, '10 selected')).toBeVisible();
-      await page.getByRole('button', { name: /load more/i }).click();
-      await waitForLoading(page);
       await page.getByLabel(/^select all$/i).click();
       await expect(selectedText(page, '11 selected')).toBeVisible();
 

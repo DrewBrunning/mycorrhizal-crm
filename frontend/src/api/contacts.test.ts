@@ -1259,6 +1259,28 @@ describe('getContacts additional params (T17/T103)', () => {
     expect(calledUrl).toContain('has_contact_info=true');
   });
 
+  test('sends offset and include_total when given, omits offset 0 (#2188)', async () => {
+    const fetchMock = fetch as unknown as ReturnType<typeof vi.fn>;
+    fetchMock.mockResolvedValueOnce(okList());
+    await getContacts({ limit: 50, offset: 100, includeTotal: true });
+    const calledUrl = fetchMock.mock.calls[0][0] as string;
+    expect(calledUrl).toContain('offset=100');
+    expect(calledUrl).toContain('include_total=true');
+
+    fetchMock.mockResolvedValueOnce(okList());
+    await getContacts({ offset: 0 });
+    expect(fetchMock.mock.calls[1][0] as string).not.toContain('offset=');
+    expect(fetchMock.mock.calls[1][0] as string).not.toContain('include_total=');
+  });
+
+  test('carries total through when present (#2188)', async () => {
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ contacts: [], next_cursor: '', limit: 50, total: 123 }),
+    });
+    expect((await getContacts({ includeTotal: true })).total).toBe(123);
+  });
+
   test('archived=false is still sent explicitly (distinct from "unset")', async () => {
     (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(okList());
     await getContacts({ archived: false });

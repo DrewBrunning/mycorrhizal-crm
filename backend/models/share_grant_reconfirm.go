@@ -317,3 +317,11 @@ func RecordShareGrantAudit(tx *gorm.DB, g *ShareGrant, userID uint, op string) {
 	}
 	recordAudit(tx, AuditEntityShareGrant, g.ID, op, userID, string(snap))
 }
+
+// RecordContactShareAudit writes an audit event on actorID's trail for a
+// one-time ContactShare (issue #2294). The snapshot is id and status only:
+// never the payload or the contact's name.
+func RecordContactShareAudit(tx *gorm.DB, id, status string, actorID uint, op string) {
+	snap, _ := json.Marshal(map[string]any{"id": id, "status": status}) // a string map cannot fail to marshal
+	recordAudit(tx, AuditEntityContactShare, id, op, actorID, string(snap))
+}

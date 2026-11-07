@@ -61,8 +61,14 @@ func CreateFieldDefinition(c *gin.Context) {
 	// a duplicate (user_id, key) is a clear checked 409, not a sniffed
 	// constraint error, so the client gets the right status and a precise
 	// detail instead of a database-error string.
+	target := orDefault(input.Target, models.FieldDefinitionTargetContact)
+	if projErr := validateFieldDefinitionTargetProjection(target, input.Projection); projErr != nil {
+		apperrors.AbortWithError(c, projErr)
+		return
+	}
+
 	var existing models.FieldDefinition
-	lookupErr := db.Where("user_id = ? AND key = ?", userID, input.Key).First(&existing).Error
+	lookupErr := db.Where("user_id = ? AND target = ? AND key = ?", userID, target, input.Key).First(&existing).Error
 	if lookupErr == nil {
 		apperrors.AbortWithError(c, apperrors.ErrAlreadyExists("Field definition").WithDetails("key", input.Key))
 		return
@@ -82,7 +88,7 @@ func CreateFieldDefinition(c *gin.Context) {
 		UserID:      userID,
 		Label:       input.Label,
 		Key:         input.Key,
-		Target:      orDefault(input.Target, models.FieldDefinitionTargetContact),
+		Target:      target,
 		Type:        input.Type,
 		Constraints: input.Constraints,
 		Projection:  orDefault(input.Projection, "internal-only"),
@@ -96,6 +102,17 @@ func CreateFieldDefinition(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, gin.H{"message": "Field definition created successfully", "field_definition": def})
+}
+
+// validateFieldDefinitionTargetProjection enforces ADR 0043 decision 5: only a
+// contact definition may project into a vCard (vcard:X-...); an entity-target
+// definition must be internal-only (an omitted projection defaults to it).
+func validateFieldDefinitionTargetProjection(target, projection string) *apperrors.AppError {
+	if models.FieldDefinitionTargetIsEntity(target) && projection != "" && projection != "internal-only" {
+		return apperrors.ErrInvalidInput("projection", "only contact field definitions can use a vcard projection").
+			WithReason(apperrors.ReasonContactFieldDefinitionProjectionTargetInvalid, nil)
+	}
+	return nil
 }
 
 // nextFieldDefinitionPosition returns one past the user's current highest
@@ -222,8 +239,15 @@ func UpdateFieldDefinition(c *gin.Context) {
 		return
 	}
 
+	if input.Target != "" && input.Target != def.Target {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("target", "a field definition's target cannot be changed").WithReason(apperrors.ReasonContactFieldDefinitionTargetImmutable, nil))
+		return
+	}
+	if projErr := validateFieldDefinitionTargetProjection(def.Target, input.Projection); projErr != nil {
+		apperrors.AbortWithError(c, projErr)
+		return
+	}
 	def.Label = input.Label
-	def.Target = orDefault(input.Target, def.Target)
 	def.Type = input.Type
 	def.Constraints = input.Constraints
 	if input.Projection != "" {
@@ -418,6 +442,10 @@ func ReplaceContactFieldValues(c *gin.Context) {
 		def, ok := defByID[fv.FieldDefinitionID]
 		if !ok {
 			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("field_definition_id", "unknown or not-owned field definition").WithReason(apperrors.ReasonContactFieldDefinitionUnknown, nil))
+			return
+		}
+		if def.Target != models.FieldDefinitionTargetContact {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("field_definition_id", "field definition does not target contacts").WithReason(apperrors.ReasonContactFieldDefinitionTargetMismatch, nil))
 			return
 		}
 		if err := services.ValidateFieldValue(def, fv.Value); err != nil {

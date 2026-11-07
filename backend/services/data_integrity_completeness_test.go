@@ -89,6 +89,7 @@ var knownProbeNames = map[string]bool{
 	"orphaned_contact_refs":      true,
 	"dangling_external_refs":     true,
 	"dangling_field_values":      true,
+	"entity_field_values":        true,
 	"missing_files":              true,
 	"vanished_audit_refs":        true,
 	"required_fields":            true,

@@ -2792,6 +2792,14 @@
     <string name="error_reason_validation_cursor_malformed">L\'identifiant du curseur est mal formé</string>
     <string name="error_reason_trash_uid_in_use">Un contact actif utilise déjà l\'UID de ce contact ; fusionnez-le ou supprimez-le d\'abord</string>
     <string name="error_reason_trash_snapshot_unsupported">Cette version ne prend pas en charge l\'instantané de suppression de ce contact ; il peut toujours être supprimé définitivement</string>
+    <string name="error_reason_entity_not_found">Entité introuvable</string>
+    <string name="error_reason_entity_kind_required">kind est obligatoire et doit être organisation, place ou pet</string>
+    <string name="error_reason_entity_kind_immutable">Le type d\'une entité ne peut pas être modifié ; supprimez-la et créez-en une nouvelle</string>
+    <string name="error_reason_entity_core_invalid">%1$s</string>
+    <string name="error_reason_entity_snapshot_unsupported">L\'instantané de suppression de cette entité n\'est pas pris en charge par cette version</string>
+    <string name="error_reason_contact_field_definition_target_immutable">La cible d\'une définition de champ ne peut pas être modifiée</string>
+    <string name="error_reason_contact_field_definition_projection_target_invalid">Seules les définitions de champ de contact peuvent utiliser une projection vcard ; utilisez internal-only</string>
+    <string name="error_reason_contact_field_definition_target_mismatch">La définition de champ ne cible pas ce type d\'enregistrement</string>
     <string name="error_reason_circle_color_invalid">La couleur doit être l\'une des couleurs de la palette</string>
     <string name="error_reason_circle_sync_scope_out_of_scope">Le contact est en dehors de la portée de synchronisation CardDAV de cet appareil</string>
     <string name="error_reason_circle_sync_scope_no_default">Aucun cercle par défaut n\'est configuré pour la portée de synchronisation CardDAV</string>

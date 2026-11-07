@@ -13,8 +13,17 @@ import (
 // initially; model allows relationship/household/... later." A closed,
 // single-value enum today, widened when a second target actually ships.
 const (
-	FieldDefinitionTargetContact = "contact"
+	FieldDefinitionTargetContact      = "contact"
+	FieldDefinitionTargetOrganisation = EntityKindOrganisation
+	FieldDefinitionTargetPlace        = EntityKindPlace
+	FieldDefinitionTargetPet          = EntityKindPet
 )
+
+// FieldDefinitionTargetIsEntity reports whether target names a reusable-entity
+// kind (ADR 0043 decision 5) rather than the contact.
+func FieldDefinitionTargetIsEntity(target string) bool {
+	return target == FieldDefinitionTargetOrganisation || target == FieldDefinitionTargetPlace || target == FieldDefinitionTargetPet
+}
 
 // Type values stored on FieldDefinition.Type -- a closed set. Note
 // there is no separate "list<T>" token: describes list-of-T as "a
@@ -76,7 +85,7 @@ type FieldDefinition struct {
 	// definitions with the same key would be ambiguous to reference.
 	Key string `gorm:"not null;uniqueIndex:idx_field_definitions_user_key,priority:3" json:"key" validate:"required,max=100"`
 
-	Target string `gorm:"not null;uniqueIndex:idx_field_definitions_user_key,priority:2" json:"target" validate:"required,oneof=contact"`
+	Target string `gorm:"not null;uniqueIndex:idx_field_definitions_user_key,priority:2" json:"target" validate:"required,oneof=contact organisation place pet"`
 	Type   string `gorm:"not null" json:"type" validate:"required,oneof=string text number boolean date datetime uri email phone enum"`
 
 	Constraints FieldConstraints `gorm:"type:text;serializer:json" json:"constraints,omitempty"`

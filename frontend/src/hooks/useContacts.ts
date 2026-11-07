@@ -16,6 +16,8 @@ interface UseContactsResult {
   // Opaque resume token (T17): non-empty while more rows exist. There is no
   // exact total — cursor pagination gives it up.
   nextCursor: string;
+  // #2188: exact filtered total; defined only when params.includeTotal is set.
+  total?: number;
   // T103: present only while the contact-info filter is active — how many
   // contacts matched the other filters but were hidden by it, so the page can
   // disclose that rows are hidden rather than reading as lost data.
@@ -36,6 +38,8 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   const {
     cursor: _ignored,
     limit,
+    offset,
+    includeTotal,
     search,
     circle,
     sort,
@@ -48,6 +52,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
 
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [nextCursor, setNextCursor] = useState('');
+  const [total, setTotal] = useState<number | undefined>(undefined);
   const [hiddenCount, setHiddenCount] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +78,8 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
 
       const data = await getContacts({
         limit,
+        offset,
+        includeTotal,
         search,
         circle,
         sort,
@@ -85,6 +92,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
       if (requestRef.current !== requestId) return;
       setContacts(data.contacts || []);
       setNextCursor(data.next_cursor || '');
+      setTotal(data.total);
       setHiddenCount(data.hidden_count);
     } catch (err) {
       if (requestRef.current !== requestId) return;
@@ -93,7 +101,19 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
     } finally {
       if (requestRef.current === requestId) setLoading(false);
     }
-  }, [limit, search, circle, sort, order, includeArchived, archived, favorites, hasContactInfo]);
+  }, [
+    limit,
+    offset,
+    includeTotal,
+    search,
+    circle,
+    sort,
+    order,
+    includeArchived,
+    archived,
+    favorites,
+    hasContactInfo,
+  ]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor) return;
@@ -143,6 +163,7 @@ export function useContacts(params: GetContactsParams = {}): UseContactsResult {
   return {
     contacts,
     nextCursor,
+    total,
     hiddenCount,
     loading,
     error,

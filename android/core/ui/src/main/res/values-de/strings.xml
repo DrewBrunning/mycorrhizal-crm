@@ -2695,6 +2695,14 @@
     <string name="error_reason_validation_cursor_malformed">Die Cursor-ID ist ungültig</string>
     <string name="error_reason_trash_uid_in_use">Ein aktiver Kontakt verwendet bereits die UID dieses Kontakts; führe ihn zuerst zusammen oder lösche ihn</string>
     <string name="error_reason_trash_snapshot_unsupported">Der Löschschnappschuss dieses Kontakts wird von dieser Version nicht unterstützt; er kann weiterhin endgültig gelöscht werden</string>
+    <string name="error_reason_entity_not_found">Eintrag nicht gefunden</string>
+    <string name="error_reason_entity_kind_required">kind ist erforderlich und muss organisation, place oder pet sein</string>
+    <string name="error_reason_entity_kind_immutable">Die Art eines Eintrags kann nicht geändert werden; lösche ihn und lege einen neuen an</string>
+    <string name="error_reason_entity_core_invalid">%1$s</string>
+    <string name="error_reason_entity_snapshot_unsupported">Der Löschschnappschuss dieses Eintrags wird von dieser Version nicht unterstützt</string>
+    <string name="error_reason_contact_field_definition_target_immutable">Das Ziel einer Felddefinition kann nicht geändert werden</string>
+    <string name="error_reason_contact_field_definition_projection_target_invalid">Nur Kontakt-Felddefinitionen können eine vCard-Projektion verwenden; verwende internal-only</string>
+    <string name="error_reason_contact_field_definition_target_mismatch">Die Felddefinition gilt nicht für diese Art von Datensatz</string>
     <string name="error_reason_circle_color_invalid">Die Farbe muss eine der Palettenfarben sein</string>
     <string name="error_reason_circle_sync_scope_out_of_scope">Der Kontakt liegt außerhalb des CardDAV-Synchronisierungsbereichs dieses Geräts</string>
     <string name="error_reason_circle_sync_scope_no_default">Für den CardDAV-Synchronisierungsbereich ist kein Standardkreis konfiguriert</string>

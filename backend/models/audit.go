@@ -74,6 +74,8 @@ const (
 	AuditEntityReminder  = "reminder"
 	// AuditEntityShareGrant is a standing-share grant (ADR 0042, issue #2290).
 	AuditEntityShareGrant = "share_grant"
+	// AuditEntityContactShare is a one-time contact share (issue #2294).
+	AuditEntityContactShare = "contact_share"
 
 	AuditEntityUser     = "user"
 	AuditEntityAuth     = "auth"

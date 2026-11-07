@@ -12,6 +12,10 @@ const (
 	ContactShareStatusPending  = "pending"
 	ContactShareStatusAccepted = "accepted"
 	ContactShareStatusDeclined = "declined"
+	// ContactShareStatusBlocked is internal only (issue #2294): a share created
+	// by a sender the recipient has blocked. The sender sees it as pending; the
+	// recipient never sees it.
+	ContactShareStatusBlocked = "blocked"
 )
 
 // ContactShare is a one-time, filtered copy of a contact offered from one

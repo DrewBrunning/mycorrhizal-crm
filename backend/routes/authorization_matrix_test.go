@@ -125,6 +125,7 @@ type seeded struct {
 	household          string
 	tag                string
 	lifeEvent          string
+	entity             string
 	gift               string
 	preference         string
 	occasionObligation string
@@ -169,6 +170,8 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 
 	lifeEvent := models.LifeEvent{UserID: ownerID, EntityID: ec.VCardUID, Type: models.LifeEventTypeMoved}
 	require.NoError(t, db.Create(&lifeEvent).Error)
+	entity := models.Entity{UserID: ownerID, Kind: models.EntityKindOrganisation, Name: "Matrix Org"}
+	require.NoError(t, db.Create(&entity).Error)
 	gift := models.Gift{UserID: ownerID, EntityID: ec.VCardUID}
 	require.NoError(t, db.Create(&gift).Error)
 	pref := models.Preference{UserID: ownerID, EntityID: ec.VCardUID, Category: "food", Value: "pizza"}
@@ -224,6 +227,7 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 		household:          household.ID,
 		tag:                tag.ID,
 		lifeEvent:          lifeEvent.ID,
+		entity:             entity.ID,
 		gift:               gift.ID,
 		preference:         pref.ID,
 		occasionObligation: occasionObligation.ID,
@@ -533,6 +537,17 @@ func buildTable(s seeded) map[string]authzRow {
 		"PUT /api/v1/field-definitions/:id":     {class: classItem, probe: "/api/v1/field-definitions/" + s.fieldDef},
 		"PUT /api/v1/field-definitions/reorder": {class: classProtected},
 		"DELETE /api/v1/field-definitions/:id":  {class: classItem, probe: "/api/v1/field-definitions/" + s.fieldDef},
+
+		// --- reusable entities (issue #2296, ADR 0043) ----------------------
+		"POST /api/v1/entities":                 {class: classProtected},
+		"GET /api/v1/entities":                  {class: classProtected},
+		"GET /api/v1/entities/:id":              {class: classItem, probe: "/api/v1/entities/" + s.entity},
+		"PUT /api/v1/entities/:id":              {class: classItem, probe: "/api/v1/entities/" + s.entity},
+		"DELETE /api/v1/entities/:id":           {class: classItem, probe: "/api/v1/entities/" + s.entity},
+		"POST /api/v1/entities/:id/restore":     {class: classItem, probe: "/api/v1/entities/" + s.entity + "/restore"},
+		"GET /api/v1/entities/:id/contacts":     {class: classItem, probe: "/api/v1/entities/" + s.entity + "/contacts"},
+		"GET /api/v1/entities/:id/field-values": {class: classItem, probe: "/api/v1/entities/" + s.entity + "/field-values"},
+		"PUT /api/v1/entities/:id/field-values": {class: classItem, probe: "/api/v1/entities/" + s.entity + "/field-values"},
 
 		// --- life events ----------------------------------------------------
 		"POST /api/v1/life-events":                    {class: classProtected},

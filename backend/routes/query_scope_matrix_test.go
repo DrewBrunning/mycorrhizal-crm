@@ -716,6 +716,7 @@ func buildQueryScopeRows() []qsRow {
 // qsAllow lists "Func:param" handler reads that are scope-named but are NOT
 // probed by a row, each with the recorded reason.
 var qsAllow = map[string]string{
+	"GetContacts:include_total":                   "response-shape flag (#2188): adds a COUNT over the already user-scoped query; scoping is covered by controllers/contact_offset_paging_test.go",
 	"includeSensitiveRequested:include_sensitive": "only reached from the POST geocode handlers (no GET route reads it); sensitive-address filtering is covered by controllers/contact_address_controller_test.go",
 	"ListSystemEvents:ids":                        "admin-only route (non-admins get 403 in authorization_matrix_test.go); system events are instance-wide by design",
 	"ListSystemEvents:since":                      "admin-only route, instance-wide by design (see ListSystemEvents:ids)",
@@ -738,6 +739,7 @@ var qsAllow = map[string]string{
 // spec declares with a scope-ish name but that are not row-probed, each with
 // the recorded reason.
 var qsAllowSpec = map[string]string{
+	"/contacts|include_total":                     "response-shape flag (#2188): a COUNT over the already user-scoped query (qsAllow GetContacts:include_total)",
 	"/admin/job-runs|since":                       "admin-only, instance-wide by design (qsAllow ListJobRuns:since)",
 	"/admin/system-events|correlation_id":         "admin-only, instance-wide by design (qsAllow ListSystemEvents:correlation_id)",
 	"/admin/system-events|ids":                    "admin-only, instance-wide by design (qsAllow ListSystemEvents:ids)",
@@ -766,10 +768,10 @@ var qsNonScope = map[string]string{
 	"version": "export format version", "format": "export format", "full": "graph scope switch (caller's graph either way)",
 	"depth": "graph depth", "relation": "relation-token filter", "state": "OAuth state", "code": "OAuth code",
 	"code_challenge": "PKCE", "code_challenge_method": "PKCE", "client": "OIDC client kind", "error": "OIDC error echo",
-	"email": "auth flow", "skip": "pagination offset", "url": "image proxy target URL (SSRF-guarded, not a row scope)",
+	"email": "auth flow", "skip": "pagination offset", "offset": "pagination offset (#2188; row position, not a scope)", "url": "image proxy target URL (SSRF-guarded, not a row scope)",
 	"path": "WebDAV path in the caller's configured remote", "thumbnail": "boolean image variant", "window_hours": "admin aggregation window",
 	"component": "admin filter", "severity": "admin filter", "event_type": "admin filter", "job_name": "admin filter",
-	"result": "admin filter", "date": "geopulse day", "timezone": "geopulse zone",
+	"result": "admin filter", "sensitivity": "sensitivity filter value on the caller's own rows", "date": "geopulse day", "timezone": "geopulse zone",
 }
 
 // ── AST scan of handler query reads ───────────────────────────────────────

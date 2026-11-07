@@ -434,3 +434,29 @@ test('loadMore tolerates a page without contacts and keeps what is already liste
   expect(result.current.contacts.map((c) => c.ID)).toEqual([1]);
   expect(result.current.nextCursor).toBe('');
 });
+
+test('forwards offset/includeTotal and exposes the total (#2188)', async () => {
+  vi.mocked(getContacts).mockResolvedValue({ ...page([contact(1, 'Alice')]), total: 77 });
+
+  const { result } = renderHook(() => useContacts({ limit: 50, offset: 100, includeTotal: true }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  expect(vi.mocked(getContacts).mock.calls[0][0]).toMatchObject({
+    limit: 50,
+    offset: 100,
+    includeTotal: true,
+  });
+  expect(result.current.total).toBe(77);
+});
+
+test('changing the offset refetches (#2188)', async () => {
+  vi.mocked(getContacts).mockResolvedValue(page([contact(1, 'Alice')]));
+
+  const { result, rerender } = renderHook(({ offset }) => useContacts({ limit: 50, offset }), {
+    initialProps: { offset: 0 },
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  rerender({ offset: 50 });
+  await waitFor(() => expect(getContacts).toHaveBeenCalledTimes(2));
+  expect(vi.mocked(getContacts).mock.calls[1][0]).toMatchObject({ offset: 50 });
+});
