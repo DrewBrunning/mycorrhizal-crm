@@ -340,7 +340,7 @@ func AdoptContactEntityLink(c *gin.Context) {
 		return
 	}
 	core, err := entity.DecodeCore()
-	if err != nil {
+	if err != nil { // # pragma: no cover — core is validated JSON on every write, so a stored core always decodes
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to read entity").WithError(err))
 		return
 	}
@@ -515,8 +515,8 @@ func LinkContactEntityFromExisting(c *gin.Context) {
 				org := orgs[i]
 				org.ID = ""
 				name := strings.TrimSpace(org.Name)
-				if name == "" {
-					apperrors.AbortWithError(c, apperrors.ErrInvalidInput("source", "the organisation has no name to create an entity from").
+				if name == "" || utf8.RuneCountInString(name) > models.EntityNameMaxLength {
+					apperrors.AbortWithError(c, apperrors.ErrInvalidInput("source", "the organisation needs a name of 1 to 200 characters to create an entity from").
 						WithReason(apperrors.ReasonValidationInvalid, map[string]any{"field": "source"}))
 					return
 				}
