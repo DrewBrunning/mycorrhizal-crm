@@ -20,6 +20,7 @@ unleash:
         - ^clock\.go$
         - ^contact_dav_delete_repair\.go$
         - ^contact_delete\.go$
+        - ^contact_entity_link\.go$
         - ^contact_field_visibility\.go$
         - ^contact_image_service\.go$
         - ^contact_merge_service\.go$

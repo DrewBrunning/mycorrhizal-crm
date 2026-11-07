@@ -598,6 +598,16 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/entities/:id/field-values", controllers.ListEntityFieldValues)
 			protected.PUT("/entities/:id/field-values", middleware.ValidateJSONMiddleware(&models.ContactFieldValuesInput{}), controllers.ReplaceEntityFieldValues)
 
+			// Contact-entity links (issue #2297, ADR 0043 decisions 2, 3 and 10).
+			// from-existing is a literal segment, registered beside the :linkId
+			// routes (gin resolves the static segment first).
+			protected.GET("/contacts/:id/entity-links", controllers.ListContactEntityLinks)
+			protected.POST("/contacts/:id/entity-links", middleware.ValidateJSONMiddleware(&models.ContactEntityLinkInput{}), controllers.CreateContactEntityLink)
+			protected.POST("/contacts/:id/entity-links/from-existing", middleware.ValidateJSONMiddleware(&models.ContactEntityLinkFromExistingInput{}), controllers.LinkContactEntityFromExisting)
+			protected.PUT("/contacts/:id/entity-links/:linkId", middleware.ValidateJSONMiddleware(&models.ContactEntityLinkInput{}), controllers.UpdateContactEntityLink)
+			protected.DELETE("/contacts/:id/entity-links/:linkId", controllers.DeleteContactEntityLink)
+			protected.POST("/contacts/:id/entity-links/:linkId/adopt", controllers.AdoptContactEntityLink)
+
 			protected.POST("/life-events", middleware.ValidateJSONMiddleware(&models.LifeEventInput{}), controllers.CreateLifeEvent)
 			protected.GET("/life-events", controllers.ListLifeEvents)
 			protected.GET("/life-events/:id", controllers.GetLifeEvent)
