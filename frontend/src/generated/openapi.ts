@@ -1684,6 +1684,7 @@ export type ImportConfirmRequest = {
   assign_circle_ids?: string[];
   assign_tag_ids?: string[];
   field_mappings?: ImportFieldMapping[];
+  row_edits?: ImportRowEdit[];
   session_id: string;
 };
 
@@ -1736,9 +1737,27 @@ export type ImportRecordsRequest = {
 export type ImportResult = {
   created?: number;
   errors?: string[];
+  issues?: ImportRowIssue[];
   skipped?: number;
   total_processed?: number;
   updated?: number;
+};
+
+export type ImportRowEdit = {
+  email?: string;
+  firstname?: string;
+  lastname?: string;
+  phone?: string;
+  row_index: number;
+};
+
+export type ImportRowIssue = {
+  email: string;
+  name: string;
+  phone: string;
+  reason: string;
+  row: number;
+  status: 'skipped' | 'failed';
 };
 
 export type ImportRowPreview = {
