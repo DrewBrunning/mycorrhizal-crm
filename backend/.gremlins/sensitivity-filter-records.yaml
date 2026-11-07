@@ -30,6 +30,7 @@ unleash:
         - ^contact_deletion_snapshot\.go$
         - ^contact_derived\.go$
         - ^contact_detail\.go$
+        - ^contact_entity_link\.go$
         - ^contact_field_override\.go$
         - ^contact_merge\.go$
         - ^contact_record_reverse\.go$
@@ -42,8 +43,11 @@ unleash:
         - ^dashboard\.go$
         - ^data_decay_policy\.go$
         - ^device_grant\.go$
+        - ^dismissed_entity_pair\.go$
         - ^dtos\.go$
         - ^duplicate\.go$
+        - ^entity\.go$
+        - ^entity_deletion_snapshot\.go$
         - ^export_loss\.go$
         - ^external_activity\.go$
         - ^external_identity\.go$

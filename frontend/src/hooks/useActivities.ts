@@ -26,7 +26,15 @@ export function useActivities(
 ): UseActivitiesResult {
   // Destructure params to use primitive values as dependencies
   // This prevents re-fetches when callers pass new object references with identical values
-  const { cursor: _ignored, limit: paramLimit, includeContacts, search, fromDate, toDate } = params;
+  const {
+    cursor: _ignored,
+    limit: paramLimit,
+    includeContacts,
+    search,
+    fromDate,
+    toDate,
+    sort,
+  } = params;
 
   const [activities, setActivities] = useState<Activity[]>([]);
   const [nextCursor, setNextCursor] = useState('');
@@ -61,6 +69,7 @@ export function useActivities(
           search,
           fromDate,
           toDate,
+          sort,
         });
         if (requestRef.current !== requestId) {
           return;
@@ -80,7 +89,7 @@ export function useActivities(
         setLoading(false);
       }
     }
-  }, [contactId, paramLimit, includeContacts, search, fromDate, toDate]);
+  }, [contactId, paramLimit, includeContacts, search, fromDate, toDate, sort]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor) return;
@@ -96,6 +105,7 @@ export function useActivities(
         search,
         fromDate,
         toDate,
+        sort,
       });
       if (requestRef.current !== requestId) {
         return;
@@ -112,7 +122,7 @@ export function useActivities(
         setLoading(false);
       }
     }
-  }, [nextCursor, paramLimit, includeContacts, search, fromDate, toDate]);
+  }, [nextCursor, paramLimit, includeContacts, search, fromDate, toDate, sort]);
 
   useEffect(() => {
     void fetchFirst();

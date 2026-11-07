@@ -191,6 +191,21 @@ func parseContactSort(c *gin.Context) (string, *apperrors.AppError) {
 	}
 }
 
+// parseActivitySort normalizes GET /activities' ?sort= query param (issue
+// #2360): "updated_at" (default) is the sync order every existing client
+// relies on; "date" is the human list order, by the activity's own date. An
+// unrecognized value is a 400 rather than a silent fallback, the same policy
+// as parseContactSort.
+func parseActivitySort(c *gin.Context) (string, *apperrors.AppError) {
+	sort := c.DefaultQuery("sort", "updated_at")
+	switch sort {
+	case "updated_at", "date":
+		return sort, nil
+	default:
+		return "", apperrors.ErrInvalidInput("sort", "must be one of: updated_at, date").WithReason(apperrors.ReasonValidationSortInvalid, map[string]any{"supported": "updated_at, date"})
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Cursor pagination + change feeds (T17 — T17).
 //
@@ -346,6 +361,44 @@ func DecodeCreatedCursor(raw string) (*Cursor, error) {
 	return &Cursor{UpdatedAt: t, ID: parts[1]}, nil
 }
 
+// dateCursorPrefix distinguishes the issue-#2360 activity-date cursor from
+// the other time-shaped cursors, so a cursor minted under one sort fails
+// loudly under another.
+const dateCursorPrefix = "date:"
+
+// EncodeDateCursor renders an activity-date-sorted cursor as an opaque
+// base64url string: base64url("date:<RFC3339Nano>|<id>"). The date keeps its
+// own offset for the same byte-for-byte TEXT comparison reason as
+// EncodeCursor.
+func EncodeDateCursor(date time.Time, id any) string {
+	return base64.RawURLEncoding.EncodeToString(
+		[]byte(dateCursorPrefix + date.Format(time.RFC3339Nano) + "|" + fmt.Sprint(id)),
+	)
+}
+
+// DecodeDateCursor parses an activity-date-sorted cursor back into its
+// (date, id) position, rejecting every other cursor shape. The date rides in
+// Cursor.UpdatedAt, the shared time component of the Cursor struct.
+func DecodeDateCursor(raw string) (*Cursor, error) {
+	decoded, err := base64.RawURLEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, errors.New("cursor is not valid base64url")
+	}
+	s := string(decoded)
+	if !strings.HasPrefix(s, dateCursorPrefix) {
+		return nil, errors.New("cursor is not a date-sorted cursor")
+	}
+	parts := strings.SplitN(strings.TrimPrefix(s, dateCursorPrefix), "|", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		return nil, errors.New("cursor is malformed")
+	}
+	t, err := time.Parse(time.RFC3339Nano, parts[0])
+	if err != nil {
+		return nil, errors.New("cursor timestamp is malformed")
+	}
+	return &Cursor{UpdatedAt: t, ID: parts[1]}, nil
+}
+
 // EncodeNameCursor renders a T73 name-sort cursor as an opaque base64url
 // string: base64url("sort_name|id"). Same wire idiom as EncodeCursor; only
 // the leading component differs (a sort name instead of a timestamp).
@@ -434,6 +487,10 @@ type CursorParams struct {
 	// ?cursor= when the request is GET /contacts?sort=created_at — the
 	// (created_at, id) shape.
 	CreatedCursor *Cursor
+	// DateCursor is the issue-#2360 resume-after position supplied via
+	// ?cursor= when the request is GET /activities?sort=date — the (date, id)
+	// shape, with the date in Cursor.UpdatedAt.
+	DateCursor *Cursor
 	// PositionCursor is the resume-after position supplied via ?cursor= when
 	// the request is a list ordered by an explicit integer `position` column
 	// (field definitions, issue #1210) — the (position, id) shape. Every
@@ -454,6 +511,7 @@ const (
 	cursorName
 	cursorPosition
 	cursorCreatedAt
+	cursorDate
 )
 
 // GetCursorParams extracts cursor pagination controls from the request,
@@ -482,6 +540,17 @@ func GetCursorParamsForSort(c *gin.Context, sort string) (CursorParams, *apperro
 		kind = cursorName
 	case "created_at":
 		kind = cursorCreatedAt
+	}
+	return cursorParams(c, kind)
+}
+
+// GetCursorParamsForActivitySort is the issue-#2360 variant of
+// GetCursorParams for the activities list: when sort is "date", a ?cursor=
+// value is decoded as a (date, id) cursor. ?since= stays time-based.
+func GetCursorParamsForActivitySort(c *gin.Context, sort string) (CursorParams, *apperrors.AppError) {
+	kind := cursorUpdatedAt
+	if sort == "date" {
+		kind = cursorDate
 	}
 	return cursorParams(c, kind)
 }
@@ -536,6 +605,12 @@ func cursorParams(c *gin.Context, kind cursorKind) (CursorParams, *apperrors.App
 				return params, apperrors.ErrInvalidInput("cursor", err.Error()).WithReason(apperrors.ReasonValidationCursorInvalid, map[string]any{"reason": err.Error()})
 			}
 			params.CreatedCursor = cur
+		case cursorDate:
+			cur, err := DecodeDateCursor(raw)
+			if err != nil {
+				return params, apperrors.ErrInvalidInput("cursor", err.Error()).WithReason(apperrors.ReasonValidationCursorInvalid, map[string]any{"reason": err.Error()})
+			}
+			params.DateCursor = cur
 		case cursorUpdatedAt:
 			cur, err := DecodeCursor(raw)
 			if err != nil {
@@ -657,6 +732,27 @@ func createdAtCursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
 		dir = "DESC"
 	}
 	return q.Order(table + ".created_at " + dir).Order(table + ".id " + dir)
+}
+
+// dateCursorPredicate is the issue-#2360 analog of cursorPredicate over the
+// (date, id) key — the activities list order. Same strictly-after/before
+// semantics and explicit-id rule.
+func dateCursorPredicate(table string, cursor *Cursor, id any, desc bool) (string, any, any) {
+	op := ">"
+	if desc {
+		op = "<"
+	}
+	return fmt.Sprintf("(%s.date, %s.id) %s (?, ?)", table, table, op), cursor.UpdatedAt, id
+}
+
+// dateCursorOrderBy orders a query by the (date, id) key in the given
+// direction; the id tiebreak makes the order total for same-day activities.
+func dateCursorOrderBy(q *gorm.DB, table string, desc bool) *gorm.DB {
+	dir := "ASC"
+	if desc {
+		dir = "DESC"
+	}
+	return q.Order(table + ".date " + dir).Order(table + ".id " + dir)
 }
 
 // positionCursorOrderBy is the issue-#1210 analog of cursorOrderBy: order by

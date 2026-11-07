@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -203,9 +204,15 @@ func captureStdout(t *testing.T, fn func()) string {
 	require.NoError(t, err)
 	os.Stdout = w
 	defer func() { os.Stdout = old }()
+	// Drain concurrently: a pipe holds only ~64KB, and the per-migration
+	// startup log lines alone exceed that once enough migrations exist, which
+	// would block the writer forever if we only read after fn returns.
+	done := make(chan string, 1)
+	go func() {
+		b, _ := io.ReadAll(r)
+		done <- string(b)
+	}()
 	fn()
 	_ = w.Close()
-	buf := make([]byte, 1<<20)
-	n, _ := r.Read(buf)
-	return strings.TrimSpace(string(buf[:n]))
+	return strings.TrimSpace(<-done)
 }
