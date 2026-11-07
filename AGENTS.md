@@ -121,7 +121,7 @@ path. Three categories replace it with their own verification — not with no ve
 
 - **Documentation-only** (`docs/`, `*.md`, context files): no test is expected; run the unconditional
   gates in `docs/AGENTS.md` (`docscheck`, `citecheck`, `typos`, `depexceptions`, `deprecations`,
-  `contextcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
+  `contextcheck`, `changelogcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
   `nightlyalertcheck`, `mainalertcheck`, `androidskipcheck`).
 - **Generated artifacts:** regenerate with the owning area's command, commit the diff, and run the
   named drift test. Never hand-edit.
@@ -150,8 +150,8 @@ Frontend [#1](frontend/AGENTS.md#trap-1) [#2](frontend/AGENTS.md#trap-2) [#3](fr
 
 - One branch per concern, using the matching prefix (`feature/`, `fix/`, `docs/`, `ci/`, `chore/`);
   implement → verify → commit → push → PR.
-- PR body says what changed and why, lists checks run and not run, and adds `## Upgrade notes`
-  (or `no-changelog: <reason>`) when the change is operator-visible (`docs/changelog-policy.md`).
+- PR body says what changed and why and lists checks run and not run.
 - A user-visible change also adds one plain-language bullet to `CHANGELOG.md` under `[Unreleased]`
-  (format and limits: `docs/changelog-policy.md`); no user-visible effect means `no-changelog:`.
+  (format and limits: `docs/changelog-policy.md`); that entry is the release note. No user-visible
+  effect means `no-changelog: <reason>` in the PR body.
 - Close the corresponding issue when a ticket lands.

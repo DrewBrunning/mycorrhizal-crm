@@ -464,7 +464,15 @@
           "url": "site web",
           "impp": "IM"
         },
-        "allResolved": "Tous les conflits résolus — vérifiez les décisions ci-dessous."
+        "allResolved": "Tous les conflits résolus — vérifiez les décisions ci-dessous.",
+        "fixRow": "Corriger cette ligne",
+        "editFix": "Modifier la correction",
+        "fixSaved": "Correction enregistrée : elle sera revérifiée à l’import",
+        "fixFirstName": "Prénom",
+        "fixLastName": "Nom",
+        "fixEmail": "E-mail",
+        "fixPhone": "Téléphone",
+        "saveFix": "Enregistrer la correction"
       },
       "result": {
         "title": "Importation terminée",
@@ -478,8 +486,15 @@
         "skipped_one": "{{count}} ligne ignorée",
         "skipped_other": "{{count}} lignes ignorées",
         "skipped_many": "{{count}} lignes ignorées",
-        "errors": "Erreurs",
-        "done": "Terminé"
+        "done": "Terminé",
+        "issuesTitle": "Lignes non importées",
+        "downloadCsv": "Télécharger en CSV",
+        "colRow": "Ligne",
+        "colName": "Contact",
+        "colStatus": "Résultat",
+        "colReason": "Motif",
+        "statusFailed": "Échec",
+        "statusSkipped": "Ignorée"
       },
       "errors": {
         "invalidFile": "Veuillez sélectionner un fichier CSV valide",
@@ -3930,6 +3945,11 @@
       "contact_share_with_self": "Impossible de partager un contact avec vous-même",
       "contact_share_section_unknown": "section de champs d'export inconnue « {{section}} »",
       "contact_share_already_responded": "Le partage a déjà reçu une réponse",
+      "share_grant_not_found": "Partage introuvable",
+      "share_grant_state_conflict": "Ce partage ne peut plus être modifié ainsi",
+      "share_grant_widening_refused": "Un partage ne peut qu’être restreint ; créez un nouveau partage pour partager davantage",
+      "share_grant_already_exists": "Déjà partagé avec cette personne",
+      "share_grant_pending_limit": "Trop de partages sont en attente de réponse",
       "contact_share_session_mismatch": "La session n'appartient pas à ce partage",
       "immich_api_key_invalid": "La clé d'API Immich est invalide, expirée ou non configurée",
       "immich_base_url_invalid": "L'URL de base de Immich est invalide",

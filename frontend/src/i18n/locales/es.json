@@ -464,7 +464,15 @@
           "url": "sitio web",
           "impp": "IM"
         },
-        "allResolved": "Todos los conflictos resueltos: revisa las decisiones a continuación."
+        "allResolved": "Todos los conflictos resueltos: revisa las decisiones a continuación.",
+        "fixRow": "Corregir esta fila",
+        "editFix": "Editar corrección",
+        "fixSaved": "Corrección guardada: se comprobará de nuevo al importar",
+        "fixFirstName": "Nombre",
+        "fixLastName": "Apellido",
+        "fixEmail": "Correo electrónico",
+        "fixPhone": "Teléfono",
+        "saveFix": "Guardar corrección"
       },
       "result": {
         "title": "Importación Completa",
@@ -478,8 +486,15 @@
         "skipped_one": "{{count}} fila omitida",
         "skipped_other": "{{count}} filas omitidas",
         "skipped_many": "{{count}} filas omitidas",
-        "errors": "Errores",
-        "done": "Listo"
+        "done": "Listo",
+        "issuesTitle": "Filas no importadas",
+        "downloadCsv": "Descargar como CSV",
+        "colRow": "Fila",
+        "colName": "Contacto",
+        "colStatus": "Resultado",
+        "colReason": "Motivo",
+        "statusFailed": "Error",
+        "statusSkipped": "Omitida"
       },
       "errors": {
         "invalidFile": "Selecciona un archivo CSV válido",
@@ -3930,6 +3945,11 @@
       "contact_share_with_self": "No puedes compartir un contacto contigo mismo",
       "contact_share_section_unknown": "sección de campos de exportación desconocida \"{{section}}\"",
       "contact_share_already_responded": "La invitación para compartir ya se ha respondido",
+      "share_grant_not_found": "Recurso compartido no encontrado",
+      "share_grant_state_conflict": "Este recurso compartido ya no se puede cambiar así",
+      "share_grant_widening_refused": "Un recurso compartido solo se puede restringir; crea uno nuevo para compartir más",
+      "share_grant_already_exists": "Ya está compartido con esta persona",
+      "share_grant_pending_limit": "Hay demasiados recursos compartidos esperando respuesta",
       "contact_share_session_mismatch": "La sesión no pertenece a este recurso compartido",
       "immich_api_key_invalid": "La clave de API de Immich no es válida, ha caducado o no está configurada",
       "immich_base_url_invalid": "La URL base de Immich no es válida",

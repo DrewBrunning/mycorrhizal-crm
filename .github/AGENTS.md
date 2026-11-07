@@ -68,13 +68,13 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
   `./gradlew detekt --auto-correct` fixes formatting. Lint warnings are errors; `android/lint.xml`
   lists the reasoned exceptions.
 - **Always:** `citecheck` (including the ASVS/MASVS census test), `depexceptions`, `deprecations`,
-  `docscheck`, `contextcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
+  `docscheck`, `contextcheck`, `changelogcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
   `nightlyalertcheck`, `mainalertcheck`, `androidskipcheck`.
 - **`pre-merge-commit`:** reruns the pre-commit checks on a clean merge commit (git skips
   `pre-commit` there), catching merge-skew in generated artifacts.
 - **`commit-msg`:** rejects a missing/mismatched DCO `Signed-off-by:` trailer — use `git commit -s`.
 - **Reminder only:** staging a migration, `backend/config/config.go`, or `.env.example` prints a
-  reminder to add an `## Upgrade notes` block (or `no-changelog:`) to the PR body.
+  reminder to add a `CHANGELOG.md` entry (or `no-changelog:` in the PR body).
 
 Deliberately CI-only: `govulncheck`, benchmarks/fuzz targets, the full Playwright E2E suite
 (`--full` only stress-runs a changed spec), and the instrumented Android suites. The pre-PR gate's

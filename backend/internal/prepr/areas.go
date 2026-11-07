@@ -120,7 +120,7 @@ var Areas = []Area{
 	{Name: "gradle-manifests", Note: "dependency locking/licence compliance is CI-only (license-compliance.yml); run `cd android && ./gradlew dependencies --write-locks` after changing a manifest"},
 
 	{Name: "changelog-relevant", Fast: []Command{
-		{Label: "changelog: operator-visible change", Reminder: "This branch touches a migration, backend/config/config.go, or .env.example. Add an '## Upgrade notes' block (and '## Breaking changes' if it applies) to the PR body, or 'no-changelog: <reason>'. See docs/changelog-policy.md."},
+		{Label: "changelog: operator-visible change", Reminder: "This branch touches a migration, backend/config/config.go, or .env.example. Add an entry to CHANGELOG.md under [Unreleased], or 'no-changelog: <reason>' to the PR body. See docs/changelog-policy.md."},
 	}},
 
 	{Name: "repro", Note: "the byte-reproducibility double build is CI-only (reproducibility.yml)"},
@@ -147,6 +147,7 @@ var GovernanceSteps = []Command{
 	{Label: "docs: deprecations", Dir: "backend", Argv: []string{"go", "run", "./cmd/deprecations"}},
 	{Label: "docs: docscheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/docscheck"}},
 	{Label: "docs: contextcheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/contextcheck"}},
+	{Label: "docs: changelogcheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/changelogcheck"}},
 	{Label: "docs: releasegatecheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/releasegatecheck"}},
 	{Label: "docs: governancecheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/governancecheck"}},
 	{Label: "docs: codecovcheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/codecovcheck"}},

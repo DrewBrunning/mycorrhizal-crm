@@ -3006,6 +3006,11 @@
     <string name="error_reason_contact_share_with_self">No puedes compartir un contacto contigo mismo</string>
     <string name="error_reason_contact_share_section_unknown">sección de campos de exportación desconocida \"%1$s\"</string>
     <string name="error_reason_contact_share_already_responded">La invitación para compartir ya se ha respondido</string>
+    <string name="error_reason_share_grant_not_found">Recurso compartido no encontrado</string>
+    <string name="error_reason_share_grant_state_conflict">Este recurso compartido ya no se puede cambiar así</string>
+    <string name="error_reason_share_grant_widening_refused">Un recurso compartido solo se puede restringir; crea uno nuevo para compartir más</string>
+    <string name="error_reason_share_grant_already_exists">Ya está compartido con esta persona</string>
+    <string name="error_reason_share_grant_pending_limit">Hay demasiados recursos compartidos esperando respuesta</string>
     <string name="error_reason_contact_share_session_mismatch">La sesión no pertenece a este recurso compartido</string>
     <string name="error_reason_immich_api_key_invalid">La clave de API de Immich no es válida, ha caducado o no está configurada</string>
     <string name="error_reason_immich_base_url_invalid">La URL base de Immich no es válida</string>

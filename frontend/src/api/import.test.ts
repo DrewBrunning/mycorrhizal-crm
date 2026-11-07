@@ -72,6 +72,7 @@ const importResult = {
   updated: 0,
   skipped: 0,
   errors: [] as string[],
+  issues: [],
 };
 
 const csvFile = new File(['first,email\nAlice,a@b.com'], 'contacts.csv', { type: 'text/csv' });
@@ -198,6 +199,16 @@ describe('confirmVCFImport', () => {
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body)).toEqual({ session_id: 'sess-1', actions, field_mappings: [] });
     expect(result).toEqual(importResult);
+  });
+
+  test('sends the issue #2186 row edits only when there are some', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(importResult));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await confirmVCFImport('sess-1', [], [], [{ row_index: 2, firstname: 'Acme' }]);
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse(init.body).row_edits).toEqual([{ row_index: 2, firstname: 'Acme' }]);
   });
 
   test('sends the issue #514 field mappings when provided', async () => {

@@ -2928,6 +2928,11 @@
     <string name="error_reason_contact_share_with_self">Cannot share a contact with yourself</string>
     <string name="error_reason_contact_share_section_unknown">unknown export field section \"%1$s\"</string>
     <string name="error_reason_contact_share_already_responded">Share already responded to</string>
+    <string name="error_reason_share_grant_not_found">Share grant not found</string>
+    <string name="error_reason_share_grant_state_conflict">This share can no longer be changed that way</string>
+    <string name="error_reason_share_grant_widening_refused">A share can only be narrowed; create a new share to grant more</string>
+    <string name="error_reason_share_grant_already_exists">That is already shared with this person</string>
+    <string name="error_reason_share_grant_pending_limit">Too many shares are waiting for a response</string>
     <string name="error_reason_contact_share_session_mismatch">Session does not belong to this share</string>
     <string name="error_reason_immich_api_key_invalid">Immich API key is invalid, expired, or not configured</string>
     <string name="error_reason_immich_base_url_invalid">Immich base URL is invalid</string>

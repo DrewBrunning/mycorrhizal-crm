@@ -98,6 +98,8 @@ tags:
     description: Client-facing instance configuration.
   - name: Contact Shares
     description: Contact sharing between users.
+  - name: Share Grants
+    description: Standing read-only live shares between users (ADR 0042).
   - name: Contact Subscriptions
     description: Per-contact CardDAV/CalDAV subscription settings.
   - name: Contacts
@@ -4858,6 +4860,418 @@ paths:
                 $ref: "#/components/schemas/Error"
         "409":
           description: The share has already been accepted or declined.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # --- Standing shares (ADR 0042, issue #2290) ---
+  /share-grants:
+    post:
+      summary: Create a standing share (owner)
+      operationId: createShareGrant
+      tags:
+        - Share Grants
+      description: >-
+        Grants one recipient on this instance read-only live access to a contact (named
+        sections only), note, activity or circle you own. The grant starts `pending` and
+        exposes nothing until the recipient accepts. If the recipient has blocked you the
+        response is still `201` with status `pending` and nothing is delivered. There is
+        no `include_sensitive`: private and secret items are never shared.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareGrantInput"
+      responses:
+        "201":
+          description: Grant created (pending).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantOwnerView"
+        "400":
+          description: Unknown or missing sections, sections on a non-contact entity, expiry in the past, or to_user_id equals the caller.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The entity is not yours, does not exist, or the recipient does not exist.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A live grant of this entity to this recipient already exists.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          description: Too many grants are waiting for a response (per recipient or overall).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/outgoing:
+    get:
+      summary: List grants you have sent (owner)
+      operationId: listOutgoingShareGrants
+      tags:
+        - Share Grants
+      description: Cursor-paginated. A grant the recipient has blocked you from reads as `pending`. There is deliberately no total.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+      responses:
+        "200":
+          description: A page of your outgoing grants.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShareGrantOwnerView"
+                  next_cursor: { type: string }
+                  limit: { type: integer }
+  /share-grants/incoming:
+    get:
+      summary: List grants shared with you (recipient)
+      operationId: listIncomingShareGrants
+      tags:
+        - Share Grants
+      description: Pending and active grants only. There is deliberately no total.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, default: 25 }
+        - name: order
+          in: query
+          schema: { type: string, enum: [asc, desc], default: desc }
+      responses:
+        "200":
+          description: A page of your incoming grants.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grants:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShareGrantRecipientView"
+                  next_cursor: { type: string }
+                  limit: { type: integer }
+  /share-grants/blocks:
+    get:
+      summary: List the senders you have blocked (recipient)
+      operationId: listShareBlocks
+      tags:
+        - Share Grants
+      responses:
+        "200":
+          description: Your block list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  blocks:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShareBlock"
+  /share-grants/blocks/{user_id}:
+    parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema: { type: integer }
+    delete:
+      summary: Unblock a sender (recipient)
+      operationId: deleteShareBlock
+      tags:
+        - Share Grants
+      description: Removes only your own block of that user; absent is a no-op.
+      responses:
+        "204":
+          description: Unblocked.
+  /share-grants/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      summary: Change expiry or narrow the sections of a grant (owner)
+      operationId: updateShareGrant
+      tags:
+        - Share Grants
+      description: Only `expires_at` (set, or null to clear) and a narrowing `sections` list are accepted. Widening is `409`; create a new grant instead.
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareGrantPatchInput"
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantOwnerView"
+        "400":
+          description: Unknown or empty sections, sections on a non-contact grant, expiry in the past, or an empty body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The grant is terminal, or the change would widen the sections.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision; the grant was not changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/accept:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Accept a grant (recipient)
+      operationId: acceptShareGrant
+      tags:
+        - Share Grants
+      description: "Pending to active; idempotent on an active grant."
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantRecipientView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/decline:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Decline a pending grant, optionally blocking the sender (recipient)
+      operationId: declineShareGrant
+      tags:
+        - Share Grants
+      description: "With {block: true} the sender is blocked and every pending or active grant from them ends."
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ShareGrantDeclineInput"
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantRecipientView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/leave:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Stop receiving a grant (recipient)
+      operationId: leaveShareGrant
+      tags:
+        - Share Grants
+      description: "Pending or active to declined."
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantRecipientView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/revoke:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Revoke a grant (owner)
+      operationId: revokeShareGrant
+      tags:
+        - Share Grants
+      description: "Takes effect on the recipient's next request. Idempotent on an already-revoked grant. Data the recipient already saw cannot be recalled."
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantOwnerView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/reconfirm:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Re-confirm withheld sections (owner)
+      operationId: reconfirmShareGrant
+      tags:
+        - Share Grants
+      description: "Clears reconfirm_sections: sections withheld because an item became private or secret are served again."
+      responses:
+        "200":
+          description: The updated grant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant:
+                    $ref: "#/components/schemas/ShareGrantOwnerView"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: "The grant is in a state that does not allow this transition (declined, revoked and expired are terminal)."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/{id}/content:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Read the granted entity (recipient)
+      operationId: getShareGrantContent
+      tags:
+        - Share Grants
+      description: >-
+        The single recipient read route. Resolved per request: revocation, expiry, entity
+        deletion and field changes take effect on the next call. Responses are
+        `Cache-Control: no-store` with no ETag. Normal-sensitivity data only.
+      responses:
+        "200":
+          description: The projection for the grant's entity type.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  share_grant_content:
+                    $ref: "#/components/schemas/ShareGrantContent"
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant, wrong role, wrong state, expired, blocked or the entity is gone."
           content:
             application/json:
               schema:
@@ -17271,6 +17685,115 @@ components:
         total: { type: integer }
         next_cursor: { type: string }
         limit: { type: integer }
+    ShareGrantInput:
+      type: object
+      required: [to_user_id, entity_type, entity_id]
+      properties:
+        to_user_id: { type: integer }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        entity_id:
+          type: string
+          description: Contact vcard_uid, or the note/activity/circle UUID. Resolved against your own data.
+        sections:
+          type: array
+          items: { type: string }
+          description: Required and non-empty for a contact; must be omitted or empty for other types.
+        expires_at: { type: string, format: date-time, nullable: true }
+    ShareGrantPatchInput:
+      type: object
+      properties:
+        expires_at: { type: string, format: date-time, nullable: true }
+        sections:
+          type: array
+          items: { type: string }
+          description: Must be a non-empty subset of the current sections.
+    ShareGrantDeclineInput:
+      type: object
+      properties:
+        block: { type: boolean }
+    ShareGrantOwnerView:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        to_user_id: { type: integer }
+        to_username: { type: string }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        entity_id: { type: string }
+        label: { type: string }
+        sections:
+          type: array
+          items: { type: string }
+        reconfirm_sections:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [pending, active, declined, revoked, expired] }
+        expires_at: { type: string, format: date-time, nullable: true }
+        responded_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        revoked_reason: { type: string, nullable: true, enum: [owner_revoked, entity_deleted, recipient_deleted] }
+        member_count: { type: integer, nullable: true, description: "Live non-archived member count; circles only." }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+        revision: { type: integer, format: int64 }
+    ShareGrantRecipientView:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        from_username: { type: string }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        label: { type: string, description: "Computed per request; a note is just Note." }
+        sections:
+          type: array
+          items: { type: string }
+        status: { type: string, enum: [pending, active, declined, revoked, expired] }
+        expires_at: { type: string, format: date-time, nullable: true }
+        responded_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    ShareBlock:
+      type: object
+      properties:
+        user_id: { type: integer }
+        username: { type: string }
+        created_at: { type: string, format: date-time }
+    ShareGrantContent:
+      type: object
+      description: Exactly one of contact, note, activity or circle is present, matching entity_type.
+      properties:
+        grant_id: { type: string, format: uuid }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        owner_username: { type: string }
+        contact:
+          type: object
+          description: JSContact card limited to the granted sections, normal sensitivity only.
+          additionalProperties: true
+        note:
+          type: object
+          properties:
+            content: { type: string }
+            date: { type: string, format: date-time }
+        activity:
+          type: object
+          properties:
+            title: { type: string }
+            description: { type: string }
+            location: { type: string }
+            date: { type: string, format: date-time }
+            end_date: { type: string, format: date-time, nullable: true }
+            type: { type: string }
+        circle:
+          type: object
+          properties:
+            name: { type: string }
+            description: { type: string }
+            color: { type: string }
+            member_count: { type: integer }
+            members_truncated: { type: boolean }
+            members:
+              type: array
+              items:
+                type: object
+                properties:
+                  display_name: { type: string }
     BulkContactOperationInput:
       type: object
       description: One bulk action across many contacts (N5). Targets are Contact.VCardUID values.
@@ -20044,6 +20567,27 @@ components:
           maxItems: 50
           items: { type: string, format: uuid }
           description: Issue #2000 — as assign_circle_ids, for tags.
+        row_edits:
+          type: array
+          maxItems: 5000
+          items: { $ref: "#/components/schemas/ImportRowEdit" }
+          description: >
+            Issue #2186 — corrections to preview rows that failed validation.
+            A row with validation errors is imported only when it carries an edit
+            that makes it valid; otherwise it is skipped and listed in
+            ImportResult.issues.
+    ImportRowEdit:
+      type: object
+      required: [row_index]
+      description: >
+        Issue #2186 — the user's correction to one preview row. An absent field
+        is left unchanged; an empty email or phone removes the offending entry.
+      properties:
+        row_index: { type: integer, minimum: 0 }
+        firstname: { type: string, maxLength: 100 }
+        lastname: { type: string, maxLength: 100 }
+        email: { type: string, maxLength: 254 }
+        phone: { type: string, maxLength: 50 }
     ImportFieldMapping:
       type: object
       required: [property_name, action]
@@ -20074,6 +20618,24 @@ components:
         updated: { type: integer }
         skipped: { type: integer }
         errors: { type: array, items: { type: string } }
+        issues:
+          type: array
+          description: >
+            Issue #2187 — every skipped or failed row with the reason ([] when
+            there is nothing to report).
+          items: { $ref: "#/components/schemas/ImportRowIssue" }
+
+    ImportRowIssue:
+      type: object
+      required: [row, name, email, phone, status, reason]
+      description: One row that was not (fully) imported.
+      properties:
+        row: { type: integer, description: "1-based row number, as in the 'Row N:' prefix of ImportResult.errors." }
+        name: { type: string, description: "Display name; falls back to the email, then the phone, then empty." }
+        email: { type: string }
+        phone: { type: string }
+        status: { type: string, enum: [skipped, failed] }
+        reason: { type: string }
 
     ImportRun:
       type: object

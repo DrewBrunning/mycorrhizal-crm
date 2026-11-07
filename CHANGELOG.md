@@ -10,6 +10,12 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
+
+## [1.6.0] - 2026-11-06
+
 > **Upgrade**: database migrations run automatically on first start. Images are stored in a new
 > directory, `IMAGES_DIR` (by default an `images` folder beside your photo folder): add it to your
 > backups ([Backups](docs/deployment.md#backups)). `make backup-verify` now also checks the files of
@@ -22,6 +28,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Fix and review failed import rows** ([#2186](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2186), [#2187](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2187)): on the web, you can correct rows with errors during import review, and a contact with no name now takes its email or phone as its name. The final report lists every skipped or failed contact with the reason, with a CSV download.
 - **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
 - **ntfy access token** ([#2339](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2339)): the ntfy settings accept an optional access token, so reminders can be
   sent through a self-hosted ntfy server that requires authentication to publish. Web and Android.
@@ -456,3 +463,292 @@ The first stable release.
   one-time contact sharing.
 - **Two-factor authentication, OIDC single sign-on, and API tokens.**
 - **A native Android app** with offline cache and favorites.
+
+## [0.9.0] - 2026-09-19
+
+### Internal
+
+- **Release validation is composed from reusable checks** ([#1161](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1161)), and the Release is now owned by the publish workflow ([#1162](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1162)). A durable record lets a failed release be resumed ([#1164](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1164)).
+
+### Fixed
+
+- **Android: the dashboard benchmark logs in and loads reliably.**
+- **Background jobs retry a briefly busy database** instead of failing on lock acquire or release.
+
+## [0.8.8] - 2026-09-18
+
+### Internal
+
+- **Releases carry a residual-risk record and a per-release security delta** ([#953](https://github.com/DrewBrunning/mycorrhizal-crm/issues/953)).
+
+## [0.8.7] - 2026-09-18
+
+### Added
+
+- **Optional per-account resource quotas** ([#950](https://github.com/DrewBrunning/mycorrhizal-crm/issues/950)): four `PER_USER_*` variables cap what one account can create on a shared instance. They default to unlimited.
+- **Android: delete activities from the inbox**, and pull to refresh on lists.
+
+### Fixed
+
+- **Android: a missing contact id shows its error** instead of an empty state.
+- **Release workflow can resume** when a final release fails before the tag.
+
+### Security
+
+- **The scheduled integrity check verifies the audit hash chain** ([#1146](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1146)) and raises an alert if it is broken.
+
+## [0.8.6] - 2026-09-17
+
+Maintenance release with no user-visible changes.
+
+## [0.8.5] - 2026-09-17
+
+> **Upgrade**: 15 configuration variables are now range-checked at start. A value outside its
+> documented range stops the server from starting ([#1107](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1107)). Check your settings before upgrading.
+
+### Changed
+
+- **Configuration is validated at start** ([#933](https://github.com/DrewBrunning/mycorrhizal-crm/issues/933)): invalid or out-of-range settings fail fast with a message naming the variable. A configuration register lists every setting.
+
+### Removed
+
+- **The unused `RESEND_TO_EMAIL` variable.**
+
+## [0.8.4] - 2026-09-17
+
+> **Upgrade**: if only some of `OIDC_PROVIDER_URL`, `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` are
+> set, or the provider URL is malformed, the server now refuses to start ([#1106](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1106)). On an internet-facing
+> instance with any `*_BLOCK_PRIVATE_URLS` flag off, start now logs a warning.
+
+### Changed
+
+- **Incomplete single sign-on settings fail at start** instead of failing at login.
+
+### Security
+
+- **Request-smuggling and filename-injection behaviour is pinned**, and the bundled web server is hardened.
+- **Gradle dependencies are locked** and expired dependency exceptions escalate.
+
+## [0.8.3] - 2026-09-16
+
+### Fixed
+
+- **Dates**: day-only imports and date-and-time values normalise correctly.
+- **Email and phone labels, and other online services, are no longer silently dropped** in format conversion.
+- **Exports**: very long loss reports are truncated efficiently.
+- **Android**: fixes for session handling, secure erase and concurrency found through coverage analysis.
+
+## [0.8.2] - 2026-09-15
+
+> **Upgrade**: after the server upgrade, an Android app older than this release can no longer sign
+> in with single sign-on ([#1043](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1043)). Update the app.
+
+### Fixed
+
+- **Android single sign-on no longer hands the session token to the app directly** ([#965](https://github.com/DrewBrunning/mycorrhizal-crm/issues/965)): the return is bound to PKCE and carries a one-time code.
+- **Android**: logout ends the session and push registration, server deletions reach the offline copy, and the offline database passphrase is saved before encryption.
+- **Web**: dates show in local time, not UTC; search results cannot be overwritten by a slower, older request; a failed side request no longer shows a contact as not found.
+
+## [0.8.1] - 2026-09-14
+
+> **Upgrade**: several start-up checks are stricter.
+> - `DELETED_RETENTION_DAYS=0` now keeps deleted rows forever, as documented; it used to purge them. A negative value stops start-up ([#1008](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1008)).
+> - A corrupt database, or one with tables but no migration record, refuses to start or migrate. Restore a backup ([#1019](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1019)).
+> - `make backup` and `make backup-verify` need the same encryption key as the server and write a `.manifest.json` beside each snapshot. Copy it with the snapshot ([#1027](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1027)).
+> - `TRUSTED_PROXIES` defaults to loopback; `0.0.0.0/0` and `::/0` are refused ([#1034](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1034)).
+> - New login-spray protection is on by default; see `AUTH_SPRAY_ENABLED` ([#1036](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1036)).
+> - Android logs only calls and messages that match a contact by default ([#1037](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1037)).
+
+### Added
+
+- **Login-spray detection** ([#1036](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1036)): a burst of failed logins from many sources raises an alert and briefly throttles unfamiliar sources.
+
+### Changed
+
+- **Rate limits group IPv6 clients by /64 network.**
+
+### Fixed
+
+- **Concurrent edits can no longer overwrite each other** (the revision compare-and-swap).
+- **Duplicate relationships are removed and prevented** ([#928](https://github.com/DrewBrunning/mycorrhizal-crm/issues/928)); a migration cleans existing duplicates.
+- **Purge jobs report failures**, and purging also clears integration settings, subscriptions and suggestions of deleted contacts ([#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978)).
+- **Backups are signed** ([#1027](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1027)): `backup_stale` now measures your `make backup` schedule.
+
+## [0.7.0] - 2026-09-13
+
+### Added
+
+- **Release candidates**, mandatory release gates, reproducible release artifacts and SLSA provenance for releases ([#446](https://github.com/DrewBrunning/mycorrhizal-crm/issues/446), [#447](https://github.com/DrewBrunning/mycorrhizal-crm/issues/447), [#448](https://github.com/DrewBrunning/mycorrhizal-crm/issues/448), [#499](https://github.com/DrewBrunning/mycorrhizal-crm/issues/499)).
+- **Android: calendar and contact sync management** with a sync-health view.
+
+### Fixed
+
+- **Web accessibility findings** from the automated sweep ([#196](https://github.com/DrewBrunning/mycorrhizal-crm/issues/196)).
+- **Android: the "server outdated" notice** floats above the bottom bar.
+
+### Internal
+
+- **Versioning, changelog and governance policies** were written ([#445](https://github.com/DrewBrunning/mycorrhizal-crm/issues/445), [#449](https://github.com/DrewBrunning/mycorrhizal-crm/issues/449), [#508](https://github.com/DrewBrunning/mycorrhizal-crm/issues/508)).
+
+## [0.6.12] - 2026-09-10
+
+### Added
+
+- **Sessions are recorded on the server** ([#866](https://github.com/DrewBrunning/mycorrhizal-crm/issues/866)): sign out a single device, and sessions expire when idle.
+
+### Fixed
+
+- **Three web-server defects**: a port leaked from the `.well-known` path, export returned 502, and the import limits were unreachable ([#865](https://github.com/DrewBrunning/mycorrhizal-crm/issues/865), [#863](https://github.com/DrewBrunning/mycorrhizal-crm/issues/863), [#876](https://github.com/DrewBrunning/mycorrhizal-crm/issues/876)).
+- **CardDAV returns 404 or 401**, not 500, for unknown collections ([#874](https://github.com/DrewBrunning/mycorrhizal-crm/issues/874)).
+
+### Security
+
+- **Login timing no longer reveals which accounts exist** ([#862](https://github.com/DrewBrunning/mycorrhizal-crm/issues/862)); lockout no longer locks out other users ([#867](https://github.com/DrewBrunning/mycorrhizal-crm/issues/867)).
+- **Accepted two-factor codes are single-use** ([#873](https://github.com/DrewBrunning/mycorrhizal-crm/issues/873)).
+- **An admin cannot demote or delete another admin** ([#871](https://github.com/DrewBrunning/mycorrhizal-crm/issues/871)).
+- **Health checks without a sign-in show less detail** ([#864](https://github.com/DrewBrunning/mycorrhizal-crm/issues/864)); API responses are not cached ([#872](https://github.com/DrewBrunning/mycorrhizal-crm/issues/872)); the webhook error oracle is closed ([#869](https://github.com/DrewBrunning/mycorrhizal-crm/issues/869)).
+
+## [0.6.11] - 2026-09-08
+
+### Added
+
+- **Operator documentation set** ([#486](https://github.com/DrewBrunning/mycorrhizal-crm/issues/486)).
+- **Unicode normalisation in search** ([#485](https://github.com/DrewBrunning/mycorrhizal-crm/issues/485)): names compare equal however they are encoded.
+
+### Fixed
+
+- **Dates**: one rule for 29 February, correct days-until across daylight-saving changes ([#482](https://github.com/DrewBrunning/mycorrhizal-crm/issues/482), [#483](https://github.com/DrewBrunning/mycorrhizal-crm/issues/483)).
+
+## [0.6.10] - 2026-09-07
+
+### Added
+
+- **Android: two-factor sign-in** ([#814](https://github.com/DrewBrunning/mycorrhizal-crm/issues/814)), **app lock with biometrics** ([#722](https://github.com/DrewBrunning/mycorrhizal-crm/issues/722)), duplicate review, contact attachments and dataset export ([#710](https://github.com/DrewBrunning/mycorrhizal-crm/issues/710)).
+- **Android: call and SMS tracking asks for permission** ([#721](https://github.com/DrewBrunning/mycorrhizal-crm/issues/721)).
+- **Android: forced update** when the server requires a newer app ([#528](https://github.com/DrewBrunning/mycorrhizal-crm/issues/528)).
+- **Web: session expiry recovery** and a warning before leaving a form with unsaved changes ([#557](https://github.com/DrewBrunning/mycorrhizal-crm/issues/557)).
+
+### Fixed
+
+- **Android: the server address stays filled in after logout** ([#723](https://github.com/DrewBrunning/mycorrhizal-crm/issues/723)).
+
+## [0.6.9] - 2026-09-04
+
+> **Upgrade**: upgrading into v0.6.1 to v0.6.8 from v0.6.0 or older, on an instance with audit history,
+> crash-loops at start. Upgrade to v0.6.9 or later directly ("Historical defect" in
+> [upgrade compatibility](docs/upgrade-compatibility.md)).
+
+### Changed
+
+- **Faster relationship graph traversal** ([#792](https://github.com/DrewBrunning/mycorrhizal-crm/issues/792)).
+- **Go 1.27.1** toolchain.
+
+### Fixed
+
+- **Upgrade crash-loop** while backfilling encrypted fields on databases with audit history.
+
+## [0.6.8] - 2026-09-02
+
+### Added
+
+- **Database health check and `doctor` command** ([#460](https://github.com/DrewBrunning/mycorrhizal-crm/issues/460)).
+- **Search index rebuild and consistency checks** ([#461](https://github.com/DrewBrunning/mycorrhizal-crm/issues/461), [#462](https://github.com/DrewBrunning/mycorrhizal-crm/issues/462)).
+
+### Fixed
+
+- **Remote photo links survive a plain save.**
+
+## [0.6.7] - 2026-09-02
+
+### Added
+
+- **Safe concurrent edits** ([#456](https://github.com/DrewBrunning/mycorrhizal-crm/issues/456)): updates use `If-Match`, and `Idempotency-Key` makes retries safe ([#459](https://github.com/DrewBrunning/mycorrhizal-crm/issues/459)).
+- **Missed scheduled jobs run once** after downtime ([#526](https://github.com/DrewBrunning/mycorrhizal-crm/issues/526)).
+
+## [0.6.6] - 2026-09-01
+
+> **Upgrade**: migrations now take a verified backup first and refuse to run without one ([#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)).
+> Make sure the backup directory (or `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR`) is writable before upgrading.
+
+### Added
+
+- **Backup before every migration** ([#530](https://github.com/DrewBrunning/mycorrhizal-crm/issues/530)), restore tests across versions, and documented recovery goals and disaster-recovery boundaries ([#506](https://github.com/DrewBrunning/mycorrhizal-crm/issues/506), [#455](https://github.com/DrewBrunning/mycorrhizal-crm/issues/455)).
+
+## [0.6.5] - 2026-09-01
+
+### Added
+
+- **Import assistants for Monica and Meerkat** on the web ([#549](https://github.com/DrewBrunning/mycorrhizal-crm/issues/549), [#550](https://github.com/DrewBrunning/mycorrhizal-crm/issues/550)).
+- **vCard and JSContact `X-` properties** import as custom fields ([#514](https://github.com/DrewBrunning/mycorrhizal-crm/issues/514)).
+- **Export loss report** ([#442](https://github.com/DrewBrunning/mycorrhizal-crm/issues/442)): an export says what the target format cannot hold.
+
+## [0.6.4] - 2026-08-30
+
+> **Upgrade**: the supported upgrade floor is v0.6.0. Migrations refuse a dirty, newer or older-than-floor
+> database instead of guessing ([#439](https://github.com/DrewBrunning/mycorrhizal-crm/issues/439), [#546](https://github.com/DrewBrunning/mycorrhizal-crm/issues/546)).
+
+### Added
+
+- **Monica and Meerkat import mappings** ([#351](https://github.com/DrewBrunning/mycorrhizal-crm/issues/351), [#353](https://github.com/DrewBrunning/mycorrhizal-crm/issues/353)).
+
+### Fixed
+
+- **Contacts created through the API now have a card UID** ([#693](https://github.com/DrewBrunning/mycorrhizal-crm/issues/693)).
+
+## [0.6.3] - 2026-08-29
+
+### Added
+
+- **Revision tokens for contacts** ([#591](https://github.com/DrewBrunning/mycorrhizal-crm/issues/591)), groundwork for safe concurrent edits.
+
+### Internal
+
+- **Testing**: visual regression, failure injection, property-based and round-trip tests.
+
+## [0.6.2] - 2026-08-28
+
+### Added
+
+- **Observability**: separate liveness, readiness and deep health checks ([#421](https://github.com/DrewBrunning/mycorrhizal-crm/issues/421)), request correlation IDs ([#425](https://github.com/DrewBrunning/mycorrhizal-crm/issues/425)), opt-in `/metrics` ([#389](https://github.com/DrewBrunning/mycorrhizal-crm/issues/389)), an admin system-status page ([#649](https://github.com/DrewBrunning/mycorrhizal-crm/issues/649)) and alerts when a subsystem fails or recovers ([#428](https://github.com/DrewBrunning/mycorrhizal-crm/issues/428)).
+- **Update check** ([#650](https://github.com/DrewBrunning/mycorrhizal-crm/issues/650)): opt-in notice of a newer version.
+- **Storage growth projection** with thresholds ([#652](https://github.com/DrewBrunning/mycorrhizal-crm/issues/652)).
+- **Import history** ([#651](https://github.com/DrewBrunning/mycorrhizal-crm/issues/651)).
+
+### Security
+
+- **Webhook records are trimmed** ([#622](https://github.com/DrewBrunning/mycorrhizal-crm/issues/622)); GORM query logs no longer include personal values ([#621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/621)).
+- **Single sign-on cookies follow `COOKIE_SECURE`.**
+
+## [0.6.1] - 2026-08-27
+
+### Added
+
+- **Android: admin user management** ([#348](https://github.com/DrewBrunning/mycorrhizal-crm/issues/348)).
+- **CardDAV sync conflicts are shown** when a local edit was overwritten.
+- **`security.txt`** at `/.well-known/security.txt` ([#363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/363)).
+
+### Security
+
+- **Weak or default `JWT_SECRET_KEY` stops start-up** ([#393](https://github.com/DrewBrunning/mycorrhizal-crm/issues/393)).
+- **Sensitive fields are encrypted at rest** ([#380](https://github.com/DrewBrunning/mycorrhizal-crm/issues/380)), including the Android offline copy ([#385](https://github.com/DrewBrunning/mycorrhizal-crm/issues/385)).
+- **Tamper-evident audit log** with a hash chain ([#381](https://github.com/DrewBrunning/mycorrhizal-crm/issues/381)).
+- **Session cookies use `SameSite=Strict`**; added `Permissions-Policy` and HSTS headers ([#364](https://github.com/DrewBrunning/mycorrhizal-crm/issues/364)).
+- **Log fields are sanitised** and sensitive query values redacted ([#394](https://github.com/DrewBrunning/mycorrhizal-crm/issues/394), [#365](https://github.com/DrewBrunning/mycorrhizal-crm/issues/365)); errors no longer leak panics or database details ([#366](https://github.com/DrewBrunning/mycorrhizal-crm/issues/366)).
+
+## [0.6.0] - 2026-08-22
+
+> **Upgrade**: this release is the first supported-upgrade floor. Upgrading to it from an older
+> release takes two steps ([upgrade compatibility](docs/upgrade-compatibility.md#what-happens-below-the-floor)).
+
+### Added
+
+- **Event-driven reach-out suggestions** ([#177](https://github.com/DrewBrunning/mycorrhizal-crm/issues/177)).
+
+### Fixed
+
+- **Android**: gifts section, registration gate and launcher icon fixes.
+- **Web accessibility**: Add Contact dialog errors, audit-log target size and text spacing.
+
+### Internal
+
+- **Test and supply-chain tooling**: coverage reporting, SBOM and signed provenance, Dependabot.
