@@ -334,6 +334,21 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: go run ./cmd/reasoncodecheck -release-tag "$VERSION" ./...
 
+      # Issue #2242: the Release body is the CHANGELOG.md section for the tag,
+      # so a final version needs its `## [X.Y.Z]` section (renamed from
+      # `[Unreleased]`) before it is tagged. A release candidate publishes that
+      # section if it exists, else `[Unreleased]`, which must have content.
+      - name: Gate - CHANGELOG.md has a section for this release (changelogsection)
+        working-directory: backend
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -eu
+          version="${VERSION#v}"
+          fallback=""
+          case "$version" in *-rc.*) fallback=Unreleased ;; esac
+          go run ./cmd/changelogsection -section "${version%%-rc.*}" -fallback "$fallback" > /dev/null
+
       # Issue #1486: gates only a human can discharge (today: LocalOnlyModeE2eTest
       # on a real arm64 device) have no CI job that can go red, so forgetting one
       # was silent. Every gate in .github/manual-gates.json that applies to this

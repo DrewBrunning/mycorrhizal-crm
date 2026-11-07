@@ -265,8 +265,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          # REL-05 (#449): the operator-notes harvest below walks the commit
-          # range since the previous tag, so needs full history + tags.
+          # The compare link below needs the previous tag.
           fetch-depth: 0
 
       - name: Set up Go
@@ -295,36 +294,31 @@ jobs:
             echo "frontend=ghcr.io/${repo}-frontend:${tag}"
           } >> "$GITHUB_OUTPUT"
 
-      # REL-05 (#449): the operator-facing half of the changelog. GitHub's
-      # generate_release_notes gives the categorized "what changed" list;
-      # this harvests hand-written `## Upgrade notes`/`## Breaking changes`
-      # blocks from PRs merged since the previous tag via cmd/releasenotes.
-      # Best-effort: any failure still yields the tool's "no action required"
-      # section, so it never blocks a release.
-      - name: Harvest operator notes from the release's PRs
-        id: opnotes
+      # Issue #2242: the release notes are the CHANGELOG.md section for the
+      # tag (docs/changelog-policy.md). A missing or empty section fails the
+      # job, so no Release is published without one. A release candidate
+      # publishes its `[X.Y.Z]` section once the maintainer has renamed
+      # `[Unreleased]`, and `[Unreleased]` before that. Relative links are made
+      # absolute: they resolve in the repository, not in a Release body.
+      - name: Read the changelog section for the tag
+        id: changelog
         env:
           RELEASE_TAG: ${{ env.RELEASE_TAG }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
+          version="${RELEASE_TAG#v}"
+          fallback=""
+          case "$version" in *-rc.*) fallback=Unreleased ;; esac
+          body="$(cd backend && go run ./cmd/changelogsection -section "${version%%-rc.*}" -fallback "$fallback" \
+            -link-base "https://github.com/${GITHUB_REPOSITORY}/blob/${RELEASE_TAG}/")"
           prev="$(git describe --tags --abbrev=0 --match 'v[0-9]*' "${RELEASE_TAG}^" 2>/dev/null || true)"
-          if [ -n "$prev" ]; then range="${prev}..${RELEASE_TAG}"; else range="${RELEASE_TAG}"; fi
-          echo "Harvesting operator notes over: ${range}"
-          nums="$(git log "$range" --format='%s' | grep -oE '\(#[0-9]+\)$' | tr -cd '0-9\n' | sort -un || true)"
-          prs='[]'
-          for n in $nums; do
-            pr="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${n}" \
-                    --jq '{number, title, url: .html_url, body}' 2>/dev/null || true)"
-            if [ -n "$pr" ]; then
-              prs="$(printf '%s\n%s\n' "$prs" "$pr" | jq -c -s '.[0] + [.[1]]')"
-            fi
-          done
-          block="$(printf '%s' "$prs" | (cd backend && go run ./cmd/releasenotes))"
+          if [ -n "$prev" ]; then
+            body="${body}"$'\n\n'"**Full Changelog**: https://github.com/${GITHUB_REPOSITORY}/compare/${prev}...${RELEASE_TAG}"
+          fi
           {
-            echo 'block<<OPNOTES_EOF'
-            echo "$block"
-            echo 'OPNOTES_EOF'
+            echo 'body<<CHANGELOG_EOF'
+            echo "$body"
+            echo 'CHANGELOG_EOF'
           } >> "$GITHUB_OUTPUT"
 
       # action-gh-release's append_body semantics (append to an existing
@@ -334,7 +328,6 @@ jobs:
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          generate_release_notes: true
           append_body: true
           # RC-02 (#446): an `-rc.` tag is a SemVer pre-release; marking it
           # prerelease and never make_latest keeps it off the in-app update
@@ -345,7 +338,7 @@ jobs:
           make_latest: ${{ !contains(env.RELEASE_TAG, '-rc.') }}
           body: |
 
-            ${{ steps.opnotes.outputs.block }}
+            ${{ steps.changelog.outputs.body }}
 
             ## Docker Images
 

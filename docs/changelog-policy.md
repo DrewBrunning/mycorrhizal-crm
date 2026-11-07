@@ -14,9 +14,9 @@ against this document; a change here is a change to those, and vice versa (see
 [Document consistency](#document-consistency)).
 
 This page is contributor- and maintainer-facing. Users and operators read the
-curated [`CHANGELOG.md`](../CHANGELOG.md) at the repository root; the
-machine-assembled record is on each
-[GitHub Release](https://github.com/DrewBrunning/mycorrhizal-crm/releases).
+curated [`CHANGELOG.md`](../CHANGELOG.md) at the repository root; each
+[GitHub Release](https://github.com/DrewBrunning/mycorrhizal-crm/releases)
+carries a copy of its section.
 
 ## What the changelog is
 
@@ -28,28 +28,21 @@ There are two records, with different audiences:
    bullet per user-visible change, grouped by release. Every user-visible change
    adds its entry to `[Unreleased]` in the same pull request, so contributors see
    what is coming and the release section is already written at tag time.
-2. **The GitHub Release notes** — the complete, traceable record, assembled from
-   two sources:
-   - **What changed** — GitHub's own release-notes generator
-     (`generate_release_notes`), turned into labelled sections by
-     `.github/release.yml`. One section per category, populated from the labels
-     on the pull requests merged since the previous release.
-   - **Operator notes** — an **Upgrade notes** section, a **Security-relevant
-     changes** section when a change affects the security posture, and a
-     **Breaking changes** section when applicable, **hand-written in each pull
-     request's description** and harvested at release time by `cmd/releasenotes`
-     into the top of the release body. Security-relevant changes are their own
-     section (not folded into the upgrade notes) so a new default-off guard, a
-     changed floor, or a new required config cannot be missed among feature
-     notes (issue #953).
+2. **The GitHub Release notes** — a copy. `docker-publish.yml` writes the
+   Release body from the `CHANGELOG.md` section for the tag (via
+   `cmd/changelogsection`), plus the Docker image block and a compare link to the
+   previous tag, which keeps every pull request reachable. Relative links become
+   absolute links to the tagged tree. A final tag needs its `## [X.Y.Z]`
+   section; `release.yml` refuses to tag without one, and the Release job fails
+   on a missing or empty section. A release candidate publishes `[X.Y.Z]` if it
+   exists, else `[Unreleased]`. `promote-rc.yml` publishes the RC commit's
+   `[X.Y.Z]` section and refuses to promote without one, so rename
+   `[Unreleased]` before the last RC.
 
-The generated list answers *what changed*; only a human can answer *what an
-operator must do about it*, which is why the operator notes are never generated
-from a diff. `CHANGELOG.md` is the curated summary of both. Until the release
-workflow copies the changelog section into the release body (tracked in
-[#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242)), the two
-are maintained side by side: the PR-body operator notes still feed the release,
-and the `CHANGELOG.md` entry feeds the file.
+GitHub's generated "What's Changed" list and the harvest of `## Upgrade notes`
+blocks from PR bodies ([#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242))
+no longer feed the Release. Operator actions go in the `> **Upgrade**` blockquote
+of the changelog section.
 
 ## Writing `CHANGELOG.md` entries
 
