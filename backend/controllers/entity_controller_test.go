@@ -202,6 +202,7 @@ func TestEntity_ListFilters(t *testing.T) {
 	assert.Len(t, list("?q=%25").Entities, 1)
 	assert.Equal(t, http.StatusBadRequest, e.do(http.MethodGet, "/entities?kind=robot", nil).Code)
 	assert.Equal(t, http.StatusBadRequest, e.do(http.MethodGet, "/entities?sensitivity=x", nil).Code)
+	assert.Equal(t, http.StatusBadRequest, e.do(http.MethodGet, "/entities?cursor=not-a-cursor", nil).Code)
 
 	page := list("?limit=2")
 	require.Len(t, page.Entities, 2)

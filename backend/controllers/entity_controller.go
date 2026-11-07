@@ -54,7 +54,7 @@ func normalizeEntityCore(kind string, raw json.RawMessage) (string, *apperrors.A
 		return "", apperrors.ErrInvalidInput("core", err.Error()).WithReason(apperrors.ReasonEntityCoreInvalid, map[string]any{"reason": err.Error()})
 	}
 	var buf bytes.Buffer
-	if err := json.Compact(&buf, []byte(s)); err != nil {
+	if err := json.Compact(&buf, []byte(s)); err != nil { // # pragma: no cover — ValidateEntityCore already decoded s as JSON, so Compact cannot fail
 		return "", apperrors.ErrInvalidInput("core", err.Error()).WithReason(apperrors.ReasonEntityCoreInvalid, map[string]any{"reason": err.Error()})
 	}
 	return buf.String(), nil
