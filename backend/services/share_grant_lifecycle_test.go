@@ -523,3 +523,65 @@ func TestListShareGrantNotices_CapsAtFifty(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, got, 50)
 }
+
+// --- single-statement failures ---------------------------------------------
+
+// Each scenario is replayed with the n-th statement failing (n = 1, 2, ...)
+// until it issues fewer statements than n. A failure must never panic; a
+// failure before any audit/notice bookkeeping must surface as an error; and a
+// clean re-run afterwards must converge on the same end state (the job is
+// idempotent, so a half-run is simply finished by the next tick).
+func TestShareGrantLifecycle_SingleStatementFailures(t *testing.T) {
+	seed := func(t *testing.T, w *lcWorld) {
+		past := w.fake.Now().Add(-time.Hour)
+		w.grant(t, models.ShareGrantStatusActive, func(g *models.ShareGrant) { g.ExpiresAt = &past })
+		w.grant(t, models.ShareGrantStatusRevoked, func(g *models.ShareGrant) {
+			g.UpdatedAt = w.fake.Now().AddDate(0, 0, -40)
+		})
+		require.NoError(t, w.db.Create(&models.ShareGrantNotification{UserID: w.rcpt.ID, FromUserID: w.owner.ID,
+			Kind: models.ShareGrantNoticePending, EntityType: "note",
+			CreatedAt: w.fake.Now().AddDate(0, 0, -40), UpdatedAt: w.fake.Now().AddDate(0, 0, -40)}).Error)
+	}
+	scenarios := map[string]func(w *lcWorld) error{
+		"job": func(w *lcWorld) error {
+			_, err := RunShareGrantLifecycle(context.Background(), w.db, w.cfg)
+			return err
+		},
+		"scheduled": func(w *lcWorld) error {
+			_, err := RunShareGrantLifecycleScheduled(w.db, w.cfg)
+			return err
+		},
+		"recipient-deletion-audit": func(w *lcWorld) error {
+			return AuditRecipientDeletion(w.db, w.rcpt.ID, w.fake.Now())
+		},
+	}
+	for name, run := range scenarios {
+		t.Run(name, func(t *testing.T) {
+			errored := 0
+			for n := 1; n < 40; n++ {
+				w := newLCWorld(t)
+				seed(t, w)
+				inj := &injector{target: n}
+				inj.install(w.db)
+				err := run(w)
+				if !inj.hit {
+					break
+				}
+				if err != nil {
+					errored++
+				}
+				inj.target = 0 // disarm
+				if name != "recipient-deletion-audit" {
+					_, rerr := RunShareGrantLifecycle(context.Background(), w.db, w.cfg)
+					require.NoError(t, rerr, "a clean re-run finishes the half-run (n=%d)", n)
+					var live, terminal int64
+					w.db.Model(&models.ShareGrant{}).Where("status = ?", models.ShareGrantStatusActive).Count(&live)
+					w.db.Model(&models.ShareGrant{}).Where("status = ?", models.ShareGrantStatusRevoked).Count(&terminal)
+					assert.Zero(t, live, "the expired grant ends up expired (n=%d)", n)
+					assert.Zero(t, terminal, "the old revoked row ends up purged (n=%d)", n)
+				}
+			}
+			assert.Positive(t, errored, "at least the data-path statements surface their failure")
+		})
+	}
+}

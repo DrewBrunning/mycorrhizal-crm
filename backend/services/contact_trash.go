@@ -627,13 +627,9 @@ func revokedShareGrantsForRestore(tx *gorm.DB, userID uint, vcardUID string, tra
 	out := make([]models.TrashRevokedShareGrant, 0, len(rows))
 	for i := range rows {
 		g := rows[i]
-		sections := g.Sections
-		if sections == nil {
-			sections = []string{}
-		}
 		out = append(out, models.TrashRevokedShareGrant{
 			ID: g.ID, ToUserID: g.ToUserID, ToUsername: usernameOf(tx, g.ToUserID),
-			Sections: sections, ExpiresAt: g.ExpiresAt, RevokedAt: g.RevokedAt,
+			Sections: nz(g.Sections), ExpiresAt: g.ExpiresAt, RevokedAt: g.RevokedAt,
 		})
 	}
 	return out, nil
