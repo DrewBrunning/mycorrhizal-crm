@@ -58,6 +58,7 @@ var outwardBuilderFuncs = map[string]bool{
 	"RecordForContact":                 true,
 	"RecordForContactFiltered":         true,
 	"RecordForContactForSync":          true,
+	"RecordForContactBackup":           true,
 	"RecordFromContact":                true,
 	"NewContactRecordResponse":         true,
 	"NewContactRecordResponseFiltered": true,
@@ -154,7 +155,11 @@ var outwardProjectionSites = []outwardSiteRow{
 			"used to move the user's own data between their own instances. " +
 			"It deliberately keeps every sensitivity level; withholding " +
 			"would be silent data loss (backend/AGENTS.md sensitivity " +
-			"exceptions; ADR 0028 Decision 3).",
+			"exceptions; ADR 0028 Decision 3). It builds through " +
+			"RecordForContactBackup: every read-time projection except the " +
+			"primary-entity ORG/ADR (#2298), which is synthesis, not the " +
+			"contact's own data (entities and links travel as their own " +
+			"bundle sections, ADR 0043 decision 7).",
 	},
 	{
 		file: "models/contact_summary.go", fn: "NewContactRecordResponseFiltered",
