@@ -12083,6 +12083,15 @@ paths:
           in: query
           description: "Ego-network radius in hops (1..5, default 2). Used only with `full=false` or `from`."
           schema: { type: integer, minimum: 1, maximum: 5, default: 2 }
+        - name: include_entities
+          in: query
+          description: >
+            Issue #2298 (ADR 0043): `true` adds the display-only `entity_nodes` and
+            `entity_edges` keys (live links and entities at normal sensitivity only;
+            a contact-to-entity hop counts as one hop under `depth`). Any other value
+            leaves the response byte-identical to before. Entity data is never fed
+            to traversal, household inference or suggestions.
+          schema: { type: boolean, default: false }
       responses:
         "404":
           description: "`from` is not one of the caller's contacts."
@@ -20560,6 +20569,30 @@ components:
           description: "Issue #1791: true when the graph is an ego-network (contacts within `depth` hops of `from_vcard_uid`) rather than the whole account."
         from_vcard_uid: { type: string, format: uuid, description: "The ego-network's anchor; absent when `scoped` is false." }
         depth: { type: integer, description: "The ego-network's radius in hops; absent when `scoped` is false." }
+        entity_nodes:
+          type: array
+          description: "Present only with `include_entities=true` (an empty array when nothing links). Display-only; never mixed into `nodes`."
+          items:
+            $ref: "#/components/schemas/GraphEntityNode"
+        entity_edges:
+          type: array
+          description: "Present only with `include_entities=true`. Contact node to entity node; no type, role, dates or status."
+          items:
+            $ref: "#/components/schemas/GraphEntityEdge"
+    GraphEntityNode:
+      type: object
+      required: [id, kind, label]
+      properties:
+        id: { type: string, description: '"e-<entityID>".' }
+        kind: { type: string, enum: [organisation, place, pet] }
+        label: { type: string }
+    GraphEntityEdge:
+      type: object
+      required: [id, source, target]
+      properties:
+        id: { type: string }
+        source: { type: string, description: 'Contact node ID ("c-<contactID>").' }
+        target: { type: string, description: 'Entity node ID ("e-<entityID>").' }
     GraphConnectionsResponse:
       type: object
       description: The result of a multi-hop traversal from a starting contact.

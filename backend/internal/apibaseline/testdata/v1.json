@@ -5974,6 +5974,11 @@
           "name": "full",
           "in": "query",
           "required": false
+        },
+        {
+          "name": "include_entities",
+          "in": "query",
+          "required": false
         }
       ],
       "responses": [
@@ -18187,6 +18192,51 @@
       ]
     },
     {
+      "name": "GraphEntityEdge",
+      "properties": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "source",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "target",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "GraphEntityNode",
+      "properties": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "organisation",
+            "place",
+            "pet"
+          ]
+        },
+        {
+          "name": "label",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "GraphNode",
       "properties": [
         {
@@ -18250,6 +18300,16 @@
         },
         {
           "name": "edges",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "entity_edges",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "entity_nodes",
           "type": "array\u003cobject\u003e",
           "required": false
         },
