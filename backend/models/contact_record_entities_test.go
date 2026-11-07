@@ -354,3 +354,27 @@ func setPeriod(t *testing.T, f *projFixture, entityID string, p *contactmodel.Te
 	l.Period = p
 	require.NoError(t, f.db.Save(&l).Error)
 }
+
+// Internal read-edit-apply paths (bulk field update, wedding sync, ...) build a
+// Record with RecordForContact and apply it straight back, with no echo helper:
+// the ent- ID drop inside ApplyRecordToContact alone must keep the projection
+// out of the stored Card.
+func TestApplyRecordToContact_InternalReadEditApplyNeverStoresProjection(t *testing.T) {
+	f := newProjFixture(t)
+	f.contactWithCard(t, contactmodel.Card{Organizations: []contactmodel.Organization{{ID: "own", Name: "Own Co"}}})
+	f.link(t, f.org(t, "Acme", "normal"), true, "normal", nil)
+	f.link(t, f.place(t, "normal"), true, "normal", nil)
+
+	var c Contact
+	require.NoError(t, f.db.First(&c, f.contact.ID).Error)
+	rec := RecordForContact(&c, "", f.db)
+	require.Len(t, rec.Card.Organizations, 2)
+	ApplyRecordToContact(&c, rec, "")
+	require.NoError(t, f.db.Save(&c).Error)
+
+	var after Contact
+	require.NoError(t, f.db.First(&after, f.contact.ID).Error)
+	require.Len(t, after.Card.Organizations, 1)
+	assert.Equal(t, "own", after.Card.Organizations[0].ID)
+	assert.Empty(t, after.Card.Addresses)
+}
