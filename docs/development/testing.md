@@ -606,7 +606,10 @@ and asset-404 blocks) so a failed test cannot leak state into the next file.
 It runs on Chromium **and** Firefox. Run locally with
 `npx playwright test -c playwright.sw.config.ts` (the webServer builds the
 fixtures on first run); the `e2e-sw-upgrade` job in `e2e-tests.yml` runs it in
-CI. `frontend-dev` is useless here (see `frontend/AGENTS.md`): every build under test is
+CI. Its chromium+firefox apt and browser caches are kept warm on `main` by the
+daily `playwright-cache-warm.yml` (issue #2392), so a release run does not
+depend on a cold Ubuntu mirror; `backend/internal/e2einstall` fails if the two
+workflows' cache keys drift. `frontend-dev` is useless here (see `frontend/AGENTS.md`): every build under test is
 a real `vite build`.
 
 ### WebKit smoke (issue #992)

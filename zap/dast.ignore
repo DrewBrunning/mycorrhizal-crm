@@ -12,6 +12,14 @@
 # app is a hard failure unless a line here accepts it, and every acceptance
 # must carry a reason that survives review.
 #
+# Plugin 10062 (PII Disclosure) is NOT accepted by a line here, on purpose: a
+# line matches plugin+risk+URL only, so it would accept every card-like hit on
+# that URL, including a real one. A random request-ID UUID whose last group is
+# 12 decimal digits can pass 10062's card regex + Luhn (v1.6.0, issue #2391), so
+# zapgate itself accepts a 10062 finding when -- and only when -- its evidence is
+# solely the last group of a UUID in the instance's response (needs the
+# traditional-json-plus report). See acceptPIIUUID in backend/cmd/zapgate.
+#
 # The canary (dastcanary, localhost:7301) is deliberately vulnerable and its
 # findings are expected — those never need an entry here; zapgate treats them
 # as the self-test signal, not app findings.

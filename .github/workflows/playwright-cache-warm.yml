@@ -1,0 +1,104 @@
+name: Playwright cache warm
+
+# Issue #2392: the release-only `e2e-sw-upgrade` job (chromium + firefox) failed
+# on both v1.6.0 release runs because its apt .deb and browser cache entries
+# were cold and the Ubuntu mirror served ~40 KB/s, so the install budget ran out
+# before any test ran. Those entries were only written by a green nightly run of
+# the e2e job (e2e-sw-upgrade `needs` it and is path-gated), and GitHub evicts
+# entries unused for 7 days or on a runner-image refresh (ImageVersion is in the
+# apt key). This workflow keeps exactly those entries warm on `main`, every day,
+# independent of any other job's result.
+#
+# The steps below are copied from e2e-sw-upgrade and MUST stay identical:
+# backend/internal/e2einstall (TestWarmWorkflowCacheKeysMatchSWUpgradeJob)
+# fails if the cache path/key/restore-keys or install command drift.
+on:
+  schedule:
+    - cron: '40 2 * * *' # 02:40 UTC daily, ahead of the 03:25 e2e nightly
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: playwright-cache-warm
+  cancel-in-progress: false
+
+jobs:
+  warm:
+    name: Warm Playwright caches (chromium firefox)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # COMPAT-01 (#472): floor comes from package.json's engines.node.
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Detect runner image
+        # The cache keys below embed the OS image (issue #1659): an apt .deb
+        # or browser cache saved on Ubuntu 24.04 must never restore onto 26.04
+        # (ubuntu-latest moves 2026-10-19). `runner.os` is just "Linux", and
+        # the runner-provided ImageOS/ImageVersion are not in the expressions
+        # `env` context, so read them here.
+        #
+        # ImageVersion is also in the apt .deb cache key (issue #1912): the
+        # runner image's preinstalled package set changes on image refreshes,
+        # and a cache keyed only on the OS major version would keep serving a
+        # set that no longer covers the WebKit dependencies -- every run then
+        # re-downloaded ~85 MB that it could never add back, because
+        # actions/cache never re-saves an exact key hit. Keying on the image
+        # version makes the first run after a refresh repopulate the cache.
+        id: image
+        run: |
+          echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+          echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache apt packages for Playwright
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
+          # being re-downloaded every run; the retry script seeds apt's
+          # archives from it before installing and saves what it fetched.
+          # Like the browser cache, it is keyed on the browser set (issue
+          # #2115): one shared entry is frozen at whichever job saved first,
+          # so the Firefox and WebKit jobs re-download their extra
+          # dependencies on every run. restore-keys still let a new set seed
+          # from another set's entry for the same image instead of starting
+          # from nothing.
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
+
+      - name: Install Playwright browsers
+        # Both engines: service-worker behaviour genuinely differs (the
+        # wrong-MIME registration failure this ticket exists because of was
+        # Firefox-specific).
+        # Bounded and retried (issue #1549): 3 attempts of 240 s, apt/dpkg
+        # left by a timed-out attempt released between them, with the apt .deb
+        # packages cached across runs (issue #1646) so a slow Ubuntu mirror is
+        # not re-downloaded. 16 min covers the script's worst case (915 s);
+        # backend/internal/e2einstall enforces it.
+        timeout-minutes: 16
+        working-directory: frontend
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
