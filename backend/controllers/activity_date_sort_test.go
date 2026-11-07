@@ -136,3 +136,31 @@ func TestDateCursorEncodeDecodeRoundTrip(t *testing.T) {
 	_, err = DecodeDateCursor(EncodeCreatedCursor(ts, uint(7)))
 	assert.Error(t, err, "created_at cursor must not decode as a date cursor")
 }
+
+func TestDateCursorDecodeRejectsMalformed(t *testing.T) {
+	for _, tc := range []struct {
+		raw     string
+		errFrag string
+	}{
+		{"!!!not-base64url!!!", "cursor is not valid base64url"},
+		{encodeRawURL("date:"), "cursor is malformed"},
+		{encodeRawURL("date:2026-06-01T00:00:00Z|"), "cursor is malformed"},
+		{encodeRawURL("date:|7"), "cursor is malformed"},
+		{encodeRawURL("date:not-a-time|7"), "cursor timestamp is malformed"},
+	} {
+		_, err := DecodeDateCursor(tc.raw)
+		assert.ErrorContains(t, err, tc.errFrag, "cursor %q should fail to decode", tc.raw)
+	}
+}
+
+// A well-formed date cursor whose id is not numeric is a 400, not a 500.
+func TestGetActivitiesSortDateRejectsNonNumericCursorID(t *testing.T) {
+	db, router := setupRouter(t)
+	var user models.User
+	db.First(&user)
+	router.GET("/activities", GetActivities)
+
+	cursor := encodeRawURL("date:2026-06-01T00:00:00Z|abc")
+	code, _ := getActivityDatePage(t, router, "sort=date&cursor="+cursor)
+	assert.Equal(t, http.StatusBadRequest, code)
+}
