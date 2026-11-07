@@ -157,6 +157,19 @@ jobs:
           set -eu
           bash .github/scripts/release-obligations.sh adversarial --release "$FINAL_TAG" --ack "${ACK_ADVERSARIAL_DELTA:-}"
 
+      # Issue #2242: the final Release body is the RC commit's `## [X.Y.Z]`
+      # CHANGELOG.md section, so the promoted RC must carry the renamed
+      # section. Read it here, before any mutation.
+      - name: Gate - CHANGELOG.md has a section for the final release (changelogsection)
+        env:
+          FINAL_TAG: ${{ env.FINAL_TAG }}
+        run: |
+          set -eu
+          notes="${RUNNER_TEMP}/changelog-section.md"
+          (cd backend && go run ./cmd/changelogsection -section "${FINAL_TAG#v}" \
+            -link-base "https://github.com/${GITHUB_REPOSITORY}/blob/${FINAL_TAG}/") > "$notes"
+          echo "CHANGELOG_NOTES=${notes}" >> "$GITHUB_ENV"
+
       - name: Log in to GHCR
         uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
@@ -337,6 +350,7 @@ jobs:
         env:
           RC_TAG: ${{ inputs.rc_tag }}
           FINAL_TAG: ${{ env.FINAL_TAG }}
+          CHANGELOG_NOTES: ${{ env.CHANGELOG_NOTES }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -eu
@@ -345,11 +359,16 @@ jobs:
           # Integrity: the RC's SHA256SUMS must still verify these files.
           ( cd "$work" && grep -v ' SHA256SUMS$' SHA256SUMS | sha256sum -c - )
 
+          notes="$(mktemp)"
+          {
+            cat "$CHANGELOG_NOTES"
+            echo
+            echo "Promoted from ${RC_TAG} without rebuilding: container images re-tagged by digest, release assets copied byte-for-byte. See \`promotion-metadata.json\` (digest_rc == digest_final) and docs/release-candidate-process.md."
+          } > "$notes"
           gh release create "$FINAL_TAG" \
             --title "$FINAL_TAG" \
-            --generate-notes \
             --latest \
-            --notes "Promoted from ${RC_TAG} without rebuilding: container images re-tagged by digest, release assets copied byte-for-byte. See \`promotion-metadata.json\` (digest_rc == digest_final) and docs/release-candidate-process.md."
+            --notes-file "$notes"
 
           # Skip the RC's SHA256SUMS (regenerated) and release-metadata.json
           # (RC-specific).
