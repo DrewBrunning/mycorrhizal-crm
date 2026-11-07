@@ -681,7 +681,7 @@ func TestContactEntityLink_FromExistingMatchesGivenEntityAndRejectsKindMismatch(
 
 	// organisation value against a place entity: kind mismatch
 	w = e.do(http.MethodPost, linkPath(c, "from-existing"), map[string]any{
-		"source": map[string]any{"kind": "organization", "id": "o1"}, "entity_id": place.ID, "role": "resident"})
+		"source": map[string]any{"kind": "organization", "id": "o1"}, "entity_id": place.ID, "role": "employee"})
 	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 
 	// address value creates a place that carries the address sensitivity in the entity column, not core

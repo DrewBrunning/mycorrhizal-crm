@@ -31,24 +31,28 @@ func demoteOtherPrimaries(tx *gorm.DB, link *models.ContactEntityLink) error {
 	return nil
 }
 
-// CreateContactEntityLink inserts link, first demoting the previous primary of
-// its kind when link is itself primary.
-func CreateContactEntityLink(tx *gorm.DB, link *models.ContactEntityLink) error {
+// writeLink demotes the previous primary of the link's kind when link is
+// primary, then inserts (create) or saves it.
+func writeLink(tx *gorm.DB, link *models.ContactEntityLink, create bool) error {
 	if link.IsPrimary {
 		if err := demoteOtherPrimaries(tx, link); err != nil {
 			return err
 		}
 	}
-	return tx.Create(link).Error
+	if create {
+		return tx.Create(link).Error
+	}
+	return tx.Save(link).Error
+}
+
+// CreateContactEntityLink inserts link, first demoting the previous primary of
+// its kind when link is itself primary.
+func CreateContactEntityLink(tx *gorm.DB, link *models.ContactEntityLink) error {
+	return writeLink(tx, link, true)
 }
 
 // SaveContactEntityLink saves an edited link, demoting the previous primary of
 // its kind when link is (now) primary.
 func SaveContactEntityLink(tx *gorm.DB, link *models.ContactEntityLink) error {
-	if link.IsPrimary {
-		if err := demoteOtherPrimaries(tx, link); err != nil {
-			return err
-		}
-	}
-	return tx.Save(link).Error
+	return writeLink(tx, link, false)
 }
