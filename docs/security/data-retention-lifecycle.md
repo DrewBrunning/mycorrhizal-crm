@@ -105,7 +105,7 @@ It sits outside the soft-delete model above precisely because it is a copy, not 
   authenticated sender's or recipient's API session.
 - **Retention**: `CONTACT_SHARE_RETENTION_DAYS` (default 30, `config/config.go:72,153`) for **every
   status**, anchored on the moment the share stopped being actionable: `pending` ages from `created_at`
-  (an abandoned invite cannot materialize years later); `accepted`/`declined` age from `responded_at`
+  (an abandoned invite cannot materialize years later; the internal `blocked` status of a share created by a sender the recipient blocked, #2294, ages the same way and holds an empty snapshot); `accepted`/`declined` age from `responded_at`
   (the recipient has already imported or rejected the snapshot).
 - **Deletion / propagation**: `PurgeExpiredContactShares`
   (`backend/services/contact_share_purge_service.go`) hard-deletes rows past the window, run under the
