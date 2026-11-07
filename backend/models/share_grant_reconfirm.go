@@ -111,20 +111,24 @@ func containsString(list []string, s string) bool {
 }
 
 // sensitivityOf reads the stored sensitivity of one row (empty when absent).
-func sensitivityOf(tx *gorm.DB, table, idColumn string, id any) string {
+func sensitivityOf(tx *gorm.DB, table, idColumn string, id any) (string, error) {
 	var s string
-	_ = tx.Session(&gorm.Session{NewDB: true}).Table(table).Select("sensitivity").Where(idColumn+" = ?", id).Limit(1).Scan(&s).Error
-	return s
+	err := tx.Session(&gorm.Session{NewDB: true}).Table(table).Select("sensitivity").Where(idColumn+" = ?", id).Limit(1).Scan(&s).Error
+	return s, err
 }
 
 // captureSensitivity stores the row's pre-write sensitivity on the statement
 // instance for the matching After hook. "" means the row is new.
-func captureSensitivity(tx *gorm.DB, table string, id any, isNew bool) {
+func captureSensitivity(tx *gorm.DB, table string, id any, isNew bool) error {
 	old := ""
 	if !isNew {
-		old = sensitivityOf(tx, table, "id", id)
+		var err error
+		if old, err = sensitivityOf(tx, table, "id", id); err != nil {
+			return err
+		}
 	}
 	tx.InstanceSet(shareGrantOldSensitivityKey+table, old)
+	return nil
 }
 
 func oldSensitivity(tx *gorm.DB, table string) string {
@@ -153,7 +157,11 @@ func (r *RelationshipEdge) AfterSave(tx *gorm.DB) error {
 	if live, err := hasLiveContactGrant(tx, r.UserID, ""); err != nil || !live {
 		return err
 	}
-	if !reclassified(oldSensitivity(tx, "relationship_edges"), sensitivityOf(tx, "relationship_edges", "id", r.ID)) {
+	nowS, err := sensitivityOf(tx, "relationship_edges", "id", r.ID)
+	if err != nil {
+		return err
+	}
+	if !reclassified(oldSensitivity(tx, "relationship_edges"), nowS) {
 		return nil
 	}
 	// An edge appears in the projection of both endpoints.
@@ -178,7 +186,11 @@ func (p *Preference) AfterSave(tx *gorm.DB) error {
 	if live, err := hasLiveContactGrant(tx, p.UserID, p.EntityID); err != nil || !live {
 		return err
 	}
-	if !reclassified(oldSensitivity(tx, "preferences"), sensitivityOf(tx, "preferences", "id", p.ID)) {
+	nowS, err := sensitivityOf(tx, "preferences", "id", p.ID)
+	if err != nil {
+		return err
+	}
+	if !reclassified(oldSensitivity(tx, "preferences"), nowS) {
 		return nil
 	}
 	return markShareGrantReconfirm(tx, p.UserID, p.EntityID, SectionPersonalInfo)
@@ -197,7 +209,11 @@ func (d *FieldDefinition) AfterSave(tx *gorm.DB) error {
 	if live, err := hasLiveContactGrant(tx, d.UserID, ""); err != nil || !live {
 		return err
 	}
-	if !reclassified(oldSensitivity(tx, "field_definitions"), sensitivityOf(tx, "field_definitions", "id", d.ID)) {
+	nowS, err := sensitivityOf(tx, "field_definitions", "id", d.ID)
+	if err != nil {
+		return err
+	}
+	if !reclassified(oldSensitivity(tx, "field_definitions"), nowS) {
 		return nil
 	}
 	return markShareGrantReconfirm(tx, d.UserID, "", SectionCustomFields)
@@ -210,14 +226,21 @@ func beforeSensitivityWrite(tx *gorm.DB, ownerID uint, table, id string) error {
 	if err != nil || !live {
 		return err
 	}
-	captureSensitivity(tx, table, id, id == "" || !rowExists(tx, table, id))
-	return nil
+	isNew := id == ""
+	if !isNew {
+		exists, err := rowExists(tx, table, id)
+		if err != nil {
+			return err
+		}
+		isNew = !exists
+	}
+	return captureSensitivity(tx, table, id, isNew)
 }
 
-func rowExists(tx *gorm.DB, table string, id any) bool {
+func rowExists(tx *gorm.DB, table string, id any) (bool, error) {
 	var n int64
-	_ = tx.Session(&gorm.Session{NewDB: true}).Table(table).Where("id = ?", id).Limit(1).Count(&n).Error
-	return n > 0
+	err := tx.Session(&gorm.Session{NewDB: true}).Table(table).Where("id = ?", id).Limit(1).Count(&n).Error
+	return n > 0, err
 }
 
 // --- Contact (addresses) ---
