@@ -50,9 +50,9 @@ func PurgeExpiredContactShares(db *gorm.DB, cfg config.Config) error {
 
 	result := db.Exec(
 		`DELETE FROM contact_shares WHERE
-			(status = ? AND created_at < ?)
+			(status IN (?, ?) AND created_at < ?)
 			OR (status IN (?, ?) AND responded_at IS NOT NULL AND responded_at < ?)`,
-		models.ContactShareStatusPending, cutoff,
+		models.ContactShareStatusPending, models.ContactShareStatusBlocked, cutoff,
 		models.ContactShareStatusAccepted, models.ContactShareStatusDeclined, cutoff,
 	)
 	if result.Error != nil {
