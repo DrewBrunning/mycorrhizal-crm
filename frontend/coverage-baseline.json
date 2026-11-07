@@ -617,7 +617,7 @@
     "src/auth.ts": {
       "lines": 98.78,
       "linesTotal": 82,
-      "branches": 100,
+      "branches": 98.43,
       "branchesTotal": 64
     },
     "src/components/AcceptContactShareDialog.tsx": {

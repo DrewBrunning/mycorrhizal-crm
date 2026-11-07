@@ -214,6 +214,12 @@ export default function BulkActionsBar({
             size="small"
             variant="outlined"
             color="error"
+            // error.main on the action.selected bar is 3.98:1 (< 4.5:1 AA);
+            // error.dark clears it in light mode. Dark mode keeps error.main
+            // (the brightened dark-theme red already passes on that surface).
+            sx={(theme) => ({
+              color: theme.palette.mode === 'dark' ? 'error.main' : 'error.dark',
+            })}
             disabled={busy}
             onClick={() => void onDelete()}
           >
