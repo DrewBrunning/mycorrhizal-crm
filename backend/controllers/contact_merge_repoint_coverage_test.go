@@ -77,6 +77,7 @@ var mergeCoverage = map[string]mergeClass{
 	"cadence_policies":                  {disposition: mergeRepointed, keyCol: "entity_id"},
 	"circle_members":                    {disposition: mergeRepointed, keyCol: "member_vcard_uid"},
 	"contact_tags":                      {disposition: mergeRepointed, keyCol: "contact_vcard_uid"},
+	"contact_entity_links":              {disposition: mergeRepointed, keyCol: "contact_vcard_uid"},
 	"conversation_agenda":               {disposition: mergeRepointed, keyCol: "entity_id"},
 	"data_decay_policies":               {disposition: mergeRepointed, keyCol: "entity_id"},
 	"external_activities":               {disposition: mergeRepointed, keyCol: "entity_id"},
@@ -111,6 +112,8 @@ var mergeCoverage = map[string]mergeClass{
 		reason: "ADR 0037: written only by a user-initiated DeleteContact, never by a merge; a merge loser is deliberately not restorable from the trash"},
 	"share_grants": {disposition: mergeRetained, keyCol: "entity_id",
 		reason: "ADR 0042 decision 10: a grant is the owner's authorization history, not contact data. The merge loser is deleted through the same cascade as any contact delete, which revokes its live grants (entity_deleted); the revoked row keeps naming the loser and is purged after the retention window. Access is never silently transferred to the keeper"},
+	"entity_deletion_snapshots": {disposition: mergeRetained, keyCol: "entity_id",
+		reason: "ADR 0043: entity_id is an entities.id, not a contact reference; the snapshot is about the entity, which a contact merge never touches"},
 	"audit_events": {disposition: mergeRetained, keyCol: "entity_id",
 		reason: "append-only audit trail (ADR: audit is never rewritten); the merge itself is recorded on the keeper"},
 }
@@ -211,6 +214,11 @@ var mergeSeeders = map[string]func(t *testing.T, f *mergeFixture, c models.Conta
 	},
 	"circle_members": func(t *testing.T, f *mergeFixture, c models.Contact) {
 		require.NoError(t, f.db.Create(&models.CircleMember{CircleID: f.cont.circleID, UserID: f.userID, MemberVCardUID: c.VCardUID}).Error)
+	},
+	"contact_entity_links": func(t *testing.T, f *mergeFixture, c models.Contact) {
+		e := models.Entity{UserID: f.userID, Kind: models.EntityKindOrganisation, Name: "Merge Co", Sensitivity: "normal"}
+		require.NoError(t, f.db.Create(&e).Error)
+		require.NoError(t, f.db.Create(&models.ContactEntityLink{UserID: f.userID, ContactVCardUID: c.VCardUID, EntityID: e.ID, Kind: e.Kind, Role: "employee", Sensitivity: "normal"}).Error)
 	},
 	"contact_tags": func(t *testing.T, f *mergeFixture, c models.Contact) {
 		require.NoError(t, f.db.Create(&models.ContactTag{TagID: f.cont.tagID, UserID: f.userID, ContactVCardUID: c.VCardUID}).Error)

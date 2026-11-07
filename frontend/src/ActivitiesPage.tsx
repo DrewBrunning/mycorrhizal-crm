@@ -68,7 +68,8 @@ const ActivitiesPage: React.FC = () => {
   const [toDate, setToDate] = useState('');
   const ACTIVITIES_PER_PAGE = 25;
 
-  // T17: cursor pagination — the timeline pages by (updated_at, id) and a
+  // T17: cursor pagination — the timeline pages by (date, id) (#2360: the
+  // activity's own date, newest first, not last-modified) and a
   // "load more" button appends the next_cursor page. There is no page number
   // or exact total anymore.
   const activityParams = useMemo(
@@ -78,6 +79,7 @@ const ActivitiesPage: React.FC = () => {
       search: debouncedSearch.trim() || undefined,
       fromDate: fromDate || undefined,
       toDate: toDate || undefined,
+      sort: 'date' as const,
     }),
     [debouncedSearch, fromDate, toDate],
   );

@@ -1537,6 +1537,18 @@ class ApiClientTest {
     }
 
     @Test
+    fun `listActivities sends sort=date only when asked (2360)`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"activities":[]}"""))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"activities":[]}"""))
+
+        client.listActivities(limit = 20)
+        client.listActivities(limit = 20, sortByDate = true)
+
+        assertEquals("/api/v1/activities?limit=20", server.takeRequest().path)
+        assertEquals("/api/v1/activities?limit=20&sort=date", server.takeRequest().path)
+    }
+
+    @Test
     fun `list contact activities sends search date and cursor params and parses next_cursor`() =
         runBlocking {
             server.enqueue(

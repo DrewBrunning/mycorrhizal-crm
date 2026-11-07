@@ -148,7 +148,7 @@ These routes, and everything else under `/webauthn/*`, are absent from an embedd
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/activities` | List all activities |
+| `GET` | `/activities` | List all activities (`?sort=date` orders by activity date) |
 | `POST` | `/activities` | Create an activity |
 | `GET` | `/activities/:id` | Get an activity |
 | `PUT` | `/activities/:id` | Update an activity |
