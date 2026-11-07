@@ -176,12 +176,13 @@ class ActivityRepositoryImplTest {
 
     // M9: the Activities drawer inbox — GET /activities?include=contacts, all contacts' activities.
     @Test
-    fun `listAll requests included contacts and caches the page`() = runTest {
+    fun `listAll requests included contacts in activity-date order and caches the page`() = runTest {
         coEvery {
             apiClient.listActivities(
                 cursor = null,
                 limit = null,
-                includeContacts = true
+                includeContacts = true,
+                sortByDate = true
             )
         } returns Result.success(
             ActivitiesPage(
@@ -208,7 +209,8 @@ class ActivityRepositoryImplTest {
             apiClient.listActivities(
                 cursor = null,
                 limit = null,
-                includeContacts = true
+                includeContacts = true,
+                sortByDate = true
             )
         } returns Result.success(
             ActivitiesPage(activitiesRaw = null)
