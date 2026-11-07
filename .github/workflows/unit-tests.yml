@@ -327,11 +327,10 @@ jobs:
         run: go run ./cmd/pragmacheck
 
   # REL-05 (#449): a PR touching an operator-visible surface
-  # (`changelog-relevant` in .github/filters.yaml) must carry an `##
-  # Upgrade notes`/`## Security-relevant changes`/`## Breaking changes`
-  # block, or `no-changelog: <reason>`. Pull-request only (no PR body on a
-  # push); a skipped job reports success so it can be a required check.
-  # Policy: docs/changelog-policy.md.
+  # (`changelog-relevant` in .github/filters.yaml) must change CHANGELOG.md or
+  # carry `no-changelog: <reason>` (issue #2242). Pull-request only (no PR
+  # body on a push); a skipped job reports success so it can be a required
+  # check. Policy: docs/changelog-policy.md.
   changelog-note:
     name: Changelog note for operator-visible change
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
@@ -339,22 +338,29 @@ jobs:
     if: github.event_name == 'pull_request' && needs.changes.outputs.changelog-relevant == 'true'
     permissions:
       contents: read
+      pull-requests: read
     steps:
-      - name: Require an Upgrade notes block or an explicit opt-out
+      - name: Require a CHANGELOG.md entry or an explicit opt-out
         env:
           # Via env, never inline -- PR body is attacker-controlled.
           PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -eu
-          if printf '%s' "$PR_BODY" | grep -qiE '^#{1,6}[[:space:]]+(upgrade notes|security-relevant changes|breaking changes)[[:space:]]*$'; then
-            echo "Found an operator-notes block (Upgrade notes / Security-relevant changes / Breaking changes)."
+          # Assigned first so an API failure fails the step (set -e) instead
+          # of reading as "CHANGELOG.md not changed".
+          files="$(gh api --paginate "repos/${GH_REPO}/pulls/${PR_NUMBER}/files" --jq '.[].filename')"
+          if printf '%s\n' "$files" | grep -qx 'CHANGELOG.md'; then
+            echo "CHANGELOG.md is part of this PR."
             exit 0
           fi
           if printf '%s' "$PR_BODY" | grep -qiE 'no-changelog:[[:space:]]*\S'; then
             echo "Found a 'no-changelog: <reason>' opt-out."
             exit 0
           fi
-          echo "::error::This PR changes an operator-visible surface (a migration, the config surface, or .env.example) but its description has no operator-notes block (## Upgrade notes / ## Security-relevant changes / ## Breaking changes) and no 'no-changelog: <reason>' line. See docs/changelog-policy.md."
+          echo "::error::This PR changes an operator-visible surface (a migration, the config surface, or .env.example) but does not change CHANGELOG.md and its description has no 'no-changelog: <reason>' line. See docs/changelog-policy.md."
           exit 1
 
   # Issue #1188: Codecov only creates `codecov/patch/<area>` check runs once

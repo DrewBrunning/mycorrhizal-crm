@@ -103,38 +103,34 @@ depend on the label.
 are classified by [`breaking-change-policy.md`](breaking-change-policy.md)
 (MAINT-02, issue #491). This page does not restate those.
 
-## When a pull request must carry operator notes
+## When a pull request must carry a changelog entry
 
-A PR needs an `## Upgrade notes` block in its description when it does any of:
+A user-visible change adds its entry to `[Unreleased]` in the same pull request.
+Operator-visible changes need one without exception:
 
-- adds, renames, retypes, or drops a **database migration**;
-- adds, renames, or changes the default or meaning of a **configuration
-  variable**;
-- changes **observable behavior** an operator or client could rely on;
-- **deprecates** anything on a covered surface;
-- otherwise requires **action before or after upgrading**.
+- a **database migration** (add, rename, retype, drop);
+- a **configuration variable** (add, rename, or change of default or meaning);
+- **observable behavior** an operator or client could rely on;
+- a **deprecation** on a covered surface
+  ([`deprecations.md`](deprecations.md); breaking changes follow
+  [`breaking-change-policy.md`](breaking-change-policy.md));
+- anything that requires **action before or after upgrading**. Put it in the
+  release's `> **Upgrade**` blockquote.
 
-Add `## Breaking changes` as well when the change is breaking under
-[`breaking-change-policy.md`](breaking-change-policy.md).
-
-A PR adds a `## Security-relevant changes` block when it changes the security
-posture in a way an operator should notice — a new guard or a changed default,
-a raised version floor, a new required configuration value, a new
-authentication path or trust boundary. It complements the `security` label
-(the generated *what changed* half) with the operator-facing *what this means
-for you* half; a change that adds a new security-relevant surface also needs a
-per-release delta row ([`adversarial-deltas.md`](security/adversarial-deltas.md),
-issue #953).
+A change to the security posture an operator should notice (a new guard or
+changed default, a raised version floor, a new required configuration value, a
+new authentication path or trust boundary) gets a `Security` bullet. A new
+security-relevant surface also needs a per-release delta row
+([`adversarial-deltas.md`](security/adversarial-deltas.md), issue #953).
 
 If a PR touches one of the tracked paths (`backend/database/migrations/**`,
-`backend/config/config.go`, `.env.example`) but genuinely needs no operator
-note, put `no-changelog: <reason>` in the PR description. The `changelog-note`
-CI job fails a PR that touches those paths with none of an `## Upgrade notes` /
-`## Security-relevant changes` / `## Breaking changes` heading and no
+`backend/config/config.go`, `.env.example`) but genuinely needs no entry, put
+`no-changelog: <reason>` in the PR description. The `changelog-note` CI job
+fails a PR that touches those paths, does not change `CHANGELOG.md`, and has no
 `no-changelog:` line.
 
-Everything else — internal refactors, test-only changes, most bug fixes — needs
-nothing beyond the right label.
+Internal refactors, test-only changes and other changes with no user-visible
+effect need no entry.
 
 ## Upgrade notes are always answered
 

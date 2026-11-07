@@ -39,10 +39,10 @@ implement in small TDD loops, self-review, run the local per-PR suite, then open
 - Describe what changed and why, not how.
 - If the change is operator-visible — a database migration, a configuration
   variable, a behavior change, a deprecation, or anything needing action before
-  or after upgrading — put an `## Upgrade notes` block in the PR description (and
-  `## Breaking changes` if it applies). It is harvested into the release notes.
-  If a migration/config change genuinely needs no note, write
-  `no-changelog: <reason>` instead. See the
+  or after upgrading — add an entry to `CHANGELOG.md` under `[Unreleased]`, with an
+  `> **Upgrade**` blockquote if the operator must act. It becomes the release
+  notes. If a migration/config change genuinely needs no entry, write
+  `no-changelog: <reason>` in the PR description instead. See the
   [changelog policy](../changelog-policy.md).
 - Sign off every commit — see below.
 

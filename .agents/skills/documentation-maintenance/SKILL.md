@@ -47,8 +47,8 @@ Report any check you could not run; never imply it passed.
 
 - A generated doc's diff would be hand-written rather than regenerated.
 - A citation points at a line or a deletion instead of a declaration/step.
-- An operator-visible change has no `## Upgrade notes` (or `no-changelog:`) in
-  the PR body.
+- An operator-visible change has no `CHANGELOG.md` entry (or `no-changelog:` in
+  the PR body).
 - The docs would need to duplicate a canonical policy page.
 
 Canonical detail: `docs/AGENTS.md`, `docs/changelog-policy.md`,
