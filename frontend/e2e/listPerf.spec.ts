@@ -18,7 +18,7 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
  */
 
 const SEED_COUNT = 150;
-const PAGE_LIMIT_CEILING = 100; // a bounded page — cursor pagination, not "give me everything"
+const PAGE_LIMIT_CEILING = 100; // a bounded page — offset pagination, not "give me everything"
 const seededIds: number[] = [];
 
 test.describe('Contact list pagination at scale', { tag: '@perf-heavy' }, () => {
@@ -62,22 +62,23 @@ test.describe('Contact list pagination at scale', { tag: '@perf-heavy' }, () => 
     );
   });
 
-  test('Load More resumes from the cursor and grows the DOM linearly without unbounded heap growth', async ({
+  test('paging by offset keeps the DOM bounded per page and heap flat, with no duplicate rows across pages (#2188)', async ({
     page,
   }) => {
-    const contactsRequests: { hasCursor: boolean; limit: number | null }[] = [];
+    const contactsRequests: { offset: number; limit: number | null; hasCursor: boolean }[] = [];
     page.on('request', (req) => {
       const url = req.url();
       if (req.method() === 'GET' && /\/api\/v1\/contacts\?/.test(url)) {
         const params = new URL(url).searchParams;
         contactsRequests.push({
-          hasCursor: params.has('cursor'),
+          offset: Number(params.get('offset') ?? 0),
           limit: params.has('limit') ? Number(params.get('limit')) : null,
+          hasCursor: params.has('cursor'),
         });
       }
     });
 
-    await page.goto('/contacts?has_contact_info=false');
+    await page.goto('/contacts?has_contact_info=false&size=25');
     await waitForLoading(page);
 
     const heap = () =>
@@ -89,40 +90,43 @@ test.describe('Contact list pagination at scale', { tag: '@perf-heavy' }, () => 
     const heapStart = await heap();
 
     const cardCount = () => page.getByTestId('contact-card').count();
+    const cardIds = () =>
+      page
+        .getByTestId('contact-card')
+        .evaluateAll((els) => els.map((el) => el.getAttribute('data-contact-id')));
     const startCards = await cardCount();
     expect(startCards).toBeGreaterThan(0);
+    expect(startCards).toBeLessThanOrEqual(25);
 
-    const loadMore = page.getByRole('button', { name: /load more/i });
+    const next = page.getByRole('button', { name: 'Go to next page' });
+    const seen = new Set<string | null>(await cardIds());
     let clicks = 0;
-    while ((await loadMore.count()) > 0 && (await loadMore.isVisible()) && clicks < 12) {
-      const before = await cardCount();
-      await loadMore.click();
-      await expect.poll(() => cardCount()).toBeGreaterThan(before);
+    while ((await next.isEnabled()) && clicks < 12) {
+      await next.click();
+      await expect(page).toHaveURL(new RegExp(`page=${clicks + 2}`));
       await waitForLoading(page);
+      const ids = await cardIds();
+      // One page is rendered at a time: the DOM never accumulates.
+      expect(ids.length).toBeLessThanOrEqual(25);
+      for (const id of ids) {
+        expect(seen.has(id), `row ${id} repeated across pages`).toBeFalsy();
+        seen.add(id);
+      }
       clicks++;
     }
 
     expect(clicks, 'expected several pages of seeded data').toBeGreaterThanOrEqual(3);
 
-    // Every contacts request asked for a bounded page.
+    // Every contacts request asked for a bounded page and an offset, never a
+    // cursor (the two are mutually exclusive server-side).
     for (const r of contactsRequests) {
       expect(r.limit === null || r.limit <= PAGE_LIMIT_CEILING).toBeTruthy();
+      expect(r.hasCursor).toBe(false);
     }
-    // Exactly one cursor-less request (the initial page). Load More must never
-    // re-request page one.
-    expect(contactsRequests.filter((r) => !r.hasCursor).length).toBe(1);
-    // Every subsequent request resumed from a cursor.
-    expect(contactsRequests.filter((r) => r.hasCursor).length).toBe(clicks);
+    const offsets = new Set(contactsRequests.map((r) => r.offset));
+    for (let i = 0; i <= clicks; i++) expect(offsets.has(i * 25)).toBeTruthy();
 
-    // DOM grew ~linearly with pages loaded (no virtualization — pinned so a
-    // regression to "hold everything and re-render" is visible), and every
-    // rendered row is unique (no duplicate append).
     const endCards = await cardCount();
-    expect(endCards).toBeGreaterThan(startCards);
-    const ids = await page
-      .getByTestId('contact-card')
-      .evaluateAll((els) => els.map((el) => el.getAttribute('data-contact-id')));
-    expect(new Set(ids).size).toBe(ids.length);
 
     // Heap is a trend signal, not a hard gate (noisy runner) — this only
     // catches a gross regression such as retaining every page's full payload.
