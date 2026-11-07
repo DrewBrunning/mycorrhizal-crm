@@ -6,6 +6,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -196,4 +198,20 @@ func keysOf(m map[string]any) []string {
 		out = append(out, k)
 	}
 	return out
+}
+
+func TestGetGraph_IncludeEntities_QueryFailureIs500(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test logs: Request error")
+	g := newGraphEntityEnv(t)
+	g.contact(t, "A")
+	dbtest.HideTable(t, g.db, "contact_entity_links")
+	req, _ := http.NewRequest("GET", "/graph?include_entities=true", nil)
+	w := httptest.NewRecorder()
+	g.router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	// The default response does not touch the table and is unaffected.
+	req, _ = http.NewRequest("GET", "/graph", nil)
+	w = httptest.NewRecorder()
+	g.router.ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
 }

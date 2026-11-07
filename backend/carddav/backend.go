@@ -452,7 +452,9 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	// entry that is only that echo so an unchanged PUT is a no-op on the stored
 	// Card (issue #2298). Entries carrying ent- IDs are dropped inside
 	// ApplyRecordToContact. Runs on the stored contact, before the apply.
-	models.SuppressEntityProjectionEcho(b.getDB(ctx), &contact, record)
+	if err := models.SuppressEntityProjectionEcho(b.getDB(ctx), &contact, record); err != nil {
+		return nil, webdav.NewHTTPError(http.StatusInternalServerError, fmt.Errorf("carddav: failed to check entity projection: %w", err))
+	}
 
 	// The same full-overwrite rule applies to personalInfo (issue #1738): an
 	// above-normal hobby is withheld by RecordForContactForSync, so this PUT

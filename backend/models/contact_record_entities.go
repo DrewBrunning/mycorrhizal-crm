@@ -57,6 +57,14 @@ func SetEntityProjectionToday(fn func() *contactmodel.PartialDate) (restore func
 	}
 }
 
+// InstallEntityProjectionClock wires the owner-day provider from a clock and
+// the owner's zone (the reminder timezone, ADR 0015) and returns the restore.
+func InstallEntityProjectionClock(now func() time.Time, loc *time.Location) (restore func()) {
+	return SetEntityProjectionToday(func() *contactmodel.PartialDate {
+		return PartialDateOf(now().In(loc))
+	})
+}
+
 // PartialDateOf returns t's calendar day as a full PartialDate.
 func PartialDateOf(t time.Time) *contactmodel.PartialDate {
 	y, m, d := t.Year(), int(t.Month()), t.Day()
@@ -98,8 +106,19 @@ type projectedEntity struct {
 // non-primary links never project. A lookup failure degrades to no projection
 // (best-effort, like the sibling projections).
 func currentEntityProjections(db *gorm.DB, userID uint, vcardUID string, includeSensitive bool) []projectedEntity {
-	if db == nil || vcardUID == "" {
+	out, err := loadEntityProjections(db, userID, vcardUID, includeSensitive)
+	if err != nil {
+		logger.Warn().Err(err).Str("vcard_uid", vcardUID).Msg("projectPrimaryEntities: failed to load primary entity links")
 		return nil
+	}
+	return out
+}
+
+// loadEntityProjections is currentEntityProjections with the lookup error
+// surfaced, for the write path (echo suppression), which must fail closed.
+func loadEntityProjections(db *gorm.DB, userID uint, vcardUID string, includeSensitive bool) ([]projectedEntity, error) {
+	if db == nil || vcardUID == "" {
+		return nil, nil
 	}
 	q := db.Where("user_id = ? AND contact_vcard_uid = ? AND is_primary = ? AND kind IN ?",
 		userID, vcardUID, true, []string{EntityKindOrganisation, EntityKindPlace})
@@ -108,11 +127,10 @@ func currentEntityProjections(db *gorm.DB, userID uint, vcardUID string, include
 	}
 	var links []ContactEntityLink
 	if err := q.Order("kind, id").Find(&links).Error; err != nil {
-		logger.Warn().Err(err).Str("vcard_uid", vcardUID).Msg("projectPrimaryEntities: failed to load primary links")
-		return nil
+		return nil, err
 	}
 	if len(links) == 0 {
-		return nil
+		return nil, nil
 	}
 	today := projectionToday()
 	ids := make([]string, 0, len(links))
@@ -125,8 +143,7 @@ func currentEntityProjections(db *gorm.DB, userID uint, vcardUID string, include
 	}
 	var entities []Entity
 	if err := eq.Find(&entities).Error; err != nil {
-		logger.Warn().Err(err).Str("vcard_uid", vcardUID).Msg("projectPrimaryEntities: failed to load entities")
-		return nil
+		return nil, err
 	}
 	byID := make(map[string]*Entity, len(entities))
 	for i := range entities {
@@ -164,7 +181,7 @@ func currentEntityProjections(db *gorm.DB, userID uint, vcardUID string, include
 			out = append(out, projectedEntity{LinkID: l.ID, Addr: &addr})
 		}
 	}
-	return out
+	return out, nil
 }
 
 var sensitivityRank = map[string]int{"": 0, "normal": 0, "private": 1, "secret": 2}
@@ -324,13 +341,20 @@ func StripProjectedEntityIDs(r *contactmodel.Record) *contactmodel.Record {
 // Call it before ApplyRecordToContact on every inbound path that has a db and an
 // existing contact (CardDAV PUT, REST update). It mutates only rec.Card's
 // ORG/ADR slice headers (copies) and is a no-op when nothing is projected.
-func SuppressEntityProjectionEcho(db *gorm.DB, existing *Contact, rec *contactmodel.Record) {
+//
+// It returns the lookup error and the caller MUST abort the write on one: unlike
+// the read projection (best-effort), failing open here would let an id-stripped
+// echo of the projection be stored as a contact value.
+func SuppressEntityProjectionEcho(db *gorm.DB, existing *Contact, rec *contactmodel.Record) error {
 	if db == nil || existing == nil || rec == nil || existing.VCardUID == "" {
-		return
+		return nil
 	}
-	projs := currentEntityProjections(db, existing.UserID, existing.VCardUID, false)
+	projs, err := loadEntityProjections(db, existing.UserID, existing.VCardUID, false)
+	if err != nil {
+		return err
+	}
 	if len(projs) == 0 {
-		return
+		return nil
 	}
 	for _, p := range projs {
 		switch {
@@ -362,4 +386,40 @@ func SuppressEntityProjectionEcho(db *gorm.DB, existing *Contact, rec *contactmo
 			rec.Card.Addresses = kept
 		}
 	}
+	return nil
+}
+
+// DetachProjectedEntityIDs returns a copy of r in which every reserved ent-
+// element ID is blanked (the adapters then mint ordinary synthetic IDs). It is
+// for the cross-user share surfaces: the recipient imports the projected ORG/ADR
+// as an ordinary value (an ent- ID would be dropped on import as an echo), and
+// the sender's link ID has no business reaching another account.
+func DetachProjectedEntityIDs(r *contactmodel.Record) *contactmodel.Record {
+	if r == nil {
+		return r
+	}
+	has := false
+	for _, o := range r.Card.Organizations {
+		has = has || IsEntityProjectionID(o.ID)
+	}
+	for _, a := range r.Card.Addresses {
+		has = has || IsEntityProjectionID(a.ID)
+	}
+	if !has {
+		return r
+	}
+	out := *r
+	out.Card.Organizations = append([]contactmodel.Organization(nil), r.Card.Organizations...)
+	for i := range out.Card.Organizations {
+		if IsEntityProjectionID(out.Card.Organizations[i].ID) {
+			out.Card.Organizations[i].ID = ""
+		}
+	}
+	out.Card.Addresses = append([]contactmodel.Address(nil), r.Card.Addresses...)
+	for i := range out.Card.Addresses {
+		if IsEntityProjectionID(out.Card.Addresses[i].ID) {
+			out.Card.Addresses[i].ID = ""
+		}
+	}
+	return &out
 }

@@ -159,7 +159,7 @@ func TestProjection_ExportImportRoundTripLeavesStoredCardUnchanged(t *testing.T)
 
 			imported, err := rt.do(RecordForContactForSync(&stored, "", f.db))
 			require.NoError(t, err)
-			SuppressEntityProjectionEcho(f.db, &stored, imported)
+			require.NoError(t, SuppressEntityProjectionEcho(f.db, &stored, imported))
 			ApplyRecordToContact(&stored, imported, "")
 			require.NoError(t, f.db.Save(&stored).Error)
 

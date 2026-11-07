@@ -3,6 +3,7 @@ package models
 import (
 	"encoding/json"
 	"testing"
+	"time"
 
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
@@ -262,7 +263,7 @@ func TestSuppressEntityProjectionEcho_IDStrippingClient(t *testing.T) {
 	for i := range echo.Card.Addresses {
 		echo.Card.Addresses[i].ID, echo.Card.Addresses[i].Pref = "", nil
 	}
-	SuppressEntityProjectionEcho(f.db, stored, echo)
+	require.NoError(t, SuppressEntityProjectionEcho(f.db, stored, echo))
 	require.Len(t, echo.Card.Organizations, 1)
 	assert.Equal(t, "Own Co", echo.Card.Organizations[0].Name)
 	assert.Empty(t, echo.Card.Addresses)
@@ -270,7 +271,7 @@ func TestSuppressEntityProjectionEcho_IDStrippingClient(t *testing.T) {
 	// A client edit of the projected value is an ordinary new value (no loss).
 	edited := &contactmodel.Record{Card: contactmodel.Card{Organizations: []contactmodel.Organization{
 		{Name: "Own Co"}, {Name: "Acme Renamed", Units: []contactmodel.OrgUnit{{Name: "R&D"}}}}}}
-	SuppressEntityProjectionEcho(f.db, stored, edited)
+	require.NoError(t, SuppressEntityProjectionEcho(f.db, stored, edited))
 	assert.Len(t, edited.Card.Organizations, 2)
 }
 
@@ -279,15 +280,15 @@ func TestSuppressEntityProjectionEcho_ValueTheContactAlsoOwnsIsKept(t *testing.T
 	stored := f.contactWithCard(t, contactmodel.Card{Organizations: []contactmodel.Organization{{ID: "own", Name: "Acme", Units: []contactmodel.OrgUnit{{Name: "R&D"}}}}})
 	f.link(t, f.org(t, "Acme", "normal"), true, "normal", nil)
 	rec := &contactmodel.Record{Card: contactmodel.Card{Organizations: []contactmodel.Organization{{Name: "Acme", Units: []contactmodel.OrgUnit{{Name: "R&D"}}}}}}
-	SuppressEntityProjectionEcho(f.db, stored, rec)
+	require.NoError(t, SuppressEntityProjectionEcho(f.db, stored, rec))
 	assert.Len(t, rec.Card.Organizations, 1, "the contact owns that value; it is not an echo")
 }
 
 func TestSuppressEntityProjectionEcho_NilSafe(t *testing.T) {
-	SuppressEntityProjectionEcho(nil, nil, nil)
+	assert.NoError(t, SuppressEntityProjectionEcho(nil, nil, nil))
 	f := newProjFixture(t)
-	SuppressEntityProjectionEcho(f.db, nil, &contactmodel.Record{})
-	SuppressEntityProjectionEcho(f.db, &f.contact, nil)
+	require.NoError(t, SuppressEntityProjectionEcho(f.db, nil, &contactmodel.Record{}))
+	require.NoError(t, SuppressEntityProjectionEcho(f.db, &f.contact, nil))
 	SuppressEntityProjectionEcho(f.db, &f.contact, &contactmodel.Record{}) // no links: no-op
 }
 
@@ -315,7 +316,7 @@ func TestProjectionRoundTrip_UnchangedWriteBackLeavesStoredCardUntouched(t *test
 				rec.Card.Addresses[i].ID, rec.Card.Addresses[i].Pref = "", nil
 			}
 		}
-		SuppressEntityProjectionEcho(f.db, &c, rec)
+		require.NoError(t, SuppressEntityProjectionEcho(f.db, &c, rec))
 		ApplyRecordToContact(&c, rec, "")
 		require.NoError(t, f.db.Save(&c).Error)
 
@@ -377,4 +378,118 @@ func TestApplyRecordToContact_InternalReadEditApplyNeverStoresProjection(t *test
 	require.Len(t, after.Card.Organizations, 1)
 	assert.Equal(t, "own", after.Card.Organizations[0].ID)
 	assert.Empty(t, after.Card.Addresses)
+}
+
+func TestSuppressEntityProjectionEcho_LookupFailureFailsClosed(t *testing.T) {
+	f := newProjFixture(t)
+	stored := f.contactWithCard(t, contactmodel.Card{})
+	dbtest.HideTable(t, f.db, "contact_entity_links")
+	err := SuppressEntityProjectionEcho(f.db, stored, &contactmodel.Record{})
+	assert.Error(t, err, "the write path must not fail open and store an echo")
+}
+
+func TestDetachProjectedEntityIDs(t *testing.T) {
+	assert.Nil(t, DetachProjectedEntityIDs(nil))
+	plain := &contactmodel.Record{Card: contactmodel.Card{Organizations: []contactmodel.Organization{{ID: "own", Name: "A"}}}}
+	assert.Same(t, plain, DetachProjectedEntityIDs(plain))
+	r := &contactmodel.Record{Card: contactmodel.Card{
+		Organizations: []contactmodel.Organization{{ID: "own", Name: "A"}, {ID: "ent-1", Name: "B"}},
+		Addresses:     []contactmodel.Address{{ID: "ent-2"}, {ID: "x"}},
+	}}
+	got := DetachProjectedEntityIDs(r)
+	assert.Equal(t, []string{"own", ""}, []string{got.Card.Organizations[0].ID, got.Card.Organizations[1].ID})
+	assert.Equal(t, []string{"", "x"}, []string{got.Card.Addresses[0].ID, got.Card.Addresses[1].ID})
+	assert.Equal(t, "ent-1", r.Card.Organizations[1].ID, "input is not mutated")
+}
+
+func TestInstallEntityProjectionClock_UsesOwnerZoneDay(t *testing.T) {
+	// 2026-06-01 23:30 UTC is already 2026-06-02 in Auckland.
+	loc, err := time.LoadLocation("Pacific/Auckland")
+	require.NoError(t, err)
+	restore := InstallEntityProjectionClock(func() time.Time { return time.Date(2026, 6, 1, 23, 30, 0, 0, time.UTC) }, loc)
+	got := projectionToday()
+	assert.Equal(t, 2, *got.Day, "the owner's calendar day, not UTC's")
+	restore()
+	// Restored: the (system, UTC) default is back and returns a full date.
+	d := projectionToday()
+	assert.NotNil(t, d.Year)
+}
+
+func TestLinkIsCurrent_EdgeCases(t *testing.T) {
+	y, m, d := 2026, 6, 1
+	today := &contactmodel.PartialDate{Year: &y, Month: &m, Day: &d}
+	assert.True(t, linkIsCurrent(nil, today))
+	// Endpoint at the same day is current on both ends.
+	assert.True(t, linkIsCurrent(&contactmodel.TemporalRange{Start: today, End: today}, today))
+	// Year-only endpoints compare at shared precision: end 2026 includes June 2026.
+	assert.True(t, linkIsCurrent(&contactmodel.TemporalRange{End: &contactmodel.PartialDate{Year: &y}}, today))
+}
+
+func TestProjectPrimaryEntities_EdgeBranches(t *testing.T) {
+	t.Run("blank organisation name falls back to the entity name", func(t *testing.T) {
+		f := newProjFixture(t)
+		f.contactWithCard(t, contactmodel.Card{})
+		e := Entity{UserID: f.user.ID, Kind: EntityKindOrganisation, Name: "Fallback Inc"}
+		require.NoError(t, f.db.Create(&e).Error) // core "{}": organization name empty
+		f.link(t, e, true, "normal", nil)
+		rec := f.record(t, FieldSelectionAll())
+		require.Len(t, rec.Card.Organizations, 1)
+		assert.Equal(t, "Fallback Inc", rec.Card.Organizations[0].Name)
+	})
+	t.Run("a place with no address never projects", func(t *testing.T) {
+		f := newProjFixture(t)
+		f.contactWithCard(t, contactmodel.Card{})
+		e := Entity{UserID: f.user.ID, Kind: EntityKindPlace, Name: "Nowhere"}
+		require.NoError(t, f.db.Create(&e).Error)
+		f.link(t, e, true, "normal", nil)
+		assert.Empty(t, f.record(t, FieldSelectionAll()).Card.Addresses)
+	})
+	t.Run("value-equal own address drops the projected one; pref caps at 100", func(t *testing.T) {
+		f := newProjFixture(t)
+		pl := f.place(t, "normal")
+		core, err := pl.DecodeCore()
+		require.NoError(t, err)
+		same := core.(*PlaceCore).Address
+		same.ID = "own"
+		f.contactWithCard(t, contactmodel.Card{Addresses: []contactmodel.Address{same}})
+		f.link(t, pl, true, "normal", nil)
+		assert.Len(t, f.record(t, FieldSelectionAll()).Card.Addresses, 1, "own value-equal address wins")
+
+		// Cap: an own address already at pref 100.
+		f2 := newProjFixture(t)
+		hundred := 100
+		f2.contactWithCard(t, contactmodel.Card{Addresses: []contactmodel.Address{{ID: "own", Pref: &hundred,
+			Components: []contactmodel.AddressComponent{{Kind: "name", Value: "Elsewhere"}}}}})
+		f2.link(t, f2.place(t, "normal"), true, "normal", nil)
+		addrs := f2.record(t, FieldSelectionAll()).Card.Addresses
+		require.Len(t, addrs, 2)
+		assert.Equal(t, 100, *addrs[1].Pref)
+	})
+	t.Run("entity lookup failure degrades to no projection and fails the write helper", func(t *testing.T) {
+		f := newProjFixture(t)
+		stored := f.contactWithCard(t, contactmodel.Card{})
+		f.link(t, f.org(t, "Acme", "normal"), true, "normal", nil)
+		dbtest.HideTable(t, f.db, "entities")
+		assert.Empty(t, f.record(t, FieldSelectionAll()).Card.Organizations)
+		assert.Error(t, SuppressEntityProjectionEcho(f.db, stored, &contactmodel.Record{}))
+	})
+	t.Run("ID-stripped echo of a place is dropped", func(t *testing.T) {
+		f := newProjFixture(t)
+		stored := f.contactWithCard(t, contactmodel.Card{Addresses: []contactmodel.Address{{ID: "own",
+			Components: []contactmodel.AddressComponent{{Kind: "name", Value: "9 Elm"}}}}})
+		f.link(t, f.place(t, "normal"), true, "normal", nil)
+		echo := f.record(t, FieldSelectionAll())
+		for i := range echo.Card.Addresses {
+			echo.Card.Addresses[i].ID, echo.Card.Addresses[i].Pref = "", nil
+		}
+		require.NoError(t, SuppressEntityProjectionEcho(f.db, stored, echo))
+		assert.Len(t, echo.Card.Addresses, 1)
+	})
+	t.Run("strip handles address-only projection and periods", func(t *testing.T) {
+		r := &contactmodel.Record{Card: contactmodel.Card{Addresses: []contactmodel.Address{{ID: "ent-9"}, {ID: "own"}}}}
+		out := StripProjectedEntityIDs(r)
+		require.Len(t, out.Card.Addresses, 1)
+		assert.Equal(t, "own", out.Card.Addresses[0].ID)
+		assert.Nil(t, StripProjectedEntityIDs(nil))
+	})
 }

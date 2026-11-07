@@ -145,6 +145,7 @@ func TestEntityProjection_ContactShare(t *testing.T) {
 			assert.NotContains(t, share.Payload, "Springfield")
 		}
 		assertNoEntityLeak(t, "share "+sens, share.Payload)
+		assert.NotContains(t, share.Payload, "ent-", "the sender's link id never reaches another account")
 		assert.NotContains(t, share.Payload, "Cabin", "the entity's own name never leaves, only the projected value")
 	}
 }

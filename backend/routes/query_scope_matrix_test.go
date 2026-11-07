@@ -733,6 +733,7 @@ func buildQueryScopeRows() []qsRow {
 // qsAllow lists "Func:param" handler reads that are scope-named but are NOT
 // probed by a row, each with the recorded reason.
 var qsAllow = map[string]string{
+	"GetGraph:include_entities":                   "response-shape flag (#2298): adds display-only entity nodes/edges from a user_id-scoped join (links AND entities owned by the caller); cross-user and scoping covered by controllers/graph_entities_test.go",
 	"GetContacts:include_total":                   "response-shape flag (#2188): adds a COUNT over the already user-scoped query; scoping is covered by controllers/contact_offset_paging_test.go",
 	"includeSensitiveRequested:include_sensitive": "only reached from the POST geocode handlers (no GET route reads it); sensitive-address filtering is covered by controllers/contact_address_controller_test.go",
 	"ListSystemEvents:ids":                        "admin-only route (non-admins get 403 in authorization_matrix_test.go); system events are instance-wide by design",
@@ -756,6 +757,7 @@ var qsAllow = map[string]string{
 // spec declares with a scope-ish name but that are not row-probed, each with
 // the recorded reason.
 var qsAllowSpec = map[string]string{
+	"/graph|include_entities":                     "response-shape flag (#2298): display-only entity nodes/edges from a user_id-scoped join (qsAllow GetGraph:include_entities)",
 	"/contacts|include_total":                     "response-shape flag (#2188): a COUNT over the already user-scoped query (qsAllow GetContacts:include_total)",
 	"/admin/job-runs|since":                       "admin-only, instance-wide by design (qsAllow ListJobRuns:since)",
 	"/admin/system-events|correlation_id":         "admin-only, instance-wide by design (qsAllow ListSystemEvents:correlation_id)",

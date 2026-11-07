@@ -821,7 +821,10 @@ func UpdateContact(c *gin.Context) {
 	ambientBefore := contact.Ambient
 	// Echo suppression for a client that stripped the projected ORG/ADR's
 	// element ID (issue #2298); ent- IDs are dropped in ApplyRecordToContact.
-	models.SuppressEntityProjectionEcho(db, &contact, record)
+	if err := models.SuppressEntityProjectionEcho(db, &contact, record); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to check entity links").WithError(err))
+		return
+	}
 	models.ApplyRecordToContact(&contact, record, currentConfig(c).ProfilePhotoDir)
 
 	if contact.Firstname == "" {

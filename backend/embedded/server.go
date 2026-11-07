@@ -26,7 +26,6 @@ import (
 	"mycorrhizal/atrest"
 	"mycorrhizal/buildinfo"
 	"mycorrhizal/config"
-	"mycorrhizal/contactmodel"
 	"mycorrhizal/database"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/i18n"
@@ -142,10 +141,7 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 
 	// Issue #2298: the owner's calendar day (reminder zone, ADR 0015) decides
 	// whether a primary entity link is current when it is projected into a Card.
-	loc := cfg.GetReminderLocation()
-	models.SetEntityProjectionToday(func() *contactmodel.PartialDate {
-		return models.PartialDateOf(services.Now().In(loc))
-	})
+	models.InstallEntityProjectionClock(services.Now, cfg.GetReminderLocation())
 
 	// Issue #954 / #951: advisory boot warnings (advisory, never fatal).
 	for _, warning := range cfg.TrustedProxyWarnings() {
