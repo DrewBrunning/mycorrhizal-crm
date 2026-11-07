@@ -14,7 +14,7 @@ func TestDetectSurfaces(t *testing.T) {
 		"backend/services/immich_client.go",
 		"backend/integrations/registry.go",
 		"backend/middleware/auth.go",
-		"backend/internal/releasenotes/releasenotes.go",
+		"backend/internal/lint/gormerr/gormerr.go",
 		"docs/readme.md",
 		"",
 	}
