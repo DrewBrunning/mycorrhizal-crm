@@ -94,7 +94,18 @@ export default function BulkActionsBar({
         sx={{ mr: 1 }}
       />
 
-      {selectedCount > 0 && (
+      {/* #2365: the actions are always mounted so the bar keeps the same
+          height before and after the first selection; with nothing selected
+          they are invisible (and out of the tab order / a11y tree) but still
+          take their layout space, so the rows below never shift. */}
+      <Box
+        data-testid="bulk-actions"
+        sx={{
+          // The children stay flex items of the bar, so wrapping is unchanged.
+          display: 'contents',
+          visibility: selectedCount > 0 ? 'visible' : 'hidden',
+        }}
+      >
         <>
           <Typography variant="body2" sx={{ fontWeight: 500, whiteSpace: 'nowrap' }}>
             {t('bulk.selected', { count: selectedCount })}
@@ -185,16 +196,14 @@ export default function BulkActionsBar({
           <Button size="small" variant="outlined" disabled={busy} onClick={onEditFields}>
             {t('bulk.editFields')}
           </Button>
-          {/* T92: merge is pairwise, not a one-verb-over-N-rows action, so it
-              is only meaningful (and only enabled) for exactly two selected
-              contacts. Anything else shows it disabled with a tooltip
-              explaining the constraint. */}
-          <Tooltip title={selectedCount === 2 ? '' : t('bulk.mergeSelectTwoHint')}>
+          {/* #2197: merge takes two or more selected contacts; the page folds
+              them into one primary, pair by pair. */}
+          <Tooltip title={selectedCount >= 2 ? '' : t('bulk.mergeSelectAtLeastTwoHint')}>
             <span>
               <Button
                 size="small"
                 variant="outlined"
-                disabled={busy || selectedCount !== 2}
+                disabled={busy || selectedCount < 2}
                 onClick={onMerge}
               >
                 {t('bulk.merge')}
@@ -211,7 +220,7 @@ export default function BulkActionsBar({
             {t('bulk.delete')}
           </Button>
         </>
-      )}
+      </Box>
     </Box>
   );
 }
