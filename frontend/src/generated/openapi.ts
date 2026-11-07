@@ -1233,6 +1233,67 @@ export type EnabledContactFieldsInput = {
   fields?: string[];
 };
 
+export type Entity = {
+  core: Record<string, unknown>;
+  created_at: string;
+  id: string;
+  kind: 'organisation' | 'place' | 'pet';
+  link_count?: number;
+  name: string;
+  projection_count?: number;
+  revision: number;
+  sensitivity: 'normal' | 'private' | 'secret';
+  updated_at: string;
+};
+
+export type EntityContactLink = {
+  contact_id: number;
+  contact_vcard_uid: string;
+  firstname: string;
+  is_primary: boolean;
+  lastname: string;
+  link_id: string;
+  period?: TemporalRange;
+  role: string;
+  role_label: string;
+  sensitivity: 'normal' | 'private' | 'secret';
+};
+
+export type EntityContactsResponse = {
+  contacts: EntityContactLink[];
+};
+
+export type EntityDeleteResponse = {
+  link_count: number;
+  message: string;
+  projection_count: number;
+};
+
+export type EntityInput = {
+  core?: Record<string, unknown>;
+  kind?: 'organisation' | 'place' | 'pet';
+  name: string;
+  sensitivity?: 'normal' | 'private' | 'secret';
+};
+
+export type EntityListResponse = {
+  entities: Entity[];
+  limit: number;
+  next_cursor: string;
+};
+
+export type EntityRestoreResponse = {
+  entity: Entity;
+  same_name_live: boolean;
+  skipped: EntityRestoreSkip[];
+};
+
+export type EntityRestoreSkip = {
+  count: number;
+  reason: string;
+  table: string;
+};
+
 export type EntryPeriod = {
   entry_id: string;
   kind: string;
@@ -1370,7 +1431,7 @@ export type FieldDefinition = {
   position: number;
   projection: string;
   sensitivity: 'normal' | 'private' | 'secret';
-  target: 'contact';
+  target: 'contact' | 'organisation' | 'place' | 'pet';
   type: 'string' | 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'uri' | 'email' | 'phone' | 'enum';
   updated_at: string;
 };
@@ -1382,7 +1443,7 @@ export type FieldDefinitionInput = {
   label: string;
   projection?: string;
   sensitivity?: 'normal' | 'private' | 'secret';
-  target?: 'contact';
+  target?: 'contact' | 'organisation' | 'place' | 'pet';
   type: 'string' | 'text' | 'number' | 'boolean' | 'date' | 'datetime' | 'uri' | 'email' | 'phone' | 'enum';
 };
 

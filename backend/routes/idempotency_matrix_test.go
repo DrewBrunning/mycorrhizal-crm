@@ -91,6 +91,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/notes",
 		"POST /api/v1/activities",
 		"POST /api/v1/life-events",
+		"POST /api/v1/entities",
 		"POST /api/v1/circles",
 		"POST /api/v1/households",
 		"POST /api/v1/tags",
@@ -145,6 +146,8 @@ func buildIdemTable() map[string]idemRow {
 		// Issue #2002, ADR 0037: restore consumes the deletion snapshot, so a
 		// repeat is a checked 404 and the contact.restored webhook fires once.
 		"POST /api/v1/trash/contacts/:id/restore",
+		// Issue #2296, ADR 0043 decision 6: entity restore consumes its snapshot too.
+		"POST /api/v1/entities/:id/restore",
 		// ADR 0031: a repeat resolves the same address to the same stored
 		// coordinate, and the in-memory cache absorbs the repeat lookup.
 		"POST /api/v1/contacts/:id/addresses/:addressId/geocode",

@@ -265,7 +265,7 @@ type CadencePolicyInput struct {
 type FieldDefinitionInput struct {
 	Label       string           `json:"label" validate:"required,max=200"`
 	Key         string           `json:"key" validate:"required,max=100"`
-	Target      string           `json:"target,omitempty" validate:"omitempty,oneof=contact"`
+	Target      string           `json:"target,omitempty" validate:"omitempty,oneof=contact organisation place pet"`
 	Type        string           `json:"type" validate:"required,oneof=string text number boolean date datetime uri email phone enum"`
 	Constraints FieldConstraints `json:"constraints,omitempty"`
 	Projection  string           `json:"projection,omitempty" validate:"omitempty,fielddefprojection"`
@@ -947,4 +947,97 @@ const MaxContactActivitiesBatch = 100
 // client cannot overwrite an activity's title/date/other contacts with it.
 type ContactActivitiesInput struct {
 	ActivityIDs []uint `json:"activity_ids" validate:"required,min=1,max=100"`
+}
+
+// EntityInput is the request body of POST /entities and PUT /entities/{id}
+// (issue #2296, ADR 0043 decision 10). An explicit allowlist: id, user_id,
+// name_key, revision and timestamps are never client-settable. Kind is
+// required on create and, when present on update, must equal the stored kind
+// (it is immutable). Core is the kind-specific JSON, strictly decoded by
+// ValidateEntityCore.
+type EntityInput struct {
+	Kind        string          `json:"kind,omitempty" validate:"omitempty,oneof=organisation place pet"`
+	Name        string          `json:"name" validate:"required,max=200"`
+	Core        json.RawMessage `json:"core,omitempty"`
+	Sensitivity string          `json:"sensitivity,omitempty" validate:"omitempty,oneof=normal private secret"`
+}
+
+// EntityResponse is an entity as the owner's REST surface returns it. Core is
+// decoded JSON (the model keeps it encrypted and json:"-"). LinkCount and
+// ProjectionCount are set on detail and delete responses only.
+type EntityResponse struct {
+	ID          string          `json:"id"`
+	Kind        string          `json:"kind"`
+	Name        string          `json:"name"`
+	Core        json.RawMessage `json:"core"`
+	Sensitivity string          `json:"sensitivity"`
+	Revision    int64           `json:"revision"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+	// LinkCount is the number of live contact links; ProjectionCount is how
+	// many contacts currently receive a projected ORG/ADR from this entity
+	// (live primary link, period includes today), for the delete confirmation.
+	LinkCount       *int `json:"link_count,omitempty"`
+	ProjectionCount *int `json:"projection_count,omitempty"`
+}
+
+// NewEntityResponse builds the response DTO for e.
+func NewEntityResponse(e *Entity) EntityResponse {
+	core := json.RawMessage(e.Core)
+	if e.Core == "" {
+		core = json.RawMessage("{}")
+	}
+	return EntityResponse{
+		ID: e.ID, Kind: e.Kind, Name: e.Name, Core: core, Sensitivity: e.Sensitivity,
+		Revision: e.Revision, CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt,
+	}
+}
+
+// EntityListResponse is GET /entities.
+type EntityListResponse struct {
+	Entities   []EntityResponse `json:"entities"`
+	NextCursor string           `json:"next_cursor"`
+	Limit      int              `json:"limit"`
+}
+
+// EntityRestoreSkip mirrors TrashRestoreSkip for entity restore.
+type EntityRestoreSkip struct {
+	Table  string `json:"table"`
+	Reason string `json:"reason"`
+	Count  int    `json:"count"`
+}
+
+// EntityRestoreResponse is POST /entities/{id}/restore.
+type EntityRestoreResponse struct {
+	Entity  EntityResponse      `json:"entity"`
+	Skipped []EntityRestoreSkip `json:"skipped"`
+	// SameNameLive warns that another live entity of the same kind has the
+	// same normalized name (names are not unique, so this is never a conflict).
+	SameNameLive bool `json:"same_name_live"`
+}
+
+// EntityDeleteResponse is DELETE /entities/{id}.
+type EntityDeleteResponse struct {
+	Message         string `json:"message"`
+	LinkCount       int    `json:"link_count"`
+	ProjectionCount int    `json:"projection_count"`
+}
+
+// EntityContactLink is one live link in GET /entities/{id}/contacts.
+type EntityContactLink struct {
+	LinkID          string                      `json:"link_id"`
+	ContactID       uint                        `json:"contact_id"`
+	ContactVCardUID string                      `json:"contact_vcard_uid"`
+	Firstname       string                      `json:"firstname"`
+	Lastname        string                      `json:"lastname"`
+	Role            string                      `json:"role"`
+	RoleLabel       string                      `json:"role_label"`
+	IsPrimary       bool                        `json:"is_primary"`
+	Period          *contactmodel.TemporalRange `json:"period,omitempty"`
+	Sensitivity     string                      `json:"sensitivity"`
+}
+
+// EntityContactsResponse is GET /entities/{id}/contacts.
+type EntityContactsResponse struct {
+	Contacts []EntityContactLink `json:"contacts"`
 }

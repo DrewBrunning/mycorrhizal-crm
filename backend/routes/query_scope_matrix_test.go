@@ -771,7 +771,7 @@ var qsNonScope = map[string]string{
 	"email": "auth flow", "skip": "pagination offset", "offset": "pagination offset (#2188; row position, not a scope)", "url": "image proxy target URL (SSRF-guarded, not a row scope)",
 	"path": "WebDAV path in the caller's configured remote", "thumbnail": "boolean image variant", "window_hours": "admin aggregation window",
 	"component": "admin filter", "severity": "admin filter", "event_type": "admin filter", "job_name": "admin filter",
-	"result": "admin filter", "date": "geopulse day", "timezone": "geopulse zone",
+	"result": "admin filter", "sensitivity": "sensitivity filter value on the caller's own rows", "date": "geopulse day", "timezone": "geopulse zone",
 }
 
 // ── AST scan of handler query reads ───────────────────────────────────────

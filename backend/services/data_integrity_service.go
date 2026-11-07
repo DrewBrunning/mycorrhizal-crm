@@ -115,6 +115,7 @@ func dataIntegrityChecks() []dataIntegrityCheck {
 		{"orphaned_contact_refs", checkOrphanedContactRefs},       // INV-D3 / INV-D7
 		{"dangling_external_refs", checkDanglingExternalRefs},     // INV-D4
 		{"dangling_field_values", checkDanglingFieldValues},       // INV-D4
+		{"entity_field_values", checkEntityFieldValues},           // INV-D3 / INV-D7 (ADR 0043)
 		{"missing_files", checkMissingFiles},                      // INV-D4
 		{"vanished_audit_refs", checkVanishedAuditRefs},           // INV-D4 (info)
 		{"required_fields", checkRequiredFields},                  // INV-D5 / INV-D6
@@ -343,7 +344,10 @@ func checkOrphanedContactRefs(ctx context.Context, db *gorm.DB, _ config.Config)
 		{table: "contact_tags", col: "contact_vcard_uid", invariant: "INV-D3",
 			missCheck: "contact_tag.orphaned_contact", softCheck: "contact_tag.soft_deleted_contact", repairable: true},
 		{table: "field_values", col: "entity_id", invariant: "INV-D3",
-			missCheck: "field_value.orphaned_contact", softCheck: "field_value.soft_deleted_contact", repairable: true},
+			// Entity-target values (ADR 0043 decision 5) key entity_id by an
+			// entities.id, not a contact uid; checkEntityFieldValues owns them.
+			extraWhere: fieldValueContactOnlyWhere,
+			missCheck:  "field_value.orphaned_contact", softCheck: "field_value.soft_deleted_contact", repairable: true},
 	}
 	return scanContactRefTargets(ctx, db, targets)
 }
@@ -390,6 +394,54 @@ func scanContactRefTargets(ctx context.Context, db *gorm.DB, targets []contactRe
 }
 
 // ---------------------------------------------------------------------------
+// fieldValueContactOnlyWhere restricts a field_values scan (alias j) to values
+// whose definition targets a contact. A value with no definition row stays in
+// scope (dangling_definition reports it separately, as before).
+const fieldValueContactOnlyWhere = "NOT EXISTS (SELECT 1 FROM field_definitions fdt WHERE fdt.id = j.field_definition_id AND fdt.target <> 'contact')"
+
+// INV-D3 / INV-D7 (ADR 0043 decision 5) — an entity-target field value's
+// entity_id resolves to a live entity of the definition's kind.
+func checkEntityFieldValues(ctx context.Context, db *gorm.DB, _ config.Config) ([]IntegrityFinding, error) {
+	type row struct {
+		UserID  uint
+		Missing int
+		Wrong   int
+	}
+	var rows []row
+	const q = `
+SELECT fv.user_id AS user_id,
+       SUM(CASE WHEN e.id IS NULL THEN 1 ELSE 0 END) AS missing,
+       SUM(CASE WHEN e.id IS NOT NULL AND (e.deleted_at IS NOT NULL OR e.kind <> fd.target) THEN 1 ELSE 0 END) AS wrong
+FROM field_values fv
+JOIN field_definitions fd ON fd.id = fv.field_definition_id AND fd.target <> 'contact'
+LEFT JOIN entities e ON e.id = fv.entity_id AND e.user_id = fv.user_id
+GROUP BY fv.user_id
+HAVING missing > 0 OR wrong > 0`
+	if err := db.WithContext(ctx).Raw(q).Scan(&rows).Error; err != nil {
+		return nil, err
+	}
+	var out []IntegrityFinding
+	for _, r := range rows {
+		if r.Missing > 0 {
+			out = append(out, IntegrityFinding{
+				Invariant: "INV-D3", Check: "field_value.orphaned_entity",
+				Severity: IntegritySeverityViolation, UserID: r.UserID, Count: r.Missing,
+				Detail:     fmt.Sprintf("%d field_values row(s) reference an entity that no longer exists", r.Missing),
+				Repairable: true,
+			})
+		}
+		if r.Wrong > 0 {
+			out = append(out, IntegrityFinding{
+				Invariant: "INV-D7", Check: "field_value.entity_deleted_or_wrong_kind",
+				Severity: IntegritySeverityViolation, UserID: r.UserID, Count: r.Wrong,
+				Detail:     fmt.Sprintf("%d field_values row(s) reference a soft-deleted entity or one of a different kind than the definition targets", r.Wrong),
+				Repairable: false,
+			})
+		}
+	}
+	return out, nil
+}
+
 // INV-D4 — field values reference a live definition
 // ---------------------------------------------------------------------------
 
