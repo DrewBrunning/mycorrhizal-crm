@@ -34,7 +34,10 @@
 # A docs-only (or other no-upload) PR trips none of the coverage-uploading
 # filters, so Codecov posts no codecov/patch/* check and the required
 # contexts would be stranded -- unit-tests.yml's `codecov-patch-stub` job
-# posts them instead (issue #1188).
+# posts them instead (issue #1188) -- and for a fork/Dependabot PR, whose
+# read-only token skips that job, codecov-patch-stub-workflow-run.yml does, by
+# evaluating the backend/frontend/android/openapi/workflows filters here via
+# cmd/codecovstub (so keep those five as plain globs it can read).
 #
 # License-compliance gates (issue #361). These are narrower than the area
 # filters above: they only fire when the dependency *manifest* changes, so a

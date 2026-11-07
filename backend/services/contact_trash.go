@@ -268,6 +268,15 @@ func RestoreContact(db *gorm.DB, userID, contactID uint, now time.Time) (*Restor
 		}
 		sort.Strings(tables)
 		for _, table := range tables {
+			if table == "contact_entity_links" {
+				// Primary collisions and deleted entities need per-row handling.
+				skips, err := reviveContactEntityLinks(tx, userID, payload.Soft[table], now)
+				if err != nil {
+					return err
+				}
+				res.Skipped = append(res.Skipped, skips...)
+				continue
+			}
 			if err := tx.Table(table).Where("id IN ? AND user_id = ? AND deleted_at IS NOT NULL", payload.Soft[table], userID).
 				UpdateColumns(map[string]any{"deleted_at": nil, "updated_at": now}).Error; err != nil {
 				return err

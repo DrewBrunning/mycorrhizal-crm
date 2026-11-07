@@ -76,6 +76,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **The Activities page lists by the date of the activity** ([#2360](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2360)), newest first, instead of by when you last edited it, so editing an old activity no longer moves it to the top. This applies on the web and in the Android app.
 - **The hobby preference `Sunset` header now names 2027-01-21** ([#1738](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1738)),
   the date in the deprecation list, instead of two days earlier.
 - **Busy servers no longer turn away an unlucky save**: concurrent saves wait their turn, so slow

@@ -7,6 +7,7 @@ import (
 
 	"mycorrhizal/models"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -44,6 +45,10 @@ type ContactCascadeTarget struct {
 	ID       uint
 	VCardUID string
 	UserID   uint
+	// BatchID is the deletion batch id stamped on the rows of a soft step that
+	// keeps a deletion_batch_id column (contact_entity_links). Generated per
+	// DeleteContactAssociations call.
+	BatchID string
 }
 
 // CascadeStep is one dependent table's cleanup. Steps run in registry order;
@@ -306,6 +311,23 @@ func ContactCascadeRegistry() []CascadeStep {
 			Reason: "issue #2063, ADR 0004: ledger row is join-shaped bookkeeping (hard-delete per ImportSourceLink); left behind it makes a re-import skip the deleted contact and the integrity scan report a dangling INV-D4 reference. Only the contact-kind row; child-entity links are not contact-keyed",
 		},
 		{
+			Table: "contact_entity_links", NewModel: func() any { return &models.ContactEntityLink{} },
+			Mode: CascadeSoft, Match: byContactUID,
+			Apply: func(tx *gorm.DB, t ContactCascadeTarget, now time.Time) error {
+				// Soft delete stamping the contact deletion's batch id (ADR 0043
+				// decision 6). Only live links: one the user deleted earlier is
+				// not part of this batch. RestoreContact revives the ids the
+				// snapshot recorded through reviveContactEntityLinks, which
+				// demotes a colliding primary and skips a deleted entity.
+				return tx.Exec(`UPDATE contact_entity_links
+					SET deleted_at = ?, updated_at = ?, deletion_batch_id = ?,
+					    revision = revision + 1, etag = 'e-' || id || '-' || (revision + 1)
+					WHERE contact_vcard_uid = ? AND user_id = ? AND deleted_at IS NULL`,
+					now, now, t.BatchID, t.VCardUID, t.UserID).Error
+			},
+			Reason: "ADR 0043 decision 6: soft delete (a deliberate ADR 0004 join-row exception) so trash restore revives the link; the entity itself is untouched",
+		},
+		{
 			Table: "contact_field_overrides", NewModel: func() any { return &models.ContactFieldOverride{} },
 			Mode: CascadeHard, Match: byContactUID,
 			Reason: "issue #1997: join-shaped per-contact display preference keyed by VCardUID; hard delete leaves no orphan rows, and the rows are carried in the deletion snapshot so a trash restore brings the user's customization back",
@@ -318,7 +340,7 @@ func ContactCascadeRegistry() []CascadeStep {
 // ContactCascadeRegistry in order. It must run inside an existing transaction
 // (tx). now stamps the notes tombstone-touch and the feed revocation.
 func DeleteContactAssociations(tx *gorm.DB, contact models.Contact, userID uint, now time.Time) error {
-	target := ContactCascadeTarget{ID: contact.ID, VCardUID: contact.VCardUID, UserID: userID}
+	target := ContactCascadeTarget{ID: contact.ID, VCardUID: contact.VCardUID, UserID: userID, BatchID: uuid.NewString()}
 	for _, step := range ContactCascadeRegistry() {
 		if err := runCascadeStep(tx, step, target, now); err != nil {
 			return err

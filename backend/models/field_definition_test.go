@@ -71,8 +71,8 @@ func TestFieldDefinitionUniqueConstraintRejectsDuplicateKey(t *testing.T) {
 		Sensitivity: RelationshipSensitivityNormal,
 	}
 	require.ErrorContains(t, db.Create(&second).Error,
-		"UNIQUE constraint failed: field_definitions.user_id, field_definitions.key",
-		"the same user must not define the same key twice")
+		"UNIQUE constraint failed: field_definitions.user_id, field_definitions.target, field_definitions.key",
+		"the same user must not define the same key twice for the same target (ADR 0043 decision 5)")
 }
 
 // The same key must still be usable by two DIFFERENT users -- uniqueness is

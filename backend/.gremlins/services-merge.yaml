@@ -39,6 +39,7 @@ unleash:
         - ^device_grant_service\.go$
         - ^diagnostics\.go$
         - ^email_renderer\.go$
+        - ^entity_delete\.go$
         - ^error_aggregation\.go$
         - ^etag_normalize\.go$
         - ^feed_atom\.go$

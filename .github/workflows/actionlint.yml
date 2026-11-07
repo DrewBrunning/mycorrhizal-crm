@@ -224,6 +224,12 @@ jobs:
       - name: Test PR-failure alert script
         run: bash .github/scripts/tests/pr-alert.test.sh
 
+      # Issue #1188 follow-up: pins the fork/Dependabot no-op Codecov status
+      # poster -- PR found by head owner:branch, stale head posts nothing, one
+      # success per area on a no-upload verdict, nothing on an upload verdict.
+      - name: Test Codecov no-op status poster script
+        run: bash .github/scripts/tests/codecov-stub.test.sh
+
       # Issue #1877 follow-up: pins the app-token full-history scan's contract --
       # all commits, the base branch's config, only the app-token rule, redaction,
       # and fail-closed on a shallow checkout/missing rule/missing binary/finding.

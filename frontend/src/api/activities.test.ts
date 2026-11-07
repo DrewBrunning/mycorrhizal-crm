@@ -70,6 +70,20 @@ describe('getActivities', () => {
     expect(result.next_cursor).toBe('CURSOR-1');
   });
 
+  test('sends sort only when asked, so existing callers keep the sync order (#2360)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ activities: [], next_cursor: '', limit: 25 }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getActivities({});
+    await getActivities({ sort: 'date' });
+
+    expect(fetchMock.mock.calls[0][0]).not.toContain('sort=');
+    expect(fetchMock.mock.calls[1][0]).toContain('sort=date');
+  });
+
   test('throws an ApiError when the response is not ok', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
     await expect(getActivities({})).rejects.toMatchObject({
