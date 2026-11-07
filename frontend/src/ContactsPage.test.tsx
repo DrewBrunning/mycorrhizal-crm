@@ -276,6 +276,46 @@ test('changing the page size writes ?size= and returns to page one', async () =>
   expect(search).not.toContain('page=');
 });
 
+test('going back to page one drops ?page= from the URL', async () => {
+  mockTwoPages();
+  renderPage('/contacts?page=2');
+  await screen.findByText('Carol');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Go to previous page' }));
+
+  await screen.findByText('Alice');
+  expect(screen.getByTestId('location-search').textContent).not.toContain('page=');
+});
+
+test('choosing the default page size drops ?size= from the URL', async () => {
+  mockTwoPages();
+  renderPage('/contacts?size=25');
+  await screen.findByText('Alice');
+
+  fireEvent.mouseDown(screen.getByLabelText('Contacts per page'));
+  fireEvent.click(await screen.findByRole('option', { name: '50' }));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 50, offset: 0 })),
+  );
+  expect(screen.getByTestId('location-search').textContent).not.toContain('size=');
+});
+
+test('toggling Show archived returns to page one', async () => {
+  mockTwoPages();
+  renderPage('/contacts?page=2');
+  await screen.findByText('Carol');
+
+  fireEvent.click(screen.getByLabelText('Show archived'));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ includeArchived: true, offset: 0 }),
+    ),
+  );
+  expect(screen.getByTestId('location-search').textContent).not.toContain('page=');
+});
+
 test('changing a filter returns to page one', async () => {
   mockTwoPages();
   renderPage('/contacts?page=2');
@@ -576,6 +616,35 @@ test('changing the circle filter clears an in-progress selection', async () => {
   fireEvent.click(await screen.findByRole('option', { name: 'Friends' }));
 
   await waitFor(() => expect(selectedText('1 selected')).toBeUndefined());
+});
+
+test('clearing the circle chip drops the filter and returns to page one', async () => {
+  mockTwoPages();
+  vi.mocked(listCircles).mockResolvedValue({
+    circles: [{ id: 'c1', created_at: '', updated_at: '', name: 'Friends' }],
+    members: [],
+    next_cursor: '',
+    limit: 100,
+  } as never);
+  renderPage('/contacts?page=2');
+  await screen.findByText('Carol');
+
+  fireEvent.mouseDown(screen.getByLabelText('Filter by Circle'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Friends' }));
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(expect.objectContaining({ circle: 'Friends' })),
+  );
+
+  const chip = screen.getByText('Friends', { selector: '.MuiChip-label' });
+  const deleteIcon = chip.parentElement?.querySelector('.MuiChip-deleteIcon');
+  if (!deleteIcon) throw new Error('circle chip has no delete icon');
+  fireEvent.click(deleteIcon);
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ circle: '', offset: 0 }),
+    ),
+  );
 });
 
 test('typing a search term filters the list through the debounced URL param', async () => {
