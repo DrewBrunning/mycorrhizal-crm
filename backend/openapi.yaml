@@ -19583,6 +19583,27 @@ components:
           maxItems: 50
           items: { type: string, format: uuid }
           description: Issue #2000 — as assign_circle_ids, for tags.
+        row_edits:
+          type: array
+          maxItems: 5000
+          items: { $ref: "#/components/schemas/ImportRowEdit" }
+          description: >
+            Issue #2186 — corrections to preview rows that failed validation.
+            A row with validation errors is imported only when it carries an edit
+            that makes it valid; otherwise it is skipped and listed in
+            ImportResult.issues.
+    ImportRowEdit:
+      type: object
+      required: [row_index]
+      description: >
+        Issue #2186 — the user's correction to one preview row. An absent field
+        is left unchanged; an empty email or phone removes the offending entry.
+      properties:
+        row_index: { type: integer, minimum: 0 }
+        firstname: { type: string, maxLength: 100 }
+        lastname: { type: string, maxLength: 100 }
+        email: { type: string, maxLength: 254 }
+        phone: { type: string, maxLength: 50 }
     ImportFieldMapping:
       type: object
       required: [property_name, action]
@@ -19613,6 +19634,24 @@ components:
         updated: { type: integer }
         skipped: { type: integer }
         errors: { type: array, items: { type: string } }
+        issues:
+          type: array
+          description: >
+            Issue #2187 — every skipped or failed row with the reason ([] when
+            there is nothing to report).
+          items: { $ref: "#/components/schemas/ImportRowIssue" }
+
+    ImportRowIssue:
+      type: object
+      required: [row, name, email, phone, status, reason]
+      description: One row that was not (fully) imported.
+      properties:
+        row: { type: integer, description: "1-based row number, as in the 'Row N:' prefix of ImportResult.errors." }
+        name: { type: string, description: "Display name; falls back to the email, then the phone, then empty." }
+        email: { type: string }
+        phone: { type: string }
+        status: { type: string, enum: [skipped, failed] }
+        reason: { type: string }
 
     ImportRun:
       type: object

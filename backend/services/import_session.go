@@ -461,7 +461,8 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 	}
 
 	actionMap := buildActionMap(req.Actions)
-	result := models.ImportResult{Errors: []string{}}
+	editMap := importRowEditMap(req.RowEdits)
+	result := models.ImportResult{Errors: []string{}, Issues: []models.ImportRowIssue{}}
 	isVCFImport := sessionData.importType == "vcf"
 
 	txErr := db.Transaction(func(tx *gorm.DB) error {
@@ -480,21 +481,45 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 
 			result.TotalProcessed++
 
+			// Issue #2186: a row that failed validation is imported only with
+			// a valid edit; otherwise it is skipped and reported.
+			var edited *models.Contact
+			if action != "skip" && len(preview.ValidationErrors) > 0 {
+				var base models.Contact
+				if isVCFImport {
+					base = *vcfContacts[preview.RowIndex].Contact
+				} else {
+					base = csvContacts[preview.RowIndex]
+				}
+				fixed, reason := resolveErrorRow(preview, base, editMap)
+				if reason != "" {
+					result.Skipped++
+					result.Issues = append(result.Issues, importIssueFor(preview, importIssueSkipped, reason))
+					continue
+				}
+				edited = &fixed
+				action = "add"
+			}
+
 			switch action {
 			case "skip":
 				result.Skipped++
+				result.Issues = append(result.Issues, importIssueFor(preview, importIssueSkipped, importSkipReason(preview)))
 
 			case "add":
 				var contact models.Contact
-				if isVCFImport {
+				switch {
+				case edited != nil:
+					contact = *edited
+				case isVCFImport:
 					contact = *vcfContacts[preview.RowIndex].Contact
-				} else {
+				default:
 					contact = csvContacts[preview.RowIndex]
 				}
 				contact.UserID = userID
 
 				if err := tx.Create(&contact).Error; err != nil {
-					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "create contact", err))
+					reportRowFailure(log, &result, preview, "create contact", err)
 					result.Skipped++
 				} else {
 					// Turn the staged circle/tag names into real Circle/Tag +
@@ -502,10 +527,10 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 					// flat Contact.Circles column that no UI surface reads any
 					// more, so imported groupings were invisible in the app.
 					if err := MaterializeImportedGroupings(tx, userID, &contact); err != nil {
-						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
+						reportRowFailure(log, &result, preview, "apply circles/tags", err)
 					}
 					if err := ApplyImportFixedAssignment(tx, userID, &contact, fixed); err != nil {
-						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply fixed circles/tags", err))
+						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Created++
 					if isVCFImport {
@@ -516,13 +541,14 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 			case "update":
 				if preview.DuplicateMatch == nil {
 					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Cannot update - no existing contact found", preview.RowIndex+1))
+					result.Issues = append(result.Issues, importIssueFor(preview, importIssueFailed, "Cannot update - no existing contact found"))
 					result.Skipped++
 					continue
 				}
 
 				var existing models.Contact
 				if err := tx.First(&existing, preview.DuplicateMatch.ExistingContactID).Error; err != nil {
-					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "fetch existing contact", err))
+					reportRowFailure(log, &result, preview, "fetch existing contact", err)
 					result.Skipped++
 					continue
 				}
@@ -544,14 +570,14 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 				MergeImportedContact(&existing, incoming)
 
 				if err := tx.Save(&existing).Error; err != nil {
-					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "update contact", err))
+					reportRowFailure(log, &result, preview, "update contact", err)
 					result.Skipped++
 				} else {
 					if err := MaterializeImportedGroupings(tx, userID, &existing); err != nil {
-						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
+						reportRowFailure(log, &result, preview, "apply circles/tags", err)
 					}
 					if err := ApplyImportFixedAssignment(tx, userID, &existing, fixed); err != nil {
-						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply fixed circles/tags", err))
+						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Updated++
 					if isVCFImport {
@@ -648,7 +674,8 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 	}
 
 	actionMap := buildActionMap(req.Actions)
-	result := models.ImportResult{Errors: []string{}}
+	editMap := importRowEditMap(req.RowEdits)
+	result := models.ImportResult{Errors: []string{}, Issues: []models.ImportRowIssue{}}
 	var photoTasks []photoTask
 
 	txErr := db.Transaction(func(tx *gorm.DB) error {
@@ -678,12 +705,29 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 			result.TotalProcessed++
 			vcfData := vcfContacts[preview.RowIndex]
 
+			// Issue #2186: see Confirm — error rows need a valid edit.
+			var edited *models.Contact
+			if action != "skip" && len(preview.ValidationErrors) > 0 {
+				fixed, reason := resolveErrorRow(preview, *vcfData.Contact, editMap)
+				if reason != "" {
+					result.Skipped++
+					result.Issues = append(result.Issues, importIssueFor(preview, importIssueSkipped, reason))
+					continue
+				}
+				edited = &fixed
+				action = "add"
+			}
+
 			switch action {
 			case "skip":
 				result.Skipped++
+				result.Issues = append(result.Issues, importIssueFor(preview, importIssueSkipped, importSkipReason(preview)))
 
 			case "add":
 				contact := *vcfData.Contact
+				if edited != nil {
+					contact = *edited
+				}
 				contact.UserID = userID
 
 				// Issue #514: promote the X-* passthrough properties this
@@ -695,17 +739,17 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 				logImportedFieldPromotionNotes(log, notes)
 
 				if err := tx.Create(&contact).Error; err != nil {
-					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "create contact", err))
+					reportRowFailure(log, &result, preview, "create contact", err)
 					result.Skipped++
 				} else {
 					// T3: materialize circles/tags into real entities. Also
 					// covers P1 contact sharing, which accepts a share through
 					// this exact method.
 					if err := MaterializeImportedGroupings(tx, userID, &contact); err != nil {
-						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
+						reportRowFailure(log, &result, preview, "apply circles/tags", err)
 					}
 					if err := ApplyImportFixedAssignment(tx, userID, &contact, fixed); err != nil {
-						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply fixed circles/tags", err))
+						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Created++
 					// Queue photo processing (either embedded data or URL)
@@ -722,13 +766,14 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 			case "update":
 				if preview.DuplicateMatch == nil {
 					result.Errors = append(result.Errors, fmt.Sprintf("Row %d: Cannot update - no existing contact found", preview.RowIndex+1))
+					result.Issues = append(result.Issues, importIssueFor(preview, importIssueFailed, "Cannot update - no existing contact found"))
 					result.Skipped++
 					continue
 				}
 
 				var existing models.Contact
 				if err := tx.First(&existing, preview.DuplicateMatch.ExistingContactID).Error; err != nil {
-					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "fetch existing contact", err))
+					reportRowFailure(log, &result, preview, "fetch existing contact", err)
 					result.Skipped++
 					continue
 				}
@@ -747,14 +792,14 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 				logImportedFieldPromotionNotes(log, notes)
 
 				if err := tx.Save(&existing).Error; err != nil {
-					result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "update contact", err))
+					reportRowFailure(log, &result, preview, "update contact", err)
 					result.Skipped++
 				} else {
 					if err := MaterializeImportedGroupings(tx, userID, &existing); err != nil {
-						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply circles/tags", err))
+						reportRowFailure(log, &result, preview, "apply circles/tags", err)
 					}
 					if err := ApplyImportFixedAssignment(tx, userID, &existing, fixed); err != nil {
-						result.Errors = append(result.Errors, importRowFailure(log, preview.RowIndex+1, "apply fixed circles/tags", err))
+						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Updated++
 					// Queue photo processing only if contact doesn't already have a photo
