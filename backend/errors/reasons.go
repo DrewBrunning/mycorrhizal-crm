@@ -37,6 +37,7 @@ var reasonAreas = []string{
 	"geocoder",
 	"image",
 	"note",
+	"share", // share_grant_* codes (ADR 0042): the area is the first segment
 }
 
 // Reason constants. Each must be a key of reasonRegistry (and vice versa);
@@ -146,13 +147,22 @@ const (
 	// at least one live image (ADR 0040 decision 11).
 	ReasonNoteRequiresContentOrImage ReasonCode = "note_requires_content_or_image"
 
-	ReasonAttachmentNotFound                        ReasonCode = "attachment_not_found"
-	ReasonAttachmentFileNotFound                    ReasonCode = "attachment_file_not_found"
-	ReasonAdminAuditEventNotFound                   ReasonCode = "admin_audit_event_not_found"
-	ReasonContactCadencePolicyNotFound              ReasonCode = "contact_cadence_policy_not_found"
-	ReasonContactCadencePolicyAlreadyExists         ReasonCode = "contact_cadence_policy_already_exists"
-	ReasonCalendarSubscriptionNotFound              ReasonCode = "calendar_subscription_not_found"
-	ReasonCircleNotFound                            ReasonCode = "circle_not_found"
+	ReasonAttachmentNotFound                ReasonCode = "attachment_not_found"
+	ReasonAttachmentFileNotFound            ReasonCode = "attachment_file_not_found"
+	ReasonAdminAuditEventNotFound           ReasonCode = "admin_audit_event_not_found"
+	ReasonContactCadencePolicyNotFound      ReasonCode = "contact_cadence_policy_not_found"
+	ReasonContactCadencePolicyAlreadyExists ReasonCode = "contact_cadence_policy_already_exists"
+	ReasonCalendarSubscriptionNotFound      ReasonCode = "calendar_subscription_not_found"
+	ReasonCircleNotFound                    ReasonCode = "circle_not_found"
+
+	// Standing shares (ADR 0042, issue #2290). One not-found code covers every
+	// non-party / wrong-role / wrong-state / expired / blocked / entity-gone
+	// case so the response is identical.
+	ReasonShareGrantNotFound                        ReasonCode = "share_grant_not_found"
+	ReasonShareGrantStateConflict                   ReasonCode = "share_grant_state_conflict"
+	ReasonShareGrantWideningRefused                 ReasonCode = "share_grant_widening_refused"
+	ReasonShareGrantAlreadyExists                   ReasonCode = "share_grant_already_exists"
+	ReasonShareGrantPendingLimit                    ReasonCode = "share_grant_pending_limit"
 	ReasonCircleMembershipNotFound                  ReasonCode = "circle_membership_not_found"
 	ReasonCircleMembershipAlreadyExists             ReasonCode = "circle_membership_already_exists"
 	ReasonContactNotFound                           ReasonCode = "contact_not_found"
@@ -610,6 +620,11 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonContactCadencePolicyAlreadyExists:         {Template: "Cadence policy already exists"},
 	ReasonCalendarSubscriptionNotFound:              {Template: "Calendar subscription not found"},
 	ReasonCircleNotFound:                            {Template: "Circle not found"},
+	ReasonShareGrantNotFound:                        {Template: "Share grant not found"},
+	ReasonShareGrantStateConflict:                   {Template: "This share can no longer be changed that way"},
+	ReasonShareGrantWideningRefused:                 {Template: "A share can only be narrowed; create a new share to grant more"},
+	ReasonShareGrantAlreadyExists:                   {Template: "That is already shared with this person"},
+	ReasonShareGrantPendingLimit:                    {Template: "Too many shares are waiting for a response"},
 	ReasonCircleMembershipNotFound:                  {Template: "Circle membership not found"},
 	ReasonCircleMembershipAlreadyExists:             {Template: "Circle membership already exists"},
 	ReasonContactNotFound:                           {Template: "Contact not found"},
@@ -976,6 +991,7 @@ var notFoundReasons = map[string]ReasonCode{
 	"Circle membership":        ReasonCircleMembershipNotFound,
 	"Contact":                  ReasonContactNotFound,
 	"Contact share":            ReasonContactShareNotFound,
+	"Share grant":              ReasonShareGrantNotFound,
 	"Contact subscription":     ReasonContactSubscriptionNotFound,
 	"Conversation agenda item": ReasonContactConversationAgendaItemNotFound,
 	"Data decay policy":        ReasonContactDataDecayPolicyNotFound,

@@ -136,6 +136,16 @@ var outwardProjectionSites = []outwardSiteRow{
 			"section and include_sensitive selection.",
 	},
 
+	{
+		file: "services/share_grant.go", fn: "contactContent",
+		class: outwardSiteFiltered,
+		reason: "R1 of docs/security/standing-shares-review.md: the standing-share " +
+			"recipient read, a deliberate cross-user surface (ADR 0042). It " +
+			"builds JSContact through RecordForContactFiltered with a " +
+			"selection from grantSelection, which forces IncludeSensitive=false, " +
+			"keeps only current granted sections and withholds reconfirm sections.",
+	},
+
 	// ── deliberate full-fidelity owner copies ─────────────────────────────
 	{
 		file: "services/account_bundle.go", fn: "loadBundleContacts",

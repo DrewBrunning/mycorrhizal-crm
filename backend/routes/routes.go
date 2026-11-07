@@ -426,6 +426,24 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 					controllers.ConfirmContactShare(c, cfg)
 				})
 				protected.POST("/contact-shares/:id/decline", controllers.DeclineContactShare)
+
+				// Standing shares (ADR 0042, issue #2290): read-only live grants
+				// between two users. Session or api:read/api:write only; never
+				// CardDAV/CalDAV, MCP, feeds or webhooks. NoStoreMiddleware keeps
+				// every response out of caches so a revoked read is never replayed.
+				shareGrants := protected.Group("/share-grants", controllers.NoStoreMiddleware())
+				shareGrants.POST("", middleware.ValidateJSONMiddleware(&models.ShareGrantInput{}), controllers.CreateShareGrant)
+				shareGrants.GET("/outgoing", controllers.ListOutgoingShareGrants)
+				shareGrants.GET("/incoming", controllers.ListIncomingShareGrants)
+				shareGrants.GET("/blocks", controllers.ListShareBlocks)
+				shareGrants.DELETE("/blocks/:user_id", controllers.DeleteShareBlock)
+				shareGrants.PATCH("/:id", middleware.ValidateJSONMiddleware(&models.ShareGrantPatchInput{}), controllers.UpdateShareGrant)
+				shareGrants.POST("/:id/accept", controllers.AcceptShareGrant)
+				shareGrants.POST("/:id/decline", controllers.DeclineShareGrant)
+				shareGrants.POST("/:id/leave", controllers.LeaveShareGrant)
+				shareGrants.POST("/:id/revoke", controllers.RevokeShareGrant)
+				shareGrants.POST("/:id/reconfirm", controllers.ReconfirmShareGrant)
+				shareGrants.GET("/:id/content", controllers.GetShareGrantContent)
 			}
 
 			// RelationshipEdge routes (graph-model relationship API; replaces the

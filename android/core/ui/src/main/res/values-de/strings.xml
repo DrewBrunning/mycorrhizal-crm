@@ -2903,6 +2903,11 @@
     <string name="error_reason_contact_share_with_self">Ein Kontakt kann nicht mit sich selbst geteilt werden</string>
     <string name="error_reason_contact_share_section_unknown">unbekannter Exportfeldabschnitt \"%1$s\"</string>
     <string name="error_reason_contact_share_already_responded">Auf die Freigabe wurde bereits geantwortet</string>
+    <string name="error_reason_share_grant_not_found">Freigabe nicht gefunden</string>
+    <string name="error_reason_share_grant_state_conflict">Diese Freigabe kann so nicht mehr geändert werden</string>
+    <string name="error_reason_share_grant_widening_refused">Eine Freigabe kann nur eingeschränkt werden; erstelle eine neue Freigabe, um mehr freizugeben</string>
+    <string name="error_reason_share_grant_already_exists">Das ist bereits mit dieser Person geteilt</string>
+    <string name="error_reason_share_grant_pending_limit">Zu viele Freigaben warten auf eine Antwort</string>
     <string name="error_reason_contact_share_session_mismatch">Die Sitzung gehört nicht zu dieser Freigabe</string>
     <string name="error_reason_immich_api_key_invalid">API-Schlüssel für Immich ist ungültig, abgelaufen oder nicht konfiguriert</string>
     <string name="error_reason_immich_base_url_invalid">Die Basis-URL von Immich ist ungültig</string>

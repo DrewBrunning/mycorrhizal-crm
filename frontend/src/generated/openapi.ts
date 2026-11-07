@@ -2769,6 +2769,90 @@ export type SessionResponse = {
   user_agent?: string;
 };
 
+export type ShareBlock = {
+  created_at?: string;
+  user_id?: number;
+  username?: string;
+};
+
+export type ShareGrantContent = {
+  activity?: {
+    date?: string;
+    description?: string;
+    end_date?: string | null;
+    location?: string;
+    title?: string;
+    type?: string;
+  };
+  circle?: {
+    color?: string;
+    description?: string;
+    member_count?: number;
+    members?: {
+      display_name?: string;
+    }[];
+    members_truncated?: boolean;
+    name?: string;
+  };
+  contact?: Record<string, unknown>;
+  entity_type?: 'contact' | 'note' | 'activity' | 'circle';
+  grant_id?: string;
+  note?: {
+    content?: string;
+    date?: string;
+  };
+  owner_username?: string;
+};
+
+export type ShareGrantDeclineInput = {
+  block?: boolean;
+};
+
+export type ShareGrantInput = {
+  entity_id: string;
+  entity_type: 'contact' | 'note' | 'activity' | 'circle';
+  expires_at?: string | null;
+  sections?: string[];
+  to_user_id: number;
+};
+
+export type ShareGrantOwnerView = {
+  created_at?: string;
+  entity_id?: string;
+  entity_type?: 'contact' | 'note' | 'activity' | 'circle';
+  expires_at?: string | null;
+  id?: string;
+  label?: string;
+  member_count?: number | null;
+  reconfirm_sections?: string[];
+  responded_at?: string | null;
+  revision?: number;
+  revoked_at?: string | null;
+  revoked_reason?: 'owner_revoked' | 'entity_deleted' | 'recipient_deleted' | null;
+  sections?: string[];
+  status?: 'pending' | 'active' | 'declined' | 'revoked' | 'expired';
+  to_user_id?: number;
+  to_username?: string;
+  updated_at?: string;
+};
+
+export type ShareGrantPatchInput = {
+  expires_at?: string | null;
+  sections?: string[];
+};
+
+export type ShareGrantRecipientView = {
+  created_at?: string;
+  entity_type?: 'contact' | 'note' | 'activity' | 'circle';
+  expires_at?: string | null;
+  from_username?: string;
+  id?: string;
+  label?: string;
+  responded_at?: string | null;
+  sections?: string[];
+  status?: 'pending' | 'active' | 'declined' | 'revoked' | 'expired';
+};
+
 export type SpeakToAs = {
   grammaticalGenders?: GrammaticalGender[];
   pronouns?: Pronouns[];
