@@ -188,6 +188,17 @@ trashed contacts forever.
 - **Backups**: no — gone before any subsequent backup is taken (unless a backup predates the delete, in
   which case restoring it resurrects the edge along with its endpoints — see §10).
 
+### Reusable entities (ADR 0043, issue #2295)
+
+`entities` and `contact_entity_links` soft-delete (the link is a deliberate ADR 0004 exception: it carries authored
+role/date data that restore must bring back) and are purged past `DELETE_RETENTION_DAYS` by
+`PurgeSoftDeletedRows`, which also removes the orphaned `entity_deletion_snapshots`, `dismissed_entity_pairs` and
+entity-target `field_values`. A contact delete soft-deletes its links with the deletion batch id
+(`services.ContactCascadeRegistry`, step `contact_entity_links`); an entity delete soft-deletes its links with one
+new batch id, hard-deletes its custom field values into an encrypted `entity_deletion_snapshots` row and the
+dismissed pairs naming it (`services.EntityCascadeRegistry`), and restore reverses both. The account delete removes
+all four tables.
+
 ## 3. Audit trail (`AuditEvent`)
 
 - **Where / who**: `audit_events` table, append-only, tamper-evident hash chain (issue #381,

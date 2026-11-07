@@ -147,6 +147,7 @@ var GovernanceSteps = []Command{
 	{Label: "docs: deprecations", Dir: "backend", Argv: []string{"go", "run", "./cmd/deprecations"}},
 	{Label: "docs: docscheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/docscheck"}},
 	{Label: "docs: contextcheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/contextcheck"}},
+	{Label: "docs: changelogcheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/changelogcheck"}},
 	{Label: "docs: releasegatecheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/releasegatecheck"}},
 	{Label: "docs: governancecheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/governancecheck"}},
 	{Label: "docs: codecovcheck", Dir: "backend", Argv: []string{"go", "run", "./cmd/codecovcheck"}},

@@ -3,6 +3,7 @@ package covgate
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -239,4 +240,52 @@ func repoRoot(t *testing.T) string {
 		}
 		dir = p
 	}
+}
+
+func TestExtractPosterAreas(t *testing.T) {
+	areas, f := ExtractPosterAreas([]byte("jobs:\n  post:\n    steps:\n      - env:\n          PATCH_AREAS: backend frontend\n        run: echo\n"))
+	assert.Empty(t, f)
+	assert.Equal(t, []string{"backend", "frontend"}, areas)
+
+	_, f = ExtractPosterAreas([]byte("jobs:\n  other:\n    steps: []\n"))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "no jobs.post job")
+
+	_, f = ExtractPosterAreas([]byte("jobs:\n  post:\n    steps:\n      - run: echo\n"))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "no step with a PATCH_AREAS env")
+
+	_, f = ExtractPosterAreas([]byte("jobs:\n  post:\n    steps:\n      - env:\n          PATCH_AREAS: ''\n"))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "PATCH_AREAS env is empty")
+
+	_, f = ExtractPosterAreas([]byte("jobs: [unterminated"))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "does not parse")
+}
+
+func TestCheckStubGuardsCoverUploadFilters(t *testing.T) {
+	good := "jobs:\n  codecov-patch-stub:\n    if: >-\n      github.event_name == 'pull_request' &&\n"
+	for _, n := range UploadSuiteFilters {
+		good += "      needs.changes.outputs." + n + " != 'true' &&\n"
+	}
+	good += "      true\n    steps: []\n"
+	assert.Empty(t, CheckStubGuardsCoverUploadFilters([]byte(good)))
+
+	// Dropping one filter from the stub's `if` would let it post a success
+	// status for a PR that does upload coverage.
+	bad := strings.Replace(good, "needs.changes.outputs.android != 'true' &&", "", 1)
+	f := CheckStubGuardsCoverUploadFilters([]byte(bad))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "android")
+
+	f = CheckStubGuardsCoverUploadFilters([]byte("jobs: {}\n"))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "no jobs.codecov-patch-stub job")
+}
+
+func TestCheckStubGuardsUnparseable(t *testing.T) {
+	f := CheckStubGuardsCoverUploadFilters([]byte("jobs: [unterminated"))
+	require.Len(t, f, 1)
+	assert.Contains(t, f[0], "does not parse")
 }

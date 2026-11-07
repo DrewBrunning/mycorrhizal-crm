@@ -132,6 +132,8 @@ test('the initial fetch requests contacts included at the page size', async () =
   const listCall = calls.find((c) => c.method === 'GET' && c.url.includes('/activities?'));
   expect(listCall?.url).toContain('limit=25');
   expect(listCall?.url).toContain('include=contacts');
+  // #2360: the page lists by the activity's own date, not last-modified.
+  expect(listCall?.url).toContain('sort=date');
 });
 
 test('explains that activities record things that already happened', async () => {

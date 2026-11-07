@@ -1673,19 +1673,23 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     /**
      * GET /api/v1/activities (cursor-paginated, all activities). [includeContacts] appends
      * `?include=contacts` — matches `GetActivities`' `c.DefaultQuery("include", "")` check —
-     * so the M9 Activities inbox can show each activity's participants.
+     * so the M9 Activities inbox can show each activity's participants. [sortByDate] appends
+     * `sort=date` (issue #2360): the activity's own date, newest first, instead of the default
+     * last-modified sync order, so editing an old activity does not move it to the top.
      */
     suspend fun listActivities(
         cursor: String? = null,
         limit: Int? = null,
         includeContacts: Boolean = false,
-        search: String? = null
+        search: String? = null,
+        sortByDate: Boolean = false
     ): Result<ActivitiesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$ACTIVITIES_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
         limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
         if (includeContacts) urlBuilder.addQueryParameter("include", "contacts")
         search?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("search", it) }
+        if (sortByDate) urlBuilder.addQueryParameter("sort", "date")
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ActivitiesPage::class.java).fromJson(body)
         }

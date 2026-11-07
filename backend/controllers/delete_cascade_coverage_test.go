@@ -112,6 +112,10 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"import_source_links":        goCascadeContact,
 	"contact_field_overrides":    goCascadeContact,
 	"contact_images":             goCascadeContact,
+	"contact_entity_links":       goCascadeContact,
+	"entities":                   goCascadeUser,
+	"entity_deletion_snapshots":  goCascadeUser,
+	"dismissed_entity_pairs":     goCascadeUser,
 	"link_field_types":           goCascadeUser,
 	"notification_configs":       goCascadeUser,
 	"occasion_events":            goCascadeUser,
@@ -378,8 +382,10 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 	require.NoError(t, db.Create(&activity).Error)
 	require.NoError(t, db.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", activity.ID, contact.ID).Error)
 	fieldDef := containers.fieldDef
+	seedEntityRows(t, db, user.ID, uid)
 
 	seeded := []seedRow{
+		scopedCount("contact_entity_links", &models.ContactEntityLink{}, "user_id = ?", user.ID),
 		scopedCount("attachments", &models.Attachment{}, "user_id = ?", user.ID),
 		scopedCount("contact_images", &models.ContactImage{}, "user_id = ?", user.ID),
 		scopedCount("cadence_policies", &models.CadencePolicy{}, "user_id = ?", user.ID),
@@ -463,6 +469,7 @@ func TestDeleteCascadeCoverage_DeleteContactSweepsEveryDeclaredContactTable(t *t
 var contactSweepSoft = map[string]bool{
 	"attachments":          true,
 	"contact_images":       true,
+	"contact_entity_links": true,
 	"cadence_policies":     true,
 	"conversation_agenda":  true,
 	"data_decay_policies":  true,
@@ -615,6 +622,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	require.NoError(t, db.Create(&activity).Error)
 	require.NoError(t, db.Exec("INSERT INTO activity_contacts (activity_id, contact_id) VALUES (?, ?)", activity.ID, contact.ID).Error)
 	fieldDef := containers.fieldDef
+	seedEntityRows(t, db, target.ID, uid)
 
 	calSub := models.CalendarSubscription{UserID: target.ID, Name: "cal", URL: "https://example.com/cal.ics"}
 	require.NoError(t, db.Create(&calSub).Error)
@@ -656,6 +664,10 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	seeded := []seedRow{
 		scopedCount("share_grants", &models.ShareGrant{}, "from_user_id = ? OR to_user_id = ?", target.ID, target.ID),
 		scopedCount("share_blocks", &models.ShareBlock{}, "blocker_user_id = ? OR blocked_user_id = ?", target.ID, target.ID),
+		scopedCount("contact_entity_links", &models.ContactEntityLink{}, "user_id = ?", target.ID),
+		scopedCount("entities", &models.Entity{}, "user_id = ?", target.ID),
+		scopedCount("entity_deletion_snapshots", &models.EntityDeletionSnapshot{}, "user_id = ?", target.ID),
+		scopedCount("dismissed_entity_pairs", &models.DismissedEntityPair{}, "user_id = ?", target.ID),
 		scopedCount("activities", &models.Activity{}, "user_id = ?", target.ID),
 		scopedCount("activity_images", &models.ActivityImage{}, "user_id = ?", target.ID),
 		rawCount("activity_contacts", "activity_id = ?", activity.ID),
@@ -857,6 +869,24 @@ func rawCount(table, where string, args ...any) seedRow {
 			return n
 		},
 	}
+}
+
+// seedEntityRows creates one entity, a link of contact uid to it, a deletion
+// snapshot and a dismissed pair for user (ADR 0043), so the sweeps can prove
+// the entity tables are emptied.
+func seedEntityRows(t *testing.T, db *gorm.DB, userID uint, uid string) {
+	t.Helper()
+	a := models.Entity{UserID: userID, Kind: models.EntityKindOrganisation, Name: "Acme", Sensitivity: "normal"}
+	b := models.Entity{UserID: userID, Kind: models.EntityKindOrganisation, Name: "Acme Inc", Sensitivity: "normal"}
+	require.NoError(t, db.Create(&a).Error)
+	require.NoError(t, db.Create(&b).Error)
+	require.NoError(t, db.Create(&models.ContactEntityLink{UserID: userID, ContactVCardUID: uid, EntityID: a.ID, Kind: a.Kind, Role: "employee", Sensitivity: "normal"}).Error)
+	require.NoError(t, db.Create(&models.EntityDeletionSnapshot{UserID: userID, EntityID: b.ID, DeletionBatchID: "batch", TrashedAt: time.Now(), PayloadVersion: 1, Payload: "{}"}).Error)
+	lo, hi := a.ID, b.ID
+	if lo > hi {
+		lo, hi = hi, lo
+	}
+	require.NoError(t, db.Create(&models.DismissedEntityPair{UserID: userID, IDLow: lo, IDHigh: hi}).Error)
 }
 
 // cascadeContainers holds the parent rows a contact-scoped table references.
