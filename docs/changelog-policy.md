@@ -77,6 +77,10 @@ Format: `- **Bold lead phrase** ([#123](https://github.com/DrewBrunning/mycorrhi
   entry and says `no-changelog: <reason>` in its description.
 - The maintainer renames `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD` as part of the
   release.
+- `cmd/changelogcheck` lints `[Unreleased]` for section names and order, the
+  bold lead phrase, sub-bullets, the word limit, full-URL issue links and the
+  `Internal` cap, in CI and the pre-commit hook. Released sections are not
+  checked.
 
 ## Categories
 
