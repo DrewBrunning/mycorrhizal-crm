@@ -145,7 +145,7 @@ the PR can only merge through a bypass. (Verified on #1187, docs-only: zero
 codecov check runs.) This is unrelated to whether the change has covered
 lines: a *test-only* PR runs a suite, uploads, and gets all three statuses.
 
-Two mechanisms close it, deliberately overlapping:
+Three mechanisms close it, deliberately overlapping:
 
 1. **`codecov.yml` sets `coverage.status.default_rules.flag_coverage_not_uploaded_behavior: pass`** —
    a status whose flag had no newly-uploaded coverage reports success instead
@@ -158,10 +158,26 @@ Two mechanisms close it, deliberately overlapping:
    (issues #264/#448). It is the deterministic backstop, and the only one that
    works for the maintainer's own PRs independent of Codecov behavior; it is
    skipped for fork/Dependabot PRs, whose `GITHUB_TOKEN` is read-only.
+3. **`codecov-patch-stub-workflow-run.yml`** — the write-capable counterpart for
+   exactly those PRs. Codecov's `pass` setting does not help them: it never
+   posts a status for a commit it received no upload for (a docs-only fork PR
+   sat on all three required contexts at "Expected"). This `workflow_run`
+   workflow fires when `Unit Tests` completes on a `pull_request`, finds the PR
+   by head `owner:branch` (a fork run's `pull_requests` array is empty and
+   `commits/<sha>/pulls` returns nothing for a fork commit), lists its files
+   through the pulls API, and asks `backend/cmd/codecovstub` whether any of
+   `filters.yaml`'s `backend`/`frontend`/`android`/`openapi`/`workflows`
+   filters match. Only on "no" does it post the three success statuses. It
+   trusts nothing the PR's own run produced (a fork controls its workflow
+   files), runs no PR code, and posts nothing when in doubt (PR moved on,
+   >= 3000 files, filters unreadable). Dry-run it against an open PR with
+   `workflow_dispatch` (`pr_number`, `dry_run` defaults to true).
 
    `cmd/codecovcheck` (issue #1188) asserts the job's `PATCH_AREAS` equals
    `codecov.yml`'s `coverage.status.patch` keys, so adding a fourth area
-   without arming the stub fails CI rather than stranding its context.
+   without arming the stub (or the workflow_run poster) fails CI rather than
+   stranding its context; it also fails if the stub's `if:` stops requiring one
+   of the five filters `codecovstub` evaluates.
 
 ## Override path
 
