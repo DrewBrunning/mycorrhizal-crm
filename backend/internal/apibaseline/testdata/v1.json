@@ -2253,12 +2253,22 @@
           "required": false
         },
         {
+          "name": "include_total",
+          "in": "query",
+          "required": false
+        },
+        {
           "name": "includes",
           "in": "query",
           "required": false
         },
         {
           "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "offset",
           "in": "query",
           "required": false
         },
