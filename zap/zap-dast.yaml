@@ -32,7 +32,9 @@
 #     sibling server. Its planted reflected-XSS must appear in the report or
 #     the zapgate self-test fails the run (see backend/cmd/zapgate).
 #
-# One report is emitted: traditional-json, parsed by zapgate to enforce the
+# One report is emitted: traditional-json-plus (traditional-json plus each
+# instance's request/response, which zapgate needs to tell a UUID-embedded
+# plugin-10062 false positive from a real card number, issue #2391), parsed by zapgate to enforce the
 # ignore-list + self-test and kept as the workflow's run artifact. No SARIF /
 # code-scanning report — a DAST finding has no source line to anchor to, so
 # the upload is rejected (issue #615); zapgate is the gate.
@@ -113,7 +115,7 @@ jobs:
 
   - type: report
     parameters:
-      template: traditional-json
+      template: traditional-json-plus
       reportDir: /zap/wrk
       reportFile: report.json
       reportTitle: Mycorrhizal CRM DAST

@@ -75,6 +75,7 @@ on:
       - SAST (mobsfscan + hadolint + semgrep)
       - Schemathesis API fuzzing
       - OpenSSF Scorecard
+      - Playwright cache warm
       - Security stewardship cadence
       - Mutation Testing (Stryker)
       - Secret Scan (TruffleHog)

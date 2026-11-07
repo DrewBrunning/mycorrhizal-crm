@@ -27,6 +27,7 @@ type step struct {
 	ID             string            `yaml:"id"`
 	Run            string            `yaml:"run"`
 	TimeoutMinutes int               `yaml:"timeout-minutes"`
+	WorkingDir     string            `yaml:"working-directory"`
 	With           map[string]string `yaml:"with"`
 }
 
