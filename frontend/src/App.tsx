@@ -438,7 +438,7 @@ function AppContent({
           </ListItemButton>
         </ListItem>
         {children ? (
-          <Collapse in={open} timeout="auto" id={groupId}>
+          <Collapse component="li" in={open} timeout="auto" id={groupId}>
             <List disablePadding>{children.map((c) => renderNavItem(c, true))}</List>
           </Collapse>
         ) : null}
