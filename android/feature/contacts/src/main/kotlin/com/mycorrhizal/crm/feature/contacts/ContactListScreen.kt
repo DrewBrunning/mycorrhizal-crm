@@ -19,6 +19,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.MergeType
@@ -46,6 +48,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -112,6 +115,7 @@ fun ContactListScreen(
     // T93 (issue #710): opens the duplicate-review surface (web's "Review
     // duplicates" button on the contacts page).
     onReviewDuplicates: () -> Unit = {},
+    onMergeSelected: (Int, List<Int>) -> Unit = { _, _ -> },
     // ADR 0029 §6 (issue #1271): non-null puts the list in single-select picker
     // mode for share-to-CRM — see ContactListScreenContent.
     pickerTitle: String? = null,
@@ -160,6 +164,7 @@ fun ContactListScreen(
         onToggleSelectAll = viewModel::toggleSelectAll,
         onRunBulkAction = viewModel::runBulkAction,
         onRunBulkFieldEdit = viewModel::runBulkFieldEdit,
+        onMergeSelected = onMergeSelected,
         onBulkResultShown = viewModel::onBulkResultShown,
         onCreateContact = onCreateContact,
         onMenuClick = onMenuClick,
@@ -195,6 +200,8 @@ fun ContactListScreenContent(
     onToggleSelectAll: () -> Unit = {},
     onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
     onRunBulkFieldEdit: (Map<String, String>, Set<String>) -> Unit = { _, _ -> },
+    // Issue #2212: (primaryId, otherIds) — the caller opens the merge flow for them.
+    onMergeSelected: (Int, List<Int>) -> Unit = { _, _ -> },
     onBulkResultShown: () -> Unit = {},
     onCreateContact: () -> Unit = {},
     // Issue #150: see ContactListScreen — null hides the hamburger (no drawer).
@@ -225,6 +232,7 @@ fun ContactListScreenContent(
     var picker by remember { mutableStateOf<Pair<BulkPickerTarget, String>?>(null) }
     var pendingAction by remember { mutableStateOf<String?>(null) }
     var showEditFields by remember { mutableStateOf(false) }
+    var showMergePicker by remember { mutableStateOf(false) }
     var pendingCircleId by remember { mutableStateOf<String?>(null) }
     var pendingTagId by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
@@ -413,7 +421,9 @@ fun ContactListScreenContent(
                     },
                     onAddTag = { picker = BulkPickerTarget.TAG to BulkActions.ADD_TAG },
                     onRemoveTag = { picker = BulkPickerTarget.TAG to BulkActions.REMOVE_TAG },
-                    onEditFields = { showEditFields = true }
+                    onEditFields = { showEditFields = true },
+                    mergeEnabled = uiState.selected.size >= 2,
+                    onMerge = { showMergePicker = true }
                 )
             }
         },
@@ -638,6 +648,22 @@ fun ContactListScreenContent(
         )
     }
 
+    if (showMergePicker && uiState.selected.size >= 2) {
+        val selectedIds = uiState.selected.toList()
+        BulkMergePrimaryDialog(
+            candidates = selectedIds.map { id ->
+                id to (
+                    uiState.contacts.firstOrNull { it.id == id }?.displayName.orEmpty()
+                    )
+            },
+            onContinue = { primary ->
+                showMergePicker = false
+                onMergeSelected(primary, selectedIds.filter { it != primary })
+            },
+            onDismiss = { showMergePicker = false }
+        )
+    }
+
     if (showEditFields) {
         BulkEditFieldsDialog(
             selectedCount = uiState.selected.size,
@@ -859,7 +885,9 @@ private fun BulkActionBar(
     onRemoveCircle: () -> Unit,
     onAddTag: () -> Unit,
     onRemoveTag: () -> Unit,
-    onEditFields: () -> Unit
+    onEditFields: () -> Unit,
+    mergeEnabled: Boolean,
+    onMerge: () -> Unit
 ) {
     Surface(
         tonalElevation = 3.dp,
@@ -928,8 +956,66 @@ private fun BulkActionBar(
             ) {
                 Text(stringResource(R.string.bulk_edit_fields))
             }
+            // #2212: merge needs two or more selected contacts (web parity).
+            TextButton(
+                onClick = onMerge,
+                enabled = !isRunning && mergeEnabled,
+                modifier = Modifier.testTag("bulk-merge")
+            ) {
+                Text(stringResource(R.string.merge_commit))
+            }
         }
     }
+}
+
+/**
+ * #2212: asks which of the selected contacts survives a bulk merge. The first selected
+ * contact is preselected (web's BulkMergeDialog defaults the same way).
+ */
+@Composable
+private fun BulkMergePrimaryDialog(
+    candidates: List<Pair<Int, String>>,
+    onContinue: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var primary by remember { mutableStateOf(candidates.first().first) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.duplicates_merge_title)) },
+        text = {
+            Column(modifier = Modifier.selectableGroup()) {
+                candidates.forEach { (id, name) ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .selectable(
+                                selected = primary == id,
+                                onClick = { primary = id },
+                                role = Role.RadioButton
+                            )
+                            .testTag("bulk-merge-primary-$id")
+                    ) {
+                        RadioButton(selected = primary == id, onClick = null)
+                        Text(name, modifier = Modifier.padding(start = 8.dp))
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onContinue(primary) },
+                modifier = Modifier.testTag("bulk-merge-continue")
+            ) {
+                Text(stringResource(R.string.merge_commit))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, modifier = Modifier.testTag("bulk-merge-cancel")) {
+                Text(stringResource(R.string.action_cancel))
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalFoundationApi::class)
