@@ -33,11 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -69,6 +69,7 @@ fun VcfImportScreen(
         onFileTooLarge = viewModel::onFileTooLarge,
         onRowActionChange = viewModel::setRowAction,
         onResolveAll = viewModel::resolveAll,
+        onRowEditSave = viewModel::saveRowEdit,
         onConfirm = viewModel::confirm,
         onErrorShown = viewModel::onErrorShown
     )
@@ -91,6 +92,7 @@ fun VcfImportScreenContent(
     onFileTooLarge: () -> Unit = {},
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
     onResolveAll: () -> Unit = {},
+    onRowEditSave: (ImportRowEdit) -> Unit = {},
     onConfirm: () -> Unit = {},
     onErrorShown: () -> Unit = {}
 ) {
@@ -163,18 +165,15 @@ fun VcfImportScreenContent(
                     PreviewStep(
                         rows = uiState.preview.rows,
                         rowActions = uiState.rowActions,
+                        rowEdits = uiState.rowEdits,
                         onRowActionChange = onRowActionChange,
                         onResolveAll = onResolveAll,
+                        onRowEditSave = onRowEditSave,
                         onConfirm = onConfirm
                     )
 
                 uiState.step == VcfImportStep.RESULT && uiState.result != null ->
-                    ResultStep(
-                        created = uiState.result.created,
-                        updated = uiState.result.updated,
-                        skipped = uiState.result.skipped,
-                        onDone = onDone
-                    )
+                    ImportResultReport(result = uiState.result, onDone = onDone)
 
                 else -> EmptyState(title = stringResource(R.string.import_vcf_error_invalid_file))
             }
@@ -220,8 +219,10 @@ private fun PickStep(onPick: () -> Unit) {
 private fun PreviewStep(
     rows: List<ImportRowPreview>,
     rowActions: Map<Int, String>,
+    rowEdits: Map<Int, ImportRowEdit>,
     onRowActionChange: (Int, String) -> Unit,
     onResolveAll: () -> Unit,
+    onRowEditSave: (ImportRowEdit) -> Unit,
     onConfirm: () -> Unit
 ) {
     ImportReviewStep(
@@ -229,31 +230,10 @@ private fun PreviewStep(
         rowActions = rowActions,
         onRowActionChange = onRowActionChange,
         onResolveAll = onResolveAll,
-        onConfirm = onConfirm
+        onConfirm = onConfirm,
+        rowEdits = rowEdits,
+        onRowEditSave = onRowEditSave
     )
-}
-
-@Composable
-private fun ResultStep(created: Int, updated: Int, skipped: Int, onDone: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize().padding(24.dp)
-    ) {
-        Text(
-            text = pluralStringResource(
-                R.plurals.import_vcf_result,
-                created,
-                created,
-                updated,
-                skipped
-            ),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp)
-        )
-        Button(onClick = onDone) {
-            Text(stringResource(R.string.action_confirm))
-        }
-    }
 }
 
 internal data class PickedFileMeta(val name: String, val size: Long?)

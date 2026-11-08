@@ -3180,6 +3180,56 @@ class ApiClientTest {
         assertTrue(body.contains("\"action\":\"update\""))
     }
 
+    // Issues #2186/#2187: confirm carries row_edits; the result carries the per-row issues.
+    @Test
+    fun `confirmVcfImport sends row_edits and parses the itemized issues`() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"total_processed": 2, "created": 1, "updated": 0, "skipped": 1, "errors": [],
+                    "issues": [{"row": 2, "name": "Erin", "email": "e@x.io", "phone": "",
+                    "status": "skipped", "reason": "Invalid email"}]}"""
+                )
+        )
+
+        val result = client.confirmVcfImport(
+            com.mycorrhizal.crm.model.network.ImportConfirmRequest(
+                sessionId = "session-1",
+                actions = listOf(
+                    com.mycorrhizal.crm.model.network.RowImportAction(rowIndex = 1, action = "add")
+                ),
+                rowEdits = listOf(
+                    com.mycorrhizal.crm.model.network.ImportRowEdit(rowIndex = 1, email = "")
+                )
+            )
+        )
+
+        val issue = result.getOrThrow().issues.single()
+        assertEquals(2, issue.row)
+        assertEquals("skipped", issue.status)
+        assertEquals("Invalid email", issue.reason)
+        val body = server.takeRequest().body.readUtf8()
+        assertTrue(body, body.contains("\"row_edits\":[{\"row_index\":1,\"email\":\"\"}]"))
+    }
+
+    @Test
+    fun `an import result without issues parses to an empty list`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody(
+                    """{"total_processed": 1, "created": 1, "updated": 0, "skipped": 0, "errors": []}"""
+                )
+        )
+        val result = client.confirmVcfImport(
+            com.mycorrhizal.crm.model.network.ImportConfirmRequest("s", emptyList())
+        )
+        assertEquals(
+            emptyList<com.mycorrhizal.crm.model.network.ImportRowIssue>(),
+            result.getOrThrow().issues
+        )
+    }
+
     // Issue #834: previewCsvImport was previously mistyped to take an
     // ImportConfirmRequest ({session_id, actions}) — the backend's
     // /contacts/import/preview route validates {session_id, mappings} and

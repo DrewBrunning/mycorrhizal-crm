@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -29,6 +30,8 @@ data class VcfImportUiState(
      *  forced to "skip" at load time (mirrors web's "Errors are disabled in the UI and always
      *  stay skip" — `ImportContactsDialog.tsx`'s `handleAcceptAll`/`handleSkipAll`). */
     val rowActions: Map<Int, String> = emptyMap(),
+    /** Issue #2186: row_index -> the user's fix for a row that failed validation. */
+    val rowEdits: Map<Int, ImportRowEdit> = emptyMap(),
     val result: ImportResult? = null,
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
@@ -115,11 +118,28 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
         }
     }
 
-    /** No-op for a row with validation errors — it stays forced to "skip". */
+    /** No-op for a row with validation errors until it has a saved fix — then it decides like any
+     *  other row (issue #2186). */
     fun setRowAction(rowIndex: Int, action: String) {
         val row = _uiState.value.preview?.rows?.find { it.rowIndex == rowIndex } ?: return
-        if (row.validationErrors.isNotEmpty()) return
+        if (row.validationErrors.isNotEmpty() && rowIndex !in _uiState.value.rowEdits) return
         _uiState.update { it.copy(rowActions = it.rowActions + (rowIndex to action)) }
+    }
+
+    /**
+     * Issue #2186: keep an errored row with the user's fix. The server re-validates at confirm
+     * and reports a row that is still invalid in the result, so saving only selects "add".
+     * Ignored for a row that has no validation errors.
+     */
+    fun saveRowEdit(edit: ImportRowEdit) {
+        val row = _uiState.value.preview?.rows?.find { it.rowIndex == edit.rowIndex } ?: return
+        if (row.validationErrors.isEmpty()) return
+        _uiState.update {
+            it.copy(
+                rowEdits = it.rowEdits + (edit.rowIndex to edit),
+                rowActions = it.rowActions + (edit.rowIndex to "add")
+            )
+        }
     }
 
     /** T96: "Resolve all as merged" — every valid row takes its suggested action
@@ -148,7 +168,11 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                 )
             }
             apiClient.confirmVcfImport(
-                ImportConfirmRequest(sessionId = preview.sessionId, actions = actions)
+                ImportConfirmRequest(
+                    sessionId = preview.sessionId,
+                    actions = actions,
+                    rowEdits = activeRowEdits()
+                )
             ).foldApiError(
                 onSuccess = { result ->
                     _uiState.update {
@@ -169,6 +193,11 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                 }
             )
         }
+    }
+
+    /** Only the fixes for rows still being imported; null (omitted) when there are none. */
+    private fun activeRowEdits(): List<ImportRowEdit>? = _uiState.value.let { state ->
+        state.rowEdits.values.filter { state.rowActions[it.rowIndex] != "skip" }.ifEmpty { null }
     }
 
     fun onErrorShown() {

@@ -109,7 +109,7 @@ class VcfImportScreenTest {
                 changedAction = action
             }
         )
-        composeTestRule.onNodeWithText("Discard new").performClick()
+        composeTestRule.onNodeWithText("Skip").performClick()
         assertEquals(0, changedRow)
         assertEquals("skip", changedAction)
     }

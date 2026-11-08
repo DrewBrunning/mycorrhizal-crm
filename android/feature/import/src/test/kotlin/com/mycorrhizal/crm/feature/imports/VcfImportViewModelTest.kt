@@ -1,7 +1,9 @@
 package com.mycorrhizal.crm.feature.imports
 
+import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -10,9 +12,11 @@ import com.mycorrhizal.crm.ui.R
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -252,5 +256,103 @@ class VcfImportViewModelTest {
 
         assertEquals("server error", vm.uiState.value.error?.message)
         assertEquals(VcfImportStep.PREVIEW, vm.uiState.value.step)
+    }
+
+    // Issue #2186/#2210: an error row can be fixed in the review step instead of only skipped.
+    private fun previewWithErrorRow() = ImportPreviewResponse(
+        sessionId = "session-1",
+        rows = listOf(
+            ImportRowPreview(rowIndex = 0, suggestedAction = "add"),
+            ImportRowPreview(
+                rowIndex = 1,
+                suggestedAction = "add",
+                validationErrors = listOf("name required")
+            )
+        )
+    )
+
+    @Test
+    fun `saving a fix keeps the row and sends the edit with the confirm`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.uploadVcfImport(any(), any()) } returns
+                Result.success(previewWithErrorRow())
+            val sent = slot<ImportConfirmRequest>()
+            coEvery { apiClient.confirmVcfImport(capture(sent)) } returns
+                Result.success(ImportResult())
+            val vm = VcfImportViewModel(apiClient)
+            vm.onFilePicked("c.vcf", byteArrayOf(1))
+            advanceUntilIdle()
+            assertEquals("skip", vm.uiState.value.rowActions[1])
+
+            val edit = ImportRowEdit(rowIndex = 1, firstname = "Dana")
+            vm.saveRowEdit(edit)
+            assertEquals("add", vm.uiState.value.rowActions[1])
+            assertEquals(edit, vm.uiState.value.rowEdits[1])
+
+            vm.confirm()
+            advanceUntilIdle()
+            assertEquals(listOf(edit), sent.captured.rowEdits)
+        }
+
+    @Test
+    fun `an edit for a row that is skipped again is not sent`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.uploadVcfImport(any(), any()) } returns
+                Result.success(previewWithErrorRow())
+            val sent = slot<ImportConfirmRequest>()
+            coEvery { apiClient.confirmVcfImport(capture(sent)) } returns
+                Result.success(ImportResult())
+            val vm = VcfImportViewModel(apiClient)
+            vm.onFilePicked("c.vcf", byteArrayOf(1))
+            advanceUntilIdle()
+
+            vm.saveRowEdit(ImportRowEdit(rowIndex = 1, firstname = "Dana"))
+            vm.setRowAction(1, "skip")
+            vm.confirm()
+            advanceUntilIdle()
+
+            assertNull(sent.captured.rowEdits)
+        }
+
+    @Test
+    fun `an unfixed error row stays locked to skip`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { apiClient.uploadVcfImport(any(), any()) } returns
+            Result.success(previewWithErrorRow())
+        val vm = VcfImportViewModel(apiClient)
+        vm.onFilePicked("c.vcf", byteArrayOf(1))
+        advanceUntilIdle()
+
+        vm.setRowAction(1, "add")
+
+        assertEquals("skip", vm.uiState.value.rowActions[1])
+    }
+
+    @Test
+    fun `saving a fix for a row that has no errors is ignored`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.uploadVcfImport(any(), any()) } returns
+                Result.success(previewWithErrorRow())
+            val vm = VcfImportViewModel(apiClient)
+            vm.onFilePicked("c.vcf", byteArrayOf(1))
+            advanceUntilIdle()
+
+            vm.saveRowEdit(ImportRowEdit(rowIndex = 0, firstname = "X"))
+
+            assertEquals(emptyMap<Int, ImportRowEdit>(), vm.uiState.value.rowEdits)
+        }
+
+    @Test
+    fun `resolve all does not unskip a fixed row`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { apiClient.uploadVcfImport(any(), any()) } returns
+            Result.success(previewWithErrorRow())
+        val vm = VcfImportViewModel(apiClient)
+        vm.onFilePicked("c.vcf", byteArrayOf(1))
+        advanceUntilIdle()
+        vm.saveRowEdit(ImportRowEdit(rowIndex = 1, firstname = "Dana"))
+        vm.setRowAction(1, "skip")
+
+        vm.resolveAll()
+
+        assertEquals("skip", vm.uiState.value.rowActions[1])
     }
 }

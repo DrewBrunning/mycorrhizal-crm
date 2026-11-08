@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Android import review matches the web** ([#2210](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2210)): filter the review by new rows, duplicates or errors, get Keep/Skip on plain rows and Keep both/Merge/Discard new only on duplicates, fix rows with errors in place, and see every skipped or failed row with its reason after the import, with a share-as-CSV button.
 - **Merge several selected contacts on Android** ([#2212](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2212)): the contacts list's bulk bar now has Merge once two or more contacts are selected. Pick the one to keep, then review each other contact's field conflicts in turn as it is folded into it.
 - **Circle timeline names the member** ([#2361](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2361)): each entry in a circle's timeline on the web now shows which member it is about, and the name links to that contact. An activity shared by several members lists each of them.
 - **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.

@@ -8,6 +8,7 @@ import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
 import com.mycorrhizal.crm.model.network.Tag
@@ -595,4 +596,48 @@ class CsvImportViewModelTest {
         vm.toggleTag("t1")
         assertTrue(vm.uiState.value.selectedTagIds.isEmpty())
     }
+
+    // Issue #2186/#2210: error rows can be fixed in the review step, same contract as VCF.
+    @Test
+    fun `a fixed error row is kept and its edit is sent with the csv confirm`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.uploadCsvImport(any(), any()) } returns Result.success(
+                ImportUploadResponse(
+                    sessionId = "session-1",
+                    headers = listOf("Name"),
+                    rowCount = 1
+                )
+            )
+            coEvery { apiClient.previewCsvImport(any<ImportPreviewRequest>()) } returns
+                Result.success(
+                    ImportPreviewResponse(
+                        sessionId = "session-1",
+                        rows = listOf(
+                            ImportRowPreview(
+                                rowIndex = 0,
+                                validationErrors = listOf("name required")
+                            )
+                        )
+                    )
+                )
+            val sent = slot<ImportConfirmRequest>()
+            coEvery {
+                apiClient.confirmImport(
+                    capture(sent)
+                )
+            } returns Result.success(ImportResult())
+            val vm = CsvImportViewModel(apiClient)
+            vm.onFilePicked("c.csv", byteArrayOf(1))
+            advanceUntilIdle()
+            vm.submitMapping()
+            advanceUntilIdle()
+
+            val edit = ImportRowEdit(rowIndex = 0, email = "d@example.com")
+            vm.saveRowEdit(edit)
+            vm.confirm()
+            advanceUntilIdle()
+
+            assertEquals("add", sent.captured.actions.single().action)
+            assertEquals(listOf(edit), sent.captured.rowEdits)
+        }
 }
