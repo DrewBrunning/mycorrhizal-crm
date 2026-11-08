@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Circle timeline names the member** ([#2361](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2361)): each entry in a circle's timeline on the web now shows which member it is about, and the name links to that contact. An activity shared by several members lists each of them.
 - **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
 
 ### Fixed
