@@ -18,6 +18,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 ### Changed
 
 - **Tidier web menu** ([#2175](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2175)): Shares, Audit log, Data and, for admins, Users and System pages now sit under Settings in the left menu. Open them with the arrow beside Settings; every page keeps its address.
+- **Clearer vCard custom-field import** ([#2183](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2183)): on the import step for custom `X-` properties, each choice now has a short plain-language explanation, "passthrough" is spelled out (kept untouched, exported again, nothing lost), and "Map to existing field" is greyed out with a reason when you have no custom fields yet.
 
 ### Fixed
 

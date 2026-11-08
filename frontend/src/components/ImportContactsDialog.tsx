@@ -661,7 +661,7 @@ export default function ImportContactsDialog({
         >
           {t(
             'contacts.import.customFields.description',
-            "This file contains custom X- properties your app doesn't know yet. Promote them to searchable custom fields, or keep them as passthrough data. Anything left as passthrough is preserved but not searchable or editable.",
+            'This file contains custom X- properties your app doesn\'t know yet. Turn them into searchable custom fields, or keep them as-is ("passthrough"): kept properties are saved untouched with the contact and exported again later, but cannot be searched or edited here.',
           )}
         </Typography>
         <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
@@ -721,16 +721,43 @@ export default function ImportContactsDialog({
                                 'Keep as passthrough',
                               )}
                             </MenuItem>
-                            <MenuItem value="map">
-                              {t(
-                                'contacts.import.customFields.mapToExisting',
-                                'Map to existing field',
-                              )}
+                            <MenuItem value="map" disabled={fieldDefinitions.length === 0}>
+                              <Box>
+                                {t(
+                                  'contacts.import.customFields.mapToExisting',
+                                  'Map to existing field',
+                                )}
+                                {fieldDefinitions.length === 0 && (
+                                  <Typography variant="caption" sx={{ display: 'block' }}>
+                                    {t(
+                                      'contacts.import.customFields.help.mapEmpty',
+                                      'You have no custom fields yet. Choose "Create new field" to make one from this property.',
+                                    )}
+                                  </Typography>
+                                )}
+                              </Box>
                             </MenuItem>
                             <MenuItem value="create">
                               {t('contacts.import.customFields.createNew', 'Create new field')}
                             </MenuItem>
                           </Select>
+                          <FormHelperText>
+                            {action === 'ignore' &&
+                              t(
+                                'contacts.import.customFields.help.ignore',
+                                'Saved untouched with the contact and exported again later, but not searchable or editable here. Nothing is lost.',
+                              )}
+                            {action === 'map' &&
+                              t(
+                                'contacts.import.customFields.help.map',
+                                'Put the value into a custom field you already created, so it is searchable and editable.',
+                              )}
+                            {action === 'create' &&
+                              t(
+                                'contacts.import.customFields.help.create',
+                                'Make a new searchable custom field from this property and fill it in for every imported contact.',
+                              )}
+                          </FormHelperText>
                         </FormControl>
                         {action === 'map' && (
                           <FormControl size="small" sx={{ minWidth: 220 }}>
