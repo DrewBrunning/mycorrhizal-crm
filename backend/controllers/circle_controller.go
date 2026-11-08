@@ -256,7 +256,7 @@ func GetCircleTimeline(c *gin.Context) {
 	}
 
 	circleItems, err := services.CircleTimelineMembers(db, userID, circle.ID, items)
-	if err != nil {
+	if err != nil { // # pragma: no cover — DB failure only; the composer's own queries fail first
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve circle timeline").WithError(err))
 		return
 	}
