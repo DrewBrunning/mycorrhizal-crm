@@ -209,3 +209,45 @@ func TestGetCircleTimeline_EntriesNameTheirMembers(t *testing.T) {
 	require.Equal(t, []string{"Bob Jones"}, byLabel["bob note"])
 	require.ElementsMatch(t, []string{"Alice Smith", "Bob Jones"}, byLabel["Bouldering"])
 }
+
+// TestGetCircleTimeline_MembersForEveryEntryType covers the entity types keyed
+// by contact id (completion) and by vCard UID (gift, external activity, life
+// event): each names the member it belongs to.
+func TestGetCircleTimeline_MembersForEveryEntryType(t *testing.T) {
+	db := dbtest.New(t)
+	owner, _ := createCircleTestUsers(t, db)
+
+	alice := models.Contact{UserID: owner.ID, Firstname: "Alice", Lastname: "Smith"}
+	require.NoError(t, db.Create(&alice).Error)
+	circle := models.Circle{UserID: owner.ID, Name: "Climbing"}
+	require.NoError(t, db.Create(&circle).Error)
+	require.NoError(t, db.Create(&models.CircleMember{CircleID: circle.ID, UserID: owner.ID, MemberVCardUID: alice.VCardUID}).Error)
+
+	now := time.Now().UTC()
+	given := now.Add(-time.Hour)
+	require.NoError(t, db.Create(&models.ReminderCompletion{UserID: owner.ID, ContactID: alice.ID, Message: "done", CompletedAt: now}).Error)
+	require.NoError(t, db.Create(&models.Gift{UserID: owner.ID, EntityID: alice.VCardUID, Status: models.GiftStatusGiven, Description: "book", Date: &given}).Error)
+	require.NoError(t, db.Create(&models.ExternalActivity{UserID: owner.ID, EntityID: alice.VCardUID, SourceSystem: "x", ExternalID: "1", Type: "email", OccurredAt: now}).Error)
+	require.NoError(t, db.Create(&models.LifeEvent{UserID: owner.ID, EntityID: alice.VCardUID, Type: "custom"}).Error)
+
+	router := newCircleRealDBRouter(db, owner.ID)
+	router.GET("/circles/:id/timeline", GetCircleTimeline)
+	resp := circleDoJSON(t, router, "GET", "/circles/"+circle.ID+"/timeline", nil)
+	require.Equal(t, http.StatusOK, resp.Code, resp.Body.String())
+	var page struct {
+		Items []struct {
+			Type    string `json:"type"`
+			Members []struct {
+				ID uint `json:"id"`
+			} `json:"members"`
+		} `json:"items"`
+	}
+	require.NoError(t, json.Unmarshal(resp.Body.Bytes(), &page))
+	types := map[string]bool{}
+	for _, it := range page.Items {
+		types[it.Type] = true
+		require.Len(t, it.Members, 1, it.Type)
+		require.Equal(t, alice.ID, it.Members[0].ID, it.Type)
+	}
+	require.Equal(t, map[string]bool{"completion": true, "gift": true, "external_activity": true, "life_event": true}, types)
+}
