@@ -251,3 +251,18 @@ func TestGetCircleTimeline_MembersForEveryEntryType(t *testing.T) {
 	}
 	require.Equal(t, map[string]bool{"completion": true, "gift": true, "external_activity": true, "life_event": true}, types)
 }
+
+// TestGetCircleTimeline_MemberLookupFailure: a failure resolving the member
+// labels is a 500, not a timeline with unlabeled entries.
+func TestGetCircleTimeline_MemberLookupFailure(t *testing.T) {
+	router, db, circle := circleTimelineSetup(t)
+	require.NoError(t, db.Callback().Query().Before("gorm:query").Register("fail_member_lookup", func(tx *gorm.DB) {
+		for _, col := range tx.Statement.Selects {
+			if col == "vcard_uid" {
+				_ = tx.AddError(gorm.ErrInvalidDB)
+			}
+		}
+	}))
+	resp := circleDoJSON(t, router, "GET", "/circles/"+circle.ID+"/timeline", nil)
+	require.Equal(t, http.StatusInternalServerError, resp.Code, resp.Body.String())
+}
