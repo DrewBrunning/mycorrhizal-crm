@@ -108,3 +108,29 @@ test('an unsupported language falls back to English MUI labels', async () => {
 
   expect(await screen.findByText('Rows per page:')).toBeInTheDocument();
 });
+
+// #2363: without `color-scheme` the browser draws light scrollbar tracks and
+// form controls in dark mode. CssBaseline's enableColorScheme emits it on <html>.
+function injectedCss(): string {
+  return Array.from(document.querySelectorAll('style'))
+    .map((s) => s.textContent ?? '')
+    .join('\n');
+}
+
+// Light runs first on purpose: emotion's cache keeps earlier rules in the
+// document, so a leftover dark rule must not be able to satisfy the light case.
+test.each([
+  ['light', 'light'],
+  ['dark', 'dark'],
+])('declares color-scheme %s on the root when the preference is %s', async (preference, scheme) => {
+  window.localStorage.setItem('themePreference', preference);
+
+  render(
+    <AppThemeProvider>
+      <span data-testid="child" />
+    </AppThemeProvider>,
+  );
+
+  await screen.findByTestId('child');
+  expect(injectedCss().replace(/\s+/g, '')).toContain(`color-scheme:${scheme}`);
+});
