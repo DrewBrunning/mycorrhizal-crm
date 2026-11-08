@@ -36,6 +36,9 @@ interface MergeContactsDialogBaseProps {
   // `void | Promise<void>` to match instead of forcing callers to lie about
   // their return type.
   onMerged: (keeperId: number) => void | Promise<void>;
+  // Optional caption under the title for multi-step flows (#2197: "Merge 1 of
+  // 3" while BulkMergeDialog folds several contacts into one).
+  progressLabel?: string;
 }
 
 // --- Single-contact mode (contact detail page) ---
@@ -78,7 +81,9 @@ function contactName(c: Contact): string {
 // string actually appears in, keeping the wide server query so a phone or
 // email search still finds the right contact in the first place.
 const contactOptionLabel = (option: Contact) => `${option.firstname} ${option.lastname}`;
-const contactFilterOptions = createFilterOptions<Contact>({ stringify: contactOptionLabel });
+const contactFilterOptions = createFilterOptions<Contact>({
+  stringify: contactOptionLabel,
+});
 
 // MergeContactsDialog is ticket N1's frontend entry point
 // (N1), extended by T92/T93 with
@@ -262,6 +267,11 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
     <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('contactMerge.title')}</DialogTitle>
       <DialogContent>
+        {props.progressLabel && (
+          <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mb: 1 }}>
+            {props.progressLabel}
+          </Typography>
+        )}
         {inPairMode && pair ? (
           <>
             <Typography
@@ -283,12 +293,16 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                 <FormControlLabel
                   value={pair.a.uid}
                   control={<Radio size="small" />}
-                  label={t('contactMerge.keepThisOne', { name: contactName(pair.a) })}
+                  label={t('contactMerge.keepThisOne', {
+                    name: contactName(pair.a),
+                  })}
                 />
                 <FormControlLabel
                   value={pair.b.uid}
                   control={<Radio size="small" />}
-                  label={t('contactMerge.keepThisOne', { name: contactName(pair.b) })}
+                  label={t('contactMerge.keepThisOne', {
+                    name: contactName(pair.b),
+                  })}
                 />
               </RadioGroup>
               <Tooltip title={t('contactMerge.swap')}>
@@ -370,7 +384,9 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                   shown: t('contactMerge.hiddenMatchesShown', {
                     count: filteredContacts.length,
                   }),
-                  hidden: t('contactMerge.hiddenMatchesHidden', { count: hiddenMatchCount }),
+                  hidden: t('contactMerge.hiddenMatchesHidden', {
+                    count: hiddenMatchCount,
+                  }),
                 })}
               </Typography>
             )}
@@ -472,7 +488,9 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
             {hasAssociations && counts && (
               <Alert severity="info" sx={{ mt: 1 }}>
                 {t('contactMerge.associationSummary', {
-                  notes: t('contactMerge.associationSummaryNotes', { count: counts.notes }),
+                  notes: t('contactMerge.associationSummaryNotes', {
+                    count: counts.notes,
+                  }),
                   activities: t('contactMerge.associationSummaryActivities', {
                     count: counts.activities,
                   }),
