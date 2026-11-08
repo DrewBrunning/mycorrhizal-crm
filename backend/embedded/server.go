@@ -620,6 +620,9 @@ func dispatchInitialTriggers(db *gorm.DB, cfg *config.Config, spawn func(func())
 		{models.JobNameAlertEval, func() { safeGo(db, models.JobNameAlertEval, models.JobTriggerInitial, alertEvalTask(db, *cfg)) }},
 		{models.JobNameStorageSample, func() { safeGo(db, models.JobNameStorageSample, models.JobTriggerInitial, storageSampleTask(db, *cfg)) }},
 		{models.JobNameImageSweep, func() { safeGoReport(db, models.JobNameImageSweep, models.JobTriggerInitial, imageSweepTask(db, *cfg)) }},
+		{models.JobNameShareGrantLifecycle, func() {
+			safeGoReport(db, models.JobNameShareGrantLifecycle, models.JobTriggerInitial, shareGrantLifecycleTask(db, *cfg))
+		}},
 	}
 	for _, in := range reports {
 		if cfg.IsEmbedded() && embeddedDisabledJobs[in.jobName] {

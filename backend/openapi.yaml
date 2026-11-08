@@ -5001,6 +5001,61 @@ paths:
                       $ref: "#/components/schemas/ShareGrantRecipientView"
                   next_cursor: { type: string }
                   limit: { type: integer }
+  /share-grants/notifications:
+    get:
+      summary: Your pending-share badge and unread notices (recipient)
+      operationId: listShareGrantNotifications
+      tags:
+        - Share Grants
+      description: >
+        The in-app surface of ADR 0042 decision 11. `pending_count` is the number of grants
+        awaiting your answer (a blocked sender's grants are never counted). `notifications` are
+        your newest unread notices (at most 50): a new pending grant or a revoke. A payload is the
+        sender username and the entity type only, never a label or content. Responses are
+        `Cache-Control: no-store`.
+      responses:
+        "200":
+          description: The badge count and unread notices.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pending_count, notifications]
+                properties:
+                  pending_count: { type: integer }
+                  notifications:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShareGrantNotification"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/notifications/read:
+    post:
+      summary: Mark all your unread share notices read (recipient)
+      operationId: markShareGrantNotificationsRead
+      tags:
+        - Share Grants
+      description: Scoped to the caller; marking read changes no grant.
+      responses:
+        "200":
+          description: How many notices changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [marked]
+                properties:
+                  marked: { type: integer }
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /share-grants/blocks:
     get:
       summary: List the senders you have blocked (recipient)
@@ -16534,12 +16589,16 @@ components:
         count: { type: integer }
     TrashRestoreResponse:
       type: object
-      required: [contact, skipped]
+      required: [contact, skipped, revoked_grants]
       properties:
         contact: { $ref: "#/components/schemas/ContactSummary" }
         skipped:
           type: array
           items: { $ref: "#/components/schemas/TrashRestoreSkip" }
+        revoked_grants:
+          type: array
+          description: Standing-share grants the delete revoked, so the UI can offer to issue them again. Restore does not re-arm access.
+          items: { $ref: "#/components/schemas/TrashRevokedShareGrant" }
     TrashPurgeResponse:
       type: object
       required: [message, purged]
@@ -17768,6 +17827,28 @@ components:
         expires_at: { type: string, format: date-time, nullable: true }
         responded_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
+    ShareGrantNotification:
+      type: object
+      required: [id, kind, entity_type, sender_username, created_at]
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [pending, revoked] }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        sender_username: { type: string }
+        created_at: { type: string, format: date-time }
+    TrashRevokedShareGrant:
+      type: object
+      description: A standing-share grant the contact's deletion revoked; restore never re-arms it (ADR 0042 decision 10).
+      required: [id, to_user_id, to_username, sections, expires_at, revoked_at]
+      properties:
+        id: { type: string, format: uuid }
+        to_user_id: { type: integer }
+        to_username: { type: string }
+        sections:
+          type: array
+          items: { type: string }
+        expires_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
     ShareBlock:
       type: object
       properties:
@@ -18427,9 +18508,9 @@ components:
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time }
-        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder, user, auth, api_token, feed] }
+        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder, share_grant, user, auth, api_token, feed] }
         entity_id: { type: string }
-        operation: { type: string, enum: [create, update, delete, login, login_failed, register, password_change, password_reset, password_reset_requested, totp_enable, totp_disable, recovery_regenerate, revoke, role_change, two_factor_admin_reset, webauthn_register, webauthn_revoke] }
+        operation: { type: string, enum: [create, update, delete, login, login_failed, register, password_change, password_reset, password_reset_requested, totp_enable, totp_disable, recovery_regenerate, revoke, role_change, two_factor_admin_reset, webauthn_register, webauthn_revoke, restore, purge, accept, decline, expire, reconfirm] }
         before_snapshot: { type: string, description: "Redacted JSON of the pre-update/pre-delete state (empty for creates)" }
         hash: { type: string, description: "SHA-256 of (prev_hash || canonical content); the tamper-evident chain link (issue #381)" }
         prev_hash: { type: string, description: "Hash of the preceding audit row (empty for the head of the chain)" }

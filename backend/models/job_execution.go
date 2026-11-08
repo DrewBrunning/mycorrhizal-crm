@@ -109,6 +109,12 @@ const (
 	// *.tmp files and lapsed empty notes (ADR 0040 decision 5, issue #2004).
 	JobNameImageSweep = "image_sweep"
 
+	// JobNameShareGrantLifecycle is the hourly standing-share lifecycle job:
+	// expires grants past expires_at and unanswered pending grants, and
+	// hard-deletes terminal rows past SHARE_GRANT_RETENTION_DAYS (ADR 0042
+	// decisions 10-11, issue #2291).
+	JobNameShareGrantLifecycle = "share_grant_lifecycle"
+
 	// JobNameSearchIndexRebuild is the job name for the FTS5 full-text search
 	// index rebuild (SEARCH-01, issue #461). Unlike every other JobName* this
 	// is not a scheduled job — it is operator-triggered (POST

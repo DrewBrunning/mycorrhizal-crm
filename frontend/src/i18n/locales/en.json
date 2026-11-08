@@ -3481,6 +3481,7 @@
       "session_purge": "Session purge",
       "storage_sample": "Storage sampling",
       "image_sweep": "Image file cleanup",
+      "share_grant_lifecycle": "Share grant lifecycle",
       "search_index_rebuild": "Search index rebuild",
       "derived_columns_rebuild": "Derived columns rebuild"
     }

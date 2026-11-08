@@ -303,6 +303,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /import/mycorrhizal/cancel":                   true,
 	"POST /contact-shares/{id}/accept":                  true,
 	"POST /contact-shares/{id}/decline":                 true,
+	"POST /share-grants/notifications/read":             true,
 	"POST /share-grants/{id}/accept":                    true,
 	"POST /share-grants/{id}/leave":                     true,
 	"POST /share-grants/{id}/revoke":                    true,

@@ -276,10 +276,10 @@ export type AuditEvent = {
   before_snapshot?: string;
   created_at?: string;
   entity_id?: string;
-  entity_type?: 'contact' | 'note' | 'activity' | 'life_event' | 'gift' | 'circle' | 'tag' | 'household' | 'reminder' | 'user' | 'auth' | 'api_token' | 'feed';
+  entity_type?: 'contact' | 'note' | 'activity' | 'life_event' | 'gift' | 'circle' | 'tag' | 'household' | 'reminder' | 'share_grant' | 'user' | 'auth' | 'api_token' | 'feed';
   hash?: string;
   id?: number;
-  operation?: 'create' | 'update' | 'delete' | 'login' | 'login_failed' | 'register' | 'password_change' | 'password_reset' | 'password_reset_requested' | 'totp_enable' | 'totp_disable' | 'recovery_regenerate' | 'revoke' | 'role_change' | 'two_factor_admin_reset' | 'webauthn_register' | 'webauthn_revoke';
+  operation?: 'create' | 'update' | 'delete' | 'login' | 'login_failed' | 'register' | 'password_change' | 'password_reset' | 'password_reset_requested' | 'totp_enable' | 'totp_disable' | 'recovery_regenerate' | 'revoke' | 'role_change' | 'two_factor_admin_reset' | 'webauthn_register' | 'webauthn_revoke' | 'restore' | 'purge' | 'accept' | 'decline' | 'expire' | 'reconfirm';
   prev_hash?: string;
 };
 
@@ -2877,6 +2877,14 @@ export type ShareGrantInput = {
   to_user_id: number;
 };
 
+export type ShareGrantNotification = {
+  created_at: string;
+  entity_type: 'contact' | 'note' | 'activity' | 'circle';
+  id: number;
+  kind: 'pending' | 'revoked';
+  sender_username: string;
+};
+
 export type ShareGrantOwnerView = {
   created_at?: string;
   entity_id?: string;
@@ -3111,6 +3119,7 @@ export type TrashPurgeResponse = {
 
 export type TrashRestoreResponse = {
   contact: ContactSummary;
+  revoked_grants: TrashRevokedShareGrant[];
   skipped: TrashRestoreSkip[];
 };
 
@@ -3118,6 +3127,15 @@ export type TrashRestoreSkip = {
   count: number;
   reason: string;
   table: string;
+};
+
+export type TrashRevokedShareGrant = {
+  expires_at: string | null;
+  id: string;
+  revoked_at: string | null;
+  sections: string[];
+  to_user_id: number;
+  to_username: string;
 };
 
 export type TrashedContact = {

@@ -70,6 +70,7 @@ func faultReadRoutes(s seeded) []string {
 		v1 + "/share-grants/incoming",
 		v1 + "/share-grants/outgoing",
 		v1 + "/share-grants/blocks",
+		v1 + "/share-grants/notifications",
 		v1 + "/relationship-edges",
 		v1 + "/relationship-edges/" + s.edge,
 		v1 + "/contacts/" + s.contact + "/attachments",
