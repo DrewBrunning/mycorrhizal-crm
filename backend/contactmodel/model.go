@@ -99,6 +99,11 @@ type Organization struct {
 	SortAs string    `json:"sortAs,omitempty"`
 }
 
+// EntityProjectionIDPrefix is the reserved element-ID prefix of an ORG/ADR entry
+// that models.projectPrimaryEntities synthesized from a primary entity link
+// (`ent-<linkId>`, ADR 0043 decision 3). It is never stored in a Card.
+const EntityProjectionIDPrefix = "ent-"
+
 // OrgUnit is one named sub-unit within an Organization's Units.
 type OrgUnit struct {
 	Name   string `json:"name"`

@@ -28,12 +28,27 @@ export const GRAPH_RENDER_EDGE_CEILING = 6000;
 export interface GraphRenderBudgetInput {
   nodes: readonly unknown[];
   links: readonly unknown[];
+  /**
+   * Opt-in entity nodes/edges (GET /graph?include_entities=true, issue #2298,
+   * ADR 0043). They are laid out like any other node, so they count against
+   * the same ceilings; omitted for the default graph.
+   */
+  entityNodes?: readonly unknown[];
+  entityLinks?: readonly unknown[];
 }
 
 /**
  * True when the (already filtered) graph is too large to lay out interactively
  * and NetworkGraph should render its fallback instead of the canvas.
  */
-export function exceedsGraphRenderBudget({ nodes, links }: GraphRenderBudgetInput): boolean {
-  return nodes.length > GRAPH_RENDER_NODE_CEILING || links.length > GRAPH_RENDER_EDGE_CEILING;
+export function exceedsGraphRenderBudget({
+  nodes,
+  links,
+  entityNodes = [],
+  entityLinks = [],
+}: GraphRenderBudgetInput): boolean {
+  return (
+    nodes.length + entityNodes.length > GRAPH_RENDER_NODE_CEILING ||
+    links.length + entityLinks.length > GRAPH_RENDER_EDGE_CEILING
+  );
 }

@@ -31,8 +31,10 @@ unleash:
         - ^contact_derived\.go$
         - ^contact_detail\.go$
         - ^contact_entity_link\.go$
+        - ^contact_entity_link_dto\.go$
         - ^contact_field_override\.go$
         - ^contact_merge\.go$
+        - ^contact_record_entities\.go$
         - ^contact_record_reverse\.go$
         - ^contact_score\.go$
         - ^contact_share\.go$

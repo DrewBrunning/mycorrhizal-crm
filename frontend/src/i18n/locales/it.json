@@ -54,6 +54,7 @@
     "households": "Nuclei",
     "circlesTags": "Cerchie e tag",
     "profile": "Impostazioni",
+    "settingsSubpages": "Sottopagine delle impostazioni",
     "users": "Utenti",
     "data": "Dati",
     "shares": "Condivisioni",
@@ -3584,6 +3585,7 @@
       "session_purge": "Pulizia delle sessioni",
       "storage_sample": "Campionamento dello spazio",
       "image_sweep": "Pulizia dei file immagine",
+      "share_grant_lifecycle": "Ciclo di vita delle condivisioni",
       "search_index_rebuild": "Ricostruzione dell'indice di ricerca",
       "derived_columns_rebuild": "Ricostruzione delle colonne derivate"
     }
@@ -3716,6 +3718,11 @@
       "entity_kind_immutable": "Il tipo di un'entità non può essere modificato; eliminala e creane una nuova",
       "entity_core_invalid": "{{reason}}",
       "entity_snapshot_unsupported": "Lo snapshot di eliminazione di questa entità non è supportato da questa versione",
+      "entity_link_not_found": "Collegamento non trovato",
+      "entity_link_role_invalid": "Questo ruolo non è valido per questo tipo di entità",
+      "entity_link_kind_not_adoptable": "Questa entità non ha alcun valore di organizzazione o indirizzo da adottare nel contatto",
+      "entity_link_source_not_found": "Il contatto non ha questa organizzazione o questo indirizzo",
+      "entity_link_primary_conflict": "Un'altra modifica al collegamento principale di questo contatto è avvenuta contemporaneamente; riprova",
       "contact_field_definition_target_immutable": "La destinazione di una definizione di campo non può essere modificata",
       "contact_field_definition_projection_target_invalid": "Solo le definizioni di campo dei contatti possono usare una proiezione vcard; usa internal-only",
       "contact_field_definition_target_mismatch": "La definizione di campo non si applica a questo tipo di record",

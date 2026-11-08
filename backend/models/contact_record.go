@@ -66,6 +66,20 @@ func RecordForContact(c *Contact, photoDir string, db *gorm.DB) *contactmodel.Re
 // the default no-override, all-sections behavior, and only the export
 // handlers that accept a user's field picker opt in.
 func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *FieldSelection) *contactmodel.Record {
+	return recordForContact(c, photoDir, db, sel, true)
+}
+
+// RecordForContactBackup is RecordForContact for the owner's own full-fidelity
+// account bundle: every read-time projection EXCEPT the primary-entity ORG/ADR
+// (issue #2298, ADR 0043 decision 7). The bundle carries entities and links as
+// their own sections, so a projected value in the contact's card would duplicate
+// it and, once restored, look like a contact-owned value. Sensitivity behaves as
+// in RecordForContact.
+func RecordForContactBackup(c *Contact, photoDir string, db *gorm.DB) *contactmodel.Record {
+	return recordForContact(c, photoDir, db, nil, false)
+}
+
+func recordForContact(c *Contact, photoDir string, db *gorm.DB, sel *FieldSelection, entities bool) *contactmodel.Record {
 	includeSensitive := sel != nil && sel.IncludeSensitive
 	// Projection queries are scoped by owner as well as vCard UID: a UID is
 	// unique only per user (and a share import deliberately reuses the
@@ -95,6 +109,9 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 		}
 		card.RelatedTo = projectRelationshipEdges(db, c.UserID, c.VCardUID, card.RelatedTo, includeSensitive)
 		card.Keywords = projectTags(db, c.UserID, c.VCardUID, card.Keywords)
+		if entities {
+			projectPrimaryEntities(db, c.UserID, c.VCardUID, &card, includeSensitive)
+		}
 		card.PersonalInfo = projectPreferences(db, c.UserID, c.VCardUID, card.PersonalInfo, includeSensitive)
 		passthrough := c.Passthrough
 		passthrough.VCard = projectCustomFields(db, c.UserID, c.VCardUID, passthrough.VCard, includeSensitive)
@@ -123,6 +140,9 @@ func RecordForContactFiltered(c *Contact, photoDir string, db *gorm.DB, sel *Fie
 	if record != nil {
 		record.Card.RelatedTo = projectRelationshipEdges(db, userID, record.UID, record.Card.RelatedTo, includeSensitive)
 		record.Card.Keywords = projectTags(db, userID, record.UID, record.Card.Keywords)
+		if entities {
+			projectPrimaryEntities(db, userID, record.UID, &record.Card, includeSensitive)
+		}
 		record.Card.PersonalInfo = projectPreferences(db, userID, record.UID, record.Card.PersonalInfo, includeSensitive)
 		if sel != nil && !sel.IncludeSensitive {
 			record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta = filterSensitivePersonalInfo(record.Card.PersonalInfo, record.Envelope.PersonalInfoMeta)

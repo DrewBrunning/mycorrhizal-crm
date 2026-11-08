@@ -78,6 +78,7 @@ func CreateContactShare(c *gin.Context) {
 	sel.IncludeSensitive = input.IncludeSensitive
 
 	record := models.RecordForContactFiltered(&contact, photoDir, db, sel)
+	record = models.DetachProjectedEntityIDs(record) // issue #2298: no link ID reaches another account
 	adapter := jscontact.Adapter{}
 	data, diags, exportErr := adapter.Export(record)
 	if exportErr != nil {

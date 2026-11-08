@@ -167,6 +167,9 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /entities":                                  bindingFor(models.EntityInput{}),
 	"PUT /entities/{id}":                              bindingFor(models.EntityInput{}),
 	"PUT /entities/{id}/field-values":                 bindingFor(models.ContactFieldValuesInput{}),
+	"POST /contacts/{id}/entity-links":                bindingFor(models.ContactEntityLinkInput{}),
+	"PUT /contacts/{id}/entity-links/{linkId}":        bindingFor(models.ContactEntityLinkInput{}),
+	"POST /contacts/{id}/entity-links/from-existing":  bindingFor(models.ContactEntityLinkFromExistingInput{}),
 	"POST /life-events":                               bindingFor(models.LifeEventInput{}),
 	"PUT /life-events/{id}":                           bindingFor(models.LifeEventInput{}),
 	"POST /life-event-suggestions/resolve":            bindingFor(models.LifeEventSuggestionResolutionInput{}),
@@ -274,10 +277,11 @@ var requestBodyBindings = map[string]requestBodyBinding{
 // route the live router registers — enforced by TestOpenAPIRequestFieldCoverage's
 // completeness net.
 var noBodyMutatingRoutes = map[string]bool{
-	"POST /entities/{id}/restore":       true, // issue #2296: path-only action
-	"POST /trash/contacts/{id}/restore": true, // issue #2002: path-only action
-	"POST /logout":                      true,
-	"POST /users/2fa/setup":             true,
+	"POST /entities/{id}/restore":                     true, // issue #2296: path-only action
+	"POST /contacts/{id}/entity-links/{linkId}/adopt": true, // issue #2297: path-only action
+	"POST /trash/contacts/{id}/restore":               true, // issue #2002: path-only action
+	"POST /logout":                                    true,
+	"POST /users/2fa/setup":                           true,
 	// Issue #593 WebAuthn ceremonies: bodies are protocol documents the
 	// go-webauthn library parses itself (PublicKeyCredential JSON), or a tiny
 	// anonymous-struct label — no Go request struct to pin against the schema.
@@ -303,6 +307,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /import/mycorrhizal/cancel":                   true,
 	"POST /contact-shares/{id}/accept":                  true,
 	"POST /contact-shares/{id}/decline":                 true,
+	"POST /share-grants/notifications/read":             true,
 	"POST /share-grants/{id}/accept":                    true,
 	"POST /share-grants/{id}/leave":                     true,
 	"POST /share-grants/{id}/revoke":                    true,

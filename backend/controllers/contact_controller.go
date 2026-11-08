@@ -469,6 +469,20 @@ func GetContacts(c *gin.Context) {
 		)`, userID, circle)
 	}
 
+	// ?entity_id= (issue #2297, ADR 0043 decision 10): contacts holding a live
+	// link to this entity. Both the link and the entity are matched by the
+	// caller's user_id inside the query, so a foreign or trashed entity id
+	// matches nothing. Like the other filters it is not applied to the ?since=
+	// change feed (that path returns before this point).
+	if entityID := c.Query("entity_id"); entityID != "" {
+		query = query.Where(`EXISTS (
+			SELECT 1 FROM contact_entity_links cel
+			JOIN entities en ON en.id = cel.entity_id AND en.user_id = ? AND en.deleted_at IS NULL
+			WHERE cel.contact_vcard_uid = contacts.vcard_uid AND cel.user_id = ?
+			  AND cel.entity_id = ? AND cel.deleted_at IS NULL
+		)`, userID, userID, entityID)
+	}
+
 	// Temporary legacy filter for T2 triage migration — reads from the
 	// old flat contacts.circles JSON column. Remove once migration is complete.
 	if circle := c.Query("circle_legacy"); circle != "" {
@@ -805,6 +819,12 @@ func UpdateContact(c *gin.Context) {
 
 	contact.Gender = input.Gender
 	ambientBefore := contact.Ambient
+	// Echo suppression for a client that stripped the projected ORG/ADR's
+	// element ID (issue #2298); ent- IDs are dropped in ApplyRecordToContact.
+	if err := models.SuppressEntityProjectionEcho(db, &contact, record); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to check entity links").WithError(err))
+		return
+	}
 	models.ApplyRecordToContact(&contact, record, currentConfig(c).ProfilePhotoDir)
 
 	if contact.Firstname == "" {

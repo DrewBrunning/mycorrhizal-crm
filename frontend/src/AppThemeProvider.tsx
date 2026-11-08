@@ -110,7 +110,7 @@ export function AppThemeProvider({ children }: { children: ReactNode }) {
   return (
     <ThemePreferenceContext.Provider value={contextValue}>
       <ThemeProvider theme={theme}>
-        <CssBaseline />
+        <CssBaseline enableColorScheme />
         {children}
       </ThemeProvider>
     </ThemePreferenceContext.Provider>

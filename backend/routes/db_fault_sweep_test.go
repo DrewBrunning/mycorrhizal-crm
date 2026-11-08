@@ -409,6 +409,7 @@ const (
 	faultReasonImportRow = "import is per-row by design: a row whose write fails is reported in errors[] (as a generic message — the SQL text goes to the log only, which this sweep's leak check pins) and skipped while the other rows still import"
 	faultReasonImportAux = "import auxiliary read/bookkeeping (disk-space probe, custom-field lookup, import_runs history row): logged and skipped, the import itself is unaffected"
 	faultReasonRestore   = "contact restore is per-row by design (ADR 0037): a snapshotted child row whose re-insert fails (referent gone, natural key re-created meanwhile, or a DB error inside its savepoint) is reported in skipped[] and the restore still commits; that report names the table, which is the documented skipped field"
+	faultReasonShareNote = "share-grant recipient notice (ADR 0042 decision 11, issue #2291): the notice is best-effort by acceptance criterion -- its failure is logged and swallowed and must never fail the delete that revoked the grant"
 	faultReasonRemind    = "reminder completion bookkeeping is best-effort by documented policy (\"Don't fail the entire operation\"): the timeline record / delivery clean-up / reach-out dismissal are logged and skipped, the reminder itself still completes"
 )
 
@@ -426,13 +427,13 @@ func buildFaultAllowlist() map[string]string {
 		}
 	}
 	add(faultReasonEnrich, "POST /contacts",
-		"query life_events#1", "query relationship_edges#1", "query contact_tags#1", "query preferences#1", "query field_values#1")
+		"query life_events#1", "query relationship_edges#1", "query contact_tags#1", "query contact_entity_links#1", "query preferences#1", "query field_values#1")
 	add(faultReasonEnrich, "PUT /contacts/:id",
-		"query life_events#1", "query relationship_edges#1", "query contact_tags#1", "query tags#1", "query preferences#1", "query field_values#1")
+		"query life_events#1", "query relationship_edges#1", "query contact_tags#1", "query tags#1", "query contact_entity_links#2", "query preferences#1", "query field_values#1")
 	// The merge's cascade reads the same tables first, so its enrichment reads
 	// carry later occurrence numbers.
 	add(faultReasonEnrich, "POST /contacts/merge",
-		"query relationship_edges#3", "query contact_tags#2", "query tags#1", "query preferences#2", "query field_values#4")
+		"query relationship_edges#3", "query contact_tags#2", "query tags#1", "query contact_entity_links#1", "query preferences#2", "query field_values#4")
 	add(faultReasonImportRow, "POST /contacts/import/vcf/confirm",
 		"create contacts#1", "update contacts#1", "create contacts#2", "update contacts#2")
 	add(faultReasonImportAux, "POST /contacts/import/vcf/confirm",
@@ -450,6 +451,7 @@ func buildFaultAllowlist() map[string]string {
 	for _, k := range restoreSkipKeys {
 		faultSkippedTableOK["POST /trash/contacts/:id/restore|"+k] = true
 	}
+	add(faultReasonShareNote, "DELETE /circles/:id", "create share_grant_notifications#1")
 	add("the password change and every revocation already committed atomically; minting the caller's replacement session is best-effort and the handler documents that the client re-authenticates", "POST /users/change-password", "create sessions#1")
 	add(faultReasonRemind, "POST /reminders/:id/complete",
 		"create reminder_completions#1", "delete notification_deliveries#1", "update reach_out_suggestions#1")
