@@ -13,7 +13,16 @@ adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - **Merge several selected contacts on Android** ([#2212](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2212)): the contacts list's bulk bar now has Merge once two or more contacts are selected. Pick the one to keep, then review each other contact's field conflicts in turn as it is folded into it.
+- **Circle timeline names the member** ([#2361](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2361)): each entry in a circle's timeline on the web now shows which member it is about, and the name links to that contact. An activity shared by several members lists each of them.
 - **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
+
+### Changed
+
+- **Tidier web menu** ([#2175](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2175)): Shares, Audit log, Data and, for admins, Users and System pages now sit under Settings in the left menu. Open them with the arrow beside Settings; every page keeps its address.
+
+### Fixed
+
+- **Dark-mode scrollbars** ([#2363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2363)): in dark mode the navigation sidebar and page scrollbars no longer show a bright white track. Light mode is unchanged.
 
 ## [1.6.0] - 2026-11-06
 

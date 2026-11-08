@@ -126,6 +126,7 @@ type seeded struct {
 	tag                string
 	lifeEvent          string
 	entity             string
+	entityLink         string
 	gift               string
 	preference         string
 	occasionObligation string
@@ -172,6 +173,8 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 	require.NoError(t, db.Create(&lifeEvent).Error)
 	entity := models.Entity{UserID: ownerID, Kind: models.EntityKindOrganisation, Name: "Matrix Org"}
 	require.NoError(t, db.Create(&entity).Error)
+	entityLink := models.ContactEntityLink{UserID: ownerID, ContactVCardUID: c.VCardUID, EntityID: entity.ID, Kind: entity.Kind, Role: "employee", Sensitivity: "normal"}
+	require.NoError(t, db.Create(&entityLink).Error)
 	gift := models.Gift{UserID: ownerID, EntityID: ec.VCardUID}
 	require.NoError(t, db.Create(&gift).Error)
 	pref := models.Preference{UserID: ownerID, EntityID: ec.VCardUID, Category: "food", Value: "pizza"}
@@ -228,6 +231,7 @@ func seedResources(t *testing.T, db *gorm.DB, ownerID uint) seeded {
 		tag:                tag.ID,
 		lifeEvent:          lifeEvent.ID,
 		entity:             entity.ID,
+		entityLink:         entityLink.ID,
 		gift:               gift.ID,
 		preference:         pref.ID,
 		occasionObligation: occasionObligation.ID,
@@ -431,18 +435,20 @@ func buildTable(s seeded) map[string]authzRow {
 		// --- standing shares (ADR 0042, issue #2290) ---------------------------
 		// Item routes probe a fabricated id (loose "not 2xx" BOLA probe); the
 		// real-grant cross-user matrix is controllers.TestShareGrant_IdenticalNotFoundMatrix.
-		"POST /api/v1/share-grants":                   {class: classProtected},
-		"GET /api/v1/share-grants/outgoing":           {class: classProtected},
-		"GET /api/v1/share-grants/incoming":           {class: classProtected},
-		"GET /api/v1/share-grants/blocks":             {class: classProtected},
-		"DELETE /api/v1/share-grants/blocks/:user_id": {class: classProtected},
-		"PATCH /api/v1/share-grants/:id":              {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID},
-		"POST /api/v1/share-grants/:id/accept":        {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/accept"},
-		"POST /api/v1/share-grants/:id/decline":       {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/decline"},
-		"POST /api/v1/share-grants/:id/leave":         {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/leave"},
-		"POST /api/v1/share-grants/:id/revoke":        {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/revoke"},
-		"POST /api/v1/share-grants/:id/reconfirm":     {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/reconfirm"},
-		"GET /api/v1/share-grants/:id/content":        {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/content"},
+		"POST /api/v1/share-grants":                    {class: classProtected},
+		"GET /api/v1/share-grants/outgoing":            {class: classProtected},
+		"GET /api/v1/share-grants/incoming":            {class: classProtected},
+		"GET /api/v1/share-grants/blocks":              {class: classProtected},
+		"GET /api/v1/share-grants/notifications":       {class: classProtected},
+		"POST /api/v1/share-grants/notifications/read": {class: classProtected},
+		"DELETE /api/v1/share-grants/blocks/:user_id":  {class: classProtected},
+		"PATCH /api/v1/share-grants/:id":               {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID},
+		"POST /api/v1/share-grants/:id/accept":         {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/accept"},
+		"POST /api/v1/share-grants/:id/decline":        {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/decline"},
+		"POST /api/v1/share-grants/:id/leave":          {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/leave"},
+		"POST /api/v1/share-grants/:id/revoke":         {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/revoke"},
+		"POST /api/v1/share-grants/:id/reconfirm":      {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/reconfirm"},
+		"GET /api/v1/share-grants/:id/content":         {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/content"},
 
 		// --- relationship edges ---------------------------------------------
 		"POST /api/v1/relationship-edges":             {class: classProtected},
@@ -537,15 +543,21 @@ func buildTable(s seeded) map[string]authzRow {
 		"DELETE /api/v1/field-definitions/:id":  {class: classItem, probe: "/api/v1/field-definitions/" + s.fieldDef},
 
 		// --- reusable entities (issue #2296, ADR 0043) ----------------------
-		"POST /api/v1/entities":                 {class: classProtected},
-		"GET /api/v1/entities":                  {class: classProtected},
-		"GET /api/v1/entities/:id":              {class: classItem, probe: "/api/v1/entities/" + s.entity},
-		"PUT /api/v1/entities/:id":              {class: classItem, probe: "/api/v1/entities/" + s.entity},
-		"DELETE /api/v1/entities/:id":           {class: classItem, probe: "/api/v1/entities/" + s.entity},
-		"POST /api/v1/entities/:id/restore":     {class: classItem, probe: "/api/v1/entities/" + s.entity + "/restore"},
-		"GET /api/v1/entities/:id/contacts":     {class: classItem, probe: "/api/v1/entities/" + s.entity + "/contacts"},
-		"GET /api/v1/entities/:id/field-values": {class: classItem, probe: "/api/v1/entities/" + s.entity + "/field-values"},
-		"PUT /api/v1/entities/:id/field-values": {class: classItem, probe: "/api/v1/entities/" + s.entity + "/field-values"},
+		"POST /api/v1/entities":                                {class: classProtected},
+		"GET /api/v1/entities":                                 {class: classProtected},
+		"GET /api/v1/entities/:id":                             {class: classItem, probe: "/api/v1/entities/" + s.entity},
+		"PUT /api/v1/entities/:id":                             {class: classItem, probe: "/api/v1/entities/" + s.entity},
+		"DELETE /api/v1/entities/:id":                          {class: classItem, probe: "/api/v1/entities/" + s.entity},
+		"POST /api/v1/entities/:id/restore":                    {class: classItem, probe: "/api/v1/entities/" + s.entity + "/restore"},
+		"GET /api/v1/contacts/:id/entity-links":                {class: classItem, probe: "/api/v1/contacts/" + contact + "/entity-links"},
+		"POST /api/v1/contacts/:id/entity-links":               {class: classItem, probe: "/api/v1/contacts/" + contact + "/entity-links"},
+		"POST /api/v1/contacts/:id/entity-links/from-existing": {class: classItem, probe: "/api/v1/contacts/" + contact + "/entity-links/from-existing"},
+		"PUT /api/v1/contacts/:id/entity-links/:linkId":        {class: classItem, probe: "/api/v1/contacts/" + contact + "/entity-links/" + s.entityLink},
+		"DELETE /api/v1/contacts/:id/entity-links/:linkId":     {class: classItem, probe: "/api/v1/contacts/" + contact + "/entity-links/" + s.entityLink},
+		"POST /api/v1/contacts/:id/entity-links/:linkId/adopt": {class: classItem, probe: "/api/v1/contacts/" + contact + "/entity-links/" + s.entityLink + "/adopt"},
+		"GET /api/v1/entities/:id/contacts":                    {class: classItem, probe: "/api/v1/entities/" + s.entity + "/contacts"},
+		"GET /api/v1/entities/:id/field-values":                {class: classItem, probe: "/api/v1/entities/" + s.entity + "/field-values"},
+		"PUT /api/v1/entities/:id/field-values":                {class: classItem, probe: "/api/v1/entities/" + s.entity + "/field-values"},
 
 		// --- life events ----------------------------------------------------
 		"POST /api/v1/life-events":                    {class: classProtected},

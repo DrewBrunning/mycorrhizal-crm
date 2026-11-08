@@ -300,6 +300,26 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_entity_snapshot_unsupported
         )
 
+        ErrorReasonCode.ENTITY_LINK_NOT_FOUND -> stringResource(
+            R.string.error_reason_entity_link_not_found
+        )
+
+        ErrorReasonCode.ENTITY_LINK_ROLE_INVALID -> stringResource(
+            R.string.error_reason_entity_link_role_invalid
+        )
+
+        ErrorReasonCode.ENTITY_LINK_KIND_NOT_ADOPTABLE -> stringResource(
+            R.string.error_reason_entity_link_kind_not_adoptable
+        )
+
+        ErrorReasonCode.ENTITY_LINK_SOURCE_NOT_FOUND -> stringResource(
+            R.string.error_reason_entity_link_source_not_found
+        )
+
+        ErrorReasonCode.ENTITY_LINK_PRIMARY_CONFLICT -> stringResource(
+            R.string.error_reason_entity_link_primary_conflict
+        )
+
         ErrorReasonCode.CONTACT_FIELD_DEFINITION_TARGET_IMMUTABLE -> stringResource(
             R.string.error_reason_contact_field_definition_target_immutable
         )

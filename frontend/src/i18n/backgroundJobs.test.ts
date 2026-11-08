@@ -26,6 +26,7 @@ const KNOWN_JOB_KEYS = [
   'job_run_purge',
   'storage_sample',
   'image_sweep',
+  'share_grant_lifecycle',
   'search_index_rebuild',
   'derived_columns_rebuild',
 ] as const;

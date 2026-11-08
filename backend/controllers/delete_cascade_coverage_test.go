@@ -126,6 +126,7 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"seafile_configs":            goCascadeUser,
 	"share_blocks":               goCascadeUser,
 	"share_grants":               goCascadeUser,
+	"share_grant_notifications":  goCascadeUser,
 	"sessions":                   goCascadeUser,
 	"tags":                       goCascadeUser,
 	"users":                      goCascadeUser,
@@ -661,7 +662,11 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 	require.NoError(t, db.Create(&models.ShareBlock{BlockerUserID: target.ID, BlockedUserID: admin.ID}).Error)
 	require.NoError(t, db.Create(&models.ShareBlock{BlockerUserID: admin.ID, BlockedUserID: target.ID}).Error)
 
+	require.NoError(t, db.Create(&models.ShareGrantNotification{UserID: target.ID, FromUserID: admin.ID, Kind: models.ShareGrantNoticePending, EntityType: models.ShareGrantEntityNote}).Error)
+	require.NoError(t, db.Create(&models.ShareGrantNotification{UserID: admin.ID, FromUserID: target.ID, Kind: models.ShareGrantNoticeRevoked, EntityType: models.ShareGrantEntityNote}).Error)
+
 	seeded := []seedRow{
+		scopedCount("share_grant_notifications", &models.ShareGrantNotification{}, "user_id = ? OR from_user_id = ?", target.ID, target.ID),
 		scopedCount("share_grants", &models.ShareGrant{}, "from_user_id = ? OR to_user_id = ?", target.ID, target.ID),
 		scopedCount("share_blocks", &models.ShareBlock{}, "blocker_user_id = ? OR blocked_user_id = ?", target.ID, target.ID),
 		scopedCount("contact_entity_links", &models.ContactEntityLink{}, "user_id = ?", target.ID),

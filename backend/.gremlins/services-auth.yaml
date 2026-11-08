@@ -19,6 +19,7 @@ unleash:
         - ^clock\.go$
         - ^contact_dav_delete_repair\.go$
         - ^contact_delete\.go$
+        - ^contact_entity_link\.go$
         - ^contact_field_visibility\.go$
         - ^contact_image_service\.go$
         - ^contact_merge_service\.go$
@@ -101,6 +102,7 @@ unleash:
         - ^search_service\.go$
         - ^self_contact\.go$
         - ^share_grant\.go$
+        - ^share_grant_lifecycle\.go$
         - ^share_grant_revoke\.go$
         - ^source_import_session\.go$
         - ^storage_sample_service\.go$

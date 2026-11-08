@@ -373,11 +373,10 @@ class MergeAndBulkViewModelTest {
 
     @Test
     fun `a failed commit stays on the same step`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery {
-            mergeRepository.commit(
-            any()
+        val failure = Result.failure<com.mycorrhizal.crm.model.network.ContactRecordResponse>(
+            ApiError.Client(409, "stale")
         )
-        } returns Result.failure(ApiError.Client(409, "stale"))
+        coEvery { mergeRepository.commit(any()) } returns failure
         val vm = viewModel()
         vm.setPair(1, 2, queue = listOf(3))
         vm.commit()

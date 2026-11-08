@@ -2267,6 +2267,12 @@ paths:
             Opt-in because counting is the cost cursor pagination avoids.
             Any value other than true/false is a 400.
           schema: { type: boolean, default: false }
+        - name: entity_id
+          in: query
+          description: >
+            Only contacts holding a live link to this entity (ADR 0043 decision 10). A foreign, unknown or
+            trashed entity id matches nothing. Not applied to the ?since= change feed.
+          schema: { type: string, format: uuid }
         - name: circle_legacy
           in: query
           description: >
@@ -5001,6 +5007,61 @@ paths:
                       $ref: "#/components/schemas/ShareGrantRecipientView"
                   next_cursor: { type: string }
                   limit: { type: integer }
+  /share-grants/notifications:
+    get:
+      summary: Your pending-share badge and unread notices (recipient)
+      operationId: listShareGrantNotifications
+      tags:
+        - Share Grants
+      description: >
+        The in-app surface of ADR 0042 decision 11. `pending_count` is the number of grants
+        awaiting your answer (a blocked sender's grants are never counted). `notifications` are
+        your newest unread notices (at most 50): a new pending grant or a revoke. A payload is the
+        sender username and the entity type only, never a label or content. Responses are
+        `Cache-Control: no-store`.
+      responses:
+        "200":
+          description: The badge count and unread notices.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [pending_count, notifications]
+                properties:
+                  pending_count: { type: integer }
+                  notifications:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ShareGrantNotification"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /share-grants/notifications/read:
+    post:
+      summary: Mark all your unread share notices read (recipient)
+      operationId: markShareGrantNotificationsRead
+      tags:
+        - Share Grants
+      description: Scoped to the caller; marking read changes no grant.
+      responses:
+        "200":
+          description: How many notices changed.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [marked]
+                properties:
+                  marked: { type: integer }
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /share-grants/blocks:
     get:
       summary: List the senders you have blocked (recipient)
@@ -8579,6 +8640,313 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
 
+  # --- Contact-entity links (issue #2297, ADR 0043 decisions 2, 3 and 10) ---
+  /contacts/{id}/entity-links:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    get:
+      summary: List a contact's entity links
+      operationId: listContactEntityLinks
+      tags:
+        - Entities
+      description: |
+        The contact's live links with the entity name and the projection preview: `current` is true when the
+        link's period includes today (the owner's calendar day) and `projects_as` is `ORG` or `ADR` while the link
+        is primary and current. All sensitivities are returned (owner surface).
+      responses:
+        "200":
+          description: The contact's links.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactEntityLinksResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown or foreign contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      summary: Link a contact to an entity
+      operationId: createContactEntityLink
+      tags:
+        - Entities
+      description: |
+        `entity_id` and `role` are required; `role` must be in the entity kind's closed vocabulary
+        (organisation employee|owner|contractor|volunteer|member|other; place resident|owner|visitor|other;
+        pet owner|carer|other). `role_label` is free text and never matched. The first link is never
+        automatically primary; `is_primary: true` demotes the contact's previous primary of the same kind in the
+        same transaction. A contact may link the same entity more than once (two periods). The contact and the
+        entity must both belong to the caller; anything foreign is a 404.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactEntityLinkInput"
+      responses:
+        "201":
+          description: Link created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactEntityLink"
+        "400":
+          description: Validation failed (reason codes entity_link_role_invalid, validation_*).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown or foreign contact or entity (entity_not_found).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed, or a concurrent primary change (entity_link_primary_conflict).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /contacts/{id}/entity-links/from-existing:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+    post:
+      summary: Link a contact to an entity made from one of its own ORG/ADR values
+      operationId: linkContactEntityFromExisting
+      tags:
+        - Entities
+      description: |
+        Takes one of the contact's own organisations or addresses (`source`, by element id or position), links
+        it to `entity_id` (which must be of the matching kind) or, when omitted, to a new entity created from
+        the value, in one transaction. The contact's own value is never removed or rewritten and the contact row
+        is not written. Never triggered by an import, a sync or a merge.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactEntityLinkFromExistingInput"
+      responses:
+        "201":
+          description: Link created (and the entity, when `entity_created`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactEntityLinkFromExistingResponse"
+        "400":
+          description: Validation failed (reason codes entity_link_role_invalid, validation_invalid).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown or foreign contact or entity, or the contact has no such value (entity_link_source_not_found).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed, or a concurrent primary change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body (CON-04, ADR 0010).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /contacts/{id}/entity-links/{linkId}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: linkId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Edit a contact-entity link
+      operationId: updateContactEntityLink
+      tags:
+        - Entities
+      description: |
+        Replaces `role`, `role_label` and `period`; `is_primary` and `sensitivity` are kept when omitted. The
+        entity, contact and kind of a link never change. `is_primary: true` demotes the previous primary of the
+        kind in the same transaction. A period whose end precedes its start is rejected; an all-empty period
+        clears it.
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactEntityLinkInput"
+      responses:
+        "200":
+          description: The updated link.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactEntityLink"
+        "400":
+          description: Validation failed (reason codes entity_link_role_invalid, validation_*).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown or foreign contact or link (entity_link_not_found).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A concurrent change to the link or to the contact's primary (entity_link_primary_conflict).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision; nothing was changed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      summary: Remove a contact-entity link
+      operationId: deleteContactEntityLink
+      tags:
+        - Entities
+      description: A soft delete. A link removed by hand is not revived by a contact or entity restore.
+      parameters:
+        - $ref: "#/components/parameters/IfMatchRevision"
+      responses:
+        "200":
+          description: Link removed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown or foreign contact or link (entity_link_not_found).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "412":
+          description: Stale If-Match revision; nothing was deleted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /contacts/{id}/entity-links/{linkId}/adopt:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer }
+      - name: linkId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Adopt a linked entity's value into the contact
+      operationId: adoptContactEntityLink
+      tags:
+        - Entities
+      description: |
+        Copies the entity's current organisation (or place address) into the contact's own Card as an ordinary
+        value with a fresh element id, through the contact write path (revision bump, audit event, webhook). The
+        link stays. A place's sensitivity is carried onto the copied address. If the contact already holds a
+        value-equal entry nothing is written (`adopted: false`). Pets have nothing to adopt (422). Never
+        triggered by an import, a sync or a merge.
+      responses:
+        "200":
+          description: The adopt result.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactEntityLinkAdoptResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Unknown or foreign contact, link or entity.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A concurrent change to the contact.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The entity has no organisation or address to adopt (entity_link_kind_not_adoptable).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /entities/{id}/field-values:
     parameters:
       - name: id
@@ -11770,6 +12138,15 @@ paths:
           in: query
           description: "Ego-network radius in hops (1..5, default 2). Used only with `full=false` or `from`."
           schema: { type: integer, minimum: 1, maximum: 5, default: 2 }
+        - name: include_entities
+          in: query
+          description: >
+            Issue #2298 (ADR 0043): `true` adds the display-only `entity_nodes` and
+            `entity_edges` keys (live links and entities at normal sensitivity only;
+            a contact-to-entity hop counts as one hop under `depth`). Any other value
+            leaves the response byte-identical to before. Entity data is never fed
+            to traversal, household inference or suggestions.
+          schema: { type: boolean, default: false }
       responses:
         "404":
           description: "`from` is not one of the caller's contacts."
@@ -16534,12 +16911,16 @@ components:
         count: { type: integer }
     TrashRestoreResponse:
       type: object
-      required: [contact, skipped]
+      required: [contact, skipped, revoked_grants]
       properties:
         contact: { $ref: "#/components/schemas/ContactSummary" }
         skipped:
           type: array
           items: { $ref: "#/components/schemas/TrashRestoreSkip" }
+        revoked_grants:
+          type: array
+          description: Standing-share grants the delete revoked, so the UI can offer to issue them again. Restore does not re-arm access.
+          items: { $ref: "#/components/schemas/TrashRevokedShareGrant" }
     TrashPurgeResponse:
       type: object
       required: [message, purged]
@@ -17628,6 +18009,25 @@ components:
           type: string
           enum: ["", red, orange, yellow, green, teal, blue, purple, pink, grey]
           description: Palette token. On PUT an absent key keeps the stored value; "" clears it. Any other value is a 400.
+    CircleTimelineItem:
+      description: >
+        A TimelineItem on a circle's timeline plus `members`: the live circle
+        member(s) the entry is about (an activity shared by several members
+        lists each; non-member participants are omitted).
+      allOf:
+        - $ref: "#/components/schemas/TimelineItem"
+        - type: object
+          required: [members]
+          properties:
+            members:
+              type: array
+              items:
+                type: object
+                required: [id, firstname, lastname]
+                properties:
+                  id: { type: integer }
+                  firstname: { type: string }
+                  lastname: { type: string }
     CircleTimelineResponse:
       type: object
       description: >
@@ -17637,7 +18037,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/TimelineItem" }
+          items: { $ref: "#/components/schemas/CircleTimelineItem" }
         next_cursor: { type: string }
         limit: { type: integer }
         member_count: { type: integer, description: "Members in the circle (archived members count here but contribute no timeline events)." }
@@ -17768,6 +18168,28 @@ components:
         expires_at: { type: string, format: date-time, nullable: true }
         responded_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
+    ShareGrantNotification:
+      type: object
+      required: [id, kind, entity_type, sender_username, created_at]
+      properties:
+        id: { type: integer }
+        kind: { type: string, enum: [pending, revoked] }
+        entity_type: { type: string, enum: [contact, note, activity, circle] }
+        sender_username: { type: string }
+        created_at: { type: string, format: date-time }
+    TrashRevokedShareGrant:
+      type: object
+      description: A standing-share grant the contact's deletion revoked; restore never re-arms it (ADR 0042 decision 10).
+      required: [id, to_user_id, to_username, sections, expires_at, revoked_at]
+      properties:
+        id: { type: string, format: uuid }
+        to_user_id: { type: integer }
+        to_username: { type: string }
+        sections:
+          type: array
+          items: { type: string }
+        expires_at: { type: string, format: date-time, nullable: true }
+        revoked_at: { type: string, format: date-time, nullable: true }
     ShareBlock:
       type: object
       properties:
@@ -18427,9 +18849,9 @@ components:
       properties:
         id: { type: integer }
         created_at: { type: string, format: date-time }
-        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder, user, auth, api_token, feed] }
+        entity_type: { type: string, enum: [contact, note, activity, life_event, gift, circle, tag, household, reminder, share_grant, user, auth, api_token, feed] }
         entity_id: { type: string }
-        operation: { type: string, enum: [create, update, delete, login, login_failed, register, password_change, password_reset, password_reset_requested, totp_enable, totp_disable, recovery_regenerate, revoke, role_change, two_factor_admin_reset, webauthn_register, webauthn_revoke] }
+        operation: { type: string, enum: [create, update, delete, login, login_failed, register, password_change, password_reset, password_reset_requested, totp_enable, totp_disable, recovery_regenerate, revoke, role_change, two_factor_admin_reset, webauthn_register, webauthn_revoke, restore, purge, accept, decline, expire, reconfirm] }
         before_snapshot: { type: string, description: "Redacted JSON of the pre-update/pre-delete state (empty for creates)" }
         hash: { type: string, description: "SHA-256 of (prev_hash || canonical content); the tamper-evident chain link (issue #381)" }
         prev_hash: { type: string, description: "Hash of the preceding audit row (empty for the head of the chain)" }
@@ -19748,6 +20170,85 @@ components:
           items:
             $ref: "#/components/schemas/EntityContactLink"
 
+    # --- Contact-entity links (issue #2297, ADR 0043) ---
+    ContactEntityLinkInput:
+      type: object
+      required: [role]
+      properties:
+        entity_id: { type: string, format: uuid, description: "Required on create; ignored on update (re-link instead)." }
+        role: { type: string, description: "In the entity kind's closed vocabulary; see createContactEntityLink." }
+        role_label: { type: string, maxLength: 100, description: "Free text; never participates in matching." }
+        is_primary: { type: boolean, description: "True demotes the previous primary of the kind. Kept when omitted on update." }
+        period:
+          $ref: "#/components/schemas/TemporalRange"
+        sensitivity: { type: string, enum: [normal, private, secret], description: "Defaults to normal on create; kept when omitted on update." }
+    ContactEntityLink:
+      type: object
+      required: [id, contact_vcard_uid, entity_id, entity_name, kind, role, role_label, is_primary, sensitivity, current, projects_as, revision, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        contact_vcard_uid: { type: string }
+        entity_id: { type: string, format: uuid }
+        entity_name: { type: string }
+        kind: { type: string, enum: [organisation, place, pet] }
+        role: { type: string }
+        role_label: { type: string }
+        is_primary: { type: boolean }
+        period:
+          $ref: "#/components/schemas/TemporalRange"
+        sensitivity: { type: string, enum: [normal, private, secret] }
+        current: { type: boolean, description: "The period includes today (the owner's calendar day). Non-comparable endpoints count as current." }
+        projects_as: { type: string, enum: ["", ORG, ADR], description: "ORG or ADR while the link is primary and current and the kind projects; empty otherwise." }
+        revision: { type: integer, format: int64, description: "Revision token for If-Match (ADR 0006)." }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ContactEntityLinksResponse:
+      type: object
+      required: [links]
+      properties:
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContactEntityLink"
+    ContactEntityLinkSource:
+      type: object
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [organization, address] }
+        id: { type: string, description: "Card element id. Exactly one of id and index is required." }
+        index: { type: integer, minimum: 0, description: "Zero-based position in the Card's organizations or addresses (organisations imported from vCard often have no element id)." }
+    ContactEntityLinkFromExistingInput:
+      type: object
+      required: [source, role]
+      properties:
+        source:
+          $ref: "#/components/schemas/ContactEntityLinkSource"
+        entity_id: { type: string, format: uuid, description: "An existing entity of the matching kind; omit to create one from the value." }
+        role: { type: string }
+        role_label: { type: string, maxLength: 100 }
+        is_primary: { type: boolean }
+        period:
+          $ref: "#/components/schemas/TemporalRange"
+        sensitivity: { type: string, enum: [normal, private, secret] }
+    ContactEntityLinkFromExistingResponse:
+      type: object
+      required: [link, entity, entity_created]
+      properties:
+        link:
+          $ref: "#/components/schemas/ContactEntityLink"
+        entity:
+          $ref: "#/components/schemas/Entity"
+        entity_created: { type: boolean }
+    ContactEntityLinkAdoptResponse:
+      type: object
+      required: [link, adopted, element_kind, element_id]
+      properties:
+        link:
+          $ref: "#/components/schemas/ContactEntityLink"
+        adopted: { type: boolean, description: "False when a value-equal own entry already existed and nothing was written." }
+        element_kind: { type: string, enum: [organization, address] }
+        element_id: { type: string, description: "Card element id of the copied (or already present) value." }
+
     # --- Custom fields ---
     FieldDefinition:
       type: object
@@ -20168,6 +20669,30 @@ components:
           description: "Issue #1791: true when the graph is an ego-network (contacts within `depth` hops of `from_vcard_uid`) rather than the whole account."
         from_vcard_uid: { type: string, format: uuid, description: "The ego-network's anchor; absent when `scoped` is false." }
         depth: { type: integer, description: "The ego-network's radius in hops; absent when `scoped` is false." }
+        entity_nodes:
+          type: array
+          description: "Present only with `include_entities=true` (an empty array when nothing links). Display-only; never mixed into `nodes`."
+          items:
+            $ref: "#/components/schemas/GraphEntityNode"
+        entity_edges:
+          type: array
+          description: "Present only with `include_entities=true`. Contact node to entity node; no type, role, dates or status."
+          items:
+            $ref: "#/components/schemas/GraphEntityEdge"
+    GraphEntityNode:
+      type: object
+      required: [id, kind, label]
+      properties:
+        id: { type: string, description: '"e-<entityID>".' }
+        kind: { type: string, enum: [organisation, place, pet] }
+        label: { type: string }
+    GraphEntityEdge:
+      type: object
+      required: [id, source, target]
+      properties:
+        id: { type: string }
+        source: { type: string, description: 'Contact node ID ("c-<contactID>").' }
+        target: { type: string, description: 'Entity node ID ("e-<entityID>").' }
     GraphConnectionsResponse:
       type: object
       description: The result of a multi-hop traversal from a starting contact.

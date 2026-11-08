@@ -552,6 +552,30 @@ type GraphResponse struct {
 	Scoped       bool   `json:"scoped"`
 	FromVCardUID string `json:"from_vcard_uid,omitempty"`
 	Depth        int    `json:"depth,omitempty"`
+	// EntityNodes/EntityEdges (issue #2298, ADR 0043 decision 2) are present
+	// ONLY when the request opted in with ?include_entities=true -- they are
+	// pointers so an opted-in empty result is `[]` while a default response
+	// omits the keys entirely and stays byte-identical. Display-only: never
+	// mixed into Nodes/Edges and never fed to traversal.
+	EntityNodes *[]GraphEntityNode `json:"entity_nodes,omitempty"`
+	EntityEdges *[]GraphEntityEdge `json:"entity_edges,omitempty"`
+}
+
+// GraphEntityNode is a reusable entity (organisation, place or pet) rendered
+// read-only in the graph. ID is "e-<entityID>". It carries no sensitivity,
+// core, notes or custom fields: only normal-sensitivity entities appear.
+type GraphEntityNode struct {
+	ID    string `json:"id"`
+	Kind  string `json:"kind"`
+	Label string `json:"label"`
+}
+
+// GraphEntityEdge links a contact node to an entity node. It is display-only:
+// no type, inverse, role, dates or status (those never leave as graph data).
+type GraphEntityEdge struct {
+	ID     string `json:"id"`
+	Source string `json:"source"` // contact node ID ("c-<id>")
+	Target string `json:"target"` // entity node ID ("e-<entityID>")
 }
 
 // GraphChainStep is one hop in a traversal chain (T10). Relation is

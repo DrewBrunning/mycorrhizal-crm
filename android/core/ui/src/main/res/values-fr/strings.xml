@@ -2798,6 +2798,11 @@
     <string name="error_reason_entity_kind_immutable">Le type d\'une entité ne peut pas être modifié ; supprimez-la et créez-en une nouvelle</string>
     <string name="error_reason_entity_core_invalid">%1$s</string>
     <string name="error_reason_entity_snapshot_unsupported">L\'instantané de suppression de cette entité n\'est pas pris en charge par cette version</string>
+    <string name="error_reason_entity_link_not_found">Lien introuvable</string>
+    <string name="error_reason_entity_link_role_invalid">Ce rôle n\'est pas valide pour ce type d\'entité</string>
+    <string name="error_reason_entity_link_kind_not_adoptable">Cette entité n\'a aucune valeur d\'organisation ou d\'adresse à adopter dans le contact</string>
+    <string name="error_reason_entity_link_source_not_found">Le contact n\'a pas cette organisation ou cette adresse</string>
+    <string name="error_reason_entity_link_primary_conflict">Un autre changement du lien principal de ce contact a eu lieu en même temps ; réessayez</string>
     <string name="error_reason_contact_field_definition_target_immutable">La cible d\'une définition de champ ne peut pas être modifiée</string>
     <string name="error_reason_contact_field_definition_projection_target_invalid">Seules les définitions de champ de contact peuvent utiliser une projection vcard ; utilisez internal-only</string>
     <string name="error_reason_contact_field_definition_target_mismatch">La définition de champ ne cible pas ce type d\'enregistrement</string>

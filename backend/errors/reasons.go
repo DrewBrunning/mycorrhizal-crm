@@ -145,11 +145,17 @@ const (
 	ReasonImageNotFound          ReasonCode = "image_not_found"
 
 	// Reusable entities (issue #2296, ADR 0043).
-	ReasonEntityNotFound                                ReasonCode = "entity_not_found"
-	ReasonEntityKindRequired                            ReasonCode = "entity_kind_required"
-	ReasonEntityKindImmutable                           ReasonCode = "entity_kind_immutable"
-	ReasonEntityCoreInvalid                             ReasonCode = "entity_core_invalid"
-	ReasonEntitySnapshotUnsupported                     ReasonCode = "entity_snapshot_unsupported"
+	ReasonEntityNotFound            ReasonCode = "entity_not_found"
+	ReasonEntityKindRequired        ReasonCode = "entity_kind_required"
+	ReasonEntityKindImmutable       ReasonCode = "entity_kind_immutable"
+	ReasonEntityCoreInvalid         ReasonCode = "entity_core_invalid"
+	ReasonEntitySnapshotUnsupported ReasonCode = "entity_snapshot_unsupported"
+	// Contact-entity links (issue #2297, ADR 0043 decision 2/3).
+	ReasonEntityLinkNotFound                            ReasonCode = "entity_link_not_found"
+	ReasonEntityLinkRoleInvalid                         ReasonCode = "entity_link_role_invalid"
+	ReasonEntityLinkKindNotAdoptable                    ReasonCode = "entity_link_kind_not_adoptable"
+	ReasonEntityLinkSourceNotFound                      ReasonCode = "entity_link_source_not_found"
+	ReasonEntityLinkPrimaryConflict                     ReasonCode = "entity_link_primary_conflict"
 	ReasonContactFieldDefinitionTargetImmutable         ReasonCode = "contact_field_definition_target_immutable"
 	ReasonContactFieldDefinitionProjectionTargetInvalid ReasonCode = "contact_field_definition_projection_target_invalid"
 	ReasonContactFieldDefinitionTargetMismatch          ReasonCode = "contact_field_definition_target_mismatch"
@@ -626,6 +632,11 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonEntityKindImmutable:                           {Template: "An entity's kind cannot be changed; delete it and create a new one"},
 	ReasonEntityCoreInvalid:                             {Template: "{reason}", Params: []string{"reason"}},
 	ReasonEntitySnapshotUnsupported:                     {Template: "This entity's deletion snapshot is not supported by this version"},
+	ReasonEntityLinkNotFound:                            {Template: "Entity link not found"},
+	ReasonEntityLinkRoleInvalid:                         {Template: "That role is not valid for this kind of entity"},
+	ReasonEntityLinkKindNotAdoptable:                    {Template: "This entity has no organisation or address value to adopt into the contact"},
+	ReasonEntityLinkSourceNotFound:                      {Template: "The contact has no such organisation or address"},
+	ReasonEntityLinkPrimaryConflict:                     {Template: "Another change to this contact's primary link happened at the same time; try again"},
 	ReasonContactFieldDefinitionTargetImmutable:         {Template: "A field definition's target cannot be changed"},
 	ReasonContactFieldDefinitionProjectionTargetInvalid: {Template: "Only contact field definitions can use a vcard projection; use internal-only"},
 	ReasonContactFieldDefinitionTargetMismatch:          {Template: "The field definition does not target this kind of record"},
@@ -1002,6 +1013,7 @@ var notFoundReasons = map[string]ReasonCode{
 	"Address":                  ReasonContactAddressNotFound,
 	"Image":                    ReasonImageNotFound,
 	"Entity":                   ReasonEntityNotFound,
+	"Entity link":              ReasonEntityLinkNotFound,
 	"Attachment":               ReasonAttachmentNotFound,
 	"Attachment file":          ReasonAttachmentFileNotFound,
 	"Audit event":              ReasonAdminAuditEventNotFound,

@@ -36,9 +36,12 @@ test.describe('Mobile navigation (T33)', () => {
   }) => {
     await page.goto('/network');
     await page.getByRole('button', { name: 'menu' }).click();
-    for (const name of [/dashboard/i, /households/i, /activities/i, /network/i, /shares/i]) {
+    for (const name of [/dashboard/i, /households/i, /activities/i, /network/i]) {
       await expect(page.getByRole('link', { name })).toBeVisible();
     }
+    // #2175: Shares is a sub-item of Settings; open the group first.
+    await page.getByRole('button', { name: 'Settings sub-pages' }).click();
+    await expect(page.getByRole('link', { name: /shares/i })).toBeVisible();
   });
 
   test('account-level destinations collapse into the account menu', async ({ page }) => {

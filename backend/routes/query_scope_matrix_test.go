@@ -104,6 +104,7 @@ type qsActor struct {
 	c1, c2, c3, cArch, cTomb models.Contact
 
 	circleID1, circleID2     string
+	entityID1                string
 	circleName1, circleName2 string
 	householdID1             string
 	householdID2             string
@@ -172,6 +173,14 @@ func qsSeedActor(t *testing.T, db *gorm.DB, cfg *config.Config, name, tag string
 		return c.ID, c.Name
 	}
 	a.circleID1, a.circleName1 = mkCircle(1, a.c1)
+
+	// One organisation linked to c1 only (issue #2297: GET /contacts?entity_id=).
+	org := models.Entity{UserID: a.user.ID, Kind: models.EntityKindOrganisation, Name: tag + "-org1"}
+	require.NoError(t, db.Create(&org).Error)
+	require.NoError(t, db.Create(&models.ContactEntityLink{UserID: a.user.ID, ContactVCardUID: a.c1.VCardUID,
+		EntityID: org.ID, Kind: org.Kind, Role: "employee", Sensitivity: "normal"}).Error)
+	a.entityID1 = org.ID
+	a.note("entity1", org.ID, true)
 	a.circleID2, a.circleName2 = mkCircle(2, a.c2)
 
 	mkHousehold := func(n int, member models.Contact) string {
@@ -486,6 +495,14 @@ func buildQueryScopeRows() []qsRow {
 			baseIn: qsMk("contact-c1", "contact-c2", "contact-c3"),
 		},
 		qsRow{
+			name: "contacts ?entity_id=", path: "/api/v1/contacts",
+			params: []string{"entity_id"}, reads: []string{"GetContacts:entity_id"},
+			query:  func(a *qsActor) string { return "entity_id=" + a.entityID1 },
+			in:     qsMk("contact-c1"),
+			out:    qsMk("contact-c2", "contact-c3"),
+			baseIn: qsMk("contact-c1", "contact-c2", "contact-c3"),
+		},
+		qsRow{
 			name: "contacts ?circle_legacy=", path: "/api/v1/contacts",
 			params: []string{"circle_legacy"}, reads: []string{"GetContacts:circle_legacy"},
 			query:  func(a *qsActor) string { return "circle_legacy=" + a.tag + "-legacy1" },
@@ -716,6 +733,7 @@ func buildQueryScopeRows() []qsRow {
 // qsAllow lists "Func:param" handler reads that are scope-named but are NOT
 // probed by a row, each with the recorded reason.
 var qsAllow = map[string]string{
+	"GetGraph:include_entities":                   "response-shape flag (#2298): adds display-only entity nodes/edges from a user_id-scoped join (links AND entities owned by the caller); cross-user and scoping covered by controllers/graph_entities_test.go",
 	"GetContacts:include_total":                   "response-shape flag (#2188): adds a COUNT over the already user-scoped query; scoping is covered by controllers/contact_offset_paging_test.go",
 	"includeSensitiveRequested:include_sensitive": "only reached from the POST geocode handlers (no GET route reads it); sensitive-address filtering is covered by controllers/contact_address_controller_test.go",
 	"ListSystemEvents:ids":                        "admin-only route (non-admins get 403 in authorization_matrix_test.go); system events are instance-wide by design",
@@ -739,6 +757,7 @@ var qsAllow = map[string]string{
 // spec declares with a scope-ish name but that are not row-probed, each with
 // the recorded reason.
 var qsAllowSpec = map[string]string{
+	"/graph|include_entities":                     "response-shape flag (#2298): display-only entity nodes/edges from a user_id-scoped join (qsAllow GetGraph:include_entities)",
 	"/contacts|include_total":                     "response-shape flag (#2188): a COUNT over the already user-scoped query (qsAllow GetContacts:include_total)",
 	"/admin/job-runs|since":                       "admin-only, instance-wide by design (qsAllow ListJobRuns:since)",
 	"/admin/system-events|correlation_id":         "admin-only, instance-wide by design (qsAllow ListSystemEvents:correlation_id)",

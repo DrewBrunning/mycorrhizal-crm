@@ -110,6 +110,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		return models.LifeEventInput{EntityID: uid, Type: models.LifeEventTypeMoved, Source: models.LifeEventSourceUser}
 	}
 	entityBody := func() any { return models.EntityInput{Name: "stale probe"} }
+	entityLinkBody := func() any { return models.ContactEntityLinkInput{Role: "owner"} }
 	mainImageBody := func() any { return map[string]any{"image_id": 1} }
 	reminderBody := func() any {
 		return models.Reminder{Message: "stale probe", RemindAt: time.Now().Add(24 * time.Hour), Recurrence: "once", ContactID: &contactID}
@@ -117,16 +118,18 @@ func buildCWTable(s seeded) map[string]cwRow {
 
 	return map[string]cwRow{
 		// === CON-01 enforced: PUT/DELETE on the five revision-bearing entities ===
-		"PUT /api/v1/contacts/:id":       enforced("/api/v1/contacts/"+contact, contactBody),
-		"DELETE /api/v1/contacts/:id":    enforced("/api/v1/contacts/"+contact, nil),
-		"PUT /api/v1/notes/:id":          enforced("/api/v1/notes/"+s.note, noteBody),
-		"DELETE /api/v1/notes/:id":       enforced("/api/v1/notes/"+s.note, nil),
-		"PUT /api/v1/activities/:id":     enforced("/api/v1/activities/"+s.activity, activityBody),
-		"DELETE /api/v1/activities/:id":  enforced("/api/v1/activities/"+s.activity, nil),
-		"PUT /api/v1/life-events/:id":    enforced("/api/v1/life-events/"+s.lifeEvent, lifeEventBody),
-		"DELETE /api/v1/life-events/:id": enforced("/api/v1/life-events/"+s.lifeEvent, nil),
-		"PUT /api/v1/entities/:id":       enforced("/api/v1/entities/"+s.entity, entityBody),
-		"DELETE /api/v1/entities/:id":    enforced("/api/v1/entities/"+s.entity, nil),
+		"PUT /api/v1/contacts/:id":                         enforced("/api/v1/contacts/"+contact, contactBody),
+		"DELETE /api/v1/contacts/:id":                      enforced("/api/v1/contacts/"+contact, nil),
+		"PUT /api/v1/notes/:id":                            enforced("/api/v1/notes/"+s.note, noteBody),
+		"DELETE /api/v1/notes/:id":                         enforced("/api/v1/notes/"+s.note, nil),
+		"PUT /api/v1/activities/:id":                       enforced("/api/v1/activities/"+s.activity, activityBody),
+		"DELETE /api/v1/activities/:id":                    enforced("/api/v1/activities/"+s.activity, nil),
+		"PUT /api/v1/life-events/:id":                      enforced("/api/v1/life-events/"+s.lifeEvent, lifeEventBody),
+		"DELETE /api/v1/life-events/:id":                   enforced("/api/v1/life-events/"+s.lifeEvent, nil),
+		"PUT /api/v1/entities/:id":                         enforced("/api/v1/entities/"+s.entity, entityBody),
+		"PUT /api/v1/contacts/:id/entity-links/:linkId":    enforced("/api/v1/contacts/"+contact+"/entity-links/"+s.entityLink, entityLinkBody),
+		"DELETE /api/v1/contacts/:id/entity-links/:linkId": enforced("/api/v1/contacts/"+contact+"/entity-links/"+s.entityLink, nil),
+		"DELETE /api/v1/entities/:id":                      enforced("/api/v1/entities/"+s.entity, nil),
 		// The main image is a single-row write to the revision-bearing contact
 		// (it saves the contact and bumps its ETag), so it is conditional too.
 		"PUT /api/v1/contacts/:id/main-image":    enforced("/api/v1/contacts/"+contact+"/main-image", mainImageBody),
@@ -161,13 +164,17 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/data-decay-policies/:id/verify": exempt(reasonToggle),
 
 		// === Creates (no prior revision) ===
-		"POST /api/v1/contacts":               exempt(reasonCreate),
-		"POST /api/v1/contacts/:id/notes":     exempt(reasonCreate),
-		"POST /api/v1/contacts/:id/reminders": exempt(reasonCreate),
-		"POST /api/v1/notes":                  exempt(reasonCreate),
-		"POST /api/v1/activities":             exempt(reasonCreate),
-		"POST /api/v1/life-events":            exempt(reasonCreate),
-		"POST /api/v1/entities":               exempt(reasonCreate),
+		"POST /api/v1/contacts":                                exempt(reasonCreate),
+		"POST /api/v1/contacts/:id/notes":                      exempt(reasonCreate),
+		"POST /api/v1/contacts/:id/reminders":                  exempt(reasonCreate),
+		"POST /api/v1/notes":                                   exempt(reasonCreate),
+		"POST /api/v1/activities":                              exempt(reasonCreate),
+		"POST /api/v1/life-events":                             exempt(reasonCreate),
+		"POST /api/v1/entities":                                exempt(reasonCreate),
+		"POST /api/v1/contacts/:id/entity-links":               exempt(reasonCreate),
+		"POST /api/v1/contacts/:id/entity-links/from-existing": exempt(reasonCreate),
+		// ADR 0043 decision 3: adopt is value-idempotent (a repeat writes nothing).
+		"POST /api/v1/contacts/:id/entity-links/:linkId/adopt": exempt(reasonAction),
 		// ADR 0043 decision 6: restore consumes the deletion snapshot, so a repeat is a checked 404.
 		"POST /api/v1/entities/:id/restore":             exempt(reasonAction),
 		"PUT /api/v1/entities/:id/field-values":         exempt(reasonNonRevision),
@@ -320,6 +327,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/contact-shares/:id/confirm":         exempt(reasonAction),
 		"POST /api/v1/contact-shares/:id/decline":         exempt(reasonAction),
 		"POST /api/v1/share-grants/:id/accept":            exempt(reasonAction),
+		"POST /api/v1/share-grants/notifications/read":    exempt(reasonAction),
 		"POST /api/v1/share-grants/:id/decline":           exempt(reasonAction),
 		"POST /api/v1/share-grants/:id/leave":             exempt(reasonAction),
 		"POST /api/v1/share-grants/:id/revoke":            exempt(reasonAction),
@@ -565,6 +573,10 @@ func snapshotRow(t *testing.T, db *gorm.DB, key, id string) string {
 		return string(b)
 	}
 	switch {
+	case strings.Contains(key, "/entity-links/:linkId"):
+		var l models.ContactEntityLink
+		require.NoError(t, db.Where("id = ?", id).First(&l).Error)
+		return marshal(l)
 	case strings.Contains(key, "/contacts/:id"):
 		var c models.Contact
 		require.NoError(t, db.First(&c, id).Error)

@@ -2701,6 +2701,11 @@
     <string name="error_reason_entity_kind_immutable">Die Art eines Eintrags kann nicht geändert werden; lösche ihn und lege einen neuen an</string>
     <string name="error_reason_entity_core_invalid">%1$s</string>
     <string name="error_reason_entity_snapshot_unsupported">Der Löschschnappschuss dieses Eintrags wird von dieser Version nicht unterstützt</string>
+    <string name="error_reason_entity_link_not_found">Verknüpfung nicht gefunden</string>
+    <string name="error_reason_entity_link_role_invalid">Diese Rolle ist für diese Art von Eintrag nicht gültig</string>
+    <string name="error_reason_entity_link_kind_not_adoptable">Dieser Eintrag hat keinen Organisations- oder Adresswert, der in den Kontakt übernommen werden könnte</string>
+    <string name="error_reason_entity_link_source_not_found">Der Kontakt hat keine solche Organisation oder Adresse</string>
+    <string name="error_reason_entity_link_primary_conflict">Gleichzeitig wurde die primäre Verknüpfung dieses Kontakts geändert; bitte erneut versuchen</string>
     <string name="error_reason_contact_field_definition_target_immutable">Das Ziel einer Felddefinition kann nicht geändert werden</string>
     <string name="error_reason_contact_field_definition_projection_target_invalid">Nur Kontakt-Felddefinitionen können eine vCard-Projektion verwenden; verwende internal-only</string>
     <string name="error_reason_contact_field_definition_target_mismatch">Die Felddefinition gilt nicht für diese Art von Datensatz</string>

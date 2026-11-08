@@ -43,6 +43,8 @@ import ContactsIcon from '@mui/icons-material/Contacts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import GroupIcon from '@mui/icons-material/Group';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import HistoryIcon from '@mui/icons-material/History';
@@ -61,6 +63,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  Collapse,
   Divider,
   Drawer,
   IconButton,
@@ -79,7 +82,16 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Fragment,
+  lazy,
+  type ReactElement,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createBrowserRouter,
@@ -143,6 +155,14 @@ const ShareTargetPage = lazy(() => import('./ShareTargetPage'));
 const TrashPage = lazy(() => import('./TrashPage'));
 
 const drawerWidth = 256;
+
+interface NavItem {
+  text: string;
+  icon: ReactElement;
+  path: string;
+  /** Sub-items rendered under this one (a collapsible group). */
+  children?: NavItem[];
+}
 
 // T33 nav classification: which destinations are "primary" (kept as icons in
 // the phone AppBar) and which are "account-level" (collapsed into the account
@@ -253,8 +273,30 @@ function AppContent({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- token changes trigger admin status recalculation
   const userIsAdmin = useMemo(() => isAdmin(), [token]);
 
-  const mainNavItems = useMemo(() => {
-    const items = [
+  // #2175: the drawer is a two-level tree. Daily destinations stay at the top
+  // level; Shares, Audit log, Data and the admin pages are sub-items of
+  // Settings (their URLs are unchanged). To add a page to the Settings group
+  // -- the upcoming Shares (#2292) and Entities (#2301) pages -- push a NavItem
+  // onto `settingsChildren` below; a child shows as current when the URL is
+  // under its path, and the group highlights and opens with it. Gate
+  // admin-only pages behind `userIsAdmin` like Users/System events/System
+  // status. Routes live in the <Routes> block; this list only places them.
+  const navTree = useMemo<NavItem[]>(() => {
+    const settingsChildren: NavItem[] = [
+      // Shares: the contact-sharing page today; #2292 adds the new Shares UI here.
+      { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
+      // Entities (#2301) goes here.
+      { text: t('nav.audit'), icon: <HistoryIcon />, path: '/audit' },
+      { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
+    ];
+    if (userIsAdmin) {
+      settingsChildren.push(
+        { text: t('nav.users'), icon: <PeopleIcon />, path: '/users' },
+        { text: t('nav.systemEvents'), icon: <MonitorHeartIcon />, path: '/system-events' },
+        { text: t('nav.systemStatus'), icon: <HealthAndSafetyIcon />, path: '/system-status' },
+      );
+    }
+    return [
       { text: t('nav.dashboard'), icon: <DashboardIcon />, path: '/' },
       { text: t('nav.contacts'), icon: <ContactsIcon />, path: '/contacts' },
       { text: t('nav.activities'), icon: <EventNoteIcon />, path: '/activities' },
@@ -280,27 +322,22 @@ function AppContent({
       { text: t('nav.occasions'), icon: <CelebrationIcon />, path: '/occasions' },
       { text: t('nav.households'), icon: <HomeWorkIcon />, path: '/households' },
       { text: t('nav.circlesTags'), icon: <GroupIcon />, path: '/circles' },
-      { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
       { text: t('nav.trash'), icon: <DeleteIcon />, path: '/trash' },
-      { text: t('nav.audit'), icon: <HistoryIcon />, path: '/audit' },
-      { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
-      { text: t('nav.profile'), icon: <SettingsIcon />, path: '/settings' },
+      {
+        text: t('nav.profile'),
+        icon: <SettingsIcon />,
+        path: '/settings',
+        children: settingsChildren,
+      },
     ];
-    if (userIsAdmin) {
-      items.push({ text: t('nav.users'), icon: <PeopleIcon />, path: '/users' });
-      items.push({
-        text: t('nav.systemEvents'),
-        icon: <MonitorHeartIcon />,
-        path: '/system-events',
-      });
-      items.push({
-        text: t('nav.systemStatus'),
-        icon: <HealthAndSafetyIcon />,
-        path: '/system-status',
-      });
-    }
-    return items;
   }, [t, userIsAdmin]);
+
+  // Flat view of the tree (parents then their children) for path matching and
+  // the phone AppBar / account menu, which do not nest.
+  const mainNavItems = useMemo(
+    () => navTree.flatMap((item) => [item, ...(item.children ?? [])]),
+    [navTree],
+  );
 
   // T33 information-architecture pass: the nav bar had grown to ten
   // destinations. Each is classified so the mobile AppBar knows where it
@@ -334,6 +371,81 @@ function AppContent({
     return best;
   }, [mainNavItems, location.pathname]);
 
+  // #2175: a group (Settings) is open when the current page is inside it,
+  // unless the user toggled it on this very page. The override is keyed to the
+  // pathname so navigating re-derives the default (open on a child route).
+  const [groupOverride, setGroupOverride] = useState<{ at: string; open: boolean } | null>(null);
+
+  const navLinkSx = {
+    // #211: a left border, not a background tint -- the tint measured 1.19:1,
+    // this measures 6.73:1 light / 6.88:1 dark (see the model comment block at
+    // the top of this file).
+    borderLeft: '3px solid transparent',
+    '&.Mui-selected': {
+      backgroundColor: 'action.selected',
+      borderLeftColor: 'primary.main',
+    },
+    '&.Mui-selected:hover': {
+      backgroundColor: 'action.selected',
+    },
+  };
+  // T98: Garamond has a smaller x-height than IBM Plex Sans, so ListItemText's
+  // 1rem body1 default reads shrunken here rather than merely different. T63
+  // set the family and no size.
+  const navLabelSlotProps = {
+    primary: { sx: { fontFamily: '"EB Garamond", serif', fontSize: '1.0625rem' } },
+  };
+
+  const renderNavItem = (item: NavItem, nested = false): ReactElement => {
+    const children = item.children;
+    const isCurrent = item.path === currentNavPath;
+    const childCurrent = !!children?.some((c) => c.path === currentNavPath);
+    // The group parent stays highlighted while one of its children is the
+    // current page; only the item the URL actually matches carries
+    // aria-current="page" (the parent says "true": the current page is inside).
+    const isSelected = isCurrent || childCurrent;
+    const open = groupOverride?.at === location.pathname ? groupOverride.open : childCurrent;
+    const groupId = `nav-group-${item.path.replace(/\W+/g, '-')}`;
+    return (
+      <Fragment key={item.path}>
+        <ListItem
+          disablePadding
+          secondaryAction={
+            children ? (
+              <IconButton
+                edge="end"
+                size="small"
+                aria-label={t('nav.settingsSubpages')}
+                aria-expanded={open}
+                aria-controls={groupId}
+                onClick={() => setGroupOverride({ at: location.pathname, open: !open })}
+              >
+                {open ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            ) : undefined
+          }
+        >
+          <ListItemButton
+            component={Link}
+            to={item.path}
+            onClick={isMobile ? handleDrawerToggle : undefined}
+            aria-current={isCurrent ? 'page' : childCurrent ? 'true' : undefined}
+            selected={isSelected}
+            sx={{ ...navLinkSx, ...(nested ? { pl: 3 } : {}) }}
+          >
+            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemText primary={item.text} slotProps={navLabelSlotProps} />
+          </ListItemButton>
+        </ListItem>
+        {children ? (
+          <Collapse component="li" in={open} timeout="auto" id={groupId}>
+            <List disablePadding>{children.map((c) => renderNavItem(c, true))}</List>
+          </Collapse>
+        ) : null}
+      </Fragment>
+    );
+  };
+
   const drawerContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Toolbar />
@@ -346,49 +458,7 @@ function AppContent({
         aria-label={t('nav.mainLabel')}
         sx={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}
       >
-        <List>
-          {mainNavItems.map((item) => {
-            const isSelected = item.path === currentNavPath;
-            return (
-              <ListItem key={item.text} disablePadding>
-                <ListItemButton
-                  component={Link}
-                  to={item.path}
-                  onClick={isMobile ? handleDrawerToggle : undefined}
-                  aria-current={isSelected ? 'page' : undefined}
-                  selected={isSelected}
-                  sx={{
-                    // #211: a left border, not a background tint -- the tint
-                    // measured 1.19:1, this measures 6.73:1 light / 6.88:1
-                    // dark (see the model comment block at the top of this
-                    // file).
-                    borderLeft: '3px solid transparent',
-                    '&.Mui-selected': {
-                      backgroundColor: 'action.selected',
-                      borderLeftColor: 'primary.main',
-                    },
-                    '&.Mui-selected:hover': {
-                      backgroundColor: 'action.selected',
-                    },
-                  }}
-                >
-                  <ListItemIcon>{item.icon}</ListItemIcon>
-                  {/* T98: Garamond has a smaller x-height than IBM Plex Sans, so
-                      ListItemText's 1rem body1 default reads shrunken here rather
-                      than merely different. T63 set the family and no size. */}
-                  <ListItemText
-                    primary={item.text}
-                    slotProps={{
-                      primary: {
-                        sx: { fontFamily: '"EB Garamond", serif', fontSize: '1.0625rem' },
-                      },
-                    }}
-                  />
-                </ListItemButton>
-              </ListItem>
-            );
-          })}
-        </List>
+        <List>{navTree.map((item) => renderNavItem(item))}</List>
         <Box sx={{ mt: 'auto', py: 2, px: 2 }}>
           <BrandLogo height="auto" width="100%" />
         </Box>

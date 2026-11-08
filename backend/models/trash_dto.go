@@ -32,6 +32,21 @@ type TrashRestoreSkip struct {
 type TrashRestoreResponse struct {
 	Contact ContactSummary     `json:"contact"`
 	Skipped []TrashRestoreSkip `json:"skipped"`
+	// RevokedGrants lists the standing-share grants the delete revoked
+	// (reason entity_deleted) so the UI can offer to issue them again. Restore
+	// never re-arms access (ADR 0042 decision 10, issue #2291).
+	RevokedGrants []TrashRevokedShareGrant `json:"revoked_grants"`
+}
+
+// TrashRevokedShareGrant is one grant revoked by the contact's deletion: the
+// recipient and the granted sections, never contact content.
+type TrashRevokedShareGrant struct {
+	ID         string     `json:"id"`
+	ToUserID   uint       `json:"to_user_id"`
+	ToUsername string     `json:"to_username"`
+	Sections   []string   `json:"sections"`
+	ExpiresAt  *time.Time `json:"expires_at"`
+	RevokedAt  *time.Time `json:"revoked_at"`
 }
 
 // TrashPurgeResponse is the body of the purge and empty-trash DELETEs.

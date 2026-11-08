@@ -97,3 +97,15 @@ func TestRunRestoreDrillScheduled_RecordsErrorResult(t *testing.T) {
 	assert.Equal(t, models.OpCheckStatusError, row.Status)
 	assert.NotEmpty(t, row.Detail)
 }
+
+// A failure to persist the result is logged, never propagated: it must not
+// turn a passing check into a failing job.
+func TestRecordOperationalCheckResult_PersistFailureIsSwallowed(t *testing.T) {
+	db := freshDB(t, "opcheck-fail.db")
+	require.NoError(t, db.Migrator().DropTable(&models.OperationalCheckResult{}))
+
+	require.NotPanics(t, func() {
+		RecordOperationalCheckResult(db, "widget_check", models.OpCheckStatusOK, "")
+	})
+	assert.False(t, db.Migrator().HasTable(&models.OperationalCheckResult{}), "nothing was written")
+}
