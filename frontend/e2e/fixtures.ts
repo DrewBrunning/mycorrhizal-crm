@@ -736,3 +736,15 @@ export async function deleteTestContact(
 ): Promise<void> {
   await request.delete(`${API_BASE_URL}/contacts/${id}`).catch(() => {});
 }
+
+/**
+ * #2175: Shares, Audit log, Data, Users, System events and System status are
+ * sub-items of the Settings nav group, collapsed unless the current page is
+ * inside it. Open the group (if needed) and click the sub-item, so specs do not
+ * depend on the old flat nav.
+ */
+export async function openSettingsNavLink(page: Page, name: string): Promise<void> {
+  const toggle = page.getByRole('button', { name: 'Settings sub-pages' });
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
+  await page.getByRole('link', { name, exact: true }).click();
+}

@@ -1,5 +1,5 @@
 import type { APIRequestContext } from '@playwright/test';
-import { expect, stableClick, test, waitForLoading } from './fixtures';
+import { expect, openSettingsNavLink, stableClick, test, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 // T75:
@@ -156,7 +156,7 @@ test.describe('T75: plain saves no longer destroy Card-only data', () => {
       }).toPass({ timeout: 15000 });
 
       await page.goto('/');
-      await page.getByRole('link', { name: 'Audit log' }).click();
+      await openSettingsNavLink(page, 'Audit log');
       await expect(page).toHaveURL(/\/audit/);
 
       await page.getByLabel('Entity ID').fill(contact.uid);
