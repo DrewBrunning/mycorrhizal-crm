@@ -6,6 +6,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Link,
   List,
   ListItem,
   ListItemText,
@@ -15,8 +16,9 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link as RouterLink } from 'react-router';
 import type { Activity } from '../api/activities';
 import {
   CIRCLE_COLORS,
@@ -24,10 +26,10 @@ import {
   type Circle,
   type CircleColor,
   type CircleMetadata,
+  type CircleTimelineItem,
   type CircleTimelineResponse,
   getCircleTimeline,
 } from '../api/circles';
-import type { TimelineItem } from '../api/timeline';
 import { useDateFormat } from '../DateFormatProvider';
 import { formatActivityDateRange } from '../utils/activityRange';
 import { circleColorHex } from '../utils/circleColors';
@@ -45,7 +47,7 @@ interface CircleDetailDialogProps {
 }
 
 // A short human summary of a timeline entry: the first non-empty text field.
-function summarize(item: TimelineItem): string {
+function summarize(item: CircleTimelineItem): string {
   const data = item.data as unknown as Record<string, unknown>;
   for (const key of ['content', 'title', 'message', 'name', 'description', 'type']) {
     const v = data[key];
@@ -67,7 +69,7 @@ export default function CircleDetailDialog({
   const [color, setColor] = useState<CircleColor>(circle?.color ?? '');
   const [saving, setSaving] = useState(false);
   const [page, setPage] = useState<CircleTimelineResponse | null>(null);
-  const [items, setItems] = useState<TimelineItem[]>([]);
+  const [items, setItems] = useState<CircleTimelineItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -186,15 +188,28 @@ export default function CircleDetailDialog({
                   <ListItem key={`${item.type}-${item.id}`} disableGutters divider>
                     <ListItemText
                       primary={summarize(item)}
-                      secondary={`${t(`circlesTags.timelineTypes.${item.type}`)} · ${
-                        item.type === 'activity'
-                          ? formatActivityDateRange(
-                              item.date,
-                              (item.data as Activity).end_date,
-                              dateFormat,
-                            )
-                          : formatDate(calendarDateOnly(item.date))
-                      }`}
+                      secondary={
+                        <>
+                          {(item.members ?? []).map((m, i) => (
+                            <Fragment key={m.id}>
+                              {i > 0 && ', '}
+                              <Link component={RouterLink} to={`/contacts/${m.id}`}>
+                                {`${m.firstname} ${m.lastname}`.trim()}
+                              </Link>
+                            </Fragment>
+                          ))}
+                          {(item.members?.length ?? 0) > 0 && ' · '}
+                          {`${t(`circlesTags.timelineTypes.${item.type}`)} · ${
+                            item.type === 'activity'
+                              ? formatActivityDateRange(
+                                  item.date,
+                                  (item.data as Activity).end_date,
+                                  dateFormat,
+                                )
+                              : formatDate(calendarDateOnly(item.date))
+                          }`}
+                        </>
+                      }
                       slotProps={{ primary: { sx: { overflowWrap: 'anywhere' } } }}
                     />
                   </ListItem>

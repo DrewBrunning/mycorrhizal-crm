@@ -133,9 +133,20 @@ export async function removeCircleMember(circleId: string, memberVCardUid: strin
   if (!response.ok) throw await parseErrorResponse(response);
 }
 
+// The live circle member(s) a circle-timeline entry is about (issue #2361).
+export interface CircleTimelineMember {
+  id: number;
+  firstname: string;
+  lastname: string;
+}
+
+export interface CircleTimelineItem extends TimelineItem {
+  members?: CircleTimelineMember[];
+}
+
 export interface CircleTimelineResponse {
   // Serialized `[]`, never null/absent, when empty.
-  items: TimelineItem[];
+  items: CircleTimelineItem[];
   next_cursor: string;
   limit: number;
   // Members in the circle (archived members count but contribute no events).

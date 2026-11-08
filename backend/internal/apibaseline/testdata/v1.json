@@ -23466,6 +23466,11 @@
           "required": true
         },
         {
+          "name": "members",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "type",
           "type": "string",
           "required": true,

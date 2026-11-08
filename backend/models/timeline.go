@@ -68,4 +68,16 @@ type TimelineItem struct {
 	ID   string      `json:"id"`
 	Date time.Time   `json:"date"`
 	Data interface{} `json:"data"`
+	// Members names the circle member(s) the entry is about. Set only on the
+	// circle timeline (GET /circles/:id/timeline, issue #2361); omitted
+	// elsewhere, so the contact timeline and feed shapes are unchanged.
+	Members []TimelineMember `json:"members,omitempty"`
+}
+
+// TimelineMember is a minimal reference to a live circle member on a circle
+// timeline entry: enough to label the entry and link to the contact.
+type TimelineMember struct {
+	ID        uint   `json:"id"`
+	Firstname string `json:"firstname"`
+	Lastname  string `json:"lastname"`
 }

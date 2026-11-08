@@ -3076,6 +3076,11 @@ export type TimelineItem = {
   data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity | Gift;
   date: string;
   id: string;
+  members?: {
+    firstname: string;
+    id: number;
+    lastname: string;
+  }[];
   type: 'note' | 'activity' | 'completion' | 'life_event' | 'external_activity' | 'gift';
 };
 
