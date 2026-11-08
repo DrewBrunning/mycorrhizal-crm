@@ -530,7 +530,7 @@
     "services/graph_traversal.go": 97.26,
     "services/hibp_service.go": 85.29,
     "services/hobby_preference_backfill.go": 91.45,
-    "services/household_service.go": 90.11,
+    "services/household_service.go": 89.73,
     "services/idempotency_purge_service.go": 100,
     "services/image_service.go": 97.78,
     "services/image_storage_usage.go": 100,

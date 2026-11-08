@@ -114,6 +114,7 @@ var KnownJobNames = []string{
 	JobNameJobRunPurge,
 	JobNameStorageSample,
 	JobNameImageSweep,
+	JobNameShareGrantLifecycle,
 	// Operator-triggered, not scheduled (SEARCH-01, issue #461).
 	JobNameSearchIndexRebuild,
 	// Operator-triggered, not scheduled (issue #497).

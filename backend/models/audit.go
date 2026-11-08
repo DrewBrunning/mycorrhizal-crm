@@ -49,6 +49,12 @@ const (
 	// from, the trash (entity = the contact).
 	AuditOpRestore = "restore"
 	AuditOpPurge   = "purge"
+	// Issue #2291, ADR 0042 decision 11: standing-share lifecycle operations,
+	// pinned by migration 000092's CHECK (create/update/revoke already exist).
+	AuditOpAccept    = "accept"
+	AuditOpDecline   = "decline"
+	AuditOpExpire    = "expire"
+	AuditOpReconfirm = "reconfirm"
 )
 
 // AuditEntityType tokens stored on AuditEvent.EntityType. The first group are
@@ -68,6 +74,8 @@ const (
 	AuditEntityReminder  = "reminder"
 	// AuditEntityShareGrant is a standing-share grant (ADR 0042, issue #2290).
 	AuditEntityShareGrant = "share_grant"
+	// AuditEntityContactShare is a one-time contact share (issue #2294).
+	AuditEntityContactShare = "contact_share"
 
 	AuditEntityUser     = "user"
 	AuditEntityAuth     = "auth"

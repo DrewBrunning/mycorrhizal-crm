@@ -124,3 +124,28 @@ type ShareBlock struct {
 	BlockedUserID uint      `gorm:"primaryKey;autoIncrement:false" json:"blocked_user_id"`
 	CreatedAt     time.Time `json:"created_at"`
 }
+
+// ShareGrantNotification kinds (ADR 0042 decision 11). Closed set, mirrored by
+// the share_grant_notifications.kind CHECK.
+const (
+	ShareGrantNoticePending = "pending"
+	ShareGrantNoticeRevoked = "revoked"
+)
+
+// ShareGrantNotification is the recipient's in-app notice that a standing
+// share arrived (kind pending) or ended (kind revoked). It carries the sender
+// id and the entity TYPE only: never an entity id, label or content, so a
+// notice can never leak source data (the sender username is joined at read
+// time). Hard delete (system-generated, not user content): the lifecycle job
+// purges it after SHARE_GRANT_RETENTION_DAYS and deleteUserCascade removes it
+// for either party.
+type ShareGrantNotification struct {
+	ID         uint       `gorm:"primarykey" json:"id"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+	UserID     uint       `gorm:"not null" json:"-"`
+	FromUserID uint       `gorm:"not null" json:"-"`
+	Kind       string     `gorm:"not null" json:"kind"`
+	EntityType string     `gorm:"not null" json:"entity_type"`
+	ReadAt     *time.Time `json:"read_at"`
+}

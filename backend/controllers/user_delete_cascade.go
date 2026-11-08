@@ -7,6 +7,7 @@ import (
 	"mycorrhizal/imaging"
 	"mycorrhizal/logger"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -92,7 +93,20 @@ func deleteUserCascade(tx *gorm.DB, userID uint) error {
 	// must stop authorizing reads the moment its owner is gone while an
 	// incoming one has no recipient left. Both tables also carry ON DELETE
 	// CASCADE FKs; the explicit pass keeps the manual checklist complete.
+	//
+	// Before that delete, each live incoming grant writes a `revoke` audit
+	// event with reason `recipient_deleted` on the OWNER's trail so the
+	// owner's list does not silently lose rows (ADR 0042 decision 10, issue
+	// #2291). The owner is another user, so the audit FK is satisfied; both
+	// DeleteUser and DeleteOwnAccount run this cascade.
+	if err := services.AuditRecipientDeletion(tx, userID, services.Now()); err != nil {
+		return err
+	}
 	if err := tx.Where("from_user_id = ? OR to_user_id = ?", userID, userID).Delete(&models.ShareGrant{}).Error; err != nil {
+		return err
+	}
+	// In-app share notices naming the user on either side (issue #2291).
+	if err := tx.Where("user_id = ? OR from_user_id = ?", userID, userID).Delete(&models.ShareGrantNotification{}).Error; err != nil {
 		return err
 	}
 	if err := tx.Where("blocker_user_id = ? OR blocked_user_id = ?", userID, userID).Delete(&models.ShareBlock{}).Error; err != nil {

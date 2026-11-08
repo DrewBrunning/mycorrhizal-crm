@@ -294,19 +294,34 @@ func (c *Contact) markAddressReclassification(tx *gorm.DB) error {
 	return nil
 }
 
-// RecordShareGrantAudit writes an audit event on actorID's trail for a share
-// grant. The snapshot carries grant fields only, never entity content or
-// labels (ADR 0042 decision 11). The accept/decline/expire/reconfirm audit
-// operations and per-party trails land with #2291; until its CHECK-rebuild
-// migration, reconfirm is recorded as an update.
-func RecordShareGrantAudit(tx *gorm.DB, g *ShareGrant, actorID uint, op string) {
+// RecordShareGrantAudit writes an audit event on userID's trail for a share
+// grant (entity = the grant id). The snapshot carries grant fields only, never
+// entity content, ids of the shared entity or labels (ADR 0042 decision 11), so
+// the audit trail cannot leak source data to a non-recipient. The internal
+// blocked status is written as pending: the sender must not learn of a block
+// from their own trail (decision 8), and a blocked grant is never written to
+// the recipient's trail at all (the services layer decides the parties).
+func RecordShareGrantAudit(tx *gorm.DB, g *ShareGrant, userID uint, op string) {
+	status := g.Status
+	if status == ShareGrantStatusBlocked {
+		status = ShareGrantStatusPending
+	}
 	snap, err := json.Marshal(map[string]any{
-		"id": g.ID, "entity_type": g.EntityType, "status": g.Status,
+		"id": g.ID, "entity_type": g.EntityType, "status": status,
+		"from_user_id": g.FromUserID, "to_user_id": g.ToUserID,
 		"sections": g.Sections, "reconfirm_sections": g.ReconfirmSections,
-		"expires_at": g.ExpiresAt, "revision": g.Revision,
+		"expires_at": g.ExpiresAt, "revoked_reason": g.RevokedReason, "revision": g.Revision,
 	})
 	if err != nil {
 		return
 	}
-	recordAudit(tx, AuditEntityShareGrant, g.ID, op, actorID, string(snap))
+	recordAudit(tx, AuditEntityShareGrant, g.ID, op, userID, string(snap))
+}
+
+// RecordContactShareAudit writes an audit event on actorID's trail for a
+// one-time ContactShare (issue #2294). The snapshot is id and status only:
+// never the payload or the contact's name.
+func RecordContactShareAudit(tx *gorm.DB, id, status string, actorID uint, op string) {
+	snap, _ := json.Marshal(map[string]any{"id": id, "status": status}) // a string map cannot fail to marshal
+	recordAudit(tx, AuditEntityContactShare, id, op, actorID, string(snap))
 }

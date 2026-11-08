@@ -171,6 +171,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/contact-shares/:id/confirm",
 		"POST /api/v1/contact-shares/:id/decline",
 		"POST /api/v1/share-grants/:id/accept",
+		"POST /api/v1/share-grants/notifications/read",
 		"POST /api/v1/share-grants/:id/decline",
 		"POST /api/v1/share-grants/:id/leave",
 		"POST /api/v1/share-grants/:id/revoke",

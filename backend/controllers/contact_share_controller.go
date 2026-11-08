@@ -104,9 +104,33 @@ func CreateContactShare(c *gin.Context) {
 		Payload:            string(payload),
 		Status:             models.ContactShareStatusPending,
 	}
-	if err := db.Create(&share).Error; err != nil {
+	// Issue #2294 / ADR 0042 decision 8: a recipient's block of this sender
+	// also stops one-time shares. The request is accepted exactly as an
+	// unblocked one (same status, body and error behaviour) so create cannot
+	// be used to detect the block; the row is stored internally as `blocked`,
+	// holds no contact snapshot, and is never shown to the recipient. The
+	// check and insert share one transaction.
+	blocked := false
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		var n int64
+		if err := tx.Model(&models.ShareBlock{}).
+			Where("blocker_user_id = ? AND blocked_user_id = ?", input.ToUserID, userID).Count(&n).Error; err != nil {
+			return err
+		}
+		if n > 0 {
+			blocked = true
+			share.Status = models.ContactShareStatusBlocked
+			share.Payload = "[]"
+		}
+		return tx.Create(&share).Error
+	}); err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to create contact share").WithError(err))
 		return
+	}
+	if blocked {
+		// Operator log only: never audited (the trail is visible to both parties).
+		log.Debug().Str("share_id", share.ID).Msg("Contact share stored as blocked")
+		share.Status = models.ContactShareStatusPending // the sender's view
 	}
 
 	log.Info().Str("share_id", share.ID).Uint("from_user_id", userID).Uint("to_user_id", input.ToUserID).Msg("Contact share created")
@@ -165,6 +189,10 @@ func listContactShares(c *gin.Context, scopeColumn string, otherParty func(model
 	var total int64
 
 	baseQuery := db.Model(&models.ContactShare{}).Where(scopeColumn+" = ?", userID)
+	if scopeColumn == "to_user_id" {
+		// Issue #2294: shares from a sender the caller blocked are invisible.
+		baseQuery = baseQuery.Where("status <> ?", models.ContactShareStatusBlocked)
+	}
 	if err := baseQuery.Session(&gorm.Session{}).Count(&total).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count contact shares").WithError(err))
 		return
@@ -181,6 +209,14 @@ func listContactShares(c *gin.Context, scopeColumn string, otherParty func(model
 		Find(&shares).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact shares").WithError(err))
 		return
+	}
+	if scopeColumn == "from_user_id" {
+		// The sender's view of a blocked share is the ordinary pending view.
+		for i := range shares {
+			if shares[i].Status == models.ContactShareStatusBlocked {
+				shares[i].Status = models.ContactShareStatusPending
+			}
+		}
 	}
 	nextCursor := ""
 	if len(shares) > params.Limit {
@@ -226,6 +262,11 @@ func getPendingShareForRecipient(c *gin.Context, db *gorm.DB, userID uint) (*mod
 		} else {
 			apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve contact share").WithError(err))
 		}
+		return nil, false
+	}
+	if share.Status == models.ContactShareStatusBlocked {
+		// Issue #2294: the recipient blocked this sender; same 404 as a miss.
+		apperrors.AbortWithError(c, apperrors.ErrNotFound("Contact share").WithDetails("id", shareID))
 		return nil, false
 	}
 	if share.Status != models.ContactShareStatusPending {

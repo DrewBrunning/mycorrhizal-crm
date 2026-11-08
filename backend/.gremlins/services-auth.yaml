@@ -102,6 +102,7 @@ unleash:
         - ^search_service\.go$
         - ^self_contact\.go$
         - ^share_grant\.go$
+        - ^share_grant_lifecycle\.go$
         - ^share_grant_revoke\.go$
         - ^source_import_session\.go$
         - ^storage_sample_service\.go$

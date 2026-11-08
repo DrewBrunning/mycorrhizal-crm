@@ -65,6 +65,7 @@ var bundleExcluded = map[string]string{
 	"CardDAVSyncScopeCircle":        "ADR 0041: the circle set for CardDAVSyncScope; same reason",
 	"ContactDeletionSnapshot":       "ADR 0037: transient trash bookkeeping for a soft-deleted contact (trashed contacts are not bundled); gone at purge",
 	"ContactShare":                  "cross-user share bookkeeping, not the sharer's own data",
+	"ShareGrantNotification":        "ADR 0042 decision 11: cross-user in-app notice naming another user; user ids do not transfer between instances",
 	"ContactSubscription":           "per-instance external contact subscription/credential",
 	"ContactSyncConflict":           "sync-conflict notice derived from a CardDAV connection",
 	"ContactSyncLink":               "external-sync ledger row; re-derived on the destination",
