@@ -14,6 +14,10 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 - **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
 
+### Changed
+
+- **Clearer vCard custom-field import** ([#2183](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2183)): on the import step for custom `X-` properties, each choice now has a short plain-language explanation, "passthrough" is spelled out (kept untouched, exported again, nothing lost), and "Map to existing field" is greyed out with a reason when you have no custom fields yet.
+
 ## [1.6.0] - 2026-11-06
 
 > **Upgrade**: database migrations run automatically on first start. Images are stored in a new

@@ -407,7 +407,7 @@
         "done": "Fertig"
       },
       "customFields": {
-        "description": "Diese Datei enthält benutzerdefinierte X-Eigenschaften, die deine App noch nicht kennt. Fördere sie zu durchsuchbaren benutzerdefinierten Feldern auf oder behalte sie als Passthrough-Daten. Alles, was als Passthrough bleibt, wird erhalten, ist aber nicht durchsuchbar oder bearbeitbar.",
+        "description": "Diese Datei enthält benutzerdefinierte X-Eigenschaften, die deine App noch nicht kennt. Mach daraus durchsuchbare benutzerdefinierte Felder oder behalte sie unverändert („Passthrough“): Behaltene Eigenschaften werden unverändert beim Kontakt gespeichert und später wieder exportiert, lassen sich hier aber nicht durchsuchen oder bearbeiten.",
         "property": "Eigenschaft",
         "sampleValue": "Beispielwert",
         "promoteTo": "Fördern zu",
@@ -415,7 +415,13 @@
         "mapToExisting": "Auf vorhandenes Feld abbilden",
         "createNew": "Neues Feld erstellen",
         "selectField": "Feld auswählen…",
-        "label": "Bezeichnung"
+        "label": "Bezeichnung",
+        "help": {
+          "ignore": "Wird unverändert beim Kontakt gespeichert und später wieder exportiert, ist hier aber nicht durchsuchbar oder bearbeitbar. Nichts geht verloren.",
+          "map": "Trägt den Wert in ein bereits angelegtes benutzerdefiniertes Feld ein, sodass er durchsuchbar und bearbeitbar ist.",
+          "mapEmpty": "Du hast noch keine benutzerdefinierten Felder. Wähle „Neues Feld erstellen“, um aus dieser Eigenschaft eines anzulegen.",
+          "create": "Legt aus dieser Eigenschaft ein neues durchsuchbares benutzerdefiniertes Feld an und füllt es für jeden importierten Kontakt aus."
+        }
       },
       "preview": {
         "duplicateOf": "Entspricht: {{name}} ({{reason}})",

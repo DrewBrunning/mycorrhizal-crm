@@ -416,7 +416,7 @@
         "done": "Listo"
       },
       "customFields": {
-        "description": "Este archivo contiene propiedades X- personalizadas que tu aplicación aún no conoce. Promuévelas a campos personalizados con búsqueda, o consérvalas como datos de passthrough. Lo que quede como passthrough se conserva, pero no se puede buscar ni editar.",
+        "description": "Este archivo contiene propiedades X- personalizadas que tu aplicación aún no conoce. Conviértelas en campos personalizados con búsqueda o consérvalas tal cual («passthrough»): las propiedades conservadas se guardan intactas con el contacto y se vuelven a exportar, pero aquí no se pueden buscar ni editar.",
         "property": "Propiedad",
         "sampleValue": "Valor de muestra",
         "promoteTo": "Promover a",
@@ -424,7 +424,13 @@
         "mapToExisting": "Mapear a campo existente",
         "createNew": "Crear campo nuevo",
         "selectField": "Selecciona un campo…",
-        "label": "Etiqueta"
+        "label": "Etiqueta",
+        "help": {
+          "ignore": "Se guarda intacta con el contacto y se vuelve a exportar después, pero aquí no se puede buscar ni editar. No se pierde nada.",
+          "map": "Coloca el valor en un campo personalizado que ya creaste, para poder buscarlo y editarlo.",
+          "mapEmpty": "Todavía no tienes campos personalizados. Elige «Crear campo nuevo» para crear uno a partir de esta propiedad.",
+          "create": "Crea un campo personalizado nuevo con esta propiedad y lo rellena en cada contacto importado."
+        }
       },
       "preview": {
         "duplicateOf": "Coincide con: {{name}} ({{reason}})",

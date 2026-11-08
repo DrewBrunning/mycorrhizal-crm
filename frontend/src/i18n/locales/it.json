@@ -416,7 +416,7 @@
         "done": "Fatto"
       },
       "customFields": {
-        "description": "Questo file contiene proprietà X- personalizzate che la tua app non conosce ancora. Promuovile a campi personalizzati ricercabili oppure conservale come dati di passaggio. Ciò che resta come passaggio viene preservato, ma non è ricercabile né modificabile.",
+        "description": "Questo file contiene proprietà X- personalizzate che la tua app non conosce ancora. Trasformale in campi personalizzati ricercabili oppure mantienile così come sono («passthrough»): le proprietà mantenute vengono salvate intatte con il contatto e riesportate in seguito, ma qui non si possono cercare né modificare.",
         "property": "Proprietà",
         "sampleValue": "Valore di esempio",
         "promoteTo": "Promuovi a",
@@ -424,7 +424,13 @@
         "mapToExisting": "Mappa su campo esistente",
         "createNew": "Crea nuovo campo",
         "selectField": "Seleziona un campo…",
-        "label": "Etichetta"
+        "label": "Etichetta",
+        "help": {
+          "ignore": "Viene salvata intatta con il contatto e riesportata in seguito, ma qui non è ricercabile né modificabile. Non si perde nulla.",
+          "map": "Inserisce il valore in un campo personalizzato che hai già creato, così è ricercabile e modificabile.",
+          "mapEmpty": "Non hai ancora campi personalizzati. Scegli «Crea nuovo campo» per crearne uno da questa proprietà.",
+          "create": "Crea un nuovo campo personalizzato ricercabile da questa proprietà e lo compila per ogni contatto importato."
+        }
       },
       "preview": {
         "duplicateOf": "Corrisponde a: {{name}} ({{reason}})",
