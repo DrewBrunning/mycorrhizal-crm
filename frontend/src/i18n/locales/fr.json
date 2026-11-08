@@ -3582,6 +3582,7 @@
       "session_purge": "Purge des sessions",
       "storage_sample": "Échantillonnage du stockage",
       "image_sweep": "Nettoyage des fichiers d’images",
+      "share_grant_lifecycle": "Cycle de vie des partages",
       "search_index_rebuild": "Reconstruction de l'index de recherche",
       "derived_columns_rebuild": "Reconstruction des colonnes dérivées"
     }

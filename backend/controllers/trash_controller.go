@@ -96,7 +96,7 @@ func RestoreTrashedContact(c *gin.Context) {
 	// contact.updated, so a consumer re-syncing on restore needs no second
 	// fetch (issue #2315 item 4; the event is new in v1.6.0).
 	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "contact.restored", res.Contact)
-	c.JSON(http.StatusOK, models.TrashRestoreResponse{Contact: models.NewContactSummary(&res.Contact), Skipped: skipped})
+	c.JSON(http.StatusOK, models.TrashRestoreResponse{Contact: models.NewContactSummary(&res.Contact), Skipped: skipped, RevokedGrants: res.RevokedGrants})
 }
 
 // PurgeTrashedContact handles DELETE /api/v1/trash/contacts/:id.

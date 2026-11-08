@@ -355,7 +355,12 @@ Quick reference: `LOG_LEVEL` (`info` default), `LOG_PRETTY` (JSON off in release
 `SYSTEM_EVENT_RETENTION_DAYS` (`30` default) for how long the timeline keeps rows. Webhook delivery
 receipts are bounded by `WEBHOOK_DELIVERY_RETENTION_DAYS` (`30` default, issue #622) — each row
 carries a copy of the entity that triggered the event, so the window is a data-retention decision,
-not just a log-size knob. For the live tail of what the running container is writing right now:
+not just a log-size knob. Standing shares (ADR 0042) are bounded by `SHARE_GRANT_RETENTION_DAYS`
+(`30` default, `0` disables the purge, issue #2291): the hourly `share_grant_lifecycle` job expires
+grants past their `expires_at` (and pending grants unanswered for 30 days) and hard-deletes
+declined/revoked/expired grants, plus the recipient notices, once they are older than that window.
+Active and pending grants are never purged by retention, and expiry never depends on the job: the read
+path enforces it on every request. For the live tail of what the running container is writing right now:
 `docker compose logs -f mycorrhizal`.
 
 ## Backups

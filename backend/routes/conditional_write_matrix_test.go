@@ -320,6 +320,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/contact-shares/:id/confirm":         exempt(reasonAction),
 		"POST /api/v1/contact-shares/:id/decline":         exempt(reasonAction),
 		"POST /api/v1/share-grants/:id/accept":            exempt(reasonAction),
+		"POST /api/v1/share-grants/notifications/read":    exempt(reasonAction),
 		"POST /api/v1/share-grants/:id/decline":           exempt(reasonAction),
 		"POST /api/v1/share-grants/:id/leave":             exempt(reasonAction),
 		"POST /api/v1/share-grants/:id/revoke":            exempt(reasonAction),
