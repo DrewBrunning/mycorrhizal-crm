@@ -120,3 +120,15 @@ func TestEntitySuggestions_LongNamesAndNameInvalid(t *testing.T) {
 	require.Equal(t, http.StatusCreated, w.Code)
 	assert.Contains(t, w.Body.String(), "name_invalid")
 }
+
+func TestEntityMerge_FillingFromAMoreSensitiveLoserRaisesTheSurvivorsSensitivity(t *testing.T) {
+	e := newMergeEnv(t)
+	surv := e.create(t, map[string]any{"kind": "place", "name": "A"})
+	lose := e.create(t, map[string]any{"kind": "place", "name": "B", "sensitivity": "secret", "core": map[string]any{"notes": "hidden"}})
+	plain := e.create(t, map[string]any{"kind": "place", "name": "C"})
+	// no resolution: nothing copied, sensitivity unchanged
+	res := e.mergeOK(t, plain.ID, surv.ID, nil)
+	assert.Equal(t, "normal", res.Survivor.Sensitivity)
+	res = e.mergeOK(t, lose.ID, surv.ID, map[string]string{"notes": "loser"})
+	assert.Equal(t, "secret", res.Survivor.Sensitivity)
+}

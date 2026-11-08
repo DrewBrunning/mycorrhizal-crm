@@ -182,6 +182,12 @@ func applyEntityResolutions(survivor, loser *models.Entity, resolutions map[stri
 		if err := survivor.SetCore(sc); err != nil {
 			return nil, &EntityMergeResolutionError{Reason: err.Error()}
 		}
+		// Content copied from a more sensitive loser must not land in a less
+		// sensitive entity (the copy would then leave the instance in exports
+		// the loser's own sensitivity excluded): the survivor takes the stricter.
+		if sensRank(loser.Sensitivity) > sensRank(survivor.Sensitivity) {
+			survivor.Sensitivity = loser.Sensitivity
+		}
 	}
 	return filledFields, nil
 }
