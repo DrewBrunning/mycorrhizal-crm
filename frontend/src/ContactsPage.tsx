@@ -32,6 +32,7 @@ import {
   Select,
   Stack,
   Switch,
+  TablePagination,
   TextField,
   Typography,
   useMediaQuery,
@@ -47,6 +48,7 @@ import { type FieldDefinition, getFieldDefinitions } from './api/fieldDefinition
 import AddContactDialog from './components/AddContactDialog';
 import BulkActionsBar from './components/BulkActionsBar';
 import BulkEditFieldsDialog, { type BulkFieldsPayload } from './components/BulkEditFieldsDialog';
+import BulkMergeDialog from './components/BulkMergeDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
 import { ContactListSkeleton } from './components/LoadingSkeletons';
 import MergeContactsDialog from './components/MergeContactsDialog';
@@ -59,6 +61,10 @@ import { useContacts } from './hooks/useContacts';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useSearch } from './hooks/useSearch';
 import { useTags } from './hooks/useTags';
+
+// #2188: supported ?size= values; 50 is the default (was 10 with Load more).
+const PAGE_SIZE_OPTIONS = [25, 50, 100];
+const DEFAULT_PAGE_SIZE = 50;
 
 export default function ContactsPage() {
   const { t } = useTranslation();
@@ -109,6 +115,7 @@ export default function ContactsPage() {
           const nextParams = new URLSearchParams(prev);
           if (next) nextParams.set('search', next);
           else nextParams.delete('search');
+          nextParams.delete('page');
           return nextParams;
         },
         { replace: true },
@@ -131,6 +138,8 @@ export default function ContactsPage() {
   // the loaded page rather than a fresh lookup, since selection is keyed by
   // VCardUID but the merge endpoint takes numeric IDs (Contact.ID).
   const [mergePair, setMergePair] = useState<{ a: Contact; b: Contact } | null>(null);
+  // #2197: three or more selected contacts go through the primary-picker flow.
+  const [mergeGroup, setMergeGroup] = useState<Contact[] | null>(null);
   const [enabledFields, setEnabledFields] = useState<Set<ContactFieldKey>>(() =>
     resolveEnabledFields(null),
   );
@@ -139,7 +148,67 @@ export default function ContactsPage() {
   // switch. Local state like showArchived (both are transient list lenses,
   // not shareable URLs).
   const [showFavorites, setShowFavorites] = useState(false);
-  const pageSize = 10;
+  // #2188: classic pagination. The URL's ?page= (1-based) and ?size= own the
+  // position, so reload/back/shared links keep it. Unsupported values fall
+  // back to page 1 / the default size rather than erroring. Page one and the
+  // default size are the absent-param state, keeping the common URL clean.
+  const sizeParam = Number(searchParams.get('size'));
+  const pageSize = PAGE_SIZE_OPTIONS.includes(sizeParam) ? sizeParam : DEFAULT_PAGE_SIZE;
+  const pageParam = Number(searchParams.get('page'));
+  const page = Number.isInteger(pageParam) && pageParam >= 1 ? pageParam : 1;
+
+  // Filter/search/sort changes must land back on page one (the old offset is
+  // meaningless for a different result set). The URL-owned filters fold this
+  // into their own setSearchParams call; the state-owned ones call this.
+  const resetPage = useCallback(() => {
+    setSearchParams(
+      (prev) => {
+        if (!prev.has('page')) return prev;
+        const nextParams = new URLSearchParams(prev);
+        nextParams.delete('page');
+        return nextParams;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
+
+  const paginationItemLabels = (type: 'first' | 'last' | 'next' | 'previous') => {
+    switch (type) {
+      case 'first':
+        return t('contacts.pagination.first');
+      case 'last':
+        return t('contacts.pagination.last');
+      case 'next':
+        return t('contacts.pagination.next');
+      default:
+        return t('contacts.pagination.previous');
+    }
+  };
+
+  const goToPage = (nextPage: number, replace = false) => {
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        if (nextPage <= 1) nextParams.delete('page');
+        else nextParams.set('page', String(nextPage));
+        return nextParams;
+      },
+      { replace },
+    );
+  };
+
+  const changePageSize = (nextSize: number) => {
+    setSearchParams(
+      (prev) => {
+        const nextParams = new URLSearchParams(prev);
+        nextParams.delete('page');
+        if (nextSize === DEFAULT_PAGE_SIZE) nextParams.delete('size');
+        else nextParams.set('size', String(nextSize));
+        return nextParams;
+      },
+      { replace: true },
+    );
+  };
 
   // #1788 (supersedes T103's default-on filter): the list shows every contact
   // by default, matching Android; "Only with contact info" opts into the T103
@@ -155,14 +224,17 @@ export default function ContactsPage() {
         const nextParams = new URLSearchParams(prev);
         if (checked) nextParams.set('has_contact_info', 'true');
         else nextParams.delete('has_contact_info');
+        nextParams.delete('page');
         return nextParams;
       },
       { replace: true },
     );
   };
 
-  // N5 multi-select: keyed by Contact.VCardUID so it survives pagination —
-  // "load more" appends to the list but the selection Set is untouched.
+  // N5 multi-select: keyed by Contact.VCardUID. Selection is per page (#2188):
+  // moving to another page or size clears it (see the effect below), because
+  // bulk actions and merge resolve rows from the loaded page. Selection across
+  // pages is #2197's call.
   const [selectedUids, setSelectedUids] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [editFieldsOpen, setEditFieldsOpen] = useState(false);
@@ -186,7 +258,7 @@ export default function ContactsPage() {
   // explicitly).
   useEffect(() => {
     setSelectedUids(new Set());
-  }, [searchQuery, selectedCircle, showArchived, showFavorites, hasContactInfo]);
+  }, [searchQuery, selectedCircle, showArchived, showFavorites, hasContactInfo, page, pageSize]);
 
   // T77 sort control: the URL's ?sort= and ?order= params own the list order
   // (same persistence mechanism as T86's ?search=). The web client opts into
@@ -209,19 +281,21 @@ export default function ContactsPage() {
         const nextParams = new URLSearchParams(prev);
         nextParams.set('sort', nextSort);
         nextParams.set('order', nextOrder);
+        nextParams.delete('page');
         return nextParams;
       },
       { replace: true },
     );
   };
 
-  // T17/T73: cursor pagination — the list pages by the chosen sort's cursor
-  // key ((updated_at, id) DESC by default, or (sort_name, id) under
-  // ?sort=name) and the "load more" button appends the next_cursor page.
-  // There is no page number or exact total anymore.
+  // #2188: the list asks the server for `limit` rows at `offset` (the sort's
+  // (key, id) order) plus the exact filtered total, so the pager can show page
+  // numbers and a count. The cursor API itself is unchanged for other clients.
   const contactParams = useMemo(
     () => ({
       limit: pageSize,
+      offset: (page - 1) * pageSize,
+      includeTotal: true,
       search: searchQuery,
       circle: selectedCircle,
       sort: sort as 'updated_at' | 'name',
@@ -230,12 +304,30 @@ export default function ContactsPage() {
       favorites: showFavorites,
       hasContactInfo,
     }),
-    [searchQuery, selectedCircle, showArchived, showFavorites, sort, order, hasContactInfo],
+    [
+      searchQuery,
+      selectedCircle,
+      showArchived,
+      showFavorites,
+      sort,
+      order,
+      hasContactInfo,
+      page,
+      pageSize,
+    ],
   );
 
   // Use custom hook for fetching contacts
-  const { contacts, nextCursor, hiddenCount, loading, error, refetch, loadMore, setContacts } =
+  const { contacts, total, hiddenCount, loading, error, refetch, setContacts } =
     useContacts(contactParams);
+
+  // A link past the end (contacts deleted since it was shared) fetches an
+  // empty page; land on the last real page instead of an empty list.
+  useEffect(() => {
+    if (loading || total === undefined || contacts.length > 0 || page <= 1) return;
+    goToPage(Math.max(1, Math.ceil(total / pageSize)), true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, total, contacts.length, page, pageSize]);
 
   // #211: result-count announcement, once per settled fetch (not per
   // keystroke -- `loading` only flips false after the debounced search in
@@ -270,7 +362,10 @@ export default function ContactsPage() {
   }, []);
 
   // Clear the circle filter chip → list refetches automatically via contactParams.
-  const clearCircle = useCallback(() => setSelectedCircle(''), []);
+  const clearCircle = useCallback(() => {
+    setSelectedCircle('');
+    resetPage();
+  }, [resetPage]);
 
   const handleContactAdded = (contactId: number) => {
     void navigate(`/contacts/${contactId}`);
@@ -408,7 +503,7 @@ export default function ContactsPage() {
   // --- T92 bulk merge ------------------------------------------------------
 
   const handleBulkMerge = () => {
-    // The button only enables at exactly two selected, but the selection is
+    // The button only enables at two or more selected, but the selection is
     // keyed by uid and the rows carry it -- resolve defensively. A selection
     // can outlive the rows it points at: a sort change deliberately keeps the
     // selection (T77) while the refetched page may not carry all of it, so
@@ -416,12 +511,23 @@ export default function ContactsPage() {
     // button is exactly the failure this codebase avoids -- say so and clear
     // the stale selection so the user can pick a fresh pair.
     const selectedContacts = contacts.filter((c) => !!c.uid && selectedUids.has(c.uid));
-    if (selectedContacts.length !== 2) {
+    if (selectedContacts.length < 2 || selectedContacts.length !== selectedUids.size) {
       window.alert(t('bulk.mergeSelectionStale'));
       setSelectedUids(new Set());
       return;
     }
-    setMergePair({ a: selectedContacts[0], b: selectedContacts[1] });
+    if (selectedContacts.length === 2) {
+      setMergePair({ a: selectedContacts[0], b: selectedContacts[1] });
+    } else {
+      setMergeGroup(selectedContacts);
+    }
+  };
+
+  // The group flow ends once, with how many merges were committed. Refetch
+  // and clear the selection only when something actually merged.
+  const handleMergeGroupFinished = async (mergedCount: number) => {
+    setMergeGroup(null);
+    if (mergedCount > 0) await handleMerged();
   };
 
   const handleMergeClosed = () => setMergePair(null);
@@ -447,7 +553,10 @@ export default function ContactsPage() {
           labelId="circle-select-label"
           value={selectedCircle}
           label={t('contacts.filterByCircle')}
-          onChange={(e) => setSelectedCircle(e.target.value)}
+          onChange={(e) => {
+            setSelectedCircle(e.target.value);
+            resetPage();
+          }}
         >
           <MenuItem value="">{t('contacts.allCircles')}</MenuItem>
           {circles.map((c) => (
@@ -475,7 +584,10 @@ export default function ContactsPage() {
         control={
           <Switch
             checked={showArchived}
-            onChange={(e) => setShowArchived(e.target.checked)}
+            onChange={(e) => {
+              setShowArchived(e.target.checked);
+              resetPage();
+            }}
             size="small"
           />
         }
@@ -487,7 +599,10 @@ export default function ContactsPage() {
         control={
           <Switch
             checked={showFavorites}
-            onChange={(e) => setShowFavorites(e.target.checked)}
+            onChange={(e) => {
+              setShowFavorites(e.target.checked);
+              resetPage();
+            }}
             size="small"
           />
         }
@@ -901,12 +1016,34 @@ export default function ContactsPage() {
               {t('contacts.searchNoResults', { query: searchQuery })}
             </Typography>
           )}
-          {nextCursor && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-              <Button variant="outlined" onClick={() => void loadMore()} disabled={loading}>
-                {t('common.loadMore')}
-              </Button>
-            </Box>
+          {total !== undefined && total > 0 && (
+            <TablePagination
+              component="div"
+              count={total}
+              page={Math.min(page - 1, Math.max(0, Math.ceil(total / pageSize) - 1))}
+              rowsPerPage={pageSize}
+              rowsPerPageOptions={PAGE_SIZE_OPTIONS}
+              showFirstButton
+              showLastButton
+              onPageChange={(_, nextPage) => goToPage(nextPage + 1)}
+              onRowsPerPageChange={(e) => changePageSize(Number(e.target.value))}
+              labelRowsPerPage={t('contacts.pagination.rowsPerPage')}
+              labelDisplayedRows={({ from, to, count }) =>
+                t('contacts.pagination.displayedRows', {
+                  from,
+                  to,
+                  total: count,
+                })
+              }
+              getItemAriaLabel={(type) => paginationItemLabels(type)}
+              slotProps={{
+                select: {
+                  SelectDisplayProps: {
+                    'aria-label': t('contacts.pagination.rowsPerPage'),
+                  },
+                },
+              }}
+            />
           )}
         </>
       )}
@@ -970,6 +1107,9 @@ export default function ContactsPage() {
         open={reviewDuplicatesOpen}
         onClose={() => setReviewDuplicatesOpen(false)}
       />
+      {mergeGroup && (
+        <BulkMergeDialog open contacts={mergeGroup} onFinish={handleMergeGroupFinished} />
+      )}
       {mergePair && (
         <MergeContactsDialog
           open

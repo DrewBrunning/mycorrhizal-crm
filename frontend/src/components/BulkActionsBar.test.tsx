@@ -44,8 +44,11 @@ test('select-all is always visible with contacts; actions appear once selected',
   renderBar({ selectedCount: 0 });
   expect(screen.getByText('Select all')).toBeInTheDocument();
   expect(screen.queryByText('2 selected')).not.toBeInTheDocument();
-  expect(screen.queryByText('Archive')).not.toBeInTheDocument();
+  // #2365: the actions stay mounted (reserving their height) but are hidden
+  // from sight and from assistive tech until something is selected.
+  expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
 
+  cleanup();
   renderBar({ selectedCount: 2 });
   expect(screen.getByText('2 selected')).toBeInTheDocument();
   expect(screen.getByText('Archive')).toBeInTheDocument();
@@ -114,36 +117,44 @@ test('archive, unarchive, and delete call their handlers', () => {
   expect(onDelete).toHaveBeenCalled();
 });
 
-// --- T92 bulk merge ---------------------------------------------------------
-// Merge is pairwise, not one-verb-over-N-rows: it is only enabled for exactly
-// two selected contacts and disabled (with an explanatory tooltip) otherwise.
+// --- T92 / #2197 bulk merge --------------------------------------------------
+// Merge works on two or more selected contacts (the contacts page folds
+// them into one primary, pair by pair).
 
 test('merge is disabled for a single selection and explains the constraint', async () => {
   renderBar({ selectedCount: 1 });
   const mergeButton = screen.getByRole('button', { name: 'Merge' });
   expect(mergeButton).toBeDisabled();
 
-  // MUI Tooltip only opens when the pointer enters the wrapping element
-  // itself, not a disabled descendant — hover the Tooltip's own <span>.
+  // A disabled button emits no pointer events, so hover the tooltip's wrapper.
   fireEvent.mouseOver(mergeButton.parentElement as HTMLElement);
-  expect(await screen.findByRole('tooltip')).toHaveTextContent(
-    'Select exactly two contacts to merge.',
-  );
+  expect(await screen.findByText('Select at least two contacts to merge.')).toBeInTheDocument();
 });
 
-test('merge is disabled for three or more selections', () => {
-  renderBar({ selectedCount: 3 });
-  expect(screen.getByRole('button', { name: 'Merge' })).toBeDisabled();
-});
-
-test('merge is enabled for exactly two selections and reports them', () => {
+test.each([2, 3, 7])('merge is enabled for %i selections and reports them', (count) => {
   const onMerge = vi.fn();
-  renderBar({ selectedCount: 2, onMerge });
+  renderBar({ selectedCount: count, onMerge });
 
   const mergeButton = screen.getByRole('button', { name: 'Merge' });
   expect(mergeButton).not.toBeDisabled();
   fireEvent.click(mergeButton);
   expect(onMerge).toHaveBeenCalledTimes(1);
+});
+
+test('the action row is mounted but hidden with no selection, so the bar height never changes (#2365)', () => {
+  renderBar({ selectedCount: 0 });
+  const archive = screen.getByText('Archive');
+  expect(archive).toBeInTheDocument();
+  expect(archive.closest('[data-testid="bulk-actions"]')).toHaveStyle({
+    visibility: 'hidden',
+  });
+});
+
+test('the action row is visible once something is selected', () => {
+  renderBar({ selectedCount: 1 });
+  expect(screen.getByTestId('bulk-actions')).toHaveStyle({
+    visibility: 'visible',
+  });
 });
 
 test('merge stays disabled while a bulk action is busy', () => {

@@ -408,7 +408,35 @@ func applyBlock(tx *gorm.DB, blockerID, blockedID uint, now time.Time) ([]models
 			return nil, dbErr("Failed to end the blocked sender's shares", err)
 		}
 	}
+	if err := declineBlockedOneTimeShares(tx, blockerID, blockedID, now); err != nil {
+		return nil, err
+	}
 	return ended, nil
+}
+
+// declineBlockedOneTimeShares (issue #2294) declines the blocked sender's
+// pending one-time ContactShares to the blocker, like ended pending grants.
+// The sender sees an ordinary "declined"; the block is not disclosed. One
+// audit row per share on the blocker's trail, carrying no contact content.
+func declineBlockedOneTimeShares(tx *gorm.DB, blockerID, blockedID uint, now time.Time) error {
+	var ids []string
+	if err := tx.Model(&models.ContactShare{}).
+		Where("from_user_id = ? AND to_user_id = ? AND status = ?", blockedID, blockerID, models.ContactShareStatusPending).
+		Pluck("id", &ids).Error; err != nil {
+		return dbErr("Failed to end the blocked sender's one-time shares", err)
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	if err := tx.Model(&models.ContactShare{}).
+		Where("id IN ? AND status = ?", ids, models.ContactShareStatusPending).
+		UpdateColumns(map[string]any{"status": models.ContactShareStatusDeclined, "responded_at": now, "updated_at": now}).Error; err != nil {
+		return dbErr("Failed to end the blocked sender's one-time shares", err)
+	}
+	for _, id := range ids {
+		models.RecordContactShareAudit(tx, id, models.ContactShareStatusDeclined, blockerID, models.AuditOpUpdate)
+	}
+	return nil
 }
 
 // LeaveShareGrant (recipient): pending or active -> declined.

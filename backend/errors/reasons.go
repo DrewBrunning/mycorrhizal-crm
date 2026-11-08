@@ -37,6 +37,7 @@ var reasonAreas = []string{
 	"geocoder",
 	"image",
 	"note",
+	"entity",
 	"share", // share_grant_* codes (ADR 0042): the area is the first segment
 }
 
@@ -134,15 +135,25 @@ const (
 	ReasonAccountApiTokenNotFound        ReasonCode = "account_api_token_not_found"
 
 	// Gallery images (ADR 0040 slice a, issue #1994).
-	ReasonImageTooLarge            ReasonCode = "image_too_large"
-	ReasonImagePixelsExceeded      ReasonCode = "image_pixels_exceeded"
-	ReasonImageUnsupportedFormat   ReasonCode = "image_unsupported_format"
-	ReasonImageHEICUnsupported     ReasonCode = "image_heic_unsupported"
-	ReasonImageCorrupt             ReasonCode = "image_corrupt"
-	ReasonImageLimitReached        ReasonCode = "image_limit_reached"
-	ReasonImageProcessingBusy      ReasonCode = "image_processing_busy"
-	ReasonImageNotFound            ReasonCode = "image_not_found"
-	ReasonImageInsufficientStorage ReasonCode = "image_insufficient_storage"
+	ReasonImageTooLarge          ReasonCode = "image_too_large"
+	ReasonImagePixelsExceeded    ReasonCode = "image_pixels_exceeded"
+	ReasonImageUnsupportedFormat ReasonCode = "image_unsupported_format"
+	ReasonImageHEICUnsupported   ReasonCode = "image_heic_unsupported"
+	ReasonImageCorrupt           ReasonCode = "image_corrupt"
+	ReasonImageLimitReached      ReasonCode = "image_limit_reached"
+	ReasonImageProcessingBusy    ReasonCode = "image_processing_busy"
+	ReasonImageNotFound          ReasonCode = "image_not_found"
+
+	// Reusable entities (issue #2296, ADR 0043).
+	ReasonEntityNotFound                                ReasonCode = "entity_not_found"
+	ReasonEntityKindRequired                            ReasonCode = "entity_kind_required"
+	ReasonEntityKindImmutable                           ReasonCode = "entity_kind_immutable"
+	ReasonEntityCoreInvalid                             ReasonCode = "entity_core_invalid"
+	ReasonEntitySnapshotUnsupported                     ReasonCode = "entity_snapshot_unsupported"
+	ReasonContactFieldDefinitionTargetImmutable         ReasonCode = "contact_field_definition_target_immutable"
+	ReasonContactFieldDefinitionProjectionTargetInvalid ReasonCode = "contact_field_definition_projection_target_invalid"
+	ReasonContactFieldDefinitionTargetMismatch          ReasonCode = "contact_field_definition_target_mismatch"
+	ReasonImageInsufficientStorage                      ReasonCode = "image_insufficient_storage"
 	// ReasonNoteRequiresContentOrImage: a note must keep non-empty content or
 	// at least one live image (ADR 0040 decision 11).
 	ReasonNoteRequiresContentOrImage ReasonCode = "note_requires_content_or_image"
@@ -585,33 +596,41 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonMeerkatRemoteTooManyContacts: {Template: "Contacts on this Meerkat account: {total}. The import supports at most {max}", Params: []string{"total", "max"}},
 	ReasonMeerkatVersionUntested:       {Template: "This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview."},
 	// Constructor defaults (issue #2099).
-	ReasonCommonDatabaseError:            {Template: "Something went wrong while saving or loading your data"},
-	ReasonCommonDatabaseBusy:             {Template: "The server is busy. Try again in a moment"},
-	ReasonAuthInvalidCredentials:         {Template: "Invalid email or password"},
-	ReasonAuthTokenExpired:               {Template: "Your session has expired. Sign in again"},
-	ReasonAuthTokenInvalid:               {Template: "Your session is no longer valid. Sign in again"},
-	ReasonCommonClientNotSupported:       {Template: "This app version is no longer supported. Update to {required_version} or later", Params: []string{"required_version"}},
-	ReasonCommonRateLimited:              {Template: "Too many requests. Try again later"},
-	ReasonCommonPayloadTooLarge:          {Template: "The upload is too large"},
-	ReasonCommonIdempotencyKeyReused:     {Template: "Idempotency-Key was already used for a different request; use a fresh key"},
-	ReasonCommonRequestInProgress:        {Template: "a request with this Idempotency-Key is still being processed; retry shortly"},
-	ReasonCommonRequestResultUnavailable: {Template: "a previous request with this Idempotency-Key completed but its response is not available for replay; do not resubmit it with this key"},
-	ReasonValidationMissingField:         {Template: "Required field '{field}' is missing", Params: []string{"field"}},
-	ReasonCommonUnexpectedError:          {Template: "An unexpected error occurred"},
-	ReasonActivityNotFound:               {Template: "Activity not found"},
-	ReasonActivityEndBeforeStart:         {Template: "The end date cannot be before the start date"},
-	ReasonContactAddressNotFound:         {Template: "Address not found"},
-	ReasonAccountApiTokenNotFound:        {Template: "API token not found"},
-	ReasonImageTooLarge:                  {Template: "File too large. Maximum size is {max_mb}MB", Params: []string{"max_mb"}},
-	ReasonImagePixelsExceeded:            {Template: "Image dimensions exceed the {max_pixels} pixel limit", Params: []string{"max_pixels"}},
-	ReasonImageUnsupportedFormat:         {Template: "Unsupported image format; use JPEG, PNG or GIF"},
-	ReasonImageHEICUnsupported:           {Template: "HEIC images are not supported; convert to JPEG first"},
-	ReasonImageCorrupt:                   {Template: "The image is corrupt or truncated"},
-	ReasonImageLimitReached:              {Template: "This item already has the maximum of {limit} images", Params: []string{"limit"}},
-	ReasonImageProcessingBusy:            {Template: "Image processing is busy; try again shortly"},
-	ReasonImageNotFound:                  {Template: "Image not found"},
-	ReasonNoteRequiresContentOrImage:     {Template: "A note needs text or at least one image"},
-	ReasonImageInsufficientStorage:       {Template: "Not enough disk space to store the image"},
+	ReasonCommonDatabaseError:                           {Template: "Something went wrong while saving or loading your data"},
+	ReasonCommonDatabaseBusy:                            {Template: "The server is busy. Try again in a moment"},
+	ReasonAuthInvalidCredentials:                        {Template: "Invalid email or password"},
+	ReasonAuthTokenExpired:                              {Template: "Your session has expired. Sign in again"},
+	ReasonAuthTokenInvalid:                              {Template: "Your session is no longer valid. Sign in again"},
+	ReasonCommonClientNotSupported:                      {Template: "This app version is no longer supported. Update to {required_version} or later", Params: []string{"required_version"}},
+	ReasonCommonRateLimited:                             {Template: "Too many requests. Try again later"},
+	ReasonCommonPayloadTooLarge:                         {Template: "The upload is too large"},
+	ReasonCommonIdempotencyKeyReused:                    {Template: "Idempotency-Key was already used for a different request; use a fresh key"},
+	ReasonCommonRequestInProgress:                       {Template: "a request with this Idempotency-Key is still being processed; retry shortly"},
+	ReasonCommonRequestResultUnavailable:                {Template: "a previous request with this Idempotency-Key completed but its response is not available for replay; do not resubmit it with this key"},
+	ReasonValidationMissingField:                        {Template: "Required field '{field}' is missing", Params: []string{"field"}},
+	ReasonCommonUnexpectedError:                         {Template: "An unexpected error occurred"},
+	ReasonActivityNotFound:                              {Template: "Activity not found"},
+	ReasonActivityEndBeforeStart:                        {Template: "The end date cannot be before the start date"},
+	ReasonContactAddressNotFound:                        {Template: "Address not found"},
+	ReasonAccountApiTokenNotFound:                       {Template: "API token not found"},
+	ReasonImageTooLarge:                                 {Template: "File too large. Maximum size is {max_mb}MB", Params: []string{"max_mb"}},
+	ReasonImagePixelsExceeded:                           {Template: "Image dimensions exceed the {max_pixels} pixel limit", Params: []string{"max_pixels"}},
+	ReasonImageUnsupportedFormat:                        {Template: "Unsupported image format; use JPEG, PNG or GIF"},
+	ReasonImageHEICUnsupported:                          {Template: "HEIC images are not supported; convert to JPEG first"},
+	ReasonImageCorrupt:                                  {Template: "The image is corrupt or truncated"},
+	ReasonImageLimitReached:                             {Template: "This item already has the maximum of {limit} images", Params: []string{"limit"}},
+	ReasonImageProcessingBusy:                           {Template: "Image processing is busy; try again shortly"},
+	ReasonImageNotFound:                                 {Template: "Image not found"},
+	ReasonEntityNotFound:                                {Template: "Entity not found"},
+	ReasonEntityKindRequired:                            {Template: "kind is required and must be organisation, place or pet"},
+	ReasonEntityKindImmutable:                           {Template: "An entity's kind cannot be changed; delete it and create a new one"},
+	ReasonEntityCoreInvalid:                             {Template: "{reason}", Params: []string{"reason"}},
+	ReasonEntitySnapshotUnsupported:                     {Template: "This entity's deletion snapshot is not supported by this version"},
+	ReasonContactFieldDefinitionTargetImmutable:         {Template: "A field definition's target cannot be changed"},
+	ReasonContactFieldDefinitionProjectionTargetInvalid: {Template: "Only contact field definitions can use a vcard projection; use internal-only"},
+	ReasonContactFieldDefinitionTargetMismatch:          {Template: "The field definition does not target this kind of record"},
+	ReasonNoteRequiresContentOrImage:                    {Template: "A note needs text or at least one image"},
+	ReasonImageInsufficientStorage:                      {Template: "Not enough disk space to store the image"},
 
 	ReasonAttachmentNotFound:                        {Template: "Attachment not found"},
 	ReasonAttachmentFileNotFound:                    {Template: "Attachment file not found"},
@@ -982,6 +1001,7 @@ var notFoundReasons = map[string]ReasonCode{
 	"Activity":                 ReasonActivityNotFound,
 	"Address":                  ReasonContactAddressNotFound,
 	"Image":                    ReasonImageNotFound,
+	"Entity":                   ReasonEntityNotFound,
 	"Attachment":               ReasonAttachmentNotFound,
 	"Attachment file":          ReasonAttachmentFileNotFound,
 	"Audit event":              ReasonAdminAuditEventNotFound,

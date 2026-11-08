@@ -135,7 +135,12 @@ from that sender (`declined`), and `DELETE /share-grants/blocks/{user_id}` unblo
 that sender is accepted by the API and stored with the internal status `blocked`, which the sender sees as
 `pending`; the recipient sees nothing and is not notified. The sender therefore cannot use create to learn they are
 blocked. A blocked grant is reaped like any pending grant at the pending TTL. Per-sender caps on outstanding pending
-grants apply regardless (decision 11). The maintainer settled that a block also stops one-time `ContactShare`s from that sender; that ships as a committed v1.7.0 follow-up issue, not in this ADR's first implementation, so the one-time path is unchanged until then.
+grants apply regardless (decision 11). The maintainer settled that a block also stops one-time `ContactShare`s from that sender; this shipped as the #2294 follow-up with these decisions:
+
+- **Create is accepted identically.** While a block exists, `POST /contact-shares` from that sender to the blocker returns the same status code, body shape and `pending` status as an unblocked create (including all validation errors, which run first). The row is stored with the internal status `blocked` and an empty snapshot (`[]`): no contact content is retained for a blocked share. The sender's outgoing list shows it as `pending`.
+- **The recipient sees nothing.** `blocked` rows are excluded from the incoming list and its total; accept, confirm and decline answer the same `404` as an unknown share. Unblocking does not surface old `blocked` rows; they are reaped at the pending retention window (`CONTACT_SHARE_RETENTION_DAYS`, from `created_at`).
+- **Existing pending one-time shares are declined on block**, in the same transaction that ends pending/active grants. The sender then sees `declined`, exactly as if the recipient had declined by hand: they can tell it was declined, not that a block exists. Accepted/declined shares are untouched; the block is directional (the blocker can still share to the blocked user).
+- **Audit.** Each pending share ended by a block gets one `contact_share` `update` event on the blocker's trail with `{id, status}` only (no payload, no contact name). A blocked create writes no audit row on either trail, since both parties can read their own trail and a row would disclose the block or the attempt.
 
 ### 9. Circle grants are live membership
 

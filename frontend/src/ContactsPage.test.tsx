@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { getCurrentUser } from './api/admin';
@@ -20,7 +20,12 @@ afterEach(cleanup);
 
 vi.mock('./api/contacts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/contacts')>();
-  return { ...actual, getContacts: vi.fn(), favoriteContact: vi.fn(), unfavoriteContact: vi.fn() };
+  return {
+    ...actual,
+    getContacts: vi.fn(),
+    favoriteContact: vi.fn(),
+    unfavoriteContact: vi.fn(),
+  };
 });
 vi.mock('./api/circles', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/circles')>();
@@ -57,7 +62,11 @@ vi.mock('./api/search', async (importOriginal) => {
 });
 vi.mock('./api/contactMerge', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/contactMerge')>();
-  return { ...actual, previewContactMerge: vi.fn(), commitContactMerge: vi.fn() };
+  return {
+    ...actual,
+    previewContactMerge: vi.fn(),
+    commitContactMerge: vi.fn(),
+  };
 });
 vi.mock('./auth', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./auth')>();
@@ -77,7 +86,9 @@ beforeEach(() => {
   vi.mocked(previewContactMerge).mockReset();
   vi.mocked(commitContactMerge).mockReset();
 
-  vi.mocked(getCurrentUser).mockResolvedValue({ enabled_contact_fields: null } as never);
+  vi.mocked(getCurrentUser).mockResolvedValue({
+    enabled_contact_fields: null,
+  } as never);
   vi.mocked(listCircles).mockResolvedValue({
     circles: [],
     members: [],
@@ -90,7 +101,9 @@ beforeEach(() => {
     next_cursor: '',
     limit: 100,
   } as never);
-  vi.mocked(getFieldDefinitions).mockResolvedValue({ field_definitions: [] } as never);
+  vi.mocked(getFieldDefinitions).mockResolvedValue({
+    field_definitions: [],
+  } as never);
   vi.mocked(searchAll).mockResolvedValue({
     query: '',
     resolved_relation: '',
@@ -101,7 +114,14 @@ beforeEach(() => {
 });
 
 function contact(id: number, uid: string, firstname: string, isFavorite = false): Contact {
-  return { ID: id, uid, firstname, lastname: '', archived: false, is_favorite: isFavorite };
+  return {
+    ID: id,
+    uid,
+    firstname,
+    lastname: '',
+    archived: false,
+    is_favorite: isFavorite,
+  };
 }
 
 // #211: AnnouncerProvider's live region echoes the same "N selected" text
@@ -113,33 +133,50 @@ function selectedText(text: string) {
   return screen.queryAllByText(text).find((el) => !el.closest('[aria-live]'));
 }
 
-// Two pages: page one has Alice + Bob, page two (loaded via "load more") has
-// Carol. Selection must survive the pagination boundary.
+// Two pages at the default size of 50 (#2188): page one (offset 0) has Alice +
+// Bob, page two (offset 50) has Carol; the server reports total 51.
 function mockTwoPages() {
   vi.mocked(getContacts).mockImplementation((params) => {
-    if (params?.cursor) {
+    if (params?.offset) {
       return Promise.resolve({
         contacts: [contact(3, 'uid-3', 'Carol')],
         next_cursor: '',
-        limit: 10,
+        limit: 50,
+        total: 51,
       });
     }
     return Promise.resolve({
       contacts: [contact(1, 'uid-1', 'Alice'), contact(2, 'uid-2', 'Bob')],
       next_cursor: 'cursor-1',
-      limit: 10,
+      limit: 50,
+      total: 51,
     });
   });
 }
 
-function renderPage() {
+// Exposes the router's current search string so tests can assert what the
+// page wrote to the URL (reload/back keep the position, #2188).
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location-search">{location.search}</div>;
+}
+
+function renderPage(initialEntry = '/contacts') {
   return render(
-    <MemoryRouter initialEntries={['/contacts']}>
+    <MemoryRouter initialEntries={[initialEntry]}>
       <DateFormatProvider>
         <SnackbarProvider>
           <AnnouncerProvider>
             <Routes>
-              <Route path="/contacts" element={<ContactsPage />} />
+              <Route
+                path="/contacts"
+                element={
+                  <>
+                    <ContactsPage />
+                    <LocationProbe />
+                  </>
+                }
+              />
               <Route path="/contacts/:id" element={<div>CONTACT DETAIL PAGE</div>} />
             </Routes>
           </AnnouncerProvider>
@@ -167,28 +204,157 @@ test('a failed first-page fetch shows the error with a Try again, not a silently
   expect(screen.queryByText('Contacts are unavailable')).not.toBeInTheDocument();
 });
 
-test('selection survives pagination and selects across both pages', async () => {
+test('changing page clears the selection (selection across pages is #2197)', async () => {
   mockTwoPages();
   renderPage();
 
-  // Page one loads: Alice and Bob.
-  const aliceBox = await screen.findByLabelText('Select Alice');
-  expect(screen.getByLabelText('Select Bob')).toBeInTheDocument();
-
-  // Select Alice.
-  fireEvent.click(aliceBox);
+  fireEvent.click(await screen.findByLabelText('Select Alice'));
   expect(selectedText('1 selected')).toBeInTheDocument();
 
-  // Load page two; the selection must survive the boundary.
-  fireEvent.click(screen.getByText('Load more'));
+  fireEvent.click(screen.getByRole('button', { name: 'Go to next page' }));
   const carolBox = await screen.findByLabelText('Select Carol');
-  expect(selectedText('1 selected')).toBeInTheDocument();
+  expect(selectedText('1 selected')).toBeUndefined();
   expect(carolBox).not.toBeChecked();
-  expect(aliceBox).toBeChecked();
+});
 
-  // Select Carol across the page boundary → 2 selected.
-  fireEvent.click(carolBox);
-  expect(selectedText('2 selected')).toBeInTheDocument();
+test('shows the total count and requests page one at the default size of 50', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  expect(screen.getByText('1–50 of 51')).toBeInTheDocument();
+  expect(getContacts).toHaveBeenLastCalledWith(
+    expect.objectContaining({ limit: 50, offset: 0, includeTotal: true }),
+  );
+  // Nothing about the URL needs to change on page one.
+  expect(screen.getByTestId('location-search')).toHaveTextContent('');
+});
+
+test('the next-page button writes ?page= to the URL and fetches that offset', async () => {
+  mockTwoPages();
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Go to next page' }));
+
+  await screen.findByLabelText('Select Carol');
+  expect(screen.getByTestId('location-search')).toHaveTextContent('page=2');
+  expect(getContacts).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 50, offset: 50 }));
+  expect(screen.getByText('51–51 of 51')).toBeInTheDocument();
+});
+
+test('a page and size in the URL are honoured on load (reload keeps position)', async () => {
+  mockTwoPages();
+  renderPage('/contacts?page=3&size=25');
+
+  await screen.findByText('Carol');
+  expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ limit: 25, offset: 50 }));
+  expect(getContacts).not.toHaveBeenCalledWith(expect.objectContaining({ offset: 0 }));
+});
+
+test('an unsupported size or junk page in the URL falls back to defaults', async () => {
+  mockTwoPages();
+  renderPage('/contacts?page=abc&size=7');
+
+  await screen.findByText('Alice');
+  expect(getContacts).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 50, offset: 0 }));
+});
+
+test('changing the page size writes ?size= and returns to page one', async () => {
+  mockTwoPages();
+  renderPage('/contacts?page=2');
+  await screen.findByText('Carol');
+
+  fireEvent.mouseDown(screen.getByLabelText('Contacts per page'));
+  fireEvent.click(await screen.findByRole('option', { name: '25' }));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 25, offset: 0 })),
+  );
+  const search = screen.getByTestId('location-search').textContent ?? '';
+  expect(search).toContain('size=25');
+  expect(search).not.toContain('page=');
+});
+
+test('going back to page one drops ?page= from the URL', async () => {
+  mockTwoPages();
+  renderPage('/contacts?page=2');
+  await screen.findByText('Carol');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Go to previous page' }));
+
+  await screen.findByText('Alice');
+  expect(screen.getByTestId('location-search').textContent).not.toContain('page=');
+});
+
+test('choosing the default page size drops ?size= from the URL', async () => {
+  mockTwoPages();
+  renderPage('/contacts?size=25');
+  await screen.findByText('Alice');
+
+  fireEvent.mouseDown(screen.getByLabelText('Contacts per page'));
+  fireEvent.click(await screen.findByRole('option', { name: '50' }));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(expect.objectContaining({ limit: 50, offset: 0 })),
+  );
+  expect(screen.getByTestId('location-search').textContent).not.toContain('size=');
+});
+
+test('toggling Show archived returns to page one', async () => {
+  mockTwoPages();
+  renderPage('/contacts?page=2');
+  await screen.findByText('Carol');
+
+  fireEvent.click(screen.getByLabelText('Show archived'));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ includeArchived: true, offset: 0 }),
+    ),
+  );
+  expect(screen.getByTestId('location-search').textContent).not.toContain('page=');
+});
+
+test('changing a filter returns to page one', async () => {
+  mockTwoPages();
+  renderPage('/contacts?page=2');
+  await screen.findByText('Carol');
+
+  fireEvent.click(screen.getByLabelText('Show favorites'));
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ favorites: true, offset: 0 }),
+    ),
+  );
+  expect(screen.getByTestId('location-search').textContent).not.toContain('page=');
+});
+
+test('a page past the end (stale link after deletes) jumps to the last page', async () => {
+  vi.mocked(getContacts).mockImplementation((params) =>
+    Promise.resolve(
+      params?.offset
+        ? params.offset >= 100
+          ? { contacts: [], next_cursor: '', limit: 50, total: 51 }
+          : {
+              contacts: [contact(3, 'uid-3', 'Carol')],
+              next_cursor: '',
+              limit: 50,
+              total: 51,
+            }
+        : {
+            contacts: [contact(1, 'uid-1', 'Alice')],
+            next_cursor: 'c',
+            limit: 50,
+            total: 51,
+          },
+    ),
+  );
+  renderPage('/contacts?page=9');
+
+  expect(await screen.findByText('Carol')).toBeInTheDocument();
+  expect(screen.getByTestId('location-search')).toHaveTextContent('page=2');
 });
 
 // #211: the live region is the one channel assistive tech has for the
@@ -210,7 +376,7 @@ test('selecting a contact announces the count in the live region', async () => {
   });
 });
 
-test('select-all selects every loaded contact and clear empties the selection', async () => {
+test('select-all selects the contacts on the current page and clear empties the selection', async () => {
   mockTwoPages();
   renderPage();
   await screen.findByLabelText('Select Alice');
@@ -218,15 +384,8 @@ test('select-all selects every loaded contact and clear empties the selection', 
   fireEvent.click(screen.getByLabelText('Select all'));
   expect(selectedText('2 selected')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByText('Load more'));
-  await screen.findByLabelText('Select Carol');
-
-  // Select-all adds the newly loaded page too.
-  fireEvent.click(screen.getByLabelText('Select all'));
-  expect(selectedText('3 selected')).toBeInTheDocument();
-
   fireEvent.click(screen.getByText('Clear'));
-  expect(selectedText('3 selected')).toBeUndefined();
+  expect(selectedText('2 selected')).toBeUndefined();
 });
 
 test('a bulk tag add sends the selected VCardUIDs and nothing else', async () => {
@@ -370,9 +529,13 @@ test('bulk Edit fields sends only the filled and cleared fields plus custom valu
 
   fireEvent.click(screen.getByLabelText('Select Alice'));
   fireEvent.click(screen.getByText('Edit fields'));
-  fireEvent.change(await screen.findByLabelText('Organization'), { target: { value: 'Acme' } });
+  fireEvent.change(await screen.findByLabelText('Organization'), {
+    target: { value: 'Acme' },
+  });
   fireEvent.click(screen.getByLabelText('Clear: Job title'));
-  fireEvent.change(await screen.findByLabelText('Pronouns'), { target: { value: 'they/them' } });
+  fireEvent.change(await screen.findByLabelText('Pronouns'), {
+    target: { value: 'they/them' },
+  });
   fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
   await waitFor(() =>
@@ -453,6 +616,35 @@ test('changing the circle filter clears an in-progress selection', async () => {
   fireEvent.click(await screen.findByRole('option', { name: 'Friends' }));
 
   await waitFor(() => expect(selectedText('1 selected')).toBeUndefined());
+});
+
+test('clearing the circle chip drops the filter and returns to page one', async () => {
+  mockTwoPages();
+  vi.mocked(listCircles).mockResolvedValue({
+    circles: [{ id: 'c1', created_at: '', updated_at: '', name: 'Friends' }],
+    members: [],
+    next_cursor: '',
+    limit: 100,
+  } as never);
+  renderPage('/contacts?page=2');
+  await screen.findByText('Carol');
+
+  fireEvent.mouseDown(screen.getByLabelText('Filter by Circle'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Friends' }));
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(expect.objectContaining({ circle: 'Friends' })),
+  );
+
+  const chip = screen.getByText('Friends', { selector: '.MuiChip-label' });
+  const deleteIcon = chip.parentElement?.querySelector('.MuiChip-deleteIcon');
+  if (!deleteIcon) throw new Error('circle chip has no delete icon');
+  fireEvent.click(deleteIcon);
+
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenLastCalledWith(
+      expect.objectContaining({ circle: '', offset: 0 }),
+    ),
+  );
 });
 
 test('typing a search term filters the list through the debounced URL param', async () => {
@@ -540,7 +732,11 @@ test('changing the sort control refetches with the chosen sort and direction', a
   await screen.findByLabelText('Select Alice');
 
   fireEvent.mouseDown(screen.getByLabelText('Sort'));
-  fireEvent.click(await screen.findByRole('option', { name: 'Recently edited (newest first)' }));
+  fireEvent.click(
+    await screen.findByRole('option', {
+      name: 'Recently edited (newest first)',
+    }),
+  );
 
   await waitFor(() =>
     expect(getContacts).toHaveBeenCalledWith(
@@ -558,7 +754,11 @@ test('changing the sort does not clear an in-progress selection', async () => {
   expect(selectedText('1 selected')).toBeInTheDocument();
 
   fireEvent.mouseDown(screen.getByLabelText('Sort'));
-  fireEvent.click(await screen.findByRole('option', { name: 'Recently edited (newest first)' }));
+  fireEvent.click(
+    await screen.findByRole('option', {
+      name: 'Recently edited (newest first)',
+    }),
+  );
 
   await waitFor(() =>
     expect(getContacts).toHaveBeenCalledWith(
@@ -757,7 +957,10 @@ test('selecting exactly two contacts and merging opens the pair-mode dialog, the
         merge_id: mergeId,
       }) as never,
   );
-  vi.mocked(commitContactMerge).mockResolvedValue({ message: 'merged', contact: {} } as never);
+  vi.mocked(commitContactMerge).mockResolvedValue({
+    message: 'merged',
+    contact: {},
+  } as never);
   renderPage();
   await screen.findByLabelText('Select Alice');
 
@@ -789,45 +992,63 @@ test('selecting exactly two contacts and merging opens the pair-mode dialog, the
   expect(within(dialog).queryByText('Keep Alice')).not.toBeInTheDocument();
 });
 
-// Selection is keyed by VCardUID specifically so it survives pagination, and
-// the merge resolves the pair from the *loaded* `contacts` array — so it must
-// work across the page boundary too (Alice on page one, Carol on page two).
-test('merging a pair selected across the pagination boundary resolves both rows from the loaded pages', async () => {
-  mockTwoPages();
+// #2197: three or more selected contacts fold into one primary, one pair at a
+// time through the same preview/commit endpoints as the pairwise flow.
+test('merging three selected contacts picks a primary and folds the others in one by one (#2197)', async () => {
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [
+      contact(1, 'uid-1', 'Alice'),
+      contact(2, 'uid-2', 'Bob'),
+      contact(3, 'uid-3', 'Carol'),
+    ],
+    next_cursor: '',
+    limit: 50,
+  });
   vi.mocked(previewContactMerge).mockImplementation(
     async (keepId, mergeId) =>
-      ({
-        ...noConflictPreview,
-        keep_id: keepId,
-        merge_id: mergeId,
-      }) as never,
+      ({ ...noConflictPreview, keep_id: keepId, merge_id: mergeId }) as never,
   );
-  vi.mocked(commitContactMerge).mockResolvedValue({ message: 'merged', contact: {} } as never);
+  vi.mocked(commitContactMerge).mockResolvedValue({
+    message: 'merged',
+    contact: {},
+  } as never);
   renderPage();
   await screen.findByLabelText('Select Alice');
 
   fireEvent.click(screen.getByLabelText('Select Alice'));
-  fireEvent.click(screen.getByText('Load more'));
-  await screen.findByLabelText('Select Carol');
+  fireEvent.click(screen.getByLabelText('Select Bob'));
   fireEvent.click(screen.getByLabelText('Select Carol'));
-  expect(selectedText('2 selected')).toBeInTheDocument();
-
   fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
 
-  const dialog = screen.getByRole('dialog');
-  expect(within(dialog).getByText('Keep Alice')).toBeInTheDocument();
-  expect(within(dialog).getByText('Keep Carol')).toBeInTheDocument();
+  // Step 1: choose which contact survives. Pick Carol.
+  const chooser = await screen.findByRole('dialog');
+  fireEvent.click(within(chooser).getByRole('radio', { name: 'Carol' }));
+  fireEvent.click(within(chooser).getByRole('button', { name: 'Continue' }));
 
-  const dialogMerge = within(dialog).getByRole('button', { name: 'Merge' });
-  await waitFor(() => expect(dialogMerge).not.toBeDisabled());
-  fireEvent.click(dialogMerge);
+  // Step 2/3: each other contact is merged into Carol (id 3).
+  let dialog = await screen.findByRole('dialog');
+  expect(within(dialog).getByText('Merge 1 of 2')).toBeInTheDocument();
+  let commit = within(dialog).getByRole('button', { name: 'Merge' });
+  await waitFor(() => expect(commit).not.toBeDisabled());
+  fireEvent.click(commit);
+  await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(3, 1, {}));
 
-  // Alice (page one) resolves as the pair default keeper, Carol (page two) as
-  // the loser — the IDs come from the loaded rows, not a fresh lookup.
-  await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(1, 3, {}));
-  await waitFor(() => expect(selectedText('2 selected')).toBeUndefined());
+  await waitFor(() => expect(screen.getByText('Merge 2 of 2')).toBeInTheDocument());
+  dialog = screen.getByRole('dialog');
+  commit = within(dialog).getByRole('button', { name: 'Merge' });
+  await waitFor(() => expect(commit).not.toBeDisabled());
+  fireEvent.click(commit);
+  await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(3, 2, {}));
+
+  // Done: dialog gone, selection cleared, list refetched.
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(selectedText('3 selected')).toBeUndefined();
+  expect(getContacts).toHaveBeenCalledTimes(2);
 });
 
+// Selection is keyed by VCardUID specifically so it survives pagination, and
+// the merge resolves the pair from the *loaded* `contacts` array — so it must
+// work across the page boundary too (Alice on page one, Carol on page two).
 // T77 deliberately keeps the selection across a sort change while the sort's
 // refetch may drop a selected row off the loaded page. That leaves the Merge
 // button enabled (selectedCount === 2) pointing at rows `contacts` no longer
@@ -838,20 +1059,13 @@ test('a merge whose selected rows left the loaded page alerts and clears the sta
       return Promise.resolve({
         contacts: [contact(1, 'uid-1', 'Alice')],
         next_cursor: '',
-        limit: 10,
-      });
-    }
-    if (params?.cursor) {
-      return Promise.resolve({
-        contacts: [contact(3, 'uid-3', 'Carol')],
-        next_cursor: '',
-        limit: 10,
+        limit: 50,
       });
     }
     return Promise.resolve({
       contacts: [contact(1, 'uid-1', 'Alice'), contact(2, 'uid-2', 'Bob')],
-      next_cursor: 'cursor-1',
-      limit: 10,
+      next_cursor: '',
+      limit: 50,
     });
   });
   const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
@@ -859,15 +1073,17 @@ test('a merge whose selected rows left the loaded page alerts and clears the sta
   await screen.findByLabelText('Select Alice');
 
   fireEvent.click(screen.getByLabelText('Select Alice'));
-  fireEvent.click(screen.getByText('Load more'));
-  await screen.findByLabelText('Select Carol');
-  fireEvent.click(screen.getByLabelText('Select Carol'));
+  fireEvent.click(screen.getByLabelText('Select Bob'));
   expect(selectedText('2 selected')).toBeInTheDocument();
 
   // The sort refetch replaces the loaded page with just Alice; the selection
-  // survives it (T77), so Merge is enabled but Carol can't be resolved.
+  // survives it (T77), so Merge is enabled but Bob can't be resolved.
   fireEvent.mouseDown(screen.getByLabelText('Sort'));
-  fireEvent.click(await screen.findByRole('option', { name: 'Recently edited (newest first)' }));
+  fireEvent.click(
+    await screen.findByRole('option', {
+      name: 'Recently edited (newest first)',
+    }),
+  );
   await waitFor(() => expect(selectedText('2 selected')).toBeInTheDocument());
 
   fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
@@ -922,7 +1138,9 @@ test('renders a filled star for a favorite and an outline star otherwise', async
 
   await screen.findByLabelText('Select Alice');
   // The star buttons carry the per-contact aria-labels.
-  const aliceStar = screen.getByRole('button', { name: 'Unmark Alice as favorite' });
+  const aliceStar = screen.getByRole('button', {
+    name: 'Unmark Alice as favorite',
+  });
   const bobStar = screen.getByRole('button', { name: 'Mark Bob as favorite' });
   expect(aliceStar).toBeInTheDocument();
   expect(bobStar).toBeInTheDocument();
@@ -1035,7 +1253,11 @@ test('clicking the star does not navigate to the contact detail page', async () 
 });
 
 test('toggling the favorites switch refetches with favorites: true', async () => {
-  vi.mocked(getContacts).mockResolvedValue({ contacts: [], next_cursor: '', limit: 10 });
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [],
+    next_cursor: '',
+    limit: 10,
+  });
   renderPage();
   await screen.findByText('Show favorites');
 
@@ -1081,7 +1303,11 @@ test('rows carry the primary email · phone line and tag chips (rendered from md
   } as never);
   vi.mocked(getContacts).mockResolvedValue({
     contacts: [
-      { ...contact(1, 'uid-1', 'Alice'), email: 'alice@example.com', phone: '+1 555-0101' },
+      {
+        ...contact(1, 'uid-1', 'Alice'),
+        email: 'alice@example.com',
+        phone: '+1 555-0101',
+      },
       { ...contact(2, 'uid-2', 'Bob'), email: 'bob@example.com' },
       contact(3, 'uid-3', 'Carol'),
     ],
