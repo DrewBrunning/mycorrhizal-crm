@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"testing"
 	"time"
@@ -263,7 +264,7 @@ func TestShareGrant_IdenticalNotFoundMatrix(t *testing.T) {
 
 	absent := e.do(e.A, http.MethodGet, "/share-grants/00000000-0000-4000-8000-000000000000/content", nil)
 	require.Equal(t, http.StatusNotFound, absent.Code)
-	want := absent.Body.String()
+	want := noTimestamp(absent.Body.String())
 	assert.Contains(t, want, "share_grant_not_found")
 
 	type probe struct {
@@ -300,25 +301,34 @@ func TestShareGrant_IdenticalNotFoundMatrix(t *testing.T) {
 			continue
 		}
 		assert.Equal(t, http.StatusNotFound, w.Code, "%s %s as user %d", p.method, p.path, p.who.ID)
-		assert.Equal(t, want, w.Body.String(), "%s %s as user %d: body differs from random-uuid 404", p.method, p.path, p.who.ID)
+		assert.Equal(t, want, noTimestamp(w.Body.String()), "%s %s as user %d: body differs from random-uuid 404", p.method, p.path, p.who.ID)
 		assert.Equal(t, "no-store", w.Header().Get("Cache-Control"))
 	}
 	assert.Equal(t, before, e.status(id), "no side effect from any probe")
 }
 
+// errorTimestampRE matches the per-second "timestamp" the error envelope
+// carries; comparing 404 bodies across requests must ignore it or the test
+// flakes whenever two requests straddle a wall-clock second.
+var errorTimestampRE = regexp.MustCompile(`"timestamp":"[^"]*"`)
+
+func noTimestamp(body string) string {
+	return errorTimestampRE.ReplaceAllString(body, `"timestamp":"-"`)
+}
+
 func TestShareGrantContent_WrongStateIsIdentical404(t *testing.T) {
 	e := newSGEnv(t)
 	c := e.contact(e.A, "Alice")
-	absent := e.do(e.B, http.MethodGet, "/share-grants/00000000-0000-4000-8000-000000000000/content", nil).Body.String()
+	absent := noTimestamp(e.do(e.B, http.MethodGet, "/share-grants/00000000-0000-4000-8000-000000000000/content", nil).Body.String())
 
 	pending := e.grant(e.A, e.B, "contact", c.VCardUID, []string{"emails"})
 	w := e.do(e.B, http.MethodGet, "/share-grants/"+pending+"/content", nil)
 	assert.Equal(t, http.StatusNotFound, w.Code, "pending exposes nothing")
-	assert.Equal(t, absent, w.Body.String())
+	assert.Equal(t, absent, noTimestamp(w.Body.String()))
 
 	// declined
 	require.Equal(t, 200, e.do(e.B, http.MethodPost, "/share-grants/"+pending+"/decline", nil).Code)
-	assert.Equal(t, absent, e.do(e.B, http.MethodGet, "/share-grants/"+pending+"/content", nil).Body.String())
+	assert.Equal(t, absent, noTimestamp(e.do(e.B, http.MethodGet, "/share-grants/"+pending+"/content", nil).Body.String()))
 
 	// revoked
 	id2 := e.grant(e.A, e.B, "contact", c.VCardUID, []string{"emails"})
@@ -326,7 +336,7 @@ func TestShareGrantContent_WrongStateIsIdentical404(t *testing.T) {
 	require.Equal(t, 200, e.do(e.A, http.MethodPost, "/share-grants/"+id2+"/revoke", nil).Code)
 	w = e.do(e.B, http.MethodGet, "/share-grants/"+id2+"/content", nil)
 	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.Equal(t, absent, w.Body.String(), "revoked is effective on the next request")
+	assert.Equal(t, absent, noTimestamp(w.Body.String()), "revoked is effective on the next request")
 }
 
 func TestShareGrantContent_ExpiredIsEffectiveWithoutJob(t *testing.T) {
