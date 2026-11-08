@@ -68,6 +68,12 @@ type embeddedRouteRow struct {
 var embeddedRouteRows = []embeddedRouteRow{
 	{class: embeddedClassLocal, reason: embeddedReasonLocal, routes: []string{
 		"DELETE /api/v1/account",
+		"DELETE /api/v1/contacts/:id/entity-links/:linkId",
+		"GET /api/v1/contacts/:id/entity-links",
+		"POST /api/v1/contacts/:id/entity-links",
+		"POST /api/v1/contacts/:id/entity-links/:linkId/adopt",
+		"POST /api/v1/contacts/:id/entity-links/from-existing",
+		"PUT /api/v1/contacts/:id/entity-links/:linkId",
 		"DELETE /api/v1/entities/:id",
 		"GET /api/v1/entities",
 		"GET /api/v1/entities/:id",

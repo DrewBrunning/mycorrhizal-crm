@@ -648,6 +648,66 @@ export type ContactEmail = {
   value?: string;
 };
 
+export type ContactEntityLink = {
+  contact_vcard_uid: string;
+  created_at: string;
+  current: boolean;
+  entity_id: string;
+  entity_name: string;
+  id: string;
+  is_primary: boolean;
+  kind: 'organisation' | 'place' | 'pet';
+  period?: TemporalRange;
+  projects_as: '' | 'ORG' | 'ADR';
+  revision: number;
+  role: string;
+  role_label: string;
+  sensitivity: 'normal' | 'private' | 'secret';
+  updated_at: string;
+};
+
+export type ContactEntityLinkAdoptResponse = {
+  adopted: boolean;
+  element_id: string;
+  element_kind: 'organization' | 'address';
+  link: ContactEntityLink;
+};
+
+export type ContactEntityLinkFromExistingInput = {
+  entity_id?: string;
+  is_primary?: boolean;
+  period?: TemporalRange;
+  role: string;
+  role_label?: string;
+  sensitivity?: 'normal' | 'private' | 'secret';
+  source: ContactEntityLinkSource;
+};
+
+export type ContactEntityLinkFromExistingResponse = {
+  entity: Entity;
+  entity_created: boolean;
+  link: ContactEntityLink;
+};
+
+export type ContactEntityLinkInput = {
+  entity_id?: string;
+  is_primary?: boolean;
+  period?: TemporalRange;
+  role: string;
+  role_label?: string;
+  sensitivity?: 'normal' | 'private' | 'secret';
+};
+
+export type ContactEntityLinkSource = {
+  id?: string;
+  index?: number;
+  kind: 'organization' | 'address';
+};
+
+export type ContactEntityLinksResponse = {
+  links: ContactEntityLink[];
+};
+
 export type ContactFieldKey = 'emails' | 'phones' | 'addresses' | 'links' | 'imppAddresses' | 'socialProfiles' | 'otherOnlineServices' | 'nickname' | 'gender' | 'birthday' | 'anniversary' | 'anniversaries' | 'prefix' | 'middle_name' | 'suffix' | 'organizations' | 'titles' | 'how_we_met' | 'work_information' | 'contact_information' | 'speakToAs' | 'personalInfo' | 'keywords' | 'cardNotes' | 'preferredLanguages' | 'cardKind' | 'language';
 
 export type ContactFieldValuesInput = {

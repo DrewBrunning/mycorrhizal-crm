@@ -2238,6 +2238,11 @@
           "required": false
         },
         {
+          "name": "entity_id",
+          "in": "query",
+          "required": false
+        },
+        {
           "name": "favorites",
           "in": "query",
           "required": false
@@ -3337,6 +3342,242 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/contacts/{id}/entity-links",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactEntityLinksResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/{id}/entity-links",
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactEntityLinkInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:ContactEntityLink"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/{id}/entity-links/from-existing",
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactEntityLinkFromExistingInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:ContactEntityLinkFromExistingResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/contacts/{id}/entity-links/{linkId}",
+      "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "linkId",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:ContactEntityLinkInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactEntityLink"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/contacts/{id}/entity-links/{linkId}",
+      "parameters": [
+        {
+          "name": "If-Match",
+          "in": "header",
+          "required": false
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "linkId",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:MessageResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "412",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/{id}/entity-links/{linkId}/adopt",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        },
+        {
+          "name": "linkId",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ContactEntityLinkAdoptResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
           "schema": "ref:Error"
         }
       ]
@@ -13163,6 +13404,269 @@
           "name": "value",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ContactEntityLink",
+      "properties": [
+        {
+          "name": "contact_vcard_uid",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "current",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "entity_name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "is_primary",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "organisation",
+            "place",
+            "pet"
+          ]
+        },
+        {
+          "name": "period",
+          "type": "ref:TemporalRange",
+          "required": false
+        },
+        {
+          "name": "projects_as",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "",
+            "ORG",
+            "ADR"
+          ]
+        },
+        {
+          "name": "revision",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "role_label",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "updated_at",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactEntityLinkAdoptResponse",
+      "properties": [
+        {
+          "name": "adopted",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "element_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "element_kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "organization",
+            "address"
+          ]
+        },
+        {
+          "name": "link",
+          "type": "ref:ContactEntityLink",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactEntityLinkFromExistingInput",
+      "properties": [
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "is_primary",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "period",
+          "type": "ref:TemporalRange",
+          "required": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "role_label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        },
+        {
+          "name": "source",
+          "type": "ref:ContactEntityLinkSource",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactEntityLinkFromExistingResponse",
+      "properties": [
+        {
+          "name": "entity",
+          "type": "ref:Entity",
+          "required": true
+        },
+        {
+          "name": "entity_created",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "link",
+          "type": "ref:ContactEntityLink",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ContactEntityLinkInput",
+      "properties": [
+        {
+          "name": "entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "is_primary",
+          "type": "boolean",
+          "required": false
+        },
+        {
+          "name": "period",
+          "type": "ref:TemporalRange",
+          "required": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "role_label",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ContactEntityLinkSource",
+      "properties": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "index",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "organization",
+            "address"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ContactEntityLinksResponse",
+      "properties": [
+        {
+          "name": "links",
+          "type": "array\u003cobject\u003e",
+          "required": true
         }
       ]
     },

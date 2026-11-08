@@ -2717,6 +2717,11 @@
     <string name="error_reason_entity_kind_immutable">An entity\'s kind cannot be changed; delete it and create a new one</string>
     <string name="error_reason_entity_core_invalid">%1$s</string>
     <string name="error_reason_entity_snapshot_unsupported">This entity\'s deletion snapshot is not supported by this version</string>
+    <string name="error_reason_entity_link_not_found">Entity link not found</string>
+    <string name="error_reason_entity_link_role_invalid">That role is not valid for this kind of entity</string>
+    <string name="error_reason_entity_link_kind_not_adoptable">This entity has no organisation or address value to adopt into the contact</string>
+    <string name="error_reason_entity_link_source_not_found">The contact has no such organisation or address</string>
+    <string name="error_reason_entity_link_primary_conflict">Another change to this contact\'s primary link happened at the same time; try again</string>
     <string name="error_reason_contact_field_definition_target_immutable">A field definition\'s target cannot be changed</string>
     <string name="error_reason_contact_field_definition_projection_target_invalid">Only contact field definitions can use a vcard projection; use internal-only</string>
     <string name="error_reason_contact_field_definition_target_mismatch">The field definition does not target this kind of record</string>
