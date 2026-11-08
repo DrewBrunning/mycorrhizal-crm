@@ -19,7 +19,7 @@
 **Workflows**
 - Source backend/my_environment.env to `.env` before running the server
 - Start the backend with `go run main.go` (or `make dev`) from backend/ after `go mod tidy`; migrations are embedded in the binary and auto-run on boot. Use `make migrate-up` or cmd/migrate for manual control during development.
-- Frontend uses Yarn: `yarn install` then `yarn start` from frontend/; the Vite dev server proxies nothing, so point `VITE_API_URL` at the backend in `.env`.
+- Frontend uses Yarn: `yarn install` then `yarn start` from frontend/; the Vite dev server proxies `/api`, `/health` and `/.well-known` to the backend (`http://localhost:8080`, override with `VITE_DEV_PROXY_TARGET`), so leave `VITE_API_URL` empty in `frontend/.env` (the `.env.example` default). Do not point `VITE_API_URL` at another origin: image responses send `Cross-Origin-Resource-Policy: same-origin` (ADR 0040, never relaxed) and the browser blocks them cross-origin, so gallery/note/activity images would not load (#2364).
 - Logs use zerolog via [backend/logger/logger.go](backend/logger/logger.go); set LOG_LEVEL and LOG_PRETTY for debugging, and rely on request IDs threaded through middleware.
 - Rate limiting is IP-based via [backend/middleware/rate_limiter.go](backend/middleware/rate_limiter.go); respect separate auth/general buckets when adding endpoints.
 

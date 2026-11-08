@@ -33,6 +33,7 @@ export default defineConfig({
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
       'viteConfig.test.ts',
+      'devProxy.test.ts',
       'scripts/*.test.mjs',
       'e2e/*.vitest.ts',
     ],

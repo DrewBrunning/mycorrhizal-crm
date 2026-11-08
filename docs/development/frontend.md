@@ -15,7 +15,7 @@ tested with Vitest + Playwright.
 
 ```sh
 cd frontend
-cp .env.example .env  # set VITE_API_URL if backend isn't on localhost:8080
+cp .env.example .env  # leave VITE_API_URL empty; set VITE_DEV_PROXY_TARGET if backend isn't on localhost:8080
 yarn install
 ```
 
@@ -25,7 +25,11 @@ yarn install
 yarn start  # Vite dev server on port 7300
 ```
 
-Hot reload is enabled. The dev server proxies nothing so requests go directly to `VITE_API_URL`.
+Hot reload is enabled. The dev server proxies `/api`, `/health` and `/.well-known` to the backend
+(`http://localhost:8080` by default; `VITE_DEV_PROXY_TARGET` overrides, see `devProxy.ts`), keeping the
+app and API same-origin as nginx does in production. Leave `VITE_API_URL` empty: image responses send
+`Cross-Origin-Resource-Policy: same-origin` (ADR 0040), which the browser enforces for a split-origin
+setup (#2364). `backend-dev` serves on :8080, matching the default.
 
 ## Adding a New Page
 
