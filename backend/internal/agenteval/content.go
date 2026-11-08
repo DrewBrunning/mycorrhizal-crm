@@ -22,6 +22,10 @@ type ContentCheck struct {
 	ContainsAny   []string `yaml:"contains_any,omitempty"`
 	Forbids       []string `yaml:"forbids,omitempty"`
 	CaseSensitive bool     `yaml:"case_sensitive,omitempty"`
+	// IgnoreComments drops full-line "#" comments before scoring, so prose
+	// that explains a missing trigger neither trips a forbid nor satisfies a
+	// contains_all. Trailing comments stay visible (conservative).
+	IgnoreComments bool `yaml:"ignore_comments,omitempty"`
 }
 
 const maxContentCheckFileBytes = 1 << 20
@@ -139,6 +143,9 @@ func readContentFile(root, rel string) (string, error) {
 }
 
 func checkContentBody(check ContentCheck, file, body string) []string {
+	if check.IgnoreComments {
+		body = stripCommentLines(body)
+	}
 	haystack := body
 	if !check.CaseSensitive {
 		haystack = strings.ToLower(haystack)
@@ -178,4 +185,17 @@ func checkContentBody(check ContentCheck, file, body string) []string {
 		}
 	}
 	return findings
+}
+
+// stripCommentLines removes lines whose first non-space character is "#".
+func stripCommentLines(body string) string {
+	lines := strings.Split(body, "\n")
+	kept := lines[:0]
+	for _, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "#") {
+			continue
+		}
+		kept = append(kept, line)
+	}
+	return strings.Join(kept, "\n")
 }

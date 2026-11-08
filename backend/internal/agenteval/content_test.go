@@ -195,3 +195,43 @@ func TestValidateContentChecksErrors(t *testing.T) {
 		})
 	}
 }
+
+// A workflow that explains in a full-line YAML comment that it has no
+// pull_request trigger is correct; only an actual key may trip the forbid
+// (#2426: the nightly add-quality-gate eval failed on exactly this comment).
+func TestCheckContentIgnoreComments(t *testing.T) {
+	root := t.TempDir()
+	writeContentFile(t, root, ".github/workflows/weekly.yml",
+		"# deliberately has no pull_request trigger; runs depexceptions\non:\n  schedule:\n    - cron: '0 7 * * 1' # not pull_request\n")
+	changed := []string{".github/workflows/weekly.yml"}
+	check := ContentCheck{
+		Name:           "scheduled gate without a PR trigger",
+		Paths:          []string{".github/workflows/**"},
+		ContainsAll:    []string{"schedule:"},
+		Forbids:        []string{"pull_request"},
+		IgnoreComments: true,
+	}
+	if findings := CheckContent(root, changed, []ContentCheck{check}); len(findings) != 1 || !strings.Contains(findings[0], "forbidden text") {
+		// the trailing "# not pull_request" is code-side text and stays visible
+		t.Fatalf("trailing comment must still be scanned conservatively, findings = %v", findings)
+	}
+
+	writeContentFile(t, root, ".github/workflows/weekly.yml",
+		"# deliberately has no pull_request trigger; runs depexceptions\non:\n  schedule:\n    - cron: '0 7 * * 1'\n")
+	if findings := CheckContent(root, changed, []ContentCheck{check}); len(findings) != 0 {
+		t.Fatalf("full-line comment must be ignored, findings = %v", findings)
+	}
+
+	// A mention that lives only in a comment must not satisfy contains_all.
+	check.ContainsAll = []string{"depexceptions"}
+	if findings := CheckContent(root, changed, []ContentCheck{check}); len(findings) != 1 || !strings.Contains(findings[0], "missing text") {
+		t.Fatalf("comment-only mention satisfied contains_all, findings = %v", findings)
+	}
+
+	// Without the option, behaviour is unchanged.
+	check.IgnoreComments = false
+	check.ContainsAll = nil
+	if findings := CheckContent(root, changed, []ContentCheck{check}); len(findings) != 1 {
+		t.Fatalf("default must stay literal, findings = %v", findings)
+	}
+}
