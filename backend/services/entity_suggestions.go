@@ -347,8 +347,12 @@ func loadValueGroups(db *gorm.DB, userID uint, kind string) ([]valueGroup, map[s
 				if strings.TrimSpace(o.Name) == "" {
 					continue
 				}
+				k := OrganisationComparisonKey(o.Name)
+				if k == "" {
+					continue // punctuation only: nothing to compare
+				}
 				v := base
-				v.name, v.key, v.org = strings.TrimSpace(o.Name), "org:"+OrganisationComparisonKey(o.Name), &o
+				v.name, v.key, v.org = strings.TrimSpace(o.Name), "org:"+k, &o
 				v.sens = models.RelationshipSensitivityNormal
 				push(v)
 			}
@@ -597,7 +601,7 @@ func CreateEntitiesFromContacts(db *gorm.DB, userID uint, kind string, reqs []mo
 			case models.EntityKindOrganisation:
 				org := *rep.org
 				org.ID = ""
-				if err := ent.SetCore(&models.OrganisationCore{Organization: org}); err != nil {
+				if err := ent.SetCore(&models.OrganisationCore{Organization: org}); err != nil { // # pragma: no cover — the value came from a persisted Card and the core schema accepts every Organization the Card schema does
 					out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "core_invalid"})
 					continue
 				}
@@ -609,7 +613,7 @@ func CreateEntitiesFromContacts(db *gorm.DB, userID uint, kind string, reqs []mo
 						ent.Sensitivity = v.sens
 					}
 				}
-				if err := ent.SetCore(&models.PlaceCore{Address: addr}); err != nil {
+				if err := ent.SetCore(&models.PlaceCore{Address: addr}); err != nil { // # pragma: no cover — the value came from a persisted Card and its sensitivity was cleared above, the only thing the place core rejects
 					out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "core_invalid"})
 					continue
 				}

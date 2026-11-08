@@ -54,7 +54,7 @@ func entityFillableFields(kind string) []string {
 	case models.EntityKindPet:
 		return []string{"species", "breed", "birth", "death", "notes"}
 	}
-	return nil
+	return nil // # pragma: no cover — kinds are a closed enum validated before a merge
 }
 
 // fillCoreField copies field from loser into survivor when the survivor's is
@@ -179,7 +179,7 @@ func applyEntityResolutions(survivor, loser *models.Entity, resolutions map[stri
 		filledFields = append(filledFields, f)
 	}
 	if len(filledFields) > 0 {
-		if err := survivor.SetCore(sc); err != nil {
+		if err := survivor.SetCore(sc); err != nil { // # pragma: no cover — the survivor's core was valid and only empty fields are filled from a valid loser core
 			return nil, &EntityMergeResolutionError{Reason: err.Error()}
 		}
 		// Content copied from a more sensitive loser must not land in a less
