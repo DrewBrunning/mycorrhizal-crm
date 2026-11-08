@@ -3,6 +3,8 @@ import browserslistToEsbuild from 'browserslist-to-esbuild';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+import { devProxy } from './devProxy';
+
 // Issue #476 (WEB-02) test plumbing. The service-worker upgrade e2e suite
 // (frontend/e2e/sw-upgrade/, playwright.sw.config.ts) stages two REAL
 // production builds -- "build A" then "build B" -- and drives an upgrade
@@ -73,6 +75,9 @@ export default defineConfig({
     // Matches .claude/launch.json's frontend-dev config and the e2e suite's
     // hardcoded base URL (frontend/e2e/global-setup.ts).
     port: 7300,
+    // Issue #2364: same-origin API in dev; see devProxy.ts. Override the
+    // backend with VITE_DEV_PROXY_TARGET (default http://localhost:8080).
+    proxy: devProxy(process.env.VITE_DEV_PROXY_TARGET),
   },
   build: {
     // COMPAT-01 (issue #472): the supported-browser floor is declared once,
