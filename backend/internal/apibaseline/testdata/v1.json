@@ -12636,11 +12636,49 @@
       ]
     },
     {
+      "name": "CircleTimelineItem",
+      "properties": [
+        {
+          "name": "data",
+          "type": "composed[object,object,object,object,object,object]",
+          "required": true
+        },
+        {
+          "name": "date",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "members",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "type",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "note",
+            "activity",
+            "completion",
+            "life_event",
+            "external_activity",
+            "gift"
+          ]
+        }
+      ]
+    },
+    {
       "name": "CircleTimelineResponse",
       "properties": [
         {
           "name": "items",
-          "type": "array\u003cobject\u003e",
+          "type": "array\u003ccomposed[object,object]\u003e",
           "required": true
         },
         {
@@ -23464,11 +23502,6 @@
           "name": "id",
           "type": "string",
           "required": true
-        },
-        {
-          "name": "members",
-          "type": "array\u003cobject\u003e",
-          "required": false
         },
         {
           "name": "type",

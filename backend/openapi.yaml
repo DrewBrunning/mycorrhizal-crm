@@ -16885,19 +16885,6 @@ components:
             - $ref: "#/components/schemas/ExternalActivity"
             - $ref: "#/components/schemas/Gift"
           description: The raw entity, whose shape follows `type`.
-        members:
-          type: array
-          description: >
-            Present only on the circle timeline (GET /circles/{id}/timeline):
-            the live circle member(s) the entry is about (an activity shared by
-            several members lists each; non-member participants are omitted).
-          items:
-            type: object
-            required: [id, firstname, lastname]
-            properties:
-              id: { type: integer }
-              firstname: { type: string }
-              lastname: { type: string }
     TimelineResponse:
       type: object
       description: >
@@ -17641,6 +17628,25 @@ components:
           type: string
           enum: ["", red, orange, yellow, green, teal, blue, purple, pink, grey]
           description: Palette token. On PUT an absent key keeps the stored value; "" clears it. Any other value is a 400.
+    CircleTimelineItem:
+      description: >
+        A TimelineItem on a circle's timeline plus `members`: the live circle
+        member(s) the entry is about (an activity shared by several members
+        lists each; non-member participants are omitted).
+      allOf:
+        - $ref: "#/components/schemas/TimelineItem"
+        - type: object
+          required: [members]
+          properties:
+            members:
+              type: array
+              items:
+                type: object
+                required: [id, firstname, lastname]
+                properties:
+                  id: { type: integer }
+                  firstname: { type: string }
+                  lastname: { type: string }
     CircleTimelineResponse:
       type: object
       description: >
@@ -17650,7 +17656,7 @@ components:
       properties:
         items:
           type: array
-          items: { $ref: "#/components/schemas/TimelineItem" }
+          items: { $ref: "#/components/schemas/CircleTimelineItem" }
         next_cursor: { type: string }
         limit: { type: integer }
         member_count: { type: integer, description: "Members in the circle (archived members count here but contribute no timeline events)." }

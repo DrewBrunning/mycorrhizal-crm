@@ -545,8 +545,16 @@ export type CircleMemberInput = {
   member_vcard_uid: string;
 };
 
+export type CircleTimelineItem = TimelineItem & {
+  members: {
+    firstname: string;
+    id: number;
+    lastname: string;
+  }[];
+};
+
 export type CircleTimelineResponse = {
-  items: TimelineItem[];
+  items: CircleTimelineItem[];
   limit: number;
   member_count: number;
   next_cursor: string;
@@ -3076,11 +3084,6 @@ export type TimelineItem = {
   data: Note | Activity | ReminderCompletion | LifeEvent | ExternalActivity | Gift;
   date: string;
   id: string;
-  members?: {
-    firstname: string;
-    id: number;
-    lastname: string;
-  }[];
   type: 'note' | 'activity' | 'completion' | 'life_event' | 'external_activity' | 'gift';
 };
 

@@ -220,26 +220,21 @@ func ComposeTimeline(db *gorm.DB, userID uint, q TimelineQuery) ([]models.Timeli
 	for _, e := range entries {
 		items = append(items, models.TimelineItem{Type: e.typ, ID: e.id, Date: e.date, Data: e.data})
 	}
-	if q.CircleID != "" && q.ContactID == nil {
-		if err := attachCircleMembers(db, userID, q.CircleID, items); err != nil {
-			return nil, "", err // # pragma: no cover — DB failure only
-		}
-	}
 	return items, nextCursor, nil
 }
 
-// attachCircleMembers fills TimelineItem.Members on the circle timeline
-// (issue #2361). Members are the circle's live contacts, scoped by user_id; an
+// CircleTimelineMembers wraps circle-timeline items with the member(s) each is
+// about (issue #2361). Members are the circle's live contacts, scoped by user_id; an
 // entry lists only members it is about, so a non-member activity participant
 // is never named. Contact names are not sensitivity-gated (the circle
 // timeline already returns every member's entries to the owner).
-func attachCircleMembers(db *gorm.DB, userID uint, circleID string, items []models.TimelineItem) error {
+func CircleTimelineMembers(db *gorm.DB, userID uint, circleID string, items []models.TimelineItem) ([]models.CircleTimelineItem, error) {
 	var contacts []models.Contact
 	if err := db.Select("id", "vcard_uid", "firstname", "lastname").
 		Where("user_id = ? AND archived = ? AND vcard_uid IN (SELECT member_vcard_uid FROM circle_members WHERE circle_id = ? AND user_id = ?)",
 			userID, false, circleID, userID).
 		Find(&contacts).Error; err != nil {
-		return err
+		return nil, err // # pragma: no cover — DB failure only
 	}
 	byID := make(map[uint]models.TimelineMember, len(contacts))
 	byUID := make(map[string]models.TimelineMember, len(contacts))
@@ -248,8 +243,9 @@ func attachCircleMembers(db *gorm.DB, userID uint, circleID string, items []mode
 		byID[c.ID] = m
 		byUID[c.VCardUID] = m
 	}
+	out := make([]models.CircleTimelineItem, 0, len(items))
 	for i := range items {
-		var members []models.TimelineMember
+		members := []models.TimelineMember{}
 		switch d := items[i].Data.(type) {
 		case models.Note:
 			if d.ContactID != nil {
@@ -280,9 +276,9 @@ func attachCircleMembers(db *gorm.DB, userID uint, circleID string, items []mode
 				members = append(members, m)
 			}
 		}
-		items[i].Members = members
+		out = append(out, models.CircleTimelineItem{TimelineItem: items[i], Members: members})
 	}
-	return nil
+	return out, nil
 }
 
 // timelineComposer holds the per-request state shared by the six per-type
