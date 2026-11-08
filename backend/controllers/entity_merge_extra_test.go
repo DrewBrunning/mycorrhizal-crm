@@ -2,7 +2,10 @@ package controllers
 
 import (
 	"encoding/json"
+	"github.com/gin-gonic/gin"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -261,4 +264,48 @@ func TestEntityHelper_AndDismissDatabaseFailures(t *testing.T) {
 	dbtest.HideTable(t, e2.db, "dismissed_entity_pairs")
 	assert.Equal(t, http.StatusInternalServerError, e2.do(http.MethodPost, "/entities/suggestions/dismiss", map[string]any{"entity_a": a2.ID, "entity_b": b2.ID}).Code)
 	_, _ = a, b
+}
+
+// Without the auth middleware's user id every route is a 401, and without the
+// validation middleware the body handlers refuse rather than read an unchecked
+// body (defence in depth behind the routes.go wiring).
+func TestEntityMergeRoutes_RefuseWithoutAuthOrValidation(t *testing.T) {
+	logtest.AllowWarnings(t, "unauthenticated and unvalidated requests are logged by the error middleware")
+	db := dbtest.New(t)
+	for _, withUser := range []bool{false, true} {
+		var user models.User
+		if withUser {
+			user = models.User{Username: "u", Password: "password123", Email: "u@example.com"}
+			require.NoError(t, db.Create(&user).Error)
+		}
+		r := gin.New()
+		r.Use(func(c *gin.Context) {
+			c.Set("db", db)
+			if withUser {
+				c.Set("userID", user.ID)
+			}
+			c.Next()
+		})
+		r.POST("/entities/:id/merge", MergeEntity)
+		r.GET("/entities/suggestions", ListEntitySuggestions)
+		r.POST("/entities/suggestions/dismiss", DismissEntitySuggestion)
+		r.POST("/entities/from-contacts", CreateEntitiesFromContacts)
+		var ent models.Entity
+		if withUser {
+			ent = models.Entity{UserID: user.ID, Kind: models.EntityKindOrganisation, Name: "A"}
+			require.NoError(t, db.Create(&ent).Error)
+		}
+		for _, call := range [][2]string{
+			{http.MethodPost, "/entities/" + ent.ID + "/merge"}, {http.MethodGet, "/entities/suggestions"},
+			{http.MethodPost, "/entities/suggestions/dismiss"}, {http.MethodPost, "/entities/from-contacts"},
+		} {
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, httptest.NewRequest(call[0], call[1], strings.NewReader("{}")))
+			if !withUser {
+				assert.Equal(t, http.StatusUnauthorized, w.Code, call[1])
+			} else if call[0] == http.MethodPost {
+				assert.GreaterOrEqual(t, w.Code, 400, call[1])
+			}
+		}
+	}
 }
