@@ -11,6 +11,7 @@ suite in a new package when one of these already owns the data class.
 | Preferences, tags, groups | projections and export | `backend/models/contact_record_preference_test.go`, `backend/models/field_selection_test.go` |
 | Photos and other media | persistence, merge, export | `backend/models/contact_card_merge_test.go`, `backend/internal/rfctest/` |
 | Relationship projections | neutral card ↔ vCard RELATED | `backend/models/relationship_edge_test.go` |
+| Entity projection (primary link → ORG/ADR, echo suppression) | read-time synthesis, every leaving surface, inbound PUT | `backend/models/contact_record_entities_test.go`, `backend/models/contact_record_entities_surface_test.go`, `backend/carddav/entity_projection_test.go`, `backend/controllers/entity_projection_surfaces_test.go` |
 | Sensitivity filtering | every leaving copy | `backend/models/field_selection_test.go`, `backend/models/contact_record_outward_census_test.go`, export tests |
 | CSV / account bundle / contact map | full-fidelity exceptions | `backend/controllers/`, `backend/correspondence/` |
 | Golden RFC examples | external oracle | `docs/golden-fixtures/`, `backend/internal/rfctest/oracle_parity_test.go` |

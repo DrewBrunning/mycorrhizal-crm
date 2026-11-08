@@ -427,13 +427,13 @@ func buildFaultAllowlist() map[string]string {
 		}
 	}
 	add(faultReasonEnrich, "POST /contacts",
-		"query life_events#1", "query relationship_edges#1", "query contact_tags#1", "query preferences#1", "query field_values#1")
+		"query life_events#1", "query relationship_edges#1", "query contact_tags#1", "query contact_entity_links#1", "query preferences#1", "query field_values#1")
 	add(faultReasonEnrich, "PUT /contacts/:id",
-		"query life_events#1", "query relationship_edges#1", "query contact_tags#1", "query tags#1", "query preferences#1", "query field_values#1")
+		"query life_events#1", "query relationship_edges#1", "query contact_tags#1", "query tags#1", "query contact_entity_links#2", "query preferences#1", "query field_values#1")
 	// The merge's cascade reads the same tables first, so its enrichment reads
 	// carry later occurrence numbers.
 	add(faultReasonEnrich, "POST /contacts/merge",
-		"query relationship_edges#3", "query contact_tags#2", "query tags#1", "query preferences#2", "query field_values#4")
+		"query relationship_edges#3", "query contact_tags#2", "query tags#1", "query contact_entity_links#1", "query preferences#2", "query field_values#4")
 	add(faultReasonImportRow, "POST /contacts/import/vcf/confirm",
 		"create contacts#1", "update contacts#1", "create contacts#2", "update contacts#2")
 	add(faultReasonImportAux, "POST /contacts/import/vcf/confirm",

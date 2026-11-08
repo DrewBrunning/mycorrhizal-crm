@@ -43,4 +43,29 @@ describe('exceedsGraphRenderBudget', () => {
   test('the #468 large profile (45k contacts) always degrades', () => {
     expect(exceedsGraphRenderBudget({ nodes: arr(45000), links: arr(90000) })).toBe(true);
   });
+
+  test('opt-in entity nodes and links count against the ceilings (#2298)', () => {
+    expect(
+      exceedsGraphRenderBudget({
+        nodes: arr(GRAPH_RENDER_NODE_CEILING),
+        links: [],
+        entityNodes: arr(1),
+      }),
+    ).toBe(true);
+    expect(
+      exceedsGraphRenderBudget({
+        nodes: [],
+        links: arr(GRAPH_RENDER_EDGE_CEILING),
+        entityLinks: arr(1),
+      }),
+    ).toBe(true);
+    expect(
+      exceedsGraphRenderBudget({
+        nodes: arr(GRAPH_RENDER_NODE_CEILING - 1),
+        links: arr(GRAPH_RENDER_EDGE_CEILING - 1),
+        entityNodes: arr(1),
+        entityLinks: arr(1),
+      }),
+    ).toBe(false);
+  });
 });

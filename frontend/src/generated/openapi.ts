@@ -1675,6 +1675,18 @@ export type GraphEdge = {
   type?: 'relationship' | 'activity';
 };
 
+export type GraphEntityEdge = {
+  id: string;
+  source: string;
+  target: string;
+};
+
+export type GraphEntityNode = {
+  id: string;
+  kind: 'organisation' | 'place' | 'pet';
+  label: string;
+};
+
 export type GraphNode = {
   circles?: string[];
   deceased?: boolean;
@@ -1689,6 +1701,8 @@ export type GraphNode = {
 export type GraphResponse = {
   depth?: number;
   edges?: GraphEdge[];
+  entity_edges?: GraphEntityEdge[];
+  entity_nodes?: GraphEntityNode[];
   from_vcard_uid?: string;
   nodes?: GraphNode[];
   scoped?: boolean;

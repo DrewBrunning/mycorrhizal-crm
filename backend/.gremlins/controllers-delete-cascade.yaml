@@ -48,6 +48,7 @@ unleash:
         - ^geopulse_controller\.go$
         - ^gift_controller\.go$
         - ^graph_controller\.go$
+        - ^graph_entities\.go$
         - ^health_controller\.go$
         - ^helpers\.go$
         - ^household_controller\.go$

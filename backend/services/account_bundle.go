@@ -167,7 +167,9 @@ func loadBundleContacts(db *gorm.DB, userID uint, photoDir string, stats *Accoun
 	for i := range contacts {
 		c := &contacts[i]
 		uidByID[c.ID] = c.VCardUID
-		record := models.RecordForContact(c, photoDir, db)
+		// The bundle is the stored card: a primary entity link's projected ORG/ADR
+		// is read-time synthesis (issue #2298) and travels as the entity + link instead.
+		record := models.RecordForContactBackup(c, photoDir, db)
 		bc := models.AccountBundleContact{
 			UID:         c.VCardUID,
 			ETag:        c.ETag,

@@ -926,6 +926,7 @@ func contactContent(db *gorm.DB, g *models.ShareGrant, photoDir string) (json.Ra
 		return nil, entityMiss(err)
 	}
 	record := models.RecordForContactFiltered(&c, photoDir, db, grantSelection(g))
+	record = models.DetachProjectedEntityIDs(record) // issue #2298: no link ID reaches another account
 	data, _, err := jscontact.Adapter{}.Export(record)
 	if err != nil {
 		return nil, apperrors.ErrInternal("Failed to build shared contact").WithError(err)
