@@ -1718,6 +1718,7 @@
     <string name="merge_no_conflicts">Aucun conflit de champs — la fusion est prête.</string>
     <string name="merge_commit">Fusionner</string>
     <string name="merge_done">Contacts fusionnés.</string>
+    <string name="merge_step">Fusion %1$d sur %2$d</string>
     <!-- M23 : cible de fusion par recherche + ventilation complète des associations -->
     <string name="merge_keep_hint">Le contact que vous avez ouvert sera conservé. Recherchez l\'autre contact à fusionner dedans.</string>
     <string name="merge_pick_other">Choisir l\'autre contact</string>
