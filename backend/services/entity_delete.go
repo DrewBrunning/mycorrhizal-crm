@@ -100,6 +100,10 @@ type entityFieldValueSnapshot struct {
 // EntityDeletionPayload is the JSON stored in EntityDeletionSnapshot.Payload.
 type EntityDeletionPayload struct {
 	FieldValues []entityFieldValueSnapshot `json:"field_values"`
+	// MergedInto is the survivor's id when the entity was soft-deleted as an
+	// entity-merge loser (issue #2299). Optional and additive: a payload without
+	// it is a plain delete, and the snapshot version is unchanged.
+	MergedInto string `json:"merged_into,omitempty"`
 }
 
 // ErrEntityNotInTrash is returned for an entity that is live, purged, owned by
@@ -115,6 +119,12 @@ var ErrEntitySnapshotUnsupported = errors.New("entity deletion snapshot version 
 // its field values are hard-deleted into an encrypted snapshot, and dismissals
 // naming it are removed. The snapshot exists iff the delete committed.
 func DeleteEntity(db *gorm.DB, userID uint, entityID string, now time.Time) error {
+	return deleteEntity(db, userID, entityID, now, "")
+}
+
+// deleteEntity is DeleteEntity with the optional merge-survivor id recorded in
+// the snapshot, so a later restore can say the links stayed with the survivor.
+func deleteEntity(db *gorm.DB, userID uint, entityID string, now time.Time, mergedInto string) error {
 	return db.Transaction(func(tx *gorm.DB) error {
 		var entity models.Entity
 		if err := tx.Where("id = ? AND user_id = ?", entityID, userID).First(&entity).Error; err != nil {
@@ -126,7 +136,7 @@ func DeleteEntity(db *gorm.DB, userID uint, entityID string, now time.Time) erro
 		if err := tx.Where("entity_id = ? AND user_id = ?", entity.ID, userID).Order("id").Find(&values).Error; err != nil {
 			return err
 		}
-		payload := EntityDeletionPayload{FieldValues: make([]entityFieldValueSnapshot, 0, len(values))}
+		payload := EntityDeletionPayload{FieldValues: make([]entityFieldValueSnapshot, 0, len(values)), MergedInto: mergedInto}
 		for _, v := range values {
 			payload.FieldValues = append(payload.FieldValues, entityFieldValueSnapshot{FieldDefinitionID: v.FieldDefinitionID, Value: v.Value})
 		}
@@ -165,6 +175,10 @@ type EntityRestoreResult struct {
 	// SameNameLive is true when another live entity of the same kind already has
 	// this name_key: not a conflict (names are not unique), reported as a warning.
 	SameNameLive bool
+	// LinksRevived counts links that came back with the entity; MergedInto is
+	// the survivor's id when the entity was a merge loser.
+	LinksRevived int
+	MergedInto   string
 }
 
 // RestoreEntity brings a trashed entity back in one transaction: it revives the
@@ -220,6 +234,13 @@ func RestoreEntity(db *gorm.DB, userID uint, entityID string, now time.Time) (*E
 			return err
 		}
 		res.Skipped = append(res.Skipped, skips...)
+		res.LinksRevived = len(linkIDs)
+		for _, sk := range skips {
+			if sk.Reason == RestoreReasonEntityGone || sk.Reason == RestoreReasonContactGone {
+				res.LinksRevived -= sk.Count
+			}
+		}
+		res.MergedInto = payload.MergedInto
 
 		skippedValues := 0
 		for _, v := range payload.FieldValues {

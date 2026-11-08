@@ -151,6 +151,10 @@ const (
 	ReasonEntityCoreInvalid         ReasonCode = "entity_core_invalid"
 	ReasonEntitySnapshotUnsupported ReasonCode = "entity_snapshot_unsupported"
 	// Contact-entity links (issue #2297, ADR 0043 decision 2/3).
+	// Entity merge and suggestions (issue #2299, ADR 0043 decision 8).
+	ReasonEntityMergeSameEntity                         ReasonCode = "entity_merge_same_entity"
+	ReasonEntityMergeKindMismatch                       ReasonCode = "entity_merge_kind_mismatch"
+	ReasonEntityMergeResolutionInvalid                  ReasonCode = "entity_merge_resolution_invalid"
 	ReasonEntityLinkNotFound                            ReasonCode = "entity_link_not_found"
 	ReasonEntityLinkRoleInvalid                         ReasonCode = "entity_link_role_invalid"
 	ReasonEntityLinkKindNotAdoptable                    ReasonCode = "entity_link_kind_not_adoptable"
@@ -632,6 +636,9 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonEntityKindImmutable:                           {Template: "An entity's kind cannot be changed; delete it and create a new one"},
 	ReasonEntityCoreInvalid:                             {Template: "{reason}", Params: []string{"reason"}},
 	ReasonEntitySnapshotUnsupported:                     {Template: "This entity's deletion snapshot is not supported by this version"},
+	ReasonEntityMergeSameEntity:                         {Template: "An entity cannot be merged into itself"},
+	ReasonEntityMergeKindMismatch:                       {Template: "Only entities of the same kind can be merged"},
+	ReasonEntityMergeResolutionInvalid:                  {Template: "{reason}", Params: []string{"reason"}},
 	ReasonEntityLinkNotFound:                            {Template: "Entity link not found"},
 	ReasonEntityLinkRoleInvalid:                         {Template: "That role is not valid for this kind of entity"},
 	ReasonEntityLinkKindNotAdoptable:                    {Template: "This entity has no organisation or address value to adopt into the contact"},

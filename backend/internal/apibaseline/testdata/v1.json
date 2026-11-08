@@ -4867,6 +4867,108 @@
       ]
     },
     {
+      "method": "POST",
+      "path": "/entities/from-contacts",
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        }
+      ],
+      "request_body": "ref:EntityFromContactsInput",
+      "responses": [
+        {
+          "status": "201",
+          "schema": "ref:EntityFromContactsResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/entities/suggestions",
+      "parameters": [
+        {
+          "name": "cursor",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "mode",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:EntitySuggestionsResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/entities/suggestions/dismiss",
+      "parameters": null,
+      "request_body": "ref:EntityDismissInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:EntityDismissResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "GET",
       "path": "/entities/{id}",
       "parameters": [
@@ -5040,6 +5142,49 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/entities/{id}/merge",
+      "parameters": [
+        {
+          "name": "Idempotency-Key",
+          "in": "header",
+          "required": false
+        },
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "request_body": "ref:EntityMergeInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:EntityMergeResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "422",
           "schema": "ref:Error"
         }
       ]
@@ -16866,6 +17011,146 @@
       ]
     },
     {
+      "name": "EntityDismissInput",
+      "properties": [
+        {
+          "name": "entity_a",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "entity_b",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityDismissResponse",
+      "properties": [
+        {
+          "name": "id_high",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "id_low",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityFromContactsCreated",
+      "properties": [
+        {
+          "name": "entity",
+          "type": "ref:Entity",
+          "required": true
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "links",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityFromContactsGroup",
+      "properties": [
+        {
+          "name": "contact_ids",
+          "type": "array\u003cinteger\u003e",
+          "required": true
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "role",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "set_primary",
+          "type": "boolean",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "EntityFromContactsInput",
+      "properties": [
+        {
+          "name": "groups",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "organisation",
+            "place"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EntityFromContactsResponse",
+      "properties": [
+        {
+          "name": "created",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "skipped",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityFromContactsSkip",
+      "properties": [
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "group_not_found",
+            "contact_not_in_group",
+            "name_invalid",
+            "core_invalid"
+          ]
+        }
+      ]
+    },
+    {
       "name": "EntityInput",
       "properties": [
         {
@@ -16921,12 +17206,105 @@
       ]
     },
     {
+      "name": "EntityMergeDemotion",
+      "properties": [
+        {
+          "name": "contact_vcard_uid",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "link_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityMergeInput",
+      "properties": [
+        {
+          "name": "into",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "resolutions",
+          "type": "object",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "EntityMergeResponse",
+      "properties": [
+        {
+          "name": "field_values_dropped",
+          "type": "array\u003cstring\u003e",
+          "required": true
+        },
+        {
+          "name": "field_values_moved",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "links_collapsed",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "links_repointed",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "loser_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "primaries_demoted",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "resolved_fields",
+          "type": "array\u003cstring\u003e",
+          "required": true
+        },
+        {
+          "name": "restore_scope",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "entity_only"
+          ]
+        },
+        {
+          "name": "survivor",
+          "type": "ref:Entity",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "EntityRestoreResponse",
       "properties": [
         {
           "name": "entity",
           "type": "ref:Entity",
           "required": true
+        },
+        {
+          "name": "links_revived",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "merged_into",
+          "type": "string",
+          "required": false
         },
         {
           "name": "same_name_live",
@@ -16955,6 +17333,164 @@
         },
         {
           "name": "table",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntitySuggestionEntity",
+      "properties": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "organisation",
+            "place",
+            "pet"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntitySuggestionPair",
+      "properties": [
+        {
+          "name": "a",
+          "type": "ref:EntitySuggestionEntity",
+          "required": true
+        },
+        {
+          "name": "b",
+          "type": "ref:EntitySuggestionEntity",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "exact_name",
+            "normalized_name",
+            "address_components"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "EntitySuggestionsResponse",
+      "properties": [
+        {
+          "name": "groups",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "mode",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "pairs",
+            "contact_values"
+          ]
+        },
+        {
+          "name": "next_cursor",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "pairs",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityValueGroup",
+      "properties": [
+        {
+          "name": "contacts",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "key",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "organisation",
+            "place"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "reason",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "exact_name",
+            "normalized_name",
+            "address_components"
+          ]
+        },
+        {
+          "name": "variants",
+          "type": "array\u003cstring\u003e",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityValueGroupContact",
+      "properties": [
+        {
+          "name": "contact_id",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "firstname",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "has_primary",
+          "type": "boolean",
+          "required": true
+        },
+        {
+          "name": "lastname",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "value_name",
           "type": "string",
           "required": true
         }

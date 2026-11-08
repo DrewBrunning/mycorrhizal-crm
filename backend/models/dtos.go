@@ -1038,6 +1038,11 @@ type EntityRestoreResponse struct {
 	// SameNameLive warns that another live entity of the same kind has the
 	// same normalized name (names are not unique, so this is never a conflict).
 	SameNameLive bool `json:"same_name_live"`
+	// LinksRevived is how many links came back with the entity. MergedInto is
+	// the survivor's id when the entity was a merge loser (issue #2299): then
+	// only the entity is revived and its former links stay with the survivor.
+	LinksRevived int    `json:"links_revived"`
+	MergedInto   string `json:"merged_into,omitempty"`
 }
 
 // EntityDeleteResponse is DELETE /entities/{id}.

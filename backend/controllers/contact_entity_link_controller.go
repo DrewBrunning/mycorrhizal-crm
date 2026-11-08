@@ -427,26 +427,7 @@ func AdoptContactEntityLink(c *gin.Context) {
 
 // addressLabel derives a display name for a place created from a contact's own
 // address: the full label, else the components joined, at most 200 characters.
-func addressLabel(a contactmodel.Address) string {
-	label := strings.TrimSpace(a.Full)
-	if label == "" {
-		parts := make([]string, 0, len(a.Components))
-		for _, comp := range a.Components {
-			if v := strings.TrimSpace(comp.Value); v != "" {
-				parts = append(parts, v)
-			}
-		}
-		label = strings.Join(parts, ", ")
-	}
-	if label == "" {
-		label = "Address"
-	}
-	for utf8.RuneCountInString(label) > models.EntityNameMaxLength {
-		_, size := utf8.DecodeLastRuneInString(label)
-		label = label[:len(label)-size]
-	}
-	return label
-}
+func addressLabel(a contactmodel.Address) string { return services.EntityAddressLabel(a) }
 
 // LinkContactEntityFromExisting handles POST
 // /contacts/:id/entity-links/from-existing (ADR 0043 decision 3): take one of

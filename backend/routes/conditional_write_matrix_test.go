@@ -176,7 +176,12 @@ func buildCWTable(s seeded) map[string]cwRow {
 		// ADR 0043 decision 3: adopt is value-idempotent (a repeat writes nothing).
 		"POST /api/v1/contacts/:id/entity-links/:linkId/adopt": exempt(reasonAction),
 		// ADR 0043 decision 6: restore consumes the deletion snapshot, so a repeat is a checked 404.
-		"POST /api/v1/entities/:id/restore":             exempt(reasonAction),
+		"POST /api/v1/entities/:id/restore": exempt(reasonAction),
+		// Issue #2299: merge is a per-row action (the loser is consumed; the survivor's revision advances inside it),
+		// the dismissal is a non-revisioned row, and the helper only creates.
+		"POST /api/v1/entities/:id/merge":               exempt(reasonAction),
+		"POST /api/v1/entities/suggestions/dismiss":     exempt(reasonAction),
+		"POST /api/v1/entities/from-contacts":           exempt(reasonCreate),
 		"PUT /api/v1/entities/:id/field-values":         exempt(reasonNonRevision),
 		"POST /api/v1/circles":                          exempt(reasonCreate),
 		"POST /api/v1/households":                       exempt(reasonCreate),

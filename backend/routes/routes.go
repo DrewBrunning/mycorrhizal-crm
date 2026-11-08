@@ -596,6 +596,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.PUT("/entities/:id", middleware.ValidateJSONMiddleware(&models.EntityInput{}), controllers.UpdateEntity)
 			protected.DELETE("/entities/:id", controllers.DeleteEntity)
 			protected.POST("/entities/:id/restore", controllers.RestoreEntity)
+			// Entity merge, dedupe suggestions and the create-from-contacts helper
+			// (issue #2299, ADR 0043 decisions 8, 9 and 10). All user-triggered.
+			protected.POST("/entities/:id/merge", middleware.ValidateJSONMiddleware(&models.EntityMergeInput{}), controllers.MergeEntity)
+			protected.GET("/entities/suggestions", controllers.ListEntitySuggestions)
+			protected.POST("/entities/suggestions/dismiss", middleware.ValidateJSONMiddleware(&models.EntityDismissInput{}), controllers.DismissEntitySuggestion)
+			protected.POST("/entities/from-contacts", middleware.ValidateJSONMiddleware(&models.EntityFromContactsInput{}), controllers.CreateEntitiesFromContacts)
 			protected.GET("/entities/:id/contacts", controllers.ListEntityContacts)
 			protected.GET("/entities/:id/field-values", controllers.ListEntityFieldValues)
 			protected.PUT("/entities/:id/field-values", middleware.ValidateJSONMiddleware(&models.ContactFieldValuesInput{}), controllers.ReplaceEntityFieldValues)

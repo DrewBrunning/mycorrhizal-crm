@@ -42,6 +42,8 @@ unleash:
         - ^duplicate_service\.go$
         - ^email_renderer\.go$
         - ^entity_delete\.go$
+        - ^entity_merge\.go$
+        - ^entity_suggestions\.go$
         - ^error_aggregation\.go$
         - ^etag_normalize\.go$
         - ^feed_atom\.go$

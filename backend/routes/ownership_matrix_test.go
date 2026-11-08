@@ -179,6 +179,9 @@ type ownFixtures struct {
 	ownerLinkTypeID, victimLinkTypeID   string
 	ownerFieldDefID, victimFieldDefID   string
 	ownerEventID, victimEventID         string
+	// Two organisations for the owner (entity merge/dismiss probes, issue #2299)
+	// and one for the victim.
+	ownerEntityID, ownerEntity2ID, victimEntityID string
 }
 
 type ownHarness struct {
@@ -252,7 +255,14 @@ func ownSeed(t *testing.T, db *gorm.DB) ownFixtures {
 		return e.ID
 	}
 
+	mkEntity := func(uid uint, name string) string {
+		e := models.Entity{UserID: uid, Kind: models.EntityKindOrganisation, Name: name}
+		require.NoError(t, db.Create(&e).Error)
+		return e.ID
+	}
+
 	return ownFixtures{
+		ownerEntityID: mkEntity(owner.ID, "Owner Org A"), ownerEntity2ID: mkEntity(owner.ID, "Owner Org B"), victimEntityID: mkEntity(victim.ID, "Victim Org"),
 		ownerID: owner.ID, victimID: victim.ID, recipientID: recipient.ID,
 		ownerC1UID: oc1.VCardUID, ownerC2UID: oc2.VCardUID, victimC1UID: vc1.VCardUID,
 		ownerC1Num: oc1.ID, ownerC2Num: oc2.ID, victimC1Num: vc1.ID,
@@ -408,7 +418,31 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 			h.fx.ownerC1UID, h.fx.ownerC2UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound)
 	}
 
+	// entity_a/entity_b of a suggestion dismissal share one endpoint; the pair
+	// probe covers both positions, so it runs once (issue #2299).
+	dismissRan := false
+	dismissProbe := func(t *testing.T, h *ownHarness) {
+		if dismissRan {
+			return
+		}
+		dismissRan = true
+		h.assertPairMasked(http.MethodPost, "/api/v1/entities/suggestions/dismiss",
+			func(a, b string) string {
+				return fmt.Sprintf(`{"entity_a":%s,"entity_b":%s}`, jstr(a), jstr(b))
+			},
+			h.fx.ownerEntityID, h.fx.ownerEntity2ID, h.fx.victimEntityID, ownNonexistentUID, http.StatusNotFound)
+	}
+
 	return map[string]ownRow{
+		"EntityDismissInput.EntityA": dto(dismissProbe),
+		"EntityDismissInput.EntityB": dto(dismissProbe),
+		// The merge consumes the loser, so the control probe is skipped; the
+		// foreign and nonexistent survivor must be indistinguishable 404s.
+		"EntityMergeInput.Into": dto(func(t *testing.T, h *ownHarness) {
+			h.assertMasked(http.MethodPost, "/api/v1/entities/"+h.fx.ownerEntityID+"/merge",
+				func(uid string) string { return fmt.Sprintf(`{"into":%s}`, jstr(uid)) },
+				h.fx.ownerEntity2ID, h.fx.victimEntityID, ownNonexistentUID, http.StatusNotFound, true)
+		}),
 		// ── single contact-UID body fields (foreign → 404, masked) ──────────
 		"ContactShareInput.VCardUID": dto(func(t *testing.T, h *ownHarness) {
 			h.assertMasked(http.MethodPost, "/api/v1/contact-shares",

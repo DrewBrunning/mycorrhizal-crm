@@ -2705,6 +2705,9 @@
     <string name="error_reason_entity_link_kind_not_adoptable">Dieser Eintrag hat keinen Organisations- oder Adresswert, der in den Kontakt übernommen werden könnte</string>
     <string name="error_reason_entity_link_source_not_found">Der Kontakt hat keine solche Organisation oder Adresse</string>
     <string name="error_reason_entity_link_primary_conflict">Gleichzeitig wurde die primäre Verknüpfung dieses Kontakts geändert; bitte erneut versuchen</string>
+    <string name="error_reason_entity_merge_same_entity">Ein Eintrag kann nicht mit sich selbst zusammengeführt werden</string>
+    <string name="error_reason_entity_merge_kind_mismatch">Nur Einträge derselben Art können zusammengeführt werden</string>
+    <string name="error_reason_entity_merge_resolution_invalid">%1$s</string>
     <string name="error_reason_contact_field_definition_target_immutable">Das Ziel einer Felddefinition kann nicht geändert werden</string>
     <string name="error_reason_contact_field_definition_projection_target_invalid">Nur Kontakt-Felddefinitionen können eine vCard-Projektion verwenden; verwende internal-only</string>
     <string name="error_reason_contact_field_definition_target_mismatch">Die Felddefinition gilt nicht für diese Art von Datensatz</string>
