@@ -12,6 +12,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Gift preferences** ([#2194](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2194)): on the web, media, jewelry and gift ideas each gain an "other" category for tastes that fit nothing else, and the preference form's "Key" field is now called "Type" (Favorite, Dislike, Allergy, or your own wording). Existing preferences are unchanged.
+
 - **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
 
 ## [1.6.0] - 2026-11-06
