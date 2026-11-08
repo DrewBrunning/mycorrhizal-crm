@@ -1,5 +1,11 @@
 import { toContactRecordInput } from '../src/api/contacts';
-import { createTestContact, deleteTestContact, expect, test } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  openSettingsNavLink,
+  test,
+} from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // T60 — the audit log page.
@@ -37,9 +43,7 @@ test.describe('Audit log', () => {
 
       // The page is reachable from app navigation, not a dead URL.
       await page.goto('/');
-      // #2175: Audit log is a sub-item of Settings; open the group first.
-      await page.getByRole('button', { name: 'Settings sub-pages' }).click();
-      await page.getByRole('link', { name: 'Audit log' }).click();
+      await openSettingsNavLink(page, 'Audit log');
       await expect(page).toHaveURL(/\/audit/);
       await expect(page.getByRole('heading', { name: 'Audit log' })).toBeVisible();
 
