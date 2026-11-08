@@ -1696,6 +1696,7 @@
     <string name="merge_no_conflicts">No field conflicts — merge is ready.</string>
     <string name="merge_commit">Merge</string>
     <string name="merge_done">Contacts merged.</string>
+    <string name="merge_step">Merge %1$d of %2$d</string>
     <!-- M23: search-based merge target + full association breakdown -->
     <string name="merge_keep_hint">The contact you opened will be kept. Search for the other contact to merge into it.</string>
     <string name="merge_pick_other">Pick the other contact</string>

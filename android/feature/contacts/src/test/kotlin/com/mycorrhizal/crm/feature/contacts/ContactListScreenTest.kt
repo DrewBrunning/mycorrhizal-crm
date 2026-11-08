@@ -78,6 +78,7 @@ class ContactListScreenTest {
         onToggleSelectAll: () -> Unit = {},
         onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
         onRunBulkFieldEdit: (Map<String, String>, Set<String>) -> Unit = { _, _ -> },
+        onMergeSelected: (Int, List<Int>) -> Unit = { _, _ -> },
         onMenuClick: (() -> Unit)? = {},
         darkTheme: Boolean = false
     ) {
@@ -97,6 +98,7 @@ class ContactListScreenTest {
                     onToggleSelectAll = onToggleSelectAll,
                     onRunBulkAction = onRunBulkAction,
                     onRunBulkFieldEdit = onRunBulkFieldEdit,
+                    onMergeSelected = onMergeSelected,
                     onMenuClick = onMenuClick
                 )
             }
@@ -769,6 +771,76 @@ class ContactListScreenTest {
         assertEquals("archive", ran?.first)
         assertEquals(null, ran?.second)
         assertEquals(null, ran?.third)
+    }
+
+    // --- Issue #2212: merge several selected contacts ------------------------
+
+    private fun openMergeDialog(
+        selected: Set<Int>,
+        onMergeSelected: (Int, List<Int>) -> Unit = { _, _ -> }
+    ) {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice"),
+                    ContactSummary(id = 2, uid = "u2", fn = "Bob", firstname = "Bob"),
+                    ContactSummary(id = 3, uid = "u3", fn = "Carol", firstname = "Carol")
+                ),
+                selected = selected
+            ),
+            onMergeSelected = onMergeSelected
+        )
+        composeTestRule.onNodeWithTag("enter-select-mode").performClick()
+    }
+
+    @Test
+    fun `merge is disabled for a single selected contact`() {
+        openMergeDialog(setOf(1))
+        composeTestRule.onNodeWithTag("bulk-merge").performScrollTo().assertIsNotEnabled()
+    }
+
+    @Test
+    fun `merge is enabled from two selected contacts and asks which to keep`() {
+        openMergeDialog(setOf(1, 2))
+        composeTestRule.onNodeWithTag("bulk-merge").performScrollTo().assertIsEnabled()
+        composeTestRule.onNodeWithTag("bulk-merge").performClick()
+
+        composeTestRule.onNodeWithText("Which contact should be kept?").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("bulk-merge-primary-1").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("bulk-merge-primary-2").assertIsDisplayed()
+    }
+
+    @Test
+    fun `choosing a primary reports it with the other selected contacts`() {
+        var result: Pair<Int, List<Int>>? = null
+        openMergeDialog(setOf(1, 2, 3)) { primary, others -> result = primary to others }
+        composeTestRule.onNodeWithTag("bulk-merge").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("bulk-merge-primary-2").performClick()
+        composeTestRule.onNodeWithTag("bulk-merge-continue").performClick()
+
+        assertEquals(2 to listOf(1, 3), result)
+    }
+
+    @Test
+    fun `the primary defaults to the first selected contact`() {
+        var result: Pair<Int, List<Int>>? = null
+        openMergeDialog(setOf(1, 2)) { primary, others -> result = primary to others }
+        composeTestRule.onNodeWithTag("bulk-merge").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("bulk-merge-continue").performClick()
+
+        assertEquals(1 to listOf(2), result)
+    }
+
+    @Test
+    fun `cancelling the primary picker merges nothing`() {
+        var called = false
+        openMergeDialog(setOf(1, 2)) { _, _ -> called = true }
+        composeTestRule.onNodeWithTag("bulk-merge").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("bulk-merge-cancel").performClick()
+
+        composeTestRule.onNodeWithText("Which contact should be kept?").assertDoesNotExist()
+        assertEquals(false, called)
     }
 
     // --- Issue #2140: bulk field edit dialog ---------------------------------

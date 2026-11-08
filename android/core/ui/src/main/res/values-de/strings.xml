@@ -1681,6 +1681,7 @@
     <string name="merge_no_conflicts">Keine Feldkonflikte — Zusammenführung bereit.</string>
     <string name="merge_commit">Zusammenführen</string>
     <string name="merge_done">Kontakte zusammengeführt.</string>
+    <string name="merge_step">Zusammenführung %1$d von %2$d</string>
     <!-- M23: Zusammenführungsziel per Suche + vollständige Zuordnungsaufschlüsselung -->
     <string name="merge_keep_hint">Der geöffnete Kontakt wird behalten. Suche nach dem anderen Kontakt, der hinein zusammengeführt werden soll.</string>
     <string name="merge_pick_other">Anderen Kontakt auswählen</string>

@@ -292,4 +292,99 @@ class MergeAndBulkViewModelTest {
         assertEquals("server error", vm.uiState.value.error?.message)
         assertTrue(vm.uiState.value.searchResults.isEmpty())
     }
+
+    // --- #2212: bulk merge of 3+ contacts, one pair at a time into the primary ---
+
+    @Test
+    fun `a queue of further contacts is merged into the primary one pair at a time`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { mergeRepository.preview(any()) } answers {
+            val req = firstArg<ContactMergeRequest>()
+            Result.success(
+                ContactMergePreviewResponse(
+                    keepId = req.keepId,
+                    mergeId = req.mergeId,
+                    resolution = ContactMergeResolution()
+                )
+            )
+        }
+        coEvery { mergeRepository.commit(any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactRecordResponse(id = 1)
+        )
+
+        val vm = viewModel()
+        vm.setPair(keepId = 1, mergeId = 2, queue = listOf(3, 4))
+        vm.loadPreview()
+        advanceUntilIdle()
+        assertEquals(1, vm.uiState.value.step)
+        assertEquals(3, vm.uiState.value.totalSteps)
+
+        vm.commit()
+        advanceUntilIdle()
+        // Advanced, not finished: next loser is previewed against the same primary.
+        assertEquals(false, vm.uiState.value.merged)
+        assertEquals(2, vm.uiState.value.step)
+        assertEquals(3L, vm.uiState.value.mergeId)
+        coVerify { mergeRepository.preview(ContactMergeRequest(keepId = 1, mergeId = 3)) }
+
+        vm.commit()
+        advanceUntilIdle()
+        assertEquals(4L, vm.uiState.value.mergeId)
+        assertEquals(3, vm.uiState.value.step)
+
+        vm.commit()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.merged)
+        coVerify(exactly = 1) {
+            mergeRepository.commit(
+                ContactMergeRequest(keepId = 1, mergeId = 2, resolutions = emptyMap())
+            )
+        }
+        coVerify(exactly = 1) {
+            mergeRepository.commit(
+                ContactMergeRequest(keepId = 1, mergeId = 4, resolutions = emptyMap())
+            )
+        }
+    }
+
+    @Test
+    fun `resolutions from one step do not leak into the next`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { mergeRepository.preview(any()) } returns Result.success(
+            ContactMergePreviewResponse(
+                keepId = 1,
+                mergeId = 3,
+                resolution = ContactMergeResolution()
+            )
+        )
+        coEvery { mergeRepository.commit(any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.ContactRecordResponse(id = 1)
+        )
+        val vm = viewModel()
+        vm.setPair(1, 2, queue = listOf(3))
+        vm.resolve("firstname", "Dana")
+        vm.commit()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.resolutions.isEmpty())
+    }
+
+    @Test
+    fun `a failed commit stays on the same step`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery {
+            mergeRepository.commit(
+            any()
+        )
+        } returns Result.failure(ApiError.Client(409, "stale"))
+        val vm = viewModel()
+        vm.setPair(1, 2, queue = listOf(3))
+        vm.commit()
+        advanceUntilIdle()
+
+        assertEquals(2L, vm.uiState.value.mergeId)
+        assertEquals(1, vm.uiState.value.step)
+        assertEquals(false, vm.uiState.value.merged)
+    }
 }

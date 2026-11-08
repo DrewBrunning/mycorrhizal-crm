@@ -741,12 +741,25 @@ private fun MainScaffold(
                         onCreateContact = { navController.navigate("contacts/new") },
                         onImportContacts = { navController.navigate("import") },
                         onReviewDuplicates = { navController.navigate("duplicates") },
+                        onMergeSelected = { primary, others ->
+                            navController.navigate(bulkMergeRoute(primary, others))
+                        },
                         onMenuClick = null
                     )
                 }
             )
         }
     }
+}
+
+/**
+ * #2212: the merge route for a bulk selection — the first of [others] is the first pair, the
+ * rest ride along as the queue folded into [primary] one pair at a time.
+ */
+internal fun bulkMergeRoute(primary: Int, others: List<Int>): String {
+    val base = "merge/$primary?mergeId=${others.first()}"
+    val rest = others.drop(1)
+    return if (rest.isEmpty()) base else "$base&queue=${rest.joinToString(",")}"
 }
 
 /**
@@ -1272,7 +1285,10 @@ private fun AppNavGraph(
                     onCreateContact = { navController.navigate("contacts/new") },
                     onMenuClick = menu,
                     onImportContacts = { navController.navigate("import") },
-                    onReviewDuplicates = { navController.navigate("duplicates") }
+                    onReviewDuplicates = { navController.navigate("duplicates") },
+                    onMergeSelected = { primary, others ->
+                        navController.navigate(bulkMergeRoute(primary, others))
+                    }
                 )
             }
         }
@@ -1314,17 +1330,38 @@ private fun AppNavGraph(
             )
         }
         composable(
-            route = "merge/{keepId}",
-            arguments = listOf(navArgument("keepId") { type = NavType.LongType })
+            route = "merge/{keepId}?mergeId={mergeId}&mergeName={mergeName}&queue={queue}",
+            arguments = listOf(
+                navArgument("keepId") { type = NavType.LongType },
+                navArgument("mergeId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                navArgument("mergeName") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                },
+                // #2212: further contacts a bulk merge folds into the keeper after mergeId.
+                navArgument("queue") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            )
         ) { entry ->
             val keepId = entry.arguments?.getLong("keepId") ?: 0L
             val mergeId = entry.arguments?.getString("mergeId")?.toLongOrNull() ?: 0L
             val mergeName = entry.arguments?.getString("mergeName")?.let { Uri.decode(it) }
+            val queue = entry.arguments?.getString("queue").orEmpty()
+                .split(',').mapNotNull { it.toLongOrNull() }
             MergeContactsScreen(
                 onBack = { navController.popBackStack() },
                 keepId = keepId,
                 mergeId = mergeId,
-                otherName = mergeName
+                otherName = mergeName,
+                queue = queue
             )
         }
         // T93 (issue #710): the duplicate-review surface, reachable from the

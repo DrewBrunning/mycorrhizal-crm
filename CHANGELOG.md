@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Merge several selected contacts on Android** ([#2212](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2212)): the contacts list's bulk bar now has Merge once two or more contacts are selected. Pick the one to keep, then review each other contact's field conflicts in turn as it is folded into it.
 - **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
 
 ## [1.6.0] - 2026-11-06

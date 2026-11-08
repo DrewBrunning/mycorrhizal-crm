@@ -1718,6 +1718,7 @@
     <string name="merge_no_conflicts">Nessun conflitto di campi — l\'unione è pronta.</string>
     <string name="merge_commit">Unisci</string>
     <string name="merge_done">Contatti uniti.</string>
+    <string name="merge_step">Unione %1$d di %2$d</string>
     <!-- M23: destinazione dell'unione tramite ricerca + ripartizione completa delle associazioni -->
     <string name="merge_keep_hint">Il contatto che hai aperto verrà mantenuto. Cerca l\'altro contatto da unire in esso.</string>
     <string name="merge_pick_other">Scegli l\'altro contatto</string>
