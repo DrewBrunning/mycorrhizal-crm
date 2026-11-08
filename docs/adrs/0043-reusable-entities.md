@@ -190,6 +190,34 @@ at implementation (contact-data-fidelity skill): the correspondence and adapter 
 unchanged, a new round-trip test (project → export → import → stored Card unchanged), and
 `go run ./cmd/gencompatmatrix` showing no diff.
 
+#### Implementation notes (#2298)
+
+Recorded where the shipped code settled a point the text above left open; none changes a decision.
+
+- **Echo suppression is in two halves.** The ID half lives inside `ApplyRecordToContact` itself
+  (`models.StripProjectedEntityIDs`), so every inbound path, including internal read-edit-apply ones that
+  never see a client, drops `ent-` entries (and the title association or period that pointed at one). The
+  value half needs the database and the stored contact, so it is `models.SuppressEntityProjectionEcho`,
+  called before the apply on the two paths that receive a client card for an existing contact: CardDAV PUT
+  and REST update. VCF import and shares create or merge candidates rather than overwrite an existing
+  contact with its own download, so only the ID half applies there.
+- **vCard 3.0.** The shipped vCard 3.0 exporter already emits every ORG a card holds, so the
+  "only the first ORG" behaviour assumed above does not exist for own values and was not introduced. The
+  rule that was added is narrower and projection-only: a *projected* ORG is not emitted behind an own ORG
+  on 3.0 and a warn `Diagnostic` (concept `org`) names it. A card with several own ORGs is unchanged, and a
+  contact with no own ORG gets the projection. Projected ADRs are emitted (3.0 repeats ADR).
+- **`pref`.** `Organization` has no `pref` in the neutral model, so adding one would be a correspondence
+  change. A projected ORG therefore relies on order (own entries first); only a projected ADR carries a
+  `pref` greater than any own address's (capped at 100).
+- **"Now".** `RecordForContactFiltered` has no request context, so the owner's calendar day comes from a
+  process-level seam (`models.SetEntityProjectionToday`) that `embedded.Start` installs from the injected
+  services clock and the reminder timezone. The default is the UTC day.
+- **Account bundle.** It builds through `models.RecordForContactBackup`: every projection except the
+  entity ORG/ADR. Entities and links travel as their own bundle sections (decision 7), and a projected
+  value inside the contact's card would duplicate them and read as a contact-owned value after restore.
+- **Graph depth.** In ego scope entity nodes attach to contacts within `depth - 1` hops of the anchor, so
+  the contact→entity hop is the last of the `depth` hops (the anchor's own entities at `depth=1`).
+
 ### 4. Ownership, sensitivity and sharing
 
 **Per-user, never shared.** Every entity and link row has a `user_id`; every query filters by it, and a link is

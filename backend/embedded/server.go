@@ -139,6 +139,10 @@ func Start(ctx context.Context, cfg *config.Config, opts Options) (*Server, erro
 	// profile-photo directory.
 	models.DefaultPhotoDir = cfg.ProfilePhotoDir
 
+	// Issue #2298: the owner's calendar day (reminder zone, ADR 0015) decides
+	// whether a primary entity link is current when it is projected into a Card.
+	models.InstallEntityProjectionClock(services.Now, cfg.GetReminderLocation())
+
 	// Issue #954 / #951: advisory boot warnings (advisory, never fatal).
 	for _, warning := range cfg.TrustedProxyWarnings() {
 		logger.Warn().Msg(warning)
@@ -620,6 +624,9 @@ func dispatchInitialTriggers(db *gorm.DB, cfg *config.Config, spawn func(func())
 		{models.JobNameAlertEval, func() { safeGo(db, models.JobNameAlertEval, models.JobTriggerInitial, alertEvalTask(db, *cfg)) }},
 		{models.JobNameStorageSample, func() { safeGo(db, models.JobNameStorageSample, models.JobTriggerInitial, storageSampleTask(db, *cfg)) }},
 		{models.JobNameImageSweep, func() { safeGoReport(db, models.JobNameImageSweep, models.JobTriggerInitial, imageSweepTask(db, *cfg)) }},
+		{models.JobNameShareGrantLifecycle, func() {
+			safeGoReport(db, models.JobNameShareGrantLifecycle, models.JobTriggerInitial, shareGrantLifecycleTask(db, *cfg))
+		}},
 	}
 	for _, in := range reports {
 		if cfg.IsEmbedded() && embeddedDisabledJobs[in.jobName] {

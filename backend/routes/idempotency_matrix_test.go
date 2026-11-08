@@ -92,6 +92,8 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/activities",
 		"POST /api/v1/life-events",
 		"POST /api/v1/entities",
+		"POST /api/v1/contacts/:id/entity-links",
+		"POST /api/v1/contacts/:id/entity-links/from-existing",
 		"POST /api/v1/circles",
 		"POST /api/v1/households",
 		"POST /api/v1/tags",
@@ -148,6 +150,9 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/trash/contacts/:id/restore",
 		// Issue #2296, ADR 0043 decision 6: entity restore consumes its snapshot too.
 		"POST /api/v1/entities/:id/restore",
+		// Issue #2297, ADR 0043 decision 3: adopt copies the entity's value into the
+		// contact's Card, and a repeat finds the value-equal own entry and writes nothing.
+		"POST /api/v1/contacts/:id/entity-links/:linkId/adopt",
 		// ADR 0031: a repeat resolves the same address to the same stored
 		// coordinate, and the in-memory cache absorbs the repeat lookup.
 		"POST /api/v1/contacts/:id/addresses/:addressId/geocode",
@@ -166,6 +171,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/contact-shares/:id/confirm",
 		"POST /api/v1/contact-shares/:id/decline",
 		"POST /api/v1/share-grants/:id/accept",
+		"POST /api/v1/share-grants/notifications/read",
 		"POST /api/v1/share-grants/:id/decline",
 		"POST /api/v1/share-grants/:id/leave",
 		"POST /api/v1/share-grants/:id/revoke",

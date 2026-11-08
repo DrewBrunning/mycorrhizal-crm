@@ -69,3 +69,19 @@ type TimelineItem struct {
 	Date time.Time   `json:"date"`
 	Data interface{} `json:"data"`
 }
+
+// CircleTimelineItem is a TimelineItem on the circle timeline (GET
+// /circles/:id/timeline, issue #2361) plus the circle member(s) it is about.
+// Members is never null: always at least the one member the entry belongs to.
+type CircleTimelineItem struct {
+	TimelineItem
+	Members []TimelineMember `json:"members"`
+}
+
+// TimelineMember is a minimal reference to a live circle member on a circle
+// timeline entry: enough to label the entry and link to the contact.
+type TimelineMember struct {
+	ID        uint   `json:"id"`
+	Firstname string `json:"firstname"`
+	Lastname  string `json:"lastname"`
+}

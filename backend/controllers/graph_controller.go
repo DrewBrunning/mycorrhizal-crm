@@ -229,6 +229,16 @@ func GetGraph(c *gin.Context) {
 	}
 
 	resp := models.GraphResponse{Nodes: nodes, Edges: edges, Scoped: !scope.full}
+	// Opt-in, display-only entity nodes/edges (issue #2298). Absent keys when
+	// not requested, so the default response is byte-identical.
+	if optIn, _ := strconv.ParseBool(c.Query("include_entities")); optIn {
+		entityNodes, entityEdges, err := buildGraphEntities(db, userID, scope, nodeIDByVCardUID)
+		if err != nil {
+			abortQueryFailure(c, "Failed to fetch entity links", err)
+			return
+		}
+		resp.EntityNodes, resp.EntityEdges = &entityNodes, &entityEdges
+	}
 	if !scope.full {
 		resp.FromVCardUID = scope.fromUID
 		resp.Depth = scope.depth

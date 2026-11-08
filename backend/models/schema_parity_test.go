@@ -59,6 +59,7 @@ var registeredModels = []any{
 	&ContactShare{},
 	&ShareGrant{},
 	&ShareBlock{},
+	&ShareGrantNotification{},
 	&ContactSubscription{},
 	&ContactSyncConflict{},
 	&ContactSyncLink{},

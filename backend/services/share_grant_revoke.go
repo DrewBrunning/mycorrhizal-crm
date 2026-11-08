@@ -28,6 +28,17 @@ import (
 // the number of grants revoked.
 func RevokeShareGrantsForEntity(tx *gorm.DB, ownerID uint, entityType, entityID string, now time.Time) (int64, error) {
 	now = now.UTC() // stored instants are compared as UTC text (issue #2290)
+	// Read the live rows first: their pre-update status decides who may learn
+	// of the revoke (a blocked grant stays invisible to the recipient), and the
+	// post-update state is the audit snapshot. A failure here fails the delete.
+	var rows []models.ShareGrant
+	if err := tx.Where("from_user_id = ? AND entity_type = ? AND entity_id = ? AND status IN ?",
+		ownerID, entityType, entityID, models.ShareGrantLiveStatuses).Find(&rows).Error; err != nil {
+		return 0, err
+	}
+	if len(rows) == 0 {
+		return 0, nil
+	}
 	res := tx.Table("share_grants").
 		Where("from_user_id = ? AND entity_type = ? AND entity_id = ? AND status IN ?",
 			ownerID, entityType, entityID, models.ShareGrantLiveStatuses).
@@ -38,5 +49,22 @@ func RevokeShareGrantsForEntity(tx *gorm.DB, ownerID uint, entityType, entityID 
 			"updated_at":     now,
 			"revision":       gorm.Expr("revision + 1"),
 		})
-	return res.RowsAffected, res.Error
+	if res.Error != nil {
+		return res.RowsAffected, res.Error
+	}
+	// Audit each party's trail and notify the recipient (ADR 0042 decision 11).
+	// Audit is fire-and-forget and a notice failure is logged and swallowed:
+	// neither can fail the delete.
+	reason := models.ShareGrantReasonEntityDeleted
+	for i := range rows {
+		g := rows[i]
+		wasBlocked := g.Status == models.ShareGrantStatusBlocked
+		g.Status, g.RevokedReason, g.RevokedAt = models.ShareGrantStatusRevoked, &reason, &now
+		g.UpdatedAt, g.Revision = now, g.Revision+1
+		auditShareGrant(tx, &g, models.AuditOpRevoke, wasBlocked)
+		if !wasBlocked {
+			notifyShareGrant(tx, &g, models.ShareGrantNoticeRevoked)
+		}
+	}
+	return res.RowsAffected, nil
 }

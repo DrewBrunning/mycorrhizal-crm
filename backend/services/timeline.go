@@ -223,6 +223,64 @@ func ComposeTimeline(db *gorm.DB, userID uint, q TimelineQuery) ([]models.Timeli
 	return items, nextCursor, nil
 }
 
+// CircleTimelineMembers wraps circle-timeline items with the member(s) each is
+// about (issue #2361). Members are the circle's live contacts, scoped by user_id; an
+// entry lists only members it is about, so a non-member activity participant
+// is never named. Contact names are not sensitivity-gated (the circle
+// timeline already returns every member's entries to the owner).
+func CircleTimelineMembers(db *gorm.DB, userID uint, circleID string, items []models.TimelineItem) ([]models.CircleTimelineItem, error) {
+	var contacts []models.Contact
+	if err := db.Select("id", "vcard_uid", "firstname", "lastname").
+		Where("user_id = ? AND archived = ? AND vcard_uid IN (SELECT member_vcard_uid FROM circle_members WHERE circle_id = ? AND user_id = ?)",
+			userID, false, circleID, userID).
+		Find(&contacts).Error; err != nil {
+		return nil, err // # pragma: no cover — DB failure only
+	}
+	byID := make(map[uint]models.TimelineMember, len(contacts))
+	byUID := make(map[string]models.TimelineMember, len(contacts))
+	for _, c := range contacts {
+		m := models.TimelineMember{ID: c.ID, Firstname: c.Firstname, Lastname: c.Lastname}
+		byID[c.ID] = m
+		byUID[c.VCardUID] = m
+	}
+	out := make([]models.CircleTimelineItem, 0, len(items))
+	for i := range items {
+		members := []models.TimelineMember{}
+		switch d := items[i].Data.(type) {
+		case models.Note:
+			if d.ContactID != nil {
+				if m, ok := byID[*d.ContactID]; ok {
+					members = append(members, m)
+				}
+			}
+		case models.ReminderCompletion:
+			if m, ok := byID[d.ContactID]; ok {
+				members = append(members, m)
+			}
+		case models.Activity:
+			for _, c := range d.Contacts {
+				if m, ok := byID[c.ID]; ok {
+					members = append(members, m)
+				}
+			}
+		case models.ExternalActivity:
+			if m, ok := byUID[d.EntityID]; ok {
+				members = append(members, m)
+			}
+		case models.Gift:
+			if m, ok := byUID[d.EntityID]; ok {
+				members = append(members, m)
+			}
+		case models.LifeEvent:
+			if m, ok := byUID[d.EntityID]; ok {
+				members = append(members, m)
+			}
+		}
+		out = append(out, models.CircleTimelineItem{TimelineItem: items[i], Members: members})
+	}
+	return out, nil
+}
+
 // timelineComposer holds the per-request state shared by the six per-type
 // fetches and the merge.
 type timelineComposer struct {

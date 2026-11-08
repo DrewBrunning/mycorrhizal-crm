@@ -352,6 +352,7 @@ func trackedJobs(cfg config.Config) []jobStaleDef {
 		{models.JobNameImmichSync, hours(cfg.ImmichSyncIntervalHours)},
 		{models.JobNameStorageSample, 24 * time.Hour},
 		{models.JobNameImageSweep, 24 * time.Hour},
+		{models.JobNameShareGrantLifecycle, time.Hour},
 	}
 	if cfg.DBIntegrityCheckEnabled {
 		defs = append(defs, jobStaleDef{models.JobNameDBIntegrityCheck, hours(cfg.DBIntegrityCheckIntervalHours)})

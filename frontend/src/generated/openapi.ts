@@ -276,10 +276,10 @@ export type AuditEvent = {
   before_snapshot?: string;
   created_at?: string;
   entity_id?: string;
-  entity_type?: 'contact' | 'note' | 'activity' | 'life_event' | 'gift' | 'circle' | 'tag' | 'household' | 'reminder' | 'user' | 'auth' | 'api_token' | 'feed';
+  entity_type?: 'contact' | 'note' | 'activity' | 'life_event' | 'gift' | 'circle' | 'tag' | 'household' | 'reminder' | 'share_grant' | 'user' | 'auth' | 'api_token' | 'feed';
   hash?: string;
   id?: number;
-  operation?: 'create' | 'update' | 'delete' | 'login' | 'login_failed' | 'register' | 'password_change' | 'password_reset' | 'password_reset_requested' | 'totp_enable' | 'totp_disable' | 'recovery_regenerate' | 'revoke' | 'role_change' | 'two_factor_admin_reset' | 'webauthn_register' | 'webauthn_revoke';
+  operation?: 'create' | 'update' | 'delete' | 'login' | 'login_failed' | 'register' | 'password_change' | 'password_reset' | 'password_reset_requested' | 'totp_enable' | 'totp_disable' | 'recovery_regenerate' | 'revoke' | 'role_change' | 'two_factor_admin_reset' | 'webauthn_register' | 'webauthn_revoke' | 'restore' | 'purge' | 'accept' | 'decline' | 'expire' | 'reconfirm';
   prev_hash?: string;
 };
 
@@ -545,8 +545,16 @@ export type CircleMemberInput = {
   member_vcard_uid: string;
 };
 
+export type CircleTimelineItem = TimelineItem & {
+  members: {
+    firstname: string;
+    id: number;
+    lastname: string;
+  }[];
+};
+
 export type CircleTimelineResponse = {
-  items: TimelineItem[];
+  items: CircleTimelineItem[];
   limit: number;
   member_count: number;
   next_cursor: string;
@@ -638,6 +646,66 @@ export type ContactDetailUser = {
 export type ContactEmail = {
   type?: string;
   value?: string;
+};
+
+export type ContactEntityLink = {
+  contact_vcard_uid: string;
+  created_at: string;
+  current: boolean;
+  entity_id: string;
+  entity_name: string;
+  id: string;
+  is_primary: boolean;
+  kind: 'organisation' | 'place' | 'pet';
+  period?: TemporalRange;
+  projects_as: '' | 'ORG' | 'ADR';
+  revision: number;
+  role: string;
+  role_label: string;
+  sensitivity: 'normal' | 'private' | 'secret';
+  updated_at: string;
+};
+
+export type ContactEntityLinkAdoptResponse = {
+  adopted: boolean;
+  element_id: string;
+  element_kind: 'organization' | 'address';
+  link: ContactEntityLink;
+};
+
+export type ContactEntityLinkFromExistingInput = {
+  entity_id?: string;
+  is_primary?: boolean;
+  period?: TemporalRange;
+  role: string;
+  role_label?: string;
+  sensitivity?: 'normal' | 'private' | 'secret';
+  source: ContactEntityLinkSource;
+};
+
+export type ContactEntityLinkFromExistingResponse = {
+  entity: Entity;
+  entity_created: boolean;
+  link: ContactEntityLink;
+};
+
+export type ContactEntityLinkInput = {
+  entity_id?: string;
+  is_primary?: boolean;
+  period?: TemporalRange;
+  role: string;
+  role_label?: string;
+  sensitivity?: 'normal' | 'private' | 'secret';
+};
+
+export type ContactEntityLinkSource = {
+  id?: string;
+  index?: number;
+  kind: 'organization' | 'address';
+};
+
+export type ContactEntityLinksResponse = {
+  links: ContactEntityLink[];
 };
 
 export type ContactFieldKey = 'emails' | 'phones' | 'addresses' | 'links' | 'imppAddresses' | 'socialProfiles' | 'otherOnlineServices' | 'nickname' | 'gender' | 'birthday' | 'anniversary' | 'anniversaries' | 'prefix' | 'middle_name' | 'suffix' | 'organizations' | 'titles' | 'how_we_met' | 'work_information' | 'contact_information' | 'speakToAs' | 'personalInfo' | 'keywords' | 'cardNotes' | 'preferredLanguages' | 'cardKind' | 'language';
@@ -1607,6 +1675,18 @@ export type GraphEdge = {
   type?: 'relationship' | 'activity';
 };
 
+export type GraphEntityEdge = {
+  id: string;
+  source: string;
+  target: string;
+};
+
+export type GraphEntityNode = {
+  id: string;
+  kind: 'organisation' | 'place' | 'pet';
+  label: string;
+};
+
 export type GraphNode = {
   circles?: string[];
   deceased?: boolean;
@@ -1621,6 +1701,8 @@ export type GraphNode = {
 export type GraphResponse = {
   depth?: number;
   edges?: GraphEdge[];
+  entity_edges?: GraphEntityEdge[];
+  entity_nodes?: GraphEntityNode[];
   from_vcard_uid?: string;
   nodes?: GraphNode[];
   scoped?: boolean;
@@ -2877,6 +2959,14 @@ export type ShareGrantInput = {
   to_user_id: number;
 };
 
+export type ShareGrantNotification = {
+  created_at: string;
+  entity_type: 'contact' | 'note' | 'activity' | 'circle';
+  id: number;
+  kind: 'pending' | 'revoked';
+  sender_username: string;
+};
+
 export type ShareGrantOwnerView = {
   created_at?: string;
   entity_id?: string;
@@ -3111,6 +3201,7 @@ export type TrashPurgeResponse = {
 
 export type TrashRestoreResponse = {
   contact: ContactSummary;
+  revoked_grants: TrashRevokedShareGrant[];
   skipped: TrashRestoreSkip[];
 };
 
@@ -3118,6 +3209,15 @@ export type TrashRestoreSkip = {
   count: number;
   reason: string;
   table: string;
+};
+
+export type TrashRevokedShareGrant = {
+  expires_at: string | null;
+  id: string;
+  revoked_at: string | null;
+  sections: string[];
+  to_user_id: number;
+  to_username: string;
 };
 
 export type TrashedContact = {

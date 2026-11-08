@@ -235,6 +235,13 @@ func CreateShareGrant(db *gorm.DB, ownerID uint, in models.ShareGrantInput, now 
 	if err != nil {
 		return nil, asAppError(err)
 	}
+	// The sender's trail only: create is not something the recipient's
+	// capabilities change on. A blocked grant (internal) is written as pending
+	// and never reaches the recipient (decision 8).
+	models.RecordShareGrantAudit(db, &created, ownerID, models.AuditOpCreate)
+	if created.Status == models.ShareGrantStatusPending {
+		notifyShareGrant(db, &created, models.ShareGrantNoticePending)
+	}
 	return &created, nil
 }
 
@@ -320,6 +327,9 @@ func AcceptShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*mode
 	if !ok && out.Status != models.ShareGrantStatusActive {
 		return nil, shareGrantConflict()
 	}
+	if ok {
+		auditShareGrant(db, out, models.AuditOpAccept, false)
+	}
 	return out, nil
 }
 
@@ -334,6 +344,7 @@ func DeclineShareGrant(db *gorm.DB, userID uint, id string, block bool, now time
 	if g.Status != models.ShareGrantStatusPending {
 		return nil, shareGrantConflict()
 	}
+	var ended []models.ShareGrant
 	err := db.Transaction(func(tx *gorm.DB) error {
 		ok, appErr := transition(tx, g, "to_user_id", userID, []string{models.ShareGrantStatusPending},
 			map[string]any{"status": models.ShareGrantStatusDeclined, "responded_at": now}, now)
@@ -344,36 +355,63 @@ func DeclineShareGrant(db *gorm.DB, userID uint, id string, block bool, now time
 			return shareGrantConflict()
 		}
 		if block {
-			return applyBlock(tx, userID, g.FromUserID, now)
+			var err error
+			ended, err = applyBlock(tx, userID, g.FromUserID, now)
+			return err
 		}
 		return nil
 	})
 	if err != nil {
 		return nil, asAppError(err)
 	}
-	return reload(db, g.ID)
+	out, appErr := reload(db, g.ID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	auditShareGrant(db, out, models.AuditOpDecline, false)
+	for i := range ended {
+		auditShareGrant(db, &ended[i], models.AuditOpDecline, false)
+	}
+	return out, nil
 }
 
 // applyBlock inserts the block (idempotent) and declines every pending or
 // active grant from that sender to this recipient. Rows already in the
 // internal blocked status are left alone.
-func applyBlock(tx *gorm.DB, blockerID, blockedID uint, now time.Time) error {
+//
+// It returns the grants it ended (post-transition) so the caller can audit them.
+func applyBlock(tx *gorm.DB, blockerID, blockedID uint, now time.Time) ([]models.ShareGrant, error) {
 	block := models.ShareBlock{BlockerUserID: blockerID, BlockedUserID: blockedID, CreatedAt: now}
 	if err := tx.Where("blocker_user_id = ? AND blocked_user_id = ?", blockerID, blockedID).
 		FirstOrCreate(&block).Error; err != nil {
-		return dbErr("Failed to record the block", err)
+		return nil, dbErr("Failed to record the block", err)
+	}
+	live := []string{models.ShareGrantStatusPending, models.ShareGrantStatusActive}
+	var ids []string
+	if err := tx.Model(&models.ShareGrant{}).
+		Where("from_user_id = ? AND to_user_id = ? AND status IN ?", blockedID, blockerID, live).
+		Pluck("id", &ids).Error; err != nil {
+		return nil, dbErr("Failed to end the blocked sender's shares", err)
 	}
 	res := tx.Table("share_grants").
-		Where("from_user_id = ? AND to_user_id = ? AND status IN ?", blockedID, blockerID,
-			[]string{models.ShareGrantStatusPending, models.ShareGrantStatusActive}).
+		Where("from_user_id = ? AND to_user_id = ? AND status IN ?", blockedID, blockerID, live).
 		UpdateColumns(map[string]any{
 			"status": models.ShareGrantStatusDeclined, "responded_at": now,
 			"updated_at": now, "revision": gorm.Expr("revision + 1"),
 		})
 	if res.Error != nil {
-		return dbErr("Failed to end the blocked sender's shares", res.Error)
+		return nil, dbErr("Failed to end the blocked sender's shares", res.Error)
 	}
-	return declineBlockedOneTimeShares(tx, blockerID, blockedID, now)
+	var ended []models.ShareGrant
+	if len(ids) > 0 {
+		if err := tx.Where("id IN ? AND status = ?", ids, models.ShareGrantStatusDeclined).Find(&ended).Error; err != nil {
+			return nil, dbErr("Failed to end the blocked sender's shares", err)
+		}
+	}
+	if err := declineBlockedOneTimeShares(tx, blockerID, blockedID, now); err != nil {
+		return nil, err
+	}
+	return ended, nil
 }
 
 // declineBlockedOneTimeShares (issue #2294) declines the blocked sender's
@@ -424,6 +462,9 @@ func LeaveShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*model
 	if !ok && out.Status != models.ShareGrantStatusDeclined {
 		return nil, shareGrantConflict()
 	}
+	if ok {
+		auditShareGrant(db, out, models.AuditOpDecline, false)
+	}
 	return out, nil
 }
 
@@ -454,6 +495,13 @@ func RevokeShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*mode
 	if !ok && out.Status != models.ShareGrantStatusRevoked {
 		return nil, shareGrantConflict()
 	}
+	if ok {
+		wasBlocked := g.Status == models.ShareGrantStatusBlocked
+		auditShareGrant(db, out, models.AuditOpRevoke, wasBlocked)
+		if !wasBlocked {
+			notifyShareGrant(db, out, models.ShareGrantNoticeRevoked)
+		}
+	}
 	return out, nil
 }
 
@@ -476,7 +524,12 @@ func ReconfirmShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*m
 	if !ok {
 		return nil, shareGrantConflict()
 	}
-	return reload(db, g.ID)
+	out, appErr := reload(db, g.ID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	models.RecordShareGrantAudit(db, out, userID, models.AuditOpReconfirm)
+	return out, nil
 }
 
 // UpdateShareGrant (owner) changes expires_at and/or narrows sections.
@@ -561,7 +614,12 @@ func UpdateShareGrant(db *gorm.DB, userID uint, id string, in models.ShareGrantP
 	if res.RowsAffected != 1 {
 		return nil, apperrors.ErrPreconditionFailed("").WithReason(apperrors.ReasonCommonPreconditionFailed, nil)
 	}
-	return reload(db, g.ID)
+	out, appErr := reload(db, g.ID)
+	if appErr != nil {
+		return nil, appErr
+	}
+	models.RecordShareGrantAudit(db, out, userID, models.AuditOpUpdate)
+	return out, nil
 }
 
 func containsStr(list []string, s string) bool {
@@ -868,6 +926,7 @@ func contactContent(db *gorm.DB, g *models.ShareGrant, photoDir string) (json.Ra
 		return nil, entityMiss(err)
 	}
 	record := models.RecordForContactFiltered(&c, photoDir, db, grantSelection(g))
+	record = models.DetachProjectedEntityIDs(record) // issue #2298: no link ID reaches another account
 	data, _, err := jscontact.Adapter{}.Export(record)
 	if err != nil {
 		return nil, apperrors.ErrInternal("Failed to build shared contact").WithError(err)

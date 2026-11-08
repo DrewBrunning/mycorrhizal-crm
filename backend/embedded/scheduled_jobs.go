@@ -50,7 +50,9 @@ var manualJobReasons = map[string]string{
 //   - calendar_sync, immich_sync and daily_reminders are outbound (remote
 //     calendars, an Immich server, notification channels); the embedded server
 //     is storage only (ADR 0028 Decision 2 amendment, issue #1367) and
-//     registers none of the routes that configure them.
+//     registers none of the routes that configure them;
+//   - share_grant_lifecycle serves standing shares between users (ADR 0042);
+//     a single-user device has no one to share with and the surface is absent.
 //
 // Everything else — cadence, reach-out, the data purges, the integrity check —
 // is registered in both deployments.
@@ -63,6 +65,7 @@ var embeddedDisabledJobs = map[string]bool{
 	models.JobNameCalendarSync:         true,
 	models.JobNameImmichSync:           true,
 	models.JobNameDailyReminders:       true,
+	models.JobNameShareGrantLifecycle:  true,
 }
 
 // reminderTask builds the daily reminder digest + push-style channel send.
@@ -98,6 +101,13 @@ func cadenceOverdueTask(db *gorm.DB, cfg config.Config) func() (int, error) {
 // daily (ADR 0040 decision 5). Reports the number of items removed.
 func imageSweepTask(db *gorm.DB, cfg config.Config) func() (int, error) {
 	return func() (int, error) { return services.SweepImagesScheduled(db, cfg) }
+}
+
+// shareGrantLifecycleTask expires standing-share grants and purges terminal
+// ones past SHARE_GRANT_RETENTION_DAYS (ADR 0042 decisions 10-11, issue #2291).
+// Reports the number of rows moved or removed.
+func shareGrantLifecycleTask(db *gorm.DB, cfg config.Config) func() (int, error) {
+	return func() (int, error) { return services.RunShareGrantLifecycleScheduled(db, cfg) }
 }
 
 // reachOutTask detects event-driven reach-out suggestions daily (issue #177).
@@ -234,6 +244,10 @@ func scheduledJobRegistrations(db *gorm.DB, cfg *config.Config) []scheduledJobRe
 		{models.JobNameImageSweep, func(s *gocron.Scheduler) (*gocron.Job, error) {
 			return s.Every(24).Hours().Do(
 				recoverJobReport(db, models.JobNameImageSweep, models.JobTriggerScheduled, imageSweepTask(db, *cfg)))
+		}},
+		{models.JobNameShareGrantLifecycle, func(s *gocron.Scheduler) (*gocron.Job, error) {
+			return s.Every(1).Hour().Do(
+				recoverJobReport(db, models.JobNameShareGrantLifecycle, models.JobTriggerScheduled, shareGrantLifecycleTask(db, *cfg)))
 		}},
 	}
 }
