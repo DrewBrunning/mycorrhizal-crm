@@ -51,6 +51,7 @@ fun MergeContactsScreen(
     keepId: Long,
     mergeId: Long = 0,
     otherName: String? = null,
+    queue: List<Long> = emptyList(),
     viewModel: MergeContactsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -60,8 +61,8 @@ fun MergeContactsScreen(
     // leaves the target to the search picker. loadPreview() reads the state
     // setPair() just wrote, so the two calls are order-dependent — keep them
     // in one LaunchedEffect body.
-    LaunchedEffect(keepId, mergeId) {
-        viewModel.setPair(keepId, mergeId)
+    LaunchedEffect(keepId, mergeId, queue) {
+        viewModel.setPair(keepId, mergeId, queue)
         if (mergeId != 0L) viewModel.loadPreview()
     }
 
@@ -136,6 +137,13 @@ fun MergeContactsScreenContent(
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState())
         ) {
+            if (state.totalSteps > 1) {
+                Text(
+                    text = stringResource(R.string.merge_step, state.step, state.totalSteps),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
             Text(
                 text = stringResource(R.string.merge_keep_hint),
                 style = MaterialTheme.typography.bodyMedium,
@@ -161,7 +169,7 @@ fun MergeContactsScreenContent(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-            } ?: otherName?.let { name ->
+            } ?: otherName?.takeIf { state.step == 1 }?.let { name ->
                 // T93: the merge arrived from duplicate review with both sides
                 // preselected, so the search picker has nothing picked yet —
                 // echo the other party's name so the preview has context.

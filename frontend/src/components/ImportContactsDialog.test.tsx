@@ -289,7 +289,7 @@ test('VCF with X- properties shows the promotion step before preview', async () 
 
   // The other promotion options are offered.
   fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
-  expect(await screen.findByRole('option', { name: 'Map to existing field' })).toBeInTheDocument();
+  expect(await screen.findByRole('option', { name: /^Map to existing field/ })).toBeInTheDocument();
   expect(screen.getByRole('option', { name: 'Create new field' })).toBeInTheDocument();
   // Close the menu (selecting the current value) so the actions row is usable.
   fireEvent.click(screen.getByRole('option', { name: 'Keep as passthrough' }));
@@ -1076,4 +1076,38 @@ test('the result step lists skipped and failed rows with reasons and offers a CS
   expect(createObjectURL).toHaveBeenCalledTimes(1);
   const blob = (createObjectURL.mock.calls[0] as unknown as [Blob])[0];
   expect(await blob.text()).toContain('Row,Name,Email,Phone,Status,Reason');
+});
+
+// --- issue #2183: empty "Map to existing field" list + unclear passthrough ---------
+
+test('#2183: with no custom field definitions, "Map to existing field" is disabled and explains why', async () => {
+  await loadVcfWithCandidates([{ name: 'x-hometown', value: 'Springfield' }]);
+
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
+  const mapOption = await screen.findByRole('option', { name: /^Map to existing field/ });
+  expect(mapOption).toHaveAttribute('aria-disabled', 'true');
+  expect(screen.getByText(/You have no custom fields yet/)).toBeInTheDocument();
+});
+
+test('#2183: "Map to existing field" is enabled when definitions exist', async () => {
+  await loadVcfWithCandidates(
+    [{ name: 'x-hometown', value: 'Springfield' }],
+    [{ id: 'def-1', label: 'Hometown' }],
+  );
+
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
+  const mapOption = await screen.findByRole('option', { name: /^Map to existing field/ });
+  expect(mapOption).not.toHaveAttribute('aria-disabled', 'true');
+  expect(screen.queryByText(/You have no custom fields yet/)).not.toBeInTheDocument();
+});
+
+test('#2183: each choice shows plain-language help, passthrough explained', async () => {
+  await loadVcfWithCandidates([{ name: 'x-hometown', value: 'Springfield' }]);
+
+  // Row-level help for the default (passthrough) choice.
+  expect(screen.getByText(/Nothing is lost/)).toBeInTheDocument();
+
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Create new field' }));
+  expect(screen.getByText(/new searchable custom field/i)).toBeInTheDocument();
 });

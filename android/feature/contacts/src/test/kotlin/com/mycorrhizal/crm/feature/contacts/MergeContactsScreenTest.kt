@@ -227,4 +227,18 @@ class MergeContactsScreenTest {
             "Will merge Dan White into the kept contact."
         ).assertIsDisplayed()
     }
+
+    @Test
+    fun `a multi-step bulk merge shows which step it is on`() {
+        setContent(MergeUiState(keepId = 1, mergeId = 2, step = 2, totalSteps = 3))
+
+        composeTestRule.onNodeWithText("Merge 2 of 3").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a single pair shows no step counter`() {
+        setContent(MergeUiState(keepId = 1, mergeId = 2))
+
+        composeTestRule.onNodeWithText("Merge 1 of 1").assertDoesNotExist()
+    }
 }

@@ -39,6 +39,14 @@ data class MergeUiState(
     /** field -> chosen value; covers scalar + field-value conflicts. */
     val resolutions: Map<String, String> = emptyMap(),
     val merged: Boolean = false,
+    /**
+     * #2212: a bulk merge of N contacts folds the others into the primary one pair at a time
+     * (the backend merge is pairwise; web's BulkMergeDialog does the same). [queue] holds the
+     * losers still to come after the current [mergeId]; [step]/[totalSteps] drive "Merge 2 of 3".
+     */
+    val queue: List<Long> = emptyList(),
+    val step: Int = 1,
+    val totalSteps: Int = 1,
     val error: ApiError? = null
 )
 
@@ -53,8 +61,16 @@ class MergeContactsViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(MergeUiState())
     val uiState: StateFlow<MergeUiState> = _uiState.asStateFlow()
 
-    fun setPair(keepId: Long, mergeId: Long) {
-        _uiState.update { it.copy(keepId = keepId, mergeId = mergeId) }
+    fun setPair(keepId: Long, mergeId: Long, queue: List<Long> = emptyList()) {
+        _uiState.update {
+            it.copy(
+                keepId = keepId,
+                mergeId = mergeId,
+                queue = queue,
+                step = 1,
+                totalSteps = 1 + queue.size
+            )
+        }
     }
 
     /** M23: debounced server search for the merge target, excluding the keeper. */
@@ -178,7 +194,25 @@ class MergeContactsViewModel @Inject constructor(
                 )
             ).foldApiError(
                 onSuccess = {
-                    _uiState.update { it.copy(isCommitting = false, merged = true) }
+                    val next = _uiState.value.queue.firstOrNull()
+                    if (next == null) {
+                        _uiState.update { it.copy(isCommitting = false, merged = true) }
+                    } else {
+                        // #2212: the primary survives; move on to the next loser with a
+                        // clean slate (its own preview and conflict choices).
+                        _uiState.update {
+                            it.copy(
+                                isCommitting = false,
+                                mergeId = next,
+                                queue = it.queue.drop(1),
+                                step = it.step + 1,
+                                pickedOther = null,
+                                preview = null,
+                                resolutions = emptyMap()
+                            )
+                        }
+                        preview()
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isCommitting = false, error = error) }

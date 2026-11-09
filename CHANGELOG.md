@@ -13,13 +13,14 @@ adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - **Gift preferences** ([#2194](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2194)): on the web, media, jewelry and gift ideas each gain an "other" category for tastes that fit nothing else, and the preference form's "Key" field is now called "Type" (Favorite, Dislike, Allergy, or your own wording). Existing preferences are unchanged.
-
+- **Merge several selected contacts on Android** ([#2212](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2212)): the contacts list's bulk bar now has Merge once two or more contacts are selected. Pick the one to keep, then review each other contact's field conflicts in turn as it is folded into it.
 - **Circle timeline names the member** ([#2361](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2361)): each entry in a circle's timeline on the web now shows which member it is about, and the name links to that contact. An activity shared by several members lists each of them.
 - **Email address check** ([#2377](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2377)): the web and Android contact forms and contact pages now point out an email that does not look like an address, so you can fix it. Nothing is rejected or changed, so imports and sync still keep every contact.
 
 ### Changed
 
 - **Tidier web menu** ([#2175](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2175)): Shares, Audit log, Data and, for admins, Users and System pages now sit under Settings in the left menu. Open them with the arrow beside Settings; every page keeps its address.
+- **Clearer vCard custom-field import** ([#2183](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2183)): on the import step for custom `X-` properties, each choice now has a short plain-language explanation, "passthrough" is spelled out (kept untouched, exported again, nothing lost), and "Map to existing field" is greyed out with a reason when you have no custom fields yet.
 
 ### Fixed
 
