@@ -1915,6 +1915,22 @@
     <string name="import_diff_updated">%1$s: %2$s → %3$s</string>
     <string name="import_diff_none">Keine Änderungen – die Datensätze stimmen bereits überein.</string>
     <string name="import_apply_decisions">Entscheidungen anwenden (%1$d)</string>
+    <!-- Issues #2184-#2187 (Android parity, #2210): review filters, per-row actions, fix form, itemized report -->
+    <string name="import_filter_new">Neu (%1$d)</string>
+    <string name="import_filter_duplicates">Duplikate (%1$d)</string>
+    <string name="import_filter_errors">Fehler (%1$d)</string>
+    <string name="import_action_keep">Behalten</string>
+    <string name="import_action_skip">Überspringen</string>
+    <string name="import_row_fix">Zeile korrigieren</string>
+    <string name="import_row_fix_edit">Korrektur bearbeiten</string>
+    <string name="import_row_fix_saved">Korrektur gespeichert – wird beim Import erneut geprüft</string>
+    <string name="import_row_fix_save">Korrektur speichern</string>
+    <string name="import_report_title">Nicht importierte Zeilen</string>
+    <string name="import_report_row">Zeile %1$d · %2$s</string>
+    <string name="import_report_skipped">Übersprungen: %1$s</string>
+    <string name="import_report_failed">Fehlgeschlagen: %1$s</string>
+    <string name="import_report_share">Als CSV teilen</string>
+    <string name="import_report_share_title">Importbericht teilen</string>
     <string name="import_resolve_all">Alle wie vorgeschlagen zusammenführen</string>
     <string name="import_diff_kind_email">E-Mail</string>
     <string name="import_diff_kind_phone">Telefon</string>

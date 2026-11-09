@@ -48,6 +48,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
 import com.mycorrhizal.crm.model.registry.ImportableContactFields
 import com.mycorrhizal.crm.ui.R
@@ -85,6 +86,7 @@ fun CsvImportScreen(
         onCreateTag = viewModel::createTag,
         onRowActionChange = viewModel::setRowAction,
         onResolveAll = viewModel::resolveAll,
+        onRowEditSave = viewModel::saveRowEdit,
         onConfirm = viewModel::confirm,
         onErrorShown = viewModel::onErrorShown
     )
@@ -108,6 +110,7 @@ fun CsvImportScreenContent(
     onCreateTag: (String) -> Unit = {},
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
     onResolveAll: () -> Unit = {},
+    onRowEditSave: (ImportRowEdit) -> Unit = {},
     onConfirm: () -> Unit = {},
     onErrorShown: () -> Unit = {}
 ) {
@@ -201,17 +204,14 @@ fun CsvImportScreenContent(
                             onRowActionChange = onRowActionChange,
                             onResolveAll = onResolveAll,
                             onConfirm = onConfirm,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            rowEdits = uiState.rowEdits,
+                            onRowEditSave = onRowEditSave
                         )
                     }
 
                 uiState.step == CsvImportStep.RESULT && uiState.result != null ->
-                    CsvResultStep(
-                        created = uiState.result.created,
-                        updated = uiState.result.updated,
-                        skipped = uiState.result.skipped,
-                        onDone = onDone
-                    )
+                    ImportResultReport(result = uiState.result, onDone = onDone)
 
                 else -> CsvPickStep(onPick = { filePicker.launch("*/*") })
             }
@@ -343,29 +343,6 @@ private fun ColumnMappingRow(
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun CsvResultStep(created: Int, updated: Int, skipped: Int, onDone: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxSize().padding(24.dp)
-    ) {
-        Text(
-            text = pluralStringResource(
-                R.plurals.import_vcf_result,
-                created,
-                created,
-                updated,
-                skipped
-            ),
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp)
-        )
-        Button(onClick = onDone) {
-            Text(stringResource(R.string.action_confirm))
         }
     }
 }

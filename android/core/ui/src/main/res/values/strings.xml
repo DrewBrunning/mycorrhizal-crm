@@ -1932,6 +1932,22 @@
     <string name="import_diff_updated">%1$s: %2$s → %3$s</string>
     <string name="import_diff_none">No changes — the records already match.</string>
     <string name="import_apply_decisions">Apply decisions (%1$d)</string>
+    <!-- Issues #2184-#2187 (Android parity, #2210): review filters, per-row actions, fix form, itemized report -->
+    <string name="import_filter_new">New (%1$d)</string>
+    <string name="import_filter_duplicates">Duplicates (%1$d)</string>
+    <string name="import_filter_errors">Errors (%1$d)</string>
+    <string name="import_action_keep">Keep</string>
+    <string name="import_action_skip">Skip</string>
+    <string name="import_row_fix">Fix this row</string>
+    <string name="import_row_fix_edit">Edit fix</string>
+    <string name="import_row_fix_saved">Fix saved — checked again on import</string>
+    <string name="import_row_fix_save">Save fix</string>
+    <string name="import_report_title">Rows not imported</string>
+    <string name="import_report_row">Row %1$d · %2$s</string>
+    <string name="import_report_skipped">Skipped: %1$s</string>
+    <string name="import_report_failed">Failed: %1$s</string>
+    <string name="import_report_share">Share as CSV</string>
+    <string name="import_report_share_title">Share import report</string>
     <string name="import_resolve_all">Resolve all as merged</string>
     <string name="import_diff_kind_email">email</string>
     <string name="import_diff_kind_phone">phone</string>

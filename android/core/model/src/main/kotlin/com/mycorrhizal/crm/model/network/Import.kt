@@ -111,7 +111,22 @@ data class ImportConfirmRequest(
     @Json(name = "session_id") val sessionId: String,
     val actions: List<RowImportAction>,
     @Json(name = "assign_circle_ids") val assignCircleIds: List<String>? = null,
-    @Json(name = "assign_tag_ids") val assignTagIds: List<String>? = null
+    @Json(name = "assign_tag_ids") val assignTagIds: List<String>? = null,
+    /** Issue #2186: corrections to preview rows that failed validation (CSV/VCF/records only). */
+    @Json(name = "row_edits") val rowEdits: List<ImportRowEdit>? = null
+)
+
+/**
+ * Issue #2186: the user's correction to one preview row. Mirrors backend `models.ImportRowEdit`.
+ * A null field is left unchanged; a non-null empty email/phone removes the offending entry.
+ */
+@JsonClass(generateAdapter = true)
+data class ImportRowEdit(
+    @Json(name = "row_index") val rowIndex: Int,
+    val firstname: String? = null,
+    val lastname: String? = null,
+    val email: String? = null,
+    val phone: String? = null
 )
 
 /** T96: request body for the records-import endpoint (device-contacts path). */
@@ -124,7 +139,23 @@ data class ImportResult(
     val created: Int = 0,
     val updated: Int = 0,
     val skipped: Int = 0,
-    val errors: List<String> = emptyList()
+    val errors: List<String> = emptyList(),
+    /** Issue #2187: every skipped or failed row with its reason; `[]` when nothing to report. */
+    val issues: List<ImportRowIssue> = emptyList()
+)
+
+/**
+ * Issue #2187: one row that was not (fully) imported. Mirrors backend `models.ImportRowIssue`;
+ * [row] is 1-based and [status] is `"skipped"` or `"failed"`.
+ */
+@JsonClass(generateAdapter = true)
+data class ImportRowIssue(
+    val row: Int = 0,
+    val name: String = "",
+    val email: String = "",
+    val phone: String = "",
+    val status: String = "skipped",
+    val reason: String = ""
 )
 
 /**

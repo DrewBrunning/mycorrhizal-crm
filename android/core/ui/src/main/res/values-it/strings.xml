@@ -1979,6 +1979,22 @@
     <string name="import_diff_updated">%1$s: %2$s → %3$s</string>
     <string name="import_diff_none">Nessuna modifica: le schede corrispondono già.</string>
     <string name="import_apply_decisions">Applica decisioni (%1$d)</string>
+    <!-- Issues #2184-#2187 (Android parity, #2210): review filters, per-row actions, fix form, itemized report -->
+    <string name="import_filter_new">Nuovi (%1$d)</string>
+    <string name="import_filter_duplicates">Duplicati (%1$d)</string>
+    <string name="import_filter_errors">Errori (%1$d)</string>
+    <string name="import_action_keep">Mantieni</string>
+    <string name="import_action_skip">Salta</string>
+    <string name="import_row_fix">Correggi questa riga</string>
+    <string name="import_row_fix_edit">Modifica correzione</string>
+    <string name="import_row_fix_saved">Correzione salvata: verrà ricontrollata all’importazione</string>
+    <string name="import_row_fix_save">Salva correzione</string>
+    <string name="import_report_title">Righe non importate</string>
+    <string name="import_report_row">Riga %1$d · %2$s</string>
+    <string name="import_report_skipped">Saltata: %1$s</string>
+    <string name="import_report_failed">Non riuscita: %1$s</string>
+    <string name="import_report_share">Condividi come CSV</string>
+    <string name="import_report_share_title">Condividi il rapporto di importazione</string>
     <string name="import_resolve_all">Risolvi tutto come unito</string>
     <string name="import_diff_kind_email">e-mail</string>
     <string name="import_diff_kind_phone">telefono</string>
