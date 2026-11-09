@@ -742,9 +742,29 @@ export async function deleteTestContact(
  * sub-items of the Settings nav group, collapsed unless the current page is
  * inside it. Open the group (if needed) and click the sub-item, so specs do not
  * depend on the old flat nav.
+ *
+ * #2436: MUI's Collapse flips `aria-expanded` immediately but animates the
+ * group's height for up to ~225ms. Clicking a sub-item mid-animation raced the
+ * reflow (and the Drawer's scroll-into-view), so the click landed on a
+ * neighbour -- on Firefox the failed run clicked Shares instead of Audit log
+ * and the URL never left `/`. MUI sets the root's inline height to `auto` only
+ * once the enter transition finishes, so wait for that, then use `stableClick`
+ * (which additionally pins the link's on-screen position before clicking).
  */
 export async function openSettingsNavLink(page: Page, name: string): Promise<void> {
   const toggle = page.getByRole('button', { name: 'Settings sub-pages' });
-  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
-  await page.getByRole('link', { name, exact: true }).click();
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') {
+    const groupId = await toggle.getAttribute('aria-controls');
+    await toggle.click();
+    if (groupId) {
+      await expect
+        .poll(
+          () =>
+            page.evaluate((id) => document.getElementById(id)?.style.height === 'auto', groupId),
+          { message: `Settings nav group ${groupId} did not finish expanding` },
+        )
+        .toBe(true);
+    }
+  }
+  await stableClick(page.getByRole('link', { name, exact: true }));
 }
