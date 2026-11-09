@@ -202,13 +202,15 @@ jobs:
       # in this repo (vdirsyncer above, golangci-lint in unit-tests.yml).
       # Bumping the version requires re-verifying run.sh against the new
       # release's UI (see that script's header) and updating both values
-      # together.
+      # together. `--fail` turns a 5xx body into a nonzero exit instead of a
+      # saved error page, and `--retry` rides out a transient github.com 504
+      # (issue #2427) rather than failing the zero-retry nightly.
       - name: Download DAVx5 (pinned + checksum-verified)
         env:
           DAVX5_APK_URL: https://github.com/bitfireAT/davx5-ose/releases/download/v4.5.19-ose/davx5-405190003-4.5.19-ose-release.apk
           DAVX5_APK_SHA256: 4e8f1cd0d2f47f95a1003365340a30c99cb27173476c367d90ba9e14f97a3e10
         run: |
-          curl -sSL "$DAVX5_APK_URL" -o /tmp/davx5.apk
+          curl -fsSL --retry 5 --retry-delay 2 "$DAVX5_APK_URL" -o /tmp/davx5.apk
           echo "$DAVX5_APK_SHA256  /tmp/davx5.apk" | sha256sum -c -
 
       # Seeded with the canonical pathological dataset (issue #430) via the

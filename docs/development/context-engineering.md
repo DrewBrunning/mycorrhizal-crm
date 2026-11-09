@@ -227,7 +227,9 @@ A task may also declare `content_checks`: deterministic assertions over the
 files it changed (for example that the docs name the regeneration command and
 the never-hand-edit rule, or that every locale carries the new plural family).
 They complement the suite commands, which prove a gate still exits 0 but not
-that the requested behavior exists. A profile may set `version_command`; the
+that the requested behavior exists. A check may set `ignore_comments: true`
+to skip full-line `#` comments, so prose explaining a missing trigger neither
+trips a `forbids` nor satisfies a `contains_all`. A profile may set `version_command`; the
 harness runs it before the agent, records the observed CLI version, and fails on
 drift from the pinned `version`.
 
