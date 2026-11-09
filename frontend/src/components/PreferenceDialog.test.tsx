@@ -19,7 +19,7 @@ test('create mode shows the category, value, key, notes, and sensitivity fields'
   renderDialog();
   expect(screen.getByLabelText('Category *')).toBeInTheDocument();
   expect(screen.getByLabelText('Value *')).toBeInTheDocument();
-  expect(screen.getByLabelText('Key')).toBeInTheDocument();
+  expect(screen.getByLabelText('Type')).toBeInTheDocument();
   expect(screen.getByLabelText('Notes (optional)')).toBeInTheDocument();
   expect(screen.getByLabelText('Sensitivity')).toBeInTheDocument();
 });
@@ -61,7 +61,7 @@ test('key suggestions follow the selected category', async () => {
 
   // The key field is a free-solo Autocomplete; its combobox input carries the
   // "Key" label. Default category is food: favorite/dislike/allergy.
-  const keyInput = screen.getByRole('combobox', { name: 'Key' });
+  const keyInput = screen.getByRole('combobox', { name: 'Type' });
   fireEvent.mouseDown(keyInput);
   expect(await screen.findByRole('option', { name: 'Favorite' })).toBeInTheDocument();
   expect(screen.getByRole('option', { name: 'Allergy' })).toBeInTheDocument();
@@ -223,9 +223,9 @@ test('editing the key and sensitivity marks the form dirty', async () => {
   const onClose = vi.fn();
   renderDialog({ onClose });
 
-  fireEvent.mouseDown(screen.getByLabelText('Key'));
+  fireEvent.mouseDown(screen.getByLabelText('Type'));
   fireEvent.click((await screen.findAllByRole('option'))[0]);
-  fireEvent.change(screen.getByLabelText('Key'), { target: { value: 'custom-key' } });
+  fireEvent.change(screen.getByLabelText('Type'), { target: { value: 'custom-key' } });
 
   fireEvent.mouseDown(screen.getByLabelText('Sensitivity'));
   fireEvent.click(screen.getByRole('option', { name: 'Private' }));
@@ -233,4 +233,13 @@ test('editing the key and sensitivity marks the form dirty', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
   expect(onClose).not.toHaveBeenCalled();
+});
+
+// Issue #2194: the free-text kind field is "Type" (plain language), and every
+// shopping-relevant group offers an "Other" category.
+test('gifts dialog offers an Other category in jewelry, gift preferences', async () => {
+  renderDialog({ sections: ['jewelry', 'giftPreferences', 'giftAvoid'] });
+  fireEvent.mouseDown(screen.getByLabelText('Category *'));
+  expect(await screen.findByRole('option', { name: 'Jewelry — other' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Gift idea — other' })).toBeInTheDocument();
 });

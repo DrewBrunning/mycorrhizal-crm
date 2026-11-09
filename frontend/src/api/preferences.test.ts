@@ -111,3 +111,14 @@ describe('createPreference', () => {
     expect(result.value).toBe('Vegan');
   });
 });
+
+// Issue #2194: additive "Other" categories; existing tokens stay valid.
+describe('other categories (#2194)', () => {
+  test.each([
+    ['jewelry_other', 'jewelry'],
+    ['gift_other', 'giftPreferences'],
+    ['media_other', 'media'],
+  ])('%s is configured in section %s', (category, section) => {
+    expect(PREFERENCE_CATEGORY_CONFIG.find((c) => c.category === category)?.section).toBe(section);
+  });
+});

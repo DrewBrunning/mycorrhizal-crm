@@ -78,6 +78,13 @@ const (
 	PreferenceCategoryMediaBookSeries = "media_book_series"
 	PreferenceCategoryMediaBookTitle  = "media_book_title"
 
+	// Catch-all categories (issue #2194): media/jewelry/gift tastes that fit no
+	// specific category above. Additive; the category set stays open. The
+	// frontend (PREFERENCE_CATEGORY_CONFIG) and Android registry mirror them.
+	PreferenceCategoryMediaOther   = "media_other"
+	PreferenceCategoryJewelryOther = "jewelry_other"
+	PreferenceCategoryGiftOther    = "gift_other"
+
 	// Jewelry categories: aspect (metal/stone/style/type) lives in Category;
 	// Key is disposition (favorite/like/dislike, plus allergy for metal).
 	PreferenceCategoryJewelryMetal = "jewelry_metal"
