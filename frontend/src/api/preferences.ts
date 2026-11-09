@@ -3,6 +3,8 @@
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 
 // Mirrors backend/models/preference.go's conventional (open) category set.
+// Sync: media_other/jewelry_other/gift_other added for issue #2194 (additive;
+// the backend never rejects an unknown category, so older rows stay valid).
 //
 // The redesign's rule: a domain that needs both a "what kind of thing" axis
 // and a "how do they feel about it" axis (media, jewelry) pushes the kind
@@ -147,6 +149,14 @@ export const PREFERENCE_CATEGORY_CONFIG: PreferenceCategoryConfig[] = [
     keyMode: 'disposition',
     keySuggestions: DISPOSITION,
   },
+  // Catch-all for media that fits no medium above (issue #2194), e.g. a
+  // magazine or a streamer. Mirrors backend PreferenceCategoryMediaOther.
+  {
+    category: 'media_other',
+    section: 'media',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION,
+  },
 
   // Jewelry & Style — aspect (metal/stone/style/type) lives in the category.
   {
@@ -172,6 +182,13 @@ export const PREFERENCE_CATEGORY_CONFIG: PreferenceCategoryConfig[] = [
     section: 'jewelry',
     keyMode: 'disposition',
     keySuggestions: DISPOSITION,
+  },
+  // Catch-all for jewelry that fits no aspect above (issue #2194).
+  {
+    category: 'jewelry_other',
+    section: 'jewelry',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION_WITH_ALLERGY,
   },
 
   // Activities & Hobbies — a "get to know them" fact, stays in Preferences.
@@ -218,6 +235,14 @@ export const PREFERENCE_CATEGORY_CONFIG: PreferenceCategoryConfig[] = [
     section: 'giftPreferences',
     keyMode: 'disposition',
     keySuggestions: ['favorite', 'like'],
+  },
+  // Catch-all for a gift taste that fits no category above (issue #2194),
+  // e.g. "loves board games".
+  {
+    category: 'gift_other',
+    section: 'giftPreferences',
+    keyMode: 'disposition',
+    keySuggestions: DISPOSITION_WITH_ALLERGY,
   },
 
   // Gift Avoid — general, non-domain-specific avoidance notes.
