@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"io"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
+
+	"mycorrhizal/internal/writegate"
 )
 
 // Writers must be served in arrival order, so no single write is starved past
@@ -39,9 +42,17 @@ import (
 // so a hold of ~18ms is realistic: 23 × 18ms is already past a 400ms budget
 // with nobody overtaken, which is how this test flaked on unrelated PRs
 // (issue #2398). busy is therefore several times the nominal queue, and the
-// slow-hold case below pins that. A writer that is genuinely starved still
-// waits out any budget: with the gate bypassed, ~6% of writes time out even at
-// 2s (checked by hand when busy was widened).
+// slow-hold case below pins that.
+//
+// A host stall is not unfair queueing either: a multi-second disk flush (or
+// the whole process being descheduled) keeps the head writer on the gate while
+// everyone behind it waits out busy_timeout. The test therefore tolerates
+// queue timeouts only when some write was actually in flight for at least
+// busy; a timeout with no such stall means a waiter was overtaken. A bare
+// SQLITE_BUSY is always a failure: everything in this process writes behind
+// the gate, so only a bypassed write can reach SQLite's busy handler.
+// TestOpenGormDBRoutesWritesThroughTheSharedGate pins that wiring
+// deterministically, and the writegate package's unit tests pin arrival order.
 func TestConcurrentWritersAreServedFairly(t *testing.T) {
 	const writeHold = 6 * time.Millisecond
 	t.Run("nominal hold", func(t *testing.T) { runWriterFairness(t, writeHold) })
@@ -70,30 +81,47 @@ func runWriterFairness(t *testing.T, writeHold time.Duration) {
 	require.NoError(t, db.Exec("CREATE TABLE writes (id INTEGER PRIMARY KEY, worker INTEGER NOT NULL)").Error)
 
 	var (
-		wg       sync.WaitGroup
-		total    atomic.Int64
-		busyHits atomic.Int64
-		mu       sync.Mutex
-		other    []string
+		wg           sync.WaitGroup
+		total        atomic.Int64
+		gateTimeouts atomic.Int64
+		sqliteBusy   atomic.Int64
+		maxWork      atomic.Int64 // longest time one write was in flight, excluding its queue wait
+		mu           sync.Mutex
+		other        []string
 	)
+	recordMax := func(d time.Duration) {
+		for {
+			cur := maxWork.Load()
+			if int64(d) <= cur || maxWork.CompareAndSwap(cur, int64(d)) {
+				return
+			}
+		}
+	}
 	deadline := time.Now().Add(runFor)
 	for w := 0; w < writers; w++ {
 		wg.Add(1)
 		go func(worker int) {
 			defer wg.Done()
 			for time.Now().Before(deadline) {
+				var entered time.Time
 				err := db.Transaction(func(tx *gorm.DB) error {
+					entered = time.Now() // the gate is held from here until Transaction returns
 					if err := tx.Exec("INSERT INTO writes (worker) VALUES (?)", worker).Error; err != nil {
 						return err
 					}
 					time.Sleep(writeHold) // a write that holds the lock, as on a slow disk
 					return nil
 				})
+				if !entered.IsZero() {
+					recordMax(time.Since(entered))
+				}
 				total.Add(1)
 				switch {
 				case err == nil:
+				case errors.Is(err, writegate.ErrQueueTimeout):
+					gateTimeouts.Add(1)
 				case strings.Contains(err.Error(), "database is locked") || strings.Contains(err.Error(), "SQLITE_BUSY"):
-					busyHits.Add(1)
+					sqliteBusy.Add(1)
 				default:
 					mu.Lock()
 					other = append(other, err.Error())
@@ -105,7 +133,61 @@ func runWriterFairness(t *testing.T, writeHold time.Duration) {
 	wg.Wait()
 
 	require.Empty(t, other, "unexpected write errors")
-	require.Zerof(t, busyHits.Load(),
-		"%d/%d writes waited out busy_timeout (%v) although a fair queue of %d writers is at most ~%v: a writer was starved",
-		busyHits.Load(), total.Load(), busy, writers, (writers-1)*writeHold)
+	require.Zerof(t, sqliteBusy.Load(),
+		"%d/%d writes bypassed the write gate and hit SQLite's busy handler", sqliteBusy.Load(), total.Load())
+	if timeouts := gateTimeouts.Load(); timeouts > 0 {
+		stall := time.Duration(maxWork.Load())
+		require.GreaterOrEqualf(t, stall, busy,
+			"%d/%d writes waited out busy_timeout (%v) although a fair queue of %d writers is at most ~%v and no write was in flight longer than %v: a writer was starved",
+			timeouts, total.Load(), busy, writers, (writers-1)*writeHold, stall)
+		t.Logf("tolerated %d/%d queue timeouts behind a %v host stall", timeouts, total.Load(), stall)
+	}
+}
+
+// TestOpenGormDBRoutesWritesThroughTheSharedGate pins the production wiring
+// deterministically: two handles opened through openGormDB on one file share
+// the file's writegate.Gate, so a write on the second waits in the queue
+// instead of falling through to SQLite's busy handler. If openGormDB ever
+// hands GORM the bare *sql.DB again, the second write gets SQLITE_BUSY (not
+// writegate.ErrQueueTimeout) and this test fails without depending on timing
+// or on a writer actually being starved.
+func TestOpenGormDBRoutesWritesThroughTheSharedGate(t *testing.T) {
+	const timeout = 100 * time.Millisecond
+	dbPath := filepath.Join(t.TempDir(), "shared-gate.db")
+
+	holder, err := openGormDB(dbPath, timeout, newGormLogger(io.Discard))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := holder.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
+	waiter, err := openGormDB(dbPath, timeout, newGormLogger(io.Discard))
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		if sqlDB, err := waiter.DB(); err == nil {
+			_ = sqlDB.Close()
+		}
+	})
+	require.NoError(t, holder.Exec("CREATE TABLE writes (id INTEGER PRIMARY KEY)").Error)
+
+	holding := make(chan struct{})
+	unblock := make(chan struct{})
+	held := make(chan error, 1)
+	go func() {
+		held <- holder.Transaction(func(tx *gorm.DB) error {
+			close(holding)
+			<-unblock
+			return nil
+		})
+	}()
+	<-holding
+
+	err = waiter.Transaction(func(tx *gorm.DB) error {
+		return tx.Exec("INSERT INTO writes DEFAULT VALUES").Error
+	})
+	close(unblock)
+	require.NoError(t, <-held)
+	require.ErrorIs(t, err, writegate.ErrQueueTimeout,
+		"a write on a second handle must queue on the file's gate; SQLITE_BUSY here means the gate was bypassed")
 }
