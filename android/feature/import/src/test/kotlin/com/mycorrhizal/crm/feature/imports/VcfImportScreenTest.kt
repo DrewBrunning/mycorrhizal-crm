@@ -5,8 +5,11 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportRowEdit
+import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -20,7 +23,7 @@ import org.robolectric.annotation.GraphicsMode
 // M9 item 4: "reachability" proof for the VCF import screen — the real VcfImportScreenContent
 // (not a placeholder) renders each step of the flow.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "w400dp-h1400dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class VcfImportScreenTest {
 
@@ -31,6 +34,7 @@ class VcfImportScreenTest {
         uiState: VcfImportUiState,
         onRowActionChange: (Int, String) -> Unit = { _, _ -> },
         onConfirm: () -> Unit = {},
+        onRowEditSave: (ImportRowEdit) -> Unit = {},
         onDone: () -> Unit = {}
     ) {
         composeTestRule.setContent {
@@ -39,6 +43,7 @@ class VcfImportScreenTest {
                     uiState = uiState,
                     onRowActionChange = onRowActionChange,
                     onConfirm = onConfirm,
+                    onRowEditSave = onRowEditSave,
                     onDone = onDone
                 )
             }
@@ -215,5 +220,43 @@ class VcfImportScreenTest {
     fun `shows a loading skeleton while loading`() {
         setContent(VcfImportUiState(isLoading = true))
         composeTestRule.onNodeWithTag("vcf-import-loading").assertIsDisplayed()
+    }
+
+    @Test
+    fun `result step lists the skipped rows with their reasons`() {
+        setContent(
+            VcfImportUiState(
+                step = VcfImportStep.RESULT,
+                result = ImportResult(
+                    totalProcessed = 2,
+                    created = 1,
+                    skipped = 1,
+                    issues = listOf(ImportRowIssue(2, "Erin", "", "", "skipped", "Invalid email"))
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("Skipped: Invalid email").assertIsDisplayed()
+    }
+
+    @Test
+    fun `saving a fix on an error row reports the edit`() {
+        var saved: ImportRowEdit? = null
+        setContent(
+            VcfImportUiState(
+                step = VcfImportStep.PREVIEW,
+                preview = ImportPreviewResponse(
+                    sessionId = "s",
+                    rows = listOf(
+                        ImportRowPreview(rowIndex = 0, validationErrors = listOf("name required"))
+                    )
+                ),
+                rowActions = mapOf(0 to "skip")
+            ),
+            onRowEditSave = { saved = it }
+        )
+        composeTestRule.onNodeWithText("Fix this row").performClick()
+        composeTestRule.onNodeWithTag("import-fix-firstname").performTextInput("Dana")
+        composeTestRule.onNodeWithText("Save fix").performClick()
+        assertEquals(ImportRowEdit(rowIndex = 0, firstname = "Dana"), saved)
     }
 }

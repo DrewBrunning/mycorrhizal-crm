@@ -7,12 +7,15 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ColumnMapping
 import com.mycorrhizal.crm.model.network.ImportFixedAssignment
 import com.mycorrhizal.crm.model.network.ImportFixedAssignmentItem
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportRowEdit
+import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
 import com.mycorrhizal.crm.model.network.Tag
@@ -28,7 +31,7 @@ import org.robolectric.annotation.GraphicsMode
 // Issue #834: "reachability" proof for the CSV import screen — the real CsvImportScreenContent
 // (not a placeholder) renders each step of the flow, mirrors VcfImportScreenTest.
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], qualifiers = "w400dp-h1400dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CsvImportScreenTest {
 
@@ -42,6 +45,7 @@ class CsvImportScreenTest {
         onToggleCircle: (String) -> Unit = {},
         onRowActionChange: (Int, String) -> Unit = { _, _ -> },
         onConfirm: () -> Unit = {},
+        onRowEditSave: (ImportRowEdit) -> Unit = {},
         onDone: () -> Unit = {}
     ) {
         composeTestRule.setContent {
@@ -53,6 +57,7 @@ class CsvImportScreenTest {
                     onToggleCircle = onToggleCircle,
                     onRowActionChange = onRowActionChange,
                     onConfirm = onConfirm,
+                    onRowEditSave = onRowEditSave,
                     onDone = onDone
                 )
             }
@@ -252,5 +257,43 @@ class CsvImportScreenTest {
         composeTestRule.onNodeWithTag("csv-fixed-assignment").assertIsDisplayed()
         composeTestRule.onNodeWithText("Friends, Conference", substring = true).assertIsDisplayed()
         composeTestRule.onNodeWithText("6", substring = true).assertIsDisplayed()
+    }
+
+    @Test
+    fun `result step lists the skipped rows with their reasons`() {
+        setContent(
+            CsvImportUiState(
+                step = CsvImportStep.RESULT,
+                result = ImportResult(
+                    totalProcessed = 2,
+                    created = 1,
+                    skipped = 1,
+                    issues = listOf(ImportRowIssue(2, "Erin", "", "", "skipped", "Invalid email"))
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("Skipped: Invalid email").assertIsDisplayed()
+    }
+
+    @Test
+    fun `saving a fix on an error row reports the edit`() {
+        var saved: ImportRowEdit? = null
+        setContent(
+            CsvImportUiState(
+                step = CsvImportStep.PREVIEW,
+                preview = ImportPreviewResponse(
+                    sessionId = "s",
+                    rows = listOf(
+                        ImportRowPreview(rowIndex = 0, validationErrors = listOf("name required"))
+                    )
+                ),
+                rowActions = mapOf(0 to "skip")
+            ),
+            onRowEditSave = { saved = it }
+        )
+        composeTestRule.onNodeWithText("Fix this row").performClick()
+        composeTestRule.onNodeWithTag("import-fix-firstname").performTextInput("Dana")
+        composeTestRule.onNodeWithText("Save fix").performClick()
+        assertEquals(ImportRowEdit(rowIndex = 0, firstname = "Dana"), saved)
     }
 }
