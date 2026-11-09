@@ -8641,6 +8641,231 @@ paths:
                 $ref: "#/components/schemas/Error"
 
   # --- Contact-entity links (issue #2297, ADR 0043 decisions 2, 3 and 10) ---
+  /entities/{id}/merge:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: The entity to merge away (the loser).
+        schema: { type: string, format: uuid }
+    post:
+      summary: Merge an entity into another of the same kind
+      operationId: mergeEntity
+      tags:
+        - Entities
+      description: |
+        In one transaction: the loser's links are re-pointed to the survivor (a link that duplicates one the
+        contact already has to the survivor, same role, start and end, is soft-deleted instead; a primary flag
+        is never lost, and a re-pointed primary that would clash with the contact's existing primary is demoted
+        and reported); the survivor keeps its own core, name and custom values, filled from the loser only
+        through explicit `resolutions` (empty survivor fields only, otherwise 422); the loser's custom values
+        are re-keyed to the survivor where it has none; the loser is soft-deleted with a batch id and a
+        deletion snapshot, so it is in the trash. Restoring it revives only the entity: the re-pointed links
+        stay with the survivor (`restore_scope` says so, and the restore response carries `merged_into`).
+        The survivor's and every touched link's revision advance. Adopted copies in contacts are not touched.
+        Never triggered by an import or a sync.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntityMergeInput"
+      responses:
+        "200":
+          description: Merged.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityMergeResponse"
+        "400":
+          description: Validation failed (`into` missing or not a UUID).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: The entity, or the survivor named by `into`, does not exist for the caller (entity_not_found); another user's entity is indistinguishable from a missing one.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: Same entity (entity_merge_same_entity), different kinds (entity_merge_kind_mismatch), an invalid `resolutions` entry (entity_merge_resolution_invalid), or the Idempotency-Key was already used for a different request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/suggestions:
+    get:
+      summary: Merge candidates, or the contacts' own ORG/ADR value groups
+      operationId: listEntitySuggestions
+      tags:
+        - Entities
+      description: |
+        Read-only and idempotent; nothing is created, linked or merged by calling it. `mode=pairs` (default)
+        lists candidate duplicate pairs of the caller's live entities, minus dismissed pairs, with a `reason`:
+        `exact_name` (equal normalized name key: NFC, case-folded, whitespace collapsed, edge punctuation
+        trimmed), `normalized_name` (organisations only: the same after dropping trailing legal suffixes such as
+        Inc, LLC, Ltd, GmbH, AG, Corp, Co, SA, BV, for comparison only) or `address_components` (places: the
+        normalized number, name, locality, postcode and country). Pets match on name key and species. No
+        diacritic folding. `mode=contact_values` (needs `kind` organisation or place) lists groups of the
+        contacts' own ORG or ADR values that compare equal, excluding values already matched by a live link, for
+        the user-triggered "create entities from my contacts" helper; confirm groups with
+        `POST /entities/from-contacts`. Results are sorted by a stable key and paged with `cursor`.
+      parameters:
+        - name: kind
+          in: query
+          required: false
+          schema: { type: string, enum: [organisation, place, pet] }
+        - name: mode
+          in: query
+          required: false
+          schema: { type: string, enum: [pairs, contact_values], default: pairs }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+        - name: limit
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 25 }
+      responses:
+        "200":
+          description: One page of suggestions.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntitySuggestionsResponse"
+        "400":
+          description: Invalid kind, mode, limit or cursor, or contact_values mode without an organisation/place kind.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/suggestions/dismiss:
+    post:
+      summary: Hide a suggested pair for good
+      operationId: dismissEntitySuggestion
+      tags:
+        - Entities
+      description: |
+        Records the ordered pair so the suggestions never offer it again. Idempotent: dismissing an already
+        dismissed pair succeeds without a second row. Both entities must be the caller's live entities of the
+        same kind. The dismissal is removed when either entity is deleted or merged away.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntityDismissInput"
+      responses:
+        "200":
+          description: The canonical pair that is now hidden.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityDismissResponse"
+        "400":
+          description: Validation failed (ids must be UUIDs).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Either entity does not exist for the caller (entity_not_found).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The same entity twice (entity_merge_same_entity) or different kinds (entity_merge_kind_mismatch).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /entities/from-contacts:
+    post:
+      summary: Create entities from groups of the contacts' own ORG/ADR values
+      operationId: createEntitiesFromContacts
+      tags:
+        - Entities
+      description: |
+        The confirming half of the user-triggered helper (see `GET /entities/suggestions?mode=contact_values`).
+        For each confirmed group, in one transaction, creates one entity and one link per confirmed contact
+        (primary only when `set_primary` is true and the contact has no other live primary of the kind). Groups
+        are recomputed server-side: an unknown or already-matched `key` is reported as `group_not_found` and a
+        contact that is not in the group (including another user's contact id) as `contact_not_in_group`; nothing
+        is created for them. It only reads contacts: no contact value is ever edited or removed, and re-running
+        proposes only still-unmatched values. There is no background job or import hook for this.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EntityFromContactsInput"
+      responses:
+        "201":
+          description: Processed (see `created` and `skipped`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityFromContactsResponse"
+        "400":
+          description: Validation failed (kind, role, groups).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: A request with this Idempotency-Key is still being processed, or a concurrent primary change.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "422":
+          description: The Idempotency-Key was already used for a different request body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
   /contacts/{id}/entity-links:
     parameters:
       - name: id
@@ -20137,7 +20362,7 @@ components:
         count: { type: integer }
     EntityRestoreResponse:
       type: object
-      required: [entity, skipped, same_name_live]
+      required: [entity, skipped, same_name_live, links_revived]
       properties:
         entity:
           $ref: "#/components/schemas/Entity"
@@ -20146,6 +20371,172 @@ components:
           items:
             $ref: "#/components/schemas/EntityRestoreSkip"
         same_name_live: { type: boolean, description: "Another live entity of the same kind has the same normalized name (a warning, not a conflict)." }
+        links_revived: { type: integer, description: "Links that came back with the entity." }
+        merged_into: { type: string, format: uuid, description: "Set when the entity was a merge loser: only the entity was revived and its former links stayed with this survivor." }
+    EntityMergeInput:
+      type: object
+      required: [into]
+      properties:
+        into: { type: string, format: uuid, description: "The survivor. Must be a live entity of the same kind owned by the caller." }
+        resolutions:
+          type: object
+          additionalProperties: { type: string, enum: [loser, survivor] }
+          description: |
+            Core field to choice. `loser` fills an EMPTY survivor field from the loser (organisation:
+            `organization.sortAs`, `organization.units`, `url`, `notes`; place: `address`, `notes`; pet: `species`,
+            `breed`, `birth`, `death`, `notes`); a field the survivor already has is never overwritten (422).
+            `survivor` is an explicit no-op.
+    EntityMergeDemotion:
+      type: object
+      required: [link_id, contact_vcard_uid]
+      properties:
+        link_id: { type: string, format: uuid }
+        contact_vcard_uid: { type: string }
+    EntityMergeResponse:
+      type: object
+      required: [survivor, loser_id, links_repointed, links_collapsed, primaries_demoted, field_values_moved, field_values_dropped, resolved_fields, restore_scope]
+      properties:
+        survivor:
+          $ref: "#/components/schemas/Entity"
+        loser_id: { type: string, format: uuid }
+        links_repointed: { type: integer }
+        links_collapsed: { type: integer, description: "Loser links soft-deleted as duplicates of a link the contact already had to the survivor." }
+        primaries_demoted:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityMergeDemotion"
+        field_values_moved: { type: integer }
+        field_values_dropped:
+          type: array
+          description: "Field definition ids where the survivor already had a value (the survivor's wins; the loser's is kept in its snapshot)."
+          items: { type: string }
+        resolved_fields:
+          type: array
+          items: { type: string }
+        restore_scope: { type: string, enum: [entity_only], description: "Restoring the loser revives only the entity; the re-pointed links stay with the survivor." }
+    EntitySuggestionEntity:
+      type: object
+      required: [id, kind, name]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [organisation, place, pet] }
+        name: { type: string }
+    EntitySuggestionPair:
+      type: object
+      required: [reason, a, b]
+      properties:
+        reason: { type: string, enum: [exact_name, normalized_name, address_components] }
+        a:
+          $ref: "#/components/schemas/EntitySuggestionEntity"
+        b:
+          $ref: "#/components/schemas/EntitySuggestionEntity"
+    EntityValueGroupContact:
+      type: object
+      required: [contact_id, firstname, lastname, value_name, has_primary]
+      properties:
+        contact_id: { type: integer }
+        firstname: { type: string }
+        lastname: { type: string }
+        value_name: { type: string, description: "The contact's own spelling." }
+        has_primary: { type: boolean, description: "The contact already has a live primary link of this kind." }
+    EntityValueGroup:
+      type: object
+      required: [key, kind, name, reason, variants, contacts]
+      properties:
+        key: { type: string, description: "Opaque group key; echo it to POST /entities/from-contacts." }
+        kind: { type: string, enum: [organisation, place] }
+        name: { type: string, description: "Proposed entity name (the most common spelling)." }
+        reason: { type: string, enum: [exact_name, normalized_name, address_components] }
+        variants:
+          type: array
+          items: { type: string }
+        contacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityValueGroupContact"
+    EntitySuggestionsResponse:
+      type: object
+      required: [mode, pairs, groups, next_cursor, limit]
+      properties:
+        mode: { type: string, enum: [pairs, contact_values] }
+        pairs:
+          type: array
+          description: "Filled in pairs mode; an empty list otherwise."
+          items:
+            $ref: "#/components/schemas/EntitySuggestionPair"
+        groups:
+          type: array
+          description: "Filled in contact_values mode; an empty list otherwise."
+          items:
+            $ref: "#/components/schemas/EntityValueGroup"
+        next_cursor: { type: string, description: "Empty when there is no further page." }
+        limit: { type: integer }
+    EntityDismissInput:
+      type: object
+      required: [entity_a, entity_b]
+      properties:
+        entity_a: { type: string, format: uuid }
+        entity_b: { type: string, format: uuid }
+    EntityDismissResponse:
+      type: object
+      required: [id_low, id_high]
+      properties:
+        id_low: { type: string, format: uuid }
+        id_high: { type: string, format: uuid }
+    EntityFromContactsGroup:
+      type: object
+      required: [key, role, contact_ids]
+      properties:
+        key: { type: string, maxLength: 500 }
+        name: { type: string, maxLength: 200, description: "Optional entity name; defaults to the group's proposed name." }
+        role: { type: string, description: "A role valid for the kind (organisation: employee, owner, ...; place: resident, ...)." }
+        set_primary: { type: boolean }
+        contact_ids:
+          type: array
+          minItems: 1
+          maxItems: 1000
+          items: { type: integer }
+    EntityFromContactsInput:
+      type: object
+      required: [kind, groups]
+      properties:
+        kind: { type: string, enum: [organisation, place] }
+        groups:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/EntityFromContactsGroup"
+    EntityFromContactsCreated:
+      type: object
+      required: [key, entity, links]
+      properties:
+        key: { type: string }
+        entity:
+          $ref: "#/components/schemas/Entity"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContactEntityLink"
+    EntityFromContactsSkip:
+      type: object
+      required: [key, reason]
+      properties:
+        key: { type: string }
+        contact_id: { type: integer }
+        reason: { type: string, enum: [group_not_found, contact_not_in_group, name_invalid, core_invalid] }
+    EntityFromContactsResponse:
+      type: object
+      required: [created, skipped]
+      properties:
+        created:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityFromContactsCreated"
+        skipped:
+          type: array
+          items:
+            $ref: "#/components/schemas/EntityFromContactsSkip"
     EntityContactLink:
       type: object
       required: [link_id, contact_id, contact_vcard_uid, firstname, lastname, role, role_label, is_primary, sensitivity]

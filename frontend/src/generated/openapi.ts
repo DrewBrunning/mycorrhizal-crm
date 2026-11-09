@@ -1337,6 +1337,46 @@ export type EntityDeleteResponse = {
   projection_count: number;
 };
 
+export type EntityDismissInput = {
+  entity_a: string;
+  entity_b: string;
+};
+
+export type EntityDismissResponse = {
+  id_high: string;
+  id_low: string;
+};
+
+export type EntityFromContactsCreated = {
+  entity: Entity;
+  key: string;
+  links: ContactEntityLink[];
+};
+
+export type EntityFromContactsGroup = {
+  contact_ids: number[];
+  key: string;
+  name?: string;
+  role: string;
+  set_primary?: boolean;
+};
+
+export type EntityFromContactsInput = {
+  groups: EntityFromContactsGroup[];
+  kind: 'organisation' | 'place';
+};
+
+export type EntityFromContactsResponse = {
+  created: EntityFromContactsCreated[];
+  skipped: EntityFromContactsSkip[];
+};
+
+export type EntityFromContactsSkip = {
+  contact_id?: number;
+  key: string;
+  reason: 'group_not_found' | 'contact_not_in_group' | 'name_invalid' | 'core_invalid';
+};
+
 export type EntityInput = {
   core?: Record<string, unknown>;
   kind?: 'organisation' | 'place' | 'pet';
@@ -1350,8 +1390,32 @@ export type EntityListResponse = {
   next_cursor: string;
 };
 
+export type EntityMergeDemotion = {
+  contact_vcard_uid: string;
+  link_id: string;
+};
+
+export type EntityMergeInput = {
+  into: string;
+  resolutions?: Record<string, 'loser' | 'survivor'>;
+};
+
+export type EntityMergeResponse = {
+  field_values_dropped: string[];
+  field_values_moved: number;
+  links_collapsed: number;
+  links_repointed: number;
+  loser_id: string;
+  primaries_demoted: EntityMergeDemotion[];
+  resolved_fields: string[];
+  restore_scope: 'entity_only';
+  survivor: Entity;
+};
+
 export type EntityRestoreResponse = {
   entity: Entity;
+  links_revived: number;
+  merged_into?: string;
   same_name_live: boolean;
   skipped: EntityRestoreSkip[];
 };
@@ -1360,6 +1424,43 @@ export type EntityRestoreSkip = {
   count: number;
   reason: string;
   table: string;
+};
+
+export type EntitySuggestionEntity = {
+  id: string;
+  kind: 'organisation' | 'place' | 'pet';
+  name: string;
+};
+
+export type EntitySuggestionPair = {
+  a: EntitySuggestionEntity;
+  b: EntitySuggestionEntity;
+  reason: 'exact_name' | 'normalized_name' | 'address_components';
+};
+
+export type EntitySuggestionsResponse = {
+  groups: EntityValueGroup[];
+  limit: number;
+  mode: 'pairs' | 'contact_values';
+  next_cursor: string;
+  pairs: EntitySuggestionPair[];
+};
+
+export type EntityValueGroup = {
+  contacts: EntityValueGroupContact[];
+  key: string;
+  kind: 'organisation' | 'place';
+  name: string;
+  reason: 'exact_name' | 'normalized_name' | 'address_components';
+  variants: string[];
+};
+
+export type EntityValueGroupContact = {
+  contact_id: number;
+  firstname: string;
+  has_primary: boolean;
+  lastname: string;
+  value_name: string;
 };
 
 export type EntryPeriod = {

@@ -342,7 +342,7 @@ func RestoreEntity(c *gin.Context) {
 	for _, s := range res.Skipped {
 		skipped = append(skipped, models.EntityRestoreSkip{Table: s.Table, Reason: s.Reason, Count: s.Count})
 	}
-	c.JSON(http.StatusOK, models.EntityRestoreResponse{Entity: models.NewEntityResponse(&res.Entity), Skipped: skipped, SameNameLive: res.SameNameLive})
+	c.JSON(http.StatusOK, models.EntityRestoreResponse{Entity: models.NewEntityResponse(&res.Entity), Skipped: skipped, SameNameLive: res.SameNameLive, LinksRevived: res.LinksRevived, MergedInto: res.MergedInto})
 }
 
 // ListEntityContacts handles GET /entities/:id/contacts: the entity's live

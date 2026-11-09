@@ -320,6 +320,18 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_entity_link_primary_conflict
         )
 
+        ErrorReasonCode.ENTITY_MERGE_SAME_ENTITY -> stringResource(
+            R.string.error_reason_entity_merge_same_entity
+        )
+
+        ErrorReasonCode.ENTITY_MERGE_KIND_MISMATCH -> stringResource(
+            R.string.error_reason_entity_merge_kind_mismatch
+        )
+
+        ErrorReasonCode.ENTITY_MERGE_RESOLUTION_INVALID -> reason.str(
+            "reason"
+        )?.let { stringResource(R.string.error_reason_entity_merge_resolution_invalid, it) }
+
         ErrorReasonCode.CONTACT_FIELD_DEFINITION_TARGET_IMMUTABLE -> stringResource(
             R.string.error_reason_contact_field_definition_target_immutable
         )

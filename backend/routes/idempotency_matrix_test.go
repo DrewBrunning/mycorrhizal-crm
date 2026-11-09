@@ -94,6 +94,8 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/entities",
 		"POST /api/v1/contacts/:id/entity-links",
 		"POST /api/v1/contacts/:id/entity-links/from-existing",
+		// Issue #2299: the helper mints entities and links; a retried request replays.
+		"POST /api/v1/entities/from-contacts",
 		"POST /api/v1/circles",
 		"POST /api/v1/households",
 		"POST /api/v1/tags",
@@ -122,6 +124,9 @@ func buildIdemTable() map[string]idemRow {
 		t[k] = keyed(idemReasonCreate)
 	}
 	for _, k := range []string{
+		// Issue #2299: a merge consumes the loser, so a retry after a lost response
+		// would 404 instead of reporting what was merged; the key replays it.
+		"POST /api/v1/entities/:id/merge",
 		"POST /api/v1/webhooks",
 		"POST /api/v1/immich/contacts/:vcard_uid/link",
 		"POST /api/v1/paperless/contacts/:vcard_uid/link",
@@ -138,6 +143,8 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/contacts/address-suggestions",
 		"POST /api/v1/contacts/address-suggestions/apply",
 		"POST /api/v1/contacts/duplicates/dismiss",
+		// Issue #2299: dismissing an already-dismissed pair writes nothing.
+		"POST /api/v1/entities/suggestions/dismiss",
 		"POST /api/v1/households/suggest-addresses",
 		"POST /api/v1/households/suggestions/accept",
 		"POST /api/v1/households/suggestions/dismiss",
