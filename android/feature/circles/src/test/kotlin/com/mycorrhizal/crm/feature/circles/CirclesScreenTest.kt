@@ -8,9 +8,12 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.testing.a11y.assertNoDuplicateContentDescriptions
@@ -164,5 +167,33 @@ class CirclesScreenTest {
         // The error is both the body Text and the transient snackbar, so assert
         // on the collection rather than a single node.
         assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test
+    fun `creating a taken name shows the inline error and keeps the dialog open`() {
+        val repository = mockk<CircleRepository>()
+        coEvery { repository.list(any(), any()) } returns Result.success(
+            listOf(Circle(id = "c1", name = "work"))
+        )
+        coEvery { repository.create("Work") } returns Result.failure(
+            ApiError.Client(
+                409,
+                "A circle with this name already exists",
+                reason = ErrorReason(ErrorReasonCode.CIRCLE_ALREADY_EXISTS, emptyMap())
+            )
+        )
+        val viewModel = CirclesViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme { CirclesScreen(onOpenCircle = {}, viewModel = viewModel) }
+        }
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.circles_new)).performClick()
+        composeTestRule.onNodeWithText(str(R.string.circles_name)).performTextInput("Work")
+        composeTestRule.onNodeWithText(str(R.string.action_create)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(str(R.string.error_reason_circle_already_exists))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.action_cancel)).assertIsDisplayed()
     }
 }

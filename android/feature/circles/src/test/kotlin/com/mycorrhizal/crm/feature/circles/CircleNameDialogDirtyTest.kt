@@ -68,4 +68,44 @@ class CircleNameDialogDirtyTest {
         composeTestRule.onNodeWithText("Discard").performClick()
         assertTrue(dismissed)
     }
+
+    @Test
+    fun `a name error shows inline under the field`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                CircleNameDialog(
+                    title = "New circle",
+                    initial = "Work",
+                    confirmLabel = "Create",
+                    onConfirm = {},
+                    onDismiss = {},
+                    nameError = "A circle with this name already exists"
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("A circle with this name already exists").assertIsDisplayed()
+    }
+
+    @Test
+    fun `editing the name clears the inline error via the callback`() {
+        var cleared = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                CircleNameDialog(
+                    title = "New circle",
+                    initial = "Work",
+                    confirmLabel = "Create",
+                    onConfirm = {},
+                    onDismiss = {},
+                    nameError = "taken",
+                    onNameChange = { cleared++ }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Work").performTextReplacement("Work2")
+
+        assertTrue(cleared > 0)
+    }
 }

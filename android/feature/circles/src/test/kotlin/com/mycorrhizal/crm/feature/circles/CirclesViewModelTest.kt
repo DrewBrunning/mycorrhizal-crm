@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -44,7 +46,8 @@ class CirclesViewModelTest {
         val state = vm.uiState.value
         assertFalse(state.isLoading)
         assertEquals(2, state.circles.size)
-        assertEquals("Friends", state.circles[0].name)
+        // The list is presented in name order (#2444), not the server's cursor order.
+        assertEquals(listOf("Family", "Friends"), state.circles.map { it.name })
         assertNull(state.error)
     }
 
@@ -110,6 +113,165 @@ class CirclesViewModelTest {
 
         assertEquals(listOf("Close Friends"), vm.uiState.value.circles.map { it.name })
     }
+
+    private fun duplicateError() = ApiError.Client(
+        409,
+        "A circle with this name already exists",
+        reason = ErrorReason(ErrorReasonCode.CIRCLE_ALREADY_EXISTS, emptyMap())
+    )
+
+    @Test
+    fun `create with a taken name sets the inline name error and not the snackbar error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns Result.success(
+                listOf(Circle(id = "c1", name = "work"))
+            )
+            coEvery { circleRepository.create("Work") } returns Result.failure(duplicateError())
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+
+            var done = false
+            vm.create("Work") { done = true }
+            advanceUntilIdle()
+
+            assertFalse(done)
+            assertTrue(vm.uiState.value.nameTaken)
+            assertNull(vm.uiState.value.error)
+            assertFalse(vm.uiState.value.isSaving)
+            assertEquals(listOf("work"), vm.uiState.value.circles.map { it.name })
+        }
+
+    @Test
+    fun `rename to a taken name sets the inline name error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns Result.success(
+                listOf(Circle(id = "c1", name = "Work"), Circle(id = "c2", name = "Home"))
+            )
+            coEvery { circleRepository.rename("c2", "work") } returns Result.failure(duplicateError())
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+
+            var done = false
+            vm.rename("c2", "work") { done = true }
+            advanceUntilIdle()
+
+            assertFalse(done)
+            assertTrue(vm.uiState.value.nameTaken)
+            assertNull(vm.uiState.value.error)
+        }
+
+    @Test
+    fun `a non-duplicate create failure still surfaces as the general error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
+            coEvery { circleRepository.create("X") } returns Result.failure(ApiError.Client(500, "boom"))
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+            vm.create("X")
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.nameTaken)
+            assertEquals("boom", vm.uiState.value.error?.message)
+        }
+
+    @Test
+    fun `clearNameError and a fresh attempt reset the inline error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
+            coEvery { circleRepository.create("Work") } returns Result.failure(duplicateError())
+            coEvery { circleRepository.create("Play") } returns
+                Result.success(Circle(id = "c2", name = "Play"))
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+            vm.create("Work")
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.nameTaken)
+
+            vm.clearNameError()
+            assertFalse(vm.uiState.value.nameTaken)
+
+            vm.create("Work")
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.nameTaken)
+            vm.create("Play")
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.nameTaken)
+        }
+
+    @Test
+    fun `a new circle b lands between a and c without a reload`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns Result.success(
+                listOf(Circle(id = "c1", name = "a"), Circle(id = "c3", name = "c"))
+            )
+            coEvery { circleRepository.create("b") } returns
+                Result.success(Circle(id = "c2", name = "b"))
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+            vm.create("b")
+            advanceUntilIdle()
+
+            assertEquals(listOf("a", "b", "c"), vm.uiState.value.circles.map { it.name })
+        }
+
+    @Test
+    fun `sorting is case-insensitive and applies to the loaded list`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns Result.success(
+                listOf(
+                    Circle(id = "c1", name = "banana"),
+                    Circle(id = "c2", name = "Cherry"),
+                    Circle(id = "c3", name = "Apple")
+                )
+            )
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+
+            assertEquals(listOf("Apple", "banana", "Cherry"), vm.uiState.value.circles.map { it.name })
+        }
+
+    @Test
+    fun `a rename re-sorts the list without a reload`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns Result.success(
+                listOf(Circle(id = "c1", name = "a"), Circle(id = "c2", name = "b"))
+            )
+            coEvery { circleRepository.rename("c1", "c") } returns
+                Result.success(Circle(id = "c1", name = "c"))
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+            vm.rename("c1", "c")
+            advanceUntilIdle()
+
+            assertEquals(listOf("b", "c"), vm.uiState.value.circles.map { it.name })
+        }
+
+    @Test
+    fun `renaming a circle to its own name in a different case saves`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns Result.success(
+                listOf(Circle(id = "c1", name = "work"))
+            )
+            coEvery { circleRepository.rename("c1", "Work") } returns
+                Result.success(Circle(id = "c1", name = "Work"))
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+            var done = false
+            vm.rename("c1", "Work") { done = true }
+            advanceUntilIdle()
+
+            assertTrue(done)
+            assertFalse(vm.uiState.value.nameTaken)
+            assertEquals(listOf("Work"), vm.uiState.value.circles.map { it.name })
+        }
 
     @Test
     fun `delete removes the circle`() = runTest(mainDispatcherRule.testDispatcher) {
