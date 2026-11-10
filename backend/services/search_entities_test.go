@@ -1,6 +1,8 @@
 package services
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -293,4 +295,93 @@ func TestEntitiesFTS_RebuildMatchesIncremental(t *testing.T) {
 	_, err := RebuildSearchIndexReport(db)
 	require.NoError(t, err)
 	assert.Equal(t, before, snap())
+}
+
+// failOnSQL makes every raw statement containing fragment fail until the
+// returned cleanup runs.
+func failOnSQL(t *testing.T, db *gorm.DB, name, fragment string) {
+	t.Helper()
+	fail := func(d *gorm.DB) {
+		if strings.Contains(d.Statement.SQL.String(), fragment) {
+			_ = d.AddError(fmt.Errorf("injected failure"))
+		}
+	}
+	require.NoError(t, db.Callback().Raw().Before("gorm:raw").Register(name, fail))
+	require.NoError(t, db.Callback().Query().Before("gorm:query").Register(name, fail))
+	require.NoError(t, db.Callback().Row().Before("gorm:row").Register(name, fail))
+	t.Cleanup(func() {
+		_ = db.Callback().Row().Remove(name)
+		_ = db.Callback().Raw().Remove(name)
+		_ = db.Callback().Query().Remove(name)
+	})
+}
+
+func TestSearchEntities_QueryErrorsSurface(t *testing.T) {
+	db := dbtest.New(t)
+	u := entUser(t, db, "ent-err")
+	failOnSQL(t, db, "fail_entities_search", "FROM entities_fts f")
+	_, err := Search(db, u.ID, "anything", 0, nil)
+	require.ErrorContains(t, err, "search entities")
+}
+
+func TestEntitiesFTSConsistency_QueryErrorsSurface(t *testing.T) {
+	for i, fragment := range []string{
+		"LEFT JOIN entities_fts f",            // missing
+		"LEFT JOIN entities b",                // orphan
+		"FROM entities_fts f JOIN entities b", // scope
+		"AS m_name",                           // content
+	} {
+		db := dbtest.New(t)
+		failOnSQL(t, db, fmt.Sprintf("fail_probe_%d", i), fragment)
+		_, err := CheckSearchIndexConsistency(db)
+		require.ErrorContains(t, err, "fts consistency (entities_fts", fragment)
+	}
+}
+
+func TestEntitiesFTSConsistency_CapsEachClass(t *testing.T) {
+	db := dbtest.New(t)
+	u := entUser(t, db, "ent-cap")
+	for i := 0; i < ftsDivergenceCapPerClass+5; i++ {
+		require.NoError(t, db.Exec(`INSERT INTO entities_fts(name, entity_id, user_id, kind) VALUES ('X', ?, ?, 'pet')`, fmt.Sprintf("ghost-%03d", i), u.ID).Error)
+	}
+	res, err := CheckSearchIndexConsistency(db)
+	require.NoError(t, err)
+	assert.True(t, res.Truncated)
+	n := 0
+	for _, d := range res.Divergences {
+		if d.Class == FTSDivergenceOrphanInIndex {
+			n++
+		}
+	}
+	assert.Equal(t, ftsDivergenceCapPerClass, n)
+
+	// Content drift over the cap is capped too.
+	db2 := dbtest.New(t)
+	u2 := entUser(t, db2, "ent-cap2")
+	for i := 0; i < ftsDivergenceCapPerClass+2; i++ {
+		entMake(t, db2, u2.ID, models.EntityKindPet, fmt.Sprintf("Cap%03d", i))
+	}
+	require.NoError(t, db2.Exec("UPDATE entities_fts SET name = 'drift', kind = 'place'").Error)
+	res, err = CheckSearchIndexConsistency(db2)
+	require.NoError(t, err)
+	assert.True(t, res.Truncated)
+	for _, d := range res.Divergences {
+		if d.Class == FTSDivergenceContentMismatch {
+			assert.Equal(t, []string{"name", "kind"}, d.Columns)
+			break
+		}
+	}
+}
+
+func TestSearchPage_NegativeOffsetIsZeroAndScopedErrorsPropagate(t *testing.T) {
+	db := dbtest.New(t)
+	u := entUser(t, db, "ent-off")
+	entMake(t, db, u.ID, models.EntityKindPet, "Offsetty")
+	res, err := SearchPage(db, u.ID, "offsetty", 5, -3, nil)
+	require.NoError(t, err)
+	assert.Len(t, res.Entities, 1)
+
+	failOnSQL(t, db, "fail_contacts_search", "FROM contacts_fts")
+	_, err = SearchPage(db, u.ID, "offsetty", 5, 0, nil)
+	require.ErrorContains(t, err, "search contacts")
 }
