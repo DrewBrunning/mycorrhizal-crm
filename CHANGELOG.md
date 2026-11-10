@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Organisations, places and pets on the web** ([#2301](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2301)): a new Entities page lists them with search and duplicate suggestions, and merging happens only when you confirm. Contacts link to them, a value from an entity is labelled "from <name>" and never edited as the contact's own, and the graph can show them.
 - **Organisations, places and pets in your backups** ([#2300](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2300)): the account bundle and the CSV export now include your organisations, places and pets with their links, roles, dates and custom fields, at every privacy level. Restoring never overwrites an entity you already have, and imports never create one.
 - **Android import review matches the web** ([#2210](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2210)): filter the review by new rows, duplicates or errors, get Keep/Skip on plain rows and Keep both/Merge/Discard new only on duplicates, fix rows with errors in place, and see every skipped or failed row with its reason after the import, with a share-as-CSV button.
 - **Gift preferences** ([#2194](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2194)): on the web, media, jewelry and gift ideas each gain an "other" category for tastes that fit nothing else, and the preference form's "Key" field is now called "Type" (Favorite, Dislike, Allergy, or your own wording). Existing preferences are unchanged.
