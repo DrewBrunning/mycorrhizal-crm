@@ -134,6 +134,10 @@ import OccasionsPage from './OccasionsPage';
 import PrepViewPage from './PrepViewPage';
 import RegisterPage from './RegisterPage';
 import SettingsPage from './SettingsPage';
+// Imported statically like ContactSharesPage: lazy-loading these two reshuffled the
+// shared chunk split (a 273 KiB "errorHandler" chunk tripped the new-chunk gate).
+import SharedByMePage from './SharedByMePage';
+import SharedWithMePage from './SharedWithMePage';
 import SystemEventsPage from './SystemEventsPage';
 import SystemStatusPage from './SystemStatusPage';
 import UsersPage from './UsersPage';
@@ -156,8 +160,6 @@ import { AuthContext, useAuth } from './context/AuthContext';
 // map page (and the `map-vendor` chunk it pulls in) loads only when /map is opened.
 const MapPage = lazy(() => import('./MapPage'));
 const ShareTargetPage = lazy(() => import('./ShareTargetPage'));
-const SharedWithMePage = lazy(() => import('./SharedWithMePage'));
-const SharedByMePage = lazy(() => import('./SharedByMePage'));
 const TrashPage = lazy(() => import('./TrashPage'));
 
 const drawerWidth = 256;
