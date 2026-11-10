@@ -4,6 +4,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -257,5 +258,49 @@ class ContactSharesScreenTest {
         screen(darkTheme = true)
 
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    // --- Issue #2293: entry points to the standing-share surfaces ---
+
+    private fun stubEmpty() {
+        coEvery { repository.listIncoming(any(), any()) } returns
+            Result.success(ContactSharesPage())
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+    }
+
+    @Test
+    fun `the standing-share links are absent unless wired`() {
+        stubEmpty()
+        screen()
+        composeTestRule.onNodeWithText("Shared with me").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Shared by me").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the standing-share links open their surfaces and carry the pending badge`() {
+        stubEmpty()
+        var withMe = 0
+        var byMe = 0
+        val vm = ContactSharesViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.mycorrhizal.crm.ui.LocalPendingShareGrantCount provides 2
+                ) {
+                    ContactSharesScreen(
+                        onMenuClick = {},
+                        onOpenSharedWithMe = { withMe++ },
+                        onOpenSharedByMe = { byMe++ },
+                        viewModel = vm
+                    )
+                }
+            }
+        }
+
+        composeTestRule.onNodeWithContentDescription("2 shares waiting for you").assertExists()
+        composeTestRule.onNodeWithText("Shared with me").performClick()
+        composeTestRule.onNodeWithText("Shared by me").performClick()
+        assertTrue(withMe == 1 && byMe == 1)
     }
 }

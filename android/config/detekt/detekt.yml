@@ -83,10 +83,11 @@ Compose:
   CompositionLocalAllowlist:
     active: true
     # These are the app's deliberate, app-wide ambient values (server origin,
-    # capabilities, date/time format, drawer state, theme and warning colors);
+    # capabilities, date/time format, drawer state, theme and warning colors, and the
+    # pending standing-share count that badges the drawer, rail and shares screen, #2293);
     # they are provided once at the root rather than threaded through every
     # screen. New locals still need adding here (and a reason).
-    allowedCompositionLocals: LocalDarkTheme,LocalDateFormat,LocalDrawerOpen,LocalIs24Hour,LocalServerCapabilities,LocalServerUrl,LocalServerVersion,LocalWarningColors
+    allowedCompositionLocals: LocalDarkTheme,LocalDateFormat,LocalDrawerOpen,LocalIs24Hour,LocalPendingShareGrantCount,LocalServerCapabilities,LocalServerUrl,LocalServerVersion,LocalWarningColors
   CompositionLocalNaming:
     active: true
   ConditionHoist:

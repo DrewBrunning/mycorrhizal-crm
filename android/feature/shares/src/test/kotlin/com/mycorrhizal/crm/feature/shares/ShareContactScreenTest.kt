@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
+import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -22,6 +23,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -47,7 +49,11 @@ class ShareContactScreenTest {
         ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
 
     private fun viewModel(repo: ContactShareRepository): ShareContactViewModel =
-        ShareContactViewModel(repo, SavedStateHandle(mapOf("uid" to "u-viewed")))
+        ShareContactViewModel(
+            repo,
+            mockk<ShareGrantRepository>(),
+            SavedStateHandle(mapOf("uid" to "u-viewed"))
+        )
 
     private fun screen(repo: ContactShareRepository, vm: ShareContactViewModel = viewModel(repo)) {
         composeTestRule.setContent {
@@ -151,5 +157,97 @@ class ShareContactScreenTest {
             .performClick()
 
         coVerify(exactly = 1) { repo.create(any()) }
+    }
+
+    // --- Issue #2293: the one-time vs standing choice ---
+
+    private fun standingScreen(
+        repo: ContactShareRepository,
+        grants: ShareGrantRepository,
+        onStandingShared: () -> Unit = {}
+    ): ShareContactViewModel {
+        val vm = ShareContactViewModel(repo, grants, SavedStateHandle(mapOf("uid" to "u-viewed")))
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ShareContactScreen(onBack = {}, onStandingShared = onStandingShared, viewModel = vm)
+            }
+        }
+        return vm
+    }
+
+    @Test
+    fun `one-time is the default mode and keeps the existing description`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory() } returns Result.success(
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
+        )
+        screen(repo)
+
+        composeTestRule.onNodeWithText(str(R.string.shares_mode_one_time)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.shares_share_dialog_description))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.shares_standing_share_button)
+        ).assertDoesNotExist()
+    }
+
+    @Test
+    fun `choosing keep sharing creates a grant and never a one-time share`() {
+        val repo = mockk<ContactShareRepository>()
+        val grants = mockk<ShareGrantRepository>()
+        coEvery { repo.userDirectory() } returns Result.success(
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
+        )
+        coEvery { grants.create(any()) } returns Result.success(
+            com.mycorrhizal.crm.model.network.OutgoingShareGrant(id = "g1")
+        )
+        var landed = false
+        val vm = standingScreen(repo, grants) { landed = true }
+        vm.selectRecipient(1)
+
+        composeTestRule.onNodeWithText(str(R.string.shares_mode_standing)).performClick()
+        composeTestRule.onNodeWithText(
+            str(R.string.shares_standing_pending_note)
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.shares_standing_share_button))
+            .performScrollTo()
+            .assertIsEnabled()
+            .performClick()
+
+        coVerify(exactly = 1) { grants.create(match { it.entityId == "u-viewed" }) }
+        coVerify(exactly = 0) { repo.create(any()) }
+        composeTestRule.waitForIdle()
+        assertTrue(landed)
+    }
+
+    @Test
+    fun `a standing share failure is worded from its reason`() {
+        val repo = mockk<ContactShareRepository>()
+        val grants = mockk<ShareGrantRepository>()
+        coEvery { repo.userDirectory() } returns Result.success(
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
+        )
+        coEvery { grants.create(any()) } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW",
+                reason = com.mycorrhizal.crm.model.network.ErrorReason(
+                    com.mycorrhizal.crm.model.network.ErrorReasonCode.SHARE_GRANT_ALREADY_EXISTS,
+                    emptyMap()
+                )
+            )
+        )
+        val vm = standingScreen(repo, grants)
+        vm.selectRecipient(1)
+
+        composeTestRule.onNodeWithText(str(R.string.shares_mode_standing)).performClick()
+        composeTestRule.onNodeWithText(str(R.string.shares_standing_share_button))
+            .performScrollTo()
+            .performClick()
+
+        composeTestRule.onNodeWithText(
+            "That is already shared with this person"
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW").assertDoesNotExist()
     }
 }
