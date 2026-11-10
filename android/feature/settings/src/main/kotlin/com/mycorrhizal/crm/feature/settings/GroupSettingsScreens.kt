@@ -22,7 +22,8 @@ fun ContactsFieldsSettingsScreen(
     onCustomFields: () -> Unit = {},
     onContactFieldSettings: () -> Unit = {},
     onCustomLinks: () -> Unit = {},
-    onCircleTagTriage: () -> Unit = {}
+    onCircleTagTriage: () -> Unit = {},
+    onEntities: () -> Unit = {}
 ) {
     SettingsScaffold(
         title = stringResource(R.string.settings_group_contacts_fields),
@@ -33,6 +34,7 @@ fun ContactsFieldsSettingsScreen(
             onContactFieldSettings = onContactFieldSettings,
             onCustomLinks = onCustomLinks,
             onCircleTagTriage = onCircleTagTriage,
+            onEntities = onEntities,
             modifier = padding
         )
     }
@@ -44,7 +46,8 @@ fun ContactsFieldsSettingsContent(
     onCustomFields: () -> Unit = {},
     onContactFieldSettings: () -> Unit = {},
     onCustomLinks: () -> Unit = {},
-    onCircleTagTriage: () -> Unit = {}
+    onCircleTagTriage: () -> Unit = {},
+    onEntities: () -> Unit = {}
 ) {
     SettingsColumn(modifier = modifier) {
         // Issue #830: create/edit/delete custom field definitions.
@@ -57,6 +60,8 @@ fun ContactsFieldsSettingsContent(
             stringResource(R.string.settings_contact_fields_title),
             onClick = onContactFieldSettings
         )
+        // Issue #2302 (ADR 0043): shared organisations, places and pets.
+        SettingsNavigationRow(stringResource(R.string.shared_entities_title), onClick = onEntities)
         SettingsNavigationRow(stringResource(R.string.custom_links_title), onClick = onCustomLinks)
         // M26: one-time legacy circle/tag cleanup.
         SettingsNavigationRow(

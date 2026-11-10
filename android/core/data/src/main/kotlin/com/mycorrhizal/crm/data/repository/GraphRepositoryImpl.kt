@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CirclesPage
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
+import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
@@ -21,6 +22,9 @@ class GraphRepositoryImpl @Inject constructor(private val apiClient: ApiClient) 
         relation: String?
     ): Result<GraphConnectionsResponse> =
         apiClient.getConnections(from = from, depth = depth, relation = relation)
+
+    override suspend fun entityOverlay(from: String, depth: Int?): Result<GraphEntitiesResponse> =
+        apiClient.getGraphWithEntities(from = from, depth = depth)
 
     override suspend fun selfContactVCardUid(): Result<String?> =
         apiClient.currentUser().map { it.selfContactVCardUid }

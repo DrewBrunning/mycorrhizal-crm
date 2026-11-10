@@ -5,6 +5,8 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -20,6 +22,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.model.network.GraphChainStep
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
+import com.mycorrhizal.crm.model.network.GraphEntityNode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -546,5 +549,103 @@ class NetworkScreenTest {
         assertTrue(
             composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty()
         )
+    }
+
+    // --- Issue #2302 / ADR 0043 decision 2: the opt-in, read-only entity overlay -------------
+
+    @Test
+    fun `the entity toggle is off by default and reports the user's choice`() {
+        var toggled: Boolean? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NetworkScreenContent(
+                    uiState = state(),
+                    showMenu = false,
+                    onBack = {},
+                    onMenuClick = {},
+                    onOpenContact = {},
+                    onDepthChange = {},
+                    onRelationInputChange = {},
+                    onRelationApply = {},
+                    onCircleSelect = {},
+                    onOpenPicker = {},
+                    onClosePicker = {},
+                    onSearchContacts = {},
+                    onSelectFrom = {},
+                    onErrorShown = {},
+                    onToggleEntities = { toggled = it }
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("network-entities-toggle").assertIsOff()
+        composeTestRule.onNodeWithTag("network-entities-toggle").performClick()
+        assertEquals(true, toggled)
+    }
+
+    @Test
+    fun `with the overlay on, entities show read-only with their contacts and never as chains`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NetworkScreenContent(
+                    uiState = state(chains = listOf(chain(7, "t7", "Ada", 1, emptyList()))).copy(
+                        showEntities = true,
+                        entityOverlay = listOf(
+                            EntityOverlayRow(
+                                GraphEntityNode("e-o1", "organisation", "Acme"),
+                                listOf("Alice", "Ada")
+                            )
+                        )
+                    ),
+                    showMenu = false,
+                    onBack = {},
+                    onMenuClick = {},
+                    onOpenContact = {},
+                    onDepthChange = {},
+                    onRelationInputChange = {},
+                    onRelationApply = {},
+                    onCircleSelect = {},
+                    onOpenPicker = {},
+                    onClosePicker = {},
+                    onSearchContacts = {},
+                    onSelectFrom = {},
+                    onErrorShown = {}
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("network-entities-toggle").assertIsOn()
+        composeTestRule.onNodeWithTag("network-entity-e-o1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation · Alice, Ada").assertIsDisplayed()
+        // No edit affordance: the row has no click action.
+        composeTestRule.onNodeWithTag("network-entity-e-o1")
+            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+    }
+
+    @Test
+    fun `an empty overlay says nothing is linked`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NetworkScreenContent(
+                    uiState = state(chains = listOf(chain(7, "t7", "Ada", 1, emptyList())))
+                        .copy(showEntities = true),
+                    showMenu = false,
+                    onBack = {},
+                    onMenuClick = {},
+                    onOpenContact = {},
+                    onDepthChange = {},
+                    onRelationInputChange = {},
+                    onRelationApply = {},
+                    onCircleSelect = {},
+                    onOpenPicker = {},
+                    onClosePicker = {},
+                    onSearchContacts = {},
+                    onSelectFrom = {},
+                    onErrorShown = {}
+                )
+            }
+        }
+        composeTestRule.onNodeWithText(
+            "No organisations, places or pets are linked to these contacts."
+        )
+            .assertIsDisplayed()
     }
 }

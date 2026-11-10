@@ -166,6 +166,9 @@ class NavDestinationsTest {
         assertFalse(isSelected(null, contacts))
         assertTrue(isSelected("settings/appearance", settings))
         assertTrue(isSelected("webhooks", settings))
+        // Issue #2302: the entity list and detail are reached from Settings.
+        assertTrue(isSelected("entities", settings))
+        assertTrue(isSelected("entities/e1", settings))
         assertTrue(isSelected("admin/users", settings))
         assertTrue(isSelected("data/custom-export", data))
         assertFalse(isSelected("data", settings))
