@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.model.network.Entity
+import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -28,7 +29,9 @@ data class EntitiesUiState(
     val nextCursor: String? = null,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val error: ApiError? = null
+    val error: ApiError? = null,
+    val isSaving: Boolean = false,
+    val formError: ApiError? = null
 )
 
 @HiltViewModel
@@ -43,6 +46,7 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
     // Bumped on every (kind, query) change so a slow response for a previous tab or search can
     // never overwrite the current one (the same guard the web list uses).
     private var generation = 0
+    private var loadedOnce = false
 
     init {
         refresh()
@@ -57,6 +61,7 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
                 .foldApiError(
                     onSuccess = { page ->
                         if (generationAtStart != generation) return@foldApiError
+                        loadedOnce = true
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
@@ -71,6 +76,11 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
                     }
                 )
         }
+    }
+
+    /** Back on this screen (e.g. after renaming on the detail page): re-read the list. */
+    fun onResumed() {
+        if (loadedOnce && !_uiState.value.isLoading) refresh()
     }
 
     fun selectKind(kind: String) {
@@ -116,5 +126,40 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
                     }
                 )
         }
+    }
+
+    /** Create an entity of the shown kind; [onCreated] runs on success so the form can close. */
+    fun create(input: EntityInput, onCreated: (Entity) -> Unit) {
+        if (_uiState.value.isSaving) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true, formError = null) }
+            repository.create(input).foldApiError(
+                onSuccess = { entity ->
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            entities = if (entity.kind == it.kind) {
+                                (it.entities + entity).sortedBy { e -> e.name.lowercase() }
+                            } else {
+                                it.entities
+                            }
+                        )
+                    }
+                    onCreated(entity)
+                },
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            formError = error
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun onFormDismissed() {
+        _uiState.update { it.copy(formError = null) }
     }
 }

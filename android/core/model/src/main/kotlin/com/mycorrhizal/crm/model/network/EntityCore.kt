@@ -44,7 +44,12 @@ object EntityCore {
 
     // Mirrors backend/services/entity_merge.go#entityFillableFields (frontend trap #4).
     private val FILLABLE = mapOf(
-        EntityKind.ORGANISATION to listOf("organization.sortAs", "organization.units", "url", "notes"),
+        EntityKind.ORGANISATION to listOf(
+            "organization.sortAs",
+            "organization.units",
+            "url",
+            "notes"
+        ),
         EntityKind.PLACE to listOf("address", "notes"),
         EntityKind.PET to listOf("species", "breed", "birth", "death", "notes")
     )
@@ -56,7 +61,9 @@ object EntityCore {
                 val org = asMap(c["organization"])
                 EntityForm(
                     sortAs = asString(org["sortAs"]),
-                    unitsText = asList(org["units"]).joinToString("\n") { asString(asMap(it)["name"]) },
+                    unitsText = asList(
+                        org["units"]
+                    ).joinToString("\n") { asString(asMap(it)["name"]) },
                     url = asString(c["url"]),
                     notes = asString(c["notes"])
                 )
@@ -161,6 +168,7 @@ object EntityCore {
         val c = core.orEmpty()
         return when (kind) {
             EntityKind.ORGANISATION -> asString(c["url"])
+
             EntityKind.PLACE -> {
                 val comps = components(c["address"])
                 listOf("locality", "country")
@@ -196,7 +204,13 @@ object EntityCore {
         val month = parts.getOrNull(1)?.toInt()
         val day = parts.getOrNull(2)?.toInt()
         if (month != null && month !in 1..12) return PartialParse.Invalid
-        if (day != null && month != null && day !in 1..daysInMonth(year, month)) return PartialParse.Invalid
+        if (day != null && month != null && day !in 1..daysInMonth(
+                year,
+                month
+            )
+        ) {
+            return PartialParse.Invalid
+        }
         return PartialParse.Value(PartialDate(year = year, month = month, day = day))
     }
 
@@ -241,8 +255,9 @@ object EntityCore {
 
     private fun asList(v: Any?): List<Any?> = (v as? List<Any?>).orEmpty()
 
-    private fun components(address: Any?): List<Pair<String, String>> =
-        asList(asMap(address)["components"]).map { asString(asMap(it)["kind"]) to asString(asMap(it)["value"]) }
+    private fun components(address: Any?): List<Pair<String, String>> = asList(
+        asMap(address)["components"]
+    ).map { asString(asMap(it)["kind"]) to asString(asMap(it)["value"]) }
 
     private fun fieldValue(core: Map<String, Any?>, field: String): Any? =
         if (field.startsWith("organization.")) {
@@ -253,9 +268,17 @@ object EntityCore {
 
     private fun isEmptyValue(field: String, v: Any?): Boolean = when {
         v == null || v == "" -> true
+
         v is List<*> -> v.isEmpty()
-        field == "address" -> asMap(v).let { components(it).isEmpty() && asString(it["full"]).isEmpty() }
-        v is Map<*, *> -> toPartial(v)?.let { it.year == null && it.month == null && it.day == null } ?: true
+
+        field == "address" -> asMap(
+            v
+        ).let { components(it).isEmpty() && asString(it["full"]).isEmpty() }
+
+        v is Map<*, *> -> toPartial(
+            v
+        )?.let { it.year == null && it.month == null && it.day == null } ?: true
+
         else -> false
     }
 

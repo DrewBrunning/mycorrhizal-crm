@@ -17,7 +17,6 @@ import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntityRestoreResponse
 import com.mycorrhizal.crm.model.network.FieldValue
-import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
@@ -129,9 +128,6 @@ class EntityRepositoryImpl @Inject constructor(
         apiClient.linkContactEntityFromExisting(contactId, input).also {
             if (it.isSuccess) refresh(listOf(contactId))
         }
-
-    override suspend fun graphEntities(from: String, depth: Int?): Result<GraphEntitiesResponse> =
-        apiClient.getGraphWithEntities(from, depth)
 
     /** Contact ids currently linked to [entityId]; empty on any failure (best effort). */
     private suspend fun linkedContactIds(entityId: String): List<Int> =

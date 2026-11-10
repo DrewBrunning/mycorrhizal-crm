@@ -512,6 +512,48 @@ class ContactDetailViewModelTest {
     }
 
     @Test
+    fun `entity-targeted custom field definitions never reach the contact page`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val record = ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+        coEvery { contactRepository.getContact(5) } returns Result.success(record)
+        coEvery { contactRepository.getDeviceLookupKey(5) } returns null
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        coEvery { fieldDefinitionRepository.list() } returns Result.success(
+            listOf(
+                FieldDefinition(
+                    id = "d1",
+                    label = "Coffee order",
+                    type = "string",
+                    target = "contact"
+                ),
+                FieldDefinition(id = "d2", label = "Legacy", type = "string", target = null),
+                FieldDefinition(
+                    id = "d3",
+                    label = "Industry",
+                    type = "string",
+                    target = "organisation"
+                ),
+                FieldDefinition(id = "d4", label = "Breed", type = "string", target = "pet")
+            )
+        )
+        coEvery { fieldDefinitionRepository.contactValues(5) } returns Result.success(emptyList())
+        coEvery { reminderRepository.listCompletions(any()) } returns Result.success(emptyList())
+        stubExternalLinks()
+        stubScore()
+        stubCounts()
+
+        val vm =
+            ContactDetailViewModel(
+                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                SavedStateHandle(mapOf("contactId" to 5))
+            )
+        advanceUntilIdle()
+
+        assertEquals(listOf("d1", "d2"), vm.uiState.value.fieldDefinitions.map { it.id })
+    }
+
+    @Test
     fun `a field-definitions fetch failure does not fail the contact load`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {

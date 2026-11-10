@@ -83,11 +83,7 @@ data class EntityDeleteResponse(
 )
 
 @JsonClass(generateAdapter = true)
-data class EntityRestoreSkip(
-    val table: String = "",
-    val reason: String = "",
-    val count: Int = 0
-)
+data class EntityRestoreSkip(val table: String = "", val reason: String = "", val count: Int = 0)
 
 @JsonClass(generateAdapter = true)
 data class EntityRestoreResponse(
@@ -113,7 +109,10 @@ data class EntityContactLink(
     val period: TemporalRange? = null,
     val sensitivity: String = EntitySensitivity.NORMAL
 ) {
-    val displayName: String get() = listOf(firstname, lastname).filter { it.isNotBlank() }.joinToString(" ")
+    val displayName: String get() = listOf(
+        firstname,
+        lastname
+    ).filter { it.isNotBlank() }.joinToString(" ")
 }
 
 @JsonClass(generateAdapter = true)
@@ -124,10 +123,7 @@ data class EntityContactsResponse(val contacts: List<EntityContactLink>? = null)
  * survivor field from the loser) or `survivor` (explicit no-op).
  */
 @JsonClass(generateAdapter = true)
-data class EntityMergeInput(
-    val into: String,
-    val resolutions: Map<String, String>? = null
-)
+data class EntityMergeInput(val into: String, val resolutions: Map<String, String>? = null)
 
 @JsonClass(generateAdapter = true)
 data class EntityMergeDemotion(
@@ -231,19 +227,11 @@ data class GraphEntityNode(
 
 /** Contact node (`c-<contactID>`) to entity node (`e-<entityID>`); no type, role or status. */
 @JsonClass(generateAdapter = true)
-data class GraphEntityEdge(
-    val id: String = "",
-    val source: String = "",
-    val target: String = ""
-)
+data class GraphEntityEdge(val id: String = "", val source: String = "", val target: String = "")
 
 /** A contact node of `GET /graph` (only the fields the entity overlay needs). */
 @JsonClass(generateAdapter = true)
-data class GraphContactNode(
-    val id: String = "",
-    val type: String = "",
-    val label: String = ""
-)
+data class GraphContactNode(val id: String = "", val type: String = "", val label: String = "")
 
 /** `GET /graph?include_entities=true` - the overlay keys only; traversal data stays in chains. */
 @JsonClass(generateAdapter = true)
@@ -361,3 +349,18 @@ fun isPeriodCurrent(range: TemporalRange?, year: Int, month: Int, day: Int): Boo
 /** True for a primary link whose period includes the given day - the links that project today. */
 fun EntityContactLink.projectsToday(year: Int, month: Int, day: Int): Boolean =
     isPrimary && isPeriodCurrent(period, year, month, day)
+
+/**
+ * The record as the contact cache may keep it: projected `ent-` entries (and periods keyed by
+ * them) removed. A projection is the server's read-time view of a link; caching it would let a
+ * cached contact diverge from the server after a link or entity change on another device, so only
+ * the contact's own values are ever persisted (issue #2302).
+ */
+fun ContactRecordResponse.withoutProjectedEntries(): ContactRecordResponse {
+    val stripped = ContactRecordInput(card = card, crm = crm).stripProjectedEntries()
+    return if (stripped.card === card && stripped.crm === crm) {
+        this
+    } else {
+        copy(card = stripped.card, crm = stripped.crm)
+    }
+}

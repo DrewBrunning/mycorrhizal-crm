@@ -57,16 +57,6 @@ import com.mycorrhizal.crm.model.network.ContactEntityLinkFromExistingInput
 import com.mycorrhizal.crm.model.network.ContactEntityLinkFromExistingResponse
 import com.mycorrhizal.crm.model.network.ContactEntityLinkInput
 import com.mycorrhizal.crm.model.network.ContactEntityLinksResponse
-import com.mycorrhizal.crm.model.network.Entity
-import com.mycorrhizal.crm.model.network.EntityContactLink
-import com.mycorrhizal.crm.model.network.EntityContactsResponse
-import com.mycorrhizal.crm.model.network.EntityDeleteResponse
-import com.mycorrhizal.crm.model.network.EntityInput
-import com.mycorrhizal.crm.model.network.EntityListResponse
-import com.mycorrhizal.crm.model.network.EntityMergeInput
-import com.mycorrhizal.crm.model.network.EntityMergeResponse
-import com.mycorrhizal.crm.model.network.EntityRestoreResponse
-import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactFieldValuesResponse
 import com.mycorrhizal.crm.model.network.ContactFieldVisibility
@@ -92,7 +82,6 @@ import com.mycorrhizal.crm.model.network.ContactTag
 import com.mycorrhizal.crm.model.network.ContactTagInput
 import com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse
 import com.mycorrhizal.crm.model.network.ContactTimelinePage
-import com.mycorrhizal.crm.model.network.stripProjectedEntries
 import com.mycorrhizal.crm.model.network.ContactsPage
 import com.mycorrhizal.crm.model.network.ConversationAgenda
 import com.mycorrhizal.crm.model.network.ConversationAgendaInput
@@ -127,6 +116,15 @@ import com.mycorrhizal.crm.model.network.DuplicateDismissalInput
 import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsInput
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
+import com.mycorrhizal.crm.model.network.Entity
+import com.mycorrhizal.crm.model.network.EntityContactLink
+import com.mycorrhizal.crm.model.network.EntityContactsResponse
+import com.mycorrhizal.crm.model.network.EntityDeleteResponse
+import com.mycorrhizal.crm.model.network.EntityInput
+import com.mycorrhizal.crm.model.network.EntityListResponse
+import com.mycorrhizal.crm.model.network.EntityMergeInput
+import com.mycorrhizal.crm.model.network.EntityMergeResponse
+import com.mycorrhizal.crm.model.network.EntityRestoreResponse
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -148,6 +146,7 @@ import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
+import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
 import com.mycorrhizal.crm.model.network.HideEmptyFieldsInput
 import com.mycorrhizal.crm.model.network.HideEmptyFieldsResponse
 import com.mycorrhizal.crm.model.network.Household
@@ -294,6 +293,7 @@ import com.mycorrhizal.crm.model.network.WebhookDelivery
 import com.mycorrhizal.crm.model.network.WebhookInput
 import com.mycorrhizal.crm.model.network.WebhookTestResponse
 import com.mycorrhizal.crm.model.network.WebhooksResponse
+import com.mycorrhizal.crm.model.network.stripProjectedEntries
 import com.squareup.moshi.Moshi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -1252,14 +1252,13 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         id: Int,
         input: ContactRecordInput,
         ifMatchRevision: Int? = null
-    ): Result<ContactRecordResponse> =
-        executePut(
-            "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id",
-            input.stripProjectedEntries(),
-            ifMatchRevision
-        ) { _, body ->
-            moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
-        }
+    ): Result<ContactRecordResponse> = executePut(
+        "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id",
+        input.stripProjectedEntries(),
+        ifMatchRevision
+    ) { _, body ->
+        moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
+    }
 
     // M24: top-level contact actions (delete/archive/unarchive/export). The
     // endpoints all pre-date the Android client (route table in
@@ -3440,7 +3439,12 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         val builder = "$PLACEHOLDER_ORIGIN$ENTITIES_PATH".toHttpUrl().newBuilder()
         kind?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("kind", it) }
         q?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("q", it) }
-        sensitivity?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("sensitivity", it) }
+        sensitivity?.takeIf { it.isNotBlank() }?.let {
+            builder.addQueryParameter(
+                "sensitivity",
+                it
+            )
+        }
         cursor?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("cursor", it) }
         limit?.let { builder.addQueryParameter("limit", it.toString()) }
         return executeGet(builder.build().toString()) { _, body ->
@@ -3471,7 +3475,10 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         }
 
     /** DELETE /api/v1/entities/{id} - soft delete cascading to its links; returns the counts. */
-    suspend fun deleteEntity(id: String, ifMatchRevision: Int? = null): Result<EntityDeleteResponse> =
+    suspend fun deleteEntity(
+        id: String,
+        ifMatchRevision: Int? = null
+    ): Result<EntityDeleteResponse> =
         executeDelete("$PLACEHOLDER_ORIGIN$ENTITIES_PATH/$id", ifMatchRevision) { _, body ->
             moshi.adapter(EntityDeleteResponse::class.java).fromJson(body)
         }
@@ -3565,7 +3572,10 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
      * (ADR 0043 decision 2). Never fed to traversal; the default `/graph` response is untouched
      * because this is the only caller that sets `include_entities`.
      */
-    suspend fun getGraphWithEntities(from: String, depth: Int? = null): Result<GraphEntitiesResponse> {
+    suspend fun getGraphWithEntities(
+        from: String,
+        depth: Int? = null
+    ): Result<GraphEntitiesResponse> {
         val builder = "$PLACEHOLDER_ORIGIN$GRAPH_PATH".toHttpUrl().newBuilder()
         builder.addQueryParameter("from", from)
         depth?.let { builder.addQueryParameter("depth", it.toString()) }

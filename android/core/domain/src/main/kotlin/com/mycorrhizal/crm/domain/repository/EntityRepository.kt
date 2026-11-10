@@ -15,7 +15,6 @@ import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntityRestoreResponse
 import com.mycorrhizal.crm.model.network.FieldValue
-import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
 
 /**
  * Reusable entities - organisations, places, pets (issue #2302, ADR 0043). Online-first and
@@ -50,7 +49,10 @@ interface EntityRepository {
 
     suspend fun fieldValues(id: String): Result<List<FieldValue>>
 
-    suspend fun replaceFieldValues(id: String, input: ContactFieldValuesInput): Result<List<FieldValue>>
+    suspend fun replaceFieldValues(
+        id: String,
+        input: ContactFieldValuesInput
+    ): Result<List<FieldValue>>
 
     suspend fun linksForContact(contactId: Int): Result<List<ContactEntityLink>>
 
@@ -71,7 +73,4 @@ interface EntityRepository {
         contactId: Int,
         input: ContactEntityLinkFromExistingInput
     ): Result<ContactEntityLinkFromExistingResponse>
-
-    /** The display-only entity overlay of the graph (opt-in; never affects traversal). */
-    suspend fun graphEntities(from: String, depth: Int?): Result<GraphEntitiesResponse>
 }

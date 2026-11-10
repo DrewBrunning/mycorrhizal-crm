@@ -134,7 +134,12 @@ class EntityLinksTest {
     @Test
     fun `a period is current unless it ended before today or starts after it`() {
         val today = Triple(2026, 11, 10)
-        fun current(range: TemporalRange?) = isPeriodCurrent(range, today.first, today.second, today.third)
+        fun current(range: TemporalRange?) = isPeriodCurrent(
+            range,
+            today.first,
+            today.second,
+            today.third
+        )
         assertTrue(current(null))
         assertTrue(current(TemporalRange()))
         assertTrue(current(TemporalRange(start = PartialDate(year = 2019))))
@@ -159,5 +164,24 @@ class EntityLinksTest {
         assertFalse(
             person(true, TemporalRange(end = PartialDate(year = 2020))).projectsToday(2026, 11, 10)
         )
+    }
+
+    @Test
+    fun `a record bound for the cache loses its projected entries but keeps its own`() {
+        val record = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                organizations = listOf(Organization(id = "o1"), Organization(id = "ent-L1")),
+                addresses = listOf(Address(id = "ent-L2"))
+            )
+        )
+        val cached = record.withoutProjectedEntries()
+        assertEquals(listOf("o1"), cached.card?.organizations?.map { it.id })
+        assertNull(cached.card?.addresses)
+        val plain = ContactRecordResponse(
+            id = 6,
+            card = Card(organizations = listOf(Organization(id = "o1")))
+        )
+        assertSame(plain, plain.withoutProjectedEntries())
     }
 }

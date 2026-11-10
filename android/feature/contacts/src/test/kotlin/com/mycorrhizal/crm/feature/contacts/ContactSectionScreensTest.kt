@@ -610,4 +610,32 @@ class ContactSectionScreensTest {
         )
         verify(exactly = 0) { vm.deletePersonalInfo(any()) }
     }
+
+    // --- Issue #2302 / ADR 0043: a projected `ent-` organization is read-only ---------------
+
+    @Test
+    fun `work shows a projected organization with its source chip and no edit or delete`() {
+        val vm = viewModel(
+            ContactSectionsUiState(
+                enabledFields = ContactFieldKey.entries.toSet(),
+                record = record(
+                    card = Card(
+                        organizations = listOf(
+                            Organization(id = "o1", name = "Globex"),
+                            Organization(id = "ent-l1", name = "Acme")
+                        )
+                    )
+                )
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactWorkScreen(onBack = {}, viewModel = vm) }
+        }
+        composeTestRule.onNodeWithText("Acme").assertIsDisplayed()
+        composeTestRule.onNodeWithText("from Acme").assertIsDisplayed()
+        // The contact's own organization keeps its controls; the projected one has none.
+        composeTestRule.onNodeWithTag("organization-edit-o1").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("organization-edit-ent-l1").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("organization-delete-ent-l1").assertDoesNotExist()
+    }
 }

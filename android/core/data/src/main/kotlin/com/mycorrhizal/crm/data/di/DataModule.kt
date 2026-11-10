@@ -49,6 +49,7 @@ import com.mycorrhizal.crm.data.repository.ContactTimelineRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.DuplicateRepositoryImpl
+import com.mycorrhizal.crm.data.repository.EntityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExportRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalIdentityRepositoryImpl
@@ -65,7 +66,6 @@ import com.mycorrhizal.crm.data.repository.MergeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NextcloudRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NotificationSettingsRepositoryImpl
-import com.mycorrhizal.crm.data.repository.EntityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.OccasionEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PaperlessRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PasskeyRepositoryImpl
@@ -111,6 +111,7 @@ import com.mycorrhizal.crm.domain.repository.ContactTimelineRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
 import com.mycorrhizal.crm.domain.repository.DuplicateRepository
+import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.domain.repository.ExportRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
@@ -128,7 +129,6 @@ import com.mycorrhizal.crm.domain.repository.MergeRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
-import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
 import com.mycorrhizal.crm.domain.repository.PasskeyRepository

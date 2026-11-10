@@ -53,12 +53,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.feature.contacts.entities.ProjectedEntryRow
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.Organization
 import com.mycorrhizal.crm.model.network.PersonalInfo
 import com.mycorrhizal.crm.model.network.PersonalInfoMeta
 import com.mycorrhizal.crm.model.network.Title
+import com.mycorrhizal.crm.model.network.isProjectedElementId
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFieldValue
 import com.mycorrhizal.crm.ui.R
@@ -756,6 +758,17 @@ fun ContactWorkScreen(
                     }
                 }
                 items(organizations, key = { it.id ?: it.name.orEmpty() }) { org ->
+                    // ADR 0043: a projected `ent-` organization is the linked entity's value, not
+                    // the contact's own: shown with its source chip and no edit or delete.
+                    if (isProjectedElementId(org.id)) {
+                        ProjectedEntryRow(
+                            title = org.name.orEmpty(),
+                            entityName = org.name,
+                            tag = "organization-projected-${org.id}",
+                            subtitle = org.units?.firstOrNull()?.name?.takeIf { it.isNotBlank() }
+                        )
+                        return@items
+                    }
                     val period = org.id?.let { id ->
                         record?.crm?.periods?.firstOrNull {
                             it.kind == "organization" &&

@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.contacts.entities
 
 import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.model.network.Entity
+import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.network.ApiError
@@ -27,13 +28,16 @@ class EntitiesViewModelTest {
 
     private val repository = mockk<EntityRepository>()
 
-    private fun page(vararg names: String, next: String? = null, kind: String = EntityKind.ORGANISATION) =
-        Result.success(
-            EntityListResponse(
-                entities = names.map { Entity(id = "id-$it", name = it, kind = kind) },
-                nextCursor = next
-            )
+    private fun page(
+        vararg names: String,
+        next: String? = null,
+        kind: String = EntityKind.ORGANISATION
+    ) = Result.success(
+        EntityListResponse(
+            entities = names.map { Entity(id = "id-$it", name = it, kind = kind) },
+            nextCursor = next
         )
+    )
 
     @Test
     fun `loads the organisations tab first`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -62,7 +66,14 @@ class EntitiesViewModelTest {
     fun `a slow response for the previous kind never overwrites the current one`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val slow = CompletableDeferred<Result<EntityListResponse>>()
-            coEvery { repository.list(EntityKind.ORGANISATION, null, null, any()) } coAnswers { slow.await() }
+            coEvery {
+                repository.list(
+                    EntityKind.ORGANISATION,
+                    null,
+                    null,
+                    any()
+                )
+            } coAnswers { slow.await() }
             coEvery { repository.list(EntityKind.PET, null, null, any()) } returns
                 page("Rex", kind = EntityKind.PET)
             val vm = EntitiesViewModel(repository)
@@ -94,7 +105,14 @@ class EntitiesViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list(EntityKind.ORGANISATION, null, null, any()) } returns
                 page("A", next = "c2")
-            coEvery { repository.list(EntityKind.ORGANISATION, null, "c2", any()) } returns page("B")
+            coEvery {
+                repository.list(
+                    EntityKind.ORGANISATION,
+                    null,
+                    "c2",
+                    any()
+                )
+            } returns page("B")
             val vm = EntitiesViewModel(repository)
             advanceUntilIdle()
             vm.loadMore()
@@ -119,5 +137,63 @@ class EntitiesViewModelTest {
             advanceUntilIdle()
             assertNull(vm.uiState.value.error)
             assertEquals(1, vm.uiState.value.entities.size)
+        }
+
+    @Test
+    fun `creating an entity of the shown kind adds it and reports done`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery {
+                repository.list(
+                    EntityKind.ORGANISATION,
+                    null,
+                    null,
+                    any()
+                )
+            } returns page("Acme")
+            val created = Entity(id = "e2", name = "Globex", kind = EntityKind.ORGANISATION)
+            coEvery {
+                repository.create(
+                    EntityInput(kind = EntityKind.ORGANISATION, name = "Globex")
+                )
+            } returns
+                Result.success(created)
+            val vm = EntitiesViewModel(repository)
+            advanceUntilIdle()
+            var saved: Entity? = null
+            vm.create(EntityInput(kind = EntityKind.ORGANISATION, name = "Globex")) { saved = it }
+            advanceUntilIdle()
+            assertEquals("e2", saved?.id)
+            assertEquals(listOf("Acme", "Globex"), vm.uiState.value.entities.map { it.name })
+            assertFalse(vm.uiState.value.isSaving)
+        }
+
+    @Test
+    fun `a failed create keeps the form open with the error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list(any(), any(), any(), any()) } returns page("Acme")
+            coEvery { repository.create(any()) } returns
+                Result.failure(ApiError.Unknown(RuntimeException("x")))
+            val vm = EntitiesViewModel(repository)
+            advanceUntilIdle()
+            var saved = false
+            vm.create(EntityInput(kind = EntityKind.ORGANISATION, name = "Globex")) { saved = true }
+            advanceUntilIdle()
+            assertFalse(saved)
+            assertNotNull(vm.uiState.value.formError)
+            vm.onFormDismissed()
+            assertNull(vm.uiState.value.formError)
+        }
+
+    @Test
+    fun `coming back to the screen re-reads the list, but not before the first load`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list(any(), any(), any(), any()) } returns page("Acme")
+            val vm = EntitiesViewModel(repository)
+            vm.onResumed()
+            advanceUntilIdle()
+            coVerify(exactly = 1) { repository.list(any(), any(), any(), any()) }
+            vm.onResumed()
+            advanceUntilIdle()
+            coVerify(exactly = 2) { repository.list(any(), any(), any(), any()) }
         }
 }

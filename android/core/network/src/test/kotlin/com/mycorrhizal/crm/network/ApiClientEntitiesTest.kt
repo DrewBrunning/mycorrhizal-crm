@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.network
 
+import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactEntityLinkFromExistingInput
 import com.mycorrhizal.crm.model.network.ContactEntityLinkInput
 import com.mycorrhizal.crm.model.network.ContactEntityLinkSource
@@ -10,7 +11,6 @@ import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.FieldValueInput
 import com.mycorrhizal.crm.model.network.Organization
-import com.mycorrhizal.crm.model.network.Card
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.kotlin.reflect.KotlinJsonAdapterFactory
 import kotlinx.coroutines.runBlocking
@@ -159,7 +159,10 @@ class ApiClientEntitiesTest {
 
         enqueue("""{"field_values":null}""")
         assertTrue(client.listEntityFieldValues("e1").getOrThrow().fieldValues.isNullOrEmpty())
-        assertEquals("/api/v1/entities/e1/field-values", server.takeRequest().requestUrl?.encodedPath)
+        assertEquals(
+            "/api/v1/entities/e1/field-values",
+            server.takeRequest().requestUrl?.encodedPath
+        )
 
         enqueue("""{"message":"ok","field_values":[]}""")
         client.replaceEntityFieldValues(
@@ -175,7 +178,10 @@ class ApiClientEntitiesTest {
     fun `contact entity link CRUD hits the nested routes`() = runBlocking {
         enqueue("""{"links":[$linkJson]}""")
         val links = client.listContactEntityLinks(5).getOrThrow()
-        assertEquals("/api/v1/contacts/5/entity-links", server.takeRequest().requestUrl?.encodedPath)
+        assertEquals(
+            "/api/v1/contacts/5/entity-links",
+            server.takeRequest().requestUrl?.encodedPath
+        )
         assertEquals("ORG", links.single().projectsAs)
 
         enqueue(linkJson, 201)
@@ -188,7 +194,12 @@ class ApiClientEntitiesTest {
         assertTrue(post.body.readUtf8().contains(""""entity_id":"e1""""))
 
         enqueue(linkJson)
-        client.updateContactEntityLink(5, "l1", ContactEntityLinkInput(role = "owner"), 2).getOrThrow()
+        client.updateContactEntityLink(
+            5,
+            "l1",
+            ContactEntityLinkInput(role = "owner"),
+            2
+        ).getOrThrow()
         val put = server.takeRequest()
         assertEquals("PUT", put.method)
         assertEquals("/api/v1/contacts/5/entity-links/l1", put.requestUrl?.encodedPath)
@@ -201,7 +212,9 @@ class ApiClientEntitiesTest {
 
     @Test
     fun `adopt and link-from-existing hit their own routes`() = runBlocking {
-        enqueue("""{"link":$linkJson,"adopted":true,"element_kind":"organization","element_id":"o9"}""")
+        enqueue(
+            """{"link":$linkJson,"adopted":true,"element_kind":"organization","element_id":"o9"}"""
+        )
         val adopted = client.adoptContactEntityLink(5, "l1").getOrThrow()
         val adopt = server.takeRequest()
         assertEquals("POST", adopt.method)
@@ -218,7 +231,10 @@ class ApiClientEntitiesTest {
             )
         ).getOrThrow()
         val request = server.takeRequest()
-        assertEquals("/api/v1/contacts/5/entity-links/from-existing", request.requestUrl?.encodedPath)
+        assertEquals(
+            "/api/v1/contacts/5/entity-links/from-existing",
+            request.requestUrl?.encodedPath
+        )
         val body = request.body.readUtf8()
         assertTrue(body.contains(""""source":{"kind":"organization","id":"o1"}"""))
         assertFalse(body.contains("entity_id"))

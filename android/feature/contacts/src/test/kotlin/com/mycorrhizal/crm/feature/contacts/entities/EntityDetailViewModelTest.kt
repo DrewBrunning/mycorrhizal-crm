@@ -53,8 +53,17 @@ class EntityDetailViewModelTest {
         projectionCount = 1
     )
 
-    private fun person(contactId: Int, linkId: String, primary: Boolean, period: TemporalRange? = null) =
-        EntityContactLink(linkId = linkId, contactId = contactId, isPrimary = primary, period = period)
+    private fun person(
+        contactId: Int,
+        linkId: String,
+        primary: Boolean,
+        period: TemporalRange? = null
+    ) = EntityContactLink(
+        linkId = linkId,
+        contactId = contactId,
+        isPrimary = primary,
+        period = period
+    )
 
     @Before
     fun setUp() {
@@ -65,7 +74,11 @@ class EntityDetailViewModelTest {
     }
 
     private fun vm(): EntityDetailViewModel {
-        val vm = EntityDetailViewModel(SavedStateHandle(mapOf("entityId" to "e1")), repository, definitions)
+        val vm = EntityDetailViewModel(
+            SavedStateHandle(mapOf("entityId" to "e1")),
+            repository,
+            definitions
+        )
         vm.todayProvider = { LocalDate.of(2026, 11, 10) }
         return vm
     }
@@ -73,7 +86,11 @@ class EntityDetailViewModelTest {
     @Test
     fun `loads the entity, its people and only the custom fields of its kind`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { repository.contacts("e1") } returns Result.success(listOf(person(7, "l1", true)))
+            coEvery {
+                repository.contacts(
+                    "e1"
+                )
+            } returns Result.success(listOf(person(7, "l1", true)))
             coEvery { definitions.list(any()) } returns Result.success(
                 listOf(
                     FieldDefinition(id = "d1", label = "Industry", target = "organisation"),
@@ -104,7 +121,9 @@ class EntityDetailViewModelTest {
     }
 
     @Test
-    fun `saving sends the revision and replaces the entity`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `saving sends the revision and replaces the entity`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.update("e1", any(), 3) } returns
             Result.success(acme.copy(name = "Acme 2", revision = 4))
         val vm = vm()
@@ -118,7 +137,9 @@ class EntityDetailViewModelTest {
     }
 
     @Test
-    fun `a failed save keeps the form open with the error`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed save keeps the form open with the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.update(any(), any(), any()) } returns
             Result.failure(ApiError.Unknown(RuntimeException("x")))
         val vm = vm()
@@ -134,7 +155,12 @@ class EntityDetailViewModelTest {
     @Test
     fun `delete without adopt-all only deletes and leaves a restore state`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { repository.delete("e1", 3) } returns Result.success(EntityDeleteResponse(linkCount = 2))
+            coEvery {
+                repository.delete(
+                    "e1",
+                    3
+                )
+            } returns Result.success(EntityDeleteResponse(linkCount = 2))
             val vm = vm()
             advanceUntilIdle()
             vm.delete(adoptAll = false)
@@ -172,7 +198,12 @@ class EntityDetailViewModelTest {
     fun `if any adopt fails nothing is deleted`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { repository.contacts("e1") } returns
             Result.success(listOf(person(7, "l7", true), person(8, "l8", true)))
-        coEvery { repository.adopt(7, "l7") } returns Result.success(ContactEntityLinkAdoptResponse())
+        coEvery {
+            repository.adopt(
+                7,
+                "l7"
+            )
+        } returns Result.success(ContactEntityLinkAdoptResponse())
         coEvery { repository.adopt(8, "l8") } returns
             Result.failure(ApiError.Unknown(RuntimeException("x")))
         val vm = vm()
@@ -185,7 +216,9 @@ class EntityDetailViewModelTest {
     }
 
     @Test
-    fun `a pet never adopts because it never projects`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a pet never adopts because it never projects`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.get("e1") } returns Result.success(acme.copy(kind = EntityKind.PET))
         coEvery { repository.contacts("e1") } returns Result.success(listOf(person(7, "l7", true)))
         coEvery { repository.delete("e1", 3) } returns Result.success(EntityDeleteResponse())
@@ -202,7 +235,11 @@ class EntityDetailViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.delete("e1", 3) } returns Result.success(EntityDeleteResponse())
             coEvery { repository.restore("e1") } returns Result.success(
-                EntityRestoreResponse(entity = acme.copy(revision = 5), sameNameLive = true, linksRevived = 2)
+                EntityRestoreResponse(
+                    entity = acme.copy(revision = 5),
+                    sameNameLive = true,
+                    linksRevived = 2
+                )
             )
             val vm = vm()
             advanceUntilIdle()
@@ -220,8 +257,15 @@ class EntityDetailViewModelTest {
     fun `merging this entity into another leaves a merged state that can be undone`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val other = Entity(id = "e2", kind = EntityKind.ORGANISATION, name = "Acme Inc")
-            coEvery { repository.merge("e1", EntityMergeInput("e2", mapOf("notes" to "loser"))) } returns
-                Result.success(EntityMergeResponse(survivor = other, loserId = "e1", linksRepointed = 2))
+            coEvery {
+                repository.merge(
+                    "e1",
+                    EntityMergeInput("e2", mapOf("notes" to "loser"))
+                )
+            } returns
+                Result.success(
+                    EntityMergeResponse(survivor = other, loserId = "e1", linksRepointed = 2)
+                )
             coEvery { repository.restore("e1") } returns
                 Result.success(EntityRestoreResponse(entity = acme, mergedInto = "e2"))
             val vm = vm()
@@ -244,7 +288,9 @@ class EntityDetailViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             val other = Entity(id = "e2", kind = EntityKind.ORGANISATION, name = "Acme Inc")
             coEvery { repository.merge("e2", EntityMergeInput("e1", null)) } returns
-                Result.success(EntityMergeResponse(survivor = acme, loserId = "e2", linksRepointed = 1))
+                Result.success(
+                    EntityMergeResponse(survivor = acme, loserId = "e2", linksRepointed = 1)
+                )
             val vm = vm()
             advanceUntilIdle()
             vm.merge(other, keepThis = true, fill = emptySet())
@@ -257,7 +303,14 @@ class EntityDetailViewModelTest {
     @Test
     fun `merge candidates are the same kind, searched by name, minus this entity`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { repository.list(EntityKind.ORGANISATION, "ac", null, any()) } returns Result.success(
+            coEvery {
+                repository.list(
+                    EntityKind.ORGANISATION,
+                    "ac",
+                    null,
+                    any()
+                )
+            } returns Result.success(
                 EntityListResponse(entities = listOf(acme, Entity(id = "e2", name = "Acme Inc")))
             )
             val vm = vm()
@@ -289,7 +342,10 @@ class EntityDetailViewModelTest {
             advanceUntilIdle()
             vm.saveFieldValue("d2", "B")
             advanceUntilIdle()
-            assertEquals(setOf("d1", "d2"), sent.single().fieldValues.map { it.fieldDefinitionId }.toSet())
+            assertEquals(
+                setOf("d1", "d2"),
+                sent.single().fieldValues.map { it.fieldDefinitionId }.toSet()
+            )
             assertEquals(mapOf("d1" to "A", "d2" to "B"), vm.uiState.value.fieldValues)
         }
 }

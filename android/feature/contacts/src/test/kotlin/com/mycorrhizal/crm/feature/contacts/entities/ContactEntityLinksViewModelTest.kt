@@ -120,8 +120,14 @@ class ContactEntityLinksViewModelTest {
         }
 
     @Test
-    fun `a failed entity creation never creates a link`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { repository.create(any()) } returns Result.failure(ApiError.Unknown(RuntimeException("x")))
+    fun `a failed entity creation never creates a link`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery {
+            repository.create(
+                any()
+            )
+        } returns Result.failure(ApiError.Unknown(RuntimeException("x")))
         val vm = vm()
         advanceUntilIdle()
         var done = false
@@ -140,7 +146,13 @@ class ContactEntityLinksViewModelTest {
             val vm = vm()
             advanceUntilIdle()
             vm.link(
-                LinkForm(entityId = "e2", kind = EntityKind.ORGANISATION, role = "employee", startYear = "2019", endYear = "2024")
+                LinkForm(
+                    entityId = "e2",
+                    kind = EntityKind.ORGANISATION,
+                    role = "employee",
+                    startYear = "2019",
+                    endYear = "2024"
+                )
             ) {}
             advanceUntilIdle()
             assertEquals(
@@ -149,7 +161,13 @@ class ContactEntityLinksViewModelTest {
             )
             var done = false
             vm.link(
-                LinkForm(entityId = "e2", kind = EntityKind.ORGANISATION, role = "employee", startYear = "2024", endYear = "2019")
+                LinkForm(
+                    entityId = "e2",
+                    kind = EntityKind.ORGANISATION,
+                    role = "employee",
+                    startYear = "2024",
+                    endYear = "2019"
+                )
             ) { done = true }
             advanceUntilIdle()
             assertFalse(done)
@@ -217,7 +235,8 @@ class ContactEntityLinksViewModelTest {
     @Test
     fun `linking an own value defaults to creating a new entity and sends the element id`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val sent = mutableListOf<com.mycorrhizal.crm.model.network.ContactEntityLinkFromExistingInput>()
+            val sent =
+                mutableListOf<com.mycorrhizal.crm.model.network.ContactEntityLinkFromExistingInput>()
             coEvery { repository.linkFromExisting(5, capture(sent)) } returns Result.success(
                 ContactEntityLinkFromExistingResponse(
                     link = acmeLink,
@@ -245,7 +264,8 @@ class ContactEntityLinksViewModelTest {
     @Test
     fun `an own value without an element id is addressed by its index`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            val sent = mutableListOf<com.mycorrhizal.crm.model.network.ContactEntityLinkFromExistingInput>()
+            val sent =
+                mutableListOf<com.mycorrhizal.crm.model.network.ContactEntityLinkFromExistingInput>()
             coEvery { repository.linkFromExisting(5, capture(sent)) } returns Result.success(
                 ContactEntityLinkFromExistingResponse(link = acmeLink, entity = Entity(name = "X"))
             )
@@ -284,7 +304,9 @@ class ContactEntityLinksViewModelTest {
     fun `entity search for the link picker is scoped to the chosen kind`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list(EntityKind.PLACE, "ca", null, any()) } returns Result.success(
-                EntityListResponse(entities = listOf(Entity(id = "p1", name = "Cabin", kind = EntityKind.PLACE)))
+                EntityListResponse(
+                    entities = listOf(Entity(id = "p1", name = "Cabin", kind = EntityKind.PLACE))
+                )
             )
             val vm = vm()
             advanceUntilIdle()

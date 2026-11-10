@@ -41,18 +41,33 @@ class EntityRepositoryImplTest {
         repository = EntityRepositoryImpl(api, contacts)
     }
 
-    private fun person(contactId: Int) = EntityContactLink(linkId = "l$contactId", contactId = contactId)
+    private fun person(contactId: Int) = EntityContactLink(
+        linkId = "l$contactId",
+        contactId = contactId
+    )
 
     @Test
     fun `creating a link refreshes that contact`() = runTest {
-        coEvery { api.createContactEntityLink(5, any()) } returns Result.success(ContactEntityLink(id = "l1"))
+        coEvery {
+            api.createContactEntityLink(
+                5,
+                any()
+            )
+        } returns Result.success(ContactEntityLink(id = "l1"))
         repository.createLink(5, ContactEntityLinkInput(entityId = "e1", role = "employee"))
         coVerify(exactly = 1) { contacts.getContact(5) }
     }
 
     @Test
     fun `editing, removing and adopting a link refresh the contact too`() = runTest {
-        coEvery { api.updateContactEntityLink(5, "l1", any(), 2) } returns Result.success(ContactEntityLink())
+        coEvery {
+            api.updateContactEntityLink(
+                5,
+                "l1",
+                any(),
+                2
+            )
+        } returns Result.success(ContactEntityLink())
         coEvery { api.deleteContactEntityLink(5, "l1") } returns Result.success(Unit)
         coEvery { api.adoptContactEntityLink(5, "l1") } returns
             Result.success(ContactEntityLinkAdoptResponse(adopted = true))
@@ -64,22 +79,43 @@ class EntityRepositoryImplTest {
 
     @Test
     fun `a failed link write does not refresh anything`() = runTest {
-        coEvery { api.deleteContactEntityLink(5, "l1") } returns Result.failure(ApiError.Unknown(RuntimeException("x")))
+        coEvery {
+            api.deleteContactEntityLink(
+                5,
+                "l1"
+            )
+        } returns Result.failure(ApiError.Unknown(RuntimeException("x")))
         assertTrue(repository.deleteLink(5, "l1").isFailure)
         coVerify(exactly = 0) { contacts.getContact(any()) }
     }
 
     @Test
     fun `a failed refresh never fails the write`() = runTest {
-        coEvery { api.createContactEntityLink(5, any()) } returns Result.success(ContactEntityLink(id = "l1"))
-        coEvery { contacts.getContact(5) } returns Result.failure(ApiError.Network(java.io.IOException()))
-        val result = repository.createLink(5, ContactEntityLinkInput(entityId = "e1", role = "owner"))
+        coEvery {
+            api.createContactEntityLink(
+                5,
+                any()
+            )
+        } returns Result.success(ContactEntityLink(id = "l1"))
+        coEvery {
+            contacts.getContact(
+                5
+            )
+        } returns Result.failure(ApiError.Network(java.io.IOException()))
+        val result = repository.createLink(
+            5,
+            ContactEntityLinkInput(entityId = "e1", role = "owner")
+        )
         assertEquals("l1", result.getOrThrow().id)
     }
 
     @Test
     fun `renaming an entity refreshes the contacts linked to it`() = runTest {
-        coEvery { api.listEntityContacts("e1") } returns Result.success(listOf(person(7), person(8)))
+        coEvery {
+            api.listEntityContacts(
+                "e1"
+            )
+        } returns Result.success(listOf(person(7), person(8)))
         coEvery { api.updateEntity("e1", any(), 3) } returns Result.success(Entity(id = "e1"))
         repository.update("e1", EntityInput(name = "Acme 2"), 3)
         coVerify { contacts.getContact(7) }
@@ -87,16 +123,27 @@ class EntityRepositoryImplTest {
     }
 
     @Test
-    fun `deleting an entity refreshes the contacts it was linked to, only after it succeeds`() = runTest {
-        coEvery { api.listEntityContacts("e1") } returns Result.success(listOf(person(7)))
-        coEvery { api.deleteEntity("e1", 3) } returns Result.failure(ApiError.Unknown(RuntimeException("x")))
-        assertTrue(repository.delete("e1", 3).isFailure)
-        coVerify(exactly = 0) { contacts.getContact(any()) }
+    fun `deleting an entity refreshes the contacts it was linked to, only after it succeeds`() =
+        runTest {
+            coEvery { api.listEntityContacts("e1") } returns Result.success(listOf(person(7)))
+            coEvery {
+                api.deleteEntity(
+                    "e1",
+                    3
+                )
+            } returns Result.failure(ApiError.Unknown(RuntimeException("x")))
+            assertTrue(repository.delete("e1", 3).isFailure)
+            coVerify(exactly = 0) { contacts.getContact(any()) }
 
-        coEvery { api.deleteEntity("e1", 3) } returns Result.success(EntityDeleteResponse(linkCount = 1))
-        repository.delete("e1", 3)
-        coVerify(exactly = 1) { contacts.getContact(7) }
-    }
+            coEvery {
+                api.deleteEntity(
+                    "e1",
+                    3
+                )
+            } returns Result.success(EntityDeleteResponse(linkCount = 1))
+            repository.delete("e1", 3)
+            coVerify(exactly = 1) { contacts.getContact(7) }
+        }
 
     @Test
     fun `merging refreshes the loser's contacts`() = runTest {
@@ -108,7 +155,11 @@ class EntityRepositoryImplTest {
 
     @Test
     fun `restoring refreshes the revived links' contacts`() = runTest {
-        coEvery { api.restoreEntity("e1") } returns Result.success(EntityRestoreResponse(linksRevived = 1))
+        coEvery {
+            api.restoreEntity(
+                "e1"
+            )
+        } returns Result.success(EntityRestoreResponse(linksRevived = 1))
         coEvery { api.listEntityContacts("e1") } returns Result.success(listOf(person(7)))
         repository.restore("e1")
         coVerify(exactly = 1) { contacts.getContact(7) }
@@ -120,6 +171,8 @@ class EntityRepositoryImplTest {
             Result.success((1..120).map { person(it) })
         coEvery { api.updateEntity("e1", any(), null) } returns Result.success(Entity(id = "e1"))
         repository.update("e1", EntityInput(name = "x"), null)
-        coVerify(exactly = EntityRepositoryImpl.MAX_REFRESHED_CONTACTS) { contacts.getContact(any()) }
+        coVerify(
+            exactly = EntityRepositoryImpl.MAX_REFRESHED_CONTACTS
+        ) { contacts.getContact(any()) }
     }
 }

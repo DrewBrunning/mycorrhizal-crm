@@ -110,7 +110,9 @@ class EntityCoreTest {
         val existing = mapOf("birth" to mapOf("year" to 2019.0, "month" to 4.0))
         val form = EntityCore.toForm(EntityKind.PET, existing)
         assertEquals("2019-04", form.birth)
-        val core = ok(EntityCore.toCore(EntityKind.PET, "Rex", form.copy(species = "Cat"), existing))
+        val core = ok(
+            EntityCore.toCore(EntityKind.PET, "Rex", form.copy(species = "Cat"), existing)
+        )
         assertEquals(mapOf("year" to 2019L, "month" to 4L), core["birth"])
     }
 
@@ -120,7 +122,10 @@ class EntityCoreTest {
         assertEquals("2019", EntityCore.formatPartial(PartialDate(year = 2019)))
         assertEquals("2019-04-09", EntityCore.formatPartial(PartialDate(2019, 4, 9)))
         assertEquals(PartialParse.Blank, EntityCore.parsePartial("  "))
-        assertEquals(PartialParse.Value(PartialDate(2019, 4, 9)), EntityCore.parsePartial("2019-04-09"))
+        assertEquals(
+            PartialParse.Value(PartialDate(2019, 4, 9)),
+            EntityCore.parsePartial("2019-04-09")
+        )
         assertEquals(PartialParse.Value(PartialDate(year = 2019)), EntityCore.parsePartial("2019"))
         assertEquals(PartialParse.Invalid, EntityCore.parsePartial("20x9"))
         assertEquals(PartialParse.Invalid, EntityCore.parsePartial("2019-4"))

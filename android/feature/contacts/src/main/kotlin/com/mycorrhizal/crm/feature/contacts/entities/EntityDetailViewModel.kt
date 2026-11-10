@@ -85,8 +85,15 @@ class EntityDetailViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(EntityDetailUiState())
     val uiState: StateFlow<EntityDetailUiState> = _uiState.asStateFlow()
 
+    private var loadedOnce = false
+
     init {
         load()
+    }
+
+    /** Back on this page (e.g. after linking from a contact): re-read people and counts. */
+    fun onResumed() {
+        if (loadedOnce && !_uiState.value.isLoading && !_uiState.value.deleted) load()
     }
 
     fun load() {
@@ -95,10 +102,15 @@ class EntityDetailViewModel @Inject constructor(
             val result = repository.get(entityId)
             val entity = result.getOrNull()
             if (entity != null) {
+                loadedOnce = true
                 _uiState.update { it.copy(entity = entity, isLoading = false) }
                 loadRelated(entity)
             } else {
-                val error = (result.exceptionOrNull() ?: IllegalStateException()).toApiError()
+                val error = (
+                    result.exceptionOrNull() ?: IllegalStateException(
+                        "entity load failed"
+                    )
+                    ).toApiError()
                 val missing = error is ApiError.Client && error.code == NOT_FOUND
                 _uiState.update {
                     it.copy(
@@ -113,7 +125,14 @@ class EntityDetailViewModel @Inject constructor(
 
     private suspend fun loadRelated(entity: Entity) {
         repository.contacts(entity.id).foldApiError(
-            onSuccess = { people -> _uiState.update { it.copy(people = people, peopleFailed = false) } },
+            onSuccess = { people ->
+                _uiState.update {
+                    it.copy(
+                        people = people,
+                        peopleFailed = false
+                    )
+                }
+            },
             onError = { _uiState.update { it.copy(peopleFailed = true) } }
         )
         // Custom fields are best-effort, like the contact page: a failure leaves the section out.
@@ -170,7 +189,13 @@ class EntityDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(savingFieldDefinitionId = definitionId, error = null) }
             val current = _uiState.value.fieldValues
-            val next = if (newValue == null) current - definitionId else current + (definitionId to newValue)
+            val next = if (newValue ==
+                null
+            ) {
+                current - definitionId
+            } else {
+                current + (definitionId to newValue)
+            }
             val input = ContactFieldValuesInput(
                 fieldValues = next.map { (id, value) -> FieldValueInput(id, value) }
             )
@@ -225,7 +250,14 @@ class EntityDetailViewModel @Inject constructor(
             }
             repository.delete(entity.id, entity.revision).foldApiError(
                 onSuccess = { _uiState.update { it.copy(isDeleting = false, deleted = true) } },
-                onError = { error -> _uiState.update { it.copy(isDeleting = false, error = error) } }
+                onError = { error ->
+                    _uiState.update {
+                        it.copy(
+                            isDeleting = false,
+                            error = error
+                        )
+                    }
+                }
             )
         }
     }
@@ -282,7 +314,10 @@ class EntityDetailViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 mergeCandidatesLoading = false,
-                                mergeCandidates = page.entitiesOrEmpty.filter { c -> c.id != entity.id }
+                                mergeCandidates = page.entitiesOrEmpty.filter { c ->
+                                    c.id !=
+                                        entity.id
+                                }
                             )
                         }
                     },
@@ -304,7 +339,10 @@ class EntityDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isMerging = true, mergeError = null) }
             val resolutions = fill.associateWith { "loser" }.ifEmpty { null }
-            repository.merge(loser.id, EntityMergeInput(into = survivor.id, resolutions = resolutions))
+            repository.merge(
+                loser.id,
+                EntityMergeInput(into = survivor.id, resolutions = resolutions)
+            )
                 .foldApiError(
                     onSuccess = { response ->
                         _uiState.update {

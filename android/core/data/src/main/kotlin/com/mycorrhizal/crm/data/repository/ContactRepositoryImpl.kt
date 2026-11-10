@@ -13,6 +13,7 @@ import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ContactTargetClosenessResponse
 import com.mycorrhizal.crm.model.network.ContactsPage as NetworkContactsPage
+import com.mycorrhizal.crm.model.network.withoutProjectedEntries
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
@@ -464,7 +465,11 @@ class ContactRepositoryImpl @Inject constructor(
         deviceLookupKey = deviceLookupKey
     )
 
-    private fun ContactRecordResponse.toCached(): CachedContact = CachedContact(
+    private fun ContactRecordResponse.toCached(): CachedContact =
+        withoutProjectedEntries().toCachedOwn()
+
+    // ADR 0043: only the contact's own values are cached (see [withoutProjectedEntries]).
+    private fun ContactRecordResponse.toCachedOwn(): CachedContact = CachedContact(
         id = id,
         uid = vcardUid,
         firstname = card?.name?.components?.firstOrNull { it.kind == "given" }?.value,

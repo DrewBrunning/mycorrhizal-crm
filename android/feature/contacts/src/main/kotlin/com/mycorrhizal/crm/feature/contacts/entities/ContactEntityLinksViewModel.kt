@@ -91,8 +91,15 @@ class ContactEntityLinksViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ContactEntityLinksUiState())
     val uiState: StateFlow<ContactEntityLinksUiState> = _uiState.asStateFlow()
 
+    private var loadedOnce = false
+
     init {
         load()
+    }
+
+    /** Back on this screen (e.g. after editing a link's entity): re-read. */
+    fun onResumed() {
+        if (loadedOnce && !_uiState.value.isLoading) load()
     }
 
     fun load() {
@@ -100,6 +107,7 @@ class ContactEntityLinksViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             reloadLinks()
             reloadOwnValues()
+            loadedOnce = true
             _uiState.update { it.copy(isLoading = false) }
         }
     }
@@ -187,7 +195,11 @@ class ContactEntityLinksViewModel @Inject constructor(
         )
         val entity = result.getOrNull()
         if (entity == null) {
-            val error = (result.exceptionOrNull() ?: IllegalStateException()).toApiError()
+            val error = (
+                result.exceptionOrNull() ?: IllegalStateException(
+                    "entity create failed"
+                )
+                ).toApiError()
             _uiState.update { it.copy(isSaving = false, formError = error) }
         }
         return entity?.id
@@ -198,7 +210,14 @@ class ContactEntityLinksViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = false, conflict = true) }
         } else {
             _uiState.update {
-                if (form) it.copy(isSaving = false, formError = error) else it.copy(isSaving = false, error = error)
+                if (form) {
+                    it.copy(
+                        isSaving = false,
+                        formError = error
+                    )
+                } else {
+                    it.copy(isSaving = false, error = error)
+                }
             }
         }
     }
@@ -231,7 +250,10 @@ class ContactEntityLinksViewModel @Inject constructor(
             repository.deleteLink(contactId, link.id).foldInline(
                 onSuccess = {
                     _uiState.update {
-                        it.copy(isSaving = false, links = it.links.filterNot { l -> l.id == link.id })
+                        it.copy(
+                            isSaving = false,
+                            links = it.links.filterNot { l -> l.id == link.id }
+                        )
                     }
                     reloadOwnValues()
                 },
@@ -258,12 +280,7 @@ class ContactEntityLinksViewModel @Inject constructor(
      * Link one of the contact's own values. Defaults to creating a new entity from it
      * ([existingEntityId] null); the contact's own value is never removed or rewritten.
      */
-    fun linkOwnValue(
-        value: OwnValue,
-        existingEntityId: String?,
-        role: String,
-        onDone: () -> Unit
-    ) {
+    fun linkOwnValue(value: OwnValue, existingEntityId: String?, role: String, onDone: () -> Unit) {
         if (_uiState.value.isSaving) return
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, formError = null) }
@@ -282,7 +299,10 @@ class ContactEntityLinksViewModel @Inject constructor(
             ).foldInline(
                 onSuccess = { response ->
                     _uiState.update {
-                        it.copy(isSaving = false, linkedOwnName = response.entity?.name ?: value.label)
+                        it.copy(
+                            isSaving = false,
+                            linkedOwnName = response.entity?.name ?: value.label
+                        )
                     }
                     reloadLinks()
                     reloadOwnValues()
@@ -298,7 +318,12 @@ class ContactEntityLinksViewModel @Inject constructor(
         _uiState.update { it.copy(ownMatch = null) }
         if (value.kind != "organization" || value.label.isBlank()) return
         viewModelScope.launch {
-            repository.list(EntityKind.ORGANISATION, value.label, null, SEARCH_PAGE_SIZE).foldInline(
+            repository.list(
+                EntityKind.ORGANISATION,
+                value.label,
+                null,
+                SEARCH_PAGE_SIZE
+            ).foldInline(
                 onSuccess = { page ->
                     val match = page.entitiesOrEmpty.firstOrNull {
                         it.name.trim().equals(value.label.trim(), ignoreCase = true)
@@ -315,7 +340,12 @@ class ContactEntityLinksViewModel @Inject constructor(
             _uiState.update { it.copy(searching = true) }
             repository.list(kind, query.trim().ifEmpty { null }, null, SEARCH_PAGE_SIZE).foldInline(
                 onSuccess = { page ->
-                    _uiState.update { it.copy(searching = false, searchResults = page.entitiesOrEmpty) }
+                    _uiState.update {
+                        it.copy(
+                            searching = false,
+                            searchResults = page.entitiesOrEmpty
+                        )
+                    }
                 },
                 onError = { _uiState.update { it.copy(searching = false) } }
             )
