@@ -2342,6 +2342,12 @@
       "branches": 100,
       "branchesTotal": 2
     },
+    "src/utils/circleName.ts": {
+      "lines": 100,
+      "linesTotal": 3,
+      "branches": 80,
+      "branchesTotal": 5
+    },
     "src/utils/clipboard.ts": {
       "lines": 94.44,
       "linesTotal": 18,
