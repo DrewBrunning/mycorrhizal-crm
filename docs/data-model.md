@@ -59,6 +59,18 @@ Reminders can also be delivered by ntfy, Gotify or browser push. Those channels 
 When a reminder is due, you can complete or skip it. The difference is that selecting **Complete** creates a completion entry on the related contact's timeline while the **Skip** option directly schedules the next reminder occurrence (if there is one) without creating a timeline entry. Overdue reminders remain visible until they are completed or skipped though they will not show up in the reminder emails  again.
 
 
+### Activities, occasions and reminders
+
+These three are related but different. Pick by asking whether the thing already happened, is a standing obligation or event, or is just a nudge.
+
+| | What it is | When to use it |
+|---|---|---|
+| **Activity** | A record of something that already happened: a call, a coffee, a message. | Log it after the fact to keep a contact's history complete. |
+| **Occasion** | A standing obligation (a yearly card or gift) or a one-off event with an invitee list and RSVPs. | Use it for what you do for people on a schedule, or for an event you invite contacts to. |
+| **Reminder** | A dated nudge tied to one contact, one-time or recurring. | Use it for a follow-up or a date you do not want to forget. |
+
+The overlap between occasions and reminders is intended: an active occasion creates its own reminder at its lead time, so you are nudged without creating a second item. The reminder is the nudge, not a separate occasion.
+
 ## Relationships
 
 Relationships let you map connections between contacts. You can select a suggested relationship or enter your own title. 
