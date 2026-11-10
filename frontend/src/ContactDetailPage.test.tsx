@@ -9,6 +9,7 @@ import type { ContactRecordResponse } from './api/contacts';
 import type { ConversationAgenda } from './api/conversationAgenda';
 import type { DataDecayPolicy } from './api/dataDecayPolicies';
 import type { ContactEntityLink } from './api/entities';
+import type { FieldDefinition, FieldValue } from './api/fieldDefinitions';
 import type { Gift } from './api/gifts';
 import type { LifeEvent } from './api/lifeEvents';
 import type { Note } from './api/notes';
@@ -292,10 +293,15 @@ function mockFetch({
   staleOnce: staleOnceInput = [],
   visibility = {},
   entityLinks = [],
+  fieldDefinitions = [],
+  fieldValues = [],
 }: {
   record?: ContactRecordResponse;
   // GET /contacts/1/entity-links (issue #2301).
   entityLinks?: ContactEntityLink[];
+  // GET /field-definitions and GET /contacts/1/field-values (issue #2447).
+  fieldDefinitions?: FieldDefinition[];
+  fieldValues?: FieldValue[];
   failGet?: Endpoint[];
   // Status the failed 'record' GET answers with: 404 = no such contact, 5xx = a server fault.
   recordFailStatus?: number;
@@ -390,7 +396,14 @@ function mockFetch({
           case '/contacts/1/reminders':
             return get('reminders', () => ({ reminders }));
           case '/contacts/1/field-values':
-            return get('fieldValues', () => ({ field_values: [] }));
+            return get('fieldValues', () => ({ field_values: fieldValues }));
+          case '/field-definitions':
+            return json({
+              field_definitions: fieldDefinitions,
+              total: fieldDefinitions.length,
+              next_cursor: '',
+              limit: 100,
+            });
           case '/contacts/1/field-visibility':
             return visibility.fail
               ? errorResponse('field visibility failed')
@@ -722,6 +735,45 @@ async function renderLoaded() {
     name: 'Bob Builder',
   });
 }
+
+test('contact-targeted custom field definitions load on mount and render with their stored value (#2447)', async () => {
+  const def = (over: Partial<FieldDefinition>): FieldDefinition => ({
+    id: 'def-1',
+    label: 'Favourite colour',
+    key: 'favourite_colour',
+    target: 'contact',
+    type: 'string',
+    projection: 'internal-only',
+    sensitivity: 'normal',
+    position: 0,
+    group: '',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    ...over,
+  });
+  mockFetch({
+    fieldDefinitions: [
+      def({}),
+      def({ id: 'def-2', label: 'Hull colour', key: 'hull_colour', target: 'pet' }),
+    ],
+    fieldValues: [
+      {
+        id: 1,
+        field_definition_id: 'def-1',
+        entity_id: 'alice-uid',
+        value: 'Teal',
+        created_at: '2026-01-01T00:00:00Z',
+        updated_at: '2026-01-01T00:00:00Z',
+      },
+    ],
+  });
+  await renderLoaded();
+
+  expect(await screen.findByText('Favourite colour')).toBeInTheDocument();
+  expect(screen.getByText('Teal')).toBeInTheDocument();
+  // Only contact-targeted definitions appear on the contact page.
+  expect(screen.queryByText('Hull colour')).not.toBeInTheDocument();
+});
 
 test('the happy path renders every populated section from the fixture', async () => {
   mockFetch();
