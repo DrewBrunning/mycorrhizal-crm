@@ -3287,7 +3287,6 @@
     <!-- Reusable entities: organisations, places, pets (issue #2302, ADR 0043) -->
     <string name="shared_entities_title">Organizzazioni, luoghi e animali</string>
     <string name="shared_entities_description">Organizzazioni, luoghi e animali condivisi da più contatti. Rinominane uno una volta sola e tutti i contatti collegati lo seguono.</string>
-    <string name="shared_entities_tabs_label">Tipo di entità</string>
     <string name="shared_entities_kind_organisation">Organizzazioni</string>
     <string name="shared_entities_kind_place">Luoghi</string>
     <string name="shared_entities_kind_pet">Animali</string>
@@ -3323,7 +3322,6 @@
     <string name="shared_entities_form_edit_title">Modifica %1$s</string>
     <string name="shared_entities_form_name_required">Inserisci un nome.</string>
     <string name="shared_entities_form_invalid_date">Inserisci %1$s come AAAA, AAAA-MM o AAAA-MM-GG.</string>
-    <string name="shared_entities_form_updated">%1$s salvato.</string>
     <string name="shared_entities_detail_not_found">Questa entità non esiste o è stata eliminata.</string>
     <string name="shared_entities_detail_details">Dettagli</string>
     <string name="shared_entities_detail_no_details">Ancora nessun dettaglio.</string>
@@ -3343,13 +3341,11 @@
     <string name="shared_entities_deleted_title">%1$s è stata eliminata</string>
     <string name="shared_entities_deleted_body">Non compare più su nessun contatto. Ripristinala per riavere l\'entità e i suoi collegamenti.</string>
     <string name="shared_entities_deleted_restore">Ripristina</string>
-    <string name="shared_entities_deleted_restored">%1$s ripristinata.</string>
     <string name="shared_entities_deleted_same_name_live">Esiste già un\'altra entità di questo tipo con lo stesso nome; potresti volerle unire.</string>
     <string name="shared_entities_merge_title">Unisci %1$s</string>
     <string name="shared_entities_merge_intro">%1$s verrà eliminata e i suoi contatti passeranno a %2$s. Non viene unito nulla se non confermi qui.</string>
     <string name="shared_entities_merge_into">Unisci a</string>
     <string name="shared_entities_merge_no_candidates">Non c\'è un\'altra entità di questo tipo a cui unire.</string>
-    <string name="shared_entities_merge_swap">Scambia quale viene conservata</string>
     <string name="shared_entities_merge_fill">Copia anche questi dati da %1$s (quella conservata non li ha):</string>
     <string name="shared_entities_merge_confirm">Unisci</string>
     <string name="shared_entities_merge_done">Unita a %1$s.</string>
@@ -3376,13 +3372,11 @@
     <string name="contact_entity_links_shown_as_org">Mostrata come organizzazione</string>
     <string name="contact_entity_links_shown_as_adr">Mostrato come indirizzo</string>
     <string name="contact_entity_links_not_current">Non attuale</string>
-    <string name="contact_entity_links_primary">Principale</string>
     <string name="contact_entity_links_primary_for">Principale: %1$s</string>
     <string name="contact_entity_links_adopt_hint">Copia il valore in questo contatto come valore proprio, così resta anche se il collegamento o l\'entità viene rimosso.</string>
     <string name="contact_entity_links_adopt_organisation">Copia %1$s come organizzazione propria</string>
     <string name="contact_entity_links_adopt_place">Copia %1$s come indirizzo proprio</string>
     <string name="contact_entity_links_adopted">%1$s copiato in questo contatto.</string>
-    <string name="contact_entity_links_edit_for">Modifica il collegamento con %1$s</string>
     <string name="contact_entity_links_remove_for">Rimuovi il collegamento con %1$s</string>
     <string name="contact_entity_links_remove_confirm">Rimuovere il collegamento con %1$s? L\'entità stessa viene conservata.</string>
     <string name="contact_entity_links_add_title">Collega a un\'organizzazione, un luogo o un animale</string>
@@ -3406,12 +3400,10 @@
     <string name="contact_entity_links_from_own_use_existing_organisation">Usa l\'organizzazione esistente «%1$s»</string>
     <string name="contact_entity_links_from_own_link">Collega</string>
     <string name="contact_entity_links_from_own_linked">Collegato a %1$s.</string>
-    <string name="contact_entity_links_from_own_created_and_linked">%1$s creata e collegata.</string>
     <string name="shared_entities_empty_organisation">Ancora nessuna organizzazione.</string>
     <string name="shared_entities_empty_place">Ancora nessun luogo.</string>
     <string name="shared_entities_detail_no_custom_fields">Ancora nessun campo personalizzato per questo tipo. Aggiungine uno nelle Impostazioni.</string>
     <string name="shared_entities_loading_failed">Impossibile caricare organizzazioni, luoghi e animali.</string>
-    <string name="shared_entities_form_save_failed">Impossibile salvare questa voce.</string>
     <string name="shared_entities_merge_search">Cerca con cosa unire</string>
     <string name="shared_entities_merge_keep_this">Tieni questo e unisci l’altro in esso</string>
     <string name="shared_entities_merge_nothing_unless_confirmed">Non viene unito nulla finché non confermi qui sotto.</string>
@@ -3421,7 +3413,6 @@
     <string name="shared_entities_open">Apri %1$s</string>
     <string name="contact_entity_links_from_own_none">Questo contatto non ha organizzazioni né indirizzi propri da collegare.</string>
     <string name="contact_entity_links_load_failed">Impossibile caricare i collegamenti di questo contatto.</string>
-    <string name="contact_entity_links_choose_existing">Scegli uno esistente</string>
     <string name="contact_entity_links_cd_from">Mostrato da %1$s, sola lettura</string>
     <string name="network_entities_toggle">Mostra organizzazioni, luoghi e animali</string>
     <string name="network_entities_empty">Nessuna organizzazione, luogo o animale è collegato a questi contatti.</string>
@@ -3451,15 +3442,5 @@
         <item quantity="one">Impossibile copiarla in %1$d contatto, quindi non è stato eliminato nulla.</item>
         <item quantity="many">Impossibile copiarla in %1$d contatti, quindi non è stato eliminato nulla.</item>
         <item quantity="other">Impossibile copiarla in %1$d contatti, quindi non è stato eliminato nulla.</item>
-    </plurals>
-    <plurals name="shared_entities_merge_summary">
-        <item quantity="one">%1$d collegamento spostato.</item>
-        <item quantity="many">%1$d collegamenti spostati.</item>
-        <item quantity="other">%1$d collegamenti spostati.</item>
-    </plurals>
-    <plurals name="shared_entities_merge_demoted">
-        <item quantity="one">%1$d contatto aveva due principali; è stata conservata quella esistente.</item>
-        <item quantity="many">%1$d contatti avevano due principali; è stata conservata quella esistente.</item>
-        <item quantity="other">%1$d contatti avevano due principali; è stata conservata quella esistente.</item>
     </plurals>
 </resources>

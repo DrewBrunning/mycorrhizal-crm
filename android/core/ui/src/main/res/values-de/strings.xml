@@ -3192,7 +3192,6 @@
     <!-- Reusable entities: organisations, places, pets (issue #2302, ADR 0043) -->
     <string name="shared_entities_title">Organisationen, Orte &amp; Haustiere</string>
     <string name="shared_entities_description">Organisationen, Orte und Haustiere, die mehrere Kontakte gemeinsam haben. Benenne einen Eintrag einmal um, und alle verknüpften Kontakte folgen.</string>
-    <string name="shared_entities_tabs_label">Art des Eintrags</string>
     <string name="shared_entities_kind_organisation">Organisationen</string>
     <string name="shared_entities_kind_place">Orte</string>
     <string name="shared_entities_kind_pet">Haustiere</string>
@@ -3228,7 +3227,6 @@
     <string name="shared_entities_form_edit_title">%1$s bearbeiten</string>
     <string name="shared_entities_form_name_required">Gib einen Namen ein.</string>
     <string name="shared_entities_form_invalid_date">Gib %1$s als JJJJ, JJJJ-MM oder JJJJ-MM-TT ein.</string>
-    <string name="shared_entities_form_updated">%1$s gespeichert.</string>
     <string name="shared_entities_detail_not_found">Dieser Eintrag existiert nicht oder wurde gelöscht.</string>
     <string name="shared_entities_detail_details">Details</string>
     <string name="shared_entities_detail_no_details">Noch keine Details.</string>
@@ -3248,13 +3246,11 @@
     <string name="shared_entities_deleted_title">%1$s wurde gelöscht</string>
     <string name="shared_entities_deleted_body">Es erscheint bei keinem Kontakt mehr. Stelle es wieder her, um den Eintrag und seine Verknüpfungen zurückzubringen.</string>
     <string name="shared_entities_deleted_restore">Wiederherstellen</string>
-    <string name="shared_entities_deleted_restored">%1$s wiederhergestellt.</string>
     <string name="shared_entities_deleted_same_name_live">Es gibt bereits einen anderen Eintrag dieser Art mit demselben Namen; vielleicht möchtest du sie zusammenführen.</string>
     <string name="shared_entities_merge_title">%1$s zusammenführen</string>
     <string name="shared_entities_merge_intro">%1$s wird gelöscht und seine Kontakte wechseln zu %2$s. Nichts wird zusammengeführt, solange du es hier nicht bestätigst.</string>
     <string name="shared_entities_merge_into">Zusammenführen mit</string>
     <string name="shared_entities_merge_no_candidates">Es gibt keinen anderen Eintrag dieser Art zum Zusammenführen.</string>
-    <string name="shared_entities_merge_swap">Tauschen, welcher behalten wird</string>
     <string name="shared_entities_merge_fill">Auch diese Angaben von %1$s übernehmen (beim behaltenen Eintrag sind sie leer):</string>
     <string name="shared_entities_merge_confirm">Zusammenführen</string>
     <string name="shared_entities_merge_done">Mit %1$s zusammengeführt.</string>
@@ -3281,13 +3277,11 @@
     <string name="contact_entity_links_shown_as_org">Als Organisation angezeigt</string>
     <string name="contact_entity_links_shown_as_adr">Als Adresse angezeigt</string>
     <string name="contact_entity_links_not_current">Nicht aktuell</string>
-    <string name="contact_entity_links_primary">Primär</string>
     <string name="contact_entity_links_primary_for">Primär: %1$s</string>
     <string name="contact_entity_links_adopt_hint">Den Wert als eigenen Wert in diesen Kontakt kopieren, damit er bleibt, auch wenn die Verknüpfung oder der Eintrag entfernt wird.</string>
     <string name="contact_entity_links_adopt_organisation">%1$s als eigene Organisation kopieren</string>
     <string name="contact_entity_links_adopt_place">%1$s als eigene Adresse kopieren</string>
     <string name="contact_entity_links_adopted">%1$s in diesen Kontakt kopiert.</string>
-    <string name="contact_entity_links_edit_for">Verknüpfung mit %1$s bearbeiten</string>
     <string name="contact_entity_links_remove_for">Verknüpfung mit %1$s entfernen</string>
     <string name="contact_entity_links_remove_confirm">Die Verknüpfung mit %1$s entfernen? Der Eintrag selbst bleibt erhalten.</string>
     <string name="contact_entity_links_add_title">Mit einer Organisation, einem Ort oder einem Haustier verknüpfen</string>
@@ -3311,12 +3305,10 @@
     <string name="contact_entity_links_from_own_use_existing_organisation">Die bestehende Organisation „%1$s“ verwenden</string>
     <string name="contact_entity_links_from_own_link">Verknüpfen</string>
     <string name="contact_entity_links_from_own_linked">Mit %1$s verknüpft.</string>
-    <string name="contact_entity_links_from_own_created_and_linked">%1$s erstellt und verknüpft.</string>
     <string name="shared_entities_empty_organisation">Noch keine Organisationen.</string>
     <string name="shared_entities_empty_place">Noch keine Orte.</string>
     <string name="shared_entities_detail_no_custom_fields">Für diese Art gibt es noch keine benutzerdefinierten Felder. Füge in den Einstellungen eines hinzu.</string>
     <string name="shared_entities_loading_failed">Organisationen, Orte und Haustiere konnten nicht geladen werden.</string>
-    <string name="shared_entities_form_save_failed">Dieser Eintrag konnte nicht gespeichert werden.</string>
     <string name="shared_entities_merge_search">Suche nach dem Eintrag zum Zusammenführen</string>
     <string name="shared_entities_merge_keep_this">Diesen behalten und den anderen hineinführen</string>
     <string name="shared_entities_merge_nothing_unless_confirmed">Nichts wird zusammengeführt, solange du unten nicht bestätigst.</string>
@@ -3326,7 +3318,6 @@
     <string name="shared_entities_open">%1$s öffnen</string>
     <string name="contact_entity_links_from_own_none">Dieser Kontakt hat keine eigenen Organisationen oder Adressen zum Verknüpfen.</string>
     <string name="contact_entity_links_load_failed">Die Verknüpfungen dieses Kontakts konnten nicht geladen werden.</string>
-    <string name="contact_entity_links_choose_existing">Vorhandenen auswählen</string>
     <string name="contact_entity_links_cd_from">Angezeigt von %1$s, schreibgeschützt</string>
     <string name="network_entities_toggle">Organisationen, Orte &amp; Haustiere anzeigen</string>
     <string name="network_entities_empty">Mit diesen Kontakten sind keine Organisationen, Orte oder Haustiere verknüpft.</string>
@@ -3351,13 +3342,5 @@
     <plurals name="shared_entities_delete_adopt_failed">
         <item quantity="one">Das Kopieren zu %1$d Kontakt ist fehlgeschlagen, daher wurde nichts gelöscht.</item>
         <item quantity="other">Das Kopieren zu %1$d Kontakten ist fehlgeschlagen, daher wurde nichts gelöscht.</item>
-    </plurals>
-    <plurals name="shared_entities_merge_summary">
-        <item quantity="one">%1$d Verknüpfung verschoben.</item>
-        <item quantity="other">%1$d Verknüpfungen verschoben.</item>
-    </plurals>
-    <plurals name="shared_entities_merge_demoted">
-        <item quantity="one">%1$d Kontakt hatte zwei primäre Einträge; der bestehende wurde behalten.</item>
-        <item quantity="other">%1$d Kontakte hatten zwei primäre Einträge; der bestehende wurde behalten.</item>
     </plurals>
 </resources>

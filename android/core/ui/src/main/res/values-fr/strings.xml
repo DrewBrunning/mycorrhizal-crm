@@ -3289,7 +3289,6 @@
     <!-- Reusable entities: organisations, places, pets (issue #2302, ADR 0043) -->
     <string name="shared_entities_title">Organisations, lieux et animaux</string>
     <string name="shared_entities_description">Organisations, lieux et animaux partagés par plusieurs contacts. Renommez-en un une seule fois et tous les contacts liés suivent.</string>
-    <string name="shared_entities_tabs_label">Type d\'entité</string>
     <string name="shared_entities_kind_organisation">Organisations</string>
     <string name="shared_entities_kind_place">Lieux</string>
     <string name="shared_entities_kind_pet">Animaux</string>
@@ -3325,7 +3324,6 @@
     <string name="shared_entities_form_edit_title">Modifier %1$s</string>
     <string name="shared_entities_form_name_required">Saisissez un nom.</string>
     <string name="shared_entities_form_invalid_date">Saisissez %1$s sous la forme AAAA, AAAA-MM ou AAAA-MM-JJ.</string>
-    <string name="shared_entities_form_updated">%1$s enregistré.</string>
     <string name="shared_entities_detail_not_found">Cette entité n\'existe pas ou a été supprimée.</string>
     <string name="shared_entities_detail_details">Détails</string>
     <string name="shared_entities_detail_no_details">Pas encore de détails.</string>
@@ -3345,13 +3343,11 @@
     <string name="shared_entities_deleted_title">%1$s a été supprimée</string>
     <string name="shared_entities_deleted_body">Elle n\'apparaît plus sur aucun contact. Restaurez-la pour récupérer l\'entité et ses liens.</string>
     <string name="shared_entities_deleted_restore">Restaurer</string>
-    <string name="shared_entities_deleted_restored">%1$s restaurée.</string>
     <string name="shared_entities_deleted_same_name_live">Une autre entité de ce type porte déjà le même nom ; vous voudrez peut-être les fusionner.</string>
     <string name="shared_entities_merge_title">Fusionner %1$s</string>
     <string name="shared_entities_merge_intro">%1$s sera supprimée et ses contacts passeront à %2$s. Rien n\'est fusionné sans votre confirmation ici.</string>
     <string name="shared_entities_merge_into">Fusionner avec</string>
     <string name="shared_entities_merge_no_candidates">Il n\'y a pas d\'autre entité de ce type avec laquelle fusionner.</string>
-    <string name="shared_entities_merge_swap">Échanger celle qui est conservée</string>
     <string name="shared_entities_merge_fill">Copier aussi ces informations de %1$s (celle conservée n\'en a pas) :</string>
     <string name="shared_entities_merge_confirm">Fusionner</string>
     <string name="shared_entities_merge_done">Fusionnée avec %1$s.</string>
@@ -3378,13 +3374,11 @@
     <string name="contact_entity_links_shown_as_org">Affichée comme organisation</string>
     <string name="contact_entity_links_shown_as_adr">Affiché comme adresse</string>
     <string name="contact_entity_links_not_current">Non actuel</string>
-    <string name="contact_entity_links_primary">Principale</string>
     <string name="contact_entity_links_primary_for">Principale : %1$s</string>
     <string name="contact_entity_links_adopt_hint">Copier la valeur dans ce contact comme valeur propre, pour qu\'elle reste même si le lien ou l\'entité est supprimé.</string>
     <string name="contact_entity_links_adopt_organisation">Copier %1$s comme organisation propre</string>
     <string name="contact_entity_links_adopt_place">Copier %1$s comme adresse propre</string>
     <string name="contact_entity_links_adopted">%1$s copié dans ce contact.</string>
-    <string name="contact_entity_links_edit_for">Modifier le lien avec %1$s</string>
     <string name="contact_entity_links_remove_for">Supprimer le lien avec %1$s</string>
     <string name="contact_entity_links_remove_confirm">Supprimer le lien avec %1$s ? L\'entité elle-même est conservée.</string>
     <string name="contact_entity_links_add_title">Lier à une organisation, un lieu ou un animal</string>
@@ -3408,12 +3402,10 @@
     <string name="contact_entity_links_from_own_use_existing_organisation">Utiliser l\'organisation existante « %1$s »</string>
     <string name="contact_entity_links_from_own_link">Lier</string>
     <string name="contact_entity_links_from_own_linked">Lié à %1$s.</string>
-    <string name="contact_entity_links_from_own_created_and_linked">%1$s créée et liée.</string>
     <string name="shared_entities_empty_organisation">Aucune organisation pour l’instant.</string>
     <string name="shared_entities_empty_place">Aucun lieu pour l’instant.</string>
     <string name="shared_entities_detail_no_custom_fields">Aucun champ personnalisé pour ce type pour l’instant. Ajoutez-en un dans les Réglages.</string>
     <string name="shared_entities_loading_failed">Impossible de charger les organisations, les lieux et les animaux.</string>
-    <string name="shared_entities_form_save_failed">Impossible d’enregistrer cette entité.</string>
     <string name="shared_entities_merge_search">Rechercher avec quoi fusionner</string>
     <string name="shared_entities_merge_keep_this">Garder celui-ci et y fusionner l’autre</string>
     <string name="shared_entities_merge_nothing_unless_confirmed">Rien n’est fusionné tant que vous ne confirmez pas ci-dessous.</string>
@@ -3423,7 +3415,6 @@
     <string name="shared_entities_open">Ouvrir %1$s</string>
     <string name="contact_entity_links_from_own_none">Ce contact n’a aucune organisation ni adresse propre à lier.</string>
     <string name="contact_entity_links_load_failed">Impossible de charger les liens de ce contact.</string>
-    <string name="contact_entity_links_choose_existing">Choisir un élément existant</string>
     <string name="contact_entity_links_cd_from">Affiché depuis %1$s, en lecture seule</string>
     <string name="network_entities_toggle">Afficher les organisations, lieux et animaux</string>
     <string name="network_entities_empty">Aucune organisation, aucun lieu ni animal n’est lié à ces contacts.</string>
@@ -3453,15 +3444,5 @@
         <item quantity="one">Impossible de la copier vers %1$d contact, donc rien n\'a été supprimé.</item>
         <item quantity="many">Impossible de la copier vers %1$d contacts, donc rien n\'a été supprimé.</item>
         <item quantity="other">Impossible de la copier vers %1$d contacts, donc rien n\'a été supprimé.</item>
-    </plurals>
-    <plurals name="shared_entities_merge_summary">
-        <item quantity="one">%1$d lien déplacé.</item>
-        <item quantity="many">%1$d liens déplacés.</item>
-        <item quantity="other">%1$d liens déplacés.</item>
-    </plurals>
-    <plurals name="shared_entities_merge_demoted">
-        <item quantity="one">%1$d contact avait deux entités principales ; l\'existante a été conservée.</item>
-        <item quantity="many">%1$d contacts avaient deux entités principales ; l\'existante a été conservée.</item>
-        <item quantity="other">%1$d contacts avaient deux entités principales ; l\'existante a été conservée.</item>
     </plurals>
 </resources>
