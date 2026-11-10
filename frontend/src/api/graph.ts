@@ -8,12 +8,18 @@ export interface GetGraphParams {
   // pre-v1.5 clients); false asks for the depth-2 ego-network of the caller's
   // self contact (issue #1791), which the web UI uses by default.
   full?: boolean;
+  // ADR 0043 decision 2: also return entity_nodes/entity_edges (organisations,
+  // places and pets the in-scope contacts link to). Off by default: the default
+  // response is unchanged for every existing client.
+  includeEntities?: boolean;
 }
 
 export async function getGraph(params?: GetGraphParams): Promise<GraphResponse> {
   // Always state the view: an absent `full` is the server's backward-
   // compatible full graph, not the ego view the web wants.
-  const query = params?.full ? '?full=true' : '?full=false';
+  const query = `${params?.full ? '?full=true' : '?full=false'}${
+    params?.includeEntities ? '&include_entities=true' : ''
+  }`;
   const response = await apiFetch(`${API_BASE_URL}/graph${query}`, { headers: getAuthHeaders() });
 
   if (!response.ok) {

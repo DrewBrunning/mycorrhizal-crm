@@ -77,7 +77,8 @@
     "systemEvents": "System events",
     "systemStatus": "System status",
     "mainLabel": "Main navigation",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "entities": "Entities"
   },
   "household": {
     "title": "Households",
@@ -712,7 +713,8 @@
       "customFieldsUngrouped": "Custom fields",
       "skills": "Skills & interests",
       "work": "Work",
-      "anniversaries": "Anniversaries"
+      "anniversaries": "Anniversaries",
+      "entities": "Organisations, places & pets"
     },
     "email": "Email",
     "phone": "Phone",
@@ -856,6 +858,49 @@
         "saved": "Field visibility saved.",
         "resetDone": "Field visibility reset to the default.",
         "saveError": "Unable to save field visibility."
+      }
+    },
+    "entityLinks": {
+      "add": "Link",
+      "linkFromOwn": "Link one of my own values",
+      "empty": "Not linked to any organisation, place or pet yet.",
+      "shownAsOrg": "Shown as organisation",
+      "shownAsAdr": "Shown as address",
+      "notCurrent": "Not current",
+      "primary": "Primary",
+      "primaryFor": "Primary: {{name}}",
+      "adoptHint": "Copy the value into this contact as its own, so it stays even if the link or entity is removed.",
+      "adoptOrganisation": "Copy {{name}} as own organisation",
+      "adoptPlace": "Copy {{name}} as own address",
+      "adopted": "Copied {{name}} into this contact.",
+      "editFor": "Edit link to {{name}}",
+      "removeFor": "Remove link to {{name}}",
+      "removeConfirm": "Remove the link to {{name}}? The entity itself is kept.",
+      "saved": "Link saved.",
+      "saveFailed": "Couldn't save this link.",
+      "addTitle": "Link to an organisation, place or pet",
+      "editTitle": "Edit link to {{name}}",
+      "kind": "Kind",
+      "entity": "Organisation, place or pet",
+      "create": "Create \"{{name}}\"",
+      "entityRequired": "Choose an organisation, place or pet, or type a name to create one.",
+      "role": "Role",
+      "roleLabel": "Role detail (optional)",
+      "primaryHelp": "Primary (shown on this contact's card)",
+      "yearInvalid": "Enter years as four digits, with the end not before the start.",
+      "projectedFrom": "from {{name}}",
+      "projectedFromUnknown": "from a linked entity",
+      "projectedHint": "Shown from the linked entity. Change it on the entity's page, or copy it into this contact to edit it here.",
+      "fromOwn": {
+        "title": "Link one of my own values",
+        "intro": "Connect one of this contact's own organisations or addresses to a shared entity. The value stays on the contact.",
+        "value": "Value",
+        "createNewOrganisation": "Create a new organisation from this value",
+        "createNewPlace": "Create a new place from this value",
+        "useExistingOrganisation": "Use the existing organisation “{{name}}”",
+        "link": "Link",
+        "linked": "Linked to {{name}}.",
+        "createdAndLinked": "Created {{name}} and linked it."
       }
     }
   },
@@ -2119,7 +2164,9 @@
       "contact": "Contact",
       "activity": "Activity",
       "circle": "Circle",
-      "circleEdge": "Circle Membership"
+      "circleEdge": "Circle Membership",
+      "entity": "Organisation, place or pet",
+      "entityEdge": "Linked to"
     },
     "filterByContact": "Center on Contact",
     "showCircles": "Circles",
@@ -2152,7 +2199,12 @@
     "panLeft": "Pan left",
     "panRight": "Pan right",
     "egoNotice": "Showing your own contact and everyone within {{depth}} connections of it. Turn on \"Show entire network\" to load every contact.",
-    "showEntireNetwork": "Show entire network"
+    "showEntireNetwork": "Show entire network",
+    "showEntities": "Organisations, places & pets",
+    "graphSummaryWithEntities": "Network diagram: {{contacts}}, {{activities}}, {{circles}}, {{entities}}, {{connections}}. The same information is available in the list view below.",
+    "graphSummaryEntities_one": "{{count}} organisation, place or pet",
+    "graphSummaryEntities_other": "{{count}} organisations, places or pets",
+    "connectionEntity": "Linked to {{name}}"
   },
   "map": {
     "title": "Contact map",
@@ -2586,7 +2638,11 @@
     "createSuccess": "Custom field created.",
     "updateSuccess": "Custom field updated.",
     "deleteSuccess": "Custom field deleted.",
-    "saveError": "Failed to save custom field."
+    "saveError": "Failed to save custom field.",
+    "appliesTo": "Applies to",
+    "targets": {
+      "contact": "Contact"
+    }
   },
   "preference": {
     "title": "Preferences",
@@ -4159,5 +4215,196 @@
     "uploadFailed": "Could not upload the photo.",
     "uploadDuplicate": "That photo is already in the contact photos, so it was not added again.",
     "uploading": "Uploading..."
+  },
+  "entities": {
+    "title": "Organisations, places & pets",
+    "description": "Organisations, places and pets that several contacts share. Rename one once and every contact linked to it follows.",
+    "tabsLabel": "Kind of entity",
+    "kind": {
+      "organisation": "Organisation",
+      "place": "Place",
+      "pet": "Pet"
+    },
+    "kindPlural": {
+      "organisation": "Organisations",
+      "place": "Places",
+      "pet": "Pets"
+    },
+    "new": {
+      "organisation": "Add organisation",
+      "place": "Add place",
+      "pet": "Add pet"
+    },
+    "empty": {
+      "organisation": "No organisations yet. Add one, or create them from your contacts in Settings.",
+      "place": "No places yet. Add one, or create them from your contacts in Settings.",
+      "pet": "No pets yet."
+    },
+    "search": "Search by name",
+    "noResults": "Nothing matches your search.",
+    "sensitivityLabel": "Sensitivity",
+    "sensitivity": {
+      "normal": "Normal",
+      "private": "Private",
+      "secret": "Secret"
+    },
+    "fields": {
+      "name": "Name",
+      "sortAs": "Sort as",
+      "units": "Departments or units (one per line)",
+      "url": "Website",
+      "notes": "Notes",
+      "street": "Street",
+      "city": "City",
+      "region": "Region",
+      "postal": "Postal code",
+      "country": "Country",
+      "address": "Address",
+      "species": "Species",
+      "breed": "Breed",
+      "birth": "Birth",
+      "death": "Death",
+      "dateHint": "YYYY, YYYY-MM or YYYY-MM-DD"
+    },
+    "form": {
+      "editTitle": "Edit {{name}}",
+      "nameRequired": "Enter a name.",
+      "invalidDate": "Enter {{field}} as YYYY, YYYY-MM or YYYY-MM-DD.",
+      "saveFailed": "Couldn't save this entity.",
+      "created": "Added {{name}}.",
+      "updated": "Saved {{name}}."
+    },
+    "detail": {
+      "back": "All entities",
+      "loadFailed": "Couldn't load this entity.",
+      "notFound": "This entity doesn't exist or was deleted.",
+      "linkedCount_one": "Linked to {{count}} contact",
+      "linkedCount_other": "Linked to {{count}} contacts",
+      "details": "Details",
+      "noDetails": "No details yet.",
+      "customFields": "Custom fields",
+      "noCustomFields": "No custom fields for this kind yet. Add one under Settings, Custom fields.",
+      "customFieldsSaved": "Custom field saved.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "merge": "Merge into another…"
+    },
+    "people": {
+      "title": "People",
+      "empty": "No contacts are linked yet. Link this from a contact's page.",
+      "primary": "Primary",
+      "loadFailed": "Couldn't load the linked contacts."
+    },
+    "delete": {
+      "title": "Delete {{name}}?",
+      "projectsOrganisation_one": "{{name}} is the primary organisation of {{count}} contact; they will lose that organisation.",
+      "projectsOrganisation_other": "{{name}} is the primary organisation of {{count}} contacts; they will lose that organisation.",
+      "projectsPlace_one": "{{name}} is the primary place of {{count}} contact; they will lose that address.",
+      "projectsPlace_other": "{{name}} is the primary place of {{count}} contacts; they will lose that address.",
+      "links_one": "It is linked to {{count}} contact in total. Those links are removed with it.",
+      "links_other": "It is linked to {{count}} contacts in total. Those links are removed with it.",
+      "plain": "{{name}} will be deleted. You can restore it right afterwards.",
+      "adoptOrganisation": "Keep the organisation on those contacts first (copy it into each contact as their own value)",
+      "adoptPlace": "Keep the address on those contacts first (copy it into each contact as their own value)",
+      "confirm": "Delete",
+      "failed": "Couldn't delete this entity.",
+      "adoptFailed_one": "Couldn't copy it to {{count}} contact, so nothing was deleted.",
+      "adoptFailed_other": "Couldn't copy it to {{count}} contacts, so nothing was deleted."
+    },
+    "deleted": {
+      "title": "{{name}} was deleted",
+      "body": "It no longer appears on any contact. Restore it to bring back the entity and its links.",
+      "restore": "Restore",
+      "restored": "Restored {{name}}.",
+      "restoreFailed": "Couldn't restore this entity.",
+      "sameNameLive": "Another entity of this kind with the same name already exists; you may want to merge them."
+    },
+    "merge": {
+      "title": "Merge {{name}}",
+      "intro": "{{loser}} will be deleted and its contacts move to {{survivor}}. Nothing is merged unless you confirm here.",
+      "into": "Merge into",
+      "noCandidates": "There is no other entity of this kind to merge into.",
+      "swap": "Swap which one is kept",
+      "fill": "Also copy these from {{name}} (the kept one has none):",
+      "confirm": "Merge",
+      "failed": "Couldn't merge these.",
+      "done": "Merged into {{name}}.",
+      "summary_one": "{{count}} link moved.",
+      "summary_other": "{{count}} links moved.",
+      "demoted_one": "{{count}} contact had two primaries; the existing one was kept.",
+      "demoted_other": "{{count}} contacts had two primaries; the existing one was kept.",
+      "undoTitle": "{{name}} was merged away",
+      "undoBody": "Restoring it brings back only the entity itself; the links stay with the kept one.",
+      "undo": "Restore {{name}}"
+    },
+    "suggestions": {
+      "title": "Possible duplicates",
+      "description": "Entities with the same or a very similar name. Nothing merges unless you choose to.",
+      "load": "Find duplicates",
+      "none": "No duplicates found.",
+      "failed": "Couldn't look for duplicates.",
+      "merge": "Merge…",
+      "dismiss": "Not a duplicate",
+      "dismissed": "Hidden for good.",
+      "pair": "{{a}} and {{b}}",
+      "reason": {
+        "exact_name": "Same name",
+        "normalized_name": "Very similar name",
+        "address_components": "Same address"
+      }
+    },
+    "roles": {
+      "organisation": {
+        "employee": "Employee",
+        "owner": "Owner",
+        "contractor": "Contractor",
+        "volunteer": "Volunteer",
+        "member": "Member",
+        "other": "Other"
+      },
+      "place": {
+        "resident": "Resident",
+        "owner": "Owner",
+        "visitor": "Visitor",
+        "other": "Other"
+      },
+      "pet": {
+        "owner": "Owner",
+        "carer": "Carer",
+        "other": "Other"
+      }
+    },
+    "fromContacts": {
+      "description": "Turn the organisations and addresses already on your contacts into shared entities. This never changes or deletes a value on a contact. You choose each group; nothing is created automatically.",
+      "open": "Create entities from my contacts…",
+      "title": "Create entities from my contacts",
+      "intro": "Groups of the same organisation or address found on your contacts. Tick the ones to create; run this again any time, only values not yet linked are offered.",
+      "none": "Nothing left to create from your contacts.",
+      "groupTitle_one": "{{name}} — {{count}} contact",
+      "groupTitle_other": "{{name}} — {{count}} contacts",
+      "include": "Include {{name}}",
+      "nameOf": "Name of {{name}}",
+      "roleFor": "Role for {{name}}",
+      "primary": "Set as primary",
+      "primaryFor": "Set as primary for {{name}}",
+      "hasPrimaryOrganisation_one": "{{count}} of them already has a primary organisation.",
+      "hasPrimaryOrganisation_other": "{{count}} of them already have a primary organisation.",
+      "hasPrimaryPlace_one": "{{count}} of them already has a primary place.",
+      "hasPrimaryPlace_other": "{{count}} of them already have a primary place.",
+      "createOrganisation_one": "Create {{count}} organisation",
+      "createOrganisation_other": "Create {{count}} organisations",
+      "createPlace_one": "Create {{count}} place",
+      "createPlace_other": "Create {{count}} places",
+      "createdOrganisation_one": "Created {{count}} organisation.",
+      "createdOrganisation_other": "Created {{count}} organisations.",
+      "createdPlace_one": "Created {{count}} place.",
+      "createdPlace_other": "Created {{count}} places.",
+      "skip": {
+        "group_not_found": "{{name}}: it no longer exists on your contacts.",
+        "contact_not_in_group": "{{name}}: a contact no longer belongs to it.",
+        "name_invalid": "{{name}}: the name is not valid.",
+        "core_invalid": "{{name}}: its details are not valid."
+      }
+    }
   }
 }

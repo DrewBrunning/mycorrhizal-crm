@@ -41,6 +41,7 @@ import CelebrationIcon from '@mui/icons-material/Celebration';
 import ContactsIcon from '@mui/icons-material/Contacts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DomainIcon from '@mui/icons-material/Domain';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -105,6 +106,8 @@ import RouteLoadingFallback from './components/RouteLoadingFallback';
 import SessionExpiredNotice from './components/SessionExpiredNotice';
 import DashboardPage from './DashboardPage';
 import DataSettingsPage from './DataSettingsPage';
+import EntitiesPage from './EntitiesPage';
+import EntityDetailPage from './EntityDetailPage';
 import HouseholdsPage from './HouseholdsPage';
 import LoginPage from './LoginPage';
 import NetworkPage from './NetworkPage';
@@ -209,7 +212,7 @@ function AppContent({
     const settingsChildren: NavItem[] = [
       // Shares: the contact-sharing page today; #2292 adds the new Shares UI here.
       { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
-      // Entities (#2301) goes here.
+      { text: t('nav.entities'), icon: <DomainIcon />, path: '/entities' },
       { text: t('nav.audit'), icon: <HistoryIcon />, path: '/audit' },
       { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
     ];
@@ -717,6 +720,22 @@ function AppContent({
               element={
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <ShareTargetPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/entities"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <EntitiesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/entities/:id"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <EntityDetailPage />
                 </Suspense>
               }
             />

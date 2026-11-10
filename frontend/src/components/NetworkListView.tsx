@@ -18,6 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { RELATIONSHIP_EDGE_TYPES, type RelationshipEdgeType } from '../api/relationshipEdges';
 import type { GraphEdge, GraphNode } from '../types/graph';
+import { ENTITY_KIND_KEYS } from '../utils/entityLabels';
 import { deceasedNodeColor, healthBandColor } from '../utils/healthBand';
 import { edgeEndpointId } from '../utils/networkGraphData';
 
@@ -33,6 +34,11 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
   const nodesById = new Map(nodes.map((n) => [n.id, n]));
   const contactNodes = nodes
     .filter((n) => n.type === 'contact')
+    .sort((a, b) => a.label.localeCompare(b.label));
+  // ADR 0043 decision 2: entity nodes are display-only -- listed as plain text,
+  // never as buttons (editing happens on the contact or entity page).
+  const entityNodes = nodes
+    .filter((n) => n.type === 'entity')
     .sort((a, b) => a.label.localeCompare(b.label));
 
   // Relation tokens describe the SOURCE's role relative to the TARGET (see
@@ -67,6 +73,9 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
         descriptions.push(t('network.connectionActivity', { title: link.label }));
       } else if (link.type === 'circle' && sourceId === contact.id) {
         descriptions.push(t('network.connectionCircle', { circle: link.label }));
+      } else if (link.type === 'entity' && sourceId === contact.id) {
+        const entity = nodesById.get(targetId);
+        if (entity) descriptions.push(t('network.connectionEntity', { name: entity.label }));
       }
     });
 
@@ -156,6 +165,23 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
           );
         })}
       </List>
+      {entityNodes.length > 0 && (
+        <Box component="section" aria-label={t('entities.title')} sx={{ mt: 2 }}>
+          <Typography variant="subtitle1" component="h3" gutterBottom>
+            {t('entities.title')}
+          </Typography>
+          <List dense>
+            {entityNodes.map((entity) => (
+              <ListItem key={entity.id} disableGutters disablePadding>
+                <ListItemText
+                  primary={entity.label}
+                  secondary={t(ENTITY_KIND_KEYS[entity.entity_kind ?? 'organisation'])}
+                />
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      )}
     </Box>
   );
 }

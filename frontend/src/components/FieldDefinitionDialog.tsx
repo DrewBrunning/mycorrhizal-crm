@@ -21,6 +21,7 @@ import {
   FIELD_TYPES,
   type FieldDefinition,
   type FieldDefinitionInput,
+  type FieldDefinitionTarget,
   type FieldSensitivity,
   type FieldType,
 } from '../api/fieldDefinitions';
@@ -39,6 +40,7 @@ interface FieldDefinitionDialogProps {
 }
 
 interface FormState {
+  target: FieldDefinitionTarget;
   label: string;
   key: string;
   type: FieldType;
@@ -55,6 +57,7 @@ interface FormState {
 }
 
 const emptyForm: FormState = {
+  target: 'contact',
   label: '',
   key: '',
   type: 'string',
@@ -93,6 +96,7 @@ export default function FieldDefinitionDialog({
         const constraints = definition.constraints || {};
         const projection = definition.projection || 'internal-only';
         setForm({
+          target: definition.target ?? 'contact',
           label: definition.label,
           key: definition.key,
           type: definition.type,
@@ -144,7 +148,7 @@ export default function FieldDefinitionDialog({
       setError(t('customFields.enumValuesRequired'));
       return;
     }
-    if (form.projectionMode === 'vcard' && !form.vcardName.trim()) {
+    if (form.target === 'contact' && form.projectionMode === 'vcard' && !form.vcardName.trim()) {
       setError(t('customFields.vcardNameRequired'));
       return;
     }
@@ -171,6 +175,9 @@ export default function FieldDefinitionDialog({
     }
 
     const input: FieldDefinitionInput = {
+      // The target is fixed at creation (the server rejects a change), and
+      // `contact` is the default, so it is only sent for a new entity field.
+      ...(!isEditing && form.target !== 'contact' ? { target: form.target } : {}),
       label: form.label.trim(),
       key: form.key.trim(),
       type: form.type,
@@ -178,8 +185,11 @@ export default function FieldDefinitionDialog({
         Object.keys(constraints).length > 0
           ? (constraints as FieldDefinitionInput['constraints'])
           : undefined,
+      // Only a contact field can project into a vCard (ADR 0043 decision 5).
       projection:
-        form.projectionMode === 'vcard' ? `vcard:X-${form.vcardName.trim()}` : 'internal-only',
+        form.target === 'contact' && form.projectionMode === 'vcard'
+          ? `vcard:X-${form.vcardName.trim()}`
+          : 'internal-only',
       sensitivity: form.sensitivity,
       // Always sent: "" clears the group on update (omitting would keep it).
       group,
@@ -215,6 +225,20 @@ export default function FieldDefinitionDialog({
               {error}
             </Typography>
           )}
+
+          <TextField
+            select
+            label={t('customFields.appliesTo')}
+            value={form.target}
+            onChange={(e) => set({ target: e.target.value as FieldDefinitionTarget })}
+            disabled={isEditing}
+            fullWidth
+          >
+            <MenuItem value="contact">{t('customFields.targets.contact')}</MenuItem>
+            <MenuItem value="organisation">{t('entities.kind.organisation')}</MenuItem>
+            <MenuItem value="place">{t('entities.kind.place')}</MenuItem>
+            <MenuItem value="pet">{t('entities.kind.pet')}</MenuItem>
+          </TextField>
 
           <TextField
             label={t('customFields.label')}
@@ -332,17 +356,21 @@ export default function FieldDefinitionDialog({
             </Box>
           ) : null}
 
-          <TextField
-            select
-            label={t('customFields.projection')}
-            value={form.projectionMode}
-            onChange={(e) => set({ projectionMode: e.target.value as FormState['projectionMode'] })}
-            fullWidth
-          >
-            <MenuItem value="internal">{t('customFields.projectionInternal')}</MenuItem>
-            <MenuItem value="vcard">{t('customFields.projectionVcard')}</MenuItem>
-          </TextField>
-          {form.projectionMode === 'vcard' && (
+          {form.target === 'contact' && (
+            <TextField
+              select
+              label={t('customFields.projection')}
+              value={form.projectionMode}
+              onChange={(e) =>
+                set({ projectionMode: e.target.value as FormState['projectionMode'] })
+              }
+              fullWidth
+            >
+              <MenuItem value="internal">{t('customFields.projectionInternal')}</MenuItem>
+              <MenuItem value="vcard">{t('customFields.projectionVcard')}</MenuItem>
+            </TextField>
+          )}
+          {form.target === 'contact' && form.projectionMode === 'vcard' && (
             <TextField
               label={t('customFields.vcardName')}
               value={form.vcardName}

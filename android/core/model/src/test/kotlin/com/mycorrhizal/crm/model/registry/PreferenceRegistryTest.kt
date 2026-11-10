@@ -32,4 +32,35 @@ class PreferenceRegistryTest {
         assertTrue(config.supportsLevel)
         assertTrue(PreferenceSection.OVERVIEW_TAB.contains(PreferenceSection.HOBBY))
     }
+
+    /** Issue #2445 (web #2194/#2430): catch-all categories mirror PREFERENCE_CATEGORY_CONFIG. */
+    @Test
+    fun `other categories are configured in their sections with disposition keys`() {
+        val expected = mapOf(
+            "media_other" to Pair(PreferenceSection.MEDIA, listOf("favorite", "like", "dislike")),
+            "jewelry_other" to Pair(
+                PreferenceSection.JEWELRY,
+                listOf("favorite", "like", "dislike", "allergy")
+            ),
+            "gift_other" to Pair(
+                PreferenceSection.GIFT_PREFERENCES,
+                listOf("favorite", "like", "dislike", "allergy")
+            )
+        )
+        expected.forEach { (category, want) ->
+            val config = PreferenceCategory.CONFIG.single { it.category == category }
+            assertEquals(category, want.first, config.section)
+            assertEquals(category, PreferenceKeyMode.DISPOSITION, config.keyMode)
+            assertEquals(category, want.second, config.keySuggestions)
+            assertFalse(category, config.supportsLevel)
+        }
+    }
+
+    @Test
+    fun `jewelry_other and gift_other surface on the gifts tab, media_other does not`() {
+        assertTrue(PreferenceCategory.isGiftsTabCategory("jewelry_other"))
+        assertTrue(PreferenceCategory.isGiftsTabCategory("gift_other"))
+        assertFalse(PreferenceCategory.isGiftsTabCategory("media_other"))
+        assertEquals(PreferenceSection.MEDIA, PreferenceCategory.sectionOf("media_other"))
+    }
 }
