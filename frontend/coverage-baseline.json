@@ -9,9 +9,9 @@
       "branchesTotal": 84
     },
     "src/App.tsx": {
-      "lines": 85.71,
+      "lines": 86.9,
       "linesTotal": 84,
-      "branches": 77.27,
+      "branches": 86.36,
       "branchesTotal": 44
     },
     "src/AppThemeProvider.tsx": {
