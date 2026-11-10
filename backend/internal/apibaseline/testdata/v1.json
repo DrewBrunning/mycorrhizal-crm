@@ -10983,6 +10983,21 @@
           "required": false
         },
         {
+          "name": "entities",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "entity_field_values",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "entity_links",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "gifts",
           "type": "array\u003cobject\u003e",
           "required": false

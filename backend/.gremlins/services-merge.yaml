@@ -40,6 +40,7 @@ unleash:
         - ^device_grant_service\.go$
         - ^diagnostics\.go$
         - ^email_renderer\.go$
+        - ^entity_csv\.go$
         - ^entity_delete\.go$
         - ^entity_merge\.go$
         - ^entity_suggestions\.go$

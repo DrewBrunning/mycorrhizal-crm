@@ -41,6 +41,7 @@ unleash:
         - ^diagnostics\.go$
         - ^duplicate_service\.go$
         - ^email_renderer\.go$
+        - ^entity_csv\.go$
         - ^entity_delete\.go$
         - ^entity_merge\.go$
         - ^entity_suggestions\.go$

@@ -12036,7 +12036,9 @@ paths:
         The full per-user backup as a single CSV file with section banner
         rows (CONTACTS/RELATIONSHIPS/ACTIVITIES/NOTES/REMINDERS/LIFE_EVENTS/
         GIFTS/CONVERSATION_AGENDA/CADENCE_POLICIES/PREFERENCES/
-        REMINDER_COMPLETIONS) and header rows per section. Values are
+        REMINDER_COMPLETIONS, then ENTITIES/ENTITY LINKS/ENTITY FIELDS —
+        reusable organisations, places and pets, issue #2300, see
+        docs/import/entity-backup.md) and header rows per section. Values are
         formula-injection-neutralized. This endpoint does not take
         sections/include_sensitive params — those apply only to the
         vCard/JSContact exports.
@@ -12308,6 +12310,9 @@ paths:
                   custom_field_values: []
                   occasions: []
                   occasion_events: []
+                  entities: []
+                  entity_links: []
+                  entity_field_values: []
                 attachments: []
                 images: []
                 omitted:
@@ -21911,6 +21916,9 @@ components:
         custom_field_values: { type: array, items: { type: object, additionalProperties: true } }
         occasions: { type: array, items: { type: object, additionalProperties: true } }
         occasion_events: { type: array, items: { type: object, additionalProperties: true } }
+        entities: { type: array, items: { type: object, additionalProperties: true }, description: "Reusable organisations, places and pets (ADR 0043, issue #2300): id, kind, name, sensitivity, core, created_at, updated_at. Additive to version 1; absent on a pre-1.7 bundle (read as none). Live rows, every sensitivity." }
+        entity_links: { type: array, items: { type: object, additionalProperties: true }, description: "Contact-to-entity links: id, contact_vcard_uid, entity_id, kind, role, role_label, is_primary, start, end, sensitivity. Additive; absent reads as none." }
+        entity_field_values: { type: array, items: { type: object, additionalProperties: true }, description: "Custom-field values owned by an entity: field_definition_id, entity_id, value. Contact-owned values stay in custom_field_values. Additive; absent reads as none." }
     AccountBundleAttachment:
       type: object
       description: Attachment metadata only; bytes are not embedded in v1.
