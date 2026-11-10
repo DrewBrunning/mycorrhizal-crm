@@ -78,7 +78,10 @@ node/edge counts and pointing at the circle / centre-on-contact filters and the
 list view — instead of `<ForceGraph2D>`. `NetworkListView` (rendered
 unconditionally by `NetworkPage`, #189) remains the full view. The check runs on
 the **filtered** graph, so a filter that brings the set back under the ceiling
-restores the canvas with no reload.
+restores the canvas with no reload. The opt-in entity layer (`?include_entities=true`,
+ADR 0043, issue #2301) is merged into the same node and edge lists as `entity`-typed
+items, so organisations, places and pets count against both ceilings like any other
+node (`NetworkGraph.test.tsx` pins it).
 
 The ceilings are chosen so the #468 `typical` profile (900 contacts + a few
 dense hubs + a depth-12 chain → well under 2000 nodes) always renders and `large`

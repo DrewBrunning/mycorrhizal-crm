@@ -1419,6 +1419,23 @@ describe('contact record CRUD endpoints', () => {
     expect(body.card.emails).toEqual([{ id: 'ent-looking-email', address: 'a@b.c' }]);
   });
 
+  test('updateContactRecord strips a projected address even when the card has no organizations, and vice versa', async () => {
+    const put = async (card: Record<string, unknown>) => {
+      (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ card: {}, crm: {} }),
+      });
+      await updateContactRecord(42, { card, crm: {} } as never);
+      const calls = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls;
+      return JSON.parse(calls[calls.length - 1][1].body).card;
+    };
+    expect(await put({ addresses: [{ id: 'ent-a' }] })).toEqual({ addresses: [] });
+    expect(await put({ organizations: [{ id: 'ent-o', name: 'X' }] })).toEqual({
+      organizations: [],
+    });
+    expect(await put({})).toEqual({});
+  });
+
   test('updateContactRecord leaves a card with no projected entries byte-for-byte alone', async () => {
     const input = { card: { organizations: [{ id: 'o', name: 'Mine' }] }, crm: {} };
     (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
