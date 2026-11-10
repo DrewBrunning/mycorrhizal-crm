@@ -1,6 +1,8 @@
-// Full-text search API (T11): search across contacts, notes, and
-// interactions. Backed by backend FTS5; user-scoped server-side.
+// Full-text search API (T11): search across contacts, notes,
+// interactions, and entities. Backed by backend FTS5; user-scoped server-side.
+
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
+import type { EntityKind, EntitySensitivity } from './entities';
 
 export interface SearchContactHit {
   id: number;
@@ -39,6 +41,14 @@ export interface SearchActivityHit {
   snippet?: string;
 }
 
+// A reusable entity (organisation, place or pet) matched by name (#2472).
+export interface SearchEntityHit {
+  id: string;
+  kind: EntityKind;
+  name: string;
+  sensitivity: EntitySensitivity;
+}
+
 export interface SearchResult {
   query: string;
   // Canonical relation token when the whole query is a registry synonym
@@ -47,6 +57,7 @@ export interface SearchResult {
   contacts: SearchContactHit[];
   notes: SearchNoteHit[];
   activities: SearchActivityHit[];
+  entities: SearchEntityHit[];
 }
 
 export async function searchAll(query: string, limit?: number): Promise<SearchResult> {

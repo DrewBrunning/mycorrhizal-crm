@@ -30,6 +30,7 @@
     "groupContacts": "Contacts",
     "groupNotes": "Notes",
     "groupActivities": "Activities",
+    "groupEntities": "Entities",
     "seeAll": "See all results for \"{{query}}\"",
     "noResults": "No results for \"{{query}}\".",
     "pageTitle": "Search results",
@@ -37,6 +38,7 @@
     "emptyContacts": "No contacts match \"{{query}}\".",
     "emptyNotes": "No notes match \"{{query}}\".",
     "emptyActivities": "No activities match \"{{query}}\".",
+    "emptyEntities": "No organisations, places or pets match \"{{query}}\".",
     "capped": "Showing the first {{limit}} matches in this category. Refine your search to narrow it down.",
     "unfiled": "Unfiled note"
   },

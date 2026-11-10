@@ -1,5 +1,6 @@
 import {
   Box,
+  Chip,
   List,
   ListItemButton,
   ListItemText,
@@ -15,16 +16,23 @@ import { type SearchResult, searchAll } from './api/search';
 import LoadError from './components/LoadError';
 import { useDateFormat } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { ENTITY_KIND_KEYS, ENTITY_SENSITIVITY_KEYS } from './utils/entityLabels';
 import { getErrorMessage } from './utils/errorHandler';
 import { calendarDateOnly } from './utils/localDate';
-import { activityHref, contactHref, noteHref, type SearchTab } from './utils/searchLinks';
+import {
+  activityHref,
+  contactHref,
+  entityHref,
+  noteHref,
+  type SearchTab,
+} from './utils/searchLinks';
 
 // #2174: the full results page behind the top-bar search — one tab per
 // category. It asks for the server's maximum page (50) per category; when a
 // category is full it says so rather than implying the list is complete.
 const PAGE_LIMIT = 50;
 const MIN_QUERY_LENGTH = 2;
-const TABS: SearchTab[] = ['contacts', 'notes', 'activities'];
+const TABS: SearchTab[] = ['contacts', 'notes', 'activities', 'entities'];
 
 function parseTab(raw: string | null): SearchTab {
   return TABS.includes(raw as SearchTab) ? (raw as SearchTab) : 'contacts';
@@ -75,6 +83,7 @@ export default function SearchResultsPage() {
     contacts: result?.contacts.length ?? 0,
     notes: result?.notes.length ?? 0,
     activities: result?.activities.length ?? 0,
+    entities: result?.entities.length ?? 0,
   };
 
   const categoryName = (k: SearchTab) =>
@@ -82,7 +91,9 @@ export default function SearchResultsPage() {
       ? t('globalSearch.groupContacts')
       : k === 'notes'
         ? t('globalSearch.groupNotes')
-        : t('globalSearch.groupActivities');
+        : k === 'activities'
+          ? t('globalSearch.groupActivities')
+          : t('globalSearch.groupEntities');
 
   const tabLabel = (k: SearchTab) =>
     result ? `${categoryName(k)} (${counts[k]})` : categoryName(k);
@@ -92,7 +103,9 @@ export default function SearchResultsPage() {
       ? t('globalSearch.emptyContacts', { query })
       : k === 'notes'
         ? t('globalSearch.emptyNotes', { query })
-        : t('globalSearch.emptyActivities', { query });
+        : k === 'activities'
+          ? t('globalSearch.emptyActivities', { query })
+          : t('globalSearch.emptyEntities', { query });
 
   const empty = (k: SearchTab) => (
     <Paper sx={{ p: 3, textAlign: 'center' }}>
@@ -100,7 +113,13 @@ export default function SearchResultsPage() {
     </Paper>
   );
 
-  const row = (key: string | number, to: string, primary: string, secondary?: string) => (
+  const row = (
+    key: string | number,
+    to: string,
+    primary: string,
+    secondary?: string,
+    chip?: string,
+  ) => (
     <ListItemButton key={key} component={RouterLink} to={to}>
       <ListItemText
         primary={primary}
@@ -109,6 +128,7 @@ export default function SearchResultsPage() {
           primary: { sx: { overflowWrap: 'anywhere' } },
         }}
       />
+      {chip && <Chip size="small" variant="outlined" label={chip} sx={{ ml: 2, flexShrink: 0 }} />}
     </ListItemButton>
   );
 
@@ -146,6 +166,16 @@ export default function SearchResultsPage() {
                 activityHref(query),
                 a.title || a.description || '',
                 [a.location, formatDate(calendarDateOnly(a.date))].filter(Boolean).join(' · '),
+              ),
+            )}
+          {tab === 'entities' &&
+            result.entities.map((e) =>
+              row(
+                e.id,
+                entityHref(e.id),
+                e.name,
+                e.sensitivity !== 'normal' ? t(ENTITY_SENSITIVITY_KEYS[e.sensitivity]) : undefined,
+                t(ENTITY_KIND_KEYS[e.kind]),
               ),
             )}
         </List>

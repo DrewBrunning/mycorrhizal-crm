@@ -61,7 +61,9 @@ vi.mock('./api/search', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/search')>();
   return {
     ...actual,
-    searchAll: vi.fn().mockResolvedValue({ query: '', contacts: [], notes: [], activities: [] }),
+    searchAll: vi
+      .fn()
+      .mockResolvedValue({ query: '', contacts: [], notes: [], activities: [], entities: [] }),
   };
 });
 
@@ -165,6 +167,7 @@ test('a stale AppBar search response does not clobber a newer query (#960)', asy
         contacts: [{ id: 1, uid: 'u1', firstname: 'John', lastname: 'Smith' }],
         notes: [],
         activities: [],
+        entities: [],
       });
 
     renderApp();
@@ -187,6 +190,7 @@ test('a stale AppBar search response does not clobber a newer query (#960)', asy
         contacts: [{ id: 2, uid: 'u2', firstname: 'Joanna', lastname: 'Doe' }],
         notes: [],
         activities: [],
+        entities: [],
       });
     });
     expect(screen.queryByText('Joanna Doe')).not.toBeInTheDocument();

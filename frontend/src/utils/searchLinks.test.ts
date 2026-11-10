@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { activityHref, contactHref, noteHref, searchResultsHref } from './searchLinks';
+import { activityHref, contactHref, entityHref, noteHref, searchResultsHref } from './searchLinks';
 
 test('searchResultsHref encodes the query and optionally selects a tab', () => {
   expect(searchResultsHref('a b&c')).toBe('/search?q=a%20b%26c');
@@ -20,4 +20,9 @@ test('noteHref opens the owning contact, or the notes page filtered by the query
 
 test('activityHref opens the activities page filtered by the query', () => {
   expect(activityHref('a&b')).toBe('/activities?search=a%26b');
+});
+
+test('entityHref opens the entity detail page, and the entities tab round-trips', () => {
+  expect(entityHref('0b1f-uuid')).toBe('/entities/0b1f-uuid');
+  expect(searchResultsHref('acme', 'entities')).toBe('/search?q=acme&tab=entities');
 });

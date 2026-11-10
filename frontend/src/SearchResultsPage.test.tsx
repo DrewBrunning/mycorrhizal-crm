@@ -27,6 +27,10 @@ const data: SearchResult = {
     { id: 6, content: 'Unfiled alice idea', date: '2026-01-02T00:00:00Z', contact_id: null },
   ],
   activities: [],
+  entities: [
+    { id: 'e-1', kind: 'place', name: 'Alice Springs House', sensitivity: 'normal' },
+    { id: 'e-2', kind: 'pet', name: 'Alice', sensitivity: 'private' },
+  ],
 };
 
 function renderPage(url: string) {
@@ -95,4 +99,43 @@ test('a failed search shows a retryable error', async () => {
   await waitFor(() =>
     expect(screen.getByRole('tab', { name: 'Contacts (1)' })).toBeInTheDocument(),
   );
+});
+
+test('entities are the fourth tab: counted, linked to the entity page, with a kind chip', async () => {
+  vi.mocked(searchAll).mockResolvedValue(data);
+  renderPage('/search?q=ali');
+  fireEvent.click(await screen.findByRole('tab', { name: 'Entities (2)' }));
+  const house = screen.getByRole('link', { name: /Alice Springs House/ });
+  expect(house).toHaveAttribute('href', '/entities/e-1');
+  expect(house).toHaveTextContent('Place');
+  expect(screen.getByRole('link', { name: /Pet/ })).toHaveAttribute('href', '/entities/e-2');
+  expect(screen.getByText('Private')).toBeInTheDocument();
+});
+
+test('?tab=entities deep-links to the entities tab', async () => {
+  vi.mocked(searchAll).mockResolvedValue(data);
+  renderPage('/search?q=ali&tab=entities');
+  expect(await screen.findByText('Alice Springs House')).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Entities (2)' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
+
+test('an empty entities tab explains itself, and a full one says it is capped', async () => {
+  vi.mocked(searchAll).mockResolvedValue({ ...data, entities: [] });
+  renderPage('/search?q=ali&tab=entities');
+  expect(
+    await screen.findByText('No organisations, places or pets match "ali".'),
+  ).toBeInTheDocument();
+  cleanup();
+  const many = Array.from({ length: 50 }, (_, i) => ({
+    id: `e${i}`,
+    kind: 'organisation' as const,
+    name: `Org ${i}`,
+    sensitivity: 'normal' as const,
+  }));
+  vi.mocked(searchAll).mockResolvedValue({ ...data, entities: many });
+  renderPage('/search?q=org&tab=entities');
+  expect(await screen.findByText(/Showing the first 50 matches/)).toBeInTheDocument();
 });

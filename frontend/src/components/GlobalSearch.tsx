@@ -12,16 +12,23 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
 import { type SearchResult, searchAll } from '../api/search';
-import { activityHref, contactHref, noteHref, searchResultsHref } from '../utils/searchLinks';
+import { ENTITY_KIND_KEYS, ENTITY_SENSITIVITY_KEYS } from '../utils/entityLabels';
+import {
+  activityHref,
+  contactHref,
+  entityHref,
+  noteHref,
+  searchResultsHref,
+} from '../utils/searchLinks';
 
-// #2174: the top-bar search covers contacts, notes and activities. The
+// #2174/#2472: the top-bar search covers contacts, notes, activities and entities. The
 // dropdown shows the top DROPDOWN_LIMIT hits per category and a last row that
 // opens the full results page (one tab per category).
 const DROPDOWN_LIMIT = 3;
 const MIN_QUERY_LENGTH = 2;
 const DEBOUNCE_MS = 300;
 
-type Kind = 'contacts' | 'notes' | 'activities' | 'all' | 'none';
+type Kind = 'contacts' | 'notes' | 'activities' | 'entities' | 'all' | 'none';
 
 interface Option {
   key: string;
@@ -62,6 +69,20 @@ function toOptions(
       primary: a.title || a.description || '',
       secondary: a.location,
       to: activityHref(query),
+    });
+  }
+  for (const e of result.entities) {
+    options.push({
+      key: `e${e.id}`,
+      kind: 'entities',
+      primary: e.name,
+      secondary: [
+        t(ENTITY_KIND_KEYS[e.kind]),
+        e.sensitivity !== 'normal' ? t(ENTITY_SENSITIVITY_KEYS[e.sensitivity]) : '',
+      ]
+        .filter(Boolean)
+        .join(' · '),
+      to: entityHref(e.id),
     });
   }
   if (options.length === 0) {
@@ -145,6 +166,8 @@ export default function GlobalSearch() {
         return t('globalSearch.groupNotes');
       case 'activities':
         return t('globalSearch.groupActivities');
+      case 'entities':
+        return t('globalSearch.groupEntities');
       default:
         return '';
     }

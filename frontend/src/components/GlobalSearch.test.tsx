@@ -17,6 +17,7 @@ const result = (over: Partial<SearchResult> = {}): SearchResult => ({
   contacts: [],
   notes: [],
   activities: [],
+  entities: [],
   ...over,
 });
 
@@ -68,6 +69,10 @@ const full = result({
     { id: 6, content: 'Unfiled alice idea', date: '2026-01-02T00:00:00Z', contact_id: null },
   ],
   activities: [{ id: 9, title: 'Lunch with Alice', date: '2026-02-01T00:00:00Z' }],
+  entities: [
+    { id: 'e-1', kind: 'organisation', name: 'Alice Holdings', sensitivity: 'normal' },
+    { id: 'e-2', kind: 'pet', name: 'Alice the cat', sensitivity: 'secret' },
+  ],
 });
 
 test('asks for the top 3 hits per category and groups the dropdown by category', async () => {
@@ -176,4 +181,33 @@ test('a stale response for an abandoned query does not clobber the newer one (#9
   });
   expect(screen.queryByText('Joanna Doe')).not.toBeInTheDocument();
   expect(screen.getByText('John Smith')).toBeInTheDocument();
+});
+
+test('entities get their own group with the kind (and a non-normal sensitivity) as the detail line', async () => {
+  vi.mocked(searchAll).mockResolvedValue(full);
+  renderSearch();
+  await type('ali');
+  expect(screen.getByText('Entities')).toBeInTheDocument();
+  expect(screen.getByText('Alice Holdings')).toBeInTheDocument();
+  expect(screen.getByText('Organisation')).toBeInTheDocument();
+  expect(screen.getByText('Alice the cat')).toBeInTheDocument();
+  expect(screen.getByText(/^Pet · /)).toBeInTheDocument();
+});
+
+test('picking an entity opens its page and clears the box', async () => {
+  vi.mocked(searchAll).mockResolvedValue(full);
+  renderSearch();
+  const box = await type('ali');
+  fireEvent.click(screen.getByText('Alice Holdings'));
+  expect(screen.getByTestId('where')).toHaveTextContent('/entities/e-1');
+  expect((box as HTMLInputElement).value).toBe('');
+});
+
+test('an entities-only result is a result: no "no results" row, and see-all is offered', async () => {
+  vi.mocked(searchAll).mockResolvedValue(result({ entities: full.entities }));
+  renderSearch();
+  await type('ali');
+  expect(screen.getByText('Entities')).toBeInTheDocument();
+  expect(screen.queryByText(/No results for/)).not.toBeInTheDocument();
+  expect(screen.getByText('See all results for "ali"')).toBeInTheDocument();
 });

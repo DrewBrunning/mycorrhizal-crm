@@ -2,7 +2,7 @@
 // and the /search results page so the two can never disagree about where a
 // hit opens.
 
-export type SearchTab = 'contacts' | 'notes' | 'activities';
+export type SearchTab = 'contacts' | 'notes' | 'activities' | 'entities';
 
 export function searchResultsHref(query: string, tab?: SearchTab): string {
   const params = new URLSearchParams({ q: query });
@@ -27,4 +27,9 @@ export function noteHref(note: { contact_id?: number | null }, query: string): s
 // filtered by the same query that found the hit.
 export function activityHref(query: string): string {
   return `/activities?search=${encodeURIComponent(query)}`;
+}
+
+// A reusable entity (organisation, place or pet; #2472) opens its own page.
+export function entityHref(id: string): string {
+  return `/entities/${id}`;
 }
