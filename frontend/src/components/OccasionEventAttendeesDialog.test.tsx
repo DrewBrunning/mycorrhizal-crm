@@ -321,3 +321,22 @@ test('with no circles, shows a hint instead of an empty circle picker', async ()
   ).toBeInTheDocument();
   expect(screen.queryByRole('combobox', { name: /^circles/i })).not.toBeInTheDocument();
 });
+
+test('"Add everyone" stops and reports an error when an add fails', async () => {
+  const handleAdd = vi.fn().mockRejectedValue(new Error('boom'));
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(
+    makeHookReturn({
+      handleAdd,
+      suggestions: [
+        { contact_id: 5, contact_name: 'Bob', entity_id: 'uid-5' },
+        { contact_id: 6, contact_name: 'Carol', entity_id: 'uid-6' },
+      ],
+    }),
+  );
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add everyone (2)' }));
+
+  expect(await screen.findByText('Failed to update the attendee.')).toBeInTheDocument();
+  expect(handleAdd).toHaveBeenCalledTimes(1);
+});

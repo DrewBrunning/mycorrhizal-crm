@@ -238,9 +238,7 @@ export default function OccasionEventAttendeesDialog({
             multiple
             options={availableContacts}
             value={NO_SELECTION}
-            filterSelectedOptions
             getOptionLabel={(option) => `${option.firstname} ${option.lastname}`.trim()}
-            isOptionEqualToValue={(option, value) => option.uid === value.uid}
             onChange={(_e, value) => void handlePickContacts(value)}
             onInputChange={(_e, value) => setContactSearch(value)}
             noOptionsText={t('occasions.events.noContactsFound')}
