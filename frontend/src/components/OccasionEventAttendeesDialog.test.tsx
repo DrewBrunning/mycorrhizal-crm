@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { listCircles } from '../api/circles';
+import { getContacts } from '../api/contacts';
 import type { OccasionEvent } from '../api/occasionEvents';
 import { useOccasionEventAttendees } from '../hooks/useOccasionEvents';
 import OccasionEventAttendeesDialog from './OccasionEventAttendeesDialog';
@@ -18,6 +19,11 @@ vi.mock('../hooks/useOccasionEvents', () => ({
 vi.mock('../api/circles', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/circles')>();
   return { ...actual, listCircles: vi.fn() };
+});
+
+vi.mock('../api/contacts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/contacts')>();
+  return { ...actual, getContacts: vi.fn() };
 });
 
 const event: OccasionEvent = {
@@ -68,6 +74,16 @@ beforeEach(() => {
     next_cursor: '',
     limit: 100,
   });
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [
+      { ID: 3, uid: 'uid-1', firstname: 'Alice', lastname: 'Anders' },
+      { ID: 5, uid: 'uid-5', firstname: 'Bob', lastname: 'Baker' },
+      { ID: 6, uid: 'uid-6', firstname: 'Carol', lastname: 'Cole' },
+    ],
+    total: 3,
+    next_cursor: '',
+    limit: 100,
+  } as never);
 });
 
 test('renders the attendee list and the RSVP hint', async () => {
@@ -209,4 +225,118 @@ test('a failed circle load leaves the circle picker empty instead of crashing', 
   fireEvent.mouseDown(screen.getByRole('combobox', { name: /circles/i }));
   expect(screen.queryByRole('option', { name: 'Friends' })).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Suggest' })).toBeDisabled();
+});
+
+// Issue #2178: invitees can be picked from contacts by search, not only via
+// circles.
+
+test('searching contacts and picking one adds them as an attendee', async () => {
+  const handleAdd = vi.fn().mockResolvedValue(undefined);
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn({ handleAdd }));
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  const input = screen.getByRole('combobox', { name: /add contacts/i });
+  fireEvent.focus(input);
+  fireEvent.mouseDown(input);
+  fireEvent.change(input, { target: { value: 'Bob' } });
+  // Typing narrows the server search (debounced); picking before it fires
+  // would clear the input and cancel it.
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ search: 'Bob' })),
+  );
+  fireEvent.click(await screen.findByRole('option', { name: 'Bob Baker' }));
+
+  await waitFor(() => expect(handleAdd).toHaveBeenCalledWith('uid-5'));
+});
+
+test('picking several contacts adds each of them', async () => {
+  const handleAdd = vi.fn().mockResolvedValue(undefined);
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn({ handleAdd }));
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  const input = screen.getByRole('combobox', { name: /add contacts/i });
+  fireEvent.mouseDown(input);
+  fireEvent.click(await screen.findByRole('option', { name: 'Bob Baker' }));
+  await waitFor(() => expect(handleAdd).toHaveBeenCalledWith('uid-5'));
+  fireEvent.mouseDown(input);
+  fireEvent.click(await screen.findByRole('option', { name: 'Carol Cole' }));
+  await waitFor(() => expect(handleAdd).toHaveBeenCalledWith('uid-6'));
+});
+
+test('already-invited contacts are not offered in the contact picker', async () => {
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /add contacts/i }));
+  expect(await screen.findByRole('option', { name: 'Bob Baker' })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: 'Alice Anders' })).not.toBeInTheDocument();
+});
+
+test('a failed contact add surfaces an error', async () => {
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(
+    makeHookReturn({ handleAdd: vi.fn().mockRejectedValue(new Error('boom')) }),
+  );
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /add contacts/i }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Bob Baker' }));
+  expect(await screen.findByText('Failed to update the attendee.')).toBeInTheDocument();
+});
+
+test('a failed contact search leaves the picker empty instead of crashing', async () => {
+  vi.mocked(getContacts).mockRejectedValue(new Error('boom'));
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  await waitFor(() => expect(getContacts).toHaveBeenCalled());
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /add contacts/i }));
+  expect(screen.queryByRole('option', { name: 'Bob Baker' })).not.toBeInTheDocument();
+});
+
+test('"Add everyone" adds every suggested member of the chosen circles', async () => {
+  const handleAdd = vi.fn().mockResolvedValue(undefined);
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(
+    makeHookReturn({
+      handleAdd,
+      suggestions: [
+        { contact_id: 5, contact_name: 'Bob', entity_id: 'uid-5' },
+        { contact_id: 6, contact_name: 'Carol', entity_id: 'uid-6' },
+      ],
+    }),
+  );
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add everyone (2)' }));
+  await waitFor(() => expect(handleAdd).toHaveBeenCalledTimes(2));
+  expect(handleAdd).toHaveBeenCalledWith('uid-5');
+  expect(handleAdd).toHaveBeenCalledWith('uid-6');
+});
+
+test('with no circles, shows a hint instead of an empty circle picker', async () => {
+  vi.mocked(listCircles).mockResolvedValue({ circles: [], total: 0, next_cursor: '', limit: 100 });
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  expect(
+    await screen.findByText(
+      'You have no circles yet. Create a circle to invite a group in one step, or search for contacts above.',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole('combobox', { name: /^circles/i })).not.toBeInTheDocument();
+});
+
+test('"Add everyone" stops and reports an error when an add fails', async () => {
+  const handleAdd = vi.fn().mockRejectedValue(new Error('boom'));
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(
+    makeHookReturn({
+      handleAdd,
+      suggestions: [
+        { contact_id: 5, contact_name: 'Bob', entity_id: 'uid-5' },
+        { contact_id: 6, contact_name: 'Carol', entity_id: 'uid-6' },
+      ],
+    }),
+  );
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Add everyone (2)' }));
+
+  expect(await screen.findByText('Failed to update the attendee.')).toBeInTheDocument();
+  expect(handleAdd).toHaveBeenCalledTimes(1);
 });
