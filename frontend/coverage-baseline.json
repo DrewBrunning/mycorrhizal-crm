@@ -2312,6 +2312,12 @@
       "branches": 100,
       "branchesTotal": 13
     },
+    "src/utils/importReportCsv.ts": {
+      "lines": 100,
+      "linesTotal": 8,
+      "branches": 100,
+      "branchesTotal": 4
+    },
     "src/utils/linkResolution.ts": {
       "lines": 100,
       "linesTotal": 38,
