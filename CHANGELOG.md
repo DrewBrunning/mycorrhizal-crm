@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Android Activities explains itself** ([#2211](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2211)): the Activities screen now says that activities are things that already happened, matching the web page and the Occasions screen, so it is easier to tell them from occasions and reminders.
 - **Standing shares on Android** ([#2293](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2293)): Share contact can now keep sharing, read-only, until you revoke it. A new Shared with me screen accepts, declines, blocks and reads shares; Shared by me shows status and expiry.
 - **Search everything from the top bar** ([#2174](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2174)): the search box now finds contacts, notes and activities, shows the top three of each, and links to a results page with a tab per category.
 - **Organisations, places and pets on Android** ([#2302](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2302)): Settings opens your organisations, places and pets, and a contact has a section to link them and set the primary one. Values from an entity are labelled "from ..." and never edited as the contact's own. You can merge duplicates (only when you confirm) and restore a deletion right afterwards.

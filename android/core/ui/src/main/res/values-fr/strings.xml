@@ -1030,6 +1030,7 @@
     <!-- Activities -->
     <string name="activities_empty">Aucune activité pour le moment</string>
     <string name="activities_empty_body">Consignez appels, rencontres et messages pour suivre vos échanges.</string>
+    <string name="activities_description">Les activités sont des choses déjà arrivées : un appel, un café, un message. Enregistrez-les ici pour garder l’historique complet de chaque contact.</string>
     <string name="activities_search">Rechercher des activités</string>
     <string name="activities_no_results">Aucune activité ne correspond à vos filtres</string>
     <string name="activities_delete_title">Supprimer l\'activité ?</string>

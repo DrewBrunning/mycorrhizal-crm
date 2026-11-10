@@ -1030,6 +1030,7 @@
     <!-- Activities -->
     <string name="activities_empty">Ancora nessuna attività</string>
     <string name="activities_empty_body">Registra chiamate, incontri e messaggi per tenere traccia dei contatti.</string>
+    <string name="activities_description">Le attività sono cose già successe: una chiamata, un caffè, un messaggio. Registrale qui per mantenere completa la storia di ogni contatto.</string>
     <string name="activities_search">Cerca attività</string>
     <string name="activities_no_results">Nessuna attività corrisponde ai filtri</string>
     <string name="activities_delete_title">Eliminare l\'attività?</string>
