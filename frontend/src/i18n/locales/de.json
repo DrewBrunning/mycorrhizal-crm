@@ -25,6 +25,21 @@
       "banner": "Du bist offline. Einige Funktionen sind möglicherweise nicht verfügbar."
     }
   },
+  "globalSearch": {
+    "placeholder": "Kontakte, Notizen, Aktivitäten suchen…",
+    "groupContacts": "Kontakte",
+    "groupNotes": "Notizen",
+    "groupActivities": "Aktivitäten",
+    "seeAll": "Alle Ergebnisse für „{{query}}“ anzeigen",
+    "noResults": "Keine Ergebnisse für „{{query}}“.",
+    "pageTitle": "Suchergebnisse",
+    "tabsLabel": "Kategorien der Suchergebnisse",
+    "emptyContacts": "Keine Kontakte passen zu „{{query}}“.",
+    "emptyNotes": "Keine Notizen passen zu „{{query}}“.",
+    "emptyActivities": "Keine Aktivitäten passen zu „{{query}}“.",
+    "capped": "Es werden die ersten {{limit}} Treffer dieser Kategorie angezeigt. Verfeinere die Suche, um sie einzugrenzen.",
+    "unfiled": "Nicht zugeordnete Notiz"
+  },
   "duplicates": {
     "reviewTitle": "Duplikate prüfen",
     "none": "Keine Duplikatskandidaten gefunden.",
@@ -284,7 +299,6 @@
       "next": "Zur nächsten Seite",
       "last": "Zur letzten Seite"
     },
-    "search": "Kontakte suchen",
     "searchPlaceholder": "Kontakte durchsuchen…",
     "searchClear": "Löschen",
     "searchMinLengthHint": "Gib mindestens zwei Zeichen ein, um zu suchen.",

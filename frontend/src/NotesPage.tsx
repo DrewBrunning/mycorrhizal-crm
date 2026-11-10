@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router';
+import { Link as RouterLink, useSearchParams } from 'react-router';
 import { createUnassignedNote, deleteNote, type Note, updateNote } from './api/notes';
 import AddNoteDialog from './components/AddNoteDialog';
 import DateField from './components/DateField';
@@ -49,7 +49,9 @@ const NotesPage: React.FC = () => {
   useDocumentTitle(t('nav.notes'));
   const { announce } = useAnnouncer();
   const { formatDate } = useDateFormat();
-  const [searchInput, setSearchInput] = useState('');
+  // #2174: the global search deep-links here with ?search=<query>.
+  const [initialParams] = useSearchParams();
+  const [searchInput, setSearchInput] = useState(initialParams.get('search') ?? '');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
