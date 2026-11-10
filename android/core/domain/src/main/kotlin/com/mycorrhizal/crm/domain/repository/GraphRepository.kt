@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.domain.repository
 
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
+import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
 
 /**
  * Ego-centric graph data access (M14). Online-first and deliberately uncached:
@@ -19,6 +20,14 @@ interface GraphRepository {
         depth: Int? = null,
         relation: String? = null
     ): Result<GraphConnectionsResponse>
+
+    /**
+     * GET /graph?include_entities=true - the display-only organisation/place/pet nodes and their
+     * contact edges around [from] (issue #2302, ADR 0043 decision 2). An opt-in overlay: only the
+     * network screen's "show organisations, places & pets" toggle calls it, and it is never fed to
+     * traversal.
+     */
+    suspend fun entityOverlay(from: String, depth: Int?): Result<GraphEntitiesResponse>
 
     /**
      * The caller's "Me" contact VCardUID (GET /users/me →

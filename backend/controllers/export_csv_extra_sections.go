@@ -36,6 +36,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+	"gorm.io/gorm"
 )
 
 // exportContactRef resolves a Contact's ID and display name for the CSV
@@ -121,6 +122,8 @@ func writeExportExtraSections(
 	cadencePolicies []models.CadencePolicy,
 	preferences []models.Preference,
 	reminderCompletions []models.ReminderCompletion,
+	db *gorm.DB,
+	userID uint,
 ) bool {
 	if !writeExportLifeEvents(c, log, buf, writer, contactByVCardUID, lifeEvents) {
 		return false
@@ -143,7 +146,9 @@ func writeExportExtraSections(
 	if !writeExportReminderCompletions(c, log, buf, writer, contactByID, reminderCompletions) {
 		return false
 	}
-	return true
+	// Issue #2300: ENTITIES / ENTITY LINKS / ENTITY FIELDS come last, so every
+	// pre-1.7 section keeps its position.
+	return writeExportEntities(c, log, buf, writer, db, userID, contactByVCardUID)
 }
 
 func writeExportLifeEvents(c *gin.Context, log *zerolog.Logger, buf *bytes.Buffer, writer *csv.Writer, contactByVCardUID map[string]exportContactRef, lifeEvents []models.LifeEvent) bool {

@@ -221,7 +221,7 @@ func crudAllowlist() map[string]string {
 		"POST /activities|query contacts#2":        faultReasonAudit,
 		"PUT /notes/:id|query notes#2":             faultReasonAudit,
 		"PUT /activities/:id|query activities#2":   faultReasonAudit,
-		"PUT /circles/:id|query circles#2":         faultReasonAudit,
+		"PUT /circles/:id|query circles#3":         faultReasonAudit,
 		"PUT /households/:id|query households#2":   faultReasonAudit,
 		"PUT /tags/:id|query tags#2":               faultReasonAudit,
 		"PUT /life-events/:id|query life_events#2": faultReasonAudit,

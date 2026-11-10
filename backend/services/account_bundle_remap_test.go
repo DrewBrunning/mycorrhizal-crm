@@ -28,6 +28,7 @@ var bundleIDSections = map[string]string{
 	"conversation_agenda": "id", "cadence_policies": "id", "data_decay_policies": "id",
 	"households": "id", "circles": "id", "tags": "id", "custom_field_definitions": "id",
 	"occasions": "id", "occasion_events": "id",
+	"entities": "id", "entity_links": "id",
 }
 
 // bundleIDRefs lists the cross-row references: section -> field -> the section
@@ -37,6 +38,8 @@ var bundleIDRefs = map[string]map[string]string{
 	"occasions":           {"linked_life_event_id": "life_events"},
 	"reminders":           {"life_event_id": "life_events", "occasion_obligation_id": "occasions"},
 	"custom_field_values": {"field_definition_id": "custom_field_definitions"},
+	"entity_links":        {"entity_id": "entities"},
+	"entity_field_values": {"entity_id": "entities", "field_definition_id": "custom_field_definitions"},
 }
 
 func planSections(t *testing.T, b *models.AccountBundle) map[string][]map[string]any {

@@ -2697,4 +2697,93 @@ class ContactFormViewModelTest {
         vm.onAmbientChange(true)
         assertEquals(true, vm.uiState.value.toInput(null).crm?.ambient)
     }
+
+    // Issue #2302 / ADR 0043: an `ent-` ORG/ADR is the server's projection of a linked entity, never
+    // the contact's own value. The edit form must neither show it as editable nor write it back.
+
+    private fun projectedRecord() = ContactRecordResponse(
+        id = 5,
+        card = Card(
+            name = Name(
+                full = "Dana White",
+                components = listOf(
+                    com.mycorrhizal.crm.model.network.NameComponent(kind = "given", value = "Dana")
+                )
+            ),
+            organizations = listOf(Organization(id = "ent-l1", name = "Acme")),
+            addresses = listOf(
+                Address(id = "ent-l2", full = "1 High St"),
+                Address(id = "a1", full = "2 Low St")
+            )
+        )
+    )
+
+    @Test
+    fun `a projected address is not loaded into the editable addresses`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(projectedRecord())
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        assertEquals(listOf("a1"), vm.uiState.value.addresses.map { it.id })
+    }
+
+    @Test
+    fun `a projected organization is not the form's organization and typing one adds an own entry`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { contactRepository.getContact(5) } returns Result.success(projectedRecord())
+            coEvery { contactRepository.updateContact(5, any(), any()) } returns
+                Result.success(projectedRecord())
+            val vm = createViewModel(5)
+            advanceUntilIdle()
+            assertEquals("", vm.uiState.value.organizationName)
+
+            vm.onOrganizationNameChange("Globex")
+            vm.save()
+            advanceUntilIdle()
+
+            coVerify {
+                contactRepository.updateContact(
+                    5,
+                    match<ContactRecordInput> { input ->
+                        val orgs = input.card?.organizations.orEmpty()
+                        orgs.size == 1 && orgs.single().name == "Globex" &&
+                            orgs.single().id?.startsWith("ent-") != true
+                    },
+                    any()
+                )
+            }
+        }
+
+    @Test
+    fun `saving the form never sends a projected organization or address`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.getContact(5) } returns Result.success(projectedRecord())
+        coEvery { contactRepository.updateContact(5, any(), any()) } returns
+            Result.success(projectedRecord())
+        val vm = createViewModel(5)
+        advanceUntilIdle()
+        vm.save()
+        advanceUntilIdle()
+        coVerify {
+            contactRepository.updateContact(
+                5,
+                match<ContactRecordInput> { input ->
+                    input.card?.organizations.orEmpty().none {
+                        it.id?.startsWith(
+                            "ent-"
+                        ) == true
+                    } &&
+                        input.card?.addresses.orEmpty().none {
+                            it.id?.startsWith(
+                                "ent-"
+                            ) == true
+                        } &&
+                        input.card?.addresses?.map { it.id } == listOf("a1")
+                },
+                any()
+            )
+        }
+    }
 }

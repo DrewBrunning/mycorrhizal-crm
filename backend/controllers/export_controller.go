@@ -257,7 +257,7 @@ func ExportData(c *gin.Context) {
 	// they replace -- and each contact's row carries the matching FieldValue,
 	// if any.
 	var definitions []models.FieldDefinition
-	if err := db.Where("user_id = ?", userID).Order("label ASC").Find(&definitions).Error; err != nil {
+	if err := db.Where("user_id = ? AND target = ?", userID, models.FieldDefinitionTargetContact).Order("label ASC").Find(&definitions).Error; err != nil {
 		abortExportError(c, log, "export:csv", "database", "Failed to fetch field definitions for export", err)
 		return
 	}
@@ -689,7 +689,7 @@ func ExportData(c *gin.Context) {
 	// PREFERENCES/REMINDER_COMPLETIONS — see writeExportExtraSections'
 	// doc comment (export_csv_extra_sections.go).
 	if !writeExportExtraSections(c, log, &buf, writer, contactByVCardUID, contactByID, contacts,
-		lifeEvents, gifts, agendaItems, cadencePolicies, preferences, reminderCompletions) {
+		lifeEvents, gifts, agendaItems, cadencePolicies, preferences, reminderCompletions, db, userID) {
 		return
 	}
 

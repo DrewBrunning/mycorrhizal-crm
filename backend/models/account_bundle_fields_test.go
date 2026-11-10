@@ -78,6 +78,9 @@ var bundleFieldMap = map[string]bundleFieldDTO{
 		"ReminderID": "ReminderUUID", "ContactID": "ContactUID",
 	}},
 	"Tag": {dto: AccountBundleTag{}},
+	// Issue #2300 (ADR 0043 decision 7): entities and their links.
+	"Entity":            {dto: AccountBundleEntity{}},
+	"ContactEntityLink": {dto: AccountBundleEntityLink{}, renamed: map[string]string{"Period": "Start"}},
 	// Pure join rows: their whole content is the pair of stable IDs that the
 	// parent DTO's member/contact list carries (member_uids / contact_uids).
 	"CircleMember": {dto: AccountBundleCircle{}, renamed: map[string]string{"MemberVCardUID": "MemberUIDs", "CircleID": "ID"}},
@@ -131,6 +134,14 @@ var bundleFieldExcluded = map[string]map[string]string{
 		"TargetCloseness": reasonFlatEnvelope, // crm.target_closeness (issue #1796)
 		"Photo":           reasonFlatPhoto,
 		"PhotoThumbnail":  reasonFlatPhoto,
+	},
+	"Entity": {
+		"NameKey":  "derived from name by BeforeSave on the destination (ADR 0043 decision 1)",
+		"Revision": reasonRevision, "ETag": reasonRevision,
+	},
+	"ContactEntityLink": {
+		"DeletionBatchID": "entity-delete batch marker of a trashed link; only live links are exported",
+		"Revision":        reasonRevision, "ETag": reasonRevision,
 	},
 	"ContactFieldOverride":  {"ID": reasonPK},
 	"FieldValue":            {"ID": reasonPK},

@@ -553,18 +553,20 @@ class SettingsScreenTest {
                 onCustomFields = { opened += "fields" },
                 onContactFieldSettings = { opened += "contact-fields" },
                 onCustomLinks = { opened += "links" },
-                onCircleTagTriage = { opened += "triage" }
+                onCircleTagTriage = { opened += "triage" },
+                onEntities = { opened += "entities" }
             )
         }
 
         listOf(
             "Custom fields",
             "Contact field settings",
+            "Organisations, places & pets",
             "Custom link actions",
             "Circle & tag triage"
         )
             .forEach { composeTestRule.onNodeWithText(it).performClick() }
-        assertEquals(listOf("fields", "contact-fields", "links", "triage"), opened)
+        assertEquals(listOf("fields", "contact-fields", "entities", "links", "triage"), opened)
     }
 
     // --- Tracking & notifications --------------------------------------------------------------

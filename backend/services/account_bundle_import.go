@@ -313,6 +313,8 @@ func MapAccountBundle(bundle *models.AccountBundle) *ImportSourcePlan {
 		})
 	}
 
+	mapBundleEntities(bundle, plan)
+
 	return plan
 }
 

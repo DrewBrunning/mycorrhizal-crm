@@ -418,6 +418,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/contacts/import/meerkat/confirm":  {class: classProtected},
 		"POST /api/v1/contacts/import/meerkat/cancel":   {class: classProtected},
 		"POST /api/v1/import/mycorrhizal/upload":        {class: classProtected},
+		"POST /api/v1/import/entities/csv":              {class: classProtected},
 		"POST /api/v1/import/mycorrhizal/fetch":         {class: classProtected},
 		"GET /api/v1/import/mycorrhizal/status":         {class: classProtected},
 		"GET /api/v1/import/mycorrhizal/preview":        {class: classProtected},

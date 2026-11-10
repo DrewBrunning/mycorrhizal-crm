@@ -2,6 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-30
+- **Amended:** 2026-11-10 — entity ids are re-minted on bundle/CSV restore (issue #2300), see the amendment at the end
 - **Decides:** issue #1999 (ported from fbuchner/meerkat-crm#91). Implementation targets v1.7.0.
 - **Related:** `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`,
   `docs/adrs/0002-correspondence-table-locked-oracle.md`, `docs/adrs/0004-soft-vs-hard-delete-semantics.md`,
@@ -334,8 +335,10 @@ with an adopt-all affordance as a UI convenience. Restoring the entity brings th
   soft-deleted state only as far as existing bundle rules already carry it (live rows only). Cross-references use the
   stable ids (`entities.id`, `contact_vcard_uid`), never uint PKs, like every other bundle collection. The bundle
   version stays `1`: the new collections are additive and optional on read (absent means none), and the importer
-  ignores no field. `omitted` is unchanged. Restore remaps nothing because ids are UUIDs, but a collision with an
-  existing entity id is a 409-style conflict reported per row, not an overwrite. The account-bundle coverage test
+  ignores no field. `omitted` is unchanged. Restore follows the same rule as every other restored entity (amended
+  2026-11-10, see the amendment at the end): entity ids are re-minted and recorded in the import ledger, references
+  inside the same bundle are remapped, and a collision with an owned entity id is a per-row skipped conflict, not an
+  overwrite. The account-bundle coverage test
   (`backend/controllers/account_bundle_coverage_test.go`) must list the new tables, failing otherwise.
 - **CSV export: full-fidelity exception.** `ExportData` appends two sections after the existing ones, in the same
   `=== NAME ===` format and passing the same `csvSafe` formula-injection neutralization: `=== ENTITIES ===` with
@@ -491,3 +494,22 @@ folded into the decision section named.
 6. **Pets have no standards home.** They are CRM-only and a named loss on every standards surface (decision 3).
 7. **Suggestion normalization is English-biased for now** (decision 8). Follow-up for v1.7.0+: diacritic folding and
    localized legal-suffix lists; the exact-name tier is unaffected.
+
+## Amendment, 2026-11-10 (entity ids on restore, issue #2300)
+
+Decision 7 originally said restore "remaps nothing because ids are UUIDs". The implementation instead routes
+entities through the shared source-import engine (issue #1355), and the maintainer decided on 2026-11-10 to keep
+that behaviour and amend this ADR rather than the code:
+
+- Entity ids follow the same **re-mint plus import-ledger rule** as every other restored entity. A restored entity
+  gets a fresh id; `import_source_links` (kinds `entity`, `entity_link`) records the source id so a re-run is a
+  no-op.
+- References inside the same bundle or CSV (links and field values pointing at an entity) are **remapped** to the
+  new ids.
+- An id the account already owns (live or in the trash) is a **per-row skipped conflict**: reported, never an
+  overwrite and never a duplicate, and its dependents are reported as referencing an entity that was not imported.
+- The CSV restore reports each row as restored, skipped conflict or missing dependency (a contact or field
+  definition the CSV cannot carry).
+
+Reason: one id policy for all restored rows keeps the engine's same-instance multi-account guarantees; preserving
+source ids would have made entities the lone exception. The rest of decision 7 is unchanged.

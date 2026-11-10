@@ -299,6 +299,8 @@ func seedFullAccount(t *testing.T, db *gorm.DB, user models.User, marker string)
 	require.NoError(t, db.Model(&models.User{}).Where("id = ?", user.ID).
 		Update("self_contact_vcard_uid", ada.VCardUID).Error)
 
+	seedBundleEntities(t, db, user, ada, bob, marker)
+
 	return bundleSeed{Contacts: []models.Contact{ada, bob, cy}, PhotoDir: photoDir}
 }
 
@@ -378,7 +380,10 @@ func TestBuildAccountBundle_ScopesAndIncludesEverything(t *testing.T) {
 	assert.Len(t, bundle.Plan.Households, 1)
 	assert.Len(t, bundle.Plan.Circles, 1)
 	assert.Len(t, bundle.Plan.Tags, 1)
-	assert.Len(t, bundle.Plan.CustomFieldDefinitions, 1)
+	// The contact "Zodiac" definition plus the organisation-target one the
+	// entity seed adds (issue #2300); the latter's value is in
+	// entity_field_values, so custom_field_values stays 1.
+	assert.Len(t, bundle.Plan.CustomFieldDefinitions, 2)
 	assert.Equal(t, "Travel profile", bundle.Plan.CustomFieldDefinitions[0].Group)
 	assert.Len(t, bundle.Plan.CustomFieldValues, 1)
 	assert.Len(t, bundle.Plan.Occasions, 1)
