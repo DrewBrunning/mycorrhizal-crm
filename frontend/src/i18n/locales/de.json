@@ -4250,8 +4250,9 @@
       "description": "Beschreibung",
       "members_one": "{{count}} Mitglied",
       "members_other": "{{count}} Mitglieder",
-      "membersTruncated": "Die ersten {{shown}} von {{count}} Mitgliedern werden angezeigt.",
-      "noMembers": "Dieser Kreis hat derzeit keine Mitglieder."
+      "noMembers": "Dieser Kreis hat derzeit keine Mitglieder.",
+      "membersTruncated_one": "Die ersten {{shown}} von {{count}} Mitgliedern werden angezeigt.",
+      "membersTruncated_other": "Die ersten {{shown}} von {{count}} Mitgliedern werden angezeigt."
     },
     "byMe": {
       "title": "Von mir geteilt",
@@ -4273,7 +4274,6 @@
       "revokeTitle": "Diese Freigabe widerrufen?",
       "revokeBody": "{{username}} verliert den Zugriff bei der nächsten Anfrage. Dies holt nichts zurück, was die Person bereits gesehen oder kopiert hat. Um erneut zu teilen, musst du eine neue Freigabe erstellen.",
       "revoked": "{{label}} für {{username}} widerrufen.",
-      "reconfirmHeading": "Wartet auf deine Prüfung",
       "reconfirmNeeded": "Für {{username}} ausgeblendet, bis du bestätigst: {{sections}}. Ein Eintrag in einem Bereich wurde privat oder geheim, daher bleibt der ganze Bereich verborgen, bis du ihn geprüft hast.",
       "reconfirm": "Prüfen und erneut bestätigen",
       "reconfirmLabel": "{{label}} für {{username}} erneut bestätigen",

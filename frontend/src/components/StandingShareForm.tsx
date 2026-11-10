@@ -26,6 +26,8 @@ import {
   type ShareGrantOwnerView,
 } from '../api/shareGrants';
 import { getErrorMessage } from '../utils/errorHandler';
+import { describeJSContact } from '../utils/jscontactDisplay';
+import DateField from './DateField';
 import SharedContactCard from './SharedContactCard';
 
 interface StandingShareFormProps {
@@ -166,6 +168,16 @@ export default function StandingShareForm({
       );
     }
     if (preview.status === 'ready' && preview.card) {
+      if (describeJSContact(preview.card).sections.length === 0) {
+        return (
+          <>
+            <SharedContactCard card={preview.card} />
+            <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
+              {t('standingShares.form.previewEmpty')}
+            </Typography>
+          </>
+        );
+      }
       return <SharedContactCard card={preview.card} />;
     }
     return null;
@@ -231,15 +243,13 @@ export default function StandingShareForm({
             {t('standingShares.form.privateNotice')}
           </Typography>
 
-          <TextField
-            type="date"
+          <DateField
             label={t('standingShares.form.expires')}
             value={expiry}
-            onChange={(e) => {
+            onChange={(v) => {
               onDirty?.();
-              setExpiry(e.target.value);
+              setExpiry(v);
             }}
-            slotProps={{ inputLabel: { shrink: true } }}
           />
 
           {isContact && selected.size > 0 && (

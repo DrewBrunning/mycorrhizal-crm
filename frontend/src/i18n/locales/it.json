@@ -4357,8 +4357,10 @@
       "members_one": "{{count}} membro",
       "members_other": "{{count}} membri",
       "members_many": "{{count}} membri",
-      "membersTruncated": "Vengono mostrati i primi {{shown}} di {{count}} membri.",
-      "noMembers": "Questa cerchia al momento non ha membri."
+      "noMembers": "Questa cerchia al momento non ha membri.",
+      "membersTruncated_one": "Vengono mostrati i primi {{shown}} di {{count}} membri.",
+      "membersTruncated_other": "Vengono mostrati i primi {{shown}} di {{count}} membri.",
+      "membersTruncated_many": "Vengono mostrati i primi {{shown}} di {{count}} membri."
     },
     "byMe": {
       "title": "Condiviso da me",
@@ -4381,7 +4383,6 @@
       "revokeTitle": "Revocare questa condivisione?",
       "revokeBody": "{{username}} perde l'accesso alla richiesta successiva. Questo non richiama nulla di ciò che ha già visto o copiato. Per condividere di nuovo dovrai creare una nuova condivisione.",
       "revoked": "Revocato {{label}} per {{username}}.",
-      "reconfirmHeading": "Richiede la tua revisione",
       "reconfirmNeeded": "Nascosto a {{username}} finché non confermi: {{sections}}. Un elemento di una sezione è diventato privato o segreto, quindi l'intera sezione resta nascosta finché non la rivedi.",
       "reconfirm": "Rivedi e riconferma",
       "reconfirmLabel": "Riconferma {{label}} per {{username}}",

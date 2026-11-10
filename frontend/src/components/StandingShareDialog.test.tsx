@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { DateFormatProvider } from '../DateFormatProvider';
 import { mockApi, setupMswServer } from '../test/mswServer';
 import ShareContactDialog from './ShareContactDialog';
 import StandingShareDialog from './StandingShareDialog';
@@ -28,13 +29,15 @@ describe('StandingShareDialog (note, activity, circle)', () => {
     const onClose = vi.fn();
     const onShared = vi.fn();
     render(
-      <StandingShareDialog
-        open
-        onClose={onClose}
-        entityType={type}
-        entityId="e-1"
-        onShared={onShared}
-      />,
+      <DateFormatProvider>
+        <StandingShareDialog
+          open
+          onClose={onClose}
+          entityType={type}
+          entityId="e-1"
+          onShared={onShared}
+        />
+      </DateFormatProvider>,
     );
     expect(await screen.findByRole('heading', { name: title })).toBeInTheDocument();
     await pickBob();
@@ -51,7 +54,11 @@ describe('ShareContactDialog standing mode', () => {
   test('defaults to the one-time copy and never contacts the share-grant API', async () => {
     mockApi('get', '/users/directory', directory);
     const grants = mockApi('post', '/share-grants', grant);
-    render(<ShareContactDialog open onClose={vi.fn()} vcardUID="uid-1" />);
+    render(
+      <DateFormatProvider>
+        <ShareContactDialog open onClose={vi.fn()} vcardUID="uid-1" />
+      </DateFormatProvider>,
+    );
     expect(await screen.findByRole('radio', { name: 'One-time copy' })).toBeChecked();
     expect(screen.getByText(/can't be recalled once sent/i)).toBeInTheDocument();
     expect(grants).toHaveLength(0);
@@ -65,12 +72,14 @@ describe('ShareContactDialog standing mode', () => {
     const onClose = vi.fn();
     const onStandingShared = vi.fn();
     render(
-      <ShareContactDialog
-        open
-        onClose={onClose}
-        vcardUID="uid-1"
-        onStandingShared={onStandingShared}
-      />,
+      <DateFormatProvider>
+        <ShareContactDialog
+          open
+          onClose={onClose}
+          vcardUID="uid-1"
+          onStandingShared={onStandingShared}
+        />
+      </DateFormatProvider>,
     );
     fireEvent.click(await screen.findByRole('radio', { name: 'Standing share' }));
     expect(screen.queryByText(/can't be recalled once sent/i)).not.toBeInTheDocument();

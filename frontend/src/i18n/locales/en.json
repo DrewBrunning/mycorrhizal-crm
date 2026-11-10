@@ -4250,8 +4250,9 @@
       "description": "Description",
       "members_one": "{{count}} member",
       "members_other": "{{count}} members",
-      "membersTruncated": "Showing the first {{shown}} of {{count}} members.",
-      "noMembers": "This circle has no members right now."
+      "noMembers": "This circle has no members right now.",
+      "membersTruncated_one": "Showing the first {{shown}} of {{count}} members.",
+      "membersTruncated_other": "Showing the first {{shown}} of {{count}} members."
     },
     "byMe": {
       "title": "Shared by me",
@@ -4273,7 +4274,6 @@
       "revokeTitle": "Revoke this share?",
       "revokeBody": "{{username}} loses access on their next request. This does not recall anything they have already seen or copied. To share again you will need to create a new share.",
       "revoked": "Revoked {{label}} for {{username}}.",
-      "reconfirmHeading": "Needs your review",
       "reconfirmNeeded": "Hidden from {{username}} until you confirm: {{sections}}. An item in a section became private or secret, so the whole section stays hidden until you review it.",
       "reconfirm": "Review and re-confirm",
       "reconfirmLabel": "Re-confirm {{label}} for {{username}}",

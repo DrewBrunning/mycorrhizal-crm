@@ -4357,8 +4357,10 @@
       "members_one": "{{count}} membre",
       "members_other": "{{count}} membres",
       "members_many": "{{count}} membres",
-      "membersTruncated": "Affichage des {{shown}} premiers membres sur {{count}}.",
-      "noMembers": "Ce cercle n'a aucun membre pour le moment."
+      "noMembers": "Ce cercle n'a aucun membre pour le moment.",
+      "membersTruncated_one": "Affichage des {{shown}} premiers membres sur {{count}}.",
+      "membersTruncated_other": "Affichage des {{shown}} premiers membres sur {{count}}.",
+      "membersTruncated_many": "Affichage des {{shown}} premiers membres sur {{count}}."
     },
     "byMe": {
       "title": "Partagé par moi",
@@ -4381,7 +4383,6 @@
       "revokeTitle": "Révoquer ce partage ?",
       "revokeBody": "{{username}} perd l'accès à sa prochaine requête. Cela ne rappelle rien de ce que la personne a déjà vu ou copié. Pour partager à nouveau, vous devrez créer un nouveau partage.",
       "revoked": "{{label}} révoqué pour {{username}}.",
-      "reconfirmHeading": "À vérifier",
       "reconfirmNeeded": "Masqué pour {{username}} jusqu'à votre confirmation : {{sections}}. Un élément d'une section est devenu privé ou secret ; toute la section reste donc masquée tant que vous ne l'avez pas vérifiée.",
       "reconfirm": "Vérifier et reconfirmer",
       "reconfirmLabel": "Reconfirmer {{label}} pour {{username}}",

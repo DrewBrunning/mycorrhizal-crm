@@ -12,6 +12,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Standing shares on the web** ([#2292](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2292)): share a contact, note, activity or circle as a read-only, always-current view the recipient must accept. Manage them under Settings in "Shared with me" and "Shared by me". Revoking stops future access but cannot take back what was seen.
+
 - **Choose occasion invitees by searching contacts** ([#2178](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2178), [#2177](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2177)): on the web, an occasion event's invitee dialog now has a contact search that adds each person you pick, circle suggestions have an "Add everyone" button, and a hint appears when you have no circles yet. The user guide also gains a table explaining activities, occasions and reminders.
 - **Android import review matches the web** ([#2210](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2210)): filter the review by new rows, duplicates or errors, get Keep/Skip on plain rows and Keep both/Merge/Discard new only on duplicates, fix rows with errors in place, and see every skipped or failed row with its reason after the import, with a share-as-CSV button.
 - **Gift preferences** ([#2194](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2194)): on the web, media, jewelry and gift ideas each gain an "other" category for tastes that fit nothing else, and the preference form's "Key" field is now called "Type" (Favorite, Dislike, Allergy, or your own wording). Existing preferences are unchanged.

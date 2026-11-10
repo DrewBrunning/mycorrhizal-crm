@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { DateFormatProvider } from '../DateFormatProvider';
 import { errorEnvelope, mockApi, setupMswServer } from '../test/mswServer';
 import StandingShareForm from './StandingShareForm';
 
@@ -22,13 +23,15 @@ function setup(props: Partial<React.ComponentProps<typeof StandingShareForm>> = 
   const onCancel = vi.fn();
   mockApi('get', '/users/directory', directory);
   render(
-    <StandingShareForm
-      entityType="contact"
-      entityId="uid-1"
-      onCreated={onCreated}
-      onCancel={onCancel}
-      {...props}
-    />,
+    <DateFormatProvider>
+      <StandingShareForm
+        entityType="contact"
+        entityId="uid-1"
+        onCreated={onCreated}
+        onCancel={onCancel}
+        {...props}
+      />
+    </DateFormatProvider>,
   );
   return { onCreated, onCancel };
 }
@@ -95,7 +98,7 @@ describe('StandingShareForm', () => {
     await pickRecipient('carol');
     fireEvent.click(screen.getByRole('checkbox', { name: 'Phones' }));
     fireEvent.change(screen.getByLabelText('Expires on (optional)'), {
-      target: { value: '2099-03-04' },
+      target: { value: '04.03.2099' },
     });
     fireEvent.click(screen.getByRole('button', { name: 'Share' }));
     await waitFor(() => expect(create).toHaveLength(1));
@@ -134,4 +137,14 @@ describe('StandingShareForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalled();
   });
+});
+
+test('says so when the chosen sections hold nothing shareable right now', async () => {
+  mockApi('get', '/export/jscontact', [{ name: { full: 'Alice Anderson' } }]);
+  setup();
+  await pickRecipient('bob');
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Emails' }));
+  expect(
+    await screen.findByText(/Nothing in these sections is shared right now/),
+  ).toBeInTheDocument();
 });

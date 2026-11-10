@@ -4357,8 +4357,10 @@
       "members_one": "{{count}} miembro",
       "members_other": "{{count}} miembros",
       "members_many": "{{count}} miembros",
-      "membersTruncated": "Se muestran los primeros {{shown}} de {{count}} miembros.",
-      "noMembers": "Este círculo no tiene miembros ahora mismo."
+      "noMembers": "Este círculo no tiene miembros ahora mismo.",
+      "membersTruncated_one": "Se muestran los primeros {{shown}} de {{count}} miembros.",
+      "membersTruncated_other": "Se muestran los primeros {{shown}} de {{count}} miembros.",
+      "membersTruncated_many": "Se muestran los primeros {{shown}} de {{count}} miembros."
     },
     "byMe": {
       "title": "Compartido por mí",
@@ -4381,7 +4383,6 @@
       "revokeTitle": "¿Revocar este recurso compartido?",
       "revokeBody": "{{username}} pierde el acceso en su próxima solicitud. Esto no recupera nada que ya haya visto o copiado. Para volver a compartir tendrás que crear un recurso nuevo.",
       "revoked": "Revocado {{label}} para {{username}}.",
-      "reconfirmHeading": "Necesita tu revisión",
       "reconfirmNeeded": "Oculto para {{username}} hasta que confirmes: {{sections}}. Un elemento de una sección pasó a ser privado o secreto, así que toda la sección sigue oculta hasta que la revises.",
       "reconfirm": "Revisar y volver a confirmar",
       "reconfirmLabel": "Volver a confirmar {{label}} para {{username}}",

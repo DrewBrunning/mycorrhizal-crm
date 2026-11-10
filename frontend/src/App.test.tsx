@@ -52,6 +52,14 @@ vi.mock('./api/dashboard', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/dashboard')>();
   return { ...actual, getDashboard: vi.fn().mockResolvedValue({}) };
 });
+// Standing shares (#2292): the nav badge reads the pending count; default none.
+vi.mock('./api/shareGrants', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/shareGrants')>();
+  return {
+    ...actual,
+    getShareGrantNotifications: vi.fn().mockResolvedValue({ pending_count: 0, notifications: [] }),
+  };
+});
 vi.mock('./api/circles', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/circles')>();
   return { ...actual, listCircles: vi.fn().mockResolvedValue({ circles: [] }) };
@@ -299,6 +307,8 @@ test('a path that merely shares a string prefix with a nav item is not current f
 // sub-items of Settings. URLs are unchanged; the group highlights with its child.
 const SETTINGS_CHILD_ROUTES: { path: string; label: string; adminOnly: boolean }[] = [
   { path: '/shares', label: 'Shares', adminOnly: false },
+  { path: '/shared-with-me', label: 'Shared with me', adminOnly: false },
+  { path: '/shared-by-me', label: 'Shared by me', adminOnly: false },
   { path: '/audit', label: 'Audit log', adminOnly: false },
   { path: '/settings/data', label: 'Data', adminOnly: false },
   { path: '/users', label: 'Users', adminOnly: true },
@@ -382,4 +392,27 @@ test('browser Back and Forward keep the highlight in step with the URL', async (
   });
   await waitFor(() => expect(currentNavPaths()).toEqual(['/audit']));
   expect(navLink('Settings')).toHaveClass('Mui-selected');
+});
+
+// Standing shares (#2292, ADR 0042 decision 11): the recipient's pending count
+// is a badge on the "Shared with me" entry, with an accessible name.
+test('the Shared with me nav entry carries the pending-share badge', async () => {
+  const { getShareGrantNotifications } = await import('./api/shareGrants');
+  vi.mocked(getShareGrantNotifications).mockResolvedValue({ pending_count: 3, notifications: [] });
+  setLoggedInUser(false);
+  window.history.pushState({}, '', '/settings');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  renderApp();
+  expect(await screen.findByLabelText('3 shares waiting for your answer')).toBeInTheDocument();
+});
+
+test('no badge when nothing is pending', async () => {
+  const { getShareGrantNotifications } = await import('./api/shareGrants');
+  vi.mocked(getShareGrantNotifications).mockResolvedValue({ pending_count: 0, notifications: [] });
+  setLoggedInUser(false);
+  window.history.pushState({}, '', '/settings');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  renderApp();
+  await screen.findByRole('navigation', { name: 'Main navigation' });
+  expect(screen.queryByLabelText(/waiting for your answer/)).toBeNull();
 });
