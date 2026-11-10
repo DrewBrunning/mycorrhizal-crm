@@ -33,7 +33,8 @@ import {
 import { useDateFormat } from '../DateFormatProvider';
 import { formatActivityDateRange } from '../utils/activityRange';
 import { circleColorHex } from '../utils/circleColors';
-import { handleFetchError } from '../utils/errorHandler';
+import { isDuplicateCircleNameError } from '../utils/circleName';
+import { getErrorMessage, handleFetchError } from '../utils/errorHandler';
 import { calendarDateOnly } from '../utils/localDate';
 
 // Issue #1995: edit a circle's description/colour and see its members' merged
@@ -68,6 +69,7 @@ export default function CircleDetailDialog({
   const [description, setDescription] = useState(circle?.description ?? '');
   const [color, setColor] = useState<CircleColor>(circle?.color ?? '');
   const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [page, setPage] = useState<CircleTimelineResponse | null>(null);
   const [items, setItems] = useState<CircleTimelineItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -106,8 +108,14 @@ export default function CircleDetailDialog({
   const handleSave = async () => {
     if (!trimmedName) return;
     setSaving(true);
+    setNameError(null);
     try {
       await onSave(circle.id, trimmedName, { description: description.trim(), color });
+    } catch (err) {
+      // A duplicate name is shown under the field (#2362); other failures are
+      // already reported by the caller's notifier.
+      if (!isDuplicateCircleNameError(err)) throw err;
+      setNameError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
@@ -122,7 +130,12 @@ export default function CircleDetailDialog({
             label={t('circlesTags.nameLabel')}
             size="small"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              setNameError(null);
+            }}
+            error={Boolean(nameError)}
+            helperText={nameError ?? undefined}
             fullWidth
           />
           <TextField
