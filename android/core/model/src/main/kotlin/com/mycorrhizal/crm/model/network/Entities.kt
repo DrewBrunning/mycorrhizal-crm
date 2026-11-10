@@ -313,3 +313,51 @@ fun ContactRecordInput.stripProjectedEntries(): ContactRecordInput {
     }
     return copy(card = nextCard, crm = nextCrm)
 }
+
+/** True when [start] and [end] are each blank or four digits, and the end is not before the start. */
+fun entityPeriodYearsValid(start: String, end: String): Boolean {
+    val fourDigits = Regex("^\\d{4}$")
+    val s = start.trim()
+    val e = end.trim()
+    if (s.isNotEmpty() && !s.matches(fourDigits)) return false
+    if (e.isNotEmpty() && !e.matches(fourDigits)) return false
+    return s.isEmpty() || e.isEmpty() || s.toInt() <= e.toInt()
+}
+
+/**
+ * A link period from whole-year inputs (the same granularity as work/address periods). A side
+ * whose year is unchanged keeps the finer date already stored in [original], so editing only the
+ * end year never degrades a stored start of 2019-04-09 to 2019. Null when both are blank.
+ */
+fun entityPeriodFromYears(start: String, end: String, original: TemporalRange?): TemporalRange? {
+    fun side(text: String, stored: PartialDate?): PartialDate? {
+        val year = text.trim().toIntOrNull() ?: return null
+        return if (stored?.year == year) stored else PartialDate(year = year)
+    }
+    val s = side(start, original?.start)
+    val e = side(end, original?.end)
+    return if (s == null && e == null) null else TemporalRange(start = s, end = e)
+}
+
+/**
+ * Whether [range] includes the given calendar day. Endpoints are compared at the precision they
+ * share with the day; one that cannot be compared (no year) counts as current (ADR 0015 rule 3:
+ * non-comparability is not an error). A null or empty range is always current.
+ */
+fun isPeriodCurrent(range: TemporalRange?, year: Int, month: Int, day: Int): Boolean {
+    fun cmp(d: PartialDate?): Int? {
+        val y = d?.year ?: return null
+        if (y != year) return y.compareTo(year)
+        val m = d.month ?: return 0
+        if (m != month) return m.compareTo(month)
+        val dd = d.day ?: return 0
+        return dd.compareTo(day)
+    }
+    val startCmp = cmp(range?.start)
+    val endCmp = cmp(range?.end)
+    return (startCmp == null || startCmp <= 0) && (endCmp == null || endCmp >= 0)
+}
+
+/** True for a primary link whose period includes the given day - the links that project today. */
+fun EntityContactLink.projectsToday(year: Int, month: Int, day: Int): Boolean =
+    isPrimary && isPeriodCurrent(period, year, month, day)

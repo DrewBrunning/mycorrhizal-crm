@@ -65,6 +65,7 @@ import com.mycorrhizal.crm.data.repository.MergeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NextcloudRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NotificationSettingsRepositoryImpl
+import com.mycorrhizal.crm.data.repository.EntityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.OccasionEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PaperlessRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PasskeyRepositoryImpl
@@ -127,6 +128,7 @@ import com.mycorrhizal.crm.domain.repository.MergeRepository
 import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
+import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
 import com.mycorrhizal.crm.domain.repository.PasskeyRepository
@@ -574,6 +576,10 @@ abstract class DataBindsModule {
     abstract fun bindCadencePolicyRepository(
         impl: CadencePolicyRepositoryImpl
     ): CadencePolicyRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindEntityRepository(impl: EntityRepositoryImpl): EntityRepository
 
     @Binds
     @Singleton

@@ -99,4 +99,65 @@ class EntityLinksTest {
         assertTrue(EntityKind.projects(EntityKind.PLACE))
         assertFalse(EntityKind.projects(EntityKind.PET))
     }
+
+    @Test
+    fun `period years validate as four digits with the end not before the start`() {
+        assertTrue(entityPeriodYearsValid("", ""))
+        assertTrue(entityPeriodYearsValid("2019", ""))
+        assertTrue(entityPeriodYearsValid("2019", "2019"))
+        assertTrue(entityPeriodYearsValid("2019", "2024"))
+        assertFalse(entityPeriodYearsValid("19", ""))
+        assertFalse(entityPeriodYearsValid("abcd", ""))
+        assertFalse(entityPeriodYearsValid("2024", "2019"))
+    }
+
+    @Test
+    fun `period from years is null when blank and keeps a finer stored date for an untouched year`() {
+        assertNull(entityPeriodFromYears("", "", null))
+        assertEquals(
+            TemporalRange(start = PartialDate(year = 2019)),
+            entityPeriodFromYears("2019", "", null)
+        )
+        val stored = TemporalRange(
+            start = PartialDate(year = 2019, month = 4, day = 9),
+            end = PartialDate(year = 2022, month = 1)
+        )
+        // start untouched keeps its month/day; end edited becomes a plain year.
+        assertEquals(
+            TemporalRange(start = stored.start, end = PartialDate(year = 2023)),
+            entityPeriodFromYears("2019", "2023", stored)
+        )
+        // both untouched: identical to what was stored.
+        assertEquals(stored, entityPeriodFromYears("2019", "2022", stored))
+    }
+
+    @Test
+    fun `a period is current unless it ended before today or starts after it`() {
+        val today = Triple(2026, 11, 10)
+        fun current(range: TemporalRange?) = isPeriodCurrent(range, today.first, today.second, today.third)
+        assertTrue(current(null))
+        assertTrue(current(TemporalRange()))
+        assertTrue(current(TemporalRange(start = PartialDate(year = 2019))))
+        assertFalse(current(TemporalRange(end = PartialDate(year = 2024))))
+        assertFalse(current(TemporalRange(start = PartialDate(year = 2027))))
+        // shared precision: a year-only end of the current year still includes today.
+        assertTrue(current(TemporalRange(end = PartialDate(year = 2026))))
+        assertTrue(current(TemporalRange(end = PartialDate(2026, 11, 10))))
+        assertFalse(current(TemporalRange(end = PartialDate(2026, 11, 9))))
+        assertFalse(current(TemporalRange(start = PartialDate(2026, 12))))
+        assertTrue(current(TemporalRange(start = PartialDate(2026, 11))))
+        // a yearless endpoint is not comparable and counts as current (ADR 0015 rule 3).
+        assertTrue(current(TemporalRange(end = PartialDate(month = 1, day = 1))))
+    }
+
+    @Test
+    fun `only a primary, current link of a projecting kind is adopted before delete`() {
+        fun person(primary: Boolean, period: TemporalRange? = null) =
+            EntityContactLink(linkId = "l", contactId = 1, isPrimary = primary, period = period)
+        assertTrue(person(true).projectsToday(2026, 11, 10))
+        assertFalse(person(false).projectsToday(2026, 11, 10))
+        assertFalse(
+            person(true, TemporalRange(end = PartialDate(year = 2020))).projectsToday(2026, 11, 10)
+        )
+    }
 }
