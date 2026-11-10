@@ -308,6 +308,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/trash/contacts", controllers.EmptyTrash)
 			protected.POST("/trash/contacts/:id/restore", controllers.RestoreTrashedContact)
 			protected.DELETE("/trash/contacts/:id", controllers.PurgeTrashedContact)
+			// Entity trash listing (issue #2446); restore is POST /entities/:id/restore.
+			protected.GET("/trash/entities", controllers.ListTrashedEntities)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)
 			protected.POST("/contacts/:id/unarchive", controllers.UnarchiveContact)
 			// Issue #173: favorite toggle, same shape as archive/unarchive —

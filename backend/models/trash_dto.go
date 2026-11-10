@@ -54,3 +54,27 @@ type TrashPurgeResponse struct {
 	Message string `json:"message"`
 	Purged  int    `json:"purged"`
 }
+
+// TrashedEntity is one row of GET /api/v1/trash/entities (issue #2446).
+type TrashedEntity struct {
+	Entity    EntityResponse `json:"entity"`
+	DeletedAt time.Time      `json:"deleted_at"`
+	// PurgeAt is when the scheduled purge hard-deletes the entity; null when
+	// DELETED_RETENTION_DAYS is 0 (keep forever).
+	PurgeAt *time.Time `json:"purge_at"`
+	// MergedInto is the survivor's id when the entity is a merge loser; absent
+	// for a plain delete. MergedIntoName is the survivor's name (absent when
+	// the survivor is gone) so the UI shows it without a second fetch.
+	MergedInto     string `json:"merged_into,omitempty"`
+	MergedIntoName string `json:"merged_into_name,omitempty"`
+}
+
+// TrashEntityListResponse is the GET /api/v1/trash/entities body. Collection
+// fields carry no omitempty (frontend trap #8).
+type TrashEntityListResponse struct {
+	Entities      []TrashedEntity `json:"entities"`
+	Total         int64           `json:"total"`
+	Page          int             `json:"page"`
+	Limit         int             `json:"limit"`
+	RetentionDays int             `json:"retention_days"`
+}

@@ -3304,6 +3304,14 @@ export type Title = {
   organizationId?: string;
 };
 
+export type TrashEntityListResponse = {
+  entities: TrashedEntity[];
+  limit: number;
+  page: number;
+  retention_days: number;
+  total: number;
+};
+
 export type TrashListResponse = {
   contacts: TrashedContact[];
   limit: number;
@@ -3341,6 +3349,14 @@ export type TrashRevokedShareGrant = {
 export type TrashedContact = {
   contact: ContactSummary;
   deleted_at: string;
+  purge_at: string | null;
+};
+
+export type TrashedEntity = {
+  deleted_at: string;
+  entity: Entity;
+  merged_into?: string;
+  merged_into_name?: string;
   purge_at: string | null;
 };
 

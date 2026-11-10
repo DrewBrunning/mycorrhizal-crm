@@ -3298,6 +3298,7 @@
     "restoredWithSkipped_other": "{{name}} restauré, mais {{count}} éléments n’ont pas pu être restaurés car ce à quoi ils étaient liés n’existe plus.",
     "restoredWithSkipped_many": "{{name}} restauré, mais {{count}} éléments n’ont pas pu être restaurés car ce à quoi ils étaient liés n’existe plus.",
     "restoreConflict": "Impossible de restaurer {{name}} : un autre contact utilise déjà l’ID de ce contact. Fusionnez ou supprimez d’abord ce contact.",
+    "mergedInto": "Fusionné avec {{name}}",
     "purgeConfirm": "Supprimer définitivement {{name}} ? Cette action est irréversible.",
     "purged": "{{name}} supprimé définitivement.",
     "emptyConfirm_one": "Supprimer définitivement {{count}} contact de la corbeille ? Cette action est irréversible.",

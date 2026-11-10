@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Deleted organisations, places and pets in Trash** ([#2446](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2446)): the web Trash page now lists organisations, places and pets you deleted or merged away, with a Restore button that brings back their links and custom fields; a merged-away one returns on its own and its links stay with the one you kept.
 - **Organisations, places and pets on the web** ([#2301](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2301)): a new Entities page lists them with search and duplicate suggestions, and merging happens only when you confirm. Contacts link to them, a value from an entity is labelled "from <name>" and never edited as the contact's own, and the graph can show them.
 - **Standing shares on Android** ([#2293](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2293)): Share contact can now keep sharing, read-only, until you revoke it. A new Shared with me screen accepts, declines, blocks and reads shares; Shared by me shows status and expiry.
 - **Search everything from the top bar** ([#2174](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2174)): the search box now finds contacts, notes and activities, shows the top three of each, and links to a results page with a tab per category.

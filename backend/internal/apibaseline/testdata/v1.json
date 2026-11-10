@@ -10007,6 +10007,32 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/trash/entities",
+      "parameters": [
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:TrashEntityListResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "POST",
       "path": "/users/2fa/confirm",
       "parameters": null,
@@ -24852,6 +24878,36 @@
       ]
     },
     {
+      "name": "TrashEntityListResponse",
+      "properties": [
+        {
+          "name": "entities",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "retention_days",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "TrashListResponse",
       "properties": [
         {
@@ -24983,6 +25039,36 @@
           "name": "deleted_at",
           "type": "string",
           "required": true
+        },
+        {
+          "name": "purge_at",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "TrashedEntity",
+      "properties": [
+        {
+          "name": "deleted_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "entity",
+          "type": "ref:Entity",
+          "required": true
+        },
+        {
+          "name": "merged_into",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "merged_into_name",
+          "type": "string",
+          "required": false
         },
         {
           "name": "purge_at",
