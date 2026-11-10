@@ -314,22 +314,21 @@ test.describe('Search (folded into Contacts)', () => {
     await expect(page.getByText(/No results for/)).toBeVisible({ timeout: 15000 });
   });
 
-  test('redirects legacy /search?q= deep links to the merged page', async ({ page, request }) => {
-    const surname = `Redirect${Date.now()}`;
+  test('/search?q= opens the cross-category results page (#2174)', async ({ page, request }) => {
+    const surname = `Results${Date.now()}`;
     const contact = await createTestContact(request, {
-      firstname: `${E2E_CONTACT_PREFIX}Redirect`,
+      firstname: `${E2E_CONTACT_PREFIX}Results`,
       lastname: surname,
-      // T103: the redirect lands on /contacts?search=<surname> with the
-      // default contact-info filter on, so the contact needs contact info to
-      // actually be visible (a bare-name fixture would make the assertion a
-      // vacuous match on the "No results" line).
-      emails: [{ type: 'home', value: 'redirect@example.com' }],
     });
 
     try {
       await page.goto(`/search?q=${encodeURIComponent(surname)}`);
-      await expect(page).toHaveURL(new RegExp(`/contacts\\?search=${encodeURIComponent(surname)}`));
-      await expect(page.getByText(new RegExp(surname))).toBeVisible({ timeout: 15000 });
+      await expect(page).toHaveURL(new RegExp(`/search\\?q=${encodeURIComponent(surname)}`));
+      await expect(page.getByRole('heading', { level: 1, name: 'Search results' })).toBeVisible();
+      await expect(page.getByRole('tab', { name: /^Contacts \(1\)$/ })).toBeVisible({
+        timeout: 15000,
+      });
+      await expect(page.getByRole('link', { name: new RegExp(surname) })).toBeVisible();
     } finally {
       await deleteTestContact(request, contact.ID);
     }

@@ -8,6 +8,15 @@ holds nothing that is not reconstructable from `contacts`, `notes`, and
 `activities`, so it can be rebuilt at any time and a rebuild always converges
 on exactly what the triggers would have produced.
 
+The web app's top-bar search and its `/search?q=` results page
+([#2174](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2174)) are
+both clients of `GET /api/v1/search`: the dropdown asks for the top 3 hits per
+category (`limit=3`), the results page for 50, and each category (contacts,
+notes, activities) is its own tab. Notes and activities carry no sensitivity
+level, so the owner's search returns all of them; contacts follow the existing
+`/search` rules. Nothing about the index changes for this, so no rebuild is
+needed when upgrading.
+
 This document is the operator procedure for that rebuild (SEARCH-01, issue
 [#461](https://github.com/DrewBrunning/mycorrhizal-crm/issues/461)).
 
