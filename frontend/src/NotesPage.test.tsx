@@ -66,9 +66,9 @@ const twoUnfiledNotesResponse = () => ({
   limit: 25,
 });
 
-function renderPage() {
+function renderPage(url = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <SnackbarProvider>
         <AnnouncerProvider>
           <DateFormatProvider>
@@ -831,4 +831,20 @@ test('clearing a note’s text still sends the update; the server decides if it 
 
   await waitFor(() => expect(putBodies.length).toBe(1));
   expect(JSON.parse(putBodies[0]).content).toBe('');
+});
+
+// #2174: the global search links unfiled-note hits here with ?search=<query>.
+test('the search query parameter prefills the search box and filters the list', async () => {
+  let listUrl = '';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.includes('/notes?')) listUrl = url;
+      return { ok: true, json: async () => emptyNotesResponse() };
+    }),
+  );
+  renderPage('/notes?search=fair%20idea');
+
+  expect(await screen.findByDisplayValue('fair idea')).toBeDefined();
+  await waitFor(() => expect(listUrl).toContain('search=fair+idea'));
 });
