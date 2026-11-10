@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"sort"
 	"time"
 
@@ -133,7 +134,11 @@ func BuildAccountBundleWithImages(db *gorm.DB, userID uint, photoDir string, ima
 	if err != nil {
 		return nil, stats, err // # pragma: no cover — defensive: paired with the query-error guard above
 	}
-	bundle.Plan.CustomFieldDefinitions, bundle.Plan.CustomFieldValues, err = loadBundleCustomFields(db, userID)
+	bundle.Plan.CustomFieldDefinitions, bundle.Plan.CustomFieldValues, bundle.Plan.EntityFieldValues, err = loadBundleCustomFields(db, userID)
+	if err != nil {
+		return nil, stats, err // # pragma: no cover — defensive: paired with the query-error guard above
+	}
+	bundle.Plan.Entities, bundle.Plan.EntityLinks, err = loadBundleEntities(db, userID)
 	if err != nil {
 		return nil, stats, err // # pragma: no cover — defensive: paired with the query-error guard above
 	}
@@ -545,13 +550,19 @@ func loadBundleTags(db *gorm.DB, userID uint) ([]models.AccountBundleTag, error)
 	return out, nil
 }
 
-func loadBundleCustomFields(db *gorm.DB, userID uint) ([]models.AccountBundleFieldDefinition, []models.AccountBundleFieldValue, error) {
+// loadBundleCustomFields returns the definitions, the contact-owned values and
+// (ADR 0043 decision 7) the entity-owned values: a value whose definition
+// targets an organisation, place or pet is an entity's, keyed by the entity's
+// UUID, and travels in entity_field_values rather than custom_field_values.
+func loadBundleCustomFields(db *gorm.DB, userID uint) ([]models.AccountBundleFieldDefinition, []models.AccountBundleFieldValue, []models.AccountBundleEntityFieldValue, error) {
 	var defs []models.FieldDefinition
 	if err := db.Where("user_id = ?", userID).Order("position ASC, created_at ASC").Find(&defs).Error; err != nil { // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
-		return nil, nil, err // # pragma: no cover — defensive: paired with the query-error guard above
+		return nil, nil, nil, err // # pragma: no cover — defensive: paired with the query-error guard above
 	}
+	entityDef := map[string]bool{}
 	outDefs := make([]models.AccountBundleFieldDefinition, 0, len(defs))
 	for _, d := range defs {
+		entityDef[d.ID] = models.FieldDefinitionTargetIsEntity(d.Target)
 		outDefs = append(outDefs, models.AccountBundleFieldDefinition{
 			ID:          d.ID,
 			Label:       d.Label,
@@ -567,17 +578,109 @@ func loadBundleCustomFields(db *gorm.DB, userID uint) ([]models.AccountBundleFie
 	}
 	var vals []models.FieldValue
 	if err := db.Where("user_id = ?", userID).Order("id ASC").Find(&vals).Error; err != nil { // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
-		return nil, nil, err // # pragma: no cover — defensive: paired with the query-error guard above
+		return nil, nil, nil, err // # pragma: no cover — defensive: paired with the query-error guard above
+	}
+	// A value of a soft-deleted entity is hard-deleted with it (ADR 0043
+	// decision 6), so only live entities' values exist; still drop any whose
+	// entity is not live so the bundle never carries a dangling reference.
+	liveEntity, err := liveEntityIDs(db, userID)
+	if err != nil {
+		return nil, nil, nil, err // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
 	}
 	outVals := make([]models.AccountBundleFieldValue, 0, len(vals))
+	outEntityVals := make([]models.AccountBundleEntityFieldValue, 0)
 	for _, v := range vals {
+		if entityDef[v.FieldDefinitionID] {
+			if liveEntity[v.EntityID] {
+				outEntityVals = append(outEntityVals, models.AccountBundleEntityFieldValue{
+					FieldDefinitionID: v.FieldDefinitionID,
+					EntityID:          v.EntityID,
+					Value:             v.Value,
+				})
+			}
+			continue
+		}
 		outVals = append(outVals, models.AccountBundleFieldValue{
 			FieldDefinitionID: v.FieldDefinitionID,
 			EntityID:          v.EntityID,
 			Value:             v.Value,
 		})
 	}
-	return outDefs, outVals, nil
+	return outDefs, outVals, outEntityVals, nil
+}
+
+func liveEntityIDs(db *gorm.DB, userID uint) (map[string]bool, error) {
+	var ids []string
+	if err := db.Model(&models.Entity{}).Where("user_id = ?", userID).Pluck("id", &ids).Error; err != nil { // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
+		return nil, err // # pragma: no cover — defensive: paired with the query-error guard above
+	}
+	out := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		out[id] = true
+	}
+	return out, nil
+}
+
+// loadBundleEntities returns the owner's live entities and live links (ADR
+// 0043 decision 7). Nothing is filtered by sensitivity: the bundle is the
+// owner's full-fidelity backup. A link whose entity or contact is not live is
+// omitted, so every reference in the bundle resolves.
+func loadBundleEntities(db *gorm.DB, userID uint) ([]models.AccountBundleEntity, []models.AccountBundleEntityLink, error) {
+	var entities []models.Entity
+	if err := db.Where("user_id = ?", userID).Order("created_at ASC, id ASC").Find(&entities).Error; err != nil { // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
+		return nil, nil, err // # pragma: no cover — defensive: paired with the query-error guard above
+	}
+	outEntities := make([]models.AccountBundleEntity, 0, len(entities))
+	live := make(map[string]bool, len(entities))
+	for _, e := range entities {
+		live[e.ID] = true
+		core := e.Core
+		if core == "" {
+			core = "{}"
+		}
+		outEntities = append(outEntities, models.AccountBundleEntity{
+			ID:          e.ID,
+			Kind:        e.Kind,
+			Name:        e.Name,
+			Sensitivity: e.Sensitivity,
+			Core:        json.RawMessage(core),
+			CreatedAt:   e.CreatedAt,
+			UpdatedAt:   e.UpdatedAt,
+		})
+	}
+	var links []models.ContactEntityLink
+	if err := db.Where("user_id = ?", userID).Order("created_at ASC, id ASC").Find(&links).Error; err != nil { // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
+		return nil, nil, err // # pragma: no cover — defensive: paired with the query-error guard above
+	}
+	var contactUIDs []string
+	if err := db.Model(&models.Contact{}).Where("user_id = ?", userID).Pluck("vcard_uid", &contactUIDs).Error; err != nil { // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
+		return nil, nil, err // # pragma: no cover — defensive: paired with the query-error guard above
+	}
+	liveContact := make(map[string]bool, len(contactUIDs))
+	for _, uid := range contactUIDs {
+		liveContact[uid] = true
+	}
+	outLinks := make([]models.AccountBundleEntityLink, 0, len(links))
+	for _, l := range links {
+		if !live[l.EntityID] || !liveContact[l.ContactVCardUID] {
+			continue
+		}
+		link := models.AccountBundleEntityLink{
+			ID:              l.ID,
+			ContactVCardUID: l.ContactVCardUID,
+			EntityID:        l.EntityID,
+			Kind:            l.Kind,
+			Role:            l.Role,
+			RoleLabel:       l.RoleLabel,
+			IsPrimary:       l.IsPrimary,
+			Sensitivity:     l.Sensitivity,
+		}
+		if l.Period != nil {
+			link.Start, link.End = l.Period.Start, l.Period.End
+		}
+		outLinks = append(outLinks, link)
+	}
+	return outEntities, outLinks, nil
 }
 
 func loadBundleOccasions(db *gorm.DB, userID uint) ([]models.AccountBundleOccasion, error) {

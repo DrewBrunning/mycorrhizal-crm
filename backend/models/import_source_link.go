@@ -25,6 +25,9 @@ const (
 	ImportSourceLinkKindDataDecayPolicy    = "data_decay_policy"
 	ImportSourceLinkKindOccasion           = "occasion"
 	ImportSourceLinkKindOccasionEvent      = "occasion_event"
+	// Account-bundle only (issue #2300): Monica and Meerkat never write these.
+	ImportSourceLinkKindEntity     = "entity"
+	ImportSourceLinkKindEntityLink = "entity_link"
 )
 
 // ImportSourceLink is the idempotency ledger for source imports (issues #351,

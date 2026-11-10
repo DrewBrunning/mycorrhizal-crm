@@ -70,6 +70,7 @@ unleash:
         - ^import_row_issues\.go$
         - ^import_session\.go$
         - ^import_source_bundle\.go$
+        - ^import_source_entities\.go$
         - ^import_source_idmap\.go$
         - ^integration_fault_seam\.go$
         - ^integration_terminal\.go$
