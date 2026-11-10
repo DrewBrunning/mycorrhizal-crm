@@ -3711,6 +3711,7 @@
       "contact_cadence_policy_already_exists": "Cadence policy already exists",
       "calendar_subscription_not_found": "Calendar subscription not found",
       "circle_not_found": "Circle not found",
+      "circle_already_exists": "A circle with this name already exists",
       "circle_membership_not_found": "Circle membership not found",
       "circle_membership_already_exists": "Circle membership already exists",
       "contact_not_found": "Contact not found",

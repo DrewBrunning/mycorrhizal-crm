@@ -3814,6 +3814,7 @@
       "contact_cadence_policy_already_exists": "Esiste già: politica di cadenza",
       "calendar_subscription_not_found": "Non trovato: sottoscrizione del calendario",
       "circle_not_found": "Non trovato: cerchia",
+      "circle_already_exists": "Esiste già una cerchia con questo nome",
       "circle_membership_not_found": "Non trovato: appartenenza alla cerchia",
       "circle_membership_already_exists": "Esiste già: appartenenza alla cerchia",
       "contact_not_found": "Non trovato: contatto",
