@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/dbfault"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
@@ -226,4 +227,27 @@ func TestGetImportRun_ForeignOrMissingIs404(t *testing.T) {
 		assert.Equal(t, http.StatusNotFound, w.Code, id)
 		assert.NotContains(t, w.Body.String(), "Secret Name")
 	}
+}
+
+// Issue #2463: a database failure on the detail lookup is a 500 without the
+// error text, never a 404 or an empty report.
+func TestGetImportRun_DBFailureIs500(t *testing.T) {
+	db := dbtest.New(t, dbtest.WithFaults())
+	user := models.User{Username: "gf", Email: "gf@example.com", Password: "x"}
+	require.NoError(t, db.Create(&user).Error)
+	models.RecordImportRun(t.Context(), db, models.ImportRun{UserID: user.ID, Format: models.ImportFormatVCF})
+	var run models.ImportRun
+	require.NoError(t, db.Where("user_id = ?", user.ID).First(&run).Error)
+
+	inj := dbfault.For(db)
+	require.NotNil(t, inj)
+	inj.FailMatching("query", "import_runs")
+	for _, path := range []string{"/contacts/import/history/" + strconv.Itoa(int(run.ID)), "/contacts/import/history"} {
+		w := httptest.NewRecorder()
+		importHistoryRouter(db, user.ID).ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		assert.Equal(t, http.StatusInternalServerError, w.Code, path)
+		assert.NotContains(t, w.Body.String(), dbfault.Marker)
+		inj.FailMatching("query", "import_runs")
+	}
+	inj.Disarm()
 }

@@ -131,11 +131,9 @@ func RecordImportRun(ctx context.Context, db *gorm.DB, r ImportRun) {
 
 	stored := storedImportIssues(r.Issues)
 	r.IssueCount = len(stored)
-	if raw, err := json.Marshal(stored); err == nil {
-		r.IssuesJSON = string(raw)
-	} else {
-		r.IssueCount, r.IssuesJSON = 0, "[]"
-	}
+	// Marshalling a slice of plain string/int fields cannot fail.
+	raw, _ := json.Marshal(stored)
+	r.IssuesJSON = string(raw)
 
 	if err := db.WithContext(ctx).Create(&r).Error; err != nil {
 		logger.Ctx(ctx).Error().
