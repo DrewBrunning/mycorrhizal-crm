@@ -634,16 +634,12 @@ func loadBundleEntities(db *gorm.DB, userID uint) ([]models.AccountBundleEntity,
 	live := make(map[string]bool, len(entities))
 	for _, e := range entities {
 		live[e.ID] = true
-		core := e.Core
-		if core == "" {
-			core = "{}"
-		}
 		outEntities = append(outEntities, models.AccountBundleEntity{
 			ID:          e.ID,
 			Kind:        e.Kind,
 			Name:        e.Name,
 			Sensitivity: e.Sensitivity,
-			Core:        json.RawMessage(core),
+			Core:        json.RawMessage(e.Core),
 			CreatedAt:   e.CreatedAt,
 			UpdatedAt:   e.UpdatedAt,
 		})

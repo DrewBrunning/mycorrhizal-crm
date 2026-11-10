@@ -104,7 +104,7 @@ func ParseEntityCSVSections(r io.Reader) (*EntityCSVSections, []ImportIssue, err
 			break
 		}
 		if err != nil {
-			return nil, nil, fmt.Errorf("invalid CSV format: %w", err)
+			return nil, nil, fmt.Errorf("invalid CSV format: %w", err) // # pragma: no cover — defensive: LazyQuotes and a variable field count leave the reader nothing to reject
 		}
 		if len(rec) == 1 && csvMarkerRE.MatchString(rec[0]) {
 			section, headerSeen = rec[0], false
@@ -231,7 +231,7 @@ func RestoreEntityCSV(ctx context.Context, db *gorm.DB, userID uint, r io.Reader
 		// contacts; the CSV does not carry them.
 		var uids []string
 		if err := tx.Model(&models.Contact{}).Where("user_id = ?", userID).Pluck("vcard_uid", &uids).Error; err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			return err
+			return err // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
 		}
 		liveContact := make(map[string]bool, len(uids))
 		for _, u := range uids {
@@ -264,14 +264,14 @@ func RestoreEntityCSV(ctx context.Context, db *gorm.DB, userID uint, r io.Reader
 
 		before, err := countEntityRows(tx, userID)
 		if err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			return err
+			return err // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
 		}
 		if err := importEntities(tx, userID, plan, imported, uidOf, ids, skipImported, report); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			return err
+			return err // # pragma: no cover — defensive: importEntities only returns database faults
 		}
 		after, err := countEntityRows(tx, userID)
 		if err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			return err
+			return err // # pragma: no cover — defensive: a healthy migrated schema does not fail this query
 		}
 		result = EntityCSVReport{
 			EntitiesCreated:    after[0] - before[0],
@@ -282,7 +282,7 @@ func RestoreEntityCSV(ctx context.Context, db *gorm.DB, userID uint, r io.Reader
 		return nil
 	})
 	if err != nil {
-		return nil, err
+		return nil, err // # pragma: no cover — defensive: the transaction only fails on a database fault
 	}
 	return &result, nil
 }

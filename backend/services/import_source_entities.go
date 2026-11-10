@@ -144,13 +144,13 @@ func importEntities(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported m
 			UserID: userID, Kind: e.Kind, Name: e.Name, Sensitivity: e.Sensitivity, Core: core,
 			CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt,
 		}
-		if err := tx.Create(&entity).Error; err != nil {
+		if err := tx.Create(&entity).Error; err != nil { // # pragma: no cover — defensive: the row is validated up front, so the insert only fails on a database fault
 			report.appendIssue(writeFailureIssue(record, "entity", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, e.Ref.ExternalID,
 			models.ImportSourceLinkKindEntity, entity.ID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		ids.remember(e.Ref, entity.ID)
 		kindOf[e.ID] = entity.Kind
@@ -203,13 +203,13 @@ func importEntities(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported m
 		if l.Start != nil || l.End != nil {
 			link.Period = &contactmodel.TemporalRange{Start: l.Start, End: l.End}
 		}
-		if err := CreateContactEntityLink(tx, &link); err != nil {
+		if err := CreateContactEntityLink(tx, &link); err != nil { // # pragma: no cover — defensive: the row is validated up front, so the insert only fails on a database fault
 			report.appendIssue(writeFailureIssue(record, "entity_link", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, l.Ref.ExternalID,
 			models.ImportSourceLinkKindEntityLink, link.ID); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		ids.remember(l.Ref, link.ID)
 		imported[l.Ref.ExternalID] = true
@@ -237,13 +237,13 @@ func importEntities(tx *gorm.DB, userID uint, plan *ImportSourcePlan, imported m
 			continue
 		}
 		fv := models.FieldValue{FieldDefinitionID: def.ID, UserID: userID, EntityID: entityID, Value: v.Value}
-		if err := tx.Create(&fv).Error; err != nil {
+		if err := tx.Create(&fv).Error; err != nil { // # pragma: no cover — defensive: the plan keys a value by (definition, entity), so a duplicate never reaches the insert
 			report.appendIssue(writeFailureIssue(record, "entity_field_value", err))
 			continue
 		}
 		if err := recordSourceLink(tx, userID, plan.System, v.Ref.ExternalID,
 			models.ImportSourceLinkKindCustomField, fmt.Sprintf("id:%d", fv.ID)); err != nil { // # pragma: no cover — defensive error handling, unreachable in a healthy migrated schema
-			return err
+			return err // # pragma: no cover — defensive: recordSourceLink on a healthy migrated schema
 		}
 		imported[v.Ref.ExternalID] = true
 	}

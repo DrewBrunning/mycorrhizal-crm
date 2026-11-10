@@ -101,3 +101,26 @@ func TestUnneutralizeCSV(t *testing.T) {
 	assert.Equal(t, "'plain", unneutralizeCSV("'plain"), "an apostrophe before an ordinary character is data")
 	assert.Equal(t, "x", unneutralizeCSV("x"))
 }
+
+func TestParseEntityCSVSections_ShortRowsAndRowCap(t *testing.T) {
+	_, issues, err := ParseEntityCSVSections(strings.NewReader(csvBackup("", "l1,1,Ada,"+csvEnt1+"\n", "onlyone\n")))
+	require.NoError(t, err)
+	var fields []string
+	for _, i := range issues {
+		fields = append(fields, i.Record+"|"+i.Message[:12])
+	}
+	assert.Len(t, issues, 2, "%v", fields)
+
+	var b strings.Builder
+	for i := 0; i < MaxEntityCSVRows+1; i++ {
+		b.WriteString("id,pet,Rex,normal,{}\n")
+	}
+	_, _, err = ParseEntityCSVSections(strings.NewReader(csvBackup(b.String(), "", "")))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "too many rows")
+
+	db := dbtest.New(t)
+	u := bundleTestUser(t, db, "csv-too-many")
+	_, err = RestoreEntityCSV(context.Background(), db, u.ID, strings.NewReader(csvBackup(b.String(), "", "")))
+	require.Error(t, err)
+}

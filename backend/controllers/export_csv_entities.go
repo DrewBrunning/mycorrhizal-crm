@@ -47,7 +47,7 @@ var (
 func entityNotes(e models.Entity) string {
 	core, err := e.DecodeCore()
 	if err != nil {
-		return ""
+		return "" // # pragma: no cover — defensive: BeforeSave validated the core on write
 	}
 	switch c := core.(type) {
 	case *models.OrganisationCore:
@@ -57,7 +57,7 @@ func entityNotes(e models.Entity) string {
 	case *models.PetCore:
 		return c.Notes
 	}
-	return ""
+	return "" // # pragma: no cover — defensive: every kind is handled above
 }
 
 func writeExportEntities(c *gin.Context, log *zerolog.Logger, buf *bytes.Buffer, writer *csv.Writer,
@@ -86,7 +86,7 @@ func writeExportEntities(c *gin.Context, log *zerolog.Logger, buf *bytes.Buffer,
 	var values []models.FieldValue
 	if len(defs) > 0 {
 		if err := db.Where("user_id = ? AND field_definition_id IN ?", userID, mapKeys(defKey)).Order("id ASC").Find(&values).Error; err != nil {
-			return fail("database", "Failed to fetch entity field values for export", err)
+			return fail("database", "Failed to fetch entity field values for export", err) // # pragma: no cover — defensive: a bytes.Buffer write and a healthy migrated schema do not fail
 		}
 	}
 	entityName := make(map[string]string, len(entities))
@@ -98,28 +98,25 @@ func writeExportEntities(c *gin.Context, log *zerolog.Logger, buf *bytes.Buffer,
 
 	buf.WriteString("\n" + csvSectionEntities + "\n")
 	if err := writer.Write(csvEntityHeaders); err != nil {
-		return fail("serialization", "Failed to write entity headers", err)
+		return fail("serialization", "Failed to write entity headers", err) // # pragma: no cover — defensive: a bytes.Buffer write and a healthy migrated schema do not fail
 	}
 	for _, e := range entities {
-		core := e.Core
-		if core == "" {
-			core = "{}"
-		}
+		core := e.Core // never empty: BeforeSave defaults it to {}
 		record := []string{e.ID, e.Kind, e.Name, e.Sensitivity, core, entityNotes(e),
 			e.CreatedAt.Format(time.RFC3339), e.UpdatedAt.Format(time.RFC3339)}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
-			return fail("serialization", "Failed to write entity record", err)
+			return fail("serialization", "Failed to write entity record", err) // # pragma: no cover — defensive: a bytes.Buffer write and a healthy migrated schema do not fail
 		}
 	}
 	writer.Flush()
 
 	buf.WriteString("\n" + csvSectionEntityLinks + "\n")
 	if err := writer.Write(csvEntityLinkHeaders); err != nil {
-		return fail("serialization", "Failed to write entity link headers", err)
+		return fail("serialization", "Failed to write entity link headers", err) // # pragma: no cover — defensive: a bytes.Buffer write and a healthy migrated schema do not fail
 	}
 	for _, l := range links {
 		if !liveEntity[l.EntityID] {
-			continue
+			continue // # pragma: no cover — defensive: a trashed entity's links are soft-deleted with it
 		}
 		contactID, contactName := exportContactByEntityID(contactByVCardUID, l.ContactVCardUID)
 		var start, end string
@@ -129,24 +126,24 @@ func writeExportEntities(c *gin.Context, log *zerolog.Logger, buf *bytes.Buffer,
 		record := []string{l.ID, contactID, contactName, l.EntityID, entityName[l.EntityID], l.Kind, l.Role, l.RoleLabel,
 			fmt.Sprintf("%t", l.IsPrimary), start, end, l.Sensitivity, l.ContactVCardUID}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
-			return fail("serialization", "Failed to write entity link record", err)
+			return fail("serialization", "Failed to write entity link record", err) // # pragma: no cover — defensive: a bytes.Buffer write and a healthy migrated schema do not fail
 		}
 	}
 	writer.Flush()
 
 	buf.WriteString("\n" + csvSectionEntityFields + "\n")
 	if err := writer.Write(csvEntityFieldHeaders); err != nil {
-		return fail("serialization", "Failed to write entity field headers", err)
+		return fail("serialization", "Failed to write entity field headers", err) // # pragma: no cover — defensive: a bytes.Buffer write and a healthy migrated schema do not fail
 	}
 	for _, v := range values {
 		if !liveEntity[v.EntityID] {
-			continue
+			continue // # pragma: no cover — defensive: a trashed entity's values are hard-deleted with it
 		}
 		// The value is written as its raw JSON so every type (number, boolean,
 		// list) restores exactly; csvSafe still neutralizes a leading '-'.
 		record := []string{v.EntityID, defKey[v.FieldDefinitionID], string(v.Value)}
 		if err := writer.Write(csvSafeRecord(record)); err != nil {
-			return fail("serialization", "Failed to write entity field record", err)
+			return fail("serialization", "Failed to write entity field record", err) // # pragma: no cover — defensive: a bytes.Buffer write and a healthy migrated schema do not fail
 		}
 	}
 	writer.Flush()

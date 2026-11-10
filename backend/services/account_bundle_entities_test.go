@@ -346,3 +346,113 @@ func TestMapAccountBundle_EntityTimestampsAreKept(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", u.ID).First(&e).Error)
 	assert.True(t, e.CreatedAt.Equal(ts), "created_at is restored, got %s", e.CreatedAt)
 }
+
+func entityRestoreBundle(uid string) *models.AccountBundle {
+	b := &models.AccountBundle{Format: models.AccountBundleFormat, Version: 1}
+	b.Plan.Contacts = []models.AccountBundleContact{{UID: uid, Card: contactmodel.Card{UID: uid, Name: &contactmodel.Name{Full: "Zed Q", Components: []contactmodel.NameComponent{{Kind: "given", Value: "Zed"}, {Kind: "surname", Value: "Q"}}}}}}
+	b.Plan.Entities = []models.AccountBundleEntity{{ID: "11111111-1111-4111-8111-111111111111", Kind: "organisation", Name: "Acme", Sensitivity: "normal", Core: json.RawMessage(`{}`)}}
+	return b
+}
+
+// A link that is new in a later run resolves to an entity an earlier run
+// already imported (the ledger remembers it); if that entity has since been
+// removed, the link is reported rather than pointed at nothing.
+func TestAccountBundle_NewLinkResolvesToEntityFromEarlierRun(t *testing.T) {
+	db := dbtest.New(t)
+	u := bundleTestUser(t, db, "ent-later-run")
+	uid := "c0ffee00-0000-4000-8000-000000000002"
+	run := func(b *models.AccountBundle) *ImportReport {
+		report, _, err := ExecuteSourceImportWithActions(t.Context(), db, u.ID, MapAccountBundle(b), map[string]SourceContactAction{}, nil)
+		require.NoError(t, err)
+		return report
+	}
+	first := entityRestoreBundle(uid)
+	run(first)
+
+	// The contact of the first run is skipped (already imported), so the new
+	// link belongs to a second contact.
+	uid2 := "c0ffee00-0000-4000-8000-0000000000b2"
+	second := entityRestoreBundle(uid)
+	second.Plan.Contacts = append(second.Plan.Contacts, models.AccountBundleContact{UID: uid2, Card: contactmodel.Card{UID: uid2, Name: &contactmodel.Name{Full: "Yan P", Components: []contactmodel.NameComponent{{Kind: "given", Value: "Yan"}, {Kind: "surname", Value: "P"}}}}})
+	second.Plan.EntityLinks = []models.AccountBundleEntityLink{{ID: "a1111111-1111-4111-8111-111111111111", ContactVCardUID: uid2, EntityID: first.Plan.Entities[0].ID, Role: "owner", Sensitivity: "normal"}}
+	report := run(second)
+	var links []models.ContactEntityLink
+	require.NoError(t, db.Where("user_id = ?", u.ID).Find(&links).Error)
+	require.Len(t, links, 1, "issues: %+v", report.Issues)
+	assert.Equal(t, models.EntityKindOrganisation, links[0].Kind, "the kind comes from the entity row, not the bundle")
+
+	// The entity vanishes (hard delete), then another new link arrives.
+	require.NoError(t, db.Unscoped().Delete(&models.Entity{}, "user_id = ?", u.ID).Error)
+	uid3 := "c0ffee00-0000-4000-8000-0000000000b3"
+	third := entityRestoreBundle(uid)
+	third.Plan.Contacts = append(third.Plan.Contacts, models.AccountBundleContact{UID: uid3, Card: contactmodel.Card{UID: uid3, Name: &contactmodel.Name{Full: "Xi O", Components: []contactmodel.NameComponent{{Kind: "given", Value: "Xi"}, {Kind: "surname", Value: "O"}}}}})
+	third.Plan.EntityLinks = []models.AccountBundleEntityLink{{ID: "a2222222-2222-4222-8222-222222222222", ContactVCardUID: uid3, EntityID: first.Plan.Entities[0].ID, Role: "owner", Sensitivity: "normal"}}
+	report = run(third)
+	var found bool
+	for _, i := range report.Issues {
+		if i.Field == "entity_link.entity_id" && i.Category == ImportIssueCategoryUnsupported {
+			found = true
+		}
+	}
+	assert.True(t, found, "%+v", report.Issues)
+}
+
+func TestAccountBundle_EntityLinkValidationAndConflicts(t *testing.T) {
+	db := dbtest.New(t)
+	u := bundleTestUser(t, db, "ent-link-rules")
+	uid := "c0ffee00-0000-4000-8000-000000000003"
+
+	// An owned link id (on an unrelated entity) collides with the bundle's.
+	existing := models.Entity{UserID: u.ID, Kind: models.EntityKindOrganisation, Name: "Existing", Sensitivity: "normal"}
+	require.NoError(t, existing.SetCore(&models.OrganisationCore{}))
+	require.NoError(t, db.Create(&existing).Error)
+	linkID := "a3333333-3333-4333-8333-333333333333"
+	require.NoError(t, db.Create(&models.ContactEntityLink{ID: linkID, UserID: u.ID, ContactVCardUID: "someone-else", EntityID: existing.ID, Kind: existing.Kind, Role: "employee", Sensitivity: "normal"}).Error)
+
+	b := entityRestoreBundle(uid)
+	eid := b.Plan.Entities[0].ID
+	b.Plan.EntityLinks = []models.AccountBundleEntityLink{
+		{ID: "a1111111-1111-4111-8111-111111111111", ContactVCardUID: uid, EntityID: eid, Role: "employee", Sensitivity: "bogus"},
+		{ID: linkID, ContactVCardUID: uid, EntityID: eid, Role: "employee", Sensitivity: "normal"},
+	}
+	// Two values for the same (definition, entity) are one row: the plan keys
+	// them identically, so the second is skipped, not written twice.
+	b.Plan.CustomFieldDefinitions = []models.AccountBundleFieldDefinition{{ID: "d1", Label: "Industry", Key: "industry", Target: "organisation", Type: "text", Projection: "internal-only", Sensitivity: "normal"}}
+	b.Plan.EntityFieldValues = []models.AccountBundleEntityFieldValue{
+		{FieldDefinitionID: "d1", EntityID: eid, Value: json.RawMessage(`"a"`)},
+		{FieldDefinitionID: "d1", EntityID: eid, Value: json.RawMessage(`"b"`)},
+	}
+	report, _, err := ExecuteSourceImportWithActions(t.Context(), db, u.ID, MapAccountBundle(b), map[string]SourceContactAction{}, nil)
+	require.NoError(t, err)
+	got := map[string]string{}
+	for _, i := range report.Issues {
+		got[i.Field] = i.Category
+	}
+	assert.Equal(t, ImportIssueCategoryInvalid, got["entity_link.sensitivity"])
+	assert.Equal(t, ImportIssueCategorySkipped, got["entity_link"], "an owned link id is a conflict")
+	var vals int64
+	require.NoError(t, db.Model(&models.FieldValue{}).Where("user_id = ?", u.ID).Count(&vals).Error)
+	assert.EqualValues(t, 1, vals)
+	var existingLink models.ContactEntityLink
+	require.NoError(t, db.First(&existingLink, "id = ?", linkID).Error)
+	assert.Equal(t, "someone-else", existingLink.ContactVCardUID, "the owned link is untouched")
+}
+
+// A link whose contact was removed is not exported: every reference in the
+// bundle resolves.
+func TestBuildAccountBundle_OmitsLinkOfRemovedContact(t *testing.T) {
+	db := dbtest.New(t)
+	u := bundleTestUser(t, db, "ent-bundle-gone-contact")
+	c := models.Contact{UserID: u.ID, Firstname: "Gone"}
+	require.NoError(t, db.Create(&c).Error)
+	e := models.Entity{UserID: u.ID, Kind: models.EntityKindPet, Name: "Rex", Sensitivity: "normal"}
+	require.NoError(t, e.SetCore(&models.PetCore{}))
+	require.NoError(t, db.Create(&e).Error)
+	require.NoError(t, db.Create(&models.ContactEntityLink{UserID: u.ID, ContactVCardUID: c.VCardUID, EntityID: e.ID, Kind: e.Kind, Role: "owner", Sensitivity: "normal"}).Error)
+	require.NoError(t, db.Delete(&c).Error)
+
+	bundle, _, err := BuildAccountBundle(db, u.ID, "")
+	require.NoError(t, err)
+	assert.Len(t, bundle.Plan.Entities, 1)
+	assert.Empty(t, bundle.Plan.EntityLinks)
+}
