@@ -143,9 +143,11 @@ fun CirclesScreen(
                                         CircleListItem(
                                             circle = circle,
                                             onClick = { onOpenCircle(circle.id) },
-                                            onRename = { name ->
-                                                viewModel.rename(circle.id, name)
+                                            nameTaken = state.nameTaken,
+                                            onRename = { name, onDone ->
+                                                viewModel.rename(circle.id, name, onDone)
                                             },
+                                            onClearNameError = viewModel::clearNameError,
                                             onDelete = { viewModel.delete(circle.id) }
                                         )
                                     }
@@ -163,11 +165,17 @@ fun CirclesScreen(
             title = stringResource(R.string.circles_new),
             initial = "",
             confirmLabel = stringResource(R.string.action_create),
-            onConfirm = { name ->
-                viewModel.create(name)
+            onConfirm = { name -> viewModel.create(name) { showCreateDialog = false } },
+            onDismiss = {
+                viewModel.clearNameError()
                 showCreateDialog = false
             },
-            onDismiss = { showCreateDialog = false }
+            nameError = if (state.nameTaken) {
+                stringResource(R.string.error_reason_circle_already_exists)
+            } else {
+                null
+            },
+            onNameChange = viewModel::clearNameError
         )
     }
 
@@ -184,7 +192,9 @@ fun CirclesScreen(
 private fun CircleListItem(
     circle: Circle,
     onClick: () -> Unit,
-    onRename: (String) -> Unit,
+    nameTaken: Boolean,
+    onRename: (String, () -> Unit) -> Unit,
+    onClearNameError: () -> Unit,
     onDelete: () -> Unit
 ) {
     var renaming by remember { mutableStateOf(false) }
@@ -195,11 +205,17 @@ private fun CircleListItem(
             title = stringResource(R.string.circles_rename),
             initial = circle.name,
             confirmLabel = stringResource(R.string.action_save),
-            onConfirm = { name ->
-                onRename(name)
+            onConfirm = { name -> onRename(name) { renaming = false } },
+            onDismiss = {
+                onClearNameError()
                 renaming = false
             },
-            onDismiss = { renaming = false }
+            nameError = if (nameTaken) {
+                stringResource(R.string.error_reason_circle_already_exists)
+            } else {
+                null
+            },
+            onNameChange = onClearNameError
         )
     }
     if (deleting) {
@@ -266,7 +282,9 @@ fun CircleNameDialog(
     initial: String,
     confirmLabel: String,
     onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    nameError: String? = null,
+    onNameChange: () -> Unit = {}
 ) {
     var name by remember { mutableStateOf(initial) }
     var showDiscardDialog by rememberSaveable { mutableStateOf(false) }
@@ -278,8 +296,13 @@ fun CircleNameDialog(
         text = {
             OutlinedTextField(
                 value = name,
-                onValueChange = { name = it },
+                onValueChange = {
+                    name = it
+                    onNameChange()
+                },
                 label = { Text(stringResource(R.string.circles_name)) },
+                isError = nameError != null,
+                supportingText = nameError?.let { message -> { Text(message) } },
                 singleLine = true
             )
         },
