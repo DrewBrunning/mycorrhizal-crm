@@ -9,6 +9,8 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.GraphRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
+import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
+import com.mycorrhizal.crm.model.network.GraphEntityNode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -50,7 +52,13 @@ data class NetworkUiState(
     val pickerOpen: Boolean = false,
     val contactSearchQuery: String = "",
     val contactSearchResults: List<ContactSummary> = emptyList(),
-    val contactSearchLoading: Boolean = false
+    val contactSearchLoading: Boolean = false,
+    // --- Issue #2302 (ADR 0043 decision 2): the opt-in, read-only entity overlay ---
+    /** The "show organisations, places & pets" toggle; off by default and not persisted. */
+    val showEntities: Boolean = false,
+    val entityOverlay: List<EntityOverlayRow> = emptyList(),
+    val entitiesLoading: Boolean = false,
+    val entitiesFailed: Boolean = false
 ) {
     /** Chains narrowed to the selected circle's members (client-side, mirroring web). */
     val filteredChains: List<GraphChain>
@@ -66,6 +74,33 @@ data class NetworkUiState(
 
     /** True once a starting contact is chosen (drawer entry without a self contact prompts first). */
     val hasFrom: Boolean get() = fromVCardUid.isNotBlank()
+}
+
+/** One display-only entity node with the names of the in-scope contacts linked to it. */
+data class EntityOverlayRow(val node: GraphEntityNode, val contactNames: List<String>)
+
+/**
+ * The overlay rows of a `GET /graph?include_entities=true` response: each entity node with the
+ * labels of the contact nodes its edges connect to (`c-<id>` -> contact node label). Pure display
+ * data; nothing here feeds traversal. Sorted by kind then name so the list is stable.
+ */
+internal fun GraphEntitiesResponse.toOverlayRows(): List<EntityOverlayRow> {
+    val contactLabels = nodes.orEmpty().associate { it.id to it.label }
+    val edges = entityEdges.orEmpty()
+    return entityNodes.orEmpty().map { node ->
+        EntityOverlayRow(
+            node = node,
+            contactNames = edges.filter { it.target == node.id }
+                .mapNotNull { contactLabels[it.source]?.takeIf { label -> label.isNotBlank() } }
+                .distinct()
+        )
+    }.sortedWith(compareBy({ kindOrder(it.node.kind) }, { it.node.label.lowercase() }))
+}
+
+private fun kindOrder(kind: String): Int = when (kind) {
+    "organisation" -> 0
+    "place" -> 1
+    else -> 2
 }
 
 @HiltViewModel
@@ -93,6 +128,9 @@ class NetworkViewModel @Inject constructor(
     // depth/relation/from change can't let an older response land last and
     // show a network for the previous settings (review-pass fix).
     private var connectionsJob: Job? = null
+
+    // The in-flight entity overlay request; cancelled like [connectionsJob] on every relaunch.
+    private var overlayJob: Job? = null
 
     init {
         load()
@@ -176,6 +214,7 @@ class NetworkViewModel @Inject constructor(
         // out-of-order race where the last-to-complete, not the last-issued,
         // request won).
         connectionsJob?.cancel()
+        if (_uiState.value.showEntities) loadEntityOverlay()
         connectionsJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
             val depth = _uiState.value.depth
@@ -205,6 +244,47 @@ class NetworkViewModel @Inject constructor(
                             isLoading = false,
                             allChains = emptyList(),
                             error = error
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    /**
+     * The opt-in toggle. Entity data is fetched only while it is on, through the separate
+     * `include_entities` request; it never enters [NetworkUiState.allChains] (traversal).
+     */
+    fun setShowEntities(show: Boolean) {
+        if (show == _uiState.value.showEntities) return
+        _uiState.update {
+            it.copy(
+                showEntities = show,
+                entityOverlay = if (show) it.entityOverlay else emptyList(),
+                entitiesFailed = false
+            )
+        }
+        if (show) loadEntityOverlay() else overlayJob?.cancel()
+    }
+
+    private fun loadEntityOverlay() {
+        val uid = _uiState.value.fromVCardUid
+        if (uid.isBlank()) return
+        overlayJob?.cancel()
+        overlayJob = viewModelScope.launch {
+            _uiState.update { it.copy(entitiesLoading = true, entitiesFailed = false) }
+            graphRepository.entityOverlay(uid, _uiState.value.depth).foldApiError(
+                onSuccess = { response ->
+                    _uiState.update {
+                        it.copy(entitiesLoading = false, entityOverlay = response.toOverlayRows())
+                    }
+                },
+                onError = {
+                    _uiState.update {
+                        it.copy(
+                            entitiesLoading = false,
+                            entitiesFailed = true,
+                            entityOverlay = emptyList()
                         )
                     }
                 }

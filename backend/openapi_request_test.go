@@ -307,6 +307,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	"POST /contacts/import/meerkat/upload":              true,
 	"POST /contacts/import/meerkat/cancel":              true,
 	"POST /import/mycorrhizal/upload":                   true,
+	"POST /import/entities/csv":                         true,
 	"POST /import/mycorrhizal/cancel":                   true,
 	"POST /contact-shares/{id}/accept":                  true,
 	"POST /contact-shares/{id}/decline":                 true,

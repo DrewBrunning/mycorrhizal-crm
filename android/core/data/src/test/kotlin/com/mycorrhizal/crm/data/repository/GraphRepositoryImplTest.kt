@@ -29,6 +29,15 @@ class GraphRepositoryImplTest {
     }
 
     @Test
+    fun `entityOverlay passes through to the opt-in include_entities request`() = runTest {
+        coEvery { apiClient.getGraphWithEntities(from = "u1", depth = 2) } returns
+            Result.success(com.mycorrhizal.crm.model.network.GraphEntitiesResponse())
+
+        assertTrue(repository.entityOverlay("u1", 2).isSuccess)
+        coVerify { apiClient.getGraphWithEntities(from = "u1", depth = 2) }
+    }
+
+    @Test
     fun `selfContactVCardUid reads the profile's pointer`() = runTest {
         coEvery { apiClient.currentUser() } returns Result.success(
             UserProfile(id = 1, selfContactVCardUid = "self-uid")
