@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"testing/iotest"
@@ -174,4 +175,17 @@ func TestRestoreEntityCSV_DatabaseFailuresLeaveNothingBehind(t *testing.T) {
 		}
 		assert.NotNil(t, rep, "statement %d (%s)", n, stmts[n-1])
 	}
+}
+
+func TestRestoreEntityCSV_ClientRejectionsAreTyped(t *testing.T) {
+	var b strings.Builder
+	b.WriteString("=== ENTITIES ===\nID,Kind,Name,Sensitivity,Core (JSON)\n")
+	for i := 0; i <= MaxEntityCSVRows; i++ {
+		fmt.Fprintf(&b, "e%d,place,P,normal,{}\n", i)
+	}
+	_, _, err := ParseEntityCSVSections(strings.NewReader(b.String()))
+	require.Error(t, err)
+	assert.True(t, IsEntityCSVRejection(err), "an over-limit file is the client's fault")
+	assert.Contains(t, err.Error(), "too many rows")
+	assert.False(t, IsEntityCSVRejection(errors.New("database is locked")), "a database fault is not a rejection")
 }

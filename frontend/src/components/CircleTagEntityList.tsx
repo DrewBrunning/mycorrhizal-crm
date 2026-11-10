@@ -18,6 +18,8 @@ import {
 } from '@mui/material';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { isDuplicateCircleNameError } from '../utils/circleName';
+import { getErrorMessage } from '../utils/errorHandler';
 
 // T65: circles and tags are structurally identical (id + name + a member
 // count) and get the exact same rename/delete/create UI — one shared list
@@ -80,14 +82,23 @@ export default function CircleTagEntityList({
   const [editValue, setEditValue] = useState('');
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  // Inline duplicate-name messages (issue #2362); other failures are already
+  // surfaced by the caller's notifier.
+  const [addError, setAddError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const handleAdd = async () => {
     const trimmed = newName.trim();
     if (!trimmed) return;
     setCreating(true);
+    setAddError(null);
     try {
       await onCreate(trimmed);
       setNewName('');
+    } catch (err) {
+      // Other failures are already reported by the caller's notifier; swallowing
+      // them here avoids an unhandled rejection from the fire-and-forget handler.
+      if (isDuplicateCircleNameError(err)) setAddError(getErrorMessage(err));
     } finally {
       setCreating(false);
     }
@@ -96,21 +107,26 @@ export default function CircleTagEntityList({
   const startEdit = (item: CircleTagEntityListItem) => {
     setEditingId(item.id);
     setEditValue(item.name);
+    setEditError(null);
   };
 
   const cancelEdit = () => {
     setEditingId(null);
     setEditValue('');
+    setEditError(null);
   };
 
   const saveEdit = async (id: string) => {
     const trimmed = editValue.trim();
     if (!trimmed) return;
     setSavingId(id);
+    setEditError(null);
     try {
       await onRename(id, trimmed);
       setEditingId(null);
       setEditValue('');
+    } catch (err) {
+      if (isDuplicateCircleNameError(err)) setEditError(getErrorMessage(err));
     } finally {
       setSavingId(null);
     }
@@ -215,7 +231,12 @@ export default function CircleTagEntityList({
                     <TextField
                       size="small"
                       value={editValue}
-                      onChange={(e) => setEditValue(e.target.value)}
+                      onChange={(e) => {
+                        setEditValue(e.target.value);
+                        setEditError(null);
+                      }}
+                      error={Boolean(editError)}
+                      helperText={editError ?? undefined}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') void saveEdit(item.id);
                         if (e.key === 'Escape') cancelEdit();
@@ -270,7 +291,12 @@ export default function CircleTagEntityList({
           size="small"
           placeholder={newPlaceholder}
           value={newName}
-          onChange={(e) => setNewName(e.target.value)}
+          onChange={(e) => {
+            setNewName(e.target.value);
+            setAddError(null);
+          }}
+          error={Boolean(addError)}
+          helperText={addError ?? undefined}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && newName.trim()) void handleAdd();
           }}
