@@ -1,7 +1,8 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
+import { searchAll } from './api/search';
 import { isAdmin } from './auth';
 import { AnnouncerProvider } from './context/AnnouncerContext';
 import { SnackbarProvider } from './context/SnackbarContext';
@@ -145,4 +146,52 @@ test('typing a search query shows the clear button, which resets the query', () 
 
   expect((searchBox as HTMLInputElement).value).toBe('');
   expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
+});
+
+// #960 / #2174: the AppBar search, mounted in the real shell. A slow response
+// for an abandoned query must not overwrite the newer query's grouped results.
+test('a stale AppBar search response does not clobber a newer query (#960)', async () => {
+  setLoggedInUser(false);
+  vi.useFakeTimers();
+  try {
+    let resolveSlow!: (v: Awaited<ReturnType<typeof searchAll>>) => void;
+    const slowJo = new Promise<Awaited<ReturnType<typeof searchAll>>>((r) => {
+      resolveSlow = r;
+    });
+    vi.mocked(searchAll)
+      .mockReturnValueOnce(slowJo)
+      .mockResolvedValueOnce({
+        query: 'john',
+        contacts: [{ id: 1, uid: 'u1', firstname: 'John', lastname: 'Smith' }],
+        notes: [],
+        activities: [],
+      });
+
+    renderApp();
+    const searchBox = screen.getByPlaceholderText('Search contacts, notes, activities…');
+
+    fireEvent.focus(searchBox);
+    fireEvent.change(searchBox, { target: { value: 'jo' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    fireEvent.change(searchBox, { target: { value: 'john' } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    expect(screen.getByText('John Smith')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveSlow({
+        query: 'jo',
+        contacts: [{ id: 2, uid: 'u2', firstname: 'Joanna', lastname: 'Doe' }],
+        notes: [],
+        activities: [],
+      });
+    });
+    expect(screen.queryByText('Joanna Doe')).not.toBeInTheDocument();
+    expect(screen.getByText('John Smith')).toBeInTheDocument();
+  } finally {
+    vi.useRealTimers();
+  }
 });
