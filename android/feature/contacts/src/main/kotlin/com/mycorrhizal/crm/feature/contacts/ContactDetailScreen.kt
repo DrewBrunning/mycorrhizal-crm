@@ -39,6 +39,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Call
 import androidx.compose.material.icons.outlined.CardGiftcard
 import androidx.compose.material.icons.outlined.Celebration
@@ -134,6 +135,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.mycorrhizal.crm.feature.contacts.entities.ProjectedFromChip
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
 import com.mycorrhizal.crm.feature.timeline.toTimelineItems
 import com.mycorrhizal.crm.model.network.Address
@@ -160,6 +162,7 @@ import com.mycorrhizal.crm.model.network.editorToWireValue
 import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.network.isEditorValueEmpty
 import com.mycorrhizal.crm.model.network.isMulti
+import com.mycorrhizal.crm.model.network.isProjectedElementId
 import com.mycorrhizal.crm.model.network.wireToEditorValue
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFormat
@@ -235,6 +238,8 @@ fun ContactDetailScreen(
     // edit form into their own contact-page drill-downs.
     onViewSkills: (Int) -> Unit = {},
     onViewWork: (Int) -> Unit = {},
+    // Issue #2302 (ADR 0043): the "Organisations, places & pets" section.
+    onViewEntities: (Int) -> Unit = {},
     onViewAnniversaries: (Int) -> Unit = {},
     onViewAgenda: (Int) -> Unit = {},
     onViewTimeline: (Int) -> Unit = {},
@@ -867,6 +872,7 @@ fun ContactDetailScreen(
                         onViewPreferences = onViewPreferences,
                         onViewSkills = onViewSkills,
                         onViewWork = onViewWork,
+                        onViewEntities = onViewEntities,
                         onViewAnniversaries = onViewAnniversaries,
                         onViewAgenda = onViewAgenda,
                         onViewTimeline = onViewTimeline,
@@ -1360,6 +1366,8 @@ fun ContactDetailContent(
     // edit form into their own contact-page drill-downs.
     onViewSkills: (Int) -> Unit = {},
     onViewWork: (Int) -> Unit = {},
+    // Issue #2302 (ADR 0043): the "Organisations, places & pets" section.
+    onViewEntities: (Int) -> Unit = {},
     onViewAnniversaries: (Int) -> Unit = {},
     onViewAgenda: (Int) -> Unit = {},
     onViewTimeline: (Int) -> Unit = {},
@@ -2023,6 +2031,17 @@ fun ContactDetailContent(
                     tag = "drill-down-work"
                 )
             }
+        }
+        // Issue #2302: shared organisations, places and pets this contact is linked to. Always
+        // shown (it is not a Card field, so the enabled-fields setting does not gate it).
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_entities),
+                icon = Icons.Outlined.Business,
+                count = null,
+                onClick = { onViewEntities(contact.id) },
+                tag = "drill-down-entities"
+            )
         }
         if (ContactFieldKey.ANNIVERSARIES in enabledFields) {
             item {
@@ -2783,15 +2802,16 @@ private fun AddressRow(address: Address) {
     val text = address.full
         ?: address.components?.joinToString(", ") { it.value.orEmpty() }
         ?: ""
+    // ADR 0043: a projected `ent-` address is the linked place's value, shown with its source chip.
+    val projected = isProjectedElementId(address.id)
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = text, style = MaterialTheme.typography.bodyLarge)
+            if (projected) ProjectedFromChip(entityName = null)
+        }
         if (text.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.mapIntent(text)) }) {
                 Icon(
