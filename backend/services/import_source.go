@@ -331,6 +331,13 @@ type ImportSourcePlan struct {
 	Occasions           []MappedOccasion
 	OccasionEvents      []MappedOccasionEvent
 
+	// Reusable entities (issue #2300, ADR 0043 decision 7): bundle-only.
+	// Monica and Meerkat leave these empty -- no import path creates or
+	// matches an entity from a source's strings.
+	Entities          []MappedEntity
+	EntityLinks       []MappedEntityLink
+	EntityFieldValues []MappedEntityFieldValue
+
 	// Report carries every issue the mapping and the execution produced.
 	Report ImportReport
 }
@@ -468,7 +475,7 @@ func ExecuteSourceImportWithActions(ctx context.Context, db *gorm.DB, userID uin
 // importGraphKinds is the number of pass-2 entity-kind import calls in
 // executeSourceImport — used only to size the progress bar's total. Keep in
 // sync with the graphKinds slice below.
-const importGraphKinds = 18
+const importGraphKinds = 19
 
 func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *ImportSourcePlan, actions map[string]SourceContactAction, report *ImportReport, refToID map[string]uint, tick func(), written *importedPhotoFiles) error {
 	// Issue #434/#498 failure-injection seam: an armed fault fails the whole
@@ -675,6 +682,11 @@ func executeSourceImport(ctx context.Context, tx *gorm.DB, userID uint, plan *Im
 		},
 		func() error {
 			return importCustomFields(tx, userID, plan, imported, refToUID, ids, skipImported, report)
+		},
+		// Entities last: links need the contacts (refToUID) and entity field
+		// values need the definitions imported above.
+		func() error {
+			return importEntities(tx, userID, plan, imported, uidOf, ids, skipImported, report)
 		},
 	}
 	for _, importKind := range graphKinds {

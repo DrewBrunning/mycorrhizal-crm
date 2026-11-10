@@ -138,6 +138,14 @@ type AccountBundlePlan struct {
 	CustomFieldValues      []AccountBundleFieldValue         `json:"custom_field_values"`
 	Occasions              []AccountBundleOccasion           `json:"occasions"`
 	OccasionEvents         []AccountBundleOccasionEvent      `json:"occasion_events"`
+	// Entities, EntityLinks and EntityFieldValues carry the reusable
+	// organisations, places and pets (ADR 0043 decision 7, issue #2300). They
+	// are additive to bundle version 1: absent on a bundle written before 1.7
+	// (read as none), always written as arrays by the exporter. Live rows
+	// only; sensitivity travels as-is (owner backup).
+	Entities          []AccountBundleEntity           `json:"entities"`
+	EntityLinks       []AccountBundleEntityLink       `json:"entity_links"`
+	EntityFieldValues []AccountBundleEntityFieldValue `json:"entity_field_values"`
 }
 
 // AccountBundleContact carries the neutral Record (via RecordForContact, never
@@ -402,4 +410,42 @@ type AccountBundleOccasionEvent struct {
 type AccountBundleAttendee struct {
 	EntityID string `json:"entity_id"`
 	RSVP     string `json:"rsvp"`
+}
+
+// AccountBundleEntity is one reusable entity keyed by its UUID primary key.
+// Core is the kind-specific JSON (models.OrganisationCore / PlaceCore /
+// PetCore), carried verbatim and re-validated on import.
+type AccountBundleEntity struct {
+	ID          string          `json:"id"`
+	Kind        string          `json:"kind"`
+	Name        string          `json:"name"`
+	Sensitivity string          `json:"sensitivity"`
+	Core        json.RawMessage `json:"core"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
+}
+
+// AccountBundleEntityLink is one contact-to-entity link keyed by its UUID. The
+// contact is referenced by vcard_uid and the entity by its UUID, never by a
+// uint primary key. Start/End are the optional period (ADR 0015/0025).
+type AccountBundleEntityLink struct {
+	ID              string                    `json:"id"`
+	ContactVCardUID string                    `json:"contact_vcard_uid"`
+	EntityID        string                    `json:"entity_id"`
+	Kind            string                    `json:"kind"`
+	Role            string                    `json:"role"`
+	RoleLabel       string                    `json:"role_label,omitempty"`
+	IsPrimary       bool                      `json:"is_primary"`
+	Start           *contactmodel.PartialDate `json:"start,omitempty"`
+	End             *contactmodel.PartialDate `json:"end,omitempty"`
+	Sensitivity     string                    `json:"sensitivity"`
+}
+
+// AccountBundleEntityFieldValue is one custom-field value of an entity; the
+// definition (an entity-target FieldDefinition) and the entity are both
+// referenced by UUID.
+type AccountBundleEntityFieldValue struct {
+	FieldDefinitionID string          `json:"field_definition_id"`
+	EntityID          string          `json:"entity_id"`
+	Value             json.RawMessage `json:"value"`
 }
