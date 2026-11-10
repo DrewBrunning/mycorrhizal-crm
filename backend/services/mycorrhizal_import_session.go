@@ -477,6 +477,7 @@ func (m *MycorrhizalImportManager) runImport(ctx context.Context, db *gorm.DB, s
 		Updated:        result.Updated,
 		Skipped:        result.Skipped,
 		ErrorCount:     len(result.Errors),
+		Issues:         result.Issues,
 	})
 
 	s.mu.Lock()

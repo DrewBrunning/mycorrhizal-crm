@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"mycorrhizal/logger"
@@ -40,7 +41,58 @@ type ImportRun struct {
 	Skipped        int `gorm:"column:skipped;not null;default:0" json:"skipped"`
 	ErrorCount     int `gorm:"column:error_count;not null;default:0" json:"error_count"`
 
+	// IssueCount is how many per-row issues are stored in IssuesJSON (issue
+	// #2463). The list endpoint returns it so a client knows whether an
+	// itemized report exists without loading the issues.
+	IssueCount int `gorm:"column:issue_count;not null;default:0" json:"issue_count"`
+
+	// IssuesJSON is the stored JSON array of ImportRowIssue: row, name, status
+	// and reason only. Email and phone are never persisted (PII minimum, see
+	// docs/security/pii-inventory.md). Never serialised directly: the detail
+	// endpoint decodes it into ImportRunDetail.Issues.
+	IssuesJSON string `gorm:"column:issues;not null;default:'[]'" json:"-"`
+
+	// Issues is the write-side input of RecordImportRun (the confirm result's
+	// issues). Not a column; the list and detail responses never read it.
+	Issues []ImportRowIssue `gorm:"-" json:"-"`
+
 	CreatedAt time.Time `gorm:"column:created_at;not null" json:"created_at"`
+}
+
+// MaxImportRunIssues caps how many per-row issues are stored per run; the
+// run's counts stay exact beyond it.
+const MaxImportRunIssues = 1000
+
+// ImportRunDetail is the GET /contacts/import/history/{id} response: the run
+// plus its stored issues, always an array (never null).
+type ImportRunDetail struct {
+	ImportRun
+	Issues []ImportRowIssue `json:"issues"`
+}
+
+// Detail decodes the stored issues. A malformed or empty column yields [].
+func (r ImportRun) Detail() ImportRunDetail {
+	issues := []ImportRowIssue{}
+	if r.IssuesJSON != "" {
+		if err := json.Unmarshal([]byte(r.IssuesJSON), &issues); err != nil || issues == nil {
+			issues = []ImportRowIssue{}
+		}
+	}
+	return ImportRunDetail{ImportRun: r, Issues: issues}
+}
+
+// storedImportIssues returns the capped, PII-minimised copy of issues that is
+// persisted: email and phone blanked.
+func storedImportIssues(issues []ImportRowIssue) []ImportRowIssue {
+	if len(issues) > MaxImportRunIssues {
+		issues = issues[:MaxImportRunIssues]
+	}
+	out := make([]ImportRowIssue, len(issues))
+	for i, iss := range issues {
+		iss.Email, iss.Phone = "", ""
+		out[i] = iss
+	}
+	return out
 }
 
 // ImportRun format tokens. Mirrored by migration 000042's CHECK constraint
@@ -76,6 +128,14 @@ func RecordImportRun(ctx context.Context, db *gorm.DB, r ImportRun) {
 		return
 	}
 	r.CreatedAt = time.Now().UTC()
+
+	stored := storedImportIssues(r.Issues)
+	r.IssueCount = len(stored)
+	if raw, err := json.Marshal(stored); err == nil {
+		r.IssuesJSON = string(raw)
+	} else {
+		r.IssueCount, r.IssuesJSON = 0, "[]"
+	}
 
 	if err := db.WithContext(ctx).Create(&r).Error; err != nil {
 		logger.Ctx(ctx).Error().

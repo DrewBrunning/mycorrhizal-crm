@@ -285,3 +285,45 @@ func TestMeerkatImportSession_CleanupExpiredRemovesTempDir(t *testing.T) {
 	assert.Equal(t, 0, mgr.CountActive(7))
 	assert.NoDirExists(t, tempDir)
 }
+
+// Issue #2463: a row excluded in the review step comes back in the confirm
+// result's issues and is persisted on the import run.
+func TestMeerkatImportSession_SkippedRowIsReportedAndPersisted(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	mgr := NewMeerkatImportManager()
+
+	upload, appErr := mgr.Upload(user.ID, fileHeaderFrom(t, "meerkat.db", meerkatFixtureBytes(t)))
+	require.Nil(t, appErr)
+	require.Nil(t, mgr.StartFetch(db, user.ID,
+		models.MeerkatFetchRequest{SessionID: upload.SessionID, SourceUserID: upload.DefaultSourceUserID}, meerkatTestLogger()))
+	waitMeerkatPhase(t, mgr, user.ID, upload.SessionID, models.SourceImportPhaseReady)
+	preview, appErr := mgr.Preview(user.ID, upload.SessionID)
+	require.Nil(t, appErr)
+	require.NotEmpty(t, preview.Rows)
+
+	actions := make([]models.RowImportAction, len(preview.Rows))
+	for i, row := range preview.Rows {
+		actions[i] = models.RowImportAction{RowIndex: row.RowIndex, Action: "add"}
+	}
+	actions[0].Action = "skip"
+	st := confirmMeerkatAndWait(t, mgr, db, user.ID, upload.SessionID, actions, models.SourceImportPhaseDone)
+	require.NotNil(t, st.Result)
+
+	var skipped []models.ImportRowIssue
+	for _, iss := range st.Result.Issues {
+		if iss.Reason == "excluded in the import review step" {
+			skipped = append(skipped, iss)
+		}
+	}
+	require.Len(t, skipped, 1, "the excluded row is itemized: %+v", st.Result.Issues)
+	assert.Equal(t, "skipped", skipped[0].Status)
+
+	var run models.ImportRun
+	require.NoError(t, db.Where("user_id = ? AND format = ?", user.ID, models.ImportFormatMeerkat).First(&run).Error)
+	assert.Equal(t, len(st.Result.Issues), run.IssueCount)
+	detail := run.Detail()
+	require.Len(t, detail.Issues, len(st.Result.Issues))
+	assert.Equal(t, st.Result.Issues[0].Reason, detail.Issues[0].Reason)
+	assert.Empty(t, detail.Issues[0].Email)
+}

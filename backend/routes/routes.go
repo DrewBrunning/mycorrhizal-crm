@@ -357,6 +357,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// import (any format), newest first, user-scoped. Backs the history
 			// table on the Data settings page.
 			protected.GET("/contacts/import/history", controllers.GetImportHistory)
+			protected.GET("/contacts/import/history/:id", controllers.GetImportRun)
 
 			// Monica import assistant (issue #549) — connect to a live Monica
 			// instance, pull a snapshot in the background with progress, review

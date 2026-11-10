@@ -2541,6 +2541,31 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/contacts/import/history/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ImportRunDetail"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "POST",
       "path": "/contacts/import/jscontact/upload",
       "parameters": null,
@@ -19870,6 +19895,80 @@
           "name": "id",
           "type": "integer",
           "required": false
+        },
+        {
+          "name": "issue_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "skipped",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "total_processed",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "updated",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ImportRunDetail",
+      "properties": [
+        {
+          "name": "created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "csv",
+            "vcf",
+            "jscontact",
+            "records",
+            "monica",
+            "meerkat",
+            "mycorrhizal"
+          ]
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "issue_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "issues",
+          "type": "array\u003cobject\u003e",
+          "required": true
         },
         {
           "name": "skipped",

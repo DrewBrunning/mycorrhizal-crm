@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
@@ -9,6 +10,7 @@ import (
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -440,7 +442,7 @@ func GetImportHistory(c *gin.Context) {
 	}
 
 	runs := []models.ImportRun{}
-	if err := db.Where("user_id = ?", userID).
+	if err := db.Omit("issues").Where("user_id = ?", userID).
 		Order("created_at DESC").
 		Limit(importHistoryLimit).
 		Find(&runs).Error; err != nil {
@@ -449,4 +451,36 @@ func GetImportHistory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, runs)
+}
+
+// GetImportRun returns one of the caller's import runs with its stored
+// per-row issues (issue #2463): reason + row reference only, never email or
+// phone. User-scoped (trap #5): the lookup is `id = ? AND user_id = ?`, and a
+// missing, malformed or foreign id is the same 404, so existence never leaks.
+// issues is always an array (frontend trap #8).
+func GetImportRun(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrNotFound("Import run"))
+		return
+	}
+
+	var run models.ImportRun
+	if err := db.Where("id = ? AND user_id = ?", id, userID).First(&run).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			apperrors.AbortWithError(c, apperrors.ErrNotFound("Import run"))
+			return
+		}
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to load import run").WithError(err))
+		return
+	}
+
+	c.JSON(http.StatusOK, run.Detail())
 }

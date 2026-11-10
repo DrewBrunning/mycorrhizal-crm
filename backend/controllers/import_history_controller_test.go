@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 	"time"
 
@@ -31,6 +32,7 @@ func importHistoryRouter(db *gorm.DB, userID uint) *gin.Engine {
 		c.Next()
 	})
 	r.GET("/contacts/import/history", GetImportHistory)
+	r.GET("/contacts/import/history/:id", GetImportRun)
 	return r
 }
 
@@ -134,4 +136,94 @@ func TestGetImportHistory_Unauthenticated(t *testing.T) {
 		httptest.NewRequest(http.MethodGet, "/contacts/import/history", nil))
 
 	alAssertError(t, w, http.StatusUnauthorized, "UNAUTHORIZED", "")
+}
+
+// Issue #2463: the list reports issue_count but never the issues themselves;
+// the per-run detail returns them, scoped to the owner.
+
+func TestGetImportHistory_ListHasIssueCountNotIssues(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "ic", Email: "ic@example.com", Password: "x"}
+	require.NoError(t, db.Create(&user).Error)
+	models.RecordImportRun(t.Context(), db, models.ImportRun{
+		UserID: user.ID, Format: models.ImportFormatCSV,
+		Issues: []models.ImportRowIssue{{Row: 2, Name: "A", Status: "skipped", Reason: "r"}},
+	})
+
+	w := httptest.NewRecorder()
+	importHistoryRouter(db, user.ID).ServeHTTP(w,
+		httptest.NewRequest(http.MethodGet, "/contacts/import/history", nil))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var raw []map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
+	require.Len(t, raw, 1)
+	assert.EqualValues(t, 1, raw[0]["issue_count"])
+	assert.NotContains(t, raw[0], "issues", "the list must stay small: no issues array")
+	assert.NotContains(t, raw[0], "IssuesJSON")
+}
+
+func TestGetImportRun_ReturnsIssuesForOwner(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "gr", Email: "gr@example.com", Password: "x"}
+	require.NoError(t, db.Create(&user).Error)
+	models.RecordImportRun(t.Context(), db, models.ImportRun{
+		UserID: user.ID, Format: models.ImportFormatCSV, TotalProcessed: 2, Skipped: 1,
+		Issues: []models.ImportRowIssue{{Row: 2, Name: "A", Email: "a@x.io", Status: "skipped", Reason: "r"}},
+	})
+	var run models.ImportRun
+	require.NoError(t, db.Where("user_id = ?", user.ID).First(&run).Error)
+
+	w := httptest.NewRecorder()
+	importHistoryRouter(db, user.ID).ServeHTTP(w,
+		httptest.NewRequest(http.MethodGet, "/contacts/import/history/"+strconv.Itoa(int(run.ID)), nil))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var got struct {
+		ID         uint                    `json:"id"`
+		IssueCount int                     `json:"issue_count"`
+		Issues     []models.ImportRowIssue `json:"issues"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &got))
+	assert.Equal(t, run.ID, got.ID)
+	require.Len(t, got.Issues, 1)
+	assert.Equal(t, models.ImportRowIssue{Row: 2, Name: "A", Status: "skipped", Reason: "r"}, got.Issues[0],
+		"email/phone come back empty")
+}
+
+func TestGetImportRun_NoIssuesSerialisesAsEmptyArray(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "ge", Email: "ge@example.com", Password: "x"}
+	require.NoError(t, db.Create(&user).Error)
+	models.RecordImportRun(t.Context(), db, models.ImportRun{UserID: user.ID, Format: models.ImportFormatVCF})
+	var run models.ImportRun
+	require.NoError(t, db.Where("user_id = ?", user.ID).First(&run).Error)
+
+	w := httptest.NewRecorder()
+	importHistoryRouter(db, user.ID).ServeHTTP(w,
+		httptest.NewRequest(http.MethodGet, "/contacts/import/history/"+strconv.Itoa(int(run.ID)), nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"issues":[]`, "never null (frontend trap #8)")
+}
+
+func TestGetImportRun_ForeignOrMissingIs404(t *testing.T) {
+	db := dbtest.New(t)
+	owner := models.User{Username: "own", Email: "own@example.com", Password: "x"}
+	other := models.User{Username: "oth", Email: "oth@example.com", Password: "x"}
+	require.NoError(t, db.Create(&owner).Error)
+	require.NoError(t, db.Create(&other).Error)
+	models.RecordImportRun(t.Context(), db, models.ImportRun{
+		UserID: owner.ID, Format: models.ImportFormatCSV,
+		Issues: []models.ImportRowIssue{{Row: 1, Name: "Secret Name", Status: "failed", Reason: "r"}},
+	})
+	var run models.ImportRun
+	require.NoError(t, db.Where("user_id = ?", owner.ID).First(&run).Error)
+
+	for _, id := range []string{strconv.Itoa(int(run.ID)), "99999", "abc"} {
+		w := httptest.NewRecorder()
+		importHistoryRouter(db, other.ID).ServeHTTP(w,
+			httptest.NewRequest(http.MethodGet, "/contacts/import/history/"+id, nil))
+		assert.Equal(t, http.StatusNotFound, w.Code, id)
+		assert.NotContains(t, w.Body.String(), "Secret Name")
+	}
 }

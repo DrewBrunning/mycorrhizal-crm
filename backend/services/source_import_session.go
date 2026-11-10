@@ -190,7 +190,7 @@ func sourceImportResultFromReport(report *ImportReport, totalRows int) models.So
 			Updated:        report.ContactsUpdated,
 			Skipped:        report.ContactsSkipped,
 			Errors:         errs,
-			Issues:         []models.ImportRowIssue{},
+			Issues:         sourceImportRowIssues(report.Issues),
 		},
 		RelationshipsCreated: report.RelationshipsCreated,
 		NotesCreated:         report.NotesCreated,
@@ -199,6 +199,33 @@ func sourceImportResultFromReport(report *ImportReport, totalRows int) models.So
 		GiftsCreated:         report.GiftsCreated,
 		CustomFieldsCreated:  report.CustomFieldsCreated,
 	}
+}
+
+// sourceImportRowIssues maps the engine's skipped and invalid issues to the
+// ImportResult.issues wire shape (issue #2463): Row is the 1-based ordinal in
+// the filtered list, Name the engine's record label, Status "skipped" or
+// "failed", Reason the message prefixed with the field unless it is the whole
+// contact. Email and phone are empty (source records have no flat row). Never
+// nil (frontend trap #8).
+func sourceImportRowIssues(issues []ImportIssue) []models.ImportRowIssue {
+	out := []models.ImportRowIssue{}
+	for _, iss := range issues {
+		var status string
+		switch iss.Category {
+		case ImportIssueCategorySkipped:
+			status = "skipped"
+		case ImportIssueCategoryInvalid:
+			status = "failed"
+		default:
+			continue
+		}
+		reason := iss.Message
+		if iss.Field != "" && iss.Field != "contact" {
+			reason = iss.Field + ": " + iss.Message
+		}
+		out = append(out, models.ImportRowIssue{Row: len(out) + 1, Name: iss.Record, Status: status, Reason: reason})
+	}
+	return out
 }
 
 // mapSourceImportIssues converts the engine's issue list to the wire shape.

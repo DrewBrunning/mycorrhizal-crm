@@ -168,6 +168,7 @@ test('renders one row per import run with its counts', async () => {
       updated: 3,
       skipped: 1,
       error_count: 2,
+      issue_count: 0,
       created_at: '2026-08-27T12:00:00Z',
     },
   ]);
