@@ -284,6 +284,7 @@ var embeddedRouteRows = []embeddedRouteRow{
 		"POST /api/v1/households/suggest-addresses",
 		"POST /api/v1/households/suggestions/accept",
 		"POST /api/v1/households/suggestions/dismiss",
+		"POST /api/v1/import/entities/csv",
 		"POST /api/v1/import/mycorrhizal/cancel",
 		"POST /api/v1/import/mycorrhizal/confirm",
 		"POST /api/v1/import/mycorrhizal/fetch",

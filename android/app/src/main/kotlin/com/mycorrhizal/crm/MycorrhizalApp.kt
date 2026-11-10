@@ -122,6 +122,9 @@ import com.mycorrhizal.crm.feature.contacts.DashboardScreen
 import com.mycorrhizal.crm.feature.contacts.DuplicatePairsScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.contacts.PrepViewScreen
+import com.mycorrhizal.crm.feature.contacts.entities.ContactEntityLinksScreen
+import com.mycorrhizal.crm.feature.contacts.entities.EntitiesScreen
+import com.mycorrhizal.crm.feature.contacts.entities.EntityDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.imports.BundleRestoreScreen
@@ -1459,6 +1462,7 @@ private fun AppNavGraph(
                 onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
                 onViewSkills = { id -> navController.navigate("contacts/$id/skills") },
                 onViewWork = { id -> navController.navigate("contacts/$id/work") },
+                onViewEntities = { id -> navController.navigate("contacts/$id/entities") },
                 onViewAnniversaries = { id ->
                     navController.navigate(
                         "contacts/$id/anniversaries"
@@ -1791,6 +1795,16 @@ private fun AppNavGraph(
         ) {
             ContactWorkScreen(onBack = { navController.popBackStack() })
         }
+        // Issue #2302 (ADR 0043): a contact's links to shared organisations, places and pets.
+        composable(
+            route = "contacts/{contactId}/entities",
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
+        ) {
+            ContactEntityLinksScreen(
+                onBack = { navController.popBackStack() },
+                onOpenEntity = { id -> navController.navigate("entities/$id") }
+            )
+        }
         composable(
             route = "contacts/{contactId}/anniversaries",
             arguments = listOf(navArgument("contactId") { type = NavType.IntType })
@@ -1983,7 +1997,9 @@ private fun AppNavGraph(
                 onContactFieldSettings = { navController.navigate("contact-field-settings") },
                 onCustomLinks = { navController.navigate("custom-links") },
                 // M26: the one-time legacy circle/tag cleanup tool.
-                onCircleTagTriage = { navController.navigate("circle-tag-triage") }
+                onCircleTagTriage = { navController.navigate("circle-tag-triage") },
+                // Issue #2302: shared organisations, places and pets.
+                onEntities = { navController.navigate("entities") }
             )
         }
         composable(SettingsRoutes.TRACKING) {
@@ -2255,6 +2271,23 @@ private fun AppNavGraph(
             MapScreen(
                 onMenuClick = menu,
                 onOpenContact = { id -> navController.navigate("contacts/$id") }
+            )
+        }
+        // Issue #2302 (ADR 0043): the shared organisations, places and pets, reached from Settings.
+        composable("entities") {
+            EntitiesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenEntity = { id -> navController.navigate("entities/$id") }
+            )
+        }
+        composable(
+            route = "entities/{entityId}",
+            arguments = listOf(navArgument("entityId") { type = NavType.StringType })
+        ) {
+            EntityDetailScreen(
+                onBack = { navController.popBackStack() },
+                onOpenContact = { id -> navController.navigate("contacts/$id") },
+                onOpenEntity = { id -> navController.navigate("entities/$id") }
             )
         }
         composable("households") {

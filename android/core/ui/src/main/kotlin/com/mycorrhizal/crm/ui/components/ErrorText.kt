@@ -515,6 +515,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.CIRCLE_NOT_FOUND -> stringResource(R.string.error_reason_circle_not_found)
 
+        ErrorReasonCode.CIRCLE_ALREADY_EXISTS -> stringResource(
+            R.string.error_reason_circle_already_exists
+        )
+
         ErrorReasonCode.CIRCLE_MEMBERSHIP_NOT_FOUND -> stringResource(
             R.string.error_reason_circle_membership_not_found
         )

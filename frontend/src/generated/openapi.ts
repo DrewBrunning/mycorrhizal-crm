@@ -72,6 +72,9 @@ export type AccountBundlePlan = {
   custom_field_definitions?: Record<string, unknown>[];
   custom_field_values?: Record<string, unknown>[];
   data_decay_policies?: Record<string, unknown>[];
+  entities?: Record<string, unknown>[];
+  entity_field_values?: Record<string, unknown>[];
+  entity_links?: Record<string, unknown>[];
   gifts?: Record<string, unknown>[];
   households?: Record<string, unknown>[];
   life_events?: Record<string, unknown>[];
@@ -1312,6 +1315,20 @@ export type Entity = {
   revision: number;
   sensitivity: 'normal' | 'private' | 'secret';
   updated_at: string;
+};
+
+export type EntityCSVRestoreIssue = {
+  category: 'skipped' | 'unsupported' | 'invalid';
+  field: string;
+  message: string;
+  record: string;
+};
+
+export type EntityCSVRestoreResponse = {
+  entities_created: number;
+  field_values_created: number;
+  issues: EntityCSVRestoreIssue[];
+  links_created: number;
 };
 
 export type EntityContactLink = {

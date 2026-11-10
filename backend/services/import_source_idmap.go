@@ -24,6 +24,8 @@ const (
 	sourceKindLifeEvent       = "life_event"
 	sourceKindOccasion        = "occasion"
 	sourceKindFieldDefinition = "field_definition"
+	sourceKindEntity          = "entity"
+	sourceKindEntityLink      = "entity_link"
 )
 
 // importIDMap maps a source row's ExternalID to the local primary key it landed

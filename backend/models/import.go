@@ -318,3 +318,23 @@ type ImportSession struct {
 	PreviewRows   []ImportRowPreview
 	PreviewCached bool
 }
+
+// EntityCSVRestoreIssue is one per-row outcome that was not a clean restore
+// (issue #2300). Category is "skipped" (an id the account already owns, or a
+// row an earlier run already restored), "unsupported" (a missing dependency: a
+// contact or field definition that is not in the account) or "invalid" (a row
+// that fails the same validation as a REST write).
+type EntityCSVRestoreIssue struct {
+	Record   string `json:"record"`
+	Field    string `json:"field"`
+	Category string `json:"category"`
+	Message  string `json:"message"`
+}
+
+// EntityCSVRestoreResponse is returned by POST /import/entities/csv.
+type EntityCSVRestoreResponse struct {
+	EntitiesCreated    int                     `json:"entities_created"`
+	LinksCreated       int                     `json:"links_created"`
+	FieldValuesCreated int                     `json:"field_values_created"`
+	Issues             []EntityCSVRestoreIssue `json:"issues"`
+}
