@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { type EntityRestoreResponse, restoreEntity } from '../api/entities';
 import {
   emptyTrash,
   getTrashedContacts,
   getTrashedEntities,
   purgeTrashedContact,
   restoreTrashedContact,
+  restoreTrashedEntity,
+  type TrashEntityRestoreResult,
   type TrashedContact,
   type TrashedEntity,
   type TrashRestoreResult,
@@ -67,8 +68,8 @@ export function useTrash() {
   };
 
   // Entity restore reuses POST /entities/{id}/restore (one restore code path).
-  const restoreEntityRow = async (id: string): Promise<EntityRestoreResponse> => {
-    const result = await restoreEntity(id);
+  const restoreEntityRow = async (id: string): Promise<TrashEntityRestoreResult> => {
+    const result = await restoreTrashedEntity(id);
     setEntities((prev) => prev.filter((i) => i.entity.id !== id));
     return result;
   };

@@ -41,6 +41,13 @@ export interface TrashEntityList {
   retention_days: number;
 }
 
+// The slice of POST /entities/{id}/restore the Trash page reads.
+export interface TrashEntityRestoreResult {
+  same_name_live: boolean;
+  merged_into?: string;
+  links_revived: number;
+}
+
 export interface TrashRestoreSkip {
   table: string;
   reason: string;
@@ -123,4 +130,20 @@ export async function emptyTrash(): Promise<number> {
   if (!response.ok) throw await parseErrorResponse(response);
   const data: { purged?: number } = await response.json();
   return data.purged ?? 0;
+}
+
+// Restores a trashed entity through the existing entity restore route (one
+// backend restore path); there is no separate /trash/entities restore.
+export async function restoreTrashedEntity(id: string): Promise<TrashEntityRestoreResult> {
+  const response = await apiFetch(`${API_BASE_URL}/entities/${encodeURIComponent(id)}/restore`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const data: Partial<TrashEntityRestoreResult> = await response.json();
+  return {
+    same_name_live: data.same_name_live ?? false,
+    merged_into: data.merged_into,
+    links_revived: data.links_revived ?? 0,
+  };
 }

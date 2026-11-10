@@ -6,6 +6,7 @@ import {
   getTrashedEntities,
   purgeTrashedContact,
   restoreTrashedContact,
+  restoreTrashedEntity,
 } from './trash';
 
 afterEach(() => {
@@ -190,5 +191,36 @@ describe('getTrashedEntities', () => {
       }),
     });
     await expect(getTrashedEntities()).rejects.toBeInstanceOf(ApiError);
+  });
+});
+
+describe('restoreTrashedEntity', () => {
+  test('posts to the entity restore route and maps the result', async () => {
+    const fetchMock = stubFetch({
+      ok: true,
+      json: async () => ({ same_name_live: true, merged_into: 'e2', links_revived: 3 }),
+    });
+    const out = await restoreTrashedEntity('e1');
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toContain('/entities/e1/restore');
+    expect(init.method).toBe('POST');
+    expect(out).toEqual({ same_name_live: true, merged_into: 'e2', links_revived: 3 });
+  });
+
+  test('defaults absent fields', async () => {
+    stubFetch({ ok: true, json: async () => ({}) });
+    const out = await restoreTrashedEntity('e1');
+    expect(out.same_name_live).toBe(false);
+    expect(out.links_revived).toBe(0);
+  });
+
+  test('throws ApiError on failure', async () => {
+    stubFetch({
+      ok: false,
+      status: 404,
+      statusText: 'x',
+      json: async () => ({ error: { code: 'NOT_FOUND', message: 'no' } }),
+    });
+    await expect(restoreTrashedEntity('e1')).rejects.toBeInstanceOf(ApiError);
   });
 });

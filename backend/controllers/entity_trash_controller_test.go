@@ -7,9 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -218,4 +221,20 @@ func TestTrashEntities_ContactTrashUnchanged(t *testing.T) {
 	for _, k := range []string{"contacts", "total", "page", "limit", "retention_days"} {
 		assert.Contains(t, raw, k)
 	}
+}
+
+func TestTrashEntities_DatabaseFailureIs500(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test legitimately logs: Request error")
+	e := newEntityTrashEnv(t)
+	dbtest.HideTable(t, e.db, "entity_deletion_snapshots")
+	w := e.do(http.MethodGet, "/trash/entities", nil)
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+}
+
+func TestTrashEntities_RequiresAuthenticatedUser(t *testing.T) {
+	db := dbtest.New(t)
+	router := gin.New()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Next() })
+	router.GET("/trash/entities", ListTrashedEntities)
+	assert.Equal(t, http.StatusUnauthorized, trashDo(router, http.MethodGet, "/trash/entities").Code)
 }
