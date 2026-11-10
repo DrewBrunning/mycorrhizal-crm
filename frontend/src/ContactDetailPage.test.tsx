@@ -8,6 +8,7 @@ import type { Circle, CircleMember } from './api/circles';
 import type { ContactRecordResponse } from './api/contacts';
 import type { ConversationAgenda } from './api/conversationAgenda';
 import type { DataDecayPolicy } from './api/dataDecayPolicies';
+import type { ContactEntityLink } from './api/entities';
 import type { Gift } from './api/gifts';
 import type { LifeEvent } from './api/lifeEvents';
 import type { Note } from './api/notes';
@@ -290,8 +291,11 @@ function mockFetch({
   staleWrite,
   staleOnce: staleOnceInput = [],
   visibility = {},
+  entityLinks = [],
 }: {
   record?: ContactRecordResponse;
+  // GET /contacts/1/entity-links (issue #2301).
+  entityLinks?: ContactEntityLink[];
   failGet?: Endpoint[];
   // Status the failed 'record' GET answers with: 404 = no such contact, 5xx = a server fault.
   recordFailStatus?: number;
@@ -512,6 +516,8 @@ function mockFetch({
             }));
           case '/graph/connections':
             return json({ from_vcard_uid: 'alice-uid', from_name: 'Alice', depth: 1, chains: [] });
+          case '/contacts/1/entity-links':
+            return json({ links: entityLinks });
           case '/export/vcf':
             return errorResponse('export failed');
           default:
@@ -2453,4 +2459,89 @@ test('a failed Customize save shows the error and keeps the dialog open', async 
 
   expect(await within(dialog).findByRole('alert')).toBeInTheDocument();
   expect(screen.getByRole('dialog')).toBeInTheDocument();
+});
+
+// Issue #2301 (ADR 0043): the "Organisations, places & pets" section needs both
+// a SectionGroup id and a ContactJumpNav entry (frontend/AGENTS.md recorded
+// gotcha) or it silently never appears.
+test('the entities section is both a jump-nav entry and an anchored section', async () => {
+  mockFetch();
+  await renderLoaded();
+  const nav = screen.getByRole('navigation', { name: 'Jump to section' });
+  const link = within(nav).getByRole('link', { name: 'Organisations, places & pets' });
+  expect(link).toHaveAttribute('href', '#entities');
+  const section = document.getElementById('entities');
+  expect(section).not.toBeNull();
+  expect(
+    within(section as HTMLElement).getByText('Not linked to any organisation, place or pet yet.'),
+  ).toBeInTheDocument();
+});
+
+test('a projected organisation is chipped with its entity and cannot be edited as the contact’s own', async () => {
+  const record: ContactRecordResponse = {
+    ...contactRecord,
+    card: {
+      ...contactRecord.card,
+      organizations: [
+        { id: 'own-org', name: 'Mine Ltd' },
+        { id: 'ent-link-1', name: 'Acme' },
+      ],
+    },
+  };
+  mockFetch({
+    record,
+    enabledFields: [...DEFAULT_ENABLED_CONTACT_FIELDS, 'organizations'],
+    entityLinks: [
+      {
+        id: 'link-1',
+        contact_vcard_uid: 'alice-uid',
+        entity_id: 'ent-1',
+        entity_name: 'Acme Corp',
+        kind: 'organisation',
+        role: 'employee',
+        role_label: '',
+        is_primary: true,
+        sensitivity: 'normal',
+        current: true,
+        projects_as: 'ORG',
+        revision: 1,
+        created_at: '',
+        updated_at: '',
+      },
+    ],
+  });
+  await renderLoaded();
+  const work = within(document.getElementById('work') as HTMLElement);
+  expect(await work.findByRole('link', { name: 'from Acme Corp' })).toHaveAttribute(
+    'href',
+    '/entities/ent-1',
+  );
+  const orgs = within(work.getByRole('region', { name: 'Organizations' }));
+  expect(orgs.getAllByRole('button', { name: 'Edit' })).toHaveLength(1);
+  const entities = within(document.getElementById('entities') as HTMLElement);
+  expect(await entities.findByRole('link', { name: 'Acme Corp' })).toBeInTheDocument();
+  expect(entities.getByText('Shown as organisation')).toBeInTheDocument();
+});
+
+test('saving the contact never sends a projected ent- organisation back', async () => {
+  const record: ContactRecordResponse = {
+    ...contactRecord,
+    card: {
+      ...contactRecord.card,
+      organizations: [{ id: 'ent-link-1', name: 'Acme' }],
+    },
+  };
+  const calls = mockFetch({
+    record,
+    enabledFields: [...DEFAULT_ENABLED_CONTACT_FIELDS, 'organizations'],
+  });
+  await renderLoaded();
+  // Any card write (here: the birthday) builds its body from the whole record.
+  fireEvent.click(within(fieldRow('Birthday')).getByLabelText('Edit'));
+  const content = fieldContent('Birthday');
+  fireEvent.change(within(content).getByRole('textbox'), { target: { value: '30.04.1990' } });
+  fireEvent.click(within(content).getByLabelText('Save'));
+  await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(1));
+  const put = lastPutBody(calls);
+  expect(JSON.stringify(put?.card?.organizations ?? [])).not.toContain('ent-link-1');
 });

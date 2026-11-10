@@ -42,6 +42,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 import ContactsIcon from '@mui/icons-material/Contacts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DomainIcon from '@mui/icons-material/Domain';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -153,6 +154,8 @@ import { AuthContext, useAuth } from './context/AuthContext';
 const MapPage = lazy(() => import('./MapPage'));
 const ShareTargetPage = lazy(() => import('./ShareTargetPage'));
 const TrashPage = lazy(() => import('./TrashPage'));
+const EntitiesPage = lazy(() => import('./EntitiesPage'));
+const EntityDetailPage = lazy(() => import('./EntityDetailPage'));
 
 const drawerWidth = 256;
 
@@ -285,7 +288,7 @@ function AppContent({
     const settingsChildren: NavItem[] = [
       // Shares: the contact-sharing page today; #2292 adds the new Shares UI here.
       { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
-      // Entities (#2301) goes here.
+      { text: t('nav.entities'), icon: <DomainIcon />, path: '/entities' },
       { text: t('nav.audit'), icon: <HistoryIcon />, path: '/audit' },
       { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
     ];
@@ -901,6 +904,22 @@ function AppContent({
               element={
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <ShareTargetPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/entities"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <EntitiesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/entities/:id"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <EntityDetailPage />
                 </Suspense>
               }
             />

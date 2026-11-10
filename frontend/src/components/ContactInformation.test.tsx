@@ -1,8 +1,10 @@
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { Card, CRMEnvelope } from '../api/contacts';
+import type { ContactEntityLink } from '../api/entities';
 import { getLinkFieldTypes } from '../api/linkFieldTypes';
 import { geocodeDraft } from '../api/map';
 import type { ContactFieldKey } from '../contactFields';
@@ -60,6 +62,7 @@ function renderInformation(
     onUpdateCard?: (patch: Partial<Card>, crmPatch?: Partial<CRMEnvelope>) => Promise<void>;
     enabledFields?: Set<ContactFieldKey>;
     contactId?: number;
+    entityLinks?: ContactEntityLink[];
     editingField?: string | null;
     editValue?: string;
   } = {},
@@ -69,20 +72,23 @@ function renderInformation(
     <ThemeProvider theme={defaultTheme}>
       <SnackbarProvider>
         <DateFormatProvider>
-          <ContactInformation
-            card={card}
-            crm={crm}
-            editingField={opts.editingField ?? null}
-            editValue={opts.editValue ?? ''}
-            validationError=""
-            onEditStart={vi.fn()}
-            onEditCancel={vi.fn()}
-            onEditSave={vi.fn()}
-            onEditValueChange={vi.fn()}
-            onUpdateCard={onUpdateCard}
-            enabledFields={opts.enabledFields}
-            contactId={opts.contactId}
-          />
+          <MemoryRouter>
+            <ContactInformation
+              card={card}
+              crm={crm}
+              editingField={opts.editingField ?? null}
+              editValue={opts.editValue ?? ''}
+              validationError=""
+              onEditStart={vi.fn()}
+              onEditCancel={vi.fn()}
+              onEditSave={vi.fn()}
+              onEditValueChange={vi.fn()}
+              onUpdateCard={onUpdateCard}
+              enabledFields={opts.enabledFields}
+              contactId={opts.contactId}
+              entityLinks={opts.entityLinks}
+            />
+          </MemoryRouter>
         </DateFormatProvider>
       </SnackbarProvider>
     </ThemeProvider>,
@@ -712,4 +718,39 @@ test('Cancel discards a coordinate found mid-edit and persists nothing', async (
   // Re-opening the editor shows the stored (coordinate-less) address again.
   openAddressEditor();
   expect(screen.getByLabelText('Coordinates (latitude, longitude)')).toHaveValue('');
+});
+
+// ADR 0043 decision 3 / issue #2301: a primary place link projects an address
+// whose id is `ent-<linkId>`. It carries a "from <entity>" chip and is not part
+// of the editable address list, so saving the contact's own addresses can never
+// write it back as the contact's value.
+test('a projected address shows its source chip and stays out of the address editor', async () => {
+  const card: Card = {
+    addresses: [
+      { id: 'own-1', components: [{ kind: 'locality', value: 'Bern' }] },
+      { id: 'ent-l1', components: [{ kind: 'locality', value: 'Springfield' }] },
+    ],
+  };
+  const onUpdateCard = vi.fn(async () => {});
+  renderInformation(
+    card,
+    {},
+    {
+      onUpdateCard,
+      enabledFields: new Set<ContactFieldKey>(['addresses']),
+      entityLinks: [{ id: 'l1', entity_id: 'e1', entity_name: 'Cabin' } as ContactEntityLink],
+    },
+  );
+  const row = within(fieldRow('Address'));
+  expect(row.getByText('Bern')).toBeInTheDocument();
+  expect(screen.getByText('Springfield')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'from Cabin' })).toHaveAttribute('href', '/entities/e1');
+
+  // Editing opens only the contact's own address; the projected one is not an input.
+  fireEvent.click(row.getByLabelText('Edit'));
+  expect(screen.getAllByLabelText(/City/).length).toBe(1);
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() => expect(onUpdateCard).toHaveBeenCalled());
+  const [patch] = onUpdateCard.mock.calls[0] as unknown as [Partial<Card>];
+  expect(patch.addresses?.map((a) => a.id)).toEqual(['own-1']);
 });

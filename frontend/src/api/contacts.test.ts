@@ -1388,6 +1388,48 @@ describe('contact record CRUD endpoints', () => {
     expect(result).toEqual(updated);
   });
 
+  // ADR 0043 decision 3 / issue #2301: a projected ORG/ADR entry (element id
+  // `ent-<linkId>`) is read-time synthesis. The UI never writes it back as the
+  // contact's own value, even when an edit sends the whole card.
+  test('updateContactRecord drops projected ent- organizations and addresses from the body', async () => {
+    const input = {
+      card: {
+        organizations: [
+          { id: 'own-org', name: 'Mine' },
+          { id: 'ent-link1', name: 'Acme' },
+        ],
+        addresses: [
+          { id: 'ent-link2', full: 'Cabin' },
+          { id: 'own-adr', full: 'Home' },
+        ],
+        emails: [{ id: 'ent-looking-email', address: 'a@b.c' }],
+      },
+      crm: {},
+    };
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ card: {}, crm: {} }),
+    });
+    await updateContactRecord(42, input as never);
+    const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.card.organizations).toEqual([{ id: 'own-org', name: 'Mine' }]);
+    expect(body.card.addresses).toEqual([{ id: 'own-adr', full: 'Home' }]);
+    // Only ORG/ADR are projected; any other collection is untouched.
+    expect(body.card.emails).toEqual([{ id: 'ent-looking-email', address: 'a@b.c' }]);
+  });
+
+  test('updateContactRecord leaves a card with no projected entries byte-for-byte alone', async () => {
+    const input = { card: { organizations: [{ id: 'o', name: 'Mine' }] }, crm: {} };
+    (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ card: {}, crm: {} }),
+    });
+    await updateContactRecord(42, input as never);
+    const [, init] = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0];
+    expect(JSON.parse(init.body)).toEqual(input);
+  });
+
   test('updateContactRecord throws an ApiError on failure', async () => {
     (fetch as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(errorResp());
     await expect(updateContactRecord(42, { card: {}, crm: {} })).rejects.toMatchObject({
