@@ -553,6 +553,22 @@ test('bulk Edit fields sends only the filled and cleared fields plus custom valu
   await waitFor(() => expect(screen.queryByLabelText('Organization')).toBeNull());
 });
 
+test('bulk Edit fields offers only contact custom fields, never organisation/place/pet ones (ADR 0043)', async () => {
+  mockTwoPages();
+  vi.mocked(getFieldDefinitions).mockResolvedValue({
+    field_definitions: [
+      { id: 'd1', label: 'Pronouns', key: 'pronouns', type: 'string', target: 'contact' },
+      { id: 'd2', label: 'Account number', key: 'acct', type: 'string', target: 'organisation' },
+    ],
+  } as never);
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  fireEvent.click(screen.getByText('Edit fields'));
+  expect(await screen.findByLabelText('Pronouns')).toBeInTheDocument();
+  expect(screen.queryByLabelText('Account number')).not.toBeInTheDocument();
+});
+
 test('bulk Edit fields still opens when custom fields fail to load, and Cancel closes it', async () => {
   mockTwoPages();
   vi.mocked(getFieldDefinitions).mockRejectedValue(new Error('down'));

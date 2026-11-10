@@ -46,7 +46,10 @@ export default function NetworkPage() {
   // load and, above the render ceiling, shows the list-view fallback instead
   // of the canvas).
   const [fullNetwork, setFullNetwork] = useState(false);
-  const { data, loading, error } = useGraph(fullNetwork);
+  // ADR 0043 decision 2: the organisations, places and pets the contacts link to
+  // are an explicit opt-in (the server only returns them when asked).
+  const [showEntities, setShowEntities] = useState(false);
+  const { data, loading, error } = useGraph(fullNetwork, showEntities);
   const { circles: circleEntities, circleNamesByUid, loading: circlesLoading } = useCircles();
 
   const [filters, setFilters] = useState(() => loadNetworkFilters());
@@ -389,12 +392,24 @@ export default function NetworkPage() {
           label={t('network.showCircles')}
         />
 
+        <FormControlLabel
+          control={
+            <Switch
+              checked={showEntities}
+              onChange={(e) => setShowEntities(e.target.checked)}
+              color="info"
+            />
+          }
+          label={t('network.showEntities')}
+        />
+
         {!isMobile && (
           <Box sx={{ flexBasis: '100%' }}>
             <NetworkLegend
               showCircles={showCircles}
               showActivities={showActivities}
               showRelationships={showRelationships}
+              showEntities={showEntities}
             />
           </Box>
         )}
@@ -406,6 +421,7 @@ export default function NetworkPage() {
             showCircles={showCircles}
             showActivities={showActivities}
             showRelationships={showRelationships}
+            showEntities={showEntities}
           />
         </Card>
       )}

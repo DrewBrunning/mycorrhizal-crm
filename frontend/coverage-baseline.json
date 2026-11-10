@@ -39,10 +39,10 @@
       "branchesTotal": 38
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.38,
-      "linesTotal": 404,
-      "branches": 75.34,
-      "branchesTotal": 288
+      "lines": 86.3,
+      "linesTotal": 409,
+      "branches": 75.17,
+      "branchesTotal": 294
     },
     "src/ContactSharesPage.tsx": {
       "lines": 95.65,
@@ -51,10 +51,10 @@
       "branchesTotal": 37
     },
     "src/ContactsPage.tsx": {
-      "lines": 92.09,
-      "linesTotal": 253,
-      "branches": 87.57,
-      "branchesTotal": 169
+      "lines": 92.12,
+      "linesTotal": 254,
+      "branches": 87.71,
+      "branchesTotal": 171
     },
     "src/DashboardPage.tsx": {
       "lines": 77.71,
@@ -73,6 +73,18 @@
       "linesTotal": 284,
       "branches": 87.05,
       "branchesTotal": 224
+    },
+    "src/EntitiesPage.tsx": {
+      "lines": 81.25,
+      "linesTotal": 32,
+      "branches": 80,
+      "branchesTotal": 20
+    },
+    "src/EntityDetailPage.tsx": {
+      "lines": 88.88,
+      "linesTotal": 99,
+      "branches": 71.01,
+      "branchesTotal": 69
     },
     "src/HouseholdsPage.tsx": {
       "lines": 100,
@@ -93,8 +105,8 @@
       "branchesTotal": 18
     },
     "src/NetworkPage.tsx": {
-      "lines": 83.96,
-      "linesTotal": 106,
+      "lines": 84.25,
+      "linesTotal": 108,
       "branches": 75,
       "branchesTotal": 100
     },
@@ -297,10 +309,10 @@
       "branchesTotal": 6
     },
     "src/api/contacts.ts": {
-      "lines": 98.75,
-      "linesTotal": 240,
-      "branches": 94.67,
-      "branchesTotal": 413
+      "lines": 98.78,
+      "linesTotal": 246,
+      "branches": 94.53,
+      "branchesTotal": 421
     },
     "src/api/contractConformance.ts": {
       "lines": 0,
@@ -343,6 +355,12 @@
       "linesTotal": 8,
       "branches": 92.3,
       "branchesTotal": 13
+    },
+    "src/api/entities.ts": {
+      "lines": 100,
+      "linesTotal": 41,
+      "branches": 89.28,
+      "branchesTotal": 28
     },
     "src/api/errorAggregation.ts": {
       "lines": 100,
@@ -396,7 +414,7 @@
       "lines": 100,
       "linesTotal": 12,
       "branches": 100,
-      "branchesTotal": 10
+      "branchesTotal": 12
     },
     "src/api/health.ts": {
       "lines": 100,
@@ -812,6 +830,18 @@
       "branches": 69.23,
       "branchesTotal": 26
     },
+    "src/components/ContactEntityLinkDialog.tsx": {
+      "lines": 86.3,
+      "linesTotal": 73,
+      "branches": 85.71,
+      "branchesTotal": 42
+    },
+    "src/components/ContactEntityLinksPanel.tsx": {
+      "lines": 85.36,
+      "linesTotal": 41,
+      "branches": 78.37,
+      "branchesTotal": 37
+    },
     "src/components/ContactFieldSettings.tsx": {
       "lines": 100,
       "linesTotal": 45,
@@ -843,10 +873,10 @@
       "branchesTotal": 88
     },
     "src/components/ContactInformation.tsx": {
-      "lines": 75.73,
-      "linesTotal": 136,
-      "branches": 75.55,
-      "branchesTotal": 225
+      "lines": 76.25,
+      "linesTotal": 139,
+      "branches": 76.19,
+      "branchesTotal": 231
     },
     "src/components/ContactMap.tsx": {
       "lines": 100,
@@ -899,8 +929,8 @@
     "src/components/CustomFieldsSettings.tsx": {
       "lines": 95.34,
       "linesTotal": 43,
-      "branches": 83.33,
-      "branchesTotal": 24
+      "branches": 85.18,
+      "branchesTotal": 27
     },
     "src/components/DAVPasswordSettings.tsx": {
       "lines": 93.75,
@@ -962,6 +992,42 @@
       "branches": 100,
       "branchesTotal": 33
     },
+    "src/components/EntitiesFromContactsSettings.tsx": {
+      "lines": 92.68,
+      "linesTotal": 82,
+      "branches": 78.18,
+      "branchesTotal": 55
+    },
+    "src/components/EntityDeleteDialog.tsx": {
+      "lines": 96.77,
+      "linesTotal": 31,
+      "branches": 71.87,
+      "branchesTotal": 32
+    },
+    "src/components/EntityFormDialog.tsx": {
+      "lines": 82.35,
+      "linesTotal": 68,
+      "branches": 87.09,
+      "branchesTotal": 31
+    },
+    "src/components/EntityMergeDialog.tsx": {
+      "lines": 98.5,
+      "linesTotal": 67,
+      "branches": 80.39,
+      "branchesTotal": 51
+    },
+    "src/components/EntityPicker.tsx": {
+      "lines": 96.55,
+      "linesTotal": 29,
+      "branches": 81.48,
+      "branchesTotal": 27
+    },
+    "src/components/EntitySuggestionsPanel.tsx": {
+      "lines": 92.85,
+      "linesTotal": 28,
+      "branches": 68.75,
+      "branchesTotal": 16
+    },
     "src/components/ErrorAggregationPanel.tsx": {
       "lines": 100,
       "linesTotal": 22,
@@ -1017,10 +1083,10 @@
       "branchesTotal": 9
     },
     "src/components/FieldDefinitionDialog.tsx": {
-      "lines": 94.11,
-      "linesTotal": 85,
-      "branches": 89.15,
-      "branchesTotal": 83
+      "lines": 94.18,
+      "linesTotal": 86,
+      "branches": 89.47,
+      "branchesTotal": 95
     },
     "src/components/FieldSectionPicker.tsx": {
       "lines": 92.85,
@@ -1172,6 +1238,12 @@
       "branches": 93.33,
       "branchesTotal": 30
     },
+    "src/components/LinkFromOwnValueDialog.tsx": {
+      "lines": 93.87,
+      "linesTotal": 49,
+      "branches": 81.39,
+      "branchesTotal": 43
+    },
     "src/components/LoadError.tsx": {
       "lines": 100,
       "linesTotal": 2,
@@ -1239,22 +1311,22 @@
       "branchesTotal": 16
     },
     "src/components/NetworkGraph.tsx": {
-      "lines": 75.52,
-      "linesTotal": 143,
-      "branches": 51.92,
-      "branchesTotal": 104
+      "lines": 77.21,
+      "linesTotal": 158,
+      "branches": 55.81,
+      "branchesTotal": 129
     },
     "src/components/NetworkLegend.tsx": {
       "lines": 100,
       "linesTotal": 5,
       "branches": 100,
-      "branchesTotal": 12
+      "branchesTotal": 18
     },
     "src/components/NetworkListView.tsx": {
-      "lines": 87.5,
-      "linesTotal": 32,
-      "branches": 67.64,
-      "branchesTotal": 34
+      "lines": 94.87,
+      "linesTotal": 39,
+      "branches": 79.54,
+      "branchesTotal": 44
     },
     "src/components/NextcloudFilePickerDialog.tsx": {
       "lines": 75,
@@ -1399,6 +1471,12 @@
       "linesTotal": 109,
       "branches": 71.11,
       "branchesTotal": 45
+    },
+    "src/components/ProjectedFromChip.tsx": {
+      "lines": 100,
+      "linesTotal": 6,
+      "branches": 100,
+      "branchesTotal": 6
     },
     "src/components/ReachOutSuggestionsList.tsx": {
       "lines": 90.9,
@@ -1588,9 +1666,9 @@
     },
     "src/components/WorkList.tsx": {
       "lines": 100,
-      "linesTotal": 27,
-      "branches": 91.66,
-      "branchesTotal": 48
+      "linesTotal": 28,
+      "branches": 92,
+      "branchesTotal": 50
     },
     "src/components/sourceImport/SourceImportLossReport.tsx": {
       "lines": 100,
@@ -1718,6 +1796,12 @@
       "branches": 75,
       "branchesTotal": 4
     },
+    "src/hooks/useContactEntityLinks.ts": {
+      "lines": 100,
+      "linesTotal": 40,
+      "branches": 80,
+      "branchesTotal": 15
+    },
     "src/hooks/useContactFieldEditing.ts": {
       "lines": 100,
       "linesTotal": 54,
@@ -1838,6 +1922,12 @@
       "branches": 100,
       "branchesTotal": 0
     },
+    "src/hooks/useEntityList.ts": {
+      "lines": 100,
+      "linesTotal": 25,
+      "branches": 90,
+      "branchesTotal": 10
+    },
     "src/hooks/useErrorAggregation.ts": {
       "lines": 100,
       "linesTotal": 21,
@@ -1882,9 +1972,9 @@
     },
     "src/hooks/useGraph.ts": {
       "lines": 100,
-      "linesTotal": 25,
+      "linesTotal": 28,
       "branches": 100,
-      "branchesTotal": 15
+      "branchesTotal": 24
     },
     "src/hooks/useHouseholds.ts": {
       "lines": 100,
@@ -2300,6 +2390,24 @@
       "branches": 100,
       "branchesTotal": 0
     },
+    "src/utils/entityCore.ts": {
+      "lines": 100,
+      "linesTotal": 97,
+      "branches": 97.91,
+      "branchesTotal": 96
+    },
+    "src/utils/entityLabels.ts": {
+      "lines": 100,
+      "linesTotal": 8,
+      "branches": 100,
+      "branchesTotal": 0
+    },
+    "src/utils/entityPeriod.ts": {
+      "lines": 100,
+      "linesTotal": 29,
+      "branches": 92.18,
+      "branchesTotal": 64
+    },
     "src/utils/errorHandler.ts": {
       "lines": 100,
       "linesTotal": 28,
@@ -2350,9 +2458,9 @@
     },
     "src/utils/networkGraphData.ts": {
       "lines": 100,
-      "linesTotal": 58,
+      "linesTotal": 61,
       "branches": 100,
-      "branchesTotal": 42
+      "branchesTotal": 47
     },
     "src/utils/notificationTarget.ts": {
       "lines": 100,

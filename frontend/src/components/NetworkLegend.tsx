@@ -5,12 +5,14 @@ interface NetworkLegendProps {
   showCircles?: boolean;
   showActivities?: boolean;
   showRelationships?: boolean;
+  showEntities?: boolean;
 }
 
 export default function NetworkLegend({
   showCircles,
   showActivities,
   showRelationships,
+  showEntities,
 }: NetworkLegendProps) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -43,12 +45,31 @@ export default function NetworkLegend({
           },
         ]
       : []),
+    ...(showEntities
+      ? [
+          {
+            color: theme.palette.text.secondary,
+            label: t('network.legend.entityEdge'),
+            type: 'line',
+          },
+        ]
+      : []),
     {
       color: theme.palette.primary.main,
       label: t('network.legend.contact'),
       type: 'circle',
       size: 12,
     },
+    ...(showEntities
+      ? [
+          {
+            color: theme.palette.info.main,
+            label: t('network.legend.entity'),
+            type: 'square',
+            size: 10,
+          },
+        ]
+      : []),
     ...(showActivities
       ? [
           {
@@ -104,7 +125,7 @@ export default function NetworkLegend({
                 width: item.size,
                 height: item.size,
                 bgcolor: item.color,
-                borderRadius: '50%',
+                borderRadius: item.type === 'square' ? '2px' : '50%',
               }}
             />
           )}

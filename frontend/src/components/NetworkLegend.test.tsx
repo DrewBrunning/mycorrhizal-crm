@@ -48,3 +48,14 @@ test('renders every legend item when all toggles are on', () => {
   expect(screen.getByText('Circle')).toBeInTheDocument();
   expect(screen.getByText('Contact')).toBeInTheDocument();
 });
+
+test('showEntities adds the entity node and "linked to" edge items', () => {
+  render(<NetworkLegend showEntities />);
+  expect(screen.getByText('Organisation, place or pet')).toBeInTheDocument();
+  expect(screen.getByText('Linked to')).toBeInTheDocument();
+});
+
+test('the entity items are absent by default', () => {
+  render(<NetworkLegend />);
+  expect(screen.queryByText('Organisation, place or pet')).not.toBeInTheDocument();
+});
