@@ -11,10 +11,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Pets
+import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -28,6 +32,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -44,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -95,7 +102,8 @@ fun NetworkScreen(
         onSearchContacts = viewModel::searchContacts,
         onSelectFrom = viewModel::selectFrom,
         onErrorShown = viewModel::onErrorShown,
-        onRefresh = viewModel::load
+        onRefresh = viewModel::load,
+        onToggleEntities = viewModel::setShowEntities
     )
 }
 
@@ -118,7 +126,9 @@ fun NetworkScreenContent(
     onSelectFrom: (ContactSummary) -> Unit,
     onErrorShown: () -> Unit,
     modifier: Modifier = Modifier,
-    onRefresh: () -> Unit = {}
+    onRefresh: () -> Unit = {},
+    // Issue #2302: the opt-in entity overlay toggle.
+    onToggleEntities: (Boolean) -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
@@ -206,7 +216,8 @@ fun NetworkScreenContent(
                     onDepthChange = onDepthChange,
                     onRelationInputChange = onRelationInputChange,
                     onRelationApply = onRelationApply,
-                    onCircleSelect = onCircleSelect
+                    onCircleSelect = onCircleSelect,
+                    onToggleEntities = onToggleEntities
                 )
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     RefreshableContent(
@@ -217,13 +228,17 @@ fun NetworkScreenContent(
                         when {
                             uiState.isLoading && uiState.allChains.isEmpty() -> LoadingSkeleton()
 
-                            uiState.groupedChains.isEmpty() && uiState.error == null ->
+                            // The entity overlay renders inside the list, so an empty
+                            // traversal still shows it when the toggle is on.
+                            uiState.groupedChains.isEmpty() && uiState.error == null &&
+                                !uiState.showEntities ->
                                 EmptyState(
                                     title = stringResource(R.string.network_empty),
                                     body = stringResource(R.string.network_empty_body)
                                 )
 
-                            uiState.groupedChains.isEmpty() && uiState.error != null -> {
+                            uiState.groupedChains.isEmpty() && uiState.error != null &&
+                                !uiState.showEntities -> {
                                 Text(
                                     text = uiState.error.localizedMessage(),
                                     color = MaterialTheme.colorScheme.error,
@@ -273,7 +288,8 @@ private fun NetworkControls(
     onDepthChange: (Int) -> Unit,
     onRelationInputChange: (String) -> Unit,
     onRelationApply: () -> Unit,
-    onCircleSelect: (String?) -> Unit
+    onCircleSelect: (String?) -> Unit,
+    onToggleEntities: (Boolean) -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -354,6 +370,27 @@ private fun NetworkControls(
                 Text(stringResource(R.string.network_relation_apply))
             }
         }
+
+        // Issue #2302 (ADR 0043 decision 2): organisations, places and pets are an opt-in,
+        // read-only overlay: off by default, never part of the traversal below.
+        Row(
+            modifier = Modifier.fillMaxWidth()
+                .toggleable(
+                    value = uiState.showEntities,
+                    role = Role.Switch,
+                    onValueChange = onToggleEntities
+                )
+                .testTag("network-entities-toggle"),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.network_entities_toggle),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Switch(checked = uiState.showEntities, onCheckedChange = null)
+        }
     }
 }
 
@@ -418,6 +455,98 @@ private fun NetworkList(uiState: NetworkUiState, onOpenContact: (Int) -> Unit) {
                     NetworkRow(chain = chain, onOpenContact = onOpenContact)
                 }
             }
+        }
+        if (uiState.showEntities) entityOverlayItems(uiState)
+    }
+}
+
+/**
+ * The read-only entity section: a square (not round) icon tile, no click action and no edit
+ * affordance (entities are edited from the contact or the entity page), listing the in-scope
+ * contacts each one is linked to.
+ */
+private fun androidx.compose.foundation.lazy.LazyListScope.entityOverlayItems(
+    uiState: NetworkUiState
+) {
+    item(key = "entities-header") {
+        Text(
+            text = stringResource(R.string.contact_entities),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+    }
+    when {
+        uiState.entitiesLoading && uiState.entityOverlay.isEmpty() -> item(
+            key = "entities-loading"
+        ) {
+            LoadingSkeleton(rows = 2)
+        }
+
+        uiState.entitiesFailed -> item(key = "entities-failed") {
+            Text(
+                text = stringResource(R.string.network_entities_failed),
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+
+        uiState.entityOverlay.isEmpty() -> item(key = "entities-empty") {
+            Text(
+                text = stringResource(R.string.network_entities_empty),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+
+        else -> items(uiState.entityOverlay, key = { it.node.id }) { row ->
+            EntityOverlayRowView(row)
+        }
+    }
+}
+
+@Composable
+private fun EntityOverlayRowView(row: EntityOverlayRow) {
+    val kindLabel = stringResource(
+        when (row.node.kind) {
+            "place" -> R.string.shared_entities_kind_one_place
+            "pet" -> R.string.shared_entities_kind_one_pet
+            else -> R.string.shared_entities_kind_one_organisation
+        }
+    )
+    val description = stringResource(R.string.network_entities_read_only, row.node.label, kindLabel)
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .semantics(mergeDescendants = true) { contentDescription = description }
+            .testTag("network-entity-${row.node.id}"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Surface(
+            shape = MaterialTheme.shapes.extraSmall,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ) {
+            Icon(
+                imageVector = when (row.node.kind) {
+                    "place" -> Icons.Outlined.Place
+                    "pet" -> Icons.Outlined.Pets
+                    else -> Icons.Outlined.Business
+                },
+                contentDescription = null,
+                modifier = Modifier.padding(8.dp)
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = row.node.label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = listOf(kindLabel, row.contactNames.joinToString(", "))
+                    .filter { it.isNotBlank() }
+                    .joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

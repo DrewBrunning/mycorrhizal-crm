@@ -56,7 +56,7 @@ private val settingsOwnedRoutes = listOf(
     "servers", "custom-links", "webhooks", "api-tokens", "calendar-sync", "two-factor", "passkeys",
     "notification-channels", "immich-settings", "paperless-settings", "seafile-settings",
     "nextcloud-settings", "geopulse-settings", "circle-tag-triage", "custom-field-definitions",
-    "contact-field-settings", "admin"
+    "contact-field-settings", "entities", "admin"
 )
 
 /**

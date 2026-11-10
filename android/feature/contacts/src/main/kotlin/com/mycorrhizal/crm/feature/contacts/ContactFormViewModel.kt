@@ -42,6 +42,9 @@ import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.Title
 import com.mycorrhizal.crm.model.network.addressRowKey
 import com.mycorrhizal.crm.model.network.isGeocodable
+import com.mycorrhizal.crm.model.network.isProjectedElementId
+import com.mycorrhizal.crm.model.network.ownAddresses
+import com.mycorrhizal.crm.model.network.ownOrganizations
 import com.mycorrhizal.crm.model.network.resolveEnabledFields
 import com.mycorrhizal.crm.model.network.upsertEntryPeriod
 import com.mycorrhizal.crm.model.network.yearTemporalRange
@@ -490,7 +493,8 @@ data class ContactFormState(
      * its `id` survives.
      */
     private fun mergeOrganizations(base: List<Organization>?): List<Organization>? {
-        val baseOrgs = base.orEmpty()
+        // ADR 0043: a projected `ent-` organization is not the contact's own; never edit or keep it.
+        val baseOrgs = base.orEmpty().filterNot { isProjectedElementId(it.id) }
         if (organizationName.isBlank()) return baseOrgs.drop(1).ifEmpty { null }
         val first = baseOrgs.firstOrNull()
         val edited = (first ?: Organization()).copy(
@@ -945,8 +949,9 @@ class ContactFormViewModel @Inject constructor(
         val phones = card?.phones?.ifEmpty { null } ?: listOf(Phone(number = "", label = "cell"))
         // M7: load every other editable Card group as the real objects. Organizations are
         // the flat exception: the form surfaces the first org's name + department.
-        val addresses = card?.addresses.orEmpty()
-        val firstOrg = card?.organizations?.firstOrNull()
+        // ADR 0043: projected `ent-` entries are read-only synthesis, so the editors never see them.
+        val addresses = card?.ownAddresses().orEmpty()
+        val firstOrg = card?.ownOrganizations()?.firstOrNull()
         val organizationName = firstOrg?.name.orEmpty()
         val department = firstOrg?.units?.firstOrNull()?.name.orEmpty()
         val titles = card?.titles.orEmpty()

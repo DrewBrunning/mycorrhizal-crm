@@ -16,6 +16,7 @@ import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -1201,6 +1202,53 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithTag("drill-down-work").assertIsDisplayed()
         composeTestRule.onNodeWithText("Work · 1").assertIsDisplayed()
         composeTestRule.onNodeWithText("Reporter").assertDoesNotExist()
+    }
+
+    @Test
+    fun `entities drill-down opens the contact's links`() {
+        var opened = -1
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    onViewEntities = { opened = it }
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-entities"))
+        composeTestRule.onNodeWithTag("drill-down-entities").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisations, places & pets").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("drill-down-entities").performClick()
+        assertEquals(5, opened)
+    }
+
+    @Test
+    fun `a projected address shows its source chip and an own address does not`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                addresses = listOf(
+                    com.mycorrhizal.crm.model.network.Address(id = "a1", full = "2 Low St"),
+                    com.mycorrhizal.crm.model.network.Address(id = "ent-l2", full = "1 High St")
+                )
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    accountEnabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ADDRESSES
+                )
+            }
+        }
+        scrollTo("1 High St").assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("projected-from-chip").assertCountEquals(1)
     }
 
     @Test
