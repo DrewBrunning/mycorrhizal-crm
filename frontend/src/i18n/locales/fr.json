@@ -3819,6 +3819,7 @@
       "contact_cadence_policy_already_exists": "Politique de cadence existe déjà",
       "calendar_subscription_not_found": "Abonnement au calendrier introuvable",
       "circle_not_found": "Cercle introuvable",
+      "circle_already_exists": "Un cercle portant ce nom existe déjà",
       "circle_membership_not_found": "Appartenance au cercle introuvable",
       "circle_membership_already_exists": "Appartenance au cercle existe déjà",
       "contact_not_found": "Contact introuvable",

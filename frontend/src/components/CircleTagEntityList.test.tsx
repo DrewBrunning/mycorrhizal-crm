@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { ApiError } from '../api/client';
 import CircleTagEntityList, { type CircleTagEntityListItem } from './CircleTagEntityList';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -212,4 +213,56 @@ test('declining the confirm dialog does not call onDelete', () => {
   fireEvent.click(screen.getAllByLabelText('Delete')[0]);
 
   expect(onDelete).not.toHaveBeenCalled();
+});
+
+// Issue #2362: a duplicate circle name is shown inline, in the user's language,
+// next to the field -- not only as a transient snackbar -- and nothing is lost.
+const duplicateError = () =>
+  new ApiError(
+    'A circle with this name already exists',
+    'CONFLICT',
+    409,
+    undefined,
+    undefined,
+    'circle_already_exists',
+  );
+
+test('a duplicate-name create failure shows an inline error and keeps the typed name', async () => {
+  const onCreate = vi.fn().mockRejectedValue(duplicateError());
+  renderList({ onCreate });
+
+  const input = screen.getByPlaceholderText('New circle name');
+  fireEvent.change(input, { target: { value: 'Work' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add Circle' }));
+
+  expect(await screen.findByText('A circle with this name already exists')).toBeInTheDocument();
+  expect(input).toHaveValue('Work');
+  expect(input).toHaveAttribute('aria-invalid', 'true');
+
+  // Editing the name clears the stale error.
+  fireEvent.change(input, { target: { value: 'Work 2' } });
+  expect(screen.queryByText('A circle with this name already exists')).not.toBeInTheDocument();
+});
+
+test('a duplicate-name rename failure shows an inline error and stays in edit mode', async () => {
+  const onRename = vi.fn().mockRejectedValue(duplicateError());
+  renderList({ onRename });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.change(screen.getByDisplayValue('Close Friends'), { target: { value: 'Book Club' } });
+  fireEvent.click(screen.getByLabelText('Save'));
+
+  expect(await screen.findByText('A circle with this name already exists')).toBeInTheDocument();
+  expect(screen.getByDisplayValue('Book Club')).toBeInTheDocument();
+});
+
+test('other create failures do not render an inline duplicate message', async () => {
+  const onCreate = vi.fn().mockRejectedValue(new ApiError('boom', 'INTERNAL_ERROR', 500));
+  renderList({ onCreate });
+
+  fireEvent.change(screen.getByPlaceholderText('New circle name'), { target: { value: 'Work' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add Circle' }));
+
+  await waitFor(() => expect(onCreate).toHaveBeenCalled());
+  expect(screen.queryByText('A circle with this name already exists')).not.toBeInTheDocument();
 });
