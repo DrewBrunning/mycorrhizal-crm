@@ -67,6 +67,20 @@ import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactRemindersResponse
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
+import com.mycorrhizal.crm.model.network.IncomingShareGrant
+import com.mycorrhizal.crm.model.network.IncomingShareGrantResponse
+import com.mycorrhizal.crm.model.network.IncomingShareGrantsPage
+import com.mycorrhizal.crm.model.network.OutgoingShareGrant
+import com.mycorrhizal.crm.model.network.OutgoingShareGrantResponse
+import com.mycorrhizal.crm.model.network.OutgoingShareGrantsPage
+import com.mycorrhizal.crm.model.network.ShareBlock
+import com.mycorrhizal.crm.model.network.ShareBlocksResponse
+import com.mycorrhizal.crm.model.network.ShareGrantContent
+import com.mycorrhizal.crm.model.network.ShareGrantContentResponse
+import com.mycorrhizal.crm.model.network.ShareGrantDeclineInput
+import com.mycorrhizal.crm.model.network.ShareGrantInput
+import com.mycorrhizal.crm.model.network.ShareGrantNotifications
+import com.mycorrhizal.crm.model.network.ShareGrantPatch
 import com.mycorrhizal.crm.model.network.ContactShare
 import com.mycorrhizal.crm.model.network.ContactShareInput
 import com.mycorrhizal.crm.model.network.ContactSharesPage
@@ -278,6 +292,7 @@ import com.mycorrhizal.crm.model.network.WebhookInput
 import com.mycorrhizal.crm.model.network.WebhookTestResponse
 import com.mycorrhizal.crm.model.network.WebhooksResponse
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -3158,6 +3173,139 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     suspend fun declineContactShare(id: String): Result<Unit> =
         executePostEmpty("$CONTACT_SHARES_PATH/$id/decline") { _, _ -> Unit }
 
+    // --- Standing shares (ADR 0042 decision 12, issue #2293). The server marks every response
+    // `Cache-Control: no-store` with no ETag and this client configures no HTTP cache, so a grant
+    // read is never replayed from disk; nothing here is mirrored into Room.
+
+    /** GET /api/v1/share-grants/incoming — pending and active grants offered TO the caller. */
+    suspend fun listIncomingShareGrants(
+        cursor: String? = null,
+        limit: Int? = null
+    ): Result<IncomingShareGrantsPage> =
+        executeGet(shareGrantListUrl("incoming", cursor, limit)) { _, body ->
+            moshi.adapter(IncomingShareGrantsPage::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/share-grants/outgoing — grants the caller has issued, any status. */
+    suspend fun listOutgoingShareGrants(
+        cursor: String? = null,
+        limit: Int? = null
+    ): Result<OutgoingShareGrantsPage> =
+        executeGet(shareGrantListUrl("outgoing", cursor, limit)) { _, body ->
+            moshi.adapter(OutgoingShareGrantsPage::class.java).fromJson(body)
+        }
+
+    private fun shareGrantListUrl(role: String, cursor: String?, limit: Int?): String {
+        val builder = "$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$role".toHttpUrl().newBuilder()
+        cursor?.let { builder.addQueryParameter("cursor", it) }
+        limit?.let { builder.addQueryParameter("limit", it.toString()) }
+        return builder.build().toString()
+    }
+
+    /** POST /api/v1/share-grants — issue a standing grant (starts `pending`). */
+    suspend fun createShareGrant(input: ShareGrantInput): Result<OutgoingShareGrant> =
+        executePost(SHARE_GRANTS_PATH, input) { _, body ->
+            moshi.adapter(OutgoingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+        }
+
+    /**
+     * PATCH /api/v1/share-grants/{id} — only `expires_at` and a narrowing `sections` list; the
+     * server answers 409 `share_grant_widening_refused` for a wider list. [revision] rides in
+     * `If-Match` (ADR 0008).
+     */
+    suspend fun updateShareGrant(
+        id: String,
+        patch: ShareGrantPatch,
+        revision: Int?
+    ): Result<OutgoingShareGrant> {
+        // An absent field and an explicit null differ (null clears the expiry), so the body is
+        // built field by field rather than from a nullable data class.
+        val fields = linkedMapOf<String, Any?>()
+        if (patch.clearExpiry) {
+            fields["expires_at"] = null
+        } else if (patch.expiresAt != null) {
+            fields["expires_at"] = patch.expiresAt
+        }
+        patch.sections?.let { fields["sections"] = it }
+        val json = moshi.adapter<Map<String, Any?>>(
+            Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        ).serializeNulls().toJson(fields)
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$id".toHttpUrl())
+            .patch(json.toRequestBody(jsonMediaType))
+            .withIfMatch(revision)
+            .build()
+        return execute(request) { _, body ->
+            moshi.adapter(OutgoingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+        }
+    }
+
+    /** POST /api/v1/share-grants/{id}/accept — pending to active (recipient). */
+    suspend fun acceptShareGrant(id: String): Result<IncomingShareGrant> =
+        recipientShareGrantAction(id, "accept")
+
+    /** POST /api/v1/share-grants/{id}/leave — stop receiving an active or pending grant. */
+    suspend fun leaveShareGrant(id: String): Result<IncomingShareGrant> =
+        recipientShareGrantAction(id, "leave")
+
+    /** POST /api/v1/share-grants/{id}/decline — [block] also blocks the sender (ADR 0042 decision 8). */
+    suspend fun declineShareGrant(id: String, block: Boolean): Result<IncomingShareGrant> =
+        if (block) {
+            executePost("$SHARE_GRANTS_PATH/$id/decline", ShareGrantDeclineInput(block = true)) { _, body ->
+                moshi.adapter(IncomingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+            }
+        } else {
+            recipientShareGrantAction(id, "decline")
+        }
+
+    private suspend fun recipientShareGrantAction(
+        id: String,
+        action: String
+    ): Result<IncomingShareGrant> = executePostEmpty("$SHARE_GRANTS_PATH/$id/$action") { _, body ->
+        moshi.adapter(IncomingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+    }
+
+    /** POST /api/v1/share-grants/{id}/revoke — end a grant (owner). Already-seen data cannot be recalled. */
+    suspend fun revokeShareGrant(id: String): Result<OutgoingShareGrant> =
+        ownerShareGrantAction(id, "revoke")
+
+    /** POST /api/v1/share-grants/{id}/reconfirm — release sections withheld after a sensitivity change. */
+    suspend fun reconfirmShareGrant(id: String): Result<OutgoingShareGrant> =
+        ownerShareGrantAction(id, "reconfirm")
+
+    private suspend fun ownerShareGrantAction(
+        id: String,
+        action: String
+    ): Result<OutgoingShareGrant> = executePostEmpty("$SHARE_GRANTS_PATH/$id/$action") { _, body ->
+        moshi.adapter(OutgoingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+    }
+
+    /** GET /api/v1/share-grants/{id}/content — the one recipient read route, resolved per request. */
+    suspend fun getShareGrantContent(id: String): Result<ShareGrantContent> =
+        executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$id/content") { _, body ->
+            moshi.adapter(ShareGrantContentResponse::class.java).fromJson(body)?.content
+        }
+
+    /** GET /api/v1/share-grants/blocks — senders the caller has blocked. */
+    suspend fun listShareBlocks(): Result<List<ShareBlock>> =
+        executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/blocks") { _, body ->
+            moshi.adapter(ShareBlocksResponse::class.java).fromJson(body)?.blocks
+        }
+
+    /** DELETE /api/v1/share-grants/blocks/{user_id} — unblock a sender. */
+    suspend fun deleteShareBlock(userId: Long): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/blocks/$userId")
+
+    /** GET /api/v1/share-grants/notifications — the in-app pending badge and unread notices. */
+    suspend fun getShareGrantNotifications(): Result<ShareGrantNotifications> =
+        executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/notifications") { _, body ->
+            moshi.adapter(ShareGrantNotifications::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/share-grants/notifications/read — mark the caller's notices read. */
+    suspend fun markShareGrantNotificationsRead(): Result<Unit> =
+        executePostEmpty("$SHARE_GRANTS_PATH/notifications/read") { _, _ -> Unit }
+
     /** GET /api/v1/users/directory — every other user (id + username), for the recipient picker. */
     suspend fun getUserDirectory(): Result<List<UserDirectoryEntry>> =
         executeGet("$PLACEHOLDER_ORIGIN$USERS_PATH/directory") { _, body ->
@@ -3838,6 +3986,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         private const val EXPORT_PREFLIGHT_PATH = "$API_V1/export/preflight"
         private const val ATTACHMENTS_PATH = "$API_V1/attachments"
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
+        private const val SHARE_GRANTS_PATH = "$API_V1/share-grants"
         private const val AUDIT_PATH = "$API_V1/audit"
         private const val TRASH_CONTACTS_PATH = "$API_V1/trash/contacts"
         private const val AUDIT_EXPORT_PATH = "$AUDIT_PATH/export"

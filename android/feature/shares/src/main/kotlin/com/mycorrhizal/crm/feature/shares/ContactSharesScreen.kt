@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -32,13 +33,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ContactShare
 import com.mycorrhizal.crm.model.network.ContactShareStatuses
+import com.mycorrhizal.crm.ui.LocalPendingShareGrantCount
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -56,6 +61,9 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
 fun ContactSharesScreen(
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
+    // Issue #2293: entry points to the standing-share surfaces; null hides the link.
+    onOpenSharedWithMe: (() -> Unit)? = null,
+    onOpenSharedByMe: (() -> Unit)? = null,
     viewModel: ContactSharesViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -91,6 +99,7 @@ fun ContactSharesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            StandingSharesLinks(onOpenSharedWithMe, onOpenSharedByMe)
             PrimaryTabRow(
                 selectedTabIndex = if (state.selectedTab == SharesTab.INCOMING) 0 else 1
             ) {
@@ -212,6 +221,37 @@ fun ContactSharesScreen(
             onConfirm = viewModel::confirmAccept,
             onDismiss = viewModel::closeAccept
         )
+    }
+}
+
+/** The standing-share entry points, with the pending count on "Shared with me". */
+@Composable
+private fun StandingSharesLinks(onOpenSharedWithMe: (() -> Unit)?, onOpenSharedByMe: (() -> Unit)?) {
+    if (onOpenSharedWithMe == null && onOpenSharedByMe == null) return
+    val pending = LocalPendingShareGrantCount.current
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        onOpenSharedWithMe?.let { open ->
+            TextButton(onClick = open, modifier = Modifier.testTag("open-shared-with-me")) {
+                Text(stringResource(R.string.shares_open_shared_with_me))
+                if (pending > 0) {
+                    val description = pluralStringResource(R.plurals.shares_pending_count, pending, pending)
+                    Badge(
+                        modifier = Modifier.padding(start = 6.dp).semantics {
+                            contentDescription = description
+                        }
+                    ) { Text(pending.toString()) }
+                }
+            }
+        }
+        onOpenSharedByMe?.let { open ->
+            TextButton(onClick = open, modifier = Modifier.testTag("open-shared-by-me")) {
+                Text(stringResource(R.string.shares_open_shared_by_me))
+            }
+        }
     }
 }
 

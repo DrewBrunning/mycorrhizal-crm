@@ -44,6 +44,7 @@ import com.mycorrhizal.crm.data.repository.ContactImageRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactScoreRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactShareRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ShareGrantRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactSubscriptionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ContactTimelineRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
@@ -105,6 +106,7 @@ import com.mycorrhizal.crm.domain.repository.ContactImageRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
+import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.domain.repository.ContactSubscriptionRepository
 import com.mycorrhizal.crm.domain.repository.ContactTimelineRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
@@ -682,6 +684,10 @@ abstract class DataBindsModule {
     abstract fun bindContactShareRepository(
         impl: ContactShareRepositoryImpl
     ): ContactShareRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindShareGrantRepository(impl: ShareGrantRepositoryImpl): ShareGrantRepository
 
     @Binds
     @Singleton

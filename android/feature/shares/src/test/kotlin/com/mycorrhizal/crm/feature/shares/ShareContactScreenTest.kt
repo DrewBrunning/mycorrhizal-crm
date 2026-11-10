@@ -14,6 +14,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
+import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -47,7 +48,11 @@ class ShareContactScreenTest {
         ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
 
     private fun viewModel(repo: ContactShareRepository): ShareContactViewModel =
-        ShareContactViewModel(repo, SavedStateHandle(mapOf("uid" to "u-viewed")))
+        ShareContactViewModel(
+            repo,
+            mockk<ShareGrantRepository>(),
+            SavedStateHandle(mapOf("uid" to "u-viewed"))
+        )
 
     private fun screen(repo: ContactShareRepository, vm: ShareContactViewModel = viewModel(repo)) {
         composeTestRule.setContent {

@@ -5,19 +5,31 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
+import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.ContactShareInput
 import com.mycorrhizal.crm.model.network.ShareFieldSections
+import com.mycorrhizal.crm.model.network.ShareGrantEntityTypes
+import com.mycorrhizal.crm.model.network.ShareGrantInput
 import com.mycorrhizal.crm.model.network.UserDirectoryEntry
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/**
+ * ADR 0042 decision 12: the Share dialog offers a one-time copy (the existing flow, unchanged) or a
+ * standing, revocable, read-only grant. The default is one-time; a standing share is always an
+ * explicit choice.
+ */
+enum class ShareMode { ONE_TIME, STANDING }
 
 data class ShareContactUiState(
     val isLoading: Boolean = false,
@@ -31,7 +43,12 @@ data class ShareContactUiState(
     val sensitiveRevealed: Boolean = false,
     val isSharing: Boolean = false,
     /** Set when the share was created successfully — the screen navigates back. */
-    val shared: Boolean = false
+    val shared: Boolean = false,
+    val mode: ShareMode = ShareMode.ONE_TIME,
+    /** Standing only: days until the grant expires, or null for no expiry. */
+    val expiryDays: Int? = null,
+    /** True when the completed share was a standing grant (the recipient must still accept). */
+    val sharedStanding: Boolean = false
 ) {
     val canShare: Boolean
         get() = selectedRecipientId != null && selectedSections.isNotEmpty() && !isSharing
@@ -40,6 +57,7 @@ data class ShareContactUiState(
 @HiltViewModel
 class ShareContactViewModel @Inject constructor(
     private val contactShareRepository: ContactShareRepository,
+    private val shareGrantRepository: ShareGrantRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -72,6 +90,18 @@ class ShareContactViewModel @Inject constructor(
         }
     }
 
+    /** The clock for "N days from now"; tests replace it. */
+    internal var now: () -> Instant = { Instant.now() }
+
+    fun setMode(mode: ShareMode) {
+        _uiState.update { it.copy(mode = mode) }
+    }
+
+    /** Standing only: expire the grant after [days] days, or null for no expiry. */
+    fun setExpiryDays(days: Int?) {
+        _uiState.update { it.copy(expiryDays = days) }
+    }
+
     fun selectRecipient(id: Long?) {
         _uiState.update { it.copy(selectedRecipientId = id) }
     }
@@ -102,6 +132,10 @@ class ShareContactViewModel @Inject constructor(
             _uiState.update { it.copy(errorRes = R.string.shares_error_no_vcard_uid) }
             return
         }
+        if (_uiState.value.mode == ShareMode.STANDING) {
+            shareStanding()
+            return
+        }
         viewModelScope.launch {
             _uiState.update { it.copy(isSharing = true, error = null, errorRes = null) }
             val includeSensitive = _uiState.value.sensitiveRevealed &&
@@ -118,6 +152,38 @@ class ShareContactViewModel @Inject constructor(
             ).foldApiError(
                 onSuccess = {
                     _uiState.update { it.copy(isSharing = false, shared = true) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isSharing = false, error = error) }
+                }
+            )
+        }
+    }
+
+    /**
+     * Issue a standing grant (ADR 0042). It starts pending: nothing is visible to the recipient
+     * until they accept. There is no include-sensitive switch on this path — the server filters
+     * every grant read to normal-sensitivity items.
+     */
+    private fun shareStanding() {
+        val state = _uiState.value
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSharing = true, error = null, errorRes = null) }
+            shareGrantRepository.create(
+                ShareGrantInput(
+                    toUserId = state.selectedRecipientId ?: 0L,
+                    entityType = ShareGrantEntityTypes.CONTACT,
+                    entityId = contactVCardUid,
+                    sections = state.selectedSections.toList(),
+                    expiresAt = state.expiryDays?.let {
+                        now().plus(it.toLong(), ChronoUnit.DAYS).toString()
+                    }
+                )
+            ).foldApiError(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(isSharing = false, shared = true, sharedStanding = true)
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isSharing = false, error = error) }
