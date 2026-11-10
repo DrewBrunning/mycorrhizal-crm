@@ -148,7 +148,8 @@ class CirclesViewModelTest {
             coEvery { circleRepository.list(any(), any()) } returns Result.success(
                 listOf(Circle(id = "c1", name = "Work"), Circle(id = "c2", name = "Home"))
             )
-            coEvery { circleRepository.rename("c2", "work") } returns Result.failure(duplicateError())
+            val taken = Result.failure<Circle>(duplicateError())
+            coEvery { circleRepository.rename("c2", "work") } returns taken
 
             val vm = CirclesViewModel(circleRepository)
             advanceUntilIdle()
@@ -166,7 +167,8 @@ class CirclesViewModelTest {
     fun `a non-duplicate create failure still surfaces as the general error`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
-            coEvery { circleRepository.create("X") } returns Result.failure(ApiError.Client(500, "boom"))
+            val boom = Result.failure<Circle>(ApiError.Client(500, "boom"))
+            coEvery { circleRepository.create("X") } returns boom
 
             val vm = CirclesViewModel(circleRepository)
             advanceUntilIdle()
@@ -233,7 +235,10 @@ class CirclesViewModelTest {
             val vm = CirclesViewModel(circleRepository)
             advanceUntilIdle()
 
-            assertEquals(listOf("Apple", "banana", "Cherry"), vm.uiState.value.circles.map { it.name })
+            assertEquals(
+                listOf("Apple", "banana", "Cherry"),
+                vm.uiState.value.circles.map { it.name }
+            )
         }
 
     @Test

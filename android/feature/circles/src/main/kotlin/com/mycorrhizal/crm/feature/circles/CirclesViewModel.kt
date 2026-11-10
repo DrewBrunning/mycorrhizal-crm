@@ -56,7 +56,8 @@ class CirclesViewModel @Inject constructor(private val circleRepository: CircleR
             _uiState.update { it.copy(isLoading = true, error = null) }
             circleRepository.list().foldApiError(
                 onSuccess = { circles ->
-                    _uiState.update { it.copy(isLoading = false, circles = circles.sortedWith(circleNameComparator())) }
+                    val sorted = circles.sortedWith(circleNameComparator())
+                    _uiState.update { it.copy(isLoading = false, circles = sorted) }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }
