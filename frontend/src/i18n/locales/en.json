@@ -25,6 +25,21 @@
       "banner": "You're offline. Some features may be unavailable."
     }
   },
+  "globalSearch": {
+    "placeholder": "Search contacts, notes, activities…",
+    "groupContacts": "Contacts",
+    "groupNotes": "Notes",
+    "groupActivities": "Activities",
+    "seeAll": "See all results for \"{{query}}\"",
+    "noResults": "No results for \"{{query}}\".",
+    "pageTitle": "Search results",
+    "tabsLabel": "Search result categories",
+    "emptyContacts": "No contacts match \"{{query}}\".",
+    "emptyNotes": "No notes match \"{{query}}\".",
+    "emptyActivities": "No activities match \"{{query}}\".",
+    "capped": "Showing the first {{limit}} matches in this category. Refine your search to narrow it down.",
+    "unfiled": "Unfiled note"
+  },
   "duplicates": {
     "reviewTitle": "Review duplicates",
     "none": "No duplicate candidates found.",
@@ -288,7 +303,6 @@
       "next": "Go to next page",
       "last": "Go to last page"
     },
-    "search": "Search Contacts",
     "searchPlaceholder": "Search contacts…",
     "searchClear": "Clear",
     "searchMinLengthHint": "Type at least two characters to search.",

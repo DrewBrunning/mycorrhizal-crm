@@ -66,9 +66,9 @@ const twoUnfiledNotesResponse = () => ({
   limit: 25,
 });
 
-function renderPage() {
+function renderPage(url = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <SnackbarProvider>
         <AnnouncerProvider>
           <DateFormatProvider>
@@ -877,4 +877,20 @@ test('a note offers a standing share that targets its uuid', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Share' }));
   await waitFor(() => expect(posts).toHaveLength(1));
   expect(posts[0].body).toEqual({ to_user_id: 2, entity_type: 'note', entity_id: 'note-uuid-1' });
+});
+
+// #2174: the global search links unfiled-note hits here with ?search=<query>.
+test('the search query parameter prefills the search box and filters the list', async () => {
+  let listUrl = '';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.includes('/notes?')) listUrl = url;
+      return { ok: true, json: async () => emptyNotesResponse() };
+    }),
+  );
+  renderPage('/notes?search=fair%20idea');
+
+  expect(await screen.findByDisplayValue('fair idea')).toBeDefined();
+  await waitFor(() => expect(listUrl).toContain('search=fair+idea'));
 });

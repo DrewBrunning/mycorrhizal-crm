@@ -333,3 +333,50 @@ func TestRebuildSearchIndexHandler_FailureRecordedAndReported(t *testing.T) {
 		return c == 1
 	}, 2*time.Second, 20*time.Millisecond, "the failed rebuild is recorded as a failed job run")
 }
+
+// TestSearchAll_LimitCapsEachCategoryAndStaysScoped pins what the web top-bar
+// dropdown relies on (#2174): limit=3 caps every category on its own (not the
+// total), and the capped lists still contain only the caller's live rows —
+// never another user's, never a soft-deleted note.
+func TestSearchAll_LimitCapsEachCategoryAndStaysScoped(t *testing.T) {
+	db, router := searchRealRouter(t)
+
+	owner := models.User{Username: "cap-owner", Password: "password123!A", Email: "cap-owner@example.com"}
+	require.NoError(t, db.Create(&owner).Error)
+	other := models.User{Username: "cap-other", Password: "password123!A", Email: "cap-other@example.com"}
+	require.NoError(t, db.Create(&other).Error)
+	require.Equal(t, uint(1), owner.ID, "the test router authenticates as user 1")
+
+	for i := 0; i < 5; i++ {
+		require.NoError(t, db.Create(&models.Contact{UserID: owner.ID, Firstname: "Capword", Lastname: "Mine"}).Error)
+		require.NoError(t, db.Create(&models.Note{UserID: owner.ID, Content: "capword note", Date: time.Now()}).Error)
+		require.NoError(t, db.Create(&models.Activity{UserID: owner.ID, Title: "capword activity", Date: time.Now()}).Error)
+	}
+	// Another user's matching rows, and a soft-deleted note of the owner.
+	require.NoError(t, db.Create(&models.Contact{UserID: other.ID, Firstname: "Capword", Lastname: "Theirs"}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: other.ID, Content: "capword theirs", Date: time.Now()}).Error)
+	require.NoError(t, db.Create(&models.Activity{UserID: other.ID, Title: "capword theirs", Date: time.Now()}).Error)
+	gone := models.Note{UserID: owner.ID, Content: "capword deleted", Date: time.Now()}
+	require.NoError(t, db.Create(&gone).Error)
+	require.NoError(t, db.Delete(&gone).Error)
+
+	req, _ := http.NewRequest("GET", "/search?q=capword&limit=3", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp searchResult
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Len(t, resp.Contacts, 3)
+	assert.Len(t, resp.Notes, 3)
+	assert.Len(t, resp.Activities, 3)
+	for _, c := range resp.Contacts {
+		assert.Equal(t, "Mine", c.Lastname)
+	}
+	for _, n := range resp.Notes {
+		assert.Equal(t, "capword note", n.Content)
+	}
+	for _, a := range resp.Activities {
+		assert.Equal(t, "capword activity", a.Title)
+	}
+}

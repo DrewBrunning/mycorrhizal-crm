@@ -89,9 +89,9 @@ function mockFetchRoutes(
   return calls;
 }
 
-function renderPage() {
+function renderPage(url = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <AnnouncerProvider>
         <DateFormatProvider>
           <ActivitiesPage />
@@ -761,5 +761,19 @@ test('an activity offers a standing share that targets its uuid', async () => {
     to_user_id: 2,
     entity_type: 'activity',
     entity_id: 'act-uuid-1',
+  });
+});
+
+// #2174: the global search links activity hits here with ?search=<query>.
+test('the search query parameter prefills the search box and filters the list', async () => {
+  const calls = mockFetchRoutes([
+    { pattern: '/activities?', handler: { body: { activities: [], next_cursor: '', limit: 25 } } },
+  ]);
+  renderPage('/activities?search=lunch');
+
+  expect(await screen.findByDisplayValue('lunch')).toBeDefined();
+  await waitFor(() => {
+    const listCall = calls.find((c) => c.method === 'GET' && c.url.includes('/activities?'));
+    expect(listCall?.url).toContain('search=lunch');
   });
 });

@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router';
+import { Link as RouterLink, useSearchParams } from 'react-router';
 import { type Activity, createActivity, deleteActivity, updateActivity } from './api/activities';
 import { type Contact, getAllContacts } from './api/contacts';
 import AddActivityDialog from './components/AddActivityDialog';
@@ -64,7 +64,9 @@ const ActivitiesPage: React.FC = () => {
   const activityDateLabel = (activity: Activity) =>
     formatActivityDateRange(activity.date, activity.end_date, dateFormat);
 
-  const [searchInput, setSearchInput] = useState('');
+  // #2174: the global search deep-links here with ?search=<query>.
+  const [initialParams] = useSearchParams();
+  const [searchInput, setSearchInput] = useState(initialParams.get('search') ?? '');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
