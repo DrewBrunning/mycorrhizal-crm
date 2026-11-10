@@ -190,3 +190,56 @@ test('edgeEndpointId unwraps both string and object endpoints', () => {
   expect(edgeEndpointId('c-1')).toBe('c-1');
   expect(edgeEndpointId(contact('c-1'))).toBe('c-1');
 });
+
+// Issue #2301: entity nodes ride along as display-only nodes.
+const entity = (id: string, label = id): GraphNode => ({
+  id,
+  type: 'entity',
+  label,
+  entity_kind: 'organisation',
+});
+const entEdge = (source: string, target: string): GraphEdge => ({
+  id: `ee-${source}-${target}`,
+  source,
+  target,
+  type: 'entity',
+  label: '',
+});
+
+const withEntities: GraphData = {
+  nodes: [...base.nodes, entity('e-1', 'Acme'), entity('e-2', 'Globex')],
+  edges: [...base.edges, entEdge('c-1', 'e-1'), entEdge('c-3', 'e-2')],
+};
+
+test('entity nodes and edges pass through unfiltered when nothing narrows the graph', () => {
+  const out = computeFilteredGraphData(withEntities, {
+    showRelationships: true,
+    showActivities: true,
+    showCircles: false,
+  });
+  expect(out.nodes.filter((n) => n.type === 'entity')).toHaveLength(2);
+  expect(out.links.filter((l) => l.type === 'entity')).toHaveLength(2);
+});
+
+test('a circle filter keeps only entities linked to a remaining contact', () => {
+  const out = computeFilteredGraphData(withEntities, {
+    selectedCircle: 'Family',
+    showRelationships: true,
+    showActivities: true,
+    showCircles: false,
+    circleNamesByUid: new Map([['1', ['Family']]]),
+  });
+  expect(out.nodes.map((n) => n.id)).toContain('e-1');
+  expect(out.nodes.map((n) => n.id)).not.toContain('e-2');
+  expect(out.links.some((l) => l.id === 'ee-c-1-e-1')).toBe(true);
+});
+
+test('centering on a contact keeps that contact’s entities as neighbours', () => {
+  const out = computeFilteredGraphData(withEntities, {
+    showRelationships: true,
+    showActivities: true,
+    showCircles: false,
+    centeredNodeId: 'c-1',
+  });
+  expect(out.nodes.map((n) => n.id).sort()).toEqual(['a-1', 'c-1', 'c-2', 'e-1']);
+});

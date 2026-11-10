@@ -194,3 +194,47 @@ test("a deceased contact's dot color is distinct from every health-band color", 
   // 4 distinct colors: the deceased dot must not reuse any health-band color.
   expect(new Set(dotColors).size).toBe(4);
 });
+
+// Issue #2301: the accessible list view carries the entity layer too, as text.
+test('entity links are described on the contact and the entities are listed (read-only)', () => {
+  const data: GraphData = {
+    nodes: [
+      { id: 'c-1', type: 'contact', label: 'Alice' },
+      { id: 'e-1', type: 'entity', label: 'Acme', entity_kind: 'organisation' },
+      { id: 'e-2', type: 'entity', label: 'Cabin', entity_kind: 'place' },
+    ],
+    edges: [
+      { id: 'ee-1', source: 'c-1', target: 'e-1', type: 'entity', label: '' },
+      { id: 'ee-2', source: 'c-1', target: 'e-2', type: 'entity', label: '' },
+    ],
+  };
+  const filtered = computeFilteredGraphData(data, {
+    showRelationships: true,
+    showActivities: true,
+    showCircles: false,
+  });
+  render(
+    <NetworkListView nodes={filtered.nodes} links={filtered.links} onContactClick={vi.fn()} />,
+  );
+  expect(screen.getByText(/Linked to Acme; Linked to Cabin/)).toBeInTheDocument();
+  const section = screen.getByRole('region', { name: 'Organisations, places & pets' });
+  expect(section).toHaveTextContent('Acme');
+  expect(section).toHaveTextContent('Organisation');
+  expect(section).toHaveTextContent('Cabin');
+  // Entities are not buttons: nothing to click, nothing to edit.
+  expect(screen.queryByRole('button', { name: /Acme/ })).not.toBeInTheDocument();
+});
+
+test('no entity section when the graph has no entity nodes', () => {
+  const filtered = computeFilteredGraphData(sampleData(), {
+    showRelationships: true,
+    showActivities: true,
+    showCircles: false,
+  });
+  render(
+    <NetworkListView nodes={filtered.nodes} links={filtered.links} onContactClick={vi.fn()} />,
+  );
+  expect(
+    screen.queryByRole('region', { name: 'Organisations, places & pets' }),
+  ).not.toBeInTheDocument();
+});

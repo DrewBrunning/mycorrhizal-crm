@@ -55,6 +55,15 @@ export function computeFilteredGraphData(
       if (n.type === 'contact') {
         return contactsInCircle.has(n.id);
       }
+      // Entity nodes (ADR 0043) stay when at least one remaining contact links to them.
+      if (n.type === 'entity') {
+        return data.edges.some(
+          (e) =>
+            e.type === 'entity' &&
+            edgeEndpointId(e.target) === n.id &&
+            contactsInCircle.has(edgeEndpointId(e.source)),
+        );
+      }
       // For activities, check if they connect contacts in this circle
       const activityEdges = data.edges.filter(
         (e) => e.type === 'activity' && edgeEndpointId(e.source) === n.id,

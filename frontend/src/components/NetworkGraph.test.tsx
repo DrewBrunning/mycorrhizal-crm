@@ -30,6 +30,7 @@ type NodeCanvasObjectFn = (
 interface ForceGraphStubProps {
   cooldownTicks?: number;
   nodeCanvasObject?: NodeCanvasObjectFn;
+  onNodeClick?: (node: GraphNode) => void;
 }
 
 // Captured on every render so tests can invoke NetworkGraph's real
@@ -37,6 +38,7 @@ interface ForceGraphStubProps {
 // stub itself never draws (jsdom has no real <canvas>), but the callback is
 // plain JS and safe to call standalone (issue #383's node-fill-color logic).
 let capturedNodeCanvasObject: NodeCanvasObjectFn | undefined;
+let capturedOnNodeClick: ((node: GraphNode) => void) | undefined;
 
 vi.mock('react-force-graph-2d', () => ({
   default: forwardRef<unknown, ForceGraphStubProps>((props, ref) => {
@@ -47,6 +49,7 @@ vi.mock('react-force-graph-2d', () => ({
       d3Force: d3ForceFn,
     }));
     capturedNodeCanvasObject = props.nodeCanvasObject;
+    capturedOnNodeClick = props.onNodeClick;
     // Expose cooldownTicks so the reduced-motion tests can assert the graph
     // settles instantly instead of animating (#194, WCAG 2.3.3).
     return <div data-testid="force-graph-stub" data-cooldown-ticks={props.cooldownTicks} />;
@@ -64,6 +67,9 @@ function createTrackingCtx() {
     fill: vi.fn(),
     stroke: vi.fn(),
     fillText: vi.fn(),
+    rect: vi.fn(),
+    roundRect: vi.fn(),
+    setLineDash: vi.fn(),
   } as unknown as CanvasRenderingContext2D;
   Object.defineProperty(ctx, 'fillStyle', {
     set: (v: string) => {
@@ -378,4 +384,130 @@ test('does not color activity nodes by health_band even if one were present', ()
   const ctx = createTrackingCtx();
   capturedNodeCanvasObject?.(data.nodes[0], ctx.ctx, 1);
   expect(ctx.fillStyles[0]).toBe(theme.palette.secondary.main);
+});
+
+// Issue #2301 / ADR 0043 decision 2: entity nodes are display-only, drawn in a
+// distinct style, and count against the render ceiling like any other node.
+function dataWithEntities(extra = 0): GraphData {
+  return {
+    nodes: [
+      { id: 'c-1', type: 'contact', label: 'Alice' },
+      { id: 'e-1', type: 'entity', label: 'Acme', entity_kind: 'organisation' },
+      ...Array.from({ length: extra }, (_, i) => ({
+        id: `e-x${i}`,
+        type: 'entity' as const,
+        label: `E${i}`,
+        entity_kind: 'place' as const,
+      })),
+    ],
+    edges: [{ id: 'ee-1', source: 'c-1', target: 'e-1', type: 'entity', label: '' }],
+  };
+}
+
+test('an entity node is drawn as a square, not the contact circle, and gets no initials', () => {
+  mockMatchMedia(false);
+  const data = dataWithEntities();
+  render(
+    <NetworkGraph
+      data={data}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+  const contactCtx = createTrackingCtx();
+  capturedNodeCanvasObject?.(data.nodes[0], contactCtx.ctx, 1);
+  const entityCtx = createTrackingCtx();
+  capturedNodeCanvasObject?.(data.nodes[1], entityCtx.ctx, 1);
+  const theme = createTheme();
+  expect(entityCtx.fillStyles[0]).toBe(theme.palette.info.main);
+  expect(entityCtx.fillStyles[0]).not.toBe(contactCtx.fillStyles[0]);
+  // The body is a rounded rect, never the contact's arc; the only text is the label.
+  expect(entityCtx.ctx.roundRect).toHaveBeenCalled();
+  expect(entityCtx.ctx.fillText).toHaveBeenCalledTimes(1);
+  expect(entityCtx.ctx.fillText).toHaveBeenCalledWith(
+    'Acme',
+    expect.any(Number),
+    expect.any(Number),
+  );
+});
+
+test('clicking an entity node does nothing: no edit affordance, no navigation', () => {
+  mockMatchMedia(false);
+  const onNodeClick = vi.fn();
+  const onActivityClick = vi.fn();
+  const data = dataWithEntities();
+  render(
+    <NetworkGraph
+      data={data}
+      onNodeClick={onNodeClick}
+      onActivityClick={onActivityClick}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+  capturedOnNodeClick?.(data.nodes[1]);
+  expect(onNodeClick).not.toHaveBeenCalled();
+  expect(onActivityClick).not.toHaveBeenCalled();
+  capturedOnNodeClick?.(data.nodes[0]);
+  expect(onNodeClick).toHaveBeenCalledTimes(1);
+});
+
+test('the text alternative counts entities', () => {
+  mockMatchMedia(false);
+  render(
+    <NetworkGraph
+      data={dataWithEntities()}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+  expect(screen.getByRole('img')).toHaveAccessibleName(
+    /1 contact, 0 activities, 0 circles, 1 organisation, place or pet, 1 connection/,
+  );
+});
+
+test('entity nodes count against the render ceiling, so they can tip a graph into the fallback (#556)', () => {
+  mockMatchMedia(false);
+  // GRAPH_RENDER_NODE_CEILING - 1 contacts fits; two entity nodes on top do not.
+  const contacts = Array.from({ length: GRAPH_RENDER_NODE_CEILING - 1 }, (_, i) => ({
+    id: `c-${i}`,
+    type: 'contact' as const,
+    label: `C${i}`,
+  }));
+  const fits: GraphData = { nodes: contacts, edges: [] };
+  const { unmount } = render(
+    <NetworkGraph
+      data={fits}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+  expect(screen.queryByTestId('graph-over-budget')).not.toBeInTheDocument();
+  unmount();
+
+  const tipped: GraphData = {
+    nodes: [
+      ...contacts,
+      { id: 'e-1', type: 'entity', label: 'A', entity_kind: 'organisation' },
+      { id: 'e-2', type: 'entity', label: 'B', entity_kind: 'place' },
+    ],
+    edges: [],
+  };
+  render(
+    <NetworkGraph
+      data={tipped}
+      onNodeClick={vi.fn()}
+      showRelationships
+      showActivities
+      showCircles={false}
+    />,
+  );
+  expect(screen.getByTestId('graph-over-budget')).toBeInTheDocument();
 });

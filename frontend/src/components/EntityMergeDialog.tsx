@@ -25,8 +25,8 @@ import {
   listEntities,
   mergeEntity,
 } from '../api/entities';
+import { useSnackbar } from '../context/SnackbarContext';
 import { fillableMergeFields } from '../utils/entityCore';
-import { ENTITY_KIND_KEYS } from '../utils/entityLabels';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -64,6 +64,7 @@ export default function EntityMergeDialog({
   onMerged,
 }: EntityMergeDialogProps) {
   const { t } = useTranslation();
+  const { showSuccess, showWarning } = useSnackbar();
   const [loser, setLoser] = useState<Entity | null>(null);
   const [survivor, setSurvivor] = useState<Entity | null>(null);
   const [options, setOptions] = useState<Entity[]>([]);
@@ -135,6 +136,20 @@ export default function EntityMergeDialog({
         into: survivor.id,
         ...(Object.keys(resolutions).length > 0 ? { resolutions } : {}),
       });
+      // Report what the merge did, including a primary it had to demote (ADR 0043
+      // decision 8: the survivor's existing primary wins, and the user is told).
+      // The snackbar shows one message at a time, so it is a single sentence.
+      const done = `${t('entities.merge.done', { name: result.survivor.name })} ${t(
+        'entities.merge.summary',
+        { count: result.links_repointed },
+      )}`;
+      if (result.primaries_demoted.length > 0) {
+        showWarning(
+          `${done} ${t('entities.merge.demoted', { count: result.primaries_demoted.length })}`,
+        );
+      } else {
+        showSuccess(done);
+      }
       onMerged(result, loser);
     } catch (err) {
       setError(getErrorMessage(err) || t('entities.merge.failed'));
@@ -167,9 +182,7 @@ export default function EntityMergeDialog({
               }}
               getOptionLabel={(o) => o.name}
               isOptionEqualToValue={(a, b) => a.id === b.id}
-              noOptionsText={t('entities.merge.noCandidates', {
-                kind: t(ENTITY_KIND_KEYS[loser.kind]).toLowerCase(),
-              })}
+              noOptionsText={t('entities.merge.noCandidates')}
               renderInput={(params) => <TextField {...params} label={t('entities.merge.into')} />}
             />
           )}

@@ -212,3 +212,52 @@ test('the default request asks for the ego view, and flipping full refetches', a
   await waitFor(() => expect(getGraph).toHaveBeenCalledTimes(2));
   expect(getGraph).toHaveBeenLastCalledWith({ full: true });
 });
+
+// ADR 0043 decision 2 / issue #2301: entity nodes and edges are opt-in and are
+// merged into the graph as `entity`-typed nodes/edges, never mixed into the
+// contact or relationship data.
+test('without includeEntities the request does not ask for them and no entity node appears', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  vi.mocked(getGraph).mockResolvedValue(graphResponse);
+  const { result } = renderHook(() => useGraph());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(getGraph).toHaveBeenCalledWith();
+  expect(result.current.data?.nodes.some((n) => n.type === 'entity')).toBe(false);
+});
+
+test('includeEntities requests them and merges entity_nodes/entity_edges as entity-typed items', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  vi.mocked(getGraph).mockResolvedValue({
+    ...graphResponse,
+    entity_nodes: [{ id: 'e-ent1', kind: 'organisation', label: 'Acme' }],
+    entity_edges: [{ id: 'ee-l1', source: 'c-1', target: 'e-ent1' }],
+  });
+  const { result } = renderHook(() => useGraph(true, true));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(getGraph).toHaveBeenCalledWith({ full: true, includeEntities: true });
+  expect(result.current.data?.nodes).toContainEqual({
+    id: 'e-ent1',
+    type: 'entity',
+    label: 'Acme',
+    entity_kind: 'organisation',
+  });
+  expect(result.current.data?.edges).toContainEqual({
+    id: 'ee-l1',
+    source: 'c-1',
+    target: 'e-ent1',
+    type: 'entity',
+    label: '',
+  });
+});
+
+test('toggling includeEntities refetches', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  vi.mocked(getGraph).mockResolvedValue(graphResponse);
+  const { result, rerender } = renderHook(({ inc }) => useGraph(false, inc), {
+    initialProps: { inc: false },
+  });
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  rerender({ inc: true });
+  await waitFor(() => expect(getGraph).toHaveBeenCalledTimes(2));
+  expect(getGraph).toHaveBeenLastCalledWith({ includeEntities: true });
+});

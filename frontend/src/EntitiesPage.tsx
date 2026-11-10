@@ -145,10 +145,9 @@ export default function EntitiesPage() {
           loserId={merging.b.id}
           survivorId={merging.a.id}
           onClose={() => setMerging(null)}
-          onMerged={(result) => {
+          onMerged={() => {
             setResolved((prev) => new Set(prev).add(pairKey(merging)));
             setMerging(null);
-            showSuccess(t('entities.merge.done', { name: result.survivor.name }));
             void refresh();
           }}
         />

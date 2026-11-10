@@ -9,6 +9,7 @@ import {
   listEntities,
   mergeEntity,
 } from '../api/entities';
+import { SnackbarProvider } from '../context/SnackbarContext';
 import EntityMergeDialog from './EntityMergeDialog';
 
 afterEach(() => {
@@ -63,7 +64,9 @@ beforeEach(() => {
 test('merges the loser into the survivor with explicit field resolutions only', async () => {
   const onMerged = vi.fn();
   render(
-    <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={onMerged} />,
+    <SnackbarProvider>
+      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={onMerged} />
+    </SnackbarProvider>,
   );
   expect(
     await screen.findByText(/Acme, Inc will be deleted and its contacts move to Acme/),
@@ -83,7 +86,9 @@ test('merges the loser into the survivor with explicit field resolutions only', 
 
 test('with nothing ticked the request carries no resolutions', async () => {
   render(
-    <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />,
+    <SnackbarProvider>
+      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+    </SnackbarProvider>,
   );
   await screen.findByText(/will be deleted/);
   fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
@@ -93,7 +98,9 @@ test('with nothing ticked the request carries no resolutions', async () => {
 
 test('swap flips which entity is kept', async () => {
   render(
-    <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />,
+    <SnackbarProvider>
+      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+    </SnackbarProvider>,
   );
   await screen.findByText(/Acme, Inc will be deleted/);
   fireEvent.click(screen.getByRole('button', { name: 'Swap which one is kept' }));
@@ -105,7 +112,11 @@ test('swap flips which entity is kept', async () => {
 });
 
 test('opened from an entity page, the user picks the survivor from same-kind entities', async () => {
-  render(<EntityMergeDialog open loserId="b" onClose={vi.fn()} onMerged={vi.fn()} />);
+  render(
+    <SnackbarProvider>
+      <EntityMergeDialog open loserId="b" onClose={vi.fn()} onMerged={vi.fn()} />
+    </SnackbarProvider>,
+  );
   const mergeButton = await screen.findByRole('button', { name: 'Merge' });
   expect(mergeButton).toBeDisabled();
 
@@ -124,10 +135,30 @@ test('a merge error is shown and onMerged is not called', async () => {
   );
   const onMerged = vi.fn();
   render(
-    <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={onMerged} />,
+    <SnackbarProvider>
+      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={onMerged} />
+    </SnackbarProvider>,
   );
   await screen.findByText(/will be deleted/);
   fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('same kind');
   expect(onMerged).not.toHaveBeenCalled();
+});
+
+test('the merge outcome is reported: links moved and any primary that had to be demoted', async () => {
+  mergeMock.mockResolvedValue(
+    result({ links_repointed: 3, primaries_demoted: [{ link_id: 'l', contact_vcard_uid: 'u' }] }),
+  );
+  render(
+    <SnackbarProvider>
+      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+    </SnackbarProvider>,
+  );
+  await screen.findByText(/will be deleted/);
+  fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+  expect(
+    await screen.findByText(
+      'Merged into Acme. 3 links moved. 1 contact had two primaries; the existing one was kept.',
+    ),
+  ).toBeInTheDocument();
 });

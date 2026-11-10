@@ -297,7 +297,7 @@ test('a restore that finds a live same-name entity warns about it', async () => 
   );
   fireEvent.click(await screen.findByRole('button', { name: 'Restore' }));
   expect(
-    await screen.findByText(/Another organisation with the same name already exists/),
+    await screen.findByText(/Another entity of this kind with the same name already exists/),
   ).toBeInTheDocument();
 });
 

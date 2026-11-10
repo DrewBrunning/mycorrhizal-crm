@@ -128,11 +128,7 @@ export default function EntityDetailPage() {
       const result = await restoreEntity(restoreId);
       showSuccess(t('entities.deleted.restored', { name }));
       if (result.same_name_live) {
-        showWarning(
-          t('entities.deleted.sameNameLive', {
-            kind: t(ENTITY_KIND_KEYS[result.entity.kind]).toLowerCase(),
-          }),
-        );
+        showWarning(t('entities.deleted.sameNameLive'));
       }
       if (restoreId === id) {
         await load();
@@ -390,7 +386,6 @@ export default function EntityDetailPage() {
           onClose={() => setMerging(false)}
           onMerged={(result, loser) => {
             setMerging(false);
-            showSuccess(t('entities.merge.done', { name: result.survivor.name }));
             void navigate(`/entities/${result.survivor.id}`, {
               state: { mergedLoser: { id: loser.id, name: loser.name } },
             });

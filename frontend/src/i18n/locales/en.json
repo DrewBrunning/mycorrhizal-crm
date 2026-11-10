@@ -2150,7 +2150,9 @@
       "contact": "Contact",
       "activity": "Activity",
       "circle": "Circle",
-      "circleEdge": "Circle Membership"
+      "circleEdge": "Circle Membership",
+      "entity": "Organisation, place or pet",
+      "entityEdge": "Linked to"
     },
     "filterByContact": "Center on Contact",
     "showCircles": "Circles",
@@ -2183,7 +2185,12 @@
     "panLeft": "Pan left",
     "panRight": "Pan right",
     "egoNotice": "Showing your own contact and everyone within {{depth}} connections of it. Turn on \"Show entire network\" to load every contact.",
-    "showEntireNetwork": "Show entire network"
+    "showEntireNetwork": "Show entire network",
+    "showEntities": "Organisations, places & pets",
+    "graphSummaryWithEntities": "Network diagram: {{contacts}}, {{activities}}, {{circles}}, {{entities}}, {{connections}}. The same information is available in the list view below.",
+    "graphSummaryEntities_one": "{{count}} organisation, place or pet",
+    "graphSummaryEntities_other": "{{count}} organisations, places or pets",
+    "connectionEntity": "Linked to {{name}}"
   },
   "map": {
     "title": "Contact map",
@@ -4279,9 +4286,10 @@
       "plain": "{{name}} will be deleted. You can restore it right afterwards.",
       "adoptOrganisation": "Keep the organisation on those contacts first (copy it into each contact as their own value)",
       "adoptPlace": "Keep the address on those contacts first (copy it into each contact as their own value)",
-      "adoptFailed": "Couldn't copy it to {{count}} contact(s), so nothing was deleted.",
       "confirm": "Delete",
-      "failed": "Couldn't delete this entity."
+      "failed": "Couldn't delete this entity.",
+      "adoptFailed_one": "Couldn't copy it to {{count}} contact, so nothing was deleted.",
+      "adoptFailed_other": "Couldn't copy it to {{count}} contacts, so nothing was deleted."
     },
     "deleted": {
       "title": "{{name}} was deleted",
@@ -4289,18 +4297,15 @@
       "restore": "Restore",
       "restored": "Restored {{name}}.",
       "restoreFailed": "Couldn't restore this entity.",
-      "sameNameLive": "Another {{kind}} with the same name already exists; you may want to merge them.",
-      "backToList": "Back to the list"
+      "sameNameLive": "Another entity of this kind with the same name already exists; you may want to merge them."
     },
     "merge": {
       "title": "Merge {{name}}",
       "intro": "{{loser}} will be deleted and its contacts move to {{survivor}}. Nothing is merged unless you confirm here.",
       "into": "Merge into",
-      "noCandidates": "There is no other {{kind}} to merge into.",
+      "noCandidates": "There is no other entity of this kind to merge into.",
       "swap": "Swap which one is kept",
-      "keep": "Kept: {{name}}",
       "fill": "Also copy these from {{name}} (the kept one has none):",
-      "fillField": "{{field}}",
       "confirm": "Merge",
       "failed": "Couldn't merge these.",
       "done": "Merged into {{name}}.",
@@ -4347,6 +4352,38 @@
         "owner": "Owner",
         "carer": "Carer",
         "other": "Other"
+      }
+    },
+    "fromContacts": {
+      "description": "Turn the organisations and addresses already on your contacts into shared entities. This never changes or deletes a value on a contact. You choose each group; nothing is created automatically.",
+      "open": "Create entities from my contacts…",
+      "title": "Create entities from my contacts",
+      "intro": "Groups of the same organisation or address found on your contacts. Tick the ones to create; run this again any time, only values not yet linked are offered.",
+      "none": "Nothing left to create from your contacts.",
+      "groupTitle_one": "{{name}} — {{count}} contact",
+      "groupTitle_other": "{{name}} — {{count}} contacts",
+      "include": "Include {{name}}",
+      "nameOf": "Name of {{name}}",
+      "roleFor": "Role for {{name}}",
+      "primary": "Set as primary",
+      "primaryFor": "Set as primary for {{name}}",
+      "hasPrimaryOrganisation_one": "{{count}} of them already has a primary organisation.",
+      "hasPrimaryOrganisation_other": "{{count}} of them already have a primary organisation.",
+      "hasPrimaryPlace_one": "{{count}} of them already has a primary place.",
+      "hasPrimaryPlace_other": "{{count}} of them already have a primary place.",
+      "createOrganisation_one": "Create {{count}} organisation",
+      "createOrganisation_other": "Create {{count}} organisations",
+      "createPlace_one": "Create {{count}} place",
+      "createPlace_other": "Create {{count}} places",
+      "createdOrganisation_one": "Created {{count}} organisation.",
+      "createdOrganisation_other": "Created {{count}} organisations.",
+      "createdPlace_one": "Created {{count}} place.",
+      "createdPlace_other": "Created {{count}} places.",
+      "skip": {
+        "group_not_found": "{{name}}: it no longer exists on your contacts.",
+        "contact_not_in_group": "{{name}}: a contact no longer belongs to it.",
+        "name_invalid": "{{name}}: the name is not valid.",
+        "core_invalid": "{{name}}: its details are not valid."
       }
     }
   }
