@@ -181,32 +181,19 @@ fun MeerkatImportScreenContent(
                 }
 
                 MeerkatImportStep.RESULT -> uiState.result?.let { result ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxSize().verticalScroll(
-                            rememberScrollState()
-                        ).padding(24.dp)
-                    ) {
-                        Text(
-                            text = pluralStringResource(
-                                R.plurals.meerkat_import_result,
-                                result.created,
-                                result.created,
-                                result.updated,
-                                result.skipped
-                            ),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 48.dp)
-                                .testTag("meerkat-import-result")
-                        )
-                        Button(
-                            onClick = onDone,
-                            modifier = Modifier.testTag("meerkat-import-done")
-                        ) {
-                            Text(stringResource(R.string.action_confirm))
-                        }
-                    }
+                    ImportResultReport(
+                        result = result.toImportResult(),
+                        onDone = onDone,
+                        summary = pluralStringResource(
+                            R.plurals.meerkat_import_result,
+                            result.created,
+                            result.created,
+                            result.updated,
+                            result.skipped
+                        ),
+                        summaryTag = "meerkat-import-result",
+                        doneTag = "meerkat-import-done"
+                    )
                 }
             }
         }

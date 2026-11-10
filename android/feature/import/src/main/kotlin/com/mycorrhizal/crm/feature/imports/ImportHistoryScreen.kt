@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.imports
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -21,6 +22,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -59,12 +61,17 @@ fun ImportHistoryScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // Issue #2464: the itemized report replaces the list; back returns to the list.
+    BackHandler(enabled = state.reportOpen) { viewModel.closeReport() }
+
     Scaffold(
         modifier = modifier,
         topBar = {
             TopAppBar(
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = { if (state.reportOpen) viewModel.closeReport() else onBack() }
+                    ) {
                         Icon(
                             Icons.AutoMirrored.Outlined.ArrowBack,
                             contentDescription = stringResource(R.string.cd_back)
@@ -73,7 +80,13 @@ fun ImportHistoryScreen(
                 },
                 title = {
                     Text(
-                        stringResource(R.string.import_history_title),
+                        stringResource(
+                            if (state.reportOpen) {
+                                R.string.import_history_report_title
+                            } else {
+                                R.string.import_history_title
+                            }
+                        ),
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
@@ -87,7 +100,18 @@ fun ImportHistoryScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
+        val report = state.report
         when {
+            state.isReportLoading -> LoadingSkeleton(
+                modifier = Modifier.padding(padding).testTag("import-history-report-loading")
+            )
+
+            report != null -> ImportResultReport(
+                result = report.toImportResult(),
+                onDone = viewModel::closeReport,
+                modifier = Modifier.padding(padding).testTag("import-history-report")
+            )
+
             state.isLoading -> LoadingSkeleton(
                 modifier = Modifier.padding(padding).testTag("import-history-loading")
             )
@@ -103,7 +127,9 @@ fun ImportHistoryScreen(
                 contentPadding = PaddingValues(12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(state.runs, key = { it.id }) { run -> ImportRunCard(run) }
+                items(state.runs, key = { it.id }) { run ->
+                    ImportRunCard(run, onViewReport = { viewModel.openReport(run.id) })
+                }
             }
         }
     }
@@ -118,7 +144,7 @@ fun ImportHistoryScreen(
 }
 
 @Composable
-private fun ImportRunCard(run: ImportRun) {
+private fun ImportRunCard(run: ImportRun, onViewReport: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().testTag("import-history-row-${run.id}"),
         colors = CardDefaults.cardColors(
@@ -168,6 +194,15 @@ private fun ImportRunCard(run: ImportRun) {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     }
                 )
+            }
+            // Issue #2464: only runs that stored per-row issues have a report to open.
+            if (run.issueCount > 0) {
+                TextButton(
+                    onClick = onViewReport,
+                    modifier = Modifier.testTag("import-history-report-${run.id}")
+                ) {
+                    Text(stringResource(R.string.import_history_view_report))
+                }
             }
         }
     }

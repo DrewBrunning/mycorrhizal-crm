@@ -1,14 +1,18 @@
 package com.mycorrhizal.crm.feature.imports
 
+import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRun
+import com.mycorrhizal.crm.model.network.ImportRunDetail
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -121,5 +125,69 @@ class ImportHistoryViewModelTest {
         vm.onErrorShown()
 
         assertNull(vm.uiState.value.error)
+    }
+
+    // Issue #2464/#2210: open the itemized report of a past import.
+    private val detail = ImportRunDetail(
+        id = 7,
+        format = "csv",
+        skipped = 1,
+        issueCount = 1,
+        issues = listOf(
+            ImportRowIssue(row = 2, name = "Erin", status = "skipped", reason = "Invalid email")
+        )
+    )
+
+    @Test
+    fun `openReport loads the run detail by id and exposes its issues`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { apiClient.getImportHistory() } returns Result.success(emptyList())
+        coEvery { apiClient.getImportRun(7) } returns Result.success(detail)
+        val vm = ImportHistoryViewModel(apiClient)
+        advanceUntilIdle()
+
+        vm.openReport(7)
+        advanceUntilIdle()
+
+        coVerify { apiClient.getImportRun(7) }
+        assertEquals(detail, vm.uiState.value.report)
+        assertFalse(vm.uiState.value.isReportLoading)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `a report load failure surfaces the error and shows no report`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { apiClient.getImportHistory() } returns Result.success(emptyList())
+        coEvery { apiClient.getImportRun(9) } returns Result.failure(
+            ApiError.Client(404, "Import run not found")
+        )
+        val vm = ImportHistoryViewModel(apiClient)
+        advanceUntilIdle()
+
+        vm.openReport(9)
+        advanceUntilIdle()
+
+        assertEquals("Import run not found", vm.uiState.value.error?.message)
+        assertNull(vm.uiState.value.report)
+        assertFalse(vm.uiState.value.isReportLoading)
+        assertFalse(vm.uiState.value.reportOpen)
+    }
+
+    @Test
+    fun `closeReport returns to the list`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { apiClient.getImportHistory() } returns Result.success(emptyList())
+        coEvery { apiClient.getImportRun(7) } returns Result.success(detail)
+        val vm = ImportHistoryViewModel(apiClient)
+        advanceUntilIdle()
+        vm.openReport(7)
+        advanceUntilIdle()
+
+        vm.closeReport()
+
+        assertNull(vm.uiState.value.report)
+        assertFalse(vm.uiState.value.reportOpen)
     }
 }

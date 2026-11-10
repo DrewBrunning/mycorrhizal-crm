@@ -2027,11 +2027,6 @@
     <string name="import_permission_rationale">L\'autorisation d\'accès aux contacts est nécessaire pour lister les contacts de cet appareil. La liste est lue uniquement sur cet appareil. Lors de l\'importation, seuls les contacts sélectionnés sont envoyés à votre serveur, et rien n\'est enregistré avant que vous ne confirmiez à l\'étape de vérification.</string>
     <string name="import_permission_grant">Autoriser l\'accès</string>
     <string name="import_permission_open_settings">Ouvrir les paramètres</string>
-    <plurals name="import_done">
-        <item quantity="one">%1$d contact importé.</item>
-        <item quantity="many">%1$d contacts importés.</item>
-        <item quantity="other">%1$d contacts importés.</item>
-    </plurals>
     <string name="import_duplicate">Doublon possible de %1$s</string>
 
     <!-- VCF file import (M9) -->
@@ -2156,6 +2151,8 @@
     <!-- Historique des importations (parité web, issue #651 / #834) -->
     <string name="import_history_entry">Historique des importations</string>
     <string name="import_history_title">Historique des importations</string>
+    <string name="import_history_view_report">Voir le rapport</string>
+    <string name="import_history_report_title">Rapport d’importation</string>
     <string name="import_history_empty">Aucune importation pour le moment</string>
     <string name="import_history_col_created">Créés</string>
     <string name="import_history_col_updated">Mis à jour</string>

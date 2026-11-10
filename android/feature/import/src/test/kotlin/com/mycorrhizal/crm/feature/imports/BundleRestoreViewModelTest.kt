@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.imports
 
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
+import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.MycorrhizalBundleCounts
 import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
@@ -395,4 +396,27 @@ class BundleRestoreViewModelTest {
         assertNull(vm.uiState.value.errorRes)
         assertNull(vm.uiState.value.error)
     }
+
+    // Issue #2464/#2210: the confirm result carries the per-row issues the report renders.
+    @Test
+    fun `the result state carries the per-row issues`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubUploadAndPrepare(status("ready"))
+            val vm = newVm()
+            vm.onFilePicked("b.json", "{}".toByteArray())
+            advanceUntilIdle()
+            val issues = listOf(
+                ImportRowIssue(row = 3, name = "Ada", status = "skipped", reason = "already exists")
+            )
+            coEvery { apiClient.confirmMycorrhizalImport(any()) } returns Result.success(Unit)
+            coEvery { apiClient.getMycorrhizalImportStatus("s1") } returns
+                Result.success(
+                    status("done", result = SourceImportResult(skipped = 1, issues = issues))
+                )
+
+            vm.confirm()
+            advanceUntilIdle()
+
+            assertEquals(issues, vm.uiState.value.result?.issues)
+        }
 }
