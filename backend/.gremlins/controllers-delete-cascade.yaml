@@ -37,6 +37,7 @@ unleash:
         - ^diagnostics_controller\.go$
         - ^duplicate_controller\.go$
         - ^entity_controller\.go$
+        - ^entity_csv_restore_controller\.go$
         - ^entity_merge_controller\.go$
         - ^error_aggregation_controller\.go$
         - ^export_controller\.go$

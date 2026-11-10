@@ -38,6 +38,19 @@ const entityCSVSystem = "csv-backup"
 // same way MaxCSVRows bounds a contact import.
 const MaxEntityCSVRows = MaxCSVRows
 
+// EntityCSVRejection is a client-side rejection of the uploaded file (too many
+// rows, unreadable CSV), as opposed to a database fault. The HTTP layer maps it
+// to a 400; anything else is a server error.
+type EntityCSVRejection struct{ msg string }
+
+func (e *EntityCSVRejection) Error() string { return e.msg }
+
+// IsEntityCSVRejection reports whether err is, or wraps, an EntityCSVRejection.
+func IsEntityCSVRejection(err error) bool {
+	var r *EntityCSVRejection
+	return errors.As(err, &r)
+}
+
 // EntityCSVSections is the parsed content of the three entity sections. A CSV
 // without the markers (any pre-1.7 export) parses to all-empty slices.
 type EntityCSVSections struct {
@@ -104,7 +117,7 @@ func ParseEntityCSVSections(r io.Reader) (*EntityCSVSections, []ImportIssue, err
 			break
 		}
 		if err != nil {
-			return nil, nil, fmt.Errorf("invalid CSV format: %w", err) // # pragma: no cover — defensive: LazyQuotes and a variable field count leave the reader nothing to reject
+			return nil, nil, &EntityCSVRejection{msg: fmt.Sprintf("invalid CSV format: %v", err)} // # pragma: no cover — defensive: LazyQuotes and a variable field count leave the reader nothing to reject
 		}
 		if len(rec) == 1 && csvMarkerRE.MatchString(rec[0]) {
 			section, headerSeen = rec[0], false
@@ -119,7 +132,7 @@ func ParseEntityCSVSections(r io.Reader) (*EntityCSVSections, []ImportIssue, err
 		}
 		rows[section]++
 		if rows[section] > MaxEntityCSVRows {
-			return nil, nil, fmt.Errorf("too many rows in %s: maximum is %d rows", section, MaxEntityCSVRows)
+			return nil, nil, &EntityCSVRejection{msg: fmt.Sprintf("too many rows in %s: maximum is %d rows", section, MaxEntityCSVRows)}
 		}
 		switch section {
 		case csvEntitiesMarker:

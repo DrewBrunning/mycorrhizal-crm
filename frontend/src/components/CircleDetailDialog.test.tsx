@@ -1,8 +1,9 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { Circle } from '../api/circles';
+import { ApiError } from '../api/client';
 import { DateFormatProvider, setDateFormatPreference } from '../DateFormatProvider';
 import CircleDetailDialog from './CircleDetailDialog';
 
@@ -114,4 +115,31 @@ describe('CircleDetailDialog timeline members', () => {
     expect(alice[0].getAttribute('href')).toBe('/contacts/7');
     expect(screen.getByRole('link', { name: 'Bob' }).getAttribute('href')).toBe('/contacts/8');
   });
+});
+
+// Issue #2362: renaming into another circle's name shows the localized
+// duplicate message under the name field and keeps the dialog open.
+test('a duplicate-name save failure shows an inline error on the name field', async () => {
+  getCircleTimeline.mockResolvedValue({ items: [], member_count: 1, next_cursor: '' });
+  const onSave = vi
+    .fn()
+    .mockRejectedValue(
+      new ApiError('dup', 'CONFLICT', 409, undefined, undefined, 'circle_already_exists'),
+    );
+  render(
+    <MemoryRouter>
+      <DateFormatProvider>
+        <CircleDetailDialog circle={circle} memberCount={1} onClose={vi.fn()} onSave={onSave} />
+      </DateFormatProvider>
+    </MemoryRouter>,
+  );
+
+  const input = screen.getByLabelText('Name');
+  fireEvent.change(input, { target: { value: 'Work' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('A circle with this name already exists')).toBeInTheDocument();
+  expect(input).toHaveAttribute('aria-invalid', 'true');
+  fireEvent.change(input, { target: { value: 'Work 2' } });
+  expect(screen.queryByText('A circle with this name already exists')).not.toBeInTheDocument();
 });

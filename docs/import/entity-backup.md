@@ -9,7 +9,7 @@ deliberately **not** carried.
 | Surface | Entities | Notes |
 |---|---|---|
 | Account bundle (`GET /api/v1/export/account`, `mycorrhizal` import source) | **Yes**, full fidelity | Three additive plan collections, below |
-| Flat CSV backup (`GET /api/v1/export`) | **Yes**, three trailing sections | Below; restore is `services.RestoreEntityCSV` |
+| Flat CSV backup (`GET /api/v1/export`) | **Yes**, three trailing sections | Below; restore is `POST /api/v1/import/entities/csv` (`services.RestoreEntityCSV`) |
 | vCard 3/4, JSContact export, CardDAV, contact shares | Only the **projected** primary link's ORG/ADR value | No entity object, collection or `X-` property |
 | vCard/JSContact/CSV-column import, CardDAV PUT | **Never** | Inbound ORG/ADR stay contact values; nothing is created, matched or rewritten |
 | Monica / Meerkat import | **Never** | No mapping; `import_source_links` gains no entity kind for them |
@@ -63,11 +63,34 @@ followed by one of those characters, which loses the apostrophe. Nothing is filt
 The `=== CONTACTS ===` section is unchanged (no organisation column, and entity-target definitions add no
 column), so a pre-1.7 export reads exactly as before.
 
-**Restore** (`services.RestoreEntityCSV`) reads only the three entity sections and lands them through the
-same pass as the bundle, so the same rules apply (re-run is a no-op, an owned id is a conflict, rows are
-validated). The CSV carries no contacts and no field definitions, so a link needs its contact already in
-the account (matched by `Contact UID`) and a value needs an entity-target definition with the same
-`Definition Key` already present for the entity's kind; a missing one is reported, not invented.
+**Restore** (`POST /api/v1/import/entities/csv`, backed by `services.RestoreEntityCSV`) reads only the three
+entity sections and lands them through the same pass as the bundle, so the same rules apply: entity ids are
+re-minted behind the import ledger and references inside the file are remapped (ADR 0043 decision 7, amended
+2026-11-10), re-running is a no-op, an owned id is a per-row skipped conflict, and rows are validated. The
+CSV carries no contacts and no field definitions, so a link needs its contact already in the account
+(matched by `Contact UID`) and a value needs an entity-target definition with the same `Definition Key`
+already present for the entity's kind; a missing one is reported, not invented.
+
+The endpoint is dedicated to the entity sections: the contacts column-mapping import is a separate flow and
+unchanged. It is authenticated and scoped to the caller's account, takes one multipart `file` (a `.csv`, at
+most 20 MB, at most `MaxEntityCSVRows` rows per section), applies everything in one transaction, and runs
+one restore per account at a time (a concurrent request is refused with 429). A CSV without entity
+sections restores nothing. Cells are stored as inert text: the exporter's apostrophe marker is undone and
+nothing is evaluated. Re-running the same file needs no `Idempotency-Key`; the ledger makes it a no-op.
+
+The response counts the rows created and names every other row:
+
+```json
+{"entities_created": 3, "links_created": 2, "field_values_created": 2,
+ "issues": [{"record": "...", "field": "entity", "category": "skipped", "message": "..."}]}
+```
+
+| `category` | Meaning |
+|---|---|
+| (counted in `*_created`) | restored |
+| `skipped` | an id the account already owns, or a row an earlier run restored; never overwritten |
+| `unsupported` | a missing dependency: a contact (by `Contact UID`) or entity-target field definition that is not in the account, or an entity that was itself not restored |
+| `invalid` | the row fails the validation a REST write applies |
 
 ## Named loss
 

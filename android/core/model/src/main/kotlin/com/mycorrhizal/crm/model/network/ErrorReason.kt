@@ -115,6 +115,7 @@ object ErrorReasonCode {
     const val CONTACT_CADENCE_POLICY_ALREADY_EXISTS = "contact_cadence_policy_already_exists"
     const val CALENDAR_SUBSCRIPTION_NOT_FOUND = "calendar_subscription_not_found"
     const val CIRCLE_NOT_FOUND = "circle_not_found"
+    const val CIRCLE_ALREADY_EXISTS = "circle_already_exists"
     const val CIRCLE_MEMBERSHIP_NOT_FOUND = "circle_membership_not_found"
     const val CIRCLE_MEMBERSHIP_ALREADY_EXISTS = "circle_membership_already_exists"
     const val CONTACT_NOT_FOUND = "contact_not_found"

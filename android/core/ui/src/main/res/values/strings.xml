@@ -2790,6 +2790,7 @@
     <string name="error_reason_contact_cadence_policy_already_exists">Cadence policy already exists</string>
     <string name="error_reason_calendar_subscription_not_found">Calendar subscription not found</string>
     <string name="error_reason_circle_not_found">Circle not found</string>
+    <string name="error_reason_circle_already_exists">A circle with this name already exists</string>
     <string name="error_reason_circle_membership_not_found">Circle membership not found</string>
     <string name="error_reason_circle_membership_already_exists">Circle membership already exists</string>
     <string name="error_reason_contact_not_found">Contact not found</string>

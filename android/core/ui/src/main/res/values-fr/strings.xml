@@ -2870,6 +2870,7 @@
     <string name="error_reason_contact_cadence_policy_already_exists">Politique de cadence existe déjà</string>
     <string name="error_reason_calendar_subscription_not_found">Abonnement au calendrier introuvable</string>
     <string name="error_reason_circle_not_found">Cercle introuvable</string>
+    <string name="error_reason_circle_already_exists">Un cercle portant ce nom existe déjà</string>
     <string name="error_reason_circle_membership_not_found">Appartenance au cercle introuvable</string>
     <string name="error_reason_circle_membership_already_exists">Appartenance au cercle existe déjà</string>
     <string name="error_reason_contact_not_found">Contact introuvable</string>
