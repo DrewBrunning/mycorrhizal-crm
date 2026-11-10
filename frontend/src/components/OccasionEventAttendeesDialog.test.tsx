@@ -340,3 +340,119 @@ test('"Add everyone" stops and reports an error when an add fails', async () => 
   expect(await screen.findByText('Failed to update the attendee.')).toBeInTheDocument();
   expect(handleAdd).toHaveBeenCalledTimes(1);
 });
+
+// Branch coverage for issue #2449: closed dialog, missing event, loading,
+// partial API responses, and superseded contact searches.
+
+test('a closed dialog fetches nothing and renders no content', () => {
+  render(<OccasionEventAttendeesDialog open={false} onClose={vi.fn()} event={event} />);
+
+  expect(screen.queryByText('Attendees — Summer BBQ')).not.toBeInTheDocument();
+  expect(listCircles).not.toHaveBeenCalled();
+  expect(getContacts).not.toHaveBeenCalled();
+  expect(useOccasionEventAttendees).toHaveBeenCalledWith(undefined);
+});
+
+test('with no event the title renders without an event name', () => {
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={null} />);
+
+  expect(screen.getByRole('dialog')).toHaveTextContent(/^Attendees/);
+  expect(screen.queryByText(/Summer BBQ/)).not.toBeInTheDocument();
+  expect(useOccasionEventAttendees).toHaveBeenCalledWith(undefined);
+});
+
+test('shows a loading message while the first attendee fetch is in flight', () => {
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(
+    makeHookReturn({ attendees: [], loading: true }),
+  );
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  expect(screen.getByText('Loading…')).toBeInTheDocument();
+  expect(screen.queryByText('No one invited yet.')).not.toBeInTheDocument();
+});
+
+test('keeps showing attendees while a refetch is loading', () => {
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn({ loading: true }));
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  expect(screen.getByText('Alice')).toBeInTheDocument();
+  expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+});
+
+test('a circle response without a circles list is treated as no circles', async () => {
+  vi.mocked(listCircles).mockResolvedValue({ total: 0, next_cursor: '', limit: 100 } as never);
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  expect(await screen.findByText(/You have no circles yet/)).toBeInTheDocument();
+});
+
+test('a slow contact search that was superseded does not overwrite newer results', async () => {
+  let resolveStale: (value: never) => void = () => {};
+  const stale = new Promise<never>((resolve) => {
+    resolveStale = resolve;
+  });
+  vi.mocked(getContacts).mockReturnValueOnce(stale);
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [{ ID: 5, uid: 'uid-5', firstname: 'Bob', lastname: 'Baker' }],
+    total: 1,
+    next_cursor: '',
+    limit: 100,
+  } as never);
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  // The empty-search request is in flight (and unanswered) before the user types.
+  await waitFor(() => expect(getContacts).toHaveBeenCalledTimes(1));
+  const input = screen.getByRole('combobox', { name: /add contacts/i });
+  fireEvent.focus(input);
+  fireEvent.mouseDown(input);
+  fireEvent.change(input, { target: { value: 'Bob' } });
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ search: 'Bob' })),
+  );
+  fireEvent.keyDown(input, { key: 'ArrowDown' });
+  expect(await screen.findByRole('option', { name: 'Bob Baker' })).toBeInTheDocument();
+
+  // The first (empty-search) request now answers late with a different list.
+  resolveStale({
+    contacts: [{ ID: 6, uid: 'uid-6', firstname: 'Carol', lastname: 'Cole' }],
+    total: 1,
+    next_cursor: '',
+    limit: 100,
+  } as never);
+  await new Promise((r) => setTimeout(r, 0));
+
+  expect(screen.getByRole('option', { name: 'Bob Baker' })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: 'Carol Cole' })).not.toBeInTheDocument();
+});
+
+test('a superseded contact search that fails does not clear newer results', async () => {
+  let rejectStale: (reason: Error) => void = () => {};
+  const stale = new Promise<never>((_resolve, reject) => {
+    rejectStale = reject;
+  });
+  vi.mocked(getContacts).mockReturnValueOnce(stale);
+  vi.mocked(getContacts).mockResolvedValue({
+    contacts: [{ ID: 5, uid: 'uid-5', firstname: 'Bob', lastname: 'Baker' }],
+    total: 1,
+    next_cursor: '',
+    limit: 100,
+  } as never);
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+
+  // The empty-search request is in flight (and unanswered) before the user types.
+  await waitFor(() => expect(getContacts).toHaveBeenCalledTimes(1));
+  const input = screen.getByRole('combobox', { name: /add contacts/i });
+  fireEvent.focus(input);
+  fireEvent.mouseDown(input);
+  fireEvent.change(input, { target: { value: 'Bob' } });
+  await waitFor(() =>
+    expect(getContacts).toHaveBeenCalledWith(expect.objectContaining({ search: 'Bob' })),
+  );
+  fireEvent.keyDown(input, { key: 'ArrowDown' });
+  expect(await screen.findByRole('option', { name: 'Bob Baker' })).toBeInTheDocument();
+
+  rejectStale(new Error('late failure'));
+  await new Promise((r) => setTimeout(r, 0));
+
+  expect(screen.getByRole('option', { name: 'Bob Baker' })).toBeInTheDocument();
+});
