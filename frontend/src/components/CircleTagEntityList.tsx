@@ -96,8 +96,9 @@ export default function CircleTagEntityList({
       await onCreate(trimmed);
       setNewName('');
     } catch (err) {
-      if (!isDuplicateCircleNameError(err)) throw err;
-      setAddError(getErrorMessage(err));
+      // Other failures are already reported by the caller's notifier; swallowing
+      // them here avoids an unhandled rejection from the fire-and-forget handler.
+      if (isDuplicateCircleNameError(err)) setAddError(getErrorMessage(err));
     } finally {
       setCreating(false);
     }
@@ -125,8 +126,7 @@ export default function CircleTagEntityList({
       setEditingId(null);
       setEditValue('');
     } catch (err) {
-      if (!isDuplicateCircleNameError(err)) throw err;
-      setEditError(getErrorMessage(err));
+      if (isDuplicateCircleNameError(err)) setEditError(getErrorMessage(err));
     } finally {
       setSavingId(null);
     }

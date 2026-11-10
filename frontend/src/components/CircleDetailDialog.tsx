@@ -114,8 +114,7 @@ export default function CircleDetailDialog({
     } catch (err) {
       // A duplicate name is shown under the field (#2362); other failures are
       // already reported by the caller's notifier.
-      if (!isDuplicateCircleNameError(err)) throw err;
-      setNameError(getErrorMessage(err));
+      if (isDuplicateCircleNameError(err)) setNameError(getErrorMessage(err));
     } finally {
       setSaving(false);
     }
