@@ -1445,7 +1445,7 @@ private fun SensitivityField(sensitivity: String, onSensitivityChange: (String) 
 }
 
 /**
- * Issue #1773: the quick-fill kinds for an empty "Kind" field, as a labelled row of
+ * Issue #1773: the quick-fill kinds for an empty "Type" field, as a labelled row of
  * suggestion chips ("Suggestions: Favorite, Dislike, Allergy") -- they used to be
  * full-width text buttons that read as static centred text. Tapping one fills the field.
  */
@@ -1478,7 +1478,7 @@ internal fun KeySuggestions(suggestions: List<String>, onPick: (String) -> Unit)
 }
 
 @androidx.annotation.StringRes
-private fun preferenceCategoryLabelRes(category: String): Int? = when (category) {
+internal fun preferenceCategoryLabelRes(category: String): Int? = when (category) {
     "food" -> R.string.preferences_category_food
     "drink" -> R.string.preferences_category_drink
     "media" -> R.string.preferences_category_media
@@ -1493,16 +1493,19 @@ private fun preferenceCategoryLabelRes(category: String): Int? = when (category)
     "media_book_author" -> R.string.preferences_category_media_book_author
     "media_book_series" -> R.string.preferences_category_media_book_series
     "media_book_title" -> R.string.preferences_category_media_book_title
+    "media_other" -> R.string.preferences_category_media_other
     "jewelry_metal" -> R.string.preferences_category_jewelry_metal
     "jewelry_stone" -> R.string.preferences_category_jewelry_stone
     "jewelry_style" -> R.string.preferences_category_jewelry_style
     "jewelry_type" -> R.string.preferences_category_jewelry_type
+    "jewelry_other" -> R.string.preferences_category_jewelry_other
     "flowers" -> R.string.preferences_category_flowers
     "color" -> R.string.preferences_category_color
     "hobby" -> R.string.preferences_category_hobby
     "dislike_activity" -> R.string.preferences_category_dislike_activity
     "fragrance" -> R.string.preferences_category_fragrance
     "cause" -> R.string.preferences_category_cause
+    "gift_other" -> R.string.preferences_category_gift_other
     "dislike" -> R.string.preferences_category_dislike
     else -> null
 }

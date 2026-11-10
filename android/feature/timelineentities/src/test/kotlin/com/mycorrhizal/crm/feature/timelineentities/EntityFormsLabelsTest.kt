@@ -113,7 +113,7 @@ class EntityFormsLabelsTest {
     fun `an empty kind shows labelled suggestion chips that fill the field when tapped`() {
         preferenceForm()
         composeTestRule.onNodeWithText("Suggestions").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Kind").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Type").assertIsDisplayed()
         composeTestRule.onNodeWithText(
             "Allergy"
         ).performScrollTo().assertIsDisplayed().performClick()
