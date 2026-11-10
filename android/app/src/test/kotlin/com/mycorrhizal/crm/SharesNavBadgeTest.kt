@@ -54,7 +54,9 @@ class SharesNavBadgeTest {
     @Test
     fun `no pending shares means no badge`() {
         drawer(pending = 0)
-        composeTestRule.onNodeWithContentDescription("0 shares waiting for you").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription(
+            "0 shares waiting for you"
+        ).assertDoesNotExist()
     }
 
     @Test

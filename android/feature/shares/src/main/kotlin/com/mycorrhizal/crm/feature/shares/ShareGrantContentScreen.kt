@@ -161,10 +161,23 @@ private fun ActivityBody(activity: SharedActivity) {
         }
         val date = DateFormat.formatTimestamp(activity.date, dateFormat)
         val end = DateFormat.formatTimestamp(activity.endDate, dateFormat)
-        if (date.isNotBlank()) LabelledLines(stringResource(R.string.shares_content_date), listOf(date))
-        if (end.isNotBlank()) LabelledLines(stringResource(R.string.shares_content_ends), listOf(end))
+        if (date.isNotBlank()) {
+            LabelledLines(
+                stringResource(R.string.shares_content_date),
+                listOf(date)
+            )
+        }
+        if (end.isNotBlank()) {
+            LabelledLines(
+                stringResource(R.string.shares_content_ends),
+                listOf(end)
+            )
+        }
         if (activity.location.isNotBlank()) {
-            LabelledLines(stringResource(R.string.shares_content_location), listOf(activity.location))
+            LabelledLines(
+                stringResource(R.string.shares_content_location),
+                listOf(activity.location)
+            )
         }
         if (activity.type.isNotBlank()) {
             LabelledLines(stringResource(R.string.shares_content_type), listOf(activity.type))
@@ -188,7 +201,11 @@ private fun CircleBody(circle: SharedCircle) {
         )
         circle.members.forEach { member ->
             Text(
-                text = member.displayName.ifBlank { stringResource(R.string.shares_entity_contact) },
+                text = member.displayName.ifBlank {
+                    stringResource(
+                        R.string.shares_entity_contact
+                    )
+                },
                 style = MaterialTheme.typography.bodyMedium
             )
         }

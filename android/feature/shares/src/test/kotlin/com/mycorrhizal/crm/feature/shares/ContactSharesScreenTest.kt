@@ -282,6 +282,7 @@ class ContactSharesScreenTest {
         stubEmpty()
         var withMe = 0
         var byMe = 0
+        val vm = ContactSharesViewModel(repository)
         composeTestRule.setContent {
             MycorrhizalTheme {
                 androidx.compose.runtime.CompositionLocalProvider(
@@ -291,7 +292,7 @@ class ContactSharesScreenTest {
                         onMenuClick = {},
                         onOpenSharedWithMe = { withMe++ },
                         onOpenSharedByMe = { byMe++ },
-                        viewModel = ContactSharesViewModel(repository)
+                        viewModel = vm
                     )
                 }
             }
