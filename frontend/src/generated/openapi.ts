@@ -2442,6 +2442,7 @@ export type Note = {
   date: string;
   deleted?: boolean;
   revision: number;
+  uuid?: string;
 };
 
 export type NoteImage = {

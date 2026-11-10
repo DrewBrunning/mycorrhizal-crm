@@ -3,6 +3,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import SaveIcon from '@mui/icons-material/Save';
+import ShareIcon from '@mui/icons-material/Share';
 import {
   Box,
   Button,
@@ -53,6 +54,8 @@ interface CircleTagEntityListProps {
   onDelete: (id: string) => Promise<void>;
   // When set, each row gets a "details" button that calls this with the item id.
   onOpen?: (id: string) => void;
+  // Circles only (standing shares, ADR 0042): when set, each row gets a Share button.
+  onShare?: (item: CircleTagEntityListItem) => void;
 }
 
 export default function CircleTagEntityList({
@@ -68,6 +71,7 @@ export default function CircleTagEntityList({
   onRename,
   onDelete,
   onOpen,
+  onShare,
 }: CircleTagEntityListProps) {
   // Generic action labels for the icon-only row buttons (save/cancel/edit/
   // delete) come from `common.*` directly rather than the caller-supplied
@@ -149,7 +153,7 @@ export default function CircleTagEntityList({
                 <ListItem
                   key={item.id}
                   divider
-                  sx={{ gap: 1, pr: onOpen ? 17 : 12 }}
+                  sx={{ gap: 1, pr: (onOpen ? 17 : 12) + (onShare ? 5 : 0) }}
                   secondaryAction={
                     isEditing ? (
                       <Stack direction="row" spacing={0.5}>
@@ -184,6 +188,15 @@ export default function CircleTagEntityList({
                             aria-label={t('circlesTags.openDetails')}
                           >
                             <InfoOutlinedIcon fontSize="small" />
+                          </IconButton>
+                        )}
+                        {onShare && (
+                          <IconButton
+                            size="small"
+                            onClick={() => onShare(item)}
+                            aria-label={t('standingShares.shareCircle', { name: item.name })}
+                          >
+                            <ShareIcon fontSize="small" />
                           </IconButton>
                         )}
                         <IconButton
