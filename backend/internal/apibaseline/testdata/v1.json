@@ -6761,6 +6761,25 @@
     },
     {
       "method": "POST",
+      "path": "/import/entities/csv",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:EntityCSVRestoreResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/import/mycorrhizal/cancel",
       "parameters": [
         {
@@ -16931,6 +16950,61 @@
         {
           "name": "updated_at",
           "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityCSVRestoreIssue",
+      "properties": [
+        {
+          "name": "category",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "skipped",
+            "unsupported",
+            "invalid"
+          ]
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "record",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityCSVRestoreResponse",
+      "properties": [
+        {
+          "name": "entities_created",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "field_values_created",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "issues",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "links_created",
+          "type": "integer",
           "required": true
         }
       ]

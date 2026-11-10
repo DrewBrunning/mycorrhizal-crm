@@ -248,6 +248,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/contacts/import/meerkat/confirm",
 		"POST /api/v1/contacts/import/meerkat/cancel",
 		"POST /api/v1/import/mycorrhizal/upload",
+		"POST /api/v1/import/entities/csv",
 		"POST /api/v1/import/mycorrhizal/fetch",
 		"POST /api/v1/import/mycorrhizal/confirm",
 		"POST /api/v1/import/mycorrhizal/cancel",

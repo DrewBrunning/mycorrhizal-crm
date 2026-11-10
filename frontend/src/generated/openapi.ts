@@ -1317,6 +1317,20 @@ export type Entity = {
   updated_at: string;
 };
 
+export type EntityCSVRestoreIssue = {
+  category: 'skipped' | 'unsupported' | 'invalid';
+  field: string;
+  message: string;
+  record: string;
+};
+
+export type EntityCSVRestoreResponse = {
+  entities_created: number;
+  field_values_created: number;
+  issues: EntityCSVRestoreIssue[];
+  links_created: number;
+};
+
 export type EntityContactLink = {
   contact_id: number;
   contact_vcard_uid: string;

@@ -4608,6 +4608,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
           description: Too many concurrent Mycorrhizal import sessions for this user.
+  # Issue #2300 (ADR 0043 decision 7, amended 2026-11-10): restore the entity
+  # sections of a CSV backup. One-shot and synchronous; the contacts
+  # column-mapping import is a separate flow and is unchanged. Entity ids are
+  # re-minted behind the import ledger, so a re-run is a no-op.
+  /import/entities/csv:
+    post:
+      summary: Restore organisations, places and pets from a CSV backup
+      description: >-
+        Reads only the ENTITIES, ENTITY LINKS and ENTITY FIELDS sections of a
+        CSV file produced by GET /export (other sections are ignored; a CSV
+        without them restores nothing). Everything lands in the caller's
+        account in one transaction. Entity ids are re-minted and recorded in the
+        import ledger, references inside the file are remapped, and a row an
+        earlier run already restored, or an id the account already owns, is
+        reported as skipped, never overwritten. A link whose contact (matched by
+        Contact UID) or a value whose entity-target field definition (matched
+        by key and kind) is not in the account is reported with category
+        unsupported and is not created. Cells are stored as inert text (the
+        exporter's formula-neutralization marker is undone, nothing is
+        evaluated). Only one restore per account runs at a time.
+      operationId: restoreEntitiesCsv
+      tags:
+        - Imports
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: >-
+            Restore finished (the transaction committed). The counts are rows
+            created; every other row is named in issues.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityCSVRestoreResponse"
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: No file, not a .csv, over the 20 MB cap, or unreadable / over the row limit.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Another entity restore is already running for this account.
   /import/mycorrhizal/fetch:
     post:
       operationId: startMycorrhizalFetch
@@ -21962,6 +22017,30 @@ components:
         custom_field_values: { type: integer }
         occasions: { type: integer }
         occasion_events: { type: integer }
+    EntityCSVRestoreIssue:
+      type: object
+      required: [record, field, category, message]
+      properties:
+        record: { type: string }
+        field: { type: string }
+        category:
+          type: string
+          description: >-
+            skipped = an id the account already owns or a row an earlier run
+            restored; unsupported = a missing contact or field definition;
+            invalid = a row that fails REST-write validation.
+          enum: [skipped, unsupported, invalid]
+        message: { type: string }
+    EntityCSVRestoreResponse:
+      type: object
+      required: [entities_created, links_created, field_values_created, issues]
+      properties:
+        entities_created: { type: integer }
+        links_created: { type: integer }
+        field_values_created: { type: integer }
+        issues:
+          type: array
+          items: { $ref: "#/components/schemas/EntityCSVRestoreIssue" }
     MycorrhizalUploadResponse:
       type: object
       required: [session_id, version, totals]
