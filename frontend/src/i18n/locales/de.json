@@ -3730,6 +3730,7 @@
       "contact_cadence_policy_already_exists": "Kontaktrhythmus-Richtlinie existiert bereits",
       "calendar_subscription_not_found": "Kalenderabonnement nicht gefunden",
       "circle_not_found": "Kreis nicht gefunden",
+      "circle_already_exists": "Ein Kreis mit diesem Namen existiert bereits",
       "circle_membership_not_found": "Kreismitgliedschaft nicht gefunden",
       "circle_membership_already_exists": "Kreismitgliedschaft existiert bereits",
       "contact_not_found": "Kontakt nicht gefunden",

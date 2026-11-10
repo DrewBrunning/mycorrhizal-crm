@@ -2868,6 +2868,7 @@
     <string name="error_reason_contact_cadence_policy_already_exists">Esiste già: politica di cadenza</string>
     <string name="error_reason_calendar_subscription_not_found">Non trovato: sottoscrizione del calendario</string>
     <string name="error_reason_circle_not_found">Non trovato: cerchia</string>
+    <string name="error_reason_circle_already_exists">Esiste già una cerchia con questo nome</string>
     <string name="error_reason_circle_membership_not_found">Non trovato: appartenenza alla cerchia</string>
     <string name="error_reason_circle_membership_already_exists">Esiste già: appartenenza alla cerchia</string>
     <string name="error_reason_contact_not_found">Non trovato: contatto</string>

@@ -31,6 +31,39 @@ func applyCircleMetadata(circle *models.Circle, input *models.CircleInput) *appe
 	return nil
 }
 
+// circleNameTaken reports whether the user already has a circle, other than
+// exceptID ("" on create), whose name equals name case-insensitively
+// (Unicode simple folding; surrounding whitespace ignored). Issue #2362.
+//
+// This is an app-level check run inside the write's transaction rather than a
+// unique index on purpose: production data may already hold duplicate names,
+// and the maintainer ruled they are neither merged nor rewritten, so an index
+// would fail the migration on exactly those rows. The rule therefore guards
+// create and rename only; imports, restore and sync paths create circles
+// directly and stay lenient.
+func circleNameTaken(tx *gorm.DB, userID uint, name, exceptID string) (bool, error) {
+	var names []struct{ Name string }
+	if err := tx.Model(&models.Circle{}).Select("name").
+		Where("user_id = ? AND id <> ?", userID, exceptID).Find(&names).Error; err != nil {
+		return false, err
+	}
+	want := strings.TrimSpace(name)
+	for _, n := range names {
+		if strings.EqualFold(strings.TrimSpace(n.Name), want) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// circleNameTakenError is the 409 for a duplicate circle name. It is an
+// ErrConflict (not ErrAlreadyExists) so its message can say what clashed;
+// clients localize from the circle_already_exists reason code.
+func circleNameTakenError(name string) *apperrors.AppError {
+	return apperrors.ErrConflict("A circle with this name already exists").
+		WithReason(apperrors.ReasonCircleAlreadyExists, nil).WithDetails("name", name)
+}
+
 // CreateCircle creates a new Circle (circle.go) for the authenticated user.
 func CreateCircle(c *gin.Context) {
 	input, err := middleware.GetValidated[models.CircleInput](c)
@@ -50,8 +83,19 @@ func CreateCircle(c *gin.Context) {
 		apperrors.AbortWithError(c, err)
 		return
 	}
-	if err := db.Create(&circle).Error; err != nil {
+	taken := false
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		var err error
+		if taken, err = circleNameTaken(tx, userID, circle.Name, ""); err != nil || taken {
+			return err
+		}
+		return tx.Create(&circle).Error
+	}); err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save circle").WithError(err))
+		return
+	}
+	if taken {
+		apperrors.AbortWithError(c, circleNameTakenError(circle.Name))
 		return
 	}
 	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "circle.created", circle)
@@ -184,13 +228,29 @@ func UpdateCircle(c *gin.Context) {
 		return
 	}
 
+	// A rename that only keeps (or re-cases) the circle's own name is never a
+	// conflict, so a pre-existing duplicate stays editable (issue #2362).
+	nameChanged := !strings.EqualFold(strings.TrimSpace(circle.Name), strings.TrimSpace(input.Name))
 	circle.Name = input.Name
 	if err := applyCircleMetadata(&circle, input); err != nil {
 		apperrors.AbortWithError(c, err)
 		return
 	}
-	if err := db.Save(&circle).Error; err != nil {
+	taken := false
+	if err := db.Transaction(func(tx *gorm.DB) error {
+		if nameChanged {
+			var err error
+			if taken, err = circleNameTaken(tx, userID, circle.Name, circle.ID); err != nil || taken {
+				return err
+			}
+		}
+		return tx.Save(&circle).Error
+	}); err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to save circle").WithError(err))
+		return
+	}
+	if taken {
+		apperrors.AbortWithError(c, circleNameTakenError(circle.Name))
 		return
 	}
 	services.TriggerWebhooksAsync(c.Request.Context(), db, currentConfig(c), userID, "circle.updated", circle)

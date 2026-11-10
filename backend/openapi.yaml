@@ -7370,6 +7370,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Another circle of the same user already has this name (compared
+            case-insensitively, surrounding whitespace ignored). reason_code
+            is circle_already_exists. Applies to create and rename only; a
+            rename that keeps the circle's own name succeeds. Circles that
+            already share a name before this rule are left as they are.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /circles/{id}:
     parameters:
       - name: id
@@ -7422,6 +7433,17 @@ paths:
                 $ref: "#/components/schemas/Circle"
         "400":
           description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Another circle of the same user already has this name (compared
+            case-insensitively, surrounding whitespace ignored). reason_code
+            is circle_already_exists. Applies to create and rename only; a
+            rename that keeps the circle's own name succeeds. Circles that
+            already share a name before this rule are left as they are.
           content:
             application/json:
               schema:

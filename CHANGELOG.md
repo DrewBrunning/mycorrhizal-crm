@@ -23,6 +23,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **No more duplicate circle names** ([#2362](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2362)): creating or renaming a circle to a name you already use (any letter case) is now refused, with a message under the name field on the web. New circles also appear in name order straight away. Circles that already share a name stay as they are.
 - **Tidier web menu** ([#2175](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2175)): Shares, Audit log, Data and, for admins, Users and System pages now sit under Settings in the left menu. Open them with the arrow beside Settings; every page keeps its address.
 - **Clearer vCard custom-field import** ([#2183](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2183)): on the import step for custom `X-` properties, each choice now has a short plain-language explanation, "passthrough" is spelled out (kept untouched, exported again, nothing lost), and "Map to existing field" is greyed out with a reason when you have no custom fields yet.
 

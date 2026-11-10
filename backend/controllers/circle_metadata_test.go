@@ -85,7 +85,7 @@ func TestCircleController_Validation(t *testing.T) {
 	ok := circleDoJSON(t, router, "POST", "/circles", map[string]any{"name": "x", "description": strings.Repeat("é", 500)})
 	require.Equal(t, http.StatusOK, ok.Code, "500 runes is the limit, not 500 bytes: %s", ok.Body.String())
 	for _, colour := range models.CircleColors {
-		resp := circleDoJSON(t, router, "POST", "/circles", map[string]any{"name": "x", "color": colour})
+		resp := circleDoJSON(t, router, "POST", "/circles", map[string]any{"name": "x-" + colour, "color": colour}) // distinct names: circle names are unique per user (#2362)
 		require.Equal(t, http.StatusOK, resp.Code, colour)
 	}
 }
