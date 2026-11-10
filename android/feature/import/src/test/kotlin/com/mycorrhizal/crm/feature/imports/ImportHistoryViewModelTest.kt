@@ -190,4 +190,36 @@ class ImportHistoryViewModelTest {
         assertNull(vm.uiState.value.report)
         assertFalse(vm.uiState.value.reportOpen)
     }
+
+    @Test
+    fun `closeReport without an open report is a no-op`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { apiClient.getImportHistory() } returns Result.success(emptyList())
+        val vm = ImportHistoryViewModel(apiClient)
+        advanceUntilIdle()
+
+        vm.closeReport()
+
+        assertNull(vm.uiState.value.report)
+        assertFalse(vm.uiState.value.reportOpen)
+    }
+
+    @Test
+    fun `opening a second report replaces the first`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { apiClient.getImportHistory() } returns Result.success(emptyList())
+        coEvery { apiClient.getImportRun(7) } returns Result.success(detail)
+        coEvery { apiClient.getImportRun(8) } returns Result.success(detail.copy(id = 8))
+        val vm = ImportHistoryViewModel(apiClient)
+        advanceUntilIdle()
+
+        vm.openReport(7)
+        advanceUntilIdle()
+        vm.openReport(8)
+        advanceUntilIdle()
+
+        assertEquals(8L, vm.uiState.value.report?.id)
+    }
 }

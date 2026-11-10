@@ -152,4 +152,11 @@ class BundleRestoreScreenTest {
         composeTestRule.onNodeWithText("Row 4 · Ada").assertIsDisplayed()
         composeTestRule.onNodeWithText("Skipped: already exists").assertIsDisplayed()
     }
+
+    @Test
+    fun `an error message surfaces as a snackbar`() {
+        setContent(BundleRestoreUiState(errorText = "Restore failed"))
+
+        composeTestRule.onNodeWithText("Restore failed").assertIsDisplayed()
+    }
 }
