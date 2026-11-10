@@ -6,6 +6,7 @@ import {
   getConditionalHeaders,
   parseErrorResponse,
 } from './client';
+import { isProjectedElementId } from './entities';
 import type { TargetClosenessTier } from './targetCloseness';
 
 export interface ContactValue {
@@ -1232,6 +1233,28 @@ export async function getContactRecord(id: string | number): Promise<ContactReco
 // given it is sent as `If-Match` (ADR 0008) so a write against a record that
 // changed elsewhere is rejected with a 412 ApiError instead of silently
 // overwriting it. Omitted, the write is unconditional (last-writer-wins).
+// ADR 0043 decision 3: a primary entity link is projected into the record the
+// server returns as an appended ORG/ADR entry whose element id is the reserved
+// `ent-<linkId>`. It is read-time synthesis, never the contact's own value, so
+// no request body the web client builds may carry it back (the server drops it
+// too -- this is the client half of the echo-suppression pair).
+export function stripProjectedEntries(input: ContactRecordInput): ContactRecordInput {
+  const { organizations, addresses } = input.card;
+  const ownOrgs = organizations?.filter((o) => !isProjectedElementId(o.id));
+  const ownAdrs = addresses?.filter((a) => !isProjectedElementId(a.id));
+  if (ownOrgs?.length === organizations?.length && ownAdrs?.length === addresses?.length) {
+    return input;
+  }
+  return {
+    ...input,
+    card: {
+      ...input.card,
+      ...(organizations ? { organizations: ownOrgs } : {}),
+      ...(addresses ? { addresses: ownAdrs } : {}),
+    },
+  };
+}
+
 export async function updateContactRecord(
   id: string | number,
   input: ContactRecordInput,
@@ -1240,7 +1263,7 @@ export async function updateContactRecord(
   const response = await apiFetch(`${API_BASE_URL}/contacts/${id}`, {
     method: 'PUT',
     headers: getConditionalHeaders(revision),
-    body: JSON.stringify(input),
+    body: JSON.stringify(stripProjectedEntries(input)),
   });
 
   if (!response.ok) {

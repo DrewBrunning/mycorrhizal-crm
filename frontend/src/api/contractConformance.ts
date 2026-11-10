@@ -64,6 +64,22 @@ import type {
   DashboardResponse,
 } from './dashboard';
 import type { DataDecayHealth, DataDecayPolicy, OverdueDataDecayPolicy } from './dataDecayPolicies';
+import type {
+  ContactEntityLink,
+  ContactEntityLinkAdoptResponse,
+  ContactEntityLinkFromExistingResponse,
+  ENTITY_KINDS,
+  ENTITY_SENSITIVITIES,
+  Entity,
+  EntityContactLink,
+  EntityDeleteResponse,
+  EntityFromContactsResponse,
+  EntityListResponse,
+  EntityMergeResponse,
+  EntityRestoreResponse,
+  EntitySuggestionsResponse,
+  EntityValueGroup,
+} from './entities';
 import type { ExternalActivity, ExternalIdentity } from './externalLinks';
 import type { FEED_DETAILS, FEED_KINDS, Feed, FeedCreateResponse } from './feeds';
 import type { FieldDefinition, FieldValue } from './fieldDefinitions';
@@ -208,6 +224,23 @@ export type Conformance = [
   NoDrift<ResponseDrift<Tag, S.Tag>>,
   NoDrift<ResponseDrift<ContactTag, S.ContactTag>>,
   NoDrift<ResponseDrift<Household, S.Household>>,
+  // Issue #2301: reusable entities (ADR 0043).
+  NoDrift<ResponseDrift<Entity, S.Entity>>,
+  NoDrift<ResponseDrift<EntityListResponse, S.EntityListResponse>>,
+  NoDrift<ResponseDrift<EntityDeleteResponse, S.EntityDeleteResponse>>,
+  NoDrift<ResponseDrift<EntityRestoreResponse, S.EntityRestoreResponse>>,
+  NoDrift<ResponseDrift<EntityContactLink, S.EntityContactLink>>,
+  NoDrift<ResponseDrift<EntityMergeResponse, S.EntityMergeResponse>>,
+  NoDrift<ResponseDrift<EntitySuggestionsResponse, S.EntitySuggestionsResponse>>,
+  NoDrift<ResponseDrift<EntityValueGroup, S.EntityValueGroup>>,
+  NoDrift<ResponseDrift<EntityFromContactsResponse, S.EntityFromContactsResponse>>,
+  NoDrift<ResponseDrift<ContactEntityLink, S.ContactEntityLink>>,
+  NoDrift<ResponseDrift<ContactEntityLinkAdoptResponse, S.ContactEntityLinkAdoptResponse>>,
+  NoDrift<
+    ResponseDrift<ContactEntityLinkFromExistingResponse, S.ContactEntityLinkFromExistingResponse>
+  >,
+  Assert<SameMembers<(typeof ENTITY_KINDS)[number], S.Entity['kind']>>,
+  Assert<SameMembers<(typeof ENTITY_SENSITIVITIES)[number], S.Entity['sensitivity']>>,
   NoDrift<ResponseDrift<HouseholdMember, S.HouseholdMember>>,
   NoDrift<ResponseDrift<Gift, S.Gift>>,
   NoDrift<ResponseDrift<Preference, S.Preference>>,

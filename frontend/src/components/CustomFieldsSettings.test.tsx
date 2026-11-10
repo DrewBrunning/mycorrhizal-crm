@@ -259,3 +259,17 @@ test("shows each definition's group and offers existing groups when editing", as
   fireEvent.mouseDown(screen.getByLabelText('Group'));
   expect(await screen.findByRole('option', { name: 'Travel' })).toBeInTheDocument();
 });
+
+test('a field that applies to an organisation, place or pet is labelled with its kind', async () => {
+  vi.mocked(getFieldDefinitions).mockResolvedValue(
+    response([
+      definition({ id: 'a', label: 'Account number', target: 'organisation' }),
+      definition({ id: 'b', label: 'Pronouns', target: 'contact' }),
+    ]),
+  );
+  renderSettings();
+  await waitFor(() => expect(screen.getByText('Account number')).toBeInTheDocument());
+  expect(screen.getByText('Organisation')).toBeInTheDocument();
+  // A contact field has no extra target chip: it is the default.
+  expect(screen.queryByText('Contact')).not.toBeInTheDocument();
+});

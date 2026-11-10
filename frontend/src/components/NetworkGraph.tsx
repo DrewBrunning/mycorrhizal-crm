@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D from 'react-force-graph-2d';
 import { useTranslation } from 'react-i18next';
 import type { GraphData, GraphEdge, GraphNode } from '../types/graph';
+import { ENTITY_KIND_KEYS } from '../utils/entityLabels';
 import { exceedsGraphRenderBudget } from '../utils/graphBudget';
 import { deceasedNodeColor, healthBandColor } from '../utils/healthBand';
 import { computeFilteredGraphData } from '../utils/networkGraphData';
@@ -43,6 +44,7 @@ interface ForceGraphData {
 const getNodeSize = (type: GraphNode['type']): number => {
   if (type === 'contact') return 12;
   if (type === 'circle') return 9;
+  if (type === 'entity') return 9;
   return 6;
 };
 
@@ -80,6 +82,10 @@ export default function NetworkGraph({
   const nodeColor = theme.palette.primary.main;
   const activityNodeColor = theme.palette.secondary.main;
   const circleNodeColor = theme.palette.warning.main;
+  // ADR 0043 decision 2: organisations, places and pets are drawn as squares in
+  // their own colour, so they cannot be mistaken for a contact (a circle).
+  const entityNodeColor = theme.palette.info.main;
+  const entityEdgeColor = theme.palette.text.secondary;
   const textColor = theme.palette.text.primary;
   const bgColor = theme.palette.background.paper;
 
@@ -156,6 +162,7 @@ export default function NetworkGraph({
       const isContact = node.type === 'contact';
       const isActivity = node.type === 'activity';
       const isCircleNode = node.type === 'circle';
+      const isEntity = node.type === 'entity';
       const size = getNodeSize(node.type);
       const fontSize = Math.max(10 / globalScale, 3);
       const isCentered = node.id === centeredNodeId;
@@ -169,9 +176,16 @@ export default function NetworkGraph({
         ctx.stroke();
       }
 
-      // Draw node circle
+      // Draw node shape: a circle, or a rounded square for an entity.
       ctx.beginPath();
-      ctx.arc(node.x || 0, node.y || 0, size, 0, 2 * Math.PI);
+      if (isEntity) {
+        const left = (node.x || 0) - size;
+        const top = (node.y || 0) - size;
+        if (typeof ctx.roundRect === 'function') ctx.roundRect(left, top, size * 2, size * 2, 3);
+        else ctx.rect(left, top, size * 2, size * 2);
+      } else {
+        ctx.arc(node.x || 0, node.y || 0, size, 0, 2 * Math.PI);
+      }
       if (isContact) {
         // Issue #1193: a deceased contact's node always gets the dedicated
         // deceased color, regardless of what health_band the backend also
@@ -188,6 +202,8 @@ export default function NetworkGraph({
           : (healthBandColor(node.health_band, theme) ?? nodeColor);
       } else if (isActivity) {
         ctx.fillStyle = activityNodeColor;
+      } else if (isEntity) {
+        ctx.fillStyle = entityNodeColor;
       } else {
         ctx.fillStyle = circleNodeColor;
       }
@@ -209,7 +225,7 @@ export default function NetworkGraph({
       }
 
       // Draw label below node when zoomed in enough
-      if (globalScale > 0.6 && (isContact || isActivity || isCircleNode)) {
+      if (globalScale > 0.6 && (isContact || isActivity || isCircleNode || isEntity)) {
         ctx.font = `${fontSize}px Helvetica, Helvetica Neue, Roboto, Arial, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'top';
@@ -221,6 +237,7 @@ export default function NetworkGraph({
       nodeColor,
       activityNodeColor,
       circleNodeColor,
+      entityNodeColor,
       bgColor,
       textColor,
       centeredNodeId,
@@ -237,9 +254,10 @@ export default function NetworkGraph({
     (link: GraphEdge) => {
       if (link.type === 'relationship') return relationshipColor;
       if (link.type === 'activity') return activityColor;
+      if (link.type === 'entity') return entityEdgeColor;
       return circleEdgeColor;
     },
-    [relationshipColor, activityColor, circleEdgeColor],
+    [relationshipColor, activityColor, circleEdgeColor, entityEdgeColor],
   );
 
   // Handle node hover
@@ -319,6 +337,7 @@ export default function NetworkGraph({
   const getEdgeTypeLabel = (type: string) => {
     if (type === 'relationship') return t('network.legend.relationships');
     if (type === 'activity') return t('network.legend.activities');
+    if (type === 'entity') return t('network.legend.entityEdge');
     return t('network.legend.circleEdge');
   };
 
@@ -336,18 +355,23 @@ export default function NetworkGraph({
   // interactive controls must stay siblings of the img-role node, never
   // nested inside it, or a screen reader user could lose the buttons this
   // ticket exists to add.
-  const graphSummary = t('network.graphSummary', {
-    contacts: t('network.graphSummaryContacts', {
-      count: graphData.nodes.filter((n) => n.type === 'contact').length,
-    }),
-    activities: t('network.graphSummaryActivities', {
-      count: graphData.nodes.filter((n) => n.type === 'activity').length,
-    }),
-    circles: t('network.graphSummaryCircles', {
-      count: graphData.nodes.filter((n) => n.type === 'circle').length,
-    }),
-    connections: t('network.graphSummaryConnections', { count: graphData.links.length }),
-  });
+  const entityCount = graphData.nodes.filter((n) => n.type === 'entity').length;
+  const graphSummary = t(
+    entityCount > 0 ? 'network.graphSummaryWithEntities' : 'network.graphSummary',
+    {
+      entities: t('network.graphSummaryEntities', { count: entityCount }),
+      contacts: t('network.graphSummaryContacts', {
+        count: graphData.nodes.filter((n) => n.type === 'contact').length,
+      }),
+      activities: t('network.graphSummaryActivities', {
+        count: graphData.nodes.filter((n) => n.type === 'activity').length,
+      }),
+      circles: t('network.graphSummaryCircles', {
+        count: graphData.nodes.filter((n) => n.type === 'circle').length,
+      }),
+      connections: t('network.graphSummaryConnections', { count: graphData.links.length }),
+    },
+  );
 
   // Issue #556: past the measured render ceiling, force-directed layout stops
   // settling and pins the main thread. Rather than hang the tab, render a
@@ -394,6 +418,7 @@ export default function NetworkGraph({
             ctx.fill();
           }}
           linkColor={linkColor}
+          linkLineDash={(link: GraphEdge) => (link.type === 'entity' ? [4, 3] : null)}
           linkWidth={2}
           linkDirectionalArrowLength={0}
           onNodeClick={handleNodeClick}
@@ -445,7 +470,9 @@ export default function NetworkGraph({
                   ? t('network.legend.contact')
                   : hoveredNode.type === 'activity'
                     ? t('network.legend.activity')
-                    : t('network.legend.circle')}
+                    : hoveredNode.type === 'entity'
+                      ? t(ENTITY_KIND_KEYS[hoveredNode.entity_kind ?? 'organisation'])
+                      : t('network.legend.circle')}
               </Typography>
               {hoveredNode.deceased && (
                 <Typography

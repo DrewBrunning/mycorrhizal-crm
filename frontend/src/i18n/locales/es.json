@@ -79,6 +79,7 @@
     "systemStatus": "Estado del sistema",
     "mainLabel": "Navegación principal",
     "skipToContent": "Saltar al contenido",
+    "entities": "Entidades",
     "sharedWithMe": "Compartido conmigo",
     "sharedByMe": "Compartido por mí",
     "sharedPendingBadge_one": "{{count}} recurso compartido espera tu respuesta",
@@ -735,7 +736,8 @@
       "customFieldsUngrouped": "Campos personalizados",
       "skills": "Habilidades e intereses",
       "work": "Trabajo",
-      "anniversaries": "Aniversarios"
+      "anniversaries": "Aniversarios",
+      "entities": "Organizaciones, lugares y mascotas"
     },
     "email": "Email",
     "phone": "Teléfono",
@@ -879,6 +881,49 @@
         "saved": "Visibilidad de campos guardada.",
         "resetDone": "Visibilidad de campos restablecida.",
         "saveError": "No se pudo guardar la visibilidad de los campos."
+      }
+    },
+    "entityLinks": {
+      "add": "Vincular",
+      "linkFromOwn": "Vincular un valor propio",
+      "empty": "Aún no está vinculado a ninguna organización, lugar ni mascota.",
+      "shownAsOrg": "Se muestra como organización",
+      "shownAsAdr": "Se muestra como dirección",
+      "notCurrent": "No vigente",
+      "primary": "Principal",
+      "primaryFor": "Principal: {{name}}",
+      "adoptHint": "Copia el valor en este contacto como propio, para que se conserve aunque se elimine el vínculo o la entidad.",
+      "adoptOrganisation": "Copiar {{name}} como organización propia",
+      "adoptPlace": "Copiar {{name}} como dirección propia",
+      "adopted": "Se copió {{name}} en este contacto.",
+      "editFor": "Editar vínculo con {{name}}",
+      "removeFor": "Quitar vínculo con {{name}}",
+      "removeConfirm": "¿Quitar el vínculo con {{name}}? La entidad en sí se conserva.",
+      "saved": "Vínculo guardado.",
+      "saveFailed": "No se pudo guardar este vínculo.",
+      "addTitle": "Vincular con una organización, lugar o mascota",
+      "editTitle": "Editar vínculo con {{name}}",
+      "kind": "Tipo",
+      "entity": "Organización, lugar o mascota",
+      "create": "Crear «{{name}}»",
+      "entityRequired": "Elige una organización, un lugar o una mascota, o escribe un nombre para crearla.",
+      "role": "Rol",
+      "roleLabel": "Detalle del rol (opcional)",
+      "primaryHelp": "Principal (se muestra en la ficha de este contacto)",
+      "yearInvalid": "Introduce los años con cuatro cifras, y el final no puede ser anterior al inicio.",
+      "projectedFrom": "de {{name}}",
+      "projectedFromUnknown": "de una entidad vinculada",
+      "projectedHint": "Se muestra desde la entidad vinculada. Cámbialo en la página de la entidad, o cópialo en este contacto para editarlo aquí.",
+      "fromOwn": {
+        "title": "Vincular un valor propio",
+        "intro": "Conecta una organización o dirección propia de este contacto con una entidad compartida. El valor se queda en el contacto.",
+        "value": "Valor",
+        "createNewOrganisation": "Crear una organización nueva a partir de este valor",
+        "createNewPlace": "Crear un lugar nuevo a partir de este valor",
+        "useExistingOrganisation": "Usar la organización existente «{{name}}»",
+        "link": "Vincular",
+        "linked": "Vinculado a {{name}}.",
+        "createdAndLinked": "Se creó {{name}} y se vinculó."
       }
     }
   },
@@ -2139,7 +2184,9 @@
       "contact": "Contacto",
       "activity": "Actividad",
       "circle": "Círculo",
-      "circleEdge": "Membresía de Círculo"
+      "circleEdge": "Membresía de Círculo",
+      "entity": "Organización, lugar o mascota",
+      "entityEdge": "Vinculado a"
     },
     "filterByContact": "Centrar en Contacto",
     "showCircles": "Círculos",
@@ -2178,7 +2225,13 @@
     "panLeft": "Desplazar hacia la izquierda",
     "panRight": "Desplazar hacia la derecha",
     "egoNotice": "Se muestra tu propio contacto y todas las personas a {{depth}} conexiones de distancia. Activa «Mostrar toda la red» para cargar todos los contactos.",
-    "showEntireNetwork": "Mostrar toda la red"
+    "showEntireNetwork": "Mostrar toda la red",
+    "showEntities": "Organizaciones, lugares y mascotas",
+    "graphSummaryWithEntities": "Diagrama de red: {{contacts}}, {{activities}}, {{circles}}, {{entities}}, {{connections}}. La misma información está disponible en la vista de lista de abajo.",
+    "graphSummaryEntities_one": "{{count}} organización, lugar o mascota",
+    "graphSummaryEntities_many": "{{count}} organizaciones, lugares o mascotas",
+    "graphSummaryEntities_other": "{{count}} organizaciones, lugares o mascotas",
+    "connectionEntity": "Vinculado a {{name}}"
   },
   "map": {
     "title": "Mapa de contactos",
@@ -2680,7 +2733,11 @@
     "createSuccess": "Campo personalizado creado.",
     "updateSuccess": "Campo personalizado actualizado.",
     "deleteSuccess": "Campo personalizado eliminado.",
-    "saveError": "No se pudo guardar el campo personalizado."
+    "saveError": "No se pudo guardar el campo personalizado.",
+    "appliesTo": "Se aplica a",
+    "targets": {
+      "contact": "Contacto"
+    }
   },
   "preference": {
     "title": "Preferencias",
@@ -4269,6 +4326,211 @@
     "uploadFailed": "No se pudo subir la foto.",
     "uploadDuplicate": "Esa foto ya está en las fotos del contacto, así que no se ha vuelto a añadir.",
     "uploading": "Subiendo..."
+  },
+  "entities": {
+    "title": "Organizaciones, lugares y mascotas",
+    "description": "Organizaciones, lugares y mascotas que comparten varios contactos. Cambia el nombre de una sola vez y todos los contactos vinculados lo reflejan.",
+    "tabsLabel": "Tipo de entidad",
+    "kind": {
+      "organisation": "Organización",
+      "place": "Lugar",
+      "pet": "Mascota"
+    },
+    "kindPlural": {
+      "organisation": "Organizaciones",
+      "place": "Lugares",
+      "pet": "Mascotas"
+    },
+    "new": {
+      "organisation": "Añadir organización",
+      "place": "Añadir lugar",
+      "pet": "Añadir mascota"
+    },
+    "empty": {
+      "organisation": "Aún no hay organizaciones. Añade una o créalas desde tus contactos en Ajustes.",
+      "place": "Aún no hay lugares. Añade uno o créalos desde tus contactos en Ajustes.",
+      "pet": "Aún no hay mascotas."
+    },
+    "search": "Buscar por nombre",
+    "noResults": "Nada coincide con tu búsqueda.",
+    "sensitivityLabel": "Sensibilidad",
+    "sensitivity": {
+      "normal": "Normal",
+      "private": "Privada",
+      "secret": "Secreta"
+    },
+    "fields": {
+      "name": "Nombre",
+      "sortAs": "Ordenar como",
+      "units": "Departamentos o unidades (uno por línea)",
+      "url": "Sitio web",
+      "notes": "Notas",
+      "street": "Calle",
+      "city": "Ciudad",
+      "region": "Región",
+      "postal": "Código postal",
+      "country": "País",
+      "address": "Dirección",
+      "species": "Especie",
+      "breed": "Raza",
+      "birth": "Nacimiento",
+      "death": "Fallecimiento",
+      "dateHint": "AAAA, AAAA-MM o AAAA-MM-DD"
+    },
+    "form": {
+      "editTitle": "Editar {{name}}",
+      "nameRequired": "Introduce un nombre.",
+      "invalidDate": "Introduce {{field}} como AAAA, AAAA-MM o AAAA-MM-DD.",
+      "saveFailed": "No se pudo guardar esta entidad.",
+      "created": "Se añadió {{name}}.",
+      "updated": "Se guardó {{name}}."
+    },
+    "detail": {
+      "back": "Todas las entidades",
+      "loadFailed": "No se pudo cargar esta entidad.",
+      "notFound": "Esta entidad no existe o se eliminó.",
+      "linkedCount_one": "Vinculada a {{count}} contacto",
+      "linkedCount_many": "Vinculada a {{count}} contactos",
+      "linkedCount_other": "Vinculada a {{count}} contactos",
+      "details": "Detalles",
+      "noDetails": "Aún no hay detalles.",
+      "customFields": "Campos personalizados",
+      "noCustomFields": "Aún no hay campos personalizados para este tipo. Añade uno en Ajustes, Datos, Campos personalizados.",
+      "customFieldsSaved": "Campo personalizado guardado.",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "merge": "Fusionar con otra…"
+    },
+    "people": {
+      "title": "Personas",
+      "empty": "Aún no hay contactos vinculados. Vincula esta entidad desde la página de un contacto.",
+      "primary": "Principal",
+      "loadFailed": "No se pudieron cargar los contactos vinculados."
+    },
+    "delete": {
+      "title": "¿Eliminar {{name}}?",
+      "projectsOrganisation_one": "{{name}} es la organización principal de {{count}} contacto; perderá esa organización.",
+      "projectsOrganisation_many": "{{name}} es la organización principal de {{count}} contactos; perderán esa organización.",
+      "projectsOrganisation_other": "{{name}} es la organización principal de {{count}} contactos; perderán esa organización.",
+      "projectsPlace_one": "{{name}} es el lugar principal de {{count}} contacto; perderá esa dirección.",
+      "projectsPlace_many": "{{name}} es el lugar principal de {{count}} contactos; perderán esa dirección.",
+      "projectsPlace_other": "{{name}} es el lugar principal de {{count}} contactos; perderán esa dirección.",
+      "links_one": "Está vinculada a {{count}} contacto en total. Esos vínculos se eliminan con ella.",
+      "links_many": "Está vinculada a {{count}} contactos en total. Esos vínculos se eliminan con ella.",
+      "links_other": "Está vinculada a {{count}} contactos en total. Esos vínculos se eliminan con ella.",
+      "plain": "{{name}} se eliminará. Podrás restaurarla justo después.",
+      "adoptOrganisation": "Conservar antes la organización en esos contactos (copiarla en cada contacto como valor propio)",
+      "adoptPlace": "Conservar antes la dirección en esos contactos (copiarla en cada contacto como valor propio)",
+      "adoptFailed_one": "No se pudo copiar a {{count}} contacto, así que no se eliminó nada.",
+      "adoptFailed_many": "No se pudo copiar a {{count}} contactos, así que no se eliminó nada.",
+      "adoptFailed_other": "No se pudo copiar a {{count}} contactos, así que no se eliminó nada.",
+      "confirm": "Eliminar",
+      "failed": "No se pudo eliminar esta entidad."
+    },
+    "deleted": {
+      "title": "Se eliminó {{name}}",
+      "body": "Ya no aparece en ningún contacto. Restáurala para recuperar la entidad y sus vínculos.",
+      "restore": "Restaurar",
+      "restored": "Se restauró {{name}}.",
+      "restoreFailed": "No se pudo restaurar esta entidad.",
+      "sameNameLive": "Ya existe otra entidad de este tipo con el mismo nombre; quizá quieras fusionarlas."
+    },
+    "merge": {
+      "title": "Fusionar {{name}}",
+      "intro": "{{loser}} se eliminará y sus contactos pasarán a {{survivor}}. No se fusiona nada si no lo confirmas aquí.",
+      "into": "Fusionar con",
+      "noCandidates": "No hay otra entidad de este tipo con la que fusionar.",
+      "swap": "Cambiar cuál se conserva",
+      "fill": "Copiar también estos datos de {{name}} (la que se conserva no los tiene):",
+      "confirm": "Fusionar",
+      "failed": "No se pudieron fusionar.",
+      "done": "Fusionada con {{name}}.",
+      "demoted_one": "{{count}} contacto tenía dos principales; se conservó la existente.",
+      "demoted_many": "{{count}} contactos tenían dos principales; se conservó la existente.",
+      "demoted_other": "{{count}} contactos tenían dos principales; se conservó la existente.",
+      "undoTitle": "{{name}} se fusionó y desapareció",
+      "undoBody": "Al restaurarla solo vuelve la entidad en sí; los vínculos se quedan con la que se conservó.",
+      "undo": "Restaurar {{name}}",
+      "summary_one": "Se movió {{count}} vínculo.",
+      "summary_many": "Se movieron {{count}} vínculos.",
+      "summary_other": "Se movieron {{count}} vínculos."
+    },
+    "suggestions": {
+      "title": "Posibles duplicados",
+      "description": "Entidades con el mismo nombre o uno muy parecido. No se fusiona nada si no lo decides tú.",
+      "load": "Buscar duplicados",
+      "none": "No se encontraron duplicados.",
+      "failed": "No se pudo buscar duplicados.",
+      "merge": "Fusionar…",
+      "dismiss": "No es un duplicado",
+      "dismissed": "Oculto para siempre.",
+      "pair": "{{a}} y {{b}}",
+      "reason": {
+        "exact_name": "Mismo nombre",
+        "normalized_name": "Nombre muy parecido",
+        "address_components": "Misma dirección"
+      }
+    },
+    "roles": {
+      "organisation": {
+        "employee": "Empleado/a",
+        "owner": "Propietario/a",
+        "contractor": "Contratista",
+        "volunteer": "Voluntario/a",
+        "member": "Miembro",
+        "other": "Otro"
+      },
+      "place": {
+        "resident": "Residente",
+        "owner": "Propietario/a",
+        "visitor": "Visitante",
+        "other": "Otro"
+      },
+      "pet": {
+        "owner": "Dueño/a",
+        "carer": "Cuidador/a",
+        "other": "Otro"
+      }
+    },
+    "fromContacts": {
+      "description": "Convierte las organizaciones y direcciones que ya tienen tus contactos en entidades compartidas. Nunca cambia ni elimina un valor de un contacto. Tú eliges cada grupo; no se crea nada automáticamente.",
+      "open": "Crear entidades desde mis contactos…",
+      "title": "Crear entidades desde mis contactos",
+      "intro": "Grupos de la misma organización o dirección encontrados en tus contactos. Marca los que quieras crear; puedes repetirlo cuando quieras, solo se ofrecen los valores aún sin vincular.",
+      "none": "No queda nada por crear a partir de tus contactos.",
+      "groupTitle_one": "{{name}} — {{count}} contacto",
+      "groupTitle_many": "{{name}} — {{count}} contactos",
+      "groupTitle_other": "{{name}} — {{count}} contactos",
+      "include": "Incluir {{name}}",
+      "nameOf": "Nombre de {{name}}",
+      "roleFor": "Rol para {{name}}",
+      "primary": "Establecer como principal",
+      "primaryFor": "Establecer como principal para {{name}}",
+      "hasPrimaryOrganisation_one": "{{count}} de ellos ya tiene una organización principal.",
+      "hasPrimaryOrganisation_many": "{{count}} de ellos ya tienen una organización principal.",
+      "hasPrimaryOrganisation_other": "{{count}} de ellos ya tienen una organización principal.",
+      "hasPrimaryPlace_one": "{{count}} de ellos ya tiene un lugar principal.",
+      "hasPrimaryPlace_many": "{{count}} de ellos ya tienen un lugar principal.",
+      "hasPrimaryPlace_other": "{{count}} de ellos ya tienen un lugar principal.",
+      "createOrganisation_one": "Crear {{count}} organización",
+      "createOrganisation_many": "Crear {{count}} organizaciones",
+      "createOrganisation_other": "Crear {{count}} organizaciones",
+      "createPlace_one": "Crear {{count}} lugar",
+      "createPlace_many": "Crear {{count}} lugares",
+      "createPlace_other": "Crear {{count}} lugares",
+      "createdOrganisation_one": "Se creó {{count}} organización.",
+      "createdOrganisation_many": "Se crearon {{count}} organizaciones.",
+      "createdOrganisation_other": "Se crearon {{count}} organizaciones.",
+      "createdPlace_one": "Se creó {{count}} lugar.",
+      "createdPlace_many": "Se crearon {{count}} lugares.",
+      "createdPlace_other": "Se crearon {{count}} lugares.",
+      "skip": {
+        "group_not_found": "{{name}}: ya no existe en tus contactos.",
+        "contact_not_in_group": "{{name}}: un contacto ya no pertenece a ese grupo.",
+        "name_invalid": "{{name}}: el nombre no es válido.",
+        "core_invalid": "{{name}}: sus datos no son válidos."
+      }
+    }
   },
   "standingShares": {
     "entityTypes": {

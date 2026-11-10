@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { CardEntryPeriod, CardOrganization, CardTitle } from '../api/contacts';
+import type { ContactEntityLink } from '../api/entities';
 import WorkList from './WorkList';
 
 afterEach(cleanup);
@@ -25,7 +27,11 @@ function renderList(props: Partial<React.ComponentProps<typeof WorkList>> = {}) 
     ...callbacks,
     ...props,
   };
-  render(<WorkList {...defaults} />);
+  render(
+    <MemoryRouter>
+      <WorkList {...defaults} />
+    </MemoryRouter>,
+  );
   return callbacks;
 }
 
@@ -136,4 +142,28 @@ test('declining the delete confirmation makes no callback', () => {
 
   expect(callbacks.onDeleteOrganization).not.toHaveBeenCalled();
   vi.unstubAllGlobals();
+});
+
+// ADR 0043 decision 3 / issue #2301: a primary organisation link projects an
+// entry whose id is `ent-<linkId>`. It shows a "from <entity>" chip and is
+// never editable or deletable as the contact's own value.
+test('a projected organisation shows its source chip and has no edit or delete', () => {
+  const callbacks = renderList({
+    organizations: [
+      { id: 'org-1', name: 'Mine' },
+      { id: 'ent-l1', name: 'Acme' },
+    ],
+    entityLinks: [{ id: 'l1', entity_id: 'e1', entity_name: 'Acme Corp' } as ContactEntityLink],
+    showTitles: false,
+    showWorkInformation: false,
+  });
+  const org = within(screen.getByRole('region', { name: 'Organizations' }));
+  expect(org.getByRole('link', { name: 'from Acme Corp' })).toHaveAttribute('href', '/entities/e1');
+  // Only the contact's own value carries edit/delete controls.
+  expect(org.getAllByRole('button', { name: 'Edit' })).toHaveLength(1);
+  expect(org.getAllByRole('button', { name: 'Delete' })).toHaveLength(1);
+  fireEvent.click(org.getByRole('button', { name: 'Edit' }));
+  expect(callbacks.onEditOrganization).toHaveBeenCalledWith(
+    expect.objectContaining({ id: 'org-1' }),
+  );
 });

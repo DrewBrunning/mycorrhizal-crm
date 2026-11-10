@@ -273,3 +273,45 @@ test('a server 400 on the group is surfaced', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   expect(await screen.findByText('group must be at most 100 characters')).toBeInTheDocument();
 });
+
+// ADR 0043 decision 5 / issue #2301: a custom field can target an organisation,
+// place or pet, not only a contact. Without a way to choose it, the entity
+// page's custom-fields section could never have a definition to show.
+test('create mode lets the field apply to an organisation, place or pet', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Account number' } });
+  fireEvent.change(screen.getByLabelText('Key *'), { target: { value: 'account_number' } });
+  fireEvent.mouseDown(screen.getByLabelText('Applies to'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Organisation' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0]).toMatchObject({
+    target: 'organisation',
+    projection: 'internal-only',
+  });
+});
+
+test('a contact field sends no target (the default) and keeps the export mapping', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'X' } });
+  fireEvent.change(screen.getByLabelText('Key *'), { target: { value: 'x' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await vi.waitFor(() => expect(onSave).toHaveBeenCalled());
+  expect(onSave.mock.calls[0][0]).not.toHaveProperty('target');
+});
+
+test('only contact fields can be mapped into vCard exports', async () => {
+  renderDialog();
+  expect(screen.getByLabelText('Export mapping')).toBeInTheDocument();
+  fireEvent.mouseDown(screen.getByLabelText('Applies to'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Pet' }));
+  expect(screen.queryByLabelText('Export mapping')).not.toBeInTheDocument();
+});
+
+test('the target of an existing field is shown but cannot change', () => {
+  renderDialog({ definition: existingDef({ target: 'place' }) });
+  const applies = screen.getByLabelText('Applies to');
+  expect(applies).toHaveAttribute('aria-disabled', 'true');
+});
