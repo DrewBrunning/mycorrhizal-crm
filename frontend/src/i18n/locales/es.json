@@ -25,6 +25,21 @@
       "banner": "Estás sin conexión. Es posible que algunas funciones no estén disponibles."
     }
   },
+  "globalSearch": {
+    "placeholder": "Buscar contactos, notas, actividades…",
+    "groupContacts": "Contactos",
+    "groupNotes": "Notas",
+    "groupActivities": "Actividades",
+    "seeAll": "Ver todos los resultados de «{{query}}»",
+    "noResults": "Sin resultados para «{{query}}».",
+    "pageTitle": "Resultados de búsqueda",
+    "tabsLabel": "Categorías de resultados de búsqueda",
+    "emptyContacts": "Ningún contacto coincide con «{{query}}».",
+    "emptyNotes": "Ninguna nota coincide con «{{query}}».",
+    "emptyActivities": "Ninguna actividad coincide con «{{query}}».",
+    "capped": "Se muestran las primeras {{limit}} coincidencias de esta categoría. Afina la búsqueda para acotarlas.",
+    "unfiled": "Nota sin archivar"
+  },
   "duplicates": {
     "reviewTitle": "Revisar duplicados",
     "none": "No se encontraron posibles duplicados.",
@@ -291,7 +306,6 @@
       "next": "Ir a la página siguiente",
       "last": "Ir a la última página"
     },
-    "search": "Buscar Contactos",
     "searchPlaceholder": "Buscar contactos…",
     "searchClear": "Borrar",
     "searchMinLengthHint": "Escribe al menos dos caracteres para buscar.",
