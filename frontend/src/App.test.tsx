@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
@@ -7,7 +7,7 @@ import { isAdmin } from './auth';
 import { AnnouncerProvider } from './context/AnnouncerContext';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
-import './i18n/config';
+import i18n from './i18n/config';
 
 // Mirrors index.tsx's real provider composition -- App itself doesn't
 // include these, they're only added at the root render call, so any
@@ -194,4 +194,175 @@ test('a stale AppBar search response does not clobber a newer query (#960)', asy
   } finally {
     vi.useRealTimers();
   }
+});
+
+// #1792: the brand logo used to sit after </nav>, outside every landmark, so
+// axe's `region` rule flagged it on every route. It must live inside the
+// navigation landmark.
+test('the sidebar brand logo is inside the main navigation landmark (#1792)', () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  setLoggedInUser(false);
+
+  renderApp();
+
+  const logo = screen.getByAltText('Mycorrhizal CRM');
+  const nav = logo.closest('nav');
+  expect(nav).not.toBeNull();
+  expect(nav).toHaveAttribute('aria-label', 'Main navigation');
+});
+
+// Issue #1915: with the shell served from the service worker cache but the API
+// unreachable, the app must say it is offline.
+test('shows the offline banner when the browser is offline', () => {
+  const original = Object.getOwnPropertyDescriptor(window.navigator, 'onLine');
+  Object.defineProperty(window.navigator, 'onLine', { configurable: true, value: false });
+  try {
+    setLoggedInUser(false);
+    renderApp();
+
+    expect(screen.getByText(i18n.t('app.offline.banner'))).toBeInTheDocument();
+  } finally {
+    if (original) Object.defineProperty(window.navigator, 'onLine', original);
+  }
+});
+
+// Issue #1917: a pushState navigation must move focus off the activated link
+// to the new page's heading, so assistive technology announces the new screen.
+test('a client-side navigation moves focus to the new page heading', async () => {
+  setLoggedInUser(false);
+  renderApp();
+
+  const contactsLinks = screen.getAllByRole('link', { name: 'Contacts' });
+  fireEvent.click(contactsLinks[0]);
+
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole('heading', { level: 1, name: 'Contacts' }),
+    ),
+  );
+});
+
+// #2154: Settings (/settings) is a path prefix of Data (/settings/data); the
+// drawer must mark only the most specific matching destination as current.
+function currentNavPaths(): string[] {
+  const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+  return Array.from(nav.querySelectorAll('a[aria-current="page"]')).map(
+    (a) => a.getAttribute('href') ?? '',
+  );
+}
+
+function visit(path: string) {
+  setLoggedInUser(false);
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  renderApp();
+}
+
+test('at /settings/data only the Data nav item is current', () => {
+  visit('/settings/data');
+  expect(currentNavPaths()).toEqual(['/settings/data']);
+});
+
+test('at /settings only the Settings nav item is current', () => {
+  visit('/settings');
+  expect(currentNavPaths()).toEqual(['/settings']);
+});
+
+test('a /settings/<other> route with no nav item of its own keeps Settings current', () => {
+  visit('/settings/security');
+  expect(currentNavPaths()).toEqual(['/settings']);
+});
+
+test('a path that merely shares a string prefix with a nav item is not current for it', () => {
+  visit('/contacts-archive');
+  expect(currentNavPaths()).toEqual([]);
+});
+
+// #2175: Shares, Audit log, Data, Users, System events and System status are
+// sub-items of Settings. URLs are unchanged; the group highlights with its child.
+const SETTINGS_CHILD_ROUTES: { path: string; label: string; adminOnly: boolean }[] = [
+  { path: '/shares', label: 'Shares', adminOnly: false },
+  { path: '/audit', label: 'Audit log', adminOnly: false },
+  { path: '/settings/data', label: 'Data', adminOnly: false },
+  { path: '/users', label: 'Users', adminOnly: true },
+  { path: '/system-events', label: 'System events', adminOnly: true },
+  { path: '/system-status', label: 'System status', adminOnly: true },
+];
+
+function navLink(label: string): HTMLElement {
+  const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+  const link = Array.from(nav.querySelectorAll('a')).find((a) => a.textContent === label);
+  if (!link) throw new Error(`no nav link ${label}`);
+  return link;
+}
+
+test.each(SETTINGS_CHILD_ROUTES)(
+  '$path highlights Settings and its own sub-item, only one as current page',
+  ({ path, label }) => {
+    vi.mocked(isAdmin).mockReturnValue(true);
+    setLoggedInUser(true);
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    renderApp();
+
+    expect(currentNavPaths()).toEqual([path]);
+    expect(navLink(label)).toHaveClass('Mui-selected');
+    expect(navLink('Settings')).toHaveClass('Mui-selected');
+    // The group is open on a child route so the user sees where they are.
+    expect(screen.getByRole('button', { name: 'Settings sub-pages' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+  },
+);
+
+test('Settings does not highlight on an unrelated route and its group starts collapsed', () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/contacts');
+  expect(navLink('Settings')).not.toHaveClass('Mui-selected');
+  expect(screen.getByRole('button', { name: 'Settings sub-pages' })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  );
+});
+
+test('the Settings toggle expands and collapses the sub-items', () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/contacts');
+  const toggle = screen.getByRole('button', { name: 'Settings sub-pages' });
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  expect(navLink('Audit log')).toHaveAttribute('href', '/audit');
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('admin-only sub-items are absent for non-admins and present for admins', () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/settings');
+  for (const { label, adminOnly } of SETTINGS_CHILD_ROUTES) {
+    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    const present = Array.from(nav.querySelectorAll('a')).some((a) => a.textContent === label);
+    expect(present).toBe(!adminOnly);
+  }
+  cleanup();
+  vi.mocked(isAdmin).mockReturnValue(true);
+  setLoggedInUser(true);
+  renderApp();
+  expect(navLink('Users')).toHaveAttribute('href', '/users');
+  expect(navLink('System status')).toHaveAttribute('href', '/system-status');
+});
+
+test('browser Back and Forward keep the highlight in step with the URL', async () => {
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/audit');
+  expect(currentNavPaths()).toEqual(['/audit']);
+  fireEvent.click(navLink('Data'));
+  await waitFor(() => expect(currentNavPaths()).toEqual(['/settings/data']));
+  await act(async () => {
+    window.history.back();
+    await new Promise((r) => setTimeout(r, 50));
+  });
+  await waitFor(() => expect(currentNavPaths()).toEqual(['/audit']));
+  expect(navLink('Settings')).toHaveClass('Mui-selected');
 });
