@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/dbfault"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -455,4 +457,62 @@ func TestBuildAccountBundle_OmitsLinkOfRemovedContact(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, bundle.Plan.Entities, 1)
 	assert.Empty(t, bundle.Plan.EntityLinks)
+}
+
+// A database failure at any entity-phase statement of a bundle restore either
+// fails the import (nothing is left behind) or is reported as a stable
+// per-row write failure: never raw driver text.
+func TestAccountBundle_EntityRestoreDatabaseFailures(t *testing.T) {
+	logtest.AllowWarnings(t, "the fault sweep deliberately fails statements; the import logs each failed row")
+	srcDB := dbtest.New(t)
+	owner := bundleTestUser(t, srcDB, "ent-fault-owner")
+	seedFullAccount(t, srcDB, owner, "FLT")
+	useBundlePhotoDir(t)
+	exported, _, err := BuildAccountBundle(srcDB, owner.ID, "")
+	require.NoError(t, err)
+
+	setup := func() (*gorm.DB, models.User) {
+		db := dbtest.New(t, dbtest.WithFaults())
+		return db, bundleTestUser(t, db, "ent-fault-dest")
+	}
+	run := func(db *gorm.DB, u models.User) (*ImportReport, error) {
+		report, _, err := ExecuteSourceImportWithActions(t.Context(), db, u.ID, MapAccountBundle(exported), map[string]SourceContactAction{}, nil)
+		return report, err
+	}
+
+	db, u := setup()
+	inj := dbfault.For(db)
+	inj.Record()
+	_, err = run(db, u)
+	require.NoError(t, err)
+	stmts := inj.Statements()
+	inj.Disarm()
+
+	var targets []int
+	firstEntity := -1
+	for i, s := range stmts {
+		if s.Table == "entities" && firstEntity < 0 {
+			firstEntity = i
+		}
+	}
+	require.GreaterOrEqual(t, firstEntity, 0)
+	for i := firstEntity; i < len(stmts); i++ {
+		targets = append(targets, i+1)
+	}
+	for _, n := range targets {
+		db, u := setup()
+		inj := dbfault.For(db)
+		inj.FailNth(n)
+		report, err := run(db, u)
+		inj.Disarm()
+		if err != nil {
+			var rows int64
+			require.NoError(t, db.Model(&models.Entity{}).Where("user_id = ?", u.ID).Count(&rows).Error)
+			assert.Zero(t, rows, "statement %d (%s) failed the import: nothing may be left behind", n, stmts[n-1])
+			continue
+		}
+		for _, issue := range report.Issues {
+			assert.NotContains(t, issue.Message, dbfault.Marker, "statement %d (%s)", n, stmts[n-1])
+		}
+	}
 }

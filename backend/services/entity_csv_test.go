@@ -2,14 +2,18 @@ package services
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
+	"testing/iotest"
 
+	"mycorrhizal/internal/dbfault"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 const (
@@ -123,4 +127,51 @@ func TestParseEntityCSVSections_ShortRowsAndRowCap(t *testing.T) {
 	u := bundleTestUser(t, db, "csv-too-many")
 	_, err = RestoreEntityCSV(context.Background(), db, u.ID, strings.NewReader(csvBackup(b.String(), "", "")))
 	require.Error(t, err)
+}
+
+func TestParseEntityCSVSections_ReadErrorIsReturned(t *testing.T) {
+	_, _, err := ParseEntityCSVSections(iotest.ErrReader(errors.New("disk gone")))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid CSV format")
+}
+
+// A database failure at any statement of a restore rolls everything back: an
+// error is returned, or the failed row is reported, and no partial state
+// outlives a returned error.
+func TestRestoreEntityCSV_DatabaseFailuresLeaveNothingBehind(t *testing.T) {
+	body := csvBackup(
+		csvEnt1+",organisation,Acme,normal,{},,,\n",
+		"l1,1,Ada,"+csvEnt1+",Acme,organisation,employee,,true,,,normal,"+csvUID+"\n",
+		csvEnt1+",industry,\"\"\"x\"\"\"\n")
+
+	setup := func() (*gorm.DB, models.User) {
+		db := dbtest.New(t, dbtest.WithFaults())
+		u := bundleTestUser(t, db, "csv-fault")
+		require.NoError(t, db.Create(&models.Contact{UserID: u.ID, VCardUID: csvUID, Firstname: "Ada"}).Error)
+		require.NoError(t, db.Create(&models.FieldDefinition{UserID: u.ID, Label: "Industry", Key: "industry", Target: "organisation", Type: models.FieldTypeText, Projection: "internal-only", Sensitivity: "normal"}).Error)
+		return db, u
+	}
+	db, u := setup()
+	inj := dbfault.For(db)
+	inj.Record()
+	_, err := RestoreEntityCSV(context.Background(), db, u.ID, strings.NewReader(body))
+	require.NoError(t, err)
+	stmts := inj.Statements()
+	inj.Disarm()
+	require.NotEmpty(t, stmts)
+
+	for n := 1; n <= len(stmts); n++ {
+		db, u := setup()
+		inj := dbfault.For(db)
+		inj.FailNth(n)
+		rep, err := RestoreEntityCSV(context.Background(), db, u.ID, strings.NewReader(body))
+		inj.Disarm()
+		if err != nil {
+			var rows int64
+			require.NoError(t, db.Model(&models.Entity{}).Where("user_id = ?", u.ID).Count(&rows).Error)
+			assert.Zero(t, rows, "statement %d (%s) failed: the restore must roll back", n, stmts[n-1])
+			continue
+		}
+		assert.NotNil(t, rep, "statement %d (%s)", n, stmts[n-1])
+	}
 }

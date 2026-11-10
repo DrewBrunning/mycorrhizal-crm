@@ -14,10 +14,13 @@ import (
 	"testing"
 
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/dbfault"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"mycorrhizal/services"
 
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -228,4 +231,72 @@ func TestExportCSV_EntitySectionsRoundTrip(t *testing.T) {
 	again, err := services.RestoreEntityCSV(context.Background(), dst, dest.ID, strings.NewReader(body))
 	require.NoError(t, err)
 	assert.Zero(t, again.EntitiesCreated+again.LinksCreated+again.FieldValuesCreated)
+}
+
+// A trashed entity whose links and values were left behind (the entity was
+// soft-deleted directly, not through the delete cascade) is not exported, so
+// every reference in the entity sections resolves.
+func TestExportCSV_EntitySectionsSkipRowsOfTrashedEntities(t *testing.T) {
+	fx := seedCSVFullFidelity(t)
+	seedCSVEntities(t, fx.db, fx.user.ID, fx.ada, fx.bob)
+	var org models.Entity
+	require.NoError(t, fx.db.Where("user_id = ? AND kind = ?", fx.user.ID, "organisation").First(&org).Error)
+	require.NoError(t, fx.db.Delete(&org).Error)
+
+	body := csvEntExport(t, fx.router)
+	assert.Len(t, csvEntRows(t, csvEntSection(t, body, "=== ENTITIES ===")), 3, "header + place + pet")
+	links := csvEntRows(t, csvEntSection(t, body, "=== ENTITY LINKS ==="))
+	require.Len(t, links, 2, "only the pet's link remains")
+	assert.Equal(t, "owner", links[1][6])
+	assert.Len(t, csvEntRows(t, csvEntSection(t, body, "=== ENTITY FIELDS ===")), 1, "the trashed organisation's values are not exported")
+}
+
+func TestExportCSV_EntityNotesColumnToleratesUnreadableCore(t *testing.T) {
+	assert.Equal(t, "n", entityNotes(models.Entity{Core: `{"notes":"n"}`}))
+	assert.Empty(t, entityNotes(models.Entity{Core: `not json`}))
+}
+
+// A database failure while reading any entity section's rows fails the export
+// with a 500 and never hands back a half-written file.
+func TestExportCSV_EntitySectionsDatabaseFailuresFailTheExport(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test legitimately logs: Failed to fetch ... for export; Request error")
+	db := dbtest.New(t, dbtest.WithFaults())
+	user := models.User{Username: "csvfault", Password: "password123!A", Email: "csvfault@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	ada := models.Contact{UserID: user.ID, Firstname: "Ada", Lastname: "L"}
+	bob := models.Contact{UserID: user.ID, Firstname: "Bob", Lastname: "S"}
+	require.NoError(t, db.Create(&ada).Error)
+	require.NoError(t, db.Create(&bob).Error)
+	seedCSVEntities(t, db, user.ID, ada, bob)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.New()
+	router.Use(func(c *gin.Context) { c.Set("db", db); c.Set("userID", user.ID); c.Next() })
+	router.GET("/export", ExportData)
+
+	inj := dbfault.For(db)
+	require.NotNil(t, inj)
+	inj.Record()
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/export", nil))
+	require.Equal(t, http.StatusOK, w.Code)
+	stmts := inj.Statements()
+	inj.Disarm()
+
+	first := -1
+	for i, s := range stmts {
+		if s.Table == "entities" && first < 0 {
+			first = i + 1
+		}
+	}
+	require.Positive(t, first, "the export must query entities: %v", stmts)
+	for n := first; n <= len(stmts); n++ {
+		inj.FailNth(n)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/export", nil))
+		assert.Equal(t, http.StatusInternalServerError, w.Code, "statement %d (%s) failing must fail the export", n, stmts[n-1])
+		assert.NotContains(t, w.Header().Get("Content-Disposition"), "attachment")
+		assert.NotContains(t, w.Body.String(), dbfault.Marker, "no database error text leaks")
+		inj.Disarm()
+	}
 }
