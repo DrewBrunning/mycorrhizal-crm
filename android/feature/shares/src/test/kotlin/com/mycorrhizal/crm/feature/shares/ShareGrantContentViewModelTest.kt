@@ -46,7 +46,9 @@ class ShareGrantContentViewModelTest {
     )
 
     @Test
-    fun `loads the content for the grant id on init`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `loads the content for the grant id on init`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         coEvery { repository.content("g1") } returns Result.success(noteContent)
         val vm = ShareGrantContentViewModel(repository, handle())
         advanceUntilIdle()
@@ -103,24 +105,25 @@ class ShareGrantContentViewModelTest {
     }
 
     @Test
-    fun `reloading never shows the previous content while a new read is pending or failed`() = runTest(
-        mainDispatcherRule.testDispatcher
-    ) {
-        coEvery { repository.content("g1") } returnsMany listOf(
-            Result.success(noteContent),
-            Result.failure(ApiError.Network(java.io.IOException("offline")))
-        )
-        val vm = ShareGrantContentViewModel(repository, handle())
-        advanceUntilIdle()
-        assertNotNull(vm.uiState.value.content)
+    fun `reloading never shows the previous content while a new read is pending or failed`() =
+        runTest(
+            mainDispatcherRule.testDispatcher
+        ) {
+            coEvery { repository.content("g1") } returnsMany listOf(
+                Result.success(noteContent),
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            )
+            val vm = ShareGrantContentViewModel(repository, handle())
+            advanceUntilIdle()
+            assertNotNull(vm.uiState.value.content)
 
-        vm.load()
-        advanceUntilIdle()
+            vm.load()
+            advanceUntilIdle()
 
-        assertNull(vm.uiState.value.content)
-        assertNull(vm.uiState.value.contact)
-        assertNotNull(vm.uiState.value.error)
-    }
+            assertNull(vm.uiState.value.content)
+            assertNull(vm.uiState.value.contact)
+            assertNotNull(vm.uiState.value.error)
+        }
 
     @Test
     fun `a revoked grant is unavailable, not an error to retry`() = runTest(
@@ -135,7 +138,9 @@ class ShareGrantContentViewModelTest {
     }
 
     @Test
-    fun `a missing grant id never calls the repository`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a missing grant id never calls the repository`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         val vm = ShareGrantContentViewModel(repository, SavedStateHandle())
         advanceUntilIdle()
 

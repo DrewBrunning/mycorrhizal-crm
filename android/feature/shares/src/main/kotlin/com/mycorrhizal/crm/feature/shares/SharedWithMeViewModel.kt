@@ -48,9 +48,8 @@ data class SharedWithMeUiState(
  * state lives only in memory and a failed reload drops the rows instead of keeping stale ones.
  */
 @HiltViewModel
-class SharedWithMeViewModel @Inject constructor(
-    private val repository: ShareGrantRepository
-) : ViewModel() {
+class SharedWithMeViewModel @Inject constructor(private val repository: ShareGrantRepository) :
+    ViewModel() {
 
     private val _uiState = MutableStateFlow(SharedWithMeUiState())
     val uiState: StateFlow<SharedWithMeUiState> = _uiState.asStateFlow()

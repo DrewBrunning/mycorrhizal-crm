@@ -133,15 +133,31 @@ fun SharedByMeScreen(onBack: () -> Unit, viewModel: SharedByMeViewModel = hiltVi
         }
     }
 
-    state.prompt?.let { prompt -> OwnerPromptDialog(prompt, state.busy, viewModel) }
-    state.edit?.let { edit -> EditGrantDialog(edit, viewModel) }
+    state.prompt?.let { prompt ->
+        OwnerPromptDialog(
+            prompt = prompt,
+            busy = state.busy,
+            onDismiss = viewModel::dismissPrompt,
+            onConfirm = viewModel::confirmPrompt
+        )
+    }
+    state.edit?.let { edit ->
+        EditGrantDialog(
+            edit = edit,
+            onToggleSection = viewModel::toggleEditSection,
+            onExpiryChange = viewModel::setEditExpiry,
+            onSave = viewModel::saveEdit,
+            onClose = viewModel::closeEdit
+        )
+    }
 }
 
 @Composable
 private fun OwnerPromptDialog(
     prompt: SharedByMePrompt,
     busy: Boolean,
-    viewModel: SharedByMeViewModel
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
 ) {
     val grant = prompt.grant
     val (title, message, confirm) = when (prompt) {
@@ -156,18 +172,22 @@ private fun OwnerPromptDialog(
             stringResource(
                 R.string.shares_grant_reconfirm_message,
                 grant.toUsername,
-                grant.reconfirmSections.map { stringResource(sectionLabelRes(it)) }.joinToString(", ")
+                grant.reconfirmSections.map {
+                    stringResource(
+                        sectionLabelRes(it)
+                    )
+                }.joinToString(", ")
             ),
             stringResource(R.string.shares_grant_reconfirm_confirm)
         )
     }
     AlertDialog(
-        onDismissRequest = viewModel::dismissPrompt,
+        onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text(message) },
         confirmButton = {
             TextButton(
-                onClick = viewModel::confirmPrompt,
+                onClick = onConfirm,
                 enabled = !busy,
                 modifier = Modifier.testTag("grant-prompt-confirm")
             ) {
@@ -175,7 +195,7 @@ private fun OwnerPromptDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = viewModel::dismissPrompt, enabled = !busy) {
+            TextButton(onClick = onDismiss, enabled = !busy) {
                 Text(stringResource(R.string.action_cancel))
             }
         }
@@ -207,7 +227,9 @@ private fun OutgoingGrantRow(
             GrantCaption(stringResource(R.string.shares_to, grant.toUsername))
             GrantCaption(stringResource(grantStatusLabelRes(grant.status)))
             if (grant.isLive) {
-                GrantCaption(expiryText(grant.expiresAt) ?: stringResource(R.string.shares_grant_no_expiry))
+                GrantCaption(
+                    expiryText(grant.expiresAt) ?: stringResource(R.string.shares_grant_no_expiry)
+                )
             }
             grant.memberCount?.takeIf { grant.entityType == ShareGrantEntityTypes.CIRCLE }?.let {
                 GrantCaption(pluralStringResource(R.plurals.shares_content_members, it, it))
@@ -244,7 +266,9 @@ private fun revokedReasonRes(grant: OutgoingShareGrant): Int? =
     } else {
         when (grant.revokedReason) {
             ShareGrantRevokedReasons.OWNER_REVOKED -> R.string.shares_revoked_reason_owner
+
             ShareGrantRevokedReasons.ENTITY_DELETED -> R.string.shares_revoked_reason_entity_deleted
+
             ShareGrantRevokedReasons.RECIPIENT_DELETED ->
                 R.string.shares_revoked_reason_recipient_deleted
 
@@ -253,9 +277,15 @@ private fun revokedReasonRes(grant: OutgoingShareGrant): Int? =
     }
 
 @Composable
-private fun EditGrantDialog(edit: ShareGrantEditState, viewModel: SharedByMeViewModel) {
+private fun EditGrantDialog(
+    edit: ShareGrantEditState,
+    onToggleSection: (String, Boolean) -> Unit,
+    onExpiryChange: (ExpiryChoice) -> Unit,
+    onSave: () -> Unit,
+    onClose: () -> Unit
+) {
     AlertDialog(
-        onDismissRequest = viewModel::closeEdit,
+        onDismissRequest = onClose,
         title = { Text(stringResource(R.string.shares_edit_title)) },
         text = {
             Column(
@@ -274,7 +304,7 @@ private fun EditGrantDialog(edit: ShareGrantEditState, viewModel: SharedByMeView
                             .fillMaxWidth()
                             .toggleable(
                                 value = checked,
-                                onValueChange = { viewModel.toggleEditSection(token, it) },
+                                onValueChange = { onToggleSection(token, it) },
                                 role = Role.Checkbox
                             )
                     ) {
@@ -293,25 +323,25 @@ private fun EditGrantDialog(edit: ShareGrantEditState, viewModel: SharedByMeView
                 ExpiryOption(
                     label = stringResource(R.string.shares_expiry_keep),
                     selected = edit.expiry == ExpiryChoice.Keep,
-                    onSelect = { viewModel.setEditExpiry(ExpiryChoice.Keep) }
+                    onSelect = { onExpiryChange(ExpiryChoice.Keep) }
                 )
                 ExpiryOption(
                     label = stringResource(R.string.shares_expiry_none),
                     selected = edit.expiry == ExpiryChoice.None,
-                    onSelect = { viewModel.setEditExpiry(ExpiryChoice.None) }
+                    onSelect = { onExpiryChange(ExpiryChoice.None) }
                 )
                 EXPIRY_PRESET_DAYS.forEach { days ->
                     ExpiryOption(
                         label = pluralStringResource(R.plurals.shares_expiry_days, days, days),
                         selected = edit.expiry == ExpiryChoice.Days(days),
-                        onSelect = { viewModel.setEditExpiry(ExpiryChoice.Days(days)) }
+                        onSelect = { onExpiryChange(ExpiryChoice.Days(days)) }
                     )
                 }
             }
         },
         confirmButton = {
             TextButton(
-                onClick = viewModel::saveEdit,
+                onClick = onSave,
                 enabled = !edit.saving,
                 modifier = Modifier.testTag("grant-edit-save")
             ) {
@@ -319,7 +349,7 @@ private fun EditGrantDialog(edit: ShareGrantEditState, viewModel: SharedByMeView
             }
         },
         dismissButton = {
-            TextButton(onClick = viewModel::closeEdit, enabled = !edit.saving) {
+            TextButton(onClick = onClose, enabled = !edit.saving) {
                 Text(stringResource(R.string.action_cancel))
             }
         }

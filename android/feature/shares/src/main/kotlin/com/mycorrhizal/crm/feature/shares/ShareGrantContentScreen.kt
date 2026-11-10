@@ -129,59 +129,71 @@ private fun GrantContentBody(content: ShareGrantContent, contact: SharedContactV
 
 @Composable
 private fun ContactBody(contact: SharedContactView) {
-    Text(
-        text = contact.displayName.ifBlank { stringResource(R.string.shares_entity_contact) },
-        style = MaterialTheme.typography.headlineSmall
-    )
-    contact.nickname?.let { GrantCaption(stringResource(R.string.shares_content_nickname, it)) }
-    contact.sections.forEach { section ->
-        LabelledLines(stringResource(sectionLabelRes(section.token)), section.lines)
+    Column {
+        Text(
+            text = contact.displayName.ifBlank { stringResource(R.string.shares_entity_contact) },
+            style = MaterialTheme.typography.headlineSmall
+        )
+        contact.nickname?.let { GrantCaption(stringResource(R.string.shares_content_nickname, it)) }
+        contact.sections.forEach { section ->
+            LabelledLines(stringResource(sectionLabelRes(section.token)), section.lines)
+        }
     }
 }
 
 @Composable
 private fun NoteBody(note: SharedNote) {
     val dateFormat = LocalDateFormat.current
-    Text(text = note.content, style = MaterialTheme.typography.bodyLarge)
-    DateFormat.formatTimestamp(note.date, dateFormat).takeIf { it.isNotBlank() }
-        ?.let { GrantCaption(it) }
+    Column {
+        Text(text = note.content, style = MaterialTheme.typography.bodyLarge)
+        DateFormat.formatTimestamp(note.date, dateFormat).takeIf { it.isNotBlank() }
+            ?.let { GrantCaption(it) }
+    }
 }
 
 @Composable
 private fun ActivityBody(activity: SharedActivity) {
     val dateFormat = LocalDateFormat.current
-    Text(text = activity.title, style = MaterialTheme.typography.headlineSmall)
-    if (activity.description.isNotBlank()) {
-        Text(text = activity.description, style = MaterialTheme.typography.bodyLarge)
-    }
-    val date = DateFormat.formatTimestamp(activity.date, dateFormat)
-    val end = DateFormat.formatTimestamp(activity.endDate, dateFormat)
-    if (date.isNotBlank()) LabelledLines(stringResource(R.string.shares_content_date), listOf(date))
-    if (end.isNotBlank()) LabelledLines(stringResource(R.string.shares_content_ends), listOf(end))
-    if (activity.location.isNotBlank()) {
-        LabelledLines(stringResource(R.string.shares_content_location), listOf(activity.location))
-    }
-    if (activity.type.isNotBlank()) {
-        LabelledLines(stringResource(R.string.shares_content_type), listOf(activity.type))
+    Column {
+        Text(text = activity.title, style = MaterialTheme.typography.headlineSmall)
+        if (activity.description.isNotBlank()) {
+            Text(text = activity.description, style = MaterialTheme.typography.bodyLarge)
+        }
+        val date = DateFormat.formatTimestamp(activity.date, dateFormat)
+        val end = DateFormat.formatTimestamp(activity.endDate, dateFormat)
+        if (date.isNotBlank()) LabelledLines(stringResource(R.string.shares_content_date), listOf(date))
+        if (end.isNotBlank()) LabelledLines(stringResource(R.string.shares_content_ends), listOf(end))
+        if (activity.location.isNotBlank()) {
+            LabelledLines(stringResource(R.string.shares_content_location), listOf(activity.location))
+        }
+        if (activity.type.isNotBlank()) {
+            LabelledLines(stringResource(R.string.shares_content_type), listOf(activity.type))
+        }
     }
 }
 
 @Composable
 private fun CircleBody(circle: SharedCircle) {
-    Text(text = circle.name, style = MaterialTheme.typography.headlineSmall)
-    if (circle.description.isNotBlank()) {
-        Text(text = circle.description, style = MaterialTheme.typography.bodyLarge)
-    }
-    GrantCaption(
-        pluralStringResource(R.plurals.shares_content_members, circle.memberCount, circle.memberCount)
-    )
-    circle.members.forEach { member ->
-        Text(
-            text = member.displayName.ifBlank { stringResource(R.string.shares_entity_contact) },
-            style = MaterialTheme.typography.bodyMedium
+    Column {
+        Text(text = circle.name, style = MaterialTheme.typography.headlineSmall)
+        if (circle.description.isNotBlank()) {
+            Text(text = circle.description, style = MaterialTheme.typography.bodyLarge)
+        }
+        GrantCaption(
+            pluralStringResource(
+                R.plurals.shares_content_members,
+                circle.memberCount,
+                circle.memberCount
+            )
         )
-    }
-    if (circle.membersTruncated) {
-        GrantCaption(stringResource(R.string.shares_content_members_truncated))
+        circle.members.forEach { member ->
+            Text(
+                text = member.displayName.ifBlank { stringResource(R.string.shares_entity_contact) },
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        if (circle.membersTruncated) {
+            GrantCaption(stringResource(R.string.shares_content_members_truncated))
+        }
     }
 }

@@ -39,11 +39,19 @@ class ShareGrantRepositoryImplTest {
     fun `owner mutations forward to the client`() = runTest {
         val input = ShareGrantInput(9, "contact", "uid", listOf("emails"))
         val patch = ShareGrantPatch(clearExpiry = true)
-        coEvery { apiClient.createShareGrant(input) } returns Result.success(OutgoingShareGrant("g"))
+        coEvery {
+            apiClient.createShareGrant(
+                input
+            )
+        } returns Result.success(OutgoingShareGrant("g"))
         coEvery { apiClient.updateShareGrant("g", patch, 3) } returns
             Result.success(OutgoingShareGrant("g"))
         coEvery { apiClient.revokeShareGrant("g") } returns Result.success(OutgoingShareGrant("g"))
-        coEvery { apiClient.reconfirmShareGrant("g") } returns Result.success(OutgoingShareGrant("g"))
+        coEvery {
+            apiClient.reconfirmShareGrant(
+                "g"
+            )
+        } returns Result.success(OutgoingShareGrant("g"))
 
         assertTrue(repository.create(input).isSuccess)
         assertTrue(repository.update("g", patch, 3).isSuccess)
@@ -72,7 +80,9 @@ class ShareGrantRepositoryImplTest {
     fun `content blocks and notifications forward and failures propagate`() = runTest {
         coEvery { apiClient.getShareGrantContent("g") } returns
             Result.success(ShareGrantContent(grantId = "g"))
-        coEvery { apiClient.listShareBlocks() } returns Result.success(listOf(ShareBlock(7, "dana")))
+        coEvery { apiClient.listShareBlocks() } returns Result.success(
+            listOf(ShareBlock(7, "dana"))
+        )
         coEvery { apiClient.deleteShareBlock(7) } returns Result.success(Unit)
         coEvery { apiClient.getShareGrantNotifications() } returns
             Result.failure(ApiError.Client(404, "x"))

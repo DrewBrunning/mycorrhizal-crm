@@ -226,7 +226,10 @@ fun ContactSharesScreen(
 
 /** The standing-share entry points, with the pending count on "Shared with me". */
 @Composable
-private fun StandingSharesLinks(onOpenSharedWithMe: (() -> Unit)?, onOpenSharedByMe: (() -> Unit)?) {
+private fun StandingSharesLinks(
+    onOpenSharedWithMe: (() -> Unit)?,
+    onOpenSharedByMe: (() -> Unit)?
+) {
     if (onOpenSharedWithMe == null && onOpenSharedByMe == null) return
     val pending = LocalPendingShareGrantCount.current
     Row(
@@ -238,7 +241,11 @@ private fun StandingSharesLinks(onOpenSharedWithMe: (() -> Unit)?, onOpenSharedB
             TextButton(onClick = open, modifier = Modifier.testTag("open-shared-with-me")) {
                 Text(stringResource(R.string.shares_open_shared_with_me))
                 if (pending > 0) {
-                    val description = pluralStringResource(R.plurals.shares_pending_count, pending, pending)
+                    val description = pluralStringResource(
+                        R.plurals.shares_pending_count,
+                        pending,
+                        pending
+                    )
                     Badge(
                         modifier = Modifier.padding(start = 6.dp).semantics {
                             contentDescription = description

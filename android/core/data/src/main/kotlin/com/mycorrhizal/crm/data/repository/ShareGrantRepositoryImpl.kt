@@ -17,11 +17,15 @@ import javax.inject.Inject
 class ShareGrantRepositoryImpl @Inject constructor(private val apiClient: ApiClient) :
     ShareGrantRepository {
 
-    override suspend fun listIncoming(cursor: String?, limit: Int): Result<IncomingShareGrantsPage> =
-        apiClient.listIncomingShareGrants(cursor, limit)
+    override suspend fun listIncoming(
+        cursor: String?,
+        limit: Int
+    ): Result<IncomingShareGrantsPage> = apiClient.listIncomingShareGrants(cursor, limit)
 
-    override suspend fun listOutgoing(cursor: String?, limit: Int): Result<OutgoingShareGrantsPage> =
-        apiClient.listOutgoingShareGrants(cursor, limit)
+    override suspend fun listOutgoing(
+        cursor: String?,
+        limit: Int
+    ): Result<OutgoingShareGrantsPage> = apiClient.listOutgoingShareGrants(cursor, limit)
 
     override suspend fun create(input: ShareGrantInput): Result<OutgoingShareGrant> =
         apiClient.createShareGrant(input)

@@ -70,9 +70,8 @@ data class SharedByMeUiState(
  * offers a wider list.
  */
 @HiltViewModel
-class SharedByMeViewModel @Inject constructor(
-    private val repository: ShareGrantRepository
-) : ViewModel() {
+class SharedByMeViewModel @Inject constructor(private val repository: ShareGrantRepository) :
+    ViewModel() {
 
     /** The clock for "N days from now"; tests replace it. */
     internal var now: () -> Instant = { Instant.now() }

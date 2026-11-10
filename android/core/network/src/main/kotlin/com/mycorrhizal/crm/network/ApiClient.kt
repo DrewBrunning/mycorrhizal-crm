@@ -67,20 +67,6 @@ import com.mycorrhizal.crm.model.network.ContactRecordInput
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactRemindersResponse
 import com.mycorrhizal.crm.model.network.ContactScoreResponse
-import com.mycorrhizal.crm.model.network.IncomingShareGrant
-import com.mycorrhizal.crm.model.network.IncomingShareGrantResponse
-import com.mycorrhizal.crm.model.network.IncomingShareGrantsPage
-import com.mycorrhizal.crm.model.network.OutgoingShareGrant
-import com.mycorrhizal.crm.model.network.OutgoingShareGrantResponse
-import com.mycorrhizal.crm.model.network.OutgoingShareGrantsPage
-import com.mycorrhizal.crm.model.network.ShareBlock
-import com.mycorrhizal.crm.model.network.ShareBlocksResponse
-import com.mycorrhizal.crm.model.network.ShareGrantContent
-import com.mycorrhizal.crm.model.network.ShareGrantContentResponse
-import com.mycorrhizal.crm.model.network.ShareGrantDeclineInput
-import com.mycorrhizal.crm.model.network.ShareGrantInput
-import com.mycorrhizal.crm.model.network.ShareGrantNotifications
-import com.mycorrhizal.crm.model.network.ShareGrantPatch
 import com.mycorrhizal.crm.model.network.ContactShare
 import com.mycorrhizal.crm.model.network.ContactShareInput
 import com.mycorrhizal.crm.model.network.ContactSharesPage
@@ -171,6 +157,9 @@ import com.mycorrhizal.crm.model.network.ImportRecordsRequest
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
+import com.mycorrhizal.crm.model.network.IncomingShareGrant
+import com.mycorrhizal.crm.model.network.IncomingShareGrantResponse
+import com.mycorrhizal.crm.model.network.IncomingShareGrantsPage
 import com.mycorrhizal.crm.model.network.InviteeSuggestionsResponse
 import com.mycorrhizal.crm.model.network.JobRunHealthResponse
 import com.mycorrhizal.crm.model.network.JobRunsResponse
@@ -210,6 +199,9 @@ import com.mycorrhizal.crm.model.network.OccasionEventInput
 import com.mycorrhizal.crm.model.network.OccasionEventsResponse
 import com.mycorrhizal.crm.model.network.OidcNativeExchangeRequest
 import com.mycorrhizal.crm.model.network.OidcNativeExchangeResponse
+import com.mycorrhizal.crm.model.network.OutgoingShareGrant
+import com.mycorrhizal.crm.model.network.OutgoingShareGrantResponse
+import com.mycorrhizal.crm.model.network.OutgoingShareGrantsPage
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
 import com.mycorrhizal.crm.model.network.OverdueDataDecayPoliciesResponse
 import com.mycorrhizal.crm.model.network.PaperlessConfigInput
@@ -248,6 +240,14 @@ import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.model.network.SessionInfo
 import com.mycorrhizal.crm.model.network.SessionsResponse
 import com.mycorrhizal.crm.model.network.SetMainImageRequest
+import com.mycorrhizal.crm.model.network.ShareBlock
+import com.mycorrhizal.crm.model.network.ShareBlocksResponse
+import com.mycorrhizal.crm.model.network.ShareGrantContent
+import com.mycorrhizal.crm.model.network.ShareGrantContentResponse
+import com.mycorrhizal.crm.model.network.ShareGrantDeclineInput
+import com.mycorrhizal.crm.model.network.ShareGrantInput
+import com.mycorrhizal.crm.model.network.ShareGrantNotifications
+import com.mycorrhizal.crm.model.network.ShareGrantPatch
 import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.SourceImportStatus
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
@@ -3251,7 +3251,10 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     /** POST /api/v1/share-grants/{id}/decline — [block] also blocks the sender (ADR 0042 decision 8). */
     suspend fun declineShareGrant(id: String, block: Boolean): Result<IncomingShareGrant> =
         if (block) {
-            executePost("$SHARE_GRANTS_PATH/$id/decline", ShareGrantDeclineInput(block = true)) { _, body ->
+            executePost(
+                "$SHARE_GRANTS_PATH/$id/decline",
+                ShareGrantDeclineInput(block = true)
+            ) { _, body ->
                 moshi.adapter(IncomingShareGrantResponse::class.java).fromJson(body)?.shareGrant
             }
         } else {

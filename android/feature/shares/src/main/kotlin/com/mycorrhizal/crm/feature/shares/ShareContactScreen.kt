@@ -306,19 +306,20 @@ fun ShareContactScreen(
 
 @Composable
 private fun shareButtonLabel(state: ShareContactUiState): String = when {
-    state.mode == ShareMode.STANDING && state.isSharing -> stringResource(R.string.shares_standing_sharing)
+    state.mode == ShareMode.STANDING && state.isSharing -> stringResource(
+        R.string.shares_standing_sharing
+    )
+
     state.mode == ShareMode.STANDING -> stringResource(R.string.shares_standing_share_button)
+
     state.isSharing -> stringResource(R.string.shares_sharing)
+
     else -> stringResource(R.string.shares_share_button)
 }
 
 /** The one-time vs standing choice (ADR 0042 decision 12). One-time is the default. */
 @Composable
-private fun ShareModeChooser(
-    mode: ShareMode,
-    onModeChange: (ShareMode) -> Unit,
-    enabled: Boolean
-) {
+private fun ShareModeChooser(mode: ShareMode, onModeChange: (ShareMode) -> Unit, enabled: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = stringResource(R.string.shares_mode_label),

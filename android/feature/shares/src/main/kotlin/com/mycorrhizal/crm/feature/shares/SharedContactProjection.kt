@@ -145,12 +145,11 @@ private fun partialDate(date: Any?): Triple<Int?, Int?, Int?>? {
 private val ISO_DATE = Regex("""(\d{4})-(\d{2})-(\d{2})""")
 
 /** The default date rendering: ISO, with absent parts left out. */
-internal fun isoDate(year: Int?, month: Int?, day: Int?): String =
-    listOfNotNull(
-        year?.let { "%04d".format(it) },
-        month?.let { "%02d".format(it) },
-        day?.let { "%02d".format(it) }
-    ).joinToString("-")
+internal fun isoDate(year: Int?, month: Int?, day: Int?): String = listOfNotNull(
+    year?.let { "%04d".format(it) },
+    month?.let { "%02d".format(it) },
+    day?.let { "%02d".format(it) }
+).joinToString("-")
 
 private fun vCardPropLine(prop: Any?): String? = when (prop) {
     is List<*> -> {
@@ -178,8 +177,14 @@ private fun entries(value: Any?): List<Map<String, Any?>> {
 
 /** Keys of a `{ "name": true }` set (or any-valued map), or the strings of a plain list. */
 private fun keys(value: Any?, anyValue: Boolean = false): List<String> = when (value) {
-    is Map<*, *> -> value.entries.filter { anyValue || it.value == true }.mapNotNull { text(it.key) }
+    is Map<*, *> -> value.entries.filter { anyValue || it.value == true }.mapNotNull {
+        text(
+            it.key
+        )
+    }
+
     is List<*> -> value.mapNotNull(::text)
+
     else -> emptyList()
 }
 

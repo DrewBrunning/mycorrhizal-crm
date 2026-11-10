@@ -92,7 +92,8 @@ fun SharedWithMeScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         RefreshableContent(
-            isRefreshing = state.isLoading && (state.grants.isNotEmpty() || state.blocks.isNotEmpty()),
+            isRefreshing =
+                state.isLoading && (state.grants.isNotEmpty() || state.blocks.isNotEmpty()),
             onRefresh = viewModel::load,
             modifier = Modifier.fillMaxSize().padding(padding)
         ) {
@@ -155,14 +156,22 @@ fun SharedWithMeScreen(
         }
     }
 
-    state.prompt?.let { prompt -> RecipientPromptDialog(prompt, state.busy, viewModel) }
+    state.prompt?.let { prompt ->
+        RecipientPromptDialog(
+            prompt = prompt,
+            busy = state.busy,
+            onDismiss = viewModel::dismissPrompt,
+            onConfirm = viewModel::confirmPrompt
+        )
+    }
 }
 
 @Composable
 private fun RecipientPromptDialog(
     prompt: SharedWithMePrompt,
     busy: Boolean,
-    viewModel: SharedWithMeViewModel
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
 ) {
     val grant = prompt.grant
     val (title, message, confirm) = when (prompt) {
@@ -185,12 +194,12 @@ private fun RecipientPromptDialog(
         )
     }
     AlertDialog(
-        onDismissRequest = viewModel::dismissPrompt,
+        onDismissRequest = onDismiss,
         title = { Text(title) },
         text = { Text(message) },
         confirmButton = {
             TextButton(
-                onClick = viewModel::confirmPrompt,
+                onClick = onConfirm,
                 enabled = !busy,
                 modifier = Modifier.testTag("grant-prompt-confirm")
             ) {
@@ -198,7 +207,7 @@ private fun RecipientPromptDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = viewModel::dismissPrompt, enabled = !busy) {
+            TextButton(onClick = onDismiss, enabled = !busy) {
                 Text(stringResource(R.string.action_cancel))
             }
         }

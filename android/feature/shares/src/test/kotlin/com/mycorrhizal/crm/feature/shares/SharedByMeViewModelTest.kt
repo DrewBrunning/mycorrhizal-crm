@@ -124,7 +124,9 @@ class SharedByMeViewModelTest {
     }
 
     @Test
-    fun `a failed revoke surfaces the error and reloads`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `a failed revoke surfaces the error and reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLoad(contactGrant)
         coEvery { repository.revoke("g1") } returns Result.failure(ApiError.Client(404, "x"))
         val vm = newVm()
@@ -168,7 +170,9 @@ class SharedByMeViewModelTest {
     }
 
     @Test
-    fun `saving sends only what changed with the revision`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `saving sends only what changed with the revision`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLoad(contactGrant)
         val patch = slot<ShareGrantPatch>()
         coEvery { repository.update("g1", capture(patch), 3) } returns Result.success(contactGrant)
@@ -190,7 +194,13 @@ class SharedByMeViewModelTest {
     fun `the expiry can be set from now or cleared`() = runTest(mainDispatcherRule.testDispatcher) {
         stubLoad(contactGrant)
         val patches = mutableListOf<ShareGrantPatch>()
-        coEvery { repository.update("g1", capture(patches), 3) } returns Result.success(contactGrant)
+        coEvery {
+            repository.update(
+                "g1",
+                capture(patches),
+                3
+            )
+        } returns Result.success(contactGrant)
         val vm = newVm()
         advanceUntilIdle()
 
@@ -210,7 +220,9 @@ class SharedByMeViewModelTest {
     }
 
     @Test
-    fun `saving with no change does not call the server`() = runTest(mainDispatcherRule.testDispatcher) {
+    fun `saving with no change does not call the server`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
         stubLoad(contactGrant)
         val vm = newVm()
         advanceUntilIdle()

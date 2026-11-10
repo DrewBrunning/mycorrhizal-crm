@@ -16,9 +16,8 @@ import kotlinx.coroutines.launch
  * showing a stale number.
  */
 @HiltViewModel
-class ShareGrantBadgeViewModel @Inject constructor(
-    private val repository: ShareGrantRepository
-) : ViewModel() {
+class ShareGrantBadgeViewModel @Inject constructor(private val repository: ShareGrantRepository) :
+    ViewModel() {
 
     private val _pendingCount = MutableStateFlow(0)
     val pendingCount: StateFlow<Int> = _pendingCount.asStateFlow()

@@ -76,7 +76,9 @@ class ShareGrantApiClientTest {
 
     @Test
     fun `create posts only the allowlisted body and unwraps share_grant`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(201).setBody("""{"share_grant":$outgoingJson}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(201).setBody("""{"share_grant":$outgoingJson}""")
+        )
         val grant = client.createShareGrant(
             ShareGrantInput(
                 toUserId = 9,
@@ -100,7 +102,11 @@ class ShareGrantApiClientTest {
     @Test
     fun `patch sends If-Match and an explicit null to clear the expiry`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"share_grant":$outgoingJson}"""))
-        client.updateShareGrant("g1", ShareGrantPatch(clearExpiry = true), revision = 4).getOrThrow()
+        client.updateShareGrant(
+            "g1",
+            ShareGrantPatch(clearExpiry = true),
+            revision = 4
+        ).getOrThrow()
         val request = server.takeRequest()
         assertEquals("PATCH", request.method)
         assertEquals("/api/v1/share-grants/g1", request.path)
@@ -166,20 +172,21 @@ class ShareGrantApiClientTest {
     }
 
     @Test
-    fun `content parses each allowlisted view and keeps the contact as a generic map`() = runBlocking {
-        server.enqueue(
-            MockResponse().setBody(
-                """{"share_grant_content":{"grant_id":"g1","entity_type":"contact",
+    fun `content parses each allowlisted view and keeps the contact as a generic map`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"share_grant_content":{"grant_id":"g1","entity_type":"contact",
                 "owner_username":"dana","contact":{"@type":"Card","name":{"full":"Dana White"}}}}"""
+                )
             )
-        )
-        val content = client.getShareGrantContent("g1").getOrThrow()
-        val request = server.takeRequest()
-        assertEquals("GET", request.method)
-        assertEquals("/api/v1/share-grants/g1/content", request.path)
-        assertEquals("dana", content.ownerUsername)
-        assertEquals("Card", content.contact?.get("@type"))
-    }
+            val content = client.getShareGrantContent("g1").getOrThrow()
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/share-grants/g1/content", request.path)
+            assertEquals("dana", content.ownerUsername)
+            assertEquals("Card", content.contact?.get("@type"))
+        }
 
     @Test
     fun `content parses circle members`() = runBlocking {
