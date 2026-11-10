@@ -334,8 +334,9 @@ in CI via `RunDataIntegrityChecks`.
 
 #### INV-D9 — The FTS search index matches canonical data, modulo its contract
 
-> Every live (`deleted_at IS NULL`) `contacts` / `notes` / `activities` row is present in its FTS5
-> index (`contacts_fts` / `notes_fts` / `activities_fts`) with the indexed columns and `user_id`
+> Every live (`deleted_at IS NULL`) `contacts` / `notes` / `activities` / `entities` row is present in its FTS5
+> index (`contacts_fts` / `notes_fts` / `activities_fts` / `entities_fts`; the last is keyed by `entity_id`, not
+> rowid, issue #2472) with the indexed columns and `user_id`
 > equal to the base row's; no index row references a base row that no longer exists. The index is
 > **not** authoritative on deletion or archive state — a soft-deleted or archived row *may or may
 > not* sit in the index, and that is not a divergence.

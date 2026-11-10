@@ -1,11 +1,11 @@
 # Rebuilding the full-text search index
 
 Full-text search (`GET /api/v1/search`, and `GET /contacts?search=`) is served
-by three SQLite FTS5 virtual tables — `contacts_fts`, `notes_fts`,
-`activities_fts` — kept in sync with the base tables by SQL triggers
-(migrations `000007`, `000010`, `000020`). The index is **derived data**: it
-holds nothing that is not reconstructable from `contacts`, `notes`, and
-`activities`, so it can be rebuilt at any time and a rebuild always converges
+by four SQLite FTS5 virtual tables — `contacts_fts`, `notes_fts`,
+`activities_fts`, `entities_fts` — kept in sync with the base tables by SQL
+triggers (migrations `000007`, `000010`, `000020`, and `000093` for entities).
+The index is **derived data**: it holds nothing that is not reconstructable
+from `contacts`, `notes`, `activities`, and `entities`, so it can be rebuilt at any time and a rebuild always converges
 on exactly what the triggers would have produced.
 
 The web app's top-bar search and its `/search?q=` results page
@@ -16,6 +16,17 @@ notes, activities) is its own tab. Notes and activities carry no sensitivity
 level, so the owner's search returns all of them; contacts follow the existing
 `/search` rules. Nothing about the index changes for this, so no rebuild is
 needed when upgrading.
+
+Reusable entities (organisations, places, pets; issue
+[#2472](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2472)) are the
+fourth category. `entities_fts` indexes the entity **name only**: `entities.core`
+is encrypted at rest, so a trigger could only see ciphertext, and custom field
+values are never indexed. It is keyed by `entity_id` rather than rowid (the
+entity id is a TEXT UUID and its rowid is not stable across `VACUUM`).
+Migration `000093` backfills it from the existing live entities, so no rebuild
+is needed when upgrading. The owner's search returns entities of every
+sensitivity (ADR 0043 decision 4); the MCP `search_contacts` tool never returns
+them.
 
 This document is the operator procedure for that rebuild (SEARCH-01, issue
 [#461](https://github.com/DrewBrunning/mycorrhizal-crm/issues/461)).
@@ -67,7 +78,7 @@ curl -fsS -X POST https://<host>/api/v1/admin/search/rebuild \
 ```json
 {
   "message": "Search index rebuilt",
-  "indexed": { "contacts": 1284, "notes": 4021, "activities": 903 }
+  "indexed": { "contacts": 1284, "notes": 4021, "activities": 903, "entities": 37 }
 }
 ```
 
@@ -87,7 +98,7 @@ terminal open.
 
 ```sh
 cd backend && go run ./cmd/backfill-search-index -db "$SQLITE_DB_PATH"
-# → Search index rebuilt successfully: contacts=1284 notes=4021 activities=903
+# → Search index rebuilt successfully: contacts=1284 notes=4021 activities=903 entities=37
 ```
 
 Same rebuild, same guarantees. This path is for a developer or an operator who
@@ -95,12 +106,12 @@ runs the binary directly rather than in the shipped container.
 
 ## Guarantees
 
-- **All three indexes, every time.** `contacts_fts`, `notes_fts`, and
-  `activities_fts` are rebuilt together. A zero count means "no live rows of
+- **All four indexes, every time.** `contacts_fts`, `notes_fts`,
+  `activities_fts`, and `entities_fts` are rebuilt together. A zero count means "no live rows of
   that kind", never "that index was skipped".
 
 - **Atomic — never a partial index.** The whole rebuild (clear + repopulate
-  all three tables) runs in one transaction. A crash, a cancelled request, or
+  all four tables) runs in one transaction. A crash, a cancelled request, or
   a SQL error rolls it back, leaving the previously-good index exactly as it
   was. On commit, WAL switches every reader to the new index at once. There is
   no moment where search sees a half-built index, and an interrupted rebuild

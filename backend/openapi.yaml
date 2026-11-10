@@ -12545,14 +12545,19 @@ paths:
 
   /search:
     get:
-      summary: Full-text search across contacts, notes, and interactions
+      summary: Full-text search across contacts, notes, interactions, and entities
       operationId: searchAll
       tags:
         - Search
       description: >
-        FTS5-backed search (T11) over the caller's contacts, notes, and
-        interactions (activities), grouped into three sections. User-scoped
-        (never crosses users); soft-deleted and secret items are excluded. When
+        FTS5-backed search (T11) over the caller's contacts, notes,
+        interactions (activities), and reusable entities (organisations,
+        places, pets; issue #2472), grouped into four sections. User-scoped
+        (never crosses users); soft-deleted and secret items are excluded,
+        except that entities are matched by name only and the owner sees every
+        entity sensitivity (ADR 0043 decision 4; each hit carries its
+        sensitivity). Entity text other than the name (the encrypted core) and
+        entity custom-field values are not searchable. When
         the whole query is a relation-type synonym ("brother"), resolved_relation
         echoes the canonical token ("sibling_of").
       parameters:
@@ -16370,11 +16375,12 @@ paths:
                   indexed:
                     type: object
                     description: Rows written to each FTS index (live rows only).
-                    required: [contacts, notes, activities]
+                    required: [contacts, notes, activities, entities]
                     properties:
                       contacts: { type: integer, format: int64, example: 1284 }
                       notes: { type: integer, format: int64, example: 4021 }
                       activities: { type: integer, format: int64, example: 903 }
+                      entities: { type: integer, format: int64, example: 37 }
   /admin/contacts/rebuild-derived:
     post:
       summary: Rebuild the denormalized contact columns (admin)
@@ -21220,6 +21226,19 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/SearchActivityHit"
+        entities:
+          type: array
+          description: Reusable entities whose name matches (issue #2472).
+          items:
+            $ref: "#/components/schemas/SearchEntityHit"
+    SearchEntityHit:
+      type: object
+      description: A matched reusable entity (matched on its name only).
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [organisation, place, pet] }
+        name: { type: string }
+        sensitivity: { type: string, enum: [normal, private, secret] }
     SearchContactHit:
       type: object
       description: A matched contact (the slim ContactSummary shape) plus a snippet.

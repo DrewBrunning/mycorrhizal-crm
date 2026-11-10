@@ -60,10 +60,13 @@ const (
 // names — so it is safe to log and to surface on an admin diagnostics
 // response.
 type FTSDivergence struct {
-	Index   string   `json:"index"`
-	RowID   int64    `json:"rowid"`
-	Class   string   `json:"class"`
-	Columns []string `json:"columns,omitempty"`
+	Index string `json:"index"`
+	RowID int64  `json:"rowid"`
+	// EntityID is set instead of RowID for entities_fts, which is keyed by the
+	// entity's UUID (a rowid is not stable on a TEXT-keyed table; migration 000093).
+	EntityID string   `json:"entity_id,omitempty"`
+	Class    string   `json:"class"`
+	Columns  []string `json:"columns,omitempty"`
 }
 
 // FTSConsistencyResult is the outcome of CheckSearchIndexConsistency.
@@ -133,7 +136,7 @@ var ftsConsistencySpecs = []ftsConsistencySpec{
 	{"activities_fts", "activities", []string{"title", "description", "location"}},
 }
 
-// CheckSearchIndexConsistency validates all three FTS indexes against
+// CheckSearchIndexConsistency validates all four FTS indexes against
 // canonical data under the contract documented above, read-only. It is cheap —
 // every query is an indexed join on the rowid/PK — so it is safe to run from
 // the scheduled integrity job and from the on-demand diagnostics sweep.
@@ -187,7 +190,74 @@ func CheckSearchIndexConsistency(db *gorm.DB) (FTSConsistencyResult, error) {
 		res.Divergences = append(res.Divergences, content...)
 	}
 
+	ents, capped, err := checkEntitiesFTSConsistency(db)
+	if err != nil {
+		return res, err
+	}
+	res.Truncated = res.Truncated || capped
+	res.Divergences = append(res.Divergences, ents...)
+
 	return res, nil
+}
+
+// checkEntitiesFTSConsistency is the entities_fts leg of INV-D9 (issue #2472).
+// Same contract as the rowid-keyed indexes, joined on entity_id: a live entity
+// missing from the index, an index row whose entity does not exist at all (a
+// soft-deleted entity is not an orphan), a user_id mismatch, and a name/kind
+// mismatch. Read-only; never carries a value, only column names.
+func checkEntitiesFTSConsistency(db *gorm.DB) ([]FTSDivergence, bool, error) {
+	const index = "entities_fts"
+	var out []FTSDivergence
+	truncated := false
+	idChecks := []struct {
+		class string
+		query string
+	}{
+		{FTSDivergenceMissingFromIndex, `SELECT b.id FROM entities b LEFT JOIN entities_fts f ON f.entity_id = b.id
+			WHERE b.deleted_at IS NULL AND f.entity_id IS NULL ORDER BY b.id LIMIT ?`},
+		{FTSDivergenceOrphanInIndex, `SELECT f.entity_id FROM entities_fts f LEFT JOIN entities b ON b.id = f.entity_id
+			WHERE b.id IS NULL ORDER BY f.entity_id LIMIT ?`},
+		{FTSDivergenceScopeMismatch, `SELECT f.entity_id FROM entities_fts f JOIN entities b ON b.id = f.entity_id
+			WHERE b.deleted_at IS NULL AND f.user_id IS NOT b.user_id ORDER BY f.entity_id LIMIT ?`},
+	}
+	for _, c := range idChecks {
+		var ids []string
+		if err := db.Raw(c.query, ftsDivergenceCapPerClass+1).Scan(&ids).Error; err != nil {
+			return nil, false, fmt.Errorf("fts consistency (%s %s): %w", index, c.class, err)
+		}
+		if len(ids) > ftsDivergenceCapPerClass {
+			ids, truncated = ids[:ftsDivergenceCapPerClass], true
+		}
+		for _, id := range ids {
+			out = append(out, FTSDivergence{Index: index, EntityID: id, Class: c.class})
+		}
+	}
+
+	var rows []struct {
+		EntityID string
+		MName    bool
+		MKind    bool
+	}
+	if err := db.Raw(`SELECT f.entity_id AS entity_id, (f.name IS NOT b.name) AS m_name, (f.kind IS NOT b.kind) AS m_kind
+		FROM entities_fts f JOIN entities b ON b.id = f.entity_id
+		WHERE b.deleted_at IS NULL AND (f.name IS NOT b.name OR f.kind IS NOT b.kind)
+		ORDER BY f.entity_id LIMIT ?`, ftsDivergenceCapPerClass+1).Scan(&rows).Error; err != nil {
+		return nil, false, fmt.Errorf("fts consistency (%s %s): %w", index, FTSDivergenceContentMismatch, err)
+	}
+	if len(rows) > ftsDivergenceCapPerClass {
+		rows, truncated = rows[:ftsDivergenceCapPerClass], true
+	}
+	for _, r := range rows {
+		var cols []string
+		if r.MName {
+			cols = append(cols, "name")
+		}
+		if r.MKind {
+			cols = append(cols, "kind")
+		}
+		out = append(out, FTSDivergence{Index: index, EntityID: r.EntityID, Class: FTSDivergenceContentMismatch, Columns: cols})
+	}
+	return out, truncated, nil
 }
 
 // ftsContentMismatches runs the per-column comparison for one index and

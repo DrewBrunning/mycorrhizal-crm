@@ -145,10 +145,11 @@ known gap owned by #380, out of scope here.
 The stores a conventional privacy review forgets, because nobody *decided* to keep the data —
 it accumulated as a side effect.
 
-### 3.1 Full-text search index (`contacts_fts`, `notes_fts`, `activities_fts`)
+### 3.1 Full-text search index (`contacts_fts`, `notes_fts`, `activities_fts`, `entities_fts`)
 
 - **Contents**: tokenized copy of contact names/emails/phones/addresses, note bodies, and activity
-  text — held **independently of the source rows**, and **in plaintext even when at-rest
+  text, plus the **name** of each organisation, place or pet (`entities_fts`, keyed by `entity_id`;
+  the encrypted `entities.core` and entity field values are never indexed) — held **independently of the source rows**, and **in plaintext even when at-rest
   encryption is armed** (the FTS5 index cannot be encrypted column-wise; documented in
   `data-retention-lifecycle.md` §6/§10).
 - **Scope**: per-user (`user_id UNINDEXED` column scopes every query).
@@ -267,7 +268,7 @@ what it actually provides:
 
 | Owed | Provided? |
 |---|---|
-| The operator can **find everything about one person** | Yes — FTS search (`contacts_fts` + `notes_fts` + `activities_fts`) covers names, note bodies, and activity text; the contact detail view aggregates every hung-off entity |
+| The operator can **find everything about one person** | Yes — FTS search (`contacts_fts` + `notes_fts` + `activities_fts` + `entities_fts`) covers names, note bodies, activity text, and entity names; the contact detail view aggregates every hung-off entity |
 | The operator can **remove everything about one person** | Yes for a person who is a `Contact` — `DeleteContact` cascades every dependent row in one transaction (`contact_controller.go`, the canonical checklist in backend/AGENTS.md trap #6), then the 30-day purge hard-deletes. **Partial** for a person mentioned only inside a free-text note or activity belonging to a *different* contact: they are findable by search but not individually deletable — the operator must edit the note. Stated as a known limit in `../privacy.md` |
 | Data about them does not silently outlive a delete | Mostly — see [§8](#8-deletion-completeness). The deliberate exceptions (audit window, backups) are documented, not silent |
 | Data about them is not propagated further than they'd expect | `sensitivity` ≥ `private` is excluded from CardDAV/CalDAV, contact shares, and the vCard/JSContact exports **in the query**; `suggested` (unconfirmed) relationship edges are never projected to standards or graphed. Both classifications ride along uncensored in the user's own flat CSV backup (`GET /export`), labelled by column — that file stays on the data subject's own controller's device rather than propagating outward, so the boundary it crosses is custody, not disclosure (§11 of `data-retention-lifecycle.md`, issue [#861](https://github.com/DrewBrunning/mycorrhizal-crm/issues/861)) |
@@ -299,7 +300,7 @@ the sentinel values; `DELETE` it; then inspect each store the inventory lists.
 |---|---|---|
 | `contacts` + hung-off rows (`notes`, `activities`, `reminders`, `life_events`, `preferences`, `gifts`, `conversation_agenda`, `attachments`, `occasion_obligations`, `cadence_policies`, `data_decay_policies`) | `deleted_at` set (soft) — invisible to every API query | hard-deleted by `PurgeSoftDeletedRows` (its coverage of every soft-deletable table is enforced by `services/purge_completeness_test.go`, issue [#1310](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1310)) |
 | Edge/join rows (`relationship_edges`, `circle_members`, `contact_tags`, `household_members`, `activity_contacts`, `contact_sync_links`, `occasion_event_attendees`, `life_event_suggestion_resolutions`) | **hard-deleted synchronously** in the same transaction | — |
-| `contacts_fts` / `notes_fts` / `activities_fts` | **row gone immediately** via trigger — unsearchable at once | — |
+| `contacts_fts` / `notes_fts` / `activities_fts` / `entities_fts` | **row gone immediately** via trigger — unsearchable at once | — |
 | Attachment file on disk | **deleted immediately** after the transaction commits | — |
 | `audit_events.before_snapshot` | **retained** — holds a redacted snapshot of the deleted contact | hard-deleted at `AUDIT_RETENTION_DAYS` (90), i.e. ~60 days *after* the row itself is purged. **Deliberate**, documented in `../privacy.md` |
 | `webhook_deliveries.payload` | **retained** if a webhook fired on this contact — a plaintext copy of the deleted contact | hard-deleted at `WEBHOOK_DELIVERY_RETENTION_DAYS` (30), i.e. ~30 days after the delivery attempt; successful (2xx) deliveries no longer hold the entity body at all (only the event envelope) |

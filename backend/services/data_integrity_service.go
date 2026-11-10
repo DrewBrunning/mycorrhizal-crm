@@ -818,6 +818,7 @@ func checkDerivedIndexes(ctx context.Context, db *gorm.DB, _ config.Config) ([]I
 		{"contacts_fts", "contacts"},
 		{"notes_fts", "notes"},
 		{"activities_fts", "activities"},
+		{"entities_fts", "entities"},
 	}
 	var out []IntegrityFinding
 	for _, p := range pairs {

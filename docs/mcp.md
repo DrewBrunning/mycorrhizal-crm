@@ -50,7 +50,9 @@ Four read-only tools, matching the REST read endpoints:
 | `list_timeline` | `GET /api/v1/contacts/:id/timeline` |
 | `run_cadence_report` | `GET /api/v1/cadence-policies/overdue` |
 
-There are no write tools in v1. Limits are clamped server-side, never rejected.
+There are no write tools in v1. Limits are clamped server-side, never rejected. `search_contacts` returns
+contacts, notes and activities only: reusable entities (organisations, places, pets), which `GET /api/v1/search`
+returns as a fourth section, are not an MCP surface (ADR 0043 section 4).
 
 ## Sensitivity
 

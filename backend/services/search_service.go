@@ -58,6 +58,21 @@ type SearchResult struct {
 	Contacts         []SearchContactHit  `json:"contacts"`
 	Notes            []SearchNoteHit     `json:"notes"`
 	Activities       []SearchActivityHit `json:"activities"`
+	// Entities are reusable organisations, places and pets matched by name
+	// (issue #2472, part of #2174). Filled by SearchPage only; SearchPageScoped
+	// (the MCP path) leaves it empty because entities are not an MCP surface
+	// (ADR 0043 section 4).
+	Entities []SearchEntityHit `json:"entities"`
+}
+
+// SearchEntityHit is a matched reusable entity: just enough to label and link
+// it. The owner sees every sensitivity (ADR 0043 decision 4); the match is on
+// the entity name only, because entities.core is encrypted at rest.
+type SearchEntityHit struct {
+	ID          string `json:"id"`
+	Kind        string `json:"kind"`
+	Name        string `json:"name"`
+	Sensitivity string `json:"sensitivity"`
 }
 
 // SearchContactHit is a matched contact (the slim ContactSummary shape) plus
@@ -213,11 +228,59 @@ func Search(db *gorm.DB, userID uint, term string, limit int, householdID *strin
 	return SearchPage(db, userID, term, limit, 0, householdID)
 }
 
-// SearchPage is Search with an offset applied to each of the three result
+// SearchPage is Search with an offset applied to each of the four result
 // sections (the MCP search_contacts tool's pagination); offset 0 is exactly
 // Search. A negative offset is treated as 0.
 func SearchPage(db *gorm.DB, userID uint, term string, limit, offset int, householdID *string) (*SearchResult, error) {
-	return SearchPageScoped(db, userID, term, limit, offset, householdID, true)
+	result, err := SearchPageScoped(db, userID, term, limit, offset, householdID, true)
+	if err != nil {
+		return nil, err
+	}
+	if len([]rune(result.Query)) < 2 {
+		return result, nil // same gate as SearchPageScoped: result.Query is the NFC-normalised term
+	}
+	if offset < 0 {
+		offset = 0
+	}
+	result.Entities, err = searchEntityHits(db, userID, ftsQuery(result.Query), clampSearchLimit(limit), offset)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// clampSearchLimit applies the per-section default and maximum.
+func clampSearchLimit(limit int) int {
+	if limit < 1 {
+		return searchDefaultLimit
+	}
+	if limit > searchMaxLimit {
+		return searchMaxLimit
+	}
+	return limit
+}
+
+// searchEntityHits runs the entities_fts query (migration 000093): the FTS hit
+// is joined to the live entities row, which re-scopes by user_id and
+// re-filters soft-deleted rows (defence in depth over the triggers).
+func searchEntityHits(db *gorm.DB, userID uint, match string, limit, offset int) ([]SearchEntityHit, error) {
+	hits := []SearchEntityHit{}
+	err := db.Raw(`
+		SELECT e.id, e.kind, e.name, e.sensitivity
+		FROM entities_fts f
+		JOIN entities e ON e.id = f.entity_id
+		WHERE entities_fts MATCH ?
+		  AND f.user_id = ?
+		  AND e.user_id = ?
+		  AND e.deleted_at IS NULL
+		ORDER BY f.rank, e.name, e.id
+		LIMIT ? OFFSET ?`,
+		match, userID, userID, limit, offset,
+	).Scan(&hits).Error
+	if err != nil {
+		return nil, fmt.Errorf("search entities: %w", err)
+	}
+	return hits, nil
 }
 
 // contactFTSNonAddressColumns are the contacts_fts columns other than
@@ -250,6 +313,7 @@ func SearchPageScoped(db *gorm.DB, userID uint, term string, limit, offset int, 
 		Contacts:   []SearchContactHit{},
 		Notes:      []SearchNoteHit{},
 		Activities: []SearchActivityHit{},
+		Entities:   []SearchEntityHit{},
 	}
 	term = strings.TrimSpace(term)
 	// I18N-02: fold the query to NFC (the storage form) before the rune gate,
@@ -263,12 +327,7 @@ func SearchPageScoped(db *gorm.DB, userID uint, term string, limit, offset int, 
 		return result, nil
 	}
 
-	if limit < 1 {
-		limit = searchDefaultLimit
-	}
-	if limit > searchMaxLimit {
-		limit = searchMaxLimit
-	}
+	limit = clampSearchLimit(limit)
 
 	// Synonym resolution: if the whole term is a relation synonym, echo the
 	// canonical token so clients can offer relationship-aware results (the
@@ -408,19 +467,20 @@ func SearchPageScoped(db *gorm.DB, userID uint, term string, limit, offset int, 
 
 // SearchIndexRebuildStats reports how many live rows were written to each FTS
 // virtual table by a rebuild — one number per index (SEARCH-01, issue #461
-// recommended actions 3 and 6). All three indexes are always rebuilt
+// recommended actions 3 and 6). All four indexes are always rebuilt
 // together, so a zero here means "no live rows of that kind", never "this
 // index was skipped".
 type SearchIndexRebuildStats struct {
 	Contacts   int64 `json:"contacts"`
 	Notes      int64 `json:"notes"`
 	Activities int64 `json:"activities"`
+	Entities   int64 `json:"entities"`
 }
 
-// Total is the row count across all three indexes — the single number the
+// Total is the row count across all four indexes — the single number the
 // job-run record uses for items_processed.
 func (s SearchIndexRebuildStats) Total() int64 {
-	return s.Contacts + s.Notes + s.Activities
+	return s.Contacts + s.Notes + s.Activities + s.Entities
 }
 
 // searchIndexRebuildMu serialises RebuildSearchIndexExclusive within a single
@@ -436,7 +496,7 @@ func (s SearchIndexRebuildStats) Total() int64 {
 // "caught_up" semantics would mislabel a deliberate back-to-back re-run.
 var searchIndexRebuildMu sync.Mutex
 
-// RebuildSearchIndex rebuilds the three FTS5 virtual tables from the live base
+// RebuildSearchIndex rebuilds the four FTS5 virtual tables from the live base
 // tables. It is the low-level primitive kept for existing callers; prefer
 // RebuildSearchIndexReport when you want the per-index row counts, or
 // RebuildSearchIndexExclusive from an operator-facing entry point (it adds
@@ -446,9 +506,9 @@ func RebuildSearchIndex(db *gorm.DB) error {
 	return err
 }
 
-// RebuildSearchIndexReport truncates the three FTS virtual tables and
-// re-inserts every live (deleted_at IS NULL) row from contacts, notes, and
-// activities — including the denormalized contacts.addresses_flat address
+// RebuildSearchIndexReport truncates the four FTS virtual tables and
+// re-inserts every live (deleted_at IS NULL) row from contacts, notes,
+// activities, and entities (migration 000093) — including the denormalized contacts.addresses_flat address
 // text and contacts.phones_normalized phone tokens — returning the number of
 // rows written to each index.
 //
@@ -460,7 +520,7 @@ func RebuildSearchIndex(db *gorm.DB) error {
 // contacts' addresses/phones searchable after migrations 000010/000020.
 //
 // Interruption safety (issue #461 recommended action 2): the whole rebuild —
-// all three DELETEs and all three INSERTs — runs in ONE transaction. A crash,
+// all four DELETEs and all four INSERTs — runs in ONE transaction. A crash,
 // a cancelled request, or a SQL error rolls it back, leaving the
 // previously-good index in place untouched; on COMMIT, WAL switches every
 // reader to the new index atomically. There is no window in which search sees
@@ -485,6 +545,7 @@ func RebuildSearchIndexReport(db *gorm.DB) (SearchIndexRebuildStats, error) {
 			"DELETE FROM contacts_fts",
 			"DELETE FROM notes_fts",
 			"DELETE FROM activities_fts",
+			"DELETE FROM entities_fts",
 		} {
 			if err := tx.Exec(stmt).Error; err != nil {
 				return fmt.Errorf("rebuild search index (clear): %w", err)
@@ -505,6 +566,9 @@ func RebuildSearchIndexReport(db *gorm.DB) (SearchIndexRebuildStats, error) {
 			{"activities_fts", &stats.Activities, `INSERT INTO activities_fts(rowid, user_id, title, description, location)
 			 SELECT id, user_id, title, description, location
 			 FROM activities WHERE deleted_at IS NULL`},
+			{"entities_fts", &stats.Entities, `INSERT INTO entities_fts(name, entity_id, user_id, kind)
+			 SELECT name, id, user_id, kind
+			 FROM entities WHERE deleted_at IS NULL`},
 		}
 		for _, s := range steps {
 			res := tx.Exec(s.stmt)
@@ -529,6 +593,7 @@ func RebuildSearchIndexReport(db *gorm.DB) (SearchIndexRebuildStats, error) {
 		Int64("contacts", stats.Contacts).
 		Int64("notes", stats.Notes).
 		Int64("activities", stats.Activities).
+		Int64("entities", stats.Entities).
 		Int64("duration_ms", time.Since(start).Milliseconds()). // rawtime:allow elapsed-duration measurement for a latency/duration log or metric; the value is never compared to a stored instant, so a pinned clock adds nothing
 		Msg("search index rebuilt")
 	return stats, nil

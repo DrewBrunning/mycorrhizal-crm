@@ -182,6 +182,19 @@ func TestMCP_ProxiedNonLocalhostHostIsNotForbiddenBySDKHostCheck(t *testing.T) {
 	require.Len(t, result["tools"].([]any), 4)
 }
 
+// ADR 0043 section 4: entities are not an MCP surface, so search_contacts keeps
+// its three sections even when an entity matches (issue #2472).
+func TestMCP_SearchContacts_NeverReturnsEntities(t *testing.T) {
+	f := newMCPFixture(t)
+	seedMCPContacts(t, f.db, f.alice.ID, 1, "Zedmund")
+	require.NoError(t, f.db.Create(&models.Entity{UserID: f.alice.ID, Kind: models.EntityKindOrganisation, Name: "Zedmund Holdings"}).Error)
+	r := f.call(t, f.alice.ID, "search_contacts", map[string]any{"query": "Zedmund"})
+	require.False(t, r.isError, r.text)
+	assert.NotContains(t, r.structured, "entities")
+	assert.NotContains(t, r.text, "Zedmund Holdings")
+	assert.Contains(t, r.structured, "contacts")
+}
+
 func TestMCP_SearchContacts(t *testing.T) {
 	f := newMCPFixture(t)
 	seedMCPContacts(t, f.db, f.alice.ID, 55, "Zedmund")

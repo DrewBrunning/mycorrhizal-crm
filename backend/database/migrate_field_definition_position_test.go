@@ -88,6 +88,7 @@ func TestMigrationBackfillsFieldDefinitionPosition(t *testing.T) {
 	assert.Equal(t, int64(1), idxCount, "the display-order index must exist after 000066")
 
 	// The down migration drops the index and the column.
+	require.NoError(t, MigrateDown(dbPath)) // 000093_entity_search_fts
 	require.NoError(t, MigrateDown(dbPath)) // 000092_share_grant_lifecycle
 	require.NoError(t, MigrateDown(dbPath)) // 000091_reusable_entities
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000088_contact_images

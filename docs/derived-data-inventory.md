@@ -26,14 +26,14 @@ The four questions each row answers (from the issue): **derived from what**, **w
 Denormalized artifacts that can be dropped and recomputed from the canonical tables with an identical
 result (ADR 0012 **INV-A5**).
 
-### 1a. FTS5 search index — `contacts_fts` / `notes_fts` / `activities_fts`
+### 1a. FTS5 search index — `contacts_fts` / `notes_fts` / `activities_fts` / `entities_fts`
 
 | | |
 |---|---|
-| **Derived from** | Live (`deleted_at IS NULL`) `contacts` / `notes` / `activities` rows — the indexed columns are listed in `services.ftsConsistencySpecs`. |
-| **Maintained by** | SQL triggers (migrations `000007` / `000010` / `000020`), on every ordinary INSERT/UPDATE/DELETE. |
+| **Derived from** | Live (`deleted_at IS NULL`) `contacts` / `notes` / `activities` rows — the indexed columns are listed in `services.ftsConsistencySpecs` — and live `entities` rows (`entities_fts`: `name` only, keyed by `entity_id` because `entities.id` is a TEXT UUID, probed by `checkEntitiesFTSConsistency`). |
+| **Maintained by** | SQL triggers (migrations `000007` / `000010` / `000020`, and `000093` for `entities_fts`), on every ordinary INSERT/UPDATE/DELETE. |
 | **Rebuild** | `services.RebuildSearchIndex` — `POST /api/v1/admin/search/rebuild` or `cmd/backfill-search-index`. One transaction, atomic swap, interruption-safe. |
-| **Consistency check** | `services.CheckSearchIndexConsistency` (INV-D9, contract-aware — never flags a soft-deleted/archived row); cheap row-count probe `checkDerivedIndexes` (INV-A5). Both fold into the scheduled `db_integrity_check` job and `GET /admin/integrity-check`. |
+| **Consistency check** | `services.CheckSearchIndexConsistency` (INV-D9, all four indexes, contract-aware — never flags a soft-deleted/archived row); cheap row-count probe `checkDerivedIndexes` (INV-A5). Both fold into the scheduled `db_integrity_check` job and `GET /admin/integrity-check`. |
 | **If stale** | Search misses or surfaces wrong rows. Correctness for deleted/archived rows is enforced by the outer query's own filters, never by index contents. |
 
 ### 1b. Flat contact projection — `contacts.firstname` / `lastname` / `email` / `phone` / `birthday` / `fn` / `org`

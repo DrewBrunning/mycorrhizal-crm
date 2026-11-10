@@ -27,6 +27,13 @@ type searchResult struct {
 	Contacts         []searchContact `json:"contacts"`
 	Notes            []searchNote    `json:"notes"`
 	Activities       []searchAct     `json:"activities"`
+	Entities         []searchEntity  `json:"entities"`
+}
+type searchEntity struct {
+	ID          string `json:"id"`
+	Kind        string `json:"kind"`
+	Name        string `json:"name"`
+	Sensitivity string `json:"sensitivity"`
 }
 type searchContact struct {
 	Firstname string `json:"firstname"`
@@ -222,6 +229,7 @@ func TestRebuildSearchIndexHandler_ReportsCountsAndRecordsJobRun(t *testing.T) {
 	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Bianca", Lastname: "Bach"}).Error)
 	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "a note", Date: time.Now()}).Error)
 	require.NoError(t, db.Create(&models.Activity{UserID: user.ID, Title: "an activity", Date: time.Now()}).Error)
+	require.NoError(t, db.Create(&models.Entity{UserID: user.ID, Kind: models.EntityKindPet, Name: "Rexy"}).Error)
 
 	req, _ := http.NewRequest("POST", "/admin/search/rebuild", nil)
 	w := httptest.NewRecorder()
@@ -234,12 +242,14 @@ func TestRebuildSearchIndexHandler_ReportsCountsAndRecordsJobRun(t *testing.T) {
 			Contacts   int64 `json:"contacts"`
 			Notes      int64 `json:"notes"`
 			Activities int64 `json:"activities"`
+			Entities   int64 `json:"entities"`
 		} `json:"indexed"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
 	assert.Equal(t, int64(1), body.Indexed.Contacts)
 	assert.Equal(t, int64(1), body.Indexed.Notes)
 	assert.Equal(t, int64(1), body.Indexed.Activities)
+	assert.Equal(t, int64(1), body.Indexed.Entities)
 
 	// RecordJobRun is a fire-and-forget goroutine; give it a beat.
 	var run models.JobRun
@@ -250,7 +260,7 @@ func TestRebuildSearchIndexHandler_ReportsCountsAndRecordsJobRun(t *testing.T) {
 	assert.Equal(t, models.JobTriggerManual, run.Trigger)
 	assert.Equal(t, models.JobRunResultSuccess, run.Result)
 	require.NotNil(t, run.ItemsProcessed)
-	assert.Equal(t, 3, *run.ItemsProcessed, "items_processed is the total rows indexed across the three tables")
+	assert.Equal(t, 4, *run.ItemsProcessed, "items_processed is the total rows indexed across the four tables")
 }
 
 // TestRebuildSearchIndexHandler_ConflictWhenInProgress pins recommended
@@ -379,4 +389,54 @@ func TestSearchAll_LimitCapsEachCategoryAndStaysScoped(t *testing.T) {
 	for _, a := range resp.Activities {
 		assert.Equal(t, "capword activity", a.Title)
 	}
+}
+
+// Issue #2472: entities are a fourth section, user-scoped, live-only, capped per section.
+func TestSearchAll_EntitiesSection(t *testing.T) {
+	db, router := searchRealRouter(t)
+	owner := models.User{Username: "ent-owner", Password: "password123!A", Email: "ent-owner@example.com"}
+	require.NoError(t, db.Create(&owner).Error)
+	other := models.User{Username: "ent-other", Password: "password123!A", Email: "ent-other@example.com"}
+	require.NoError(t, db.Create(&other).Error)
+	require.Equal(t, uint(1), owner.ID)
+
+	var first models.Entity
+	for i := 0; i < 4; i++ {
+		e := models.Entity{UserID: owner.ID, Kind: models.EntityKindOrganisation, Name: "Entword Org", Sensitivity: models.RelationshipSensitivitySecret}
+		require.NoError(t, db.Create(&e).Error)
+		if i == 0 {
+			first = e
+		}
+	}
+	require.NoError(t, db.Create(&models.Entity{UserID: other.ID, Kind: models.EntityKindOrganisation, Name: "Entword Theirs"}).Error)
+	gone := models.Entity{UserID: owner.ID, Kind: models.EntityKindPlace, Name: "Entword Deleted"}
+	require.NoError(t, db.Create(&gone).Error)
+	require.NoError(t, db.Delete(&gone).Error)
+
+	get := func(url string) searchResult {
+		req, _ := http.NewRequest("GET", url, nil)
+		w := httptest.NewRecorder()
+		router.ServeHTTP(w, req)
+		require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+		var resp searchResult
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+		return resp
+	}
+	resp := get("/search?q=entword")
+	require.Len(t, resp.Entities, 4, "own live entities only")
+	for _, e := range resp.Entities {
+		assert.Equal(t, "Entword Org", e.Name)
+		assert.Equal(t, "organisation", e.Kind)
+		assert.Equal(t, "secret", e.Sensitivity, "the owner sees every sensitivity")
+		assert.NotEmpty(t, e.ID)
+	}
+	assert.Contains(t, []string{resp.Entities[0].ID, resp.Entities[1].ID, resp.Entities[2].ID, resp.Entities[3].ID}, first.ID)
+	assert.Len(t, get("/search?q=entword&limit=2").Entities, 2)
+
+	// A term with no hits still serialises entities as [] (never null).
+	req, _ := http.NewRequest("GET", "/search?q=zzznomatch", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), `"entities":[]`)
 }
