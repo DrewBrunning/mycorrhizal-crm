@@ -250,12 +250,12 @@
       "expected_growth": "constant",
       "profiles": {
         "smoke": {
-          "queries": 3,
+          "queries": 4,
           "result_size": 10,
           "row_scale": 350
         },
         "typical": {
-          "queries": 3,
+          "queries": 4,
           "result_size": 10,
           "row_scale": 945
         }
