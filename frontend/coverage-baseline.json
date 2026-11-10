@@ -63,10 +63,10 @@
       "branchesTotal": 110
     },
     "src/DataSettingsPage.tsx": {
-      "lines": 100,
-      "linesTotal": 108,
-      "branches": 94.23,
-      "branchesTotal": 52
+      "lines": 99.2,
+      "linesTotal": 125,
+      "branches": 95.52,
+      "branchesTotal": 67
     },
     "src/DateFormatProvider.tsx": {
       "lines": 94.71,
@@ -436,9 +436,9 @@
     },
     "src/api/import.ts": {
       "lines": 100,
-      "linesTotal": 31,
+      "linesTotal": 35,
       "branches": 100,
-      "branchesTotal": 18
+      "branchesTotal": 20
     },
     "src/api/jobRuns.ts": {
       "lines": 100,
@@ -1185,10 +1185,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 89.04,
-      "linesTotal": 356,
+      "lines": 88.66,
+      "linesTotal": 344,
       "branches": 83.56,
-      "branchesTotal": 292
+      "branchesTotal": 286
     },
     "src/components/ImportFixedAssignmentPicker.tsx": {
       "lines": 84.21,
@@ -2527,6 +2527,12 @@
       "linesTotal": 17,
       "branches": 100,
       "branchesTotal": 5
+    },
+    "src/components/ImportIssuesReport.tsx": {
+      "lines": 100,
+      "linesTotal": 14,
+      "branches": 100,
+      "branchesTotal": 6
     }
   }
 }

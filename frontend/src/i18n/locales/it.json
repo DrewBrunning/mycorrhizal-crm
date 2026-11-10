@@ -1850,6 +1850,10 @@
           "colUpdated": "Aggiornati",
           "colSkipped": "Ignorati",
           "colErrors": "Errori",
+          "colReport": "Rapporto",
+          "viewReport": "Visualizza rapporto",
+          "reportTitle": "Rapporto di importazione",
+          "reportLoadError": "Impossibile caricare il rapporto di importazione.",
           "format": {
             "csv": "CSV",
             "vcf": "vCard",

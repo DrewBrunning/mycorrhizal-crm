@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Past import reports on the web** ([#2465](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2465)): in Data settings, any past import that skipped or failed rows now has a View report button listing each row and why, with a Download as CSV option.
 - **Organisations, places and pets on the web** ([#2301](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2301)): a new Entities page lists them with search and duplicate suggestions, and merging happens only when you confirm. Contacts link to them, a value from an entity is labelled "from <name>" and never edited as the contact's own, and the graph can show them.
 - **Standing shares on Android** ([#2293](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2293)): Share contact can now keep sharing, read-only, until you revoke it. A new Shared with me screen accepts, declines, blocks and reads shares; Shared by me shows status and expiry.
 - **Search everything from the top bar** ([#2174](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2174)): the search box now finds contacts, notes and activities, shows the top three of each, and links to a results page with a tab per category.
