@@ -803,6 +803,10 @@ design is ADR-0010 / CON-04, issue #479).
     merge it onto the destination's own Me instead of duplicating it. Pinned by
     `backend/services/account_bundle_test.go` (scoping + full-fidelity + round-trip) and
     `backend/services/account_bundle_self_contact_test.go`.
+  - **Entities in the exports (issue #2300, ADR 0043 decision 7)**: the account bundle and the CSV backup
+    carry reusable entities, their links and entity custom-field values with every sensitivity (the same
+    full-fidelity exception as above); vCard/JSContact/CardDAV carry only the projected primary ORG/ADR.
+    Shape, restore rules and the named loss: [`docs/import/entity-backup.md`](../import/entity-backup.md).
   - **The audit-log export's** `before_snapshot` column is omitted unless the caller explicitly passes
     `?include_snapshots=true`: it is already credential-redacted at write time (`auditDenyList`,
     `models/audit.go`) but is **not** filtered by contact-field sensitivity the way the three
