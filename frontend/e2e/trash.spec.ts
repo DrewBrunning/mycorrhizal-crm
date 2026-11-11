@@ -115,7 +115,11 @@ test.describe('Contact trash', () => {
       await expect(page.getByRole('listitem').filter({ hasText: second.firstname })).toBeVisible();
 
       await page.getByRole('button', { name: 'Empty trash' }).click();
-      await expect(page.getByText(/Trash is empty/)).toBeVisible();
+      // Assert the two contacts left the list, not the page-wide "Trash is empty"
+      // state: "Empty trash" purges contacts only, so any trashed entity this
+      // worker user holds would keep the page non-empty (issue #2484).
+      await expect(page.getByRole('listitem').filter({ hasText: first.firstname })).toHaveCount(0);
+      await expect(page.getByRole('listitem').filter({ hasText: second.firstname })).toHaveCount(0);
 
       for (const contact of [first, second]) {
         const gone = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
