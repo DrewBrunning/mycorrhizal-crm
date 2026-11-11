@@ -3000,6 +3000,13 @@ export type SearchContactHit = {
   uid?: string;
 };
 
+export type SearchEntityHit = {
+  id?: string;
+  kind?: 'organisation' | 'place' | 'pet';
+  name?: string;
+  sensitivity?: 'normal' | 'private' | 'secret';
+};
+
 export type SearchNoteHit = {
   contact_id?: number | null;
   contact_name?: string;
@@ -3012,6 +3019,7 @@ export type SearchNoteHit = {
 export type SearchResult = {
   activities?: SearchActivityHit[];
   contacts?: SearchContactHit[];
+  entities?: SearchEntityHit[];
   notes?: SearchNoteHit[];
   query?: string;
   resolved_relation?: string;

@@ -24075,6 +24075,41 @@
       ]
     },
     {
+      "name": "SearchEntityHit",
+      "properties": [
+        {
+          "name": "id",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "organisation",
+            "place",
+            "pet"
+          ]
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "sensitivity",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "normal",
+            "private",
+            "secret"
+          ]
+        }
+      ]
+    },
+    {
       "name": "SearchNoteHit",
       "properties": [
         {
@@ -24119,6 +24154,11 @@
         },
         {
           "name": "contacts",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "entities",
           "type": "array\u003cobject\u003e",
           "required": false
         },

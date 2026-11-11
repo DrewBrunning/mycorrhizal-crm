@@ -179,6 +179,12 @@ var declaredCascadeCoverage = map[string]cascadeBucket{
 	"contacts_fts_data":      exempt,
 	"contacts_fts_docsize":   exempt,
 	"contacts_fts_idx":       exempt,
+	"entities_fts":           exempt, // issue #2472: keyed by entity_id, cleared by the entities AFTER DELETE trigger
+	"entities_fts_config":    exempt,
+	"entities_fts_content":   exempt,
+	"entities_fts_data":      exempt,
+	"entities_fts_docsize":   exempt,
+	"entities_fts_idx":       exempt,
 	"notes_fts":              exempt,
 	"notes_fts_config":       exempt,
 	"notes_fts_content":      exempt,
@@ -671,6 +677,7 @@ func seedUserCascadeFixtures(t *testing.T, db *gorm.DB, admin, target models.Use
 		scopedCount("share_blocks", &models.ShareBlock{}, "blocker_user_id = ? OR blocked_user_id = ?", target.ID, target.ID),
 		scopedCount("contact_entity_links", &models.ContactEntityLink{}, "user_id = ?", target.ID),
 		scopedCount("entities", &models.Entity{}, "user_id = ?", target.ID),
+		rawCount("entities_fts", "user_id = ?", target.ID), // issue #2472: cleared by the entities AFTER DELETE trigger
 		scopedCount("entity_deletion_snapshots", &models.EntityDeletionSnapshot{}, "user_id = ?", target.ID),
 		scopedCount("dismissed_entity_pairs", &models.DismissedEntityPair{}, "user_id = ?", target.ID),
 		scopedCount("activities", &models.Activity{}, "user_id = ?", target.ID),

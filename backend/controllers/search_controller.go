@@ -73,7 +73,7 @@ func SearchAll(c *gin.Context) {
 }
 
 // RebuildSearchIndexHandler implements POST /admin/search/rebuild (admin):
-// rebuilds all three FTS indexes from canonical data, idempotently
+// rebuilds all four FTS indexes from canonical data, idempotently
 // (SEARCH-01, issue #461). It is the operator-facing rebuild path for a
 // deployment with no Go toolchain — a stock Docker install reaches it over
 // HTTP, no `go run` needed.
@@ -111,6 +111,7 @@ func RebuildSearchIndexHandler(c *gin.Context) {
 			"contacts":   stats.Contacts,
 			"notes":      stats.Notes,
 			"activities": stats.Activities,
+			"entities":   stats.Entities,
 		},
 	})
 }

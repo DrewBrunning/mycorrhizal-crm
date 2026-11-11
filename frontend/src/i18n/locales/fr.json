@@ -30,6 +30,7 @@
     "groupContacts": "Contacts",
     "groupNotes": "Notes",
     "groupActivities": "Activités",
+    "groupEntities": "Entités",
     "seeAll": "Voir tous les résultats pour « {{query}} »",
     "noResults": "Aucun résultat pour « {{query}} ».",
     "pageTitle": "Résultats de recherche",
@@ -37,6 +38,7 @@
     "emptyContacts": "Aucun contact ne correspond à « {{query}} ».",
     "emptyNotes": "Aucune note ne correspond à « {{query}} ».",
     "emptyActivities": "Aucune activité ne correspond à « {{query}} ».",
+    "emptyEntities": "Aucune organisation, aucun lieu ni animal ne correspond à « {{query}} ».",
     "capped": "Affichage des {{limit}} premières correspondances de cette catégorie. Affinez la recherche pour les réduire.",
     "unfiled": "Note non classée"
   },

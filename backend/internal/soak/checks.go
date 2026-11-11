@@ -59,6 +59,7 @@ var ftsTables = []struct{ fts, base string }{
 	{"contacts_fts", "contacts"},
 	{"notes_fts", "notes"},
 	{"activities_fts", "activities"},
+	{"entities_fts", "entities"},
 }
 
 // ftsCheck asserts each FTS index holds exactly one row per live base row

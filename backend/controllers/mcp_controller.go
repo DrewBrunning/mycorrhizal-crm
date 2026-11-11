@@ -74,6 +74,16 @@ type mcpSearchContactsInput struct {
 	IncludeSensitive bool   `json:"include_sensitive,omitempty" jsonschema:"include private/secret data; default false. When false, a contact is not returned if its only match is a private/secret address"`
 }
 
+// mcpSearchResult is the search_contacts output: services.SearchResult without
+// its entities section (ADR 0043 section 4, issue #2472).
+type mcpSearchResult struct {
+	Query            string                       `json:"query"`
+	ResolvedRelation string                       `json:"resolved_relation,omitempty"`
+	Contacts         []services.SearchContactHit  `json:"contacts"`
+	Notes            []services.SearchNoteHit     `json:"notes"`
+	Activities       []services.SearchActivityHit `json:"activities"`
+}
+
 type mcpGetContactInput struct {
 	ID               int  `json:"id" jsonschema:"numeric contact id (required)"`
 	IncludeSensitive bool `json:"include_sensitive,omitempty" jsonschema:"include private/secret data; default false"`
@@ -197,7 +207,12 @@ func newMCPServer(db *gorm.DB, userID uint, cfg config.Config, clk clock.Clock) 
 		if err != nil {
 			return mcpToolError("search failed")
 		}
-		return mcpJSONResult(result)
+		// Entities are not an MCP surface (ADR 0043 section 4): copy the three
+		// sections the tool has always returned, leaving the entities key out.
+		return mcpJSONResult(mcpSearchResult{
+			Query: result.Query, ResolvedRelation: result.ResolvedRelation,
+			Contacts: result.Contacts, Notes: result.Notes, Activities: result.Activities,
+		})
 	})
 
 	mcp.AddTool(server, &mcp.Tool{

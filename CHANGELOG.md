@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Search finds your organisations, places and pets** ([#2472](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2472)): the top-bar search and the search results page now include them, matched by name, with a tab of their own. Nothing to do when upgrading.
 - **Past import reports on the web** ([#2465](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2465)): in Data settings, any past import that skipped or failed rows now has a View report button listing each row and why, with a Download as CSV option.
 - **Deleted organisations, places and pets in Trash** ([#2446](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2446)): the web Trash page now lists organisations, places and pets you deleted or merged away, with a Restore button that brings back their links and custom fields; a merged-away one returns on its own and its links stay with the one you kept.
 - **Standing shares on the web** ([#2292](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2292)): share a contact, note, activity or circle as a read-only, always-current view the recipient must accept. Manage them under Settings in "Shared with me" and "Shared by me". Revoking stops future access but cannot take back what was seen.

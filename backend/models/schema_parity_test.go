@@ -144,6 +144,7 @@ var tablesWithoutModel = map[string]string{
 	"contacts_fts":         "FTS5 virtual table maintained by migration triggers (ADR 0012 INV-D9); queried with raw SQL only",
 	"notes_fts":            "FTS5 virtual table maintained by migration triggers; queried with raw SQL only",
 	"activities_fts":       "FTS5 virtual table maintained by migration triggers; queried with raw SQL only",
+	"entities_fts":         "FTS5 virtual table maintained by migration triggers (issue #2472), keyed by entity_id; queried with raw SQL only",
 	"data_backfills":       "startup-backfill bookkeeping written with raw SQL by atrest/ and services/unicode_nfc_backfill.go",
 	"data_encryption_keys": "at-rest DEK envelope store, raw SQL only in atrest/ (kept out of GORM on purpose)",
 }

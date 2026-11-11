@@ -49,11 +49,13 @@ func TestRun_RebuildsIndex(t *testing.T) {
 	require.NoError(t, db.Exec("DELETE FROM contacts_fts").Error)
 	require.NoError(t, db.Exec("DELETE FROM notes_fts").Error)
 	require.NoError(t, db.Exec("DELETE FROM activities_fts").Error)
+	require.NoError(t, db.Create(&models.Entity{UserID: user.ID, Kind: models.EntityKindOrganisation, Name: "Fungi Collective"}).Error)
+	require.NoError(t, db.Exec("DELETE FROM entities_fts").Error)
 
 	var out, errBuf bytes.Buffer
 	code := run([]string{"-db", dbPath}, envMap(nil), &out, &errBuf)
 	require.Equal(t, 0, code, "stderr: %s", errBuf.String())
-	require.Contains(t, out.String(), "contacts=1 notes=1 activities=1")
+	require.Contains(t, out.String(), "contacts=1 notes=1 activities=1 entities=1")
 
 	countFTS := func(table, term string) int64 {
 		t.Helper()
@@ -66,6 +68,7 @@ func TestRun_RebuildsIndex(t *testing.T) {
 	require.EqualValues(t, 1, countFTS("contacts_fts", "Alice"), "rebuilt index must find the contact")
 	require.EqualValues(t, 1, countFTS("notes_fts", "mushrooms"), "rebuilt index must find the note")
 	require.EqualValues(t, 1, countFTS("activities_fts", "fungi"), "rebuilt index must find the activity")
+	require.EqualValues(t, 1, countFTS("entities_fts", "fungi"), "rebuilt index must find the entity")
 }
 
 // TestRun_UnopenableDatabase pins the failure path: a database path that cannot

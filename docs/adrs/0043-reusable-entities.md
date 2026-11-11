@@ -437,6 +437,8 @@ tests (ADR 0009).
 | `POST /contacts/{id}/entity-links/from-existing` | decision 3, link from one of the contact's own ORG/ADR values |
 | `GET /contacts?entity_id=` | filter contacts by linked entity |
 
+`GET /search` also returns live entities as a fourth `entities` section, matched on `name` only through `entities_fts` (issue #2472; `core` is encrypted, so no other entity text is searchable), all sensitivities for the owner, never through MCP.
+
 `POST /field-definitions` accepts `target` of the new kinds; the field-value routes accept an entity id for a
 definition of that kind (they already key by `entity_id`).
 

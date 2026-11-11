@@ -52,7 +52,7 @@ func run(args []string, env func(string) string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	fmt.Fprintf(stdout, "Search index rebuilt successfully: contacts=%d notes=%d activities=%d\n",
-		stats.Contacts, stats.Notes, stats.Activities)
+	fmt.Fprintf(stdout, "Search index rebuilt successfully: contacts=%d notes=%d activities=%d entities=%d\n",
+		stats.Contacts, stats.Notes, stats.Activities, stats.Entities)
 	return 0
 }

@@ -13,6 +13,7 @@ const emptyResult: SearchResult = {
   contacts: [],
   notes: [],
   activities: [],
+  entities: [],
 };
 
 function renderSection(result: SearchResult, onOpenContact?: (id: number) => void) {

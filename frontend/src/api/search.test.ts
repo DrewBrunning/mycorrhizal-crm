@@ -14,11 +14,20 @@ describe('searchAll', () => {
         contacts: [{ id: 7, uid: 'c-7', firstname: 'Wolfgang' }],
         notes: [],
         activities: [],
+        entities: [
+          { id: 'e-1', kind: 'organisation', name: 'Symphony Hall', sensitivity: 'normal' },
+        ],
       }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const result = await searchAll('symphony');
+    expect(result.entities[0]).toEqual({
+      id: 'e-1',
+      kind: 'organisation',
+      name: 'Symphony Hall',
+      sensitivity: 'normal',
+    });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url] = fetchMock.mock.calls[0];
@@ -30,7 +39,13 @@ describe('searchAll', () => {
   test('encodes special characters in the query', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ query: 'it is "great"', contacts: [], notes: [], activities: [] }),
+      json: async () => ({
+        query: 'it is "great"',
+        contacts: [],
+        notes: [],
+        activities: [],
+        entities: [],
+      }),
     });
     vi.stubGlobal('fetch', fetchMock);
 
