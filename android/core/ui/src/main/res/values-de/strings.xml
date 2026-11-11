@@ -178,6 +178,7 @@
     <string name="contacts_search_results_hint">Notizen und Interaktionen werden ebenfalls durchsucht — Kreis- und Archiv-Filter gelten für sie nicht.</string>
     <string name="contacts_search_notes_group">Notizen</string>
     <string name="contacts_search_activities_group">Interaktionen</string>
+    <string name="contacts_search_entities_group">Organisationen, Orte und Haustiere</string>
     <string name="contacts_search_unfiled">Nicht zugeordnet</string>
     <string name="contacts_search_resolved_relation">Übereinstimmende Beziehung: %1$s</string>
 

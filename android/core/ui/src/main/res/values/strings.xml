@@ -180,6 +180,7 @@
     <string name="contacts_search_results_hint">Notes and activities are searched too — circle and archived filters don\'t apply to them.</string>
     <string name="contacts_search_notes_group">Notes</string>
     <string name="contacts_search_activities_group">Interactions</string>
+    <string name="contacts_search_entities_group">Organisations, places and pets</string>
     <string name="contacts_search_unfiled">Unfiled</string>
     <string name="contacts_search_resolved_relation">Matched relationship: %1$s</string>
 

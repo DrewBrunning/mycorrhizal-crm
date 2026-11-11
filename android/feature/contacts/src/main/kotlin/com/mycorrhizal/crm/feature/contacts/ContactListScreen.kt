@@ -44,6 +44,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -85,10 +86,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.feature.contacts.entities.entityKindOneRes
 import com.mycorrhizal.crm.model.network.BulkActions
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchActivityHit
+import com.mycorrhizal.crm.model.network.SearchEntityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.model.util.DateFormat
@@ -107,6 +110,8 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
 fun ContactListScreen(
     onContactClick: (Int) -> Unit,
     onCreateContact: () -> Unit = {},
+    // #2499: opens an entity hit from the folded search.
+    onOpenEntity: (String) -> Unit = {},
     // Issue #150: nullable — null when there is no app-level drawer to open
     // (the tablet two-pane's persistent list pane, where the NavigationRail
     // replaces the drawer), which hides the hamburger.
@@ -167,6 +172,7 @@ fun ContactListScreen(
         onMergeSelected = onMergeSelected,
         onBulkResultShown = viewModel::onBulkResultShown,
         onCreateContact = onCreateContact,
+        onOpenEntity = onOpenEntity,
         onMenuClick = onMenuClick,
         onImportContacts = onImportContacts,
         onReviewDuplicates = onReviewDuplicates,
@@ -204,6 +210,7 @@ fun ContactListScreenContent(
     onMergeSelected: (Int, List<Int>) -> Unit = { _, _ -> },
     onBulkResultShown: () -> Unit = {},
     onCreateContact: () -> Unit = {},
+    onOpenEntity: (String) -> Unit = {},
     // Issue #150: see ContactListScreen — null hides the hamburger (no drawer).
     onMenuClick: (() -> Unit)? = {},
     onImportContacts: () -> Unit = {},
@@ -578,6 +585,10 @@ fun ContactListScreenContent(
                             query = uiState.searchQuery,
                             searchResult = uiState.searchResult,
                             onContactClick = onContactClick
+                        )
+                        SearchEntitiesSection(
+                            entities = uiState.searchResult?.entities.orEmpty(),
+                            onOpenEntity = onOpenEntity
                         )
                     }
                 }
@@ -1278,6 +1289,33 @@ private fun SearchNotesActivitiesSection(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** #2499: reusable entities (organisations, places, pets) matched by name; web's fourth tab. */
+@Composable
+private fun SearchEntitiesSection(entities: List<SearchEntityHit>, onOpenEntity: (String) -> Unit) {
+    if (entities.isEmpty()) return
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .testTag("search-entities")
+    ) {
+        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+            Text(
+                text = stringResource(R.string.contacts_search_entities_group),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            entities.forEach { hit ->
+                ListItem(
+                    headlineContent = { Text(hit.name) },
+                    supportingContent = { Text(stringResource(entityKindOneRes(hit.kind))) },
+                    modifier = Modifier.clickable { onOpenEntity(hit.id) }
+                )
             }
         }
     }

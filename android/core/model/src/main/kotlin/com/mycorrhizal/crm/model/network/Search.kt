@@ -5,7 +5,7 @@ import com.squareup.moshi.JsonClass
 
 /**
  * GET /search (T11/WP-86; folded into the Android contact list by T87): cross-entity full-text
- * search across notes and activities. The response's `contacts` group is deliberately not
+ * search across notes, activities and (#2472) reusable entities. The response's `contacts` group is deliberately not
  * modeled here — T87 discards it, since the contact list's own `?search=` query (T85, FTS) is
  * the sole authority for contact results; rendering both would show two disagreeing contact
  * lists on one screen. Moshi ignores JSON keys with no matching property, so the server sending
@@ -17,7 +17,18 @@ data class SearchResult(
     /** Canonical relation token when the whole query is a registry synonym ("brother" -> sibling_of). */
     @Json(name = "resolved_relation") val resolvedRelation: String? = null,
     val notes: List<SearchNoteHit> = emptyList(),
-    val activities: List<SearchActivityHit> = emptyList()
+    val activities: List<SearchActivityHit> = emptyList(),
+    /** Reusable entities (organisation/place/pet) matched by name (#2472); older servers omit it. */
+    val entities: List<SearchEntityHit> = emptyList()
+)
+
+/** One matched reusable entity; `kind` and `sensitivity` are the wire tokens (see [EntityKind]). */
+@JsonClass(generateAdapter = true)
+data class SearchEntityHit(
+    val id: String = "",
+    val kind: String = EntityKind.ORGANISATION,
+    val name: String = "",
+    val sensitivity: String = "normal"
 )
 
 /** One matched note (backend embeds `models.Note`, gorm.Model identity keys serialize PascalCase). */

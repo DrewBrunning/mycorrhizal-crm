@@ -185,6 +185,7 @@
     <string name="contacts_search_results_hint">También se buscan notas y actividades — los filtros de círculo y archivado no se aplican a ellas.</string>
     <string name="contacts_search_notes_group">Notas</string>
     <string name="contacts_search_activities_group">Interacciones</string>
+    <string name="contacts_search_entities_group">Organizaciones, lugares y mascotas</string>
     <string name="contacts_search_unfiled">Sin asignar</string>
     <string name="contacts_search_resolved_relation">Relación coincidente: %1$s</string>
 
