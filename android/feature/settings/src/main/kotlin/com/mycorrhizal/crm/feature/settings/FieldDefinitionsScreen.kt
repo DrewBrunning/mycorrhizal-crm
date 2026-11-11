@@ -295,6 +295,10 @@ private fun FieldDefinitionListItem(
 @Composable
 private fun metadataSummary(definition: FieldDefinition): String {
     val parts = buildList {
+        // Contact definitions are the default and unlabelled; an entity one says what it is for.
+        if (definition.target in FIELD_TARGETS && definition.target != FIELD_TARGET_CONTACT) {
+            add(stringResource(fieldTargetLabelRes(definition.target)))
+        }
         add(stringResource(fieldTypeLabelRes(definition.type)))
         if (definition.constraints?.multi == true) {
             add(stringResource(R.string.settings_custom_fields_multi))
@@ -305,6 +309,14 @@ private fun metadataSummary(definition: FieldDefinition): String {
         add(stringResource(sensitivityLabelRes(definition.sensitivity)))
     }
     return parts.joinToString(" · ")
+}
+
+/** "Applies to" label: contact, or the singular entity kind (shared with the entities screens). */
+fun fieldTargetLabelRes(target: String?): Int = when (target) {
+    "organisation" -> R.string.shared_entities_kind_one_organisation
+    "place" -> R.string.shared_entities_kind_one_place
+    "pet" -> R.string.shared_entities_kind_one_pet
+    else -> R.string.settings_custom_fields_target_contact
 }
 
 /** Localized field-type label, mirroring web's `customFields.types.*` i18n keys. */

@@ -26,6 +26,10 @@ private const val PROJECTION_VCARD = "vcard"
 private const val PROJECTION_VCARD_PREFIX = "vcard:X-"
 const val FIELD_SENSITIVITY_NORMAL = "normal"
 
+/** What a custom field definition applies to (#2499; mirror of the backend `target` oneof). */
+const val FIELD_TARGET_CONTACT = "contact"
+val FIELD_TARGETS: List<String> = listOf(FIELD_TARGET_CONTACT, "organisation", "place", "pet")
+
 /**
  * Issue #830: create/edit form state, direct port of web's `FieldDefinitionDialog`'s `FormState`
  * (`frontend/src/components/FieldDefinitionDialog.tsx:36-64`). [key] is disabled in the UI once
@@ -36,6 +40,8 @@ data class FieldDefinitionFormState(
     val fieldDefinitionId: String? = null,
     val label: String = "",
     val key: String = "",
+    /** "Applies to": contact or an entity kind; fixed once the definition exists. */
+    val target: String = FIELD_TARGET_CONTACT,
     val type: String = "string",
     val multi: Boolean = false,
     val min: String = "",
@@ -59,6 +65,9 @@ data class FieldDefinitionFormState(
     val baseline: FieldDefinitionFormState? = null
 ) {
     val isEdit: Boolean get() = fieldDefinitionId != null
+
+    /** Only a contact definition may project into a vCard (ADR 0043 decision 5). */
+    val canProject: Boolean get() = target == FIELD_TARGET_CONTACT
 
     val isDirty: Boolean get() = baseline != null && editableSnapshot() != baseline
 
@@ -86,7 +95,7 @@ data class FieldDefinitionFormState(
             it.isNotBlank()
         } -> R.string.settings_custom_fields_error_enum_required
 
-        projectionMode == PROJECTION_VCARD && vcardName.isBlank() ->
+        canProject && projectionMode == PROJECTION_VCARD && vcardName.isBlank() ->
             R.string.settings_custom_fields_error_vcard_name_required
 
         else -> null
@@ -113,7 +122,7 @@ data class FieldDefinitionFormState(
             },
             multi = multi
         )
-        val projection = if (projectionMode == PROJECTION_VCARD) {
+        val projection = if (canProject && projectionMode == PROJECTION_VCARD) {
             "$PROJECTION_VCARD_PREFIX${vcardName.trim()}"
         } else {
             "internal-only"
@@ -121,6 +130,8 @@ data class FieldDefinitionFormState(
         return FieldDefinitionInput(
             label = label.trim(),
             key = key.trim(),
+            // Immutable server-side (rejected when changed), so an edit never sends it.
+            target = if (isEdit) null else target,
             type = type,
             constraints = constraints,
             projection = projection,
@@ -140,6 +151,7 @@ data class FieldDefinitionFormState(
             fieldDefinitionId = definition.id,
             label = definition.label.orEmpty(),
             key = definition.key.orEmpty(),
+            target = definition.target?.takeIf { it.isNotBlank() } ?: FIELD_TARGET_CONTACT,
             type = definition.type ?: "string",
             multi = constraints.multi,
             min = constraints.min?.let { formatConstraintNumber(it) } ?: "",
@@ -238,6 +250,8 @@ class FieldDefinitionFormViewModel @Inject constructor(
 
     fun onLabelChange(value: String) = _uiState.update { it.copy(label = value) }
     fun onKeyChange(value: String) = _uiState.update { if (it.isEdit) it else it.copy(key = value) }
+    fun onTargetChange(value: String) =
+        _uiState.update { if (it.isEdit) it else it.copy(target = value) }
     fun onTypeChange(value: String) = _uiState.update { it.copy(type = value) }
     fun onMultiChange(value: Boolean) = _uiState.update { it.copy(multi = value) }
     fun onMinChange(value: String) = _uiState.update { it.copy(min = value) }

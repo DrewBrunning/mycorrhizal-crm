@@ -8,10 +8,12 @@ import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityContactLink
 import com.mycorrhizal.crm.model.network.EntityDeleteResponse
+import com.mycorrhizal.crm.model.network.EntityDismissResponse
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntityRestoreResponse
+import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import io.mockk.coEvery
@@ -151,6 +153,22 @@ class EntityRepositoryImplTest {
         coEvery { api.mergeEntity("loser", any()) } returns Result.success(EntityMergeResponse())
         repository.merge("loser", EntityMergeInput(into = "keep"))
         coVerify(exactly = 1) { contacts.getContact(9) }
+    }
+
+    @Test
+    fun `suggestions and dismissal go straight to the api and touch no contact`() = runTest {
+        val response = EntitySuggestionsResponse(mode = "pairs")
+        coEvery { api.listEntitySuggestions("place") } returns Result.success(response)
+        coEvery { api.dismissEntitySuggestion("a", "b") } returns
+            Result.success(EntityDismissResponse(idLow = "a", idHigh = "b"))
+
+        assertEquals(response, repository.suggestions("place").getOrThrow())
+        assertTrue(repository.dismissSuggestion("a", "b").isSuccess)
+        coVerify(exactly = 0) { contacts.getContact(any()) }
+
+        coEvery { api.dismissEntitySuggestion("a", "b") } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        assertTrue(repository.dismissSuggestion("a", "b").isFailure)
     }
 
     @Test

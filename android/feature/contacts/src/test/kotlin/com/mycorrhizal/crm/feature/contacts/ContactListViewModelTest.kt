@@ -823,6 +823,43 @@ class ContactListViewModelTest {
     }
 
     @Test
+    fun `search keeps the entity hits from GET search`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val (viewModel, contactRepository, apiClient) = newViewModel()
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 50,
+                search = "acme",
+                sort = "name",
+                order = "asc"
+            )
+        } returns Result.success(page())
+        coEvery { apiClient.search("acme", null, null) } returns Result.success(
+            SearchResult(
+                entities = listOf(
+                    com.mycorrhizal.crm.model.network.SearchEntityHit(
+                        id = "e1",
+                        kind = "organisation",
+                        name = "Acme Corp",
+                        sensitivity = "private"
+                    )
+                )
+            )
+        )
+
+        viewModel.onSearchQueryChange("acme")
+        advanceUntilIdle()
+
+        val hit = viewModel.uiState.value.searchResult?.entities?.single()
+        assertEquals("e1", hit?.id)
+        assertEquals("Acme Corp", hit?.name)
+        assertEquals("organisation", hit?.kind)
+        assertEquals("private", hit?.sensitivity)
+    }
+
+    @Test
     fun `a one-character query fires no cross-entity search request`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {

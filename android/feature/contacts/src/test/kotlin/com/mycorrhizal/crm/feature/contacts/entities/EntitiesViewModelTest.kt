@@ -5,6 +5,9 @@ import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntityListResponse
+import com.mycorrhizal.crm.model.network.EntitySuggestionEntity
+import com.mycorrhizal.crm.model.network.EntitySuggestionPair
+import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -18,6 +21,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
@@ -195,5 +199,97 @@ class EntitiesViewModelTest {
             vm.onResumed()
             advanceUntilIdle()
             coVerify(exactly = 2) { repository.list(any(), any(), any(), any()) }
+        }
+    // --- duplicate suggestions (#2499) -----------------------------------------------------
+
+    private fun pair(a: String, b: String, reason: String = "exact_name") = EntitySuggestionPair(
+        reason = reason,
+        a = EntitySuggestionEntity(id = "id-$a", kind = EntityKind.ORGANISATION, name = a),
+        b = EntitySuggestionEntity(id = "id-$b", kind = EntityKind.ORGANISATION, name = b)
+    )
+
+    private fun suggestionsOf(vararg pairs: EntitySuggestionPair) =
+        Result.success(EntitySuggestionsResponse(mode = "pairs", pairs = pairs.toList()))
+
+    @Test
+    fun `nothing is scanned until asked, then the pairs of the shown kind load`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list(EntityKind.ORGANISATION, null, null, any()) } returns
+                page("Acme", "ACME")
+            coEvery { repository.suggestions(EntityKind.ORGANISATION) } returns
+                suggestionsOf(pair("Acme", "ACME"))
+            val vm = EntitiesViewModel(repository)
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.suggestions)
+            coVerify(exactly = 0) { repository.suggestions(any()) }
+
+            vm.findDuplicates()
+            advanceUntilIdle()
+
+            assertEquals(1, vm.uiState.value.suggestions?.size)
+            assertFalse(vm.uiState.value.suggestionsLoading)
+            assertNull(vm.uiState.value.suggestionsError)
+        }
+
+    @Test
+    fun `a failed scan keeps the error and no list`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list(any(), any(), any(), any()) } returns page("Acme")
+        coEvery { repository.suggestions(any()) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        val vm = EntitiesViewModel(repository)
+        advanceUntilIdle()
+        vm.findDuplicates()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.suggestions)
+        assertNotNull(vm.uiState.value.suggestionsError)
+        assertFalse(vm.uiState.value.suggestionsLoading)
+    }
+
+    @Test
+    fun `dismissing hides the pair for good and a failure keeps it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val keep = pair("Cabin", "Cabin")
+            val hide = pair("Acme", "ACME")
+            coEvery { repository.list(any(), any(), any(), any()) } returns page("Acme")
+            coEvery { repository.suggestions(any()) } returns suggestionsOf(hide, keep)
+            coEvery { repository.dismissSuggestion("id-Acme", "id-ACME") } returns
+                Result.success(Unit)
+            coEvery { repository.dismissSuggestion("id-Cabin", "id-Cabin") } returns
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            val vm = EntitiesViewModel(repository)
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+
+            vm.dismissSuggestion(keep)
+            advanceUntilIdle()
+            assertEquals(2, vm.uiState.value.suggestions?.size)
+            assertNotNull(vm.uiState.value.suggestionsError)
+
+            vm.dismissSuggestion(hide)
+            advanceUntilIdle()
+            assertEquals(listOf(keep), vm.uiState.value.suggestions)
+            assertNull(vm.uiState.value.suggestionsError)
+        }
+
+    @Test
+    fun `switching kind drops the scanned pairs and a slow scan never lands on the new kind`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slow = CompletableDeferred<Result<EntitySuggestionsResponse>>()
+            coEvery { repository.list(any(), any(), any(), any()) } returns page("Acme")
+            coEvery { repository.suggestions(EntityKind.ORGANISATION) } coAnswers { slow.await() }
+            val vm = EntitiesViewModel(repository)
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.suggestionsLoading)
+
+            vm.selectKind(EntityKind.PLACE)
+            advanceUntilIdle()
+            assertFalse(vm.uiState.value.suggestionsLoading)
+            slow.complete(suggestionsOf(pair("Acme", "ACME")))
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.suggestions)
         }
 }

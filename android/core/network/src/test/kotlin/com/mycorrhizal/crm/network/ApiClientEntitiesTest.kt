@@ -148,6 +148,44 @@ class ApiClientEntitiesTest {
     }
 
     @Test
+    fun `listEntitySuggestions asks for pairs of the kind and tolerates null lists`() =
+        runBlocking {
+            enqueue(
+                """{"mode":"pairs","pairs":[{"reason":"exact_name",
+                "a":{"id":"a1","kind":"place","name":"Cabin"},
+                "b":{"id":"b1","kind":"place","name":"Cabin"}}],"groups":null,"next_cursor":"","limit":50}"""
+            )
+            val result = client.listEntitySuggestions(kind = "place").getOrThrow()
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            assertEquals("/api/v1/entities/suggestions", request.requestUrl?.encodedPath)
+            assertEquals("place", request.requestUrl?.queryParameter("kind"))
+            assertEquals("pairs", request.requestUrl?.queryParameter("mode"))
+            val pair = result.pairsOrEmpty.single()
+            assertEquals("exact_name", pair.reason)
+            assertEquals("a1", pair.a.id)
+            assertEquals("Cabin", pair.b.name)
+
+            enqueue("""{"mode":"pairs","pairs":null,"groups":null}""")
+            assertTrue(
+                client.listEntitySuggestions(kind = "pet").getOrThrow().pairsOrEmpty.isEmpty()
+            )
+        }
+
+    @Test
+    fun `dismissEntitySuggestion posts both ids`() = runBlocking {
+        enqueue("""{"id_low":"a1","id_high":"b1"}""")
+        val result = client.dismissEntitySuggestion("b1", "a1").getOrThrow()
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/entities/suggestions/dismiss", request.requestUrl?.encodedPath)
+        val body = request.body.readUtf8()
+        assertTrue(body.contains(""""entity_a":"b1""""))
+        assertTrue(body.contains(""""entity_b":"a1""""))
+        assertEquals("a1", result.idLow)
+    }
+
+    @Test
     fun `entity contacts and field values unwrap their envelopes`() = runBlocking {
         enqueue(
             """{"contacts":[{"link_id":"l1","contact_id":7,"contact_vcard_uid":"u","firstname":"Ada",

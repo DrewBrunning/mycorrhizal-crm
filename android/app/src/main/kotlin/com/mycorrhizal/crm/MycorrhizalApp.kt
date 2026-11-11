@@ -762,6 +762,7 @@ private fun MainScaffold(
                         viewModel = listViewModel,
                         onContactClick = { id -> navController.navigate("contacts/$id") },
                         onCreateContact = { navController.navigate("contacts/new") },
+                        onOpenEntity = { id -> navController.navigate("entities/$id") },
                         onImportContacts = { navController.navigate("import") },
                         onReviewDuplicates = { navController.navigate("duplicates") },
                         onMergeSelected = { primary, others ->
@@ -1327,6 +1328,7 @@ private fun AppNavGraph(
                 ContactListScreen(
                     onContactClick = { id -> navController.navigate("contacts/$id") },
                     onCreateContact = { navController.navigate("contacts/new") },
+                    onOpenEntity = { id -> navController.navigate("entities/$id") },
                     onMenuClick = menu,
                     onImportContacts = { navController.navigate("import") },
                     onReviewDuplicates = { navController.navigate("duplicates") },

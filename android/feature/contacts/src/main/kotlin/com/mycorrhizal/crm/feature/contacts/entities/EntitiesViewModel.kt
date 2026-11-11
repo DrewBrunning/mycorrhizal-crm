@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityKind
+import com.mycorrhizal.crm.model.network.EntitySuggestionPair
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,7 +32,11 @@ data class EntitiesUiState(
     val isLoadingMore: Boolean = false,
     val error: ApiError? = null,
     val isSaving: Boolean = false,
-    val formError: ApiError? = null
+    val formError: ApiError? = null,
+    /** #2499: null until "Find duplicates" is pressed; then the pairs of [kind] still shown. */
+    val suggestions: List<EntitySuggestionPair>? = null,
+    val suggestionsLoading: Boolean = false,
+    val suggestionsError: ApiError? = null
 )
 
 @HiltViewModel
@@ -47,6 +52,9 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
     // never overwrite the current one (the same guard the web list uses).
     private var generation = 0
     private var loadedOnce = false
+
+    // Same guard for the duplicate scan: a scan of a tab the user has left is dropped.
+    private var suggestionsGeneration = 0
 
     init {
         refresh()
@@ -86,8 +94,17 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
     fun selectKind(kind: String) {
         if (kind == _uiState.value.kind) return
         searchJob?.cancel()
+        suggestionsGeneration++
         _uiState.update {
-            it.copy(kind = kind, query = "", entities = emptyList(), nextCursor = null)
+            it.copy(
+                kind = kind,
+                query = "",
+                entities = emptyList(),
+                nextCursor = null,
+                suggestions = null,
+                suggestionsLoading = false,
+                suggestionsError = null
+            )
         }
         refresh()
     }
@@ -155,6 +172,47 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
                         )
                     }
                 }
+            )
+        }
+    }
+
+    /** Read-only scan for duplicate pairs of the shown kind; nothing merges or hides by itself. */
+    fun findDuplicates() {
+        val state = _uiState.value
+        if (state.suggestionsLoading) return
+        val generationAtStart = ++suggestionsGeneration
+        viewModelScope.launch {
+            _uiState.update { it.copy(suggestionsLoading = true, suggestionsError = null) }
+            repository.suggestions(state.kind).foldApiError(
+                onSuccess = { response ->
+                    if (generationAtStart != suggestionsGeneration) return@foldApiError
+                    _uiState.update {
+                        it.copy(suggestionsLoading = false, suggestions = response.pairsOrEmpty)
+                    }
+                },
+                onError = { error ->
+                    if (generationAtStart != suggestionsGeneration) return@foldApiError
+                    _uiState.update {
+                        it.copy(suggestionsLoading = false, suggestionsError = error)
+                    }
+                }
+            )
+        }
+    }
+
+    /** "Not a duplicate": hide the pair for good; it leaves the list only once the server agrees. */
+    fun dismissSuggestion(pair: EntitySuggestionPair) {
+        viewModelScope.launch {
+            repository.dismissSuggestion(pair.a.id, pair.b.id).foldApiError(
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(
+                            suggestions = it.suggestions?.filterNot { p -> p == pair },
+                            suggestionsError = null
+                        )
+                    }
+                },
+                onError = { error -> _uiState.update { it.copy(suggestionsError = error) } }
             )
         }
     }

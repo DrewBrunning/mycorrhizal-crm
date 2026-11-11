@@ -13,10 +13,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
@@ -35,6 +37,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -49,6 +52,7 @@ import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityCore
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntitySensitivity
+import com.mycorrhizal.crm.model.network.EntitySuggestionPair
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
@@ -117,7 +121,9 @@ fun EntitiesScreen(
                 onOpenEntity = onOpenEntity,
                 onLoadMore = viewModel::loadMore,
                 onRetry = viewModel::refresh,
-                onAdd = { showCreate = true }
+                onAdd = { showCreate = true },
+                onFindDuplicates = viewModel::findDuplicates,
+                onDismissSuggestion = viewModel::dismissSuggestion
             )
         }
     }
@@ -150,7 +156,9 @@ internal fun EntitiesContent(
     onOpenEntity: (String) -> Unit,
     onLoadMore: () -> Unit,
     onRetry: () -> Unit,
-    onAdd: () -> Unit
+    onAdd: () -> Unit,
+    onFindDuplicates: () -> Unit = {},
+    onDismissSuggestion: (EntitySuggestionPair) -> Unit = {}
 ) {
     Column(Modifier.fillMaxSize()) {
         Text(
@@ -214,6 +222,14 @@ internal fun EntitiesContent(
                     modifier = Modifier.fillMaxSize().testTag("entities-list"),
                     contentPadding = FabListContentPadding
                 ) {
+                    item(key = "suggestions") {
+                        SuggestionsCard(
+                            state = state,
+                            onFind = onFindDuplicates,
+                            onOpen = onOpenEntity,
+                            onDismiss = onDismissSuggestion
+                        )
+                    }
                     items(state.entities, key = { it.id }) { entity ->
                         EntityRow(entity, onClick = { onOpenEntity(entity.id) })
                         HorizontalDivider()
@@ -227,6 +243,110 @@ internal fun EntitiesContent(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * #2499 (web #2301): "Possible duplicates", loaded on demand. Nothing merges or hides unless the
+ * user presses a button; merging itself is the existing Merge action on an entity's page, which
+ * either side of a pair opens.
+ */
+@Composable
+private fun SuggestionsCard(
+    state: EntitiesUiState,
+    onFind: () -> Unit,
+    onOpen: (String) -> Unit,
+    onDismiss: (EntitySuggestionPair) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
+            .testTag("entity-suggestions")
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    stringResource(R.string.shared_entities_suggestions_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedButton(onClick = onFind, enabled = !state.suggestionsLoading) {
+                    Text(stringResource(R.string.shared_entities_suggestions_load))
+                }
+            }
+            Text(
+                stringResource(R.string.shared_entities_suggestions_description),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            state.suggestionsError?.let { error ->
+                Text(
+                    stringResource(R.string.shared_entities_suggestions_failed),
+                    color = MaterialTheme.colorScheme.error
+                )
+                Text(
+                    error.localizedMessage(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            val pairs = state.suggestions
+            if (pairs != null && pairs.isEmpty()) {
+                Text(stringResource(R.string.shared_entities_suggestions_none))
+            }
+            pairs?.forEach { pair ->
+                SuggestionRow(pair = pair, onOpen = onOpen, onDismiss = { onDismiss(pair) })
+            }
+        }
+    }
+}
+
+@Composable
+private fun SuggestionRow(
+    pair: EntitySuggestionPair,
+    onOpen: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        HorizontalDivider()
+        Text(
+            stringResource(R.string.shared_entities_suggestions_pair, pair.a.name, pair.b.name),
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Text(
+            stringResource(entitySuggestionReasonRes(pair.reason)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            TextButton(
+                onClick = { onOpen(pair.a.id) },
+                modifier = Modifier.testTag("suggestion-open-a-${pair.a.id}")
+            ) {
+                Text(
+                    stringResource(R.string.shared_entities_suggestions_open, pair.a.name),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            TextButton(
+                onClick = { onOpen(pair.b.id) },
+                modifier = Modifier.testTag("suggestion-open-b-${pair.b.id}")
+            ) {
+                Text(
+                    stringResource(R.string.shared_entities_suggestions_open, pair.b.name),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+        TextButton(onClick = onDismiss) {
+            Text(stringResource(R.string.shared_entities_suggestions_dismiss))
         }
     }
 }
