@@ -95,7 +95,10 @@ class LocalizedErrorE2eTest : E2eBaseTest() {
         // closes its output cannot block this one.
         val reader = Thread {
             runCatching { FileInputStream(pfd.fileDescriptor).use { it.readBytes() } }
-        }.apply { isDaemon = true; start() }
+        }.apply {
+            isDaemon = true
+            start()
+        }
         reader.join(SHELL_TIMEOUT_MS)
         val stuck = reader.isAlive
         runCatching { pfd.close() }
