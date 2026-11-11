@@ -4759,6 +4759,42 @@ class ApiClientTest {
         assertEquals(410, (error as ApiError.Client).code)
     }
 
+    // --- Issue #2498: entity trash ---
+
+    @Test
+    fun `get trashed entities requests the page and parses kind and merge origin`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"entities":[{"entity":{"id":"e1","kind":"pet","name":"Rex"},""" +
+                    """"deleted_at":"2026-10-01T00:00:00Z","purge_at":null,""" +
+                    """"merged_into":"e2","merged_into_name":"Rexy"}],""" +
+                    """"total":1,"page":2,"limit":10,"retention_days":0}"""
+            )
+        )
+
+        val response = client.getTrashedEntities(page = 2, limit = 10).getOrThrow()
+
+        val row = response.entitiesOrEmpty.single()
+        assertEquals("pet", row.entity.kind)
+        assertEquals("Rexy", row.mergedIntoName)
+        assertEquals(null, row.purgeAt)
+        assertEquals(1, response.total)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/trash/entities?page=2&limit=10", request.path)
+    }
+
+    @Test
+    fun `get trashed entities tolerates a null collection`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"entities":null,"total":0,"page":1,"limit":100,"retention_days":30}"""
+            )
+        )
+
+        assertEquals(0, client.getTrashedEntities().getOrThrow().entitiesOrEmpty.size)
+    }
+
     // --- Issue #2002: contact trash ---
 
     @Test

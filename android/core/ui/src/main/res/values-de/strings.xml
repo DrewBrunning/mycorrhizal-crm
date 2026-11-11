@@ -2151,6 +2151,7 @@
     <string name="trash_restore_conflict">%1$s kann nicht wiederhergestellt werden: Ein anderer Kontakt verwendet bereits die ID dieses Kontakts. Führe diesen Kontakt zuerst zusammen oder lösche ihn.</string>
     <string name="trash_purge_confirm">%1$s endgültig löschen? Dies kann nicht rückgängig gemacht werden.</string>
     <string name="trash_purged">%1$s endgültig gelöscht.</string>
+    <string name="trash_merged_into">Mit %1$s zusammengeführt</string>
     <plurals name="trash_empty_confirm">
         <item quantity="one">%1$d Kontakt im Papierkorb endgültig löschen? Dies kann nicht rückgängig gemacht werden.</item>
         <item quantity="other">Alle %1$d Kontakte im Papierkorb endgültig löschen? Dies kann nicht rückgängig gemacht werden.</item>

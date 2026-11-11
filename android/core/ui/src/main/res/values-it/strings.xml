@@ -2222,6 +2222,7 @@
     <string name="trash_restore_conflict">Impossibile ripristinare %1$s: un altro contatto usa già l’ID di questo contatto. Unisci o elimina prima quel contatto.</string>
     <string name="trash_purge_confirm">Eliminare definitivamente %1$s? Questa azione non può essere annullata.</string>
     <string name="trash_purged">%1$s eliminato definitivamente.</string>
+    <string name="trash_merged_into">Unito a %1$s</string>
     <plurals name="trash_empty_confirm">
         <item quantity="one">Eliminare definitivamente %1$d contatto dal cestino? Questa azione non può essere annullata.</item>
         <item quantity="many">Eliminare definitivamente tutti i %1$d contatti dal cestino? Questa azione non può essere annullata.</item>

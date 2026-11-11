@@ -280,6 +280,7 @@ import com.mycorrhizal.crm.model.network.TimelineEvent
 import com.mycorrhizal.crm.model.network.TimelineTypes
 import com.mycorrhizal.crm.model.network.TimelineWireItem
 import com.mycorrhizal.crm.model.network.TimelineWirePage
+import com.mycorrhizal.crm.model.network.TrashEntityListResponse
 import com.mycorrhizal.crm.model.network.TrashListResponse
 import com.mycorrhizal.crm.model.network.TrashPurgeResponse
 import com.mycorrhizal.crm.model.network.TrashRestoreResponse
@@ -3442,6 +3443,23 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     }
 
     /**
+     * GET /trash/entities — the caller's restorable deleted organisations, places and pets (and
+     * merge losers), newest deletion first. Restore goes through [restoreEntity]; entities have
+     * no purge endpoint.
+     */
+    suspend fun getTrashedEntities(
+        page: Int = 1,
+        limit: Int = 25
+    ): Result<TrashEntityListResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$TRASH_ENTITIES_PATH".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("page", page.toString())
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(TrashEntityListResponse::class.java).fromJson(body)
+        }
+    }
+
+    /**
      * POST /trash/contacts/{id}/restore — a 409 means a live contact already uses the trashed
      * contact's UID (nothing changed); a 404 means it is not in the caller's trash.
      */
@@ -4182,6 +4200,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         private const val SHARE_GRANTS_PATH = "$API_V1/share-grants"
         private const val AUDIT_PATH = "$API_V1/audit"
         private const val TRASH_CONTACTS_PATH = "$API_V1/trash/contacts"
+        private const val TRASH_ENTITIES_PATH = "$API_V1/trash/entities"
         private const val AUDIT_EXPORT_PATH = "$AUDIT_PATH/export"
         private const val ADMIN_SYSTEM_EVENTS_PATH = "$API_V1/admin/system-events"
         private const val ADMIN_SUBSYSTEM_HEALTH_PATH = "$API_V1/admin/subsystem-health"

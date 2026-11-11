@@ -3,8 +3,10 @@ package com.mycorrhizal.crm.feature.trash
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.domain.repository.TrashRepository
 import com.mycorrhizal.crm.model.network.TrashedContact
+import com.mycorrhizal.crm.model.network.TrashedEntity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +27,8 @@ private const val HTTP_CONFLICT = 409
 
 data class TrashUiState(
     val items: List<TrashedContact> = emptyList(),
+    /** Deleted organisations, places and pets (issue #2498); restore-only. */
+    val entities: List<TrashedEntity> = emptyList(),
     /** DELETED_RETENTION_DAYS; 0 = trashed contacts are kept until the trash is emptied. */
     val retentionDays: Int = 0,
     val isLoading: Boolean = false,
@@ -32,7 +36,10 @@ data class TrashUiState(
     val error: ApiError? = null,
     /** A restore / purge / empty is in flight; further actions are ignored. */
     val isWorking: Boolean = false
-)
+) {
+    /** Nothing at all is in the trash: no contact and no entity. */
+    val isEmpty: Boolean get() = items.isEmpty() && entities.isEmpty()
+}
 
 sealed interface TrashUiEvent {
     /** [lostRows] is how many join rows the server could not bring back (0 = a full restore). */
@@ -40,6 +47,9 @@ sealed interface TrashUiEvent {
 
     /** 409: a live contact already uses this contact's UID; nothing changed. */
     data class RestoreConflict(val name: String) : TrashUiEvent
+
+    /** An entity came back; [sameNameLive] warns that a live entity already has its name. */
+    data class EntityRestored(val name: String, val sameNameLive: Boolean) : TrashUiEvent
 
     data class Purged(val name: String) : TrashUiEvent
 
@@ -56,7 +66,8 @@ private fun Result<*>.apiError(): ApiError =
 @HiltViewModel
 class TrashViewModel @Inject constructor(
     private val trashRepository: TrashRepository,
-    private val contactRepository: ContactRepository
+    private val contactRepository: ContactRepository,
+    private val entityRepository: EntityRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TrashUiState())
@@ -83,30 +94,53 @@ class TrashViewModel @Inject constructor(
     fun load() {
         loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            val all = mutableListOf<TrashedContact>()
+            val contacts = mutableListOf<TrashedContact>()
+            val entities = mutableListOf<TrashedEntity>()
             var retention = _uiState.value.retentionDays
-            var page = 1
-            var failure: ApiError? = null
-            while (page <= MAX_PAGES) {
-                val result = trashRepository.list(page = page, limit = PAGE_SIZE)
-                val response = result.getOrNull()
-                if (response == null) {
-                    failure = result.apiError()
-                    break
-                }
-                all += response.contacts
+            val failure = walkPages(
+                fetch = { page -> trashRepository.list(page = page, limit = PAGE_SIZE) },
+                rows = { it.contacts },
+                total = { it.total }
+            ) { response ->
+                contacts += response.contacts
                 retention = response.retentionDays
-                if (all.size >= response.total || response.contacts.isEmpty()) break
-                page += 1
-            }
+            } ?: walkPages(
+                fetch = { page -> trashRepository.listEntities(page = page, limit = PAGE_SIZE) },
+                rows = { it.entitiesOrEmpty },
+                total = { it.total }
+            ) { response -> entities += response.entitiesOrEmpty }
             if (failure != null) {
                 _uiState.update { it.copy(isLoading = false, error = failure) }
             } else {
                 _uiState.update {
-                    it.copy(isLoading = false, items = all, retentionDays = retention)
+                    it.copy(
+                        isLoading = false,
+                        items = contacts,
+                        entities = entities,
+                        retentionDays = retention
+                    )
                 }
             }
         }
+    }
+
+    /** Walks a paged list until it is exhausted; returns the first failure, or null. */
+    private suspend fun <R> walkPages(
+        fetch: suspend (page: Int) -> Result<R>,
+        rows: (R) -> List<Any>,
+        total: (R) -> Int,
+        onPage: (R) -> Unit
+    ): ApiError? {
+        var seen = 0
+        for (page in 1..MAX_PAGES) {
+            val result = fetch(page)
+            val response = result.getOrNull() ?: return result.apiError()
+            onPage(response)
+            val count = rows(response).size
+            seen += count
+            if (seen >= total(response) || count == 0) break
+        }
+        return null
     }
 
     fun restore(item: TrashedContact) = runAction {
@@ -130,6 +164,20 @@ class TrashViewModel @Inject constructor(
                     TrashUiEvent.Failed(error)
                 }
             )
+        }
+    }
+
+    /** Restores an entity through the entity restore route (links revive with it). */
+    fun restoreEntity(item: TrashedEntity) = runAction {
+        val result = entityRepository.restore(item.entity.id)
+        val response = result.getOrNull()
+        if (response != null) {
+            _uiState.update { state ->
+                state.copy(entities = state.entities.filterNot { it.entity.id == item.entity.id })
+            }
+            _events.send(TrashUiEvent.EntityRestored(item.entity.name, response.sameNameLive))
+        } else {
+            _events.send(TrashUiEvent.Failed(result.apiError()))
         }
     }
 

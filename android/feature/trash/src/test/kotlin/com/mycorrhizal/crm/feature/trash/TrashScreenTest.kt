@@ -9,7 +9,10 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.Entity
+import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.TrashedContact
+import com.mycorrhizal.crm.model.network.TrashedEntity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -258,5 +261,103 @@ class TrashScreenTest {
             }
             composeTestRule.mainClock.advanceTimeBy(11_000)
         }
+    }
+
+    private val rex = TrashedEntity(
+        entity = Entity(id = "e1", kind = EntityKind.PET, name = "Rex"),
+        deletedAt = "2026-10-01T00:00:00Z",
+        purgeAt = "2026-10-31T00:00:00Z",
+        mergedInto = "e2",
+        mergedIntoName = "Rexy"
+    )
+    private val acme = TrashedEntity(
+        entity = Entity(id = "e3", kind = EntityKind.ORGANISATION, name = "Acme"),
+        deletedAt = "2026-10-02T00:00:00Z"
+    )
+
+    @Test
+    fun `entity rows show name kind and merge origin and restore only`() {
+        var restored: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TrashList(
+                    items = listOf(ada),
+                    entities = listOf(rex, acme),
+                    retentionDays = 30,
+                    enabled = true,
+                    onRestore = {},
+                    onPurge = {},
+                    onRestoreEntity = { restored = it.entity.id }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Rex").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Pet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Merged into Rexy").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("trash-entity-restore-e1").performClick()
+        assertEquals("e1", restored)
+        // Entities have no purge endpoint: no Delete forever on those rows.
+        composeTestRule.onNodeWithTag("trash-delete-e1").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("trash-entity-restore-e3").assertIsDisplayed()
+    }
+
+    @Test
+    fun `entity restore is disabled while an action runs`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TrashList(
+                    items = emptyList(),
+                    entities = listOf(acme),
+                    retentionDays = 30,
+                    enabled = false,
+                    onRestore = {},
+                    onPurge = {},
+                    onRestoreEntity = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithTag("trash-entity-restore-e3").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `entities alone show the list, not the empty state, and hide empty trash`() {
+        screenWith(TrashUiState(entities = listOf(acme)))
+
+        composeTestRule.onNodeWithText("Acme").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Trash is empty").assertDoesNotExist()
+        // Empty trash purges contacts only, so it is offered only when contacts are listed.
+        composeTestRule.onNodeWithTag("trash-empty").assertDoesNotExist()
+    }
+
+    @Test
+    fun `nothing deleted shows the empty state`() {
+        screenWith(TrashUiState())
+
+        composeTestRule.onNodeWithText("Trash is empty").assertIsDisplayed()
+    }
+
+    @Test
+    fun `tapping entity restore calls the view model`() {
+        val vm = screenWith(TrashUiState(entities = listOf(rex)))
+
+        composeTestRule.onNodeWithTag("trash-entity-restore-e1").performClick()
+
+        verify { vm.restoreEntity(rex) }
+    }
+
+    @Test
+    fun `an entity restore announces success and the same-name warning`() {
+        val events = Channel<TrashUiEvent>(Channel.BUFFERED)
+        screenWith(TrashUiState(entities = listOf(rex)), events)
+
+        events.trySend(TrashUiEvent.EntityRestored("Rex", sameNameLive = true))
+
+        composeTestRule.waitUntil(5_000) {
+            composeTestRule.onAllNodesWithText("Restored Rex.").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("Restored Rex.").assertIsDisplayed()
     }
 }

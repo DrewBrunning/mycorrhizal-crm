@@ -2222,6 +2222,7 @@
     <string name="trash_restore_conflict">No se puede restaurar a %1$s: otro contacto ya usa el ID de este contacto. Fusiona o elimina ese contacto primero.</string>
     <string name="trash_purge_confirm">¿Eliminar a %1$s permanentemente? Esta acción no se puede deshacer.</string>
     <string name="trash_purged">%1$s eliminado permanentemente.</string>
+    <string name="trash_merged_into">Fusionado con %1$s</string>
     <plurals name="trash_empty_confirm">
         <item quantity="one">¿Eliminar permanentemente %1$d contacto de la papelera? Esta acción no se puede deshacer.</item>
         <item quantity="many">¿Eliminar permanentemente los %1$d contactos de la papelera? Esta acción no se puede deshacer.</item>
