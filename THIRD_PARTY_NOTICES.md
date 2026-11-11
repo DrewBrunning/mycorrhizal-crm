@@ -179,7 +179,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `d3-dispatch` | `3.0.1` | ISC | https://github.com/d3/d3-dispatch |
 | `d3-drag` | `3.0.0` | ISC | https://github.com/d3/d3-drag |
 | `d3-ease` | `3.0.1` | BSD-3-Clause | https://github.com/d3/d3-ease |
-| `d3-force` | `3.0.0` | ISC | https://github.com/d3/d3-force |
+| `d3-force` | `3.0.1` | ISC | https://github.com/d3/d3-force |
 | `d3-force-3d` | `3.0.6` | MIT | https://github.com/vasturiano/d3-force-3d |
 | `d3-format` | `3.1.2` | ISC | https://github.com/d3/d3-format |
 | `d3-interpolate` | `3.0.1` | ISC | https://github.com/d3/d3-interpolate |
@@ -207,8 +207,8 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `hasown` | `2.0.4` | MIT | https://github.com/inspect-js/hasOwn |
 | `hoist-non-react-statics` | `3.3.2` | BSD-3-Clause | https://github.com/mridgway/hoist-non-react-statics |
 | `html-parse-stringify` | `4.0.1` | MIT | https://github.com/i18next/html-parse-stringify |
-| `i18next` | `26.5.11` | MIT | https://github.com/i18next/i18next |
-| `i18next-browser-languagedetector` | `8.2.3` | MIT | https://github.com/i18next/i18next-browser-languageDetector |
+| `i18next` | `26.7.1` | MIT | https://github.com/i18next/i18next |
+| `i18next-browser-languagedetector` | `8.3.0` | MIT | https://github.com/i18next/i18next-browser-languageDetector |
 | `idb` | `7.1.1` | ISC | https://github.com/jakearchibald/idb |
 | `import-fresh` | `3.3.1` | MIT | https://github.com/sindresorhus/import-fresh |
 | `index-array-by` | `1.4.2` | MIT | https://github.com/vasturiano/index-array-by |
@@ -247,7 +247,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `react-dom` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-easy-crop` | `6.2.4` | MIT | https://github.com/ValentinH/react-easy-crop |
 | `react-force-graph-2d` | `1.29.2` | MIT | https://github.com/vasturiano/react-force-graph |
-| `react-i18next` | `17.1.9` | MIT | https://github.com/i18next/react-i18next |
+| `react-i18next` | `17.1.12` | MIT | https://github.com/i18next/react-i18next |
 | `react-is` | `16.13.1` | MIT | https://github.com/facebook/react |
 | `react-is` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-kapsule` | `2.6.0` | MIT | https://github.com/vasturiano/react-kapsule |
@@ -1673,7 +1673,7 @@ THIS SOFTWARE.
 
 ### 35. ISC
 
-Applies to: `d3-dispatch`, `d3-drag`, `d3-force`, `d3-interpolate`, `d3-quadtree`, `d3-scale`, `d3-selection`, `d3-time-format`, `d3-timer`, `d3-transition`, `d3-zoom`
+Applies to: `d3-dispatch`, `d3-drag`, `d3-interpolate`, `d3-quadtree`, `d3-scale`, `d3-selection`, `d3-time-format`, `d3-timer`, `d3-transition`, `d3-zoom`
 
 ```text
 Copyright 2010-2021 Mike Bostock
@@ -1732,7 +1732,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ### 37. ISC
 
-Applies to: `d3-format`
+Applies to: `d3-force`, `d3-format`
 
 ```text
 Copyright 2010-2026 Mike Bostock
