@@ -37,6 +37,14 @@ internal fun entityEmptyRes(kind: String): Int = when (kind) {
     else -> R.string.shared_entities_empty_organisation
 }
 
+/** Why a pair is suggested; an unknown backend token falls back to the weakest wording. */
+@StringRes
+internal fun entitySuggestionReasonRes(reason: String): Int = when (reason) {
+    "exact_name" -> R.string.shared_entities_suggestions_reason_exact_name
+    "address_components" -> R.string.shared_entities_suggestions_reason_address
+    else -> R.string.shared_entities_suggestions_reason_similar_name
+}
+
 @StringRes
 internal fun entitySensitivityRes(sensitivity: String): Int = when (sensitivity) {
     "private" -> R.string.shared_entities_sensitivity_private

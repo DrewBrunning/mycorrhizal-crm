@@ -3493,6 +3493,17 @@
     <string name="shared_entities_merge_open_survivor">Apri %1$s</string>
     <string name="shared_entities_restore_failed">Impossibile ripristinare questa voce.</string>
     <string name="shared_entities_open">Apri %1$s</string>
+    <string name="shared_entities_suggestions_title">Possibili duplicati</string>
+    <string name="shared_entities_suggestions_description">Elementi con lo stesso nome o uno molto simile. Nulla viene unito se non lo decidi tu.</string>
+    <string name="shared_entities_suggestions_load">Cerca duplicati</string>
+    <string name="shared_entities_suggestions_none">Nessun duplicato trovato.</string>
+    <string name="shared_entities_suggestions_failed">Impossibile cercare i duplicati.</string>
+    <string name="shared_entities_suggestions_dismiss">Non è un duplicato</string>
+    <string name="shared_entities_suggestions_pair">%1$s e %2$s</string>
+    <string name="shared_entities_suggestions_open">Apri %1$s</string>
+    <string name="shared_entities_suggestions_reason_exact_name">Stesso nome</string>
+    <string name="shared_entities_suggestions_reason_similar_name">Nome molto simile</string>
+    <string name="shared_entities_suggestions_reason_address">Stesso indirizzo</string>
     <string name="contact_entity_links_from_own_none">Questo contatto non ha organizzazioni né indirizzi propri da collegare.</string>
     <string name="contact_entity_links_load_failed">Impossibile caricare i collegamenti di questo contatto.</string>
     <string name="contact_entity_links_cd_from">Mostrato da %1$s, sola lettura</string>

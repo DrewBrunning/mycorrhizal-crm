@@ -14,6 +14,7 @@ import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntityRestoreResponse
+import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
 import com.mycorrhizal.crm.model.network.FieldValue
 
 /**
@@ -43,6 +44,12 @@ interface EntityRepository {
     suspend fun restore(id: String): Result<EntityRestoreResponse>
 
     suspend fun merge(loserId: String, input: EntityMergeInput): Result<EntityMergeResponse>
+
+    /** Candidate duplicate pairs of [kind]; read-only, nothing merges or hides by itself. */
+    suspend fun suggestions(kind: String): Result<EntitySuggestionsResponse>
+
+    /** Hide a suggested pair for good (idempotent, order-insensitive server-side). */
+    suspend fun dismissSuggestion(entityA: String, entityB: String): Result<Unit>
 
     /** The live links of an entity (the "People" list). */
     suspend fun contacts(id: String): Result<List<EntityContactLink>>

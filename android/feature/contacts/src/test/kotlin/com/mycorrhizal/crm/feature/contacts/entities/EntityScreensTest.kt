@@ -19,8 +19,11 @@ import com.mycorrhizal.crm.model.network.EntityContactLink
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
+import com.mycorrhizal.crm.model.network.EntitySuggestionEntity
+import com.mycorrhizal.crm.model.network.EntitySuggestionPair
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.TemporalRange
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -56,7 +59,9 @@ class EntityScreensTest {
     private fun setList(
         state: EntitiesUiState,
         onOpen: (String) -> Unit = {},
-        onKind: (String) -> Unit = {}
+        onKind: (String) -> Unit = {},
+        onFind: () -> Unit = {},
+        onDismiss: (EntitySuggestionPair) -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -67,7 +72,9 @@ class EntityScreensTest {
                     onOpenEntity = onOpen,
                     onLoadMore = {},
                     onRetry = {},
-                    onAdd = {}
+                    onAdd = {},
+                    onFindDuplicates = onFind,
+                    onDismissSuggestion = onDismiss
                 )
             }
         }
@@ -101,6 +108,63 @@ class EntityScreensTest {
         setList(EntitiesUiState(kind = EntityKind.PET))
         composeTestRule.onNodeWithText("No pets yet.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Add pet").assertIsDisplayed()
+    }
+
+    private val cabinPair = EntitySuggestionPair(
+        reason = "normalized_name",
+        a = EntitySuggestionEntity(id = "p1", kind = EntityKind.PLACE, name = "Cabin"),
+        b = EntitySuggestionEntity(id = "p2", kind = EntityKind.PLACE, name = "cabin.")
+    )
+
+    @Test
+    fun `the duplicates card offers a scan and reports it`() {
+        var found = 0
+        setList(EntitiesUiState(entities = listOf(acme)), onFind = { found++ })
+        composeTestRule.onNodeWithText("Possible duplicates").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Find duplicates").performClick()
+        assertEquals(1, found)
+        composeTestRule.onNodeWithText("No duplicates found.").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a scan with no pairs says so`() {
+        setList(EntitiesUiState(entities = listOf(acme), suggestions = emptyList()))
+        composeTestRule.onNodeWithText("No duplicates found.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed scan shows its message and still offers the scan`() {
+        setList(
+            EntitiesUiState(
+                entities = listOf(acme),
+                suggestionsError = ApiError.Network(java.io.IOException("offline"))
+            )
+        )
+        composeTestRule.onNodeWithText("Couldn't look for duplicates.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Find duplicates").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a pair shows its names and reason, opens either side and can be dismissed`() {
+        var opened: String? = null
+        var dismissed: EntitySuggestionPair? = null
+        setList(
+            EntitiesUiState(
+                kind = EntityKind.PLACE,
+                entities = listOf(acme.copy(kind = EntityKind.PLACE)),
+                suggestions = listOf(cabinPair)
+            ),
+            onOpen = { opened = it },
+            onDismiss = { dismissed = it }
+        )
+        composeTestRule.onNodeWithText("Cabin and cabin.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Very similar name").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("suggestion-open-b-p2").performClick()
+        assertEquals("p2", opened)
+        composeTestRule.onNodeWithTag("suggestion-open-a-p1").performClick()
+        assertEquals("p1", opened)
+        composeTestRule.onNodeWithText("Not a duplicate").performClick()
+        assertEquals(cabinPair, dismissed)
     }
 
     @Test

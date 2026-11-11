@@ -364,3 +364,50 @@ fun ContactRecordResponse.withoutProjectedEntries(): ContactRecordResponse {
         copy(card = stripped.card, crm = stripped.crm)
     }
 }
+
+/** One side of a suggested duplicate pair (GET /entities/suggestions, `mode=pairs`). */
+@JsonClass(generateAdapter = true)
+data class EntitySuggestionEntity(
+    val id: String = "",
+    val kind: String = EntityKind.ORGANISATION,
+    val name: String = ""
+)
+
+/**
+ * A candidate duplicate pair (#2299). [reason] is `exact_name`, `normalized_name` or
+ * `address_components` - a hardcoded mirror of the backend token set (unknown tokens are shown
+ * with the generic label).
+ */
+@JsonClass(generateAdapter = true)
+data class EntitySuggestionPair(
+    val reason: String = "",
+    val a: EntitySuggestionEntity = EntitySuggestionEntity(),
+    val b: EntitySuggestionEntity = EntitySuggestionEntity()
+)
+
+/**
+ * GET /entities/suggestions. Only the `pairs` mode is modeled; the `contact_values` groups (the
+ * create-from-contacts helper) are ignored by Moshi until that surface exists on Android.
+ */
+@JsonClass(generateAdapter = true)
+data class EntitySuggestionsResponse(
+    val mode: String = "pairs",
+    val pairs: List<EntitySuggestionPair>? = null,
+    @Json(name = "next_cursor") val nextCursor: String? = null,
+    val limit: Int = 0
+) {
+    val pairsOrEmpty: List<EntitySuggestionPair> get() = pairs.orEmpty()
+}
+
+/** POST /entities/suggestions/dismiss body; either order, the server canonicalises it. */
+@JsonClass(generateAdapter = true)
+data class EntityDismissInput(
+    @Json(name = "entity_a") val entityA: String,
+    @Json(name = "entity_b") val entityB: String
+)
+
+@JsonClass(generateAdapter = true)
+data class EntityDismissResponse(
+    @Json(name = "id_low") val idLow: String = "",
+    @Json(name = "id_high") val idHigh: String = ""
+)

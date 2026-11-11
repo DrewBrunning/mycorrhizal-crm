@@ -3414,6 +3414,17 @@
     <string name="shared_entities_merge_open_survivor">Open %1$s</string>
     <string name="shared_entities_restore_failed">Couldn\'t restore this entity.</string>
     <string name="shared_entities_open">Open %1$s</string>
+    <string name="shared_entities_suggestions_title">Possible duplicates</string>
+    <string name="shared_entities_suggestions_description">Entities with the same or a very similar name. Nothing merges unless you choose to.</string>
+    <string name="shared_entities_suggestions_load">Find duplicates</string>
+    <string name="shared_entities_suggestions_none">No duplicates found.</string>
+    <string name="shared_entities_suggestions_failed">Couldn\'t look for duplicates.</string>
+    <string name="shared_entities_suggestions_dismiss">Not a duplicate</string>
+    <string name="shared_entities_suggestions_pair">%1$s and %2$s</string>
+    <string name="shared_entities_suggestions_open">Open %1$s</string>
+    <string name="shared_entities_suggestions_reason_exact_name">Same name</string>
+    <string name="shared_entities_suggestions_reason_similar_name">Very similar name</string>
+    <string name="shared_entities_suggestions_reason_address">Same address</string>
     <string name="contact_entity_links_from_own_none">This contact has no organisations or addresses of its own to link.</string>
     <string name="contact_entity_links_load_failed">Couldn\'t load the links for this contact.</string>
     <string name="contact_entity_links_cd_from">Shown from %1$s, read-only</string>

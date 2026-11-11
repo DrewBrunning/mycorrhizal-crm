@@ -3396,6 +3396,17 @@
     <string name="shared_entities_merge_open_survivor">%1$s öffnen</string>
     <string name="shared_entities_restore_failed">Dieser Eintrag konnte nicht wiederhergestellt werden.</string>
     <string name="shared_entities_open">%1$s öffnen</string>
+    <string name="shared_entities_suggestions_title">Mögliche Duplikate</string>
+    <string name="shared_entities_suggestions_description">Einträge mit gleichem oder sehr ähnlichem Namen. Es wird nichts zusammengeführt, wenn du es nicht willst.</string>
+    <string name="shared_entities_suggestions_load">Duplikate suchen</string>
+    <string name="shared_entities_suggestions_none">Keine Duplikate gefunden.</string>
+    <string name="shared_entities_suggestions_failed">Die Suche nach Duplikaten ist fehlgeschlagen.</string>
+    <string name="shared_entities_suggestions_dismiss">Kein Duplikat</string>
+    <string name="shared_entities_suggestions_pair">%1$s und %2$s</string>
+    <string name="shared_entities_suggestions_open">%1$s öffnen</string>
+    <string name="shared_entities_suggestions_reason_exact_name">Gleicher Name</string>
+    <string name="shared_entities_suggestions_reason_similar_name">Sehr ähnlicher Name</string>
+    <string name="shared_entities_suggestions_reason_address">Gleiche Adresse</string>
     <string name="contact_entity_links_from_own_none">Dieser Kontakt hat keine eigenen Organisationen oder Adressen zum Verknüpfen.</string>
     <string name="contact_entity_links_load_failed">Die Verknüpfungen dieses Kontakts konnten nicht geladen werden.</string>
     <string name="contact_entity_links_cd_from">Angezeigt von %1$s, schreibgeschützt</string>

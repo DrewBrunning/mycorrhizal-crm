@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Duplicate suggestions on Android** ([#2499](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2499)): the organisations, places and pets screen can now look for possible duplicates, as the web page does. Open either one to merge it, or mark the pair Not a duplicate to hide it for good.
 - **Android search finds your organisations, places and pets** ([#2499](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2499)): searching contacts now also lists matching organisations, places and pets by name, each showing its kind. Tap one to open it.
 - **Search finds your organisations, places and pets** ([#2472](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2472)): the top-bar search and the search results page now include them, matched by name, with a tab of their own. Nothing to do when upgrading.
 - **Past import reports on the web** ([#2465](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2465)): in Data settings, any past import that skipped or failed rows now has a View report button listing each row and why, with a Download as CSV option.
