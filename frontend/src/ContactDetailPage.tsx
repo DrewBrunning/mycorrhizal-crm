@@ -1345,6 +1345,9 @@ export default function ContactDetailPage() {
         open={shareDialogOpen}
         onClose={() => setShareDialogOpen(false)}
         vcardUID={record.uid}
+        onStandingShared={(grant) =>
+          showSuccess(t('standingShares.form.created', { username: grant.to_username }))
+        }
       />
 
       <FeedCreateDialog

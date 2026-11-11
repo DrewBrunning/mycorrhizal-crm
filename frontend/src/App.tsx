@@ -37,6 +37,8 @@
 
 import { mdiGraphOutline, mdiNotebookOutline } from '@mdi/js';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import CallMadeIcon from '@mui/icons-material/CallMade';
+import CallReceivedIcon from '@mui/icons-material/CallReceived';
 import CelebrationIcon from '@mui/icons-material/Celebration';
 import ContactsIcon from '@mui/icons-material/Contacts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
@@ -59,6 +61,7 @@ import ShareIcon from '@mui/icons-material/Share';
 import StorageIcon from '@mui/icons-material/Storage';
 import {
   AppBar,
+  Badge,
   Box,
   Button,
   Collapse,
@@ -91,6 +94,7 @@ import {
 } from 'react-router';
 import ActivitiesPage from './ActivitiesPage';
 import AuditPage from './AuditPage';
+import { getShareGrantNotifications } from './api/shareGrants';
 import { fetchAndCacheUserInfo, getToken, isAdmin, logoutAndRedirect } from './auth';
 import CirclesTagsPage from './CirclesTagsPage';
 import CircleTagTriagePage from './CircleTagTriagePage';
@@ -117,6 +121,10 @@ import OccasionsPage from './OccasionsPage';
 import PrepViewPage from './PrepViewPage';
 import RegisterPage from './RegisterPage';
 import SettingsPage from './SettingsPage';
+// Imported statically like ContactSharesPage: lazy-loading these two reshuffled the
+// shared chunk split (a 273 KiB "errorHandler" chunk tripped the new-chunk gate).
+import SharedByMePage from './SharedByMePage';
+import SharedWithMePage from './SharedWithMePage';
 import SystemEventsPage from './SystemEventsPage';
 import SystemStatusPage from './SystemStatusPage';
 import UsersPage from './UsersPage';
@@ -186,6 +194,24 @@ function AppContent({
   // primary destinations + an account menu (T33) once space is tight.
   const compactNav = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  // Standing shares (#2292): grants awaiting this user's answer, for the nav badge.
+  // Re-read on navigation so answering one on the page clears it. A failed read
+  // just shows no badge.
+  const [pendingShares, setPendingShares] = useState(0);
+  const { pathname: currentPath } = location;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: currentPath re-reads the count on navigation
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    getShareGrantNotifications()
+      .then((n) => {
+        if (!cancelled) setPendingShares(n.pending_count);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [token, currentPath]);
   const [accountMenuAnchor, setAccountMenuAnchor] = useState<HTMLElement | null>(null);
   const accountMenuOpen = Boolean(accountMenuAnchor);
 
@@ -210,8 +236,27 @@ function AppContent({
   // status. Routes live in the <Routes> block; this list only places them.
   const navTree = useMemo<NavItem[]>(() => {
     const settingsChildren: NavItem[] = [
-      // Shares: the contact-sharing page today; #2292 adds the new Shares UI here.
+      // Shares: the one-time contact-sharing page, then the standing-share pages
+      // (#2292). "Shared with me" carries the pending-share badge.
       { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
+      {
+        text: t('nav.sharedWithMe'),
+        icon:
+          pendingShares > 0 ? (
+            <Badge
+              badgeContent={pendingShares}
+              color="primary"
+              role="img"
+              aria-label={t('nav.sharedPendingBadge', { count: pendingShares })}
+            >
+              <CallReceivedIcon />
+            </Badge>
+          ) : (
+            <CallReceivedIcon />
+          ),
+        path: '/shared-with-me',
+      },
+      { text: t('nav.sharedByMe'), icon: <CallMadeIcon />, path: '/shared-by-me' },
       { text: t('nav.entities'), icon: <DomainIcon />, path: '/entities' },
       { text: t('nav.audit'), icon: <HistoryIcon />, path: '/audit' },
       { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
@@ -257,7 +302,7 @@ function AppContent({
         children: settingsChildren,
       },
     ];
-  }, [t, userIsAdmin]);
+  }, [t, userIsAdmin, pendingShares]);
 
   // Flat view of the tree (parents then their children) for path matching and
   // the phone AppBar / account menu, which do not nest.
@@ -696,6 +741,22 @@ function AppContent({
               element={
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <ContactSharesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/shared-with-me"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <SharedWithMePage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/shared-by-me"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <SharedByMePage />
                 </Suspense>
               }
             />

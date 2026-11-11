@@ -31,6 +31,37 @@ interface DynamicKeySource {
 }
 
 const DYNAMIC_KEY_SOURCES: readonly DynamicKeySource[] = [
+  // Standing shares (ADR 0042, issue #2292): closed sets mirrored from the backend.
+  {
+    prefix: 'standingShares.entityTypes.',
+    file: 'SharedWithMePage.tsx',
+    values: ['contact', 'note', 'activity', 'circle'],
+    reason: 'share-grant entity_type is a closed set',
+  },
+  {
+    prefix: 'standingShares.status.',
+    file: 'SharedByMePage.tsx',
+    values: ['pending', 'active', 'declined', 'revoked', 'expired'],
+    reason: 'share-grant status is a closed set',
+  },
+  {
+    prefix: 'standingShares.dialogTitle.',
+    file: 'components/StandingShareDialog.tsx',
+    values: ['note', 'activity', 'circle'],
+    reason: 'the standing-only dialog entity types',
+  },
+  {
+    prefix: 'standingShares.form.entityNotice.',
+    file: 'components/StandingShareForm.tsx',
+    values: ['note', 'activity', 'circle'],
+    reason: 'the non-contact entity types carry no sections',
+  },
+  {
+    prefix: 'standingShares.byMe.revokedReason.',
+    file: 'SharedByMePage.tsx',
+    values: ['owner_revoked', 'entity_deleted', 'recipient_deleted'],
+    reason: 'share-grant revoked_reason is a closed set',
+  },
   {
     prefix: 'errors.reason.',
     file: 'i18n/reason.ts',

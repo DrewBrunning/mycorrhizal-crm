@@ -18080,6 +18080,7 @@ components:
         CreatedAt: { type: string, format: date-time }
         UpdatedAt: { type: string, format: date-time }
         DeletedAt: { type: string, format: date-time, nullable: true }
+        uuid: { type: string, format: uuid, description: "Stable portable identity; what a standing share (issue #2292) names. Read-only." }
         content: { type: string, maxLength: 5000 }
         date: { type: string, format: date-time }
         contact_id: { type: integer, nullable: true }
