@@ -74,7 +74,20 @@ loudly on a malformed row rather than skipping it.
 | `android_signing_key` | Confirm the Android signing keystore is still recoverable | 365 | 2026-09-18 | Restore the keystore from its offline backup into a scratch dir and confirm the release APK still builds; see [custody & backup](#android-signing-keystore-custody-and-backup). |
 | `access_list_review` | Review the sensitive-resource access list in `GOVERNANCE.md` | 365 | 2026-09-18 | Confirm who holds repo admin, ruleset bypass, Actions secrets, and the deployment host; update the table in place ([GOVERNANCE.md](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/GOVERNANCE.md)). |
 | `support_window_review` | Review the support window / EOL policy | 365 | 2026-10-26 | Confirm `SECURITY.md` "Supported Versions" and the [supported-versions lifecycle](../supported-versions.md#version-support-lifecycle) still describe what is backported, and that every supported minor has a `release/vX.Y.0` branch. |
+| `governance_read_token` | Rotate the `GOVERNANCE_READ_TOKEN` fine-grained PAT (Administration: read) | 90 | 2026-11-11 | Create a new fine-grained PAT (90-day expiry, this repo only, Administration: read); set it as `GOVERNANCE_READ_TOKEN` in **both** the Actions and the Dependabot secret stores (Dependabot-triggered runs cannot read Actions secrets); re-run `governance-drift.yml`. |
+| `scorecard_token` | Rotate the `SCORECARD_TOKEN` fine-grained PAT | 90 | 2026-11-11 | Create a new fine-grained PAT (90-day expiry) per [ossf/scorecard-action](https://github.com/ossf/scorecard-action#authentication-with-fine-grained-pat-optional); set it as `SCORECARD_TOKEN` in the Actions secret store; re-run `scorecard.yml`. |
 <!-- security-cadence:end -->
+
+## Token rotation issues
+
+Fine-grained PATs expire on GitHub's clock. The weekly `security-cadence`
+workflow runs `go run ./cmd/securitycadence -json` and
+`.github/scripts/rotation-issues.sh` turns the result into issues: an entry
+that is **due within 7 days** or overdue gets one open issue labelled
+`token-rotation` (titled `Rotate: <id>`, de-duplicated by that title), and the
+issue is closed automatically once the register's `last_done` moves the entry
+back out of the window. Both PATs share the 90-day interval so they are rotated
+in one sitting. The issue is a reminder only — the workflow never reads a token.
 
 ## Android signing-keystore custody and backup
 

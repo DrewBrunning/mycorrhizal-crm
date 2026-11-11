@@ -31,6 +31,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -65,7 +66,22 @@ var requiredObligations = []string{
 	"android_signing_key",
 	"access_list_review",
 	"support_window_review",
+	// Fine-grained PATs expire on GitHub's clock, not ours; a lapsed one fails
+	// a workflow in a confusing way (governance-drift, Scorecard), so each is a
+	// required, 90-day entry.
+	"governance_read_token",
+	"scorecard_token",
 }
+
+// Entry statuses reported per row.
+const (
+	statusOK      = "ok"
+	statusDueSoon = "due_soon"
+	statusOverdue = "overdue"
+)
+
+// defaultLeadDays is how far ahead of the due date an entry counts as due soon.
+const defaultLeadDays = 7
 
 // Entry is one parsed register row.
 type Entry struct {
@@ -82,10 +98,24 @@ func (e Entry) Due() time.Time { return e.LastDone.AddDate(0, 0, e.IntervalDays)
 // Overdue reports whether now is past the entry's due date.
 func (e Entry) Overdue(now time.Time) bool { return now.After(e.Due()) }
 
+// Status classifies the entry at now: overdue past the due date, due soon
+// within leadDays of it (leadDays <= 0 disables the window), otherwise ok.
+func (e Entry) Status(now time.Time, leadDays int) string {
+	switch {
+	case e.Overdue(now):
+		return statusOverdue
+	case leadDays > 0 && !now.Before(e.Due().AddDate(0, 0, -leadDays)):
+		return statusDueSoon
+	}
+	return statusOK
+}
+
 // config is the parsed command configuration.
 type config struct {
 	registerPath string
 	now          time.Time
+	leadDays     int
+	jsonOut      bool
 }
 
 func main() {
@@ -97,6 +127,8 @@ func main() {
 func mainExit(args []string, w io.Writer, now time.Time) int {
 	fs := flag.NewFlagSet("securitycadence", flag.ContinueOnError)
 	fs.SetOutput(w)
+	lead := fs.Int("lead-days", defaultLeadDays, "flag entries due within this many days as DUE SOON (0 disables)")
+	asJSON := fs.Bool("json", false, "print a JSON array of {id,obligation,status,due,action} instead of text; exit codes are unchanged")
 	register := fs.String("register", registerFile, "register to check, repo-root-relative")
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -106,7 +138,7 @@ func mainExit(args []string, w io.Writer, now time.Time) int {
 		fmt.Fprintln(w, "securitycadence:", err)
 		return 2
 	}
-	return run(w, root, config{registerPath: *register, now: now})
+	return run(w, root, config{registerPath: *register, now: now, leadDays: *lead, jsonOut: *asJSON})
 }
 
 // run decides the exit status against a known repository root. Tests drive it
@@ -128,26 +160,65 @@ func run(w io.Writer, root string, cfg config) int {
 		return 2
 	}
 
-	overdue := 0
-	for _, e := range entries {
-		age := int(cfg.now.Sub(e.LastDone).Hours() / 24)
-		if e.Overdue(cfg.now) {
-			overdue++
-			fmt.Fprintf(w, "OVERDUE  %-22s last done %s (%d days ago; interval %d days, due %s)\n",
-				e.ID, e.LastDone.Format(dateLayout), age, e.IntervalDays, e.Due().Format(dateLayout))
-			continue
-		}
-		fmt.Fprintf(w, "ok       %-22s last done %s (%d days ago; interval %d days, due %s)\n",
-			e.ID, e.LastDone.Format(dateLayout), age, e.IntervalDays, e.Due().Format(dateLayout))
+	if cfg.jsonOut {
+		return runJSON(w, entries, cfg)
 	}
 
+	overdue, dueSoon := 0, 0
+	for _, e := range entries {
+		age := int(cfg.now.Sub(e.LastDone).Hours() / 24)
+		label := "ok      "
+		switch e.Status(cfg.now, cfg.leadDays) {
+		case statusOverdue:
+			overdue++
+			label = "OVERDUE "
+		case statusDueSoon:
+			dueSoon++
+			label = "DUE SOON"
+		}
+		fmt.Fprintf(w, "%s %-22s last done %s (%d days ago; interval %d days, due %s)\n",
+			label, e.ID, e.LastDone.Format(dateLayout), age, e.IntervalDays, e.Due().Format(dateLayout))
+	}
+
+	if dueSoon > 0 {
+		fmt.Fprintf(w, "\n%d security-stewardship obligation(s) are due within %d days.\n", dueSoon, cfg.leadDays)
+	}
 	if overdue > 0 {
 		fmt.Fprintf(w, "\n%d of %d security-stewardship obligation(s) are overdue.\nSee %s for the procedure and update its last_done cell when done.\n",
 			overdue, len(entries), cfg.registerPath)
 		return 1
 	}
-	fmt.Fprintf(w, "\nAll %d security-stewardship obligation(s) are current.\n", len(entries))
+	if dueSoon == 0 {
+		fmt.Fprintf(w, "\nAll %d security-stewardship obligation(s) are current.\n", len(entries))
+	}
 	return 0
+}
+
+// runJSON prints one object per entry for the issue-opening script. It keeps
+// the text mode's exit contract: 1 when anything is overdue, otherwise 0.
+func runJSON(w io.Writer, entries []Entry, cfg config) int {
+	type row struct {
+		ID         string `json:"id"`
+		Obligation string `json:"obligation"`
+		Status     string `json:"status"`
+		Due        string `json:"due"`
+		Action     string `json:"action"`
+	}
+	rows := make([]row, 0, len(entries))
+	code := 0
+	for _, e := range entries {
+		st := e.Status(cfg.now, cfg.leadDays)
+		if st == statusOverdue {
+			code = 1
+		}
+		rows = append(rows, row{e.ID, e.Obligation, st, e.Due().Format(dateLayout), e.Action})
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(rows); err != nil {
+		return 2 // # pragma: no cover — encoding plain strings to a writer cannot fail
+	}
+	return code
 }
 
 // parseRegister extracts the entries from the table between the begin/end
