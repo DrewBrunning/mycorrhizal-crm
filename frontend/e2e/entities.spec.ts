@@ -58,7 +58,12 @@ test.describe('Entities', () => {
       await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
     } finally {
       await deleteTestContact(page.request, contact.ID);
-      await page.request.delete(`${API_BASE_URL}/entities/${entity.id}`).catch(() => {});
+      // Deliberately no DELETE /entities/:id here: the entity is live again after
+      // the Restore above, and an entity delete is a soft delete with no purge
+      // endpoint, so it would leave a trashed entity in this worker user's Trash.
+      // trash.spec.ts's "Empty trash" (contacts only) runs as the same per-worker
+      // user and would then never reach the "Trash is empty" state (issue #2484).
+      // The worker user's account is deleted at worker teardown, which removes it.
     }
   });
 });
