@@ -1,6 +1,6 @@
 module mycorrhizal
 
-go 1.26.0
+go 1.26.10
 
 toolchain go1.27.4
 
@@ -12,12 +12,12 @@ require (
 	github.com/fxamacker/cbor/v2 v2.10.0
 	github.com/gen2brain/heic v0.7.2
 	github.com/getkin/kin-openapi v0.152.0
-	github.com/gin-contrib/cors v1.7.9
+	github.com/gin-contrib/cors v1.7.10
 	github.com/gin-gonic/gin v1.12.0
 	github.com/glebarez/go-sqlite v1.23.0
 	github.com/glebarez/sqlite v1.11.0
 	github.com/go-co-op/gocron v1.37.0
-	github.com/go-playground/validator/v10 v10.30.5
+	github.com/go-playground/validator/v10 v10.30.6
 	github.com/go-webauthn/webauthn v0.18.2
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/golang-migrate/migrate/v4 v4.20.1
@@ -35,7 +35,7 @@ require (
 	golang.org/x/time v0.16.0
 	golang.org/x/tools v0.52.0
 	gorm.io/gorm v1.31.2
-	modernc.org/sqlite v1.61.0
+	modernc.org/sqlite v1.61.1
 	pgregory.net/rapid v1.3.0
 )
 
@@ -78,10 +78,10 @@ require (
 	github.com/cloudwego/base64x v0.1.7 // indirect
 	github.com/emersion/go-vcard v0.1.0
 	github.com/emersion/go-webdav v0.7.0
-	github.com/gabriel-vasile/mimetype v1.4.15 // indirect
+	github.com/gabriel-vasile/mimetype v1.4.16 // indirect
 	github.com/gin-contrib/sse v1.1.1 // indirect
-	github.com/go-playground/locales v0.14.1 // indirect
-	github.com/go-playground/universal-translator v0.18.1 // indirect
+	github.com/go-playground/locales v0.14.2 // indirect
+	github.com/go-playground/universal-translator v0.18.2 // indirect
 	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/goccy/go-yaml v1.19.2 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
