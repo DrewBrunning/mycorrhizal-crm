@@ -1857,6 +1857,10 @@
           "colUpdated": "Actualizados",
           "colSkipped": "Omitidos",
           "colErrors": "Errores",
+          "colReport": "Informe",
+          "viewReport": "Ver informe",
+          "reportTitle": "Informe de importación",
+          "reportLoadError": "No se pudo cargar el informe de importación.",
           "format": {
             "csv": "CSV",
             "vcf": "vCard",

@@ -177,6 +177,7 @@ fun ImportContactsScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             val preview = state.preview
+            val result = state.result
             val showFileEntries = state.step == ImportStep.LIST && preview == null
             if (showFileEntries) {
                 // M9 item 4 / issue #834: file-based imports. Issue #1750: always
@@ -241,33 +242,19 @@ fun ImportContactsScreen(
                         rowActions = state.rowActions,
                         onRowActionChange = viewModel::setRowAction,
                         onResolveAll = viewModel::resolveAll,
-                        onConfirm = viewModel::confirmImport
+                        onConfirm = viewModel::confirmImport,
+                        rowEdits = state.rowEdits,
+                        onRowEditSave = viewModel::saveRowEdit
                     )
 
-                state.step == ImportStep.RESULT -> {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.fillMaxSize().padding(24.dp)
-                    ) {
-                        Text(
-                            text = pluralStringResource(
-                                R.plurals.import_done,
-                                state.importedCount,
-                                state.importedCount
-                            ),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 48.dp, bottom = 16.dp)
-                        )
-                        Button(
-                            onClick = {
-                                viewModel.startOver()
-                                onImported()
-                            }
-                        ) {
-                            Text(stringResource(R.string.action_confirm))
+                state.step == ImportStep.RESULT && result != null ->
+                    ImportResultReport(
+                        result = result,
+                        onDone = {
+                            viewModel.startOver()
+                            onImported()
                         }
-                    }
-                }
+                    )
 
                 state.contacts.isEmpty() && state.error == null ->
                     EmptyState(title = stringResource(R.string.import_empty))

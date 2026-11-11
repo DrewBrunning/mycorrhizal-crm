@@ -3,13 +3,10 @@ package com.mycorrhizal.crm.feature.imports
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CloudUpload
@@ -184,28 +181,18 @@ fun BundleRestoreScreenContent(
                 }
 
                 BundleRestoreStep.RESULT -> uiState.result?.let { result ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxSize().verticalScroll(
-                            rememberScrollState()
-                        ).padding(24.dp)
-                    ) {
-                        Text(
-                            text = pluralStringResource(
-                                R.plurals.bundle_restore_result,
-                                result.created,
-                                result.created,
-                                result.updated,
-                                result.skipped
-                            ),
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(
-                                top = 48.dp
-                            ).testTag("bundle-restore-result")
-                        )
-                        Button(onClick = onDone) { Text(stringResource(R.string.action_confirm)) }
-                    }
+                    ImportResultReport(
+                        result = result.toImportResult(),
+                        onDone = onDone,
+                        summary = pluralStringResource(
+                            R.plurals.bundle_restore_result,
+                            result.created,
+                            result.created,
+                            result.updated,
+                            result.skipped
+                        ),
+                        summaryTag = "bundle-restore-result"
+                    )
                 }
             }
         }

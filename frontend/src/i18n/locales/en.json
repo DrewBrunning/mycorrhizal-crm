@@ -1864,6 +1864,10 @@
           "colUpdated": "Updated",
           "colSkipped": "Skipped",
           "colErrors": "Errors",
+          "colReport": "Report",
+          "viewReport": "View report",
+          "reportTitle": "Import report",
+          "reportLoadError": "Could not load the import report.",
           "format": {
             "csv": "CSV",
             "vcf": "vCard",

@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
+import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
@@ -41,7 +43,10 @@ data class ImportUiState(
     /** row_index -> "skip" | "add" | "update", editable per row on the review
      *  step (T96); rows with validation errors are forced to "skip". */
     val rowActions: Map<Int, String> = emptyMap(),
-    val importedCount: Int = 0,
+    /** Issue #2464: row_index -> the user's fix for a row that failed validation. */
+    val rowEdits: Map<Int, ImportRowEdit> = emptyMap(),
+    /** Issue #2464: the confirm outcome, including the per-row issues the report lists. */
+    val result: ImportResult? = null,
     val error: ApiError? = null,
     /** Issue #1750: the device-contacts read was refused with a
      *  [SecurityException] (READ_CONTACTS not held, or revoked while the screen
@@ -160,7 +165,8 @@ class ImportContactsViewModel @Inject constructor(
                             isImporting = false,
                             step = ImportStep.REVIEW,
                             preview = preview,
-                            rowActions = actions
+                            rowActions = actions,
+                            rowEdits = emptyMap()
                         )
                     }
                 },
@@ -176,11 +182,27 @@ class ImportContactsViewModel @Inject constructor(
         }
     }
 
-    /** No-op for a row with validation errors — it stays forced to "skip". */
+    /** No-op for a row with validation errors until it has a saved fix (issue #2464). */
     fun setRowAction(rowIndex: Int, action: String) {
         val row = _uiState.value.preview?.rows?.find { it.rowIndex == rowIndex } ?: return
-        if (row.validationErrors.isNotEmpty()) return
+        if (row.validationErrors.isNotEmpty() && rowIndex !in _uiState.value.rowEdits) return
         _uiState.update { it.copy(rowActions = it.rowActions + (rowIndex to action)) }
+    }
+
+    /**
+     * Issue #2464: keep an errored row with the user's fix. The server re-validates at confirm
+     * and reports a row that is still invalid in the result, so saving only selects "add".
+     * Ignored for a row that has no validation errors.
+     */
+    fun saveRowEdit(edit: ImportRowEdit) {
+        val row = _uiState.value.preview?.rows?.find { it.rowIndex == edit.rowIndex } ?: return
+        if (row.validationErrors.isEmpty()) return
+        _uiState.update {
+            it.copy(
+                rowEdits = it.rowEdits + (edit.rowIndex to edit),
+                rowActions = it.rowActions + (edit.rowIndex to "add")
+            )
+        }
     }
 
     /** "Resolve all as merged": every valid row takes its suggested action. */
@@ -207,14 +229,18 @@ class ImportContactsViewModel @Inject constructor(
                 )
             }
             apiClient.confirmVcfImport(
-                ImportConfirmRequest(sessionId = preview.sessionId, actions = actions)
+                ImportConfirmRequest(
+                    sessionId = preview.sessionId,
+                    actions = actions,
+                    rowEdits = activeRowEdits()
+                )
             ).foldApiError(
                 onSuccess = { result ->
                     _uiState.update {
                         it.copy(
                             isImporting = false,
                             step = ImportStep.RESULT,
-                            importedCount = result.created + result.updated
+                            result = result
                         )
                     }
                 },
@@ -230,6 +256,11 @@ class ImportContactsViewModel @Inject constructor(
         }
     }
 
+    /** Only the fixes for rows still being imported; null (omitted) when there are none. */
+    private fun activeRowEdits(): List<ImportRowEdit>? = _uiState.value.let { state ->
+        state.rowEdits.values.filter { state.rowActions[it.rowIndex] != "skip" }.ifEmpty { null }
+    }
+
     /** Returns to the LIST step so the user can import again. Reloads the
      *  device contacts so the just-imported ones' duplicate flags reflect the
      *  fresh server state rather than the stale pre-import cache. */
@@ -239,7 +270,8 @@ class ImportContactsViewModel @Inject constructor(
                 step = ImportStep.LIST,
                 preview = null,
                 rowActions = emptyMap(),
-                importedCount = 0,
+                result = null,
+                rowEdits = emptyMap(),
                 selected = emptySet()
             )
         }

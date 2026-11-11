@@ -182,6 +182,12 @@ export interface ImportResult {
   issues: ImportRowIssue[];
 }
 
+// Issue #2463: one stored run plus its per-row skipped/failed issues. Email and
+// phone are always empty here (the history report never stores them).
+export interface ImportRunDetail extends ImportRun {
+  issues: ImportRowIssue[];
+}
+
 // One persisted import outcome (issue #651). Mirrors backend models.ImportRun
 // and migration 000042's `format` CHECK vocabulary (widened by 000046 for the
 // source-import assistants and by 000068 for the `mycorrhizal` account bundle)
@@ -369,6 +375,20 @@ export async function uploadVCFForImport(file: File): Promise<ImportPreviewRespo
 // Recent import outcomes for the current user, newest first (issue #651).
 export async function getImportHistory(): Promise<ImportRun[]> {
   const response = await apiFetch(`${API_BASE_URL}/contacts/import/history`, {
+    method: 'GET',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+
+  return response.json();
+}
+
+// One past run with its itemized skipped/failed rows (issue #2465).
+export async function getImportRun(id: number): Promise<ImportRunDetail> {
+  const response = await apiFetch(`${API_BASE_URL}/contacts/import/history/${id}`, {
     method: 'GET',
     headers: getAuthHeaders(),
   });

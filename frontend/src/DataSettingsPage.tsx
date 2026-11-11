@@ -9,6 +9,9 @@ import {
   Card,
   CardContent,
   CircularProgress,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Stack,
   Table,
@@ -28,8 +31,9 @@ import {
   exportContactsAsVcf,
   exportDataAsCsv,
 } from './api/export';
-import { getImportHistory, type ImportRun } from './api/import';
+import { getImportHistory, getImportRun, type ImportRowIssue, type ImportRun } from './api/import';
 import { suggestRelationshipEdges } from './api/relationshipEdges';
+import AppDialog from './components/AppDialog';
 import CalendarSyncSettings from './components/CalendarSyncSettings';
 import ContactAddressSuggestions from './components/ContactAddressSuggestions';
 import ContactFieldSettings from './components/ContactFieldSettings';
@@ -37,6 +41,7 @@ import ContactSyncSettings from './components/ContactSyncSettings';
 import CustomFieldsSettings from './components/CustomFieldsSettings';
 import ExportFieldPickerDialog from './components/ExportFieldPickerDialog';
 import ImportContactsDialog from './components/ImportContactsDialog';
+import ImportIssuesReport from './components/ImportIssuesReport';
 import MeerkatImportDialog from './components/MeerkatImportDialog';
 import MonicaImportDialog from './components/MonicaImportDialog';
 import MycorrhizalImportDialog from './components/MycorrhizalImportDialog';
@@ -88,6 +93,29 @@ export default function DataSettingsPage() {
       );
     }
   }, [t]);
+
+  // Issue #2465: the itemized report of one past run, loaded on demand.
+  const [reportRun, setReportRun] = useState<ImportRun | null>(null);
+  const [reportIssues, setReportIssues] = useState<ImportRowIssue[]>([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportError, setReportError] = useState('');
+
+  const openReport = async (run: ImportRun) => {
+    setReportRun(run);
+    setReportIssues([]);
+    setReportError('');
+    setReportLoading(true);
+    try {
+      const detail = await getImportRun(run.id);
+      setReportIssues(detail.issues ?? []);
+    } catch (error) {
+      setReportError(
+        error instanceof Error ? error.message : t('settings.data.import.history.reportLoadError'),
+      );
+    } finally {
+      setReportLoading(false);
+    }
+  };
 
   useEffect(() => {
     void loadImportHistory();
@@ -363,6 +391,9 @@ export default function DataSettingsPage() {
                       <TableCell align="right">
                         {t('settings.data.import.history.colErrors')}
                       </TableCell>
+                      <TableCell align="right">
+                        {t('settings.data.import.history.colReport')}
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -376,6 +407,13 @@ export default function DataSettingsPage() {
                         <TableCell align="right">{run.updated}</TableCell>
                         <TableCell align="right">{run.skipped}</TableCell>
                         <TableCell align="right">{run.error_count}</TableCell>
+                        <TableCell align="right">
+                          {run.issue_count > 0 && (
+                            <Button size="small" onClick={() => void openReport(run)}>
+                              {t('settings.data.import.history.viewReport')}
+                            </Button>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -385,6 +423,36 @@ export default function DataSettingsPage() {
           </Stack>
         </CardContent>
       </Card>
+
+      <AppDialog
+        open={reportRun !== null}
+        onClose={() => setReportRun(null)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>{t('settings.data.import.history.reportTitle')}</DialogTitle>
+        <DialogContent>
+          {reportRun && (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {formatLocalDateTime(new Date(reportRun.created_at))}
+            </Typography>
+          )}
+          {reportLoading && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={24} />
+            </Box>
+          )}
+          {reportError && (
+            <Alert severity="error" sx={{ mt: 1 }}>
+              {reportError}
+            </Alert>
+          )}
+          {!reportLoading && !reportError && <ImportIssuesReport issues={reportIssues} />}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setReportRun(null)}>{t('common.close')}</Button>
+        </DialogActions>
+      </AppDialog>
 
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
