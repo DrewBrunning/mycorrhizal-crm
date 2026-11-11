@@ -9,6 +9,11 @@
 # records its arguments, so nothing here touches a registry.
 
 set -u
+
+# Fixture repos must never inherit a hook's GIT_DIR: it would redirect the
+# `git config user.*` below to the REAL repository (see backend/internal/gittest).
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR GIT_PREFIX
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 export DOCKER_PULL_RETRY_STEP=0
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

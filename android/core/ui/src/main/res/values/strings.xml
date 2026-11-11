@@ -1027,6 +1027,7 @@
     <!-- Activities -->
     <string name="activities_empty">No activities yet</string>
     <string name="activities_empty_body">Log calls, meetings and messages to keep track of how you stay in touch.</string>
+    <string name="activities_description">Activities are things that already happened — a call, a coffee, a message. Log them here to keep each contact\'s history complete.</string>
     <string name="activities_search">Search activities</string>
     <string name="activities_no_results">No activities match your filters</string>
     <string name="activities_delete_title">Delete activity?</string>

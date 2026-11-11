@@ -679,3 +679,41 @@ test('circle detail shows an error when the timeline fails to load', async () =>
 
   expect(await screen.findByRole('alert')).toBeInTheDocument();
 });
+
+// Standing shares (ADR 0042, #2292): circles (not tags) can be shared; the grant
+// names the circle's id.
+test('a circle offers a standing share; tags do not', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  const posts: unknown[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/share-grants') && init?.method === 'POST') {
+        posts.push(JSON.parse(init.body as string));
+        return { ok: true, json: async () => ({ share_grant: { id: 'g1', to_username: 'bob' } }) };
+      }
+      if (url.includes('/users/directory'))
+        return { ok: true, json: async () => ({ users: [{ id: 2, username: 'bob' }] }) };
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByRole('button', { name: 'Share circle Book Club' }));
+  expect(await screen.findByRole('dialog', { name: 'Share this circle' })).toBeInTheDocument();
+  const input = await screen.findByRole('combobox', { name: 'Recipient' });
+  fireEvent.keyDown(input, { key: 'ArrowDown' });
+  fireEvent.click(await screen.findByRole('option', { name: 'bob' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toEqual({ to_user_id: 2, entity_type: 'circle', entity_id: 'c1' });
+  vi.unstubAllGlobals();
+});
+
+test('the tags tab has no share action', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  listTagsMock.mockResolvedValue(tagsResponse());
+  renderPage(['/circles-tags?tab=tags']);
+  await screen.findByText('VIP');
+  expect(screen.queryByRole('button', { name: /^Share circle/ })).not.toBeInTheDocument();
+});

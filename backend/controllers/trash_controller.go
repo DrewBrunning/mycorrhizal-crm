@@ -135,3 +135,34 @@ func EmptyTrash(c *gin.Context) {
 	services.RemovePurgedFiles(currentConfig(c), files)
 	c.JSON(http.StatusOK, models.TrashPurgeResponse{Message: "Trash emptied", Purged: n})
 }
+
+// ListTrashedEntities handles GET /api/v1/trash/entities (issue #2446): the
+// caller's restorable soft-deleted entities, offset-paginated like the contact
+// trash. Restore reuses POST /entities/:id/restore (one restore code path).
+func ListTrashedEntities(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	p := GetPaginationParams(c)
+	entries, total, err := services.ListTrashedEntities(db, userID, p.Offset, p.Limit)
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to list trashed entities").WithError(err))
+		return
+	}
+	retention := currentConfig(c).DeleteRetentionDays
+	out := make([]models.TrashedEntity, 0, len(entries))
+	for _, e := range entries {
+		item := models.TrashedEntity{
+			Entity: models.NewEntityResponse(&e.Entity), DeletedAt: e.DeletedAt,
+			MergedInto: e.MergedInto, MergedIntoName: e.MergedIntoName,
+		}
+		if retention > 0 {
+			purgeAt := e.DeletedAt.AddDate(0, 0, retention)
+			item.PurgeAt = &purgeAt
+		}
+		out = append(out, item)
+	}
+	c.JSON(http.StatusOK, models.TrashEntityListResponse{Entities: out, Total: total, Page: p.Page, Limit: p.Limit, RetentionDays: retention})
+}

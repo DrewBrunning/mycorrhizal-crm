@@ -44,6 +44,7 @@ var entitySurfaceFiles = map[string]string{
 	"services/contact_entity_link.go":               "link writes (#2297)",
 	"services/entity_csv.go":                        "CSV backup restore (#2300)",
 	"services/entity_delete.go":                     "entity delete/restore cascade",
+	"services/entity_trash.go":                      "entity trash listing (read-only)",
 	"services/entity_merge.go":                      "entity merge (#2299)",
 	"services/entity_suggestions.go":                "entity suggestions (#2299), read-only",
 	"services/import_source_entities.go":            "account-bundle/CSV-backup entity restore (#2300)",

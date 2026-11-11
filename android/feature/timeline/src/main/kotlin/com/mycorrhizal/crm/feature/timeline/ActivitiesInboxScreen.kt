@@ -158,11 +158,17 @@ fun ActivitiesInboxScreenContent(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            Text(
+                text = stringResource(R.string.activities_description),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
             RefreshableContent(
                 isRefreshing = state.isLoading && state.activities.isNotEmpty(),
                 onRefresh = onRefresh,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxWidth().weight(1f)
             ) {
                 when {
                     state.isLoading && state.activities.isEmpty() ->

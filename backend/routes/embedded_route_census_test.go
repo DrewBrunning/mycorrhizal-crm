@@ -96,6 +96,7 @@ var embeddedRouteRows = []embeddedRouteRow{
 		"DELETE /api/v1/trash/contacts",
 		"DELETE /api/v1/trash/contacts/:id",
 		"GET /api/v1/trash/contacts",
+		"GET /api/v1/trash/entities",
 		"POST /api/v1/trash/contacts/:id/restore",
 		"DELETE /api/v1/contacts/:id/field-visibility",
 		"DELETE /api/v1/contacts/:id/target-closeness",

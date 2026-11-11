@@ -117,10 +117,27 @@ import type {
   RelationshipEdgeStatus,
 } from './relationshipEdges';
 import type { Reminder, ReminderCompletion } from './reminders';
+import type {
+  SHARE_GRANT_ENTITY_TYPES,
+  ShareBlock,
+  ShareGrantContent,
+  ShareGrantNotification,
+  ShareGrantOwnerView,
+  ShareGrantRecipientView,
+  ShareGrantRevokedReason,
+  ShareGrantStatus,
+} from './shareGrants';
 import type { ContactTag, Tag } from './tags';
 import type { ContactTargetClosenessResponse } from './targetCloseness';
 import type { TIMELINE_TYPES } from './timeline';
-import type { TrashedContact, TrashList, TrashRestoreResult, TrashRestoreSkip } from './trash';
+import type {
+  TrashEntityList,
+  TrashedContact,
+  TrashedEntity,
+  TrashList,
+  TrashRestoreResult,
+  TrashRestoreSkip,
+} from './trash';
 import type { Passkey, PasskeyEnrollment } from './webauthn';
 
 // ---------------------------------------------------------------- helpers
@@ -145,7 +162,11 @@ export type ResponseDrift<Hand, Spec> = {
 
 /** Compiles only when every drift class is `never`. */
 export type NoDrift<
-  T extends { unknownFields: never; typeMismatch: never; requiredButOptionalInSpec: never },
+  T extends {
+    unknownFields: never;
+    typeMismatch: never;
+    requiredButOptionalInSpec: never;
+  },
 > = T;
 
 /**
@@ -189,8 +210,27 @@ export type Conformance = [
   NoDrift<ResponseDrift<DeliberateException<LifeEvent, 'type'>, S.LifeEvent>>,
   NoDrift<ResponseDrift<LifeEventSuggestion, S.LifeEventSuggestion>>,
   NoDrift<ResponseDrift<Circle, S.Circle>>,
+  // Standing shares (ADR 0042, issue #2292). Partial<> on purpose: the spec's
+  // share-grant schemas carry no `required:` list (adding one is a MAINT-02
+  // "became required" baseline break), but every field below is emitted without
+  // `omitempty` by services.ShareGrant*View, so the hand types keep them
+  // required. Unknown fields, enum drift and nullability are still checked.
+  NoDrift<ResponseDrift<Partial<ShareGrantOwnerView>, S.ShareGrantOwnerView>>,
+  NoDrift<ResponseDrift<Partial<ShareGrantRecipientView>, S.ShareGrantRecipientView>>,
+  // The note/activity/circle sub-objects are excepted for the same reason (their
+  // nested fields are required in the hand type, optional in the spec).
+  NoDrift<
+    ResponseDrift<
+      Partial<DeliberateException<ShareGrantContent, 'note' | 'activity' | 'circle'>>,
+      S.ShareGrantContent
+    >
+  >,
+  NoDrift<ResponseDrift<ShareGrantNotification, S.ShareGrantNotification>>,
+  NoDrift<ResponseDrift<Partial<ShareBlock>, S.ShareBlock>>,
   NoDrift<ResponseDrift<TrashedContact, S.TrashedContact>>,
   NoDrift<ResponseDrift<TrashList, S.TrashListResponse>>,
+  NoDrift<ResponseDrift<TrashedEntity, S.TrashedEntity>>,
+  NoDrift<ResponseDrift<TrashEntityList, S.TrashEntityListResponse>>,
   NoDrift<ResponseDrift<TrashRestoreResult, S.TrashRestoreResponse>>,
   NoDrift<ResponseDrift<TrashRestoreSkip, S.TrashRestoreSkip>>,
   NoDrift<ResponseDrift<CircleMember, S.CircleMember>>,
@@ -318,4 +358,9 @@ export type EnumConformance = [
   Assert<SameMembers<RelationshipEdgeSensitivity, Defined<S.RelationshipEdge['sensitivity']>>>,
   Assert<SameMembers<Reminder['recurrence'], Defined<S.Reminder['recurrence']>>>,
   Assert<SameMembers<(typeof SCORE_REASON_CODES)[number], S.ContactScoreFacet['reason_code']>>,
+  Assert<SameMembers<(typeof SHARE_GRANT_ENTITY_TYPES)[number], S.ShareGrantInput['entity_type']>>,
+  Assert<SameMembers<ShareGrantStatus, Defined<S.ShareGrantOwnerView['status']>>>,
+  Assert<
+    SameMembers<ShareGrantRevokedReason, NonNullable<S.ShareGrantOwnerView['revoked_reason']>>
+  >,
 ];

@@ -5,7 +5,12 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
   MenuItem,
+  Radio,
+  RadioGroup,
   TextField,
   Typography,
 } from '@mui/material';
@@ -17,16 +22,21 @@ import {
   type UserDirectoryEntry,
 } from '../api/contactShares';
 import { EXPORT_FIELD_SECTIONS } from '../api/export';
+import type { ShareGrantOwnerView } from '../api/shareGrants';
 import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 import FieldSectionPicker from './FieldSectionPicker';
+import StandingShareForm from './StandingShareForm';
 
 interface ShareContactDialogProps {
   open: boolean;
   onClose: () => void;
   vcardUID: string;
   onShared?: () => void;
+  // Called after a standing share (ADR 0042) is created; the one-time flow
+  // keeps using onShared.
+  onStandingShared?: (grant: ShareGrantOwnerView) => void;
 }
 
 // ShareContactDialog is P1's "Share" dialog (P1) -- a one-time filtered copy sent to another user
@@ -48,8 +58,10 @@ export default function ShareContactDialog({
   onClose,
   vcardUID,
   onShared,
+  onStandingShared,
 }: ShareContactDialogProps) {
   const { t } = useTranslation();
+  const [mode, setMode] = useState<'oneTime' | 'standing'>('oneTime');
   const [recipients, setRecipients] = useState<UserDirectoryEntry[]>([]);
   const [toUserID, setToUserID] = useState<number | ''>('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -65,6 +77,7 @@ export default function ShareContactDialog({
 
   useEffect(() => {
     if (!open) return;
+    setMode('oneTime');
     setSelected(new Set(defaultSelection));
     setSensitiveRevealed(false);
     setToUserID('');
@@ -110,9 +123,56 @@ export default function ShareContactDialog({
     }
   };
 
+  const modePicker = (
+    <FormControl sx={{ px: 3, pt: 1 }}>
+      <FormLabel id="share-mode-label">{t('standingShares.mode.label')}</FormLabel>
+      <RadioGroup
+        row
+        aria-labelledby="share-mode-label"
+        value={mode}
+        onChange={(e) => {
+          markDirty();
+          setMode(e.target.value === 'standing' ? 'standing' : 'oneTime');
+        }}
+      >
+        <FormControlLabel
+          value="oneTime"
+          control={<Radio />}
+          label={t('standingShares.mode.oneTime')}
+        />
+        <FormControlLabel
+          value="standing"
+          control={<Radio />}
+          label={t('standingShares.mode.standing')}
+        />
+      </RadioGroup>
+    </FormControl>
+  );
+
+  if (mode === 'standing') {
+    return (
+      <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
+        <DialogTitle>{t('contactShares.shareDialog.title')}</DialogTitle>
+        {modePicker}
+        <StandingShareForm
+          entityType="contact"
+          entityId={vcardUID}
+          onDirty={markDirty}
+          onCancel={requestClose}
+          onCreated={(grant) => {
+            onStandingShared?.(grant);
+            onClose();
+          }}
+        />
+        {guardElement}
+      </AppDialog>
+    );
+  }
+
   return (
     <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>{t('contactShares.shareDialog.title')}</DialogTitle>
+      {modePicker}
       <DialogContent>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Typography

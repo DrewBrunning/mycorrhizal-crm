@@ -1007,6 +1007,7 @@
     <!-- Aktivitäten -->
     <string name="activities_empty">Noch keine Aktivitäten</string>
     <string name="activities_empty_body">Protokolliere Anrufe, Treffen und Nachrichten, um den Überblick zu behalten.</string>
+    <string name="activities_description">Aktivitäten sind Dinge, die bereits passiert sind – ein Anruf, ein Kaffee, eine Nachricht. Erfasse sie hier, damit die Geschichte jedes Kontakts vollständig bleibt.</string>
     <string name="activities_search">Aktivitäten durchsuchen</string>
     <string name="activities_no_results">Keine Aktivitäten entsprechen deinen Filtern</string>
     <string name="activities_delete_title">Aktivität löschen?</string>

@@ -45,6 +45,7 @@ unleash:
         - ^entity_delete\.go$
         - ^entity_merge\.go$
         - ^entity_suggestions\.go$
+        - ^entity_trash\.go$
         - ^error_aggregation\.go$
         - ^etag_normalize\.go$
         - ^feed_atom\.go$
