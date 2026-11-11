@@ -8,8 +8,10 @@ import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.MeerkatConnectResponse
 import com.mycorrhizal.crm.model.network.MeerkatEntityCounts
@@ -247,5 +249,30 @@ class MeerkatImportScreenTest {
         composeTestRule.onNodeWithTag("meerkat-import-result").assertIsDisplayed()
         composeTestRule.onNodeWithTag("meerkat-import-done").performClick()
         assertEquals(1, done)
+    }
+
+    // Issue #2464/#2210: the skipped/failed reasons the backend now returns are itemized.
+    @Test
+    fun `the result step lists skipped rows with their reasons`() {
+        setContent(
+            MeerkatImportUiState(
+                step = MeerkatImportStep.RESULT,
+                result = SourceImportResult(
+                    created = 3,
+                    skipped = 1,
+                    issues = listOf(
+                        ImportRowIssue(
+                            row = 4,
+                            name = "Ada",
+                            status = "skipped",
+                            reason = "already exists"
+                        )
+                    )
+                )
+            )
+        )
+
+        composeTestRule.onNodeWithText("Row 4 · Ada").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Skipped: already exists").assertIsDisplayed()
     }
 }

@@ -51,7 +51,6 @@ import {
   type ImportPreviewResponse,
   type ImportResult,
   type ImportRowEdit,
-  type ImportRowIssue,
   type ImportRowPreview,
   type ImportUploadResponse,
   REPEATABLE_VALUE_FIELDS,
@@ -64,9 +63,9 @@ import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
 import { isContactPickerSupported, pickContactsAsVCardFile } from '../utils/contactPicker';
 import { EMPTY_VALUE } from '../utils/emptyValue';
 import { getErrorMessage } from '../utils/errorHandler';
-import { importIssuesToCsv } from '../utils/importReportCsv';
 import AppDialog from './AppDialog';
 import ImportFixedAssignmentPicker from './ImportFixedAssignmentPicker';
+import ImportIssuesReport from './ImportIssuesReport';
 
 interface ImportContactsDialogProps {
   open: boolean;
@@ -1007,19 +1006,6 @@ export default function ImportContactsDialog({
     );
   };
 
-  // Issue #2187: save the skipped/failed rows as a CSV.
-  const downloadIssuesCsv = (issues: ImportRowIssue[]) => {
-    const blob = new Blob([importIssuesToCsv(issues)], { type: 'text/csv;charset=utf-8' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'import-report.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-  };
-
   // Render result step
   const renderResultStep = () => {
     if (!importResult) return null;
@@ -1054,48 +1040,7 @@ export default function ImportContactsDialog({
           </Typography>
         </Box>
 
-        {importResult.issues.length > 0 && (
-          <Box sx={{ mt: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography variant="subtitle2" color="error">
-                {t('contacts.import.result.issuesTitle', 'Rows not imported')}
-              </Typography>
-              <Button size="small" onClick={() => downloadIssuesCsv(importResult.issues)}>
-                {t('contacts.import.result.downloadCsv', 'Download as CSV')}
-              </Button>
-            </Box>
-            <TableContainer sx={{ maxHeight: 260 }}>
-              <Table
-                size="small"
-                stickyHeader
-                aria-label={t('contacts.import.result.issuesTitle', 'Rows not imported')}
-              >
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{t('contacts.import.result.colRow', 'Row')}</TableCell>
-                    <TableCell>{t('contacts.import.result.colName', 'Contact')}</TableCell>
-                    <TableCell>{t('contacts.import.result.colStatus', 'Result')}</TableCell>
-                    <TableCell>{t('contacts.import.result.colReason', 'Reason')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {importResult.issues.map((issue) => (
-                    <TableRow key={`${issue.row}-${issue.status}-${issue.reason}`}>
-                      <TableCell>{issue.row}</TableCell>
-                      <TableCell>{issue.name || '—'}</TableCell>
-                      <TableCell>
-                        {issue.status === 'failed'
-                          ? t('contacts.import.result.statusFailed', 'Failed')
-                          : t('contacts.import.result.statusSkipped', 'Skipped')}
-                      </TableCell>
-                      <TableCell>{issue.reason}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Box>
-        )}
+        <ImportIssuesReport issues={importResult.issues} />
       </Box>
     );
   };

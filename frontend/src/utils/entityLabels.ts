@@ -3,6 +3,9 @@
 // (i18n/keyUsage.test.ts) sees every one of them.
 import type { EntityKind, EntitySensitivity, EntitySuggestionReason } from '../api/entities';
 
+// Stryker disable all: module-level constant tables are "static" mutants, which
+// the vitest runner cannot re-load per mutant (they always survive); their
+// values are pinned by entityLabels.test.ts and the keyUsage gate instead.
 export const ENTITY_KIND_KEYS: Record<EntityKind, string> = {
   organisation: 'entities.kind.organisation',
   place: 'entities.kind.place',
@@ -61,6 +64,7 @@ export const ENTITY_ROLE_KEYS: Record<EntityKind, Record<string, string>> = {
   },
 };
 
+// Stryker restore all
 /** The translation key for a role token, or undefined for one this client does not know. */
 export function roleKey(kind: EntityKind, role: string): string | undefined {
   return ENTITY_ROLE_KEYS[kind]?.[role];

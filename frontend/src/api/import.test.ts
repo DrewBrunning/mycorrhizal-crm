@@ -6,6 +6,7 @@ import {
   confirmVCFImport,
   getImportHistory,
   getImportPreview,
+  getImportRun,
   IMPORTABLE_CONTACT_FIELDS,
   REPEATABLE_VALUE_FIELDS,
   type RowImportAction,
@@ -275,6 +276,42 @@ describe('getImportHistory', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
 
     await expect(getImportHistory()).rejects.toMatchObject({ status: 400 });
+  });
+});
+
+describe('getImportRun', () => {
+  test('GETs the run detail endpoint and returns the run with its issues', async () => {
+    const detail = {
+      id: 9,
+      format: 'csv',
+      total_processed: 3,
+      created: 1,
+      updated: 0,
+      skipped: 1,
+      error_count: 1,
+      issue_count: 2,
+      created_at: '2026-08-27T12:00:00Z',
+      issues: [
+        { row: 2, name: 'Ann', email: '', phone: '', status: 'skipped', reason: 'duplicate' },
+        { row: 3, name: '', email: '', phone: '', status: 'failed', reason: 'bad email' },
+      ],
+    };
+    const fetchMock = vi.fn().mockResolvedValueOnce(okResponse(detail));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await getImportRun(9);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toContain('/contacts/import/history/9');
+    expect(init.method).toBe('GET');
+    expect(result).toEqual(detail);
+  });
+
+  test('throws an ApiError when the response is not ok', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+
+    await expect(getImportRun(9)).rejects.toMatchObject({ status: 400 });
   });
 });
 

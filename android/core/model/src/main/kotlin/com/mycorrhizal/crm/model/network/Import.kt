@@ -172,8 +172,38 @@ data class ImportRun(
     val updated: Int = 0,
     val skipped: Int = 0,
     @Json(name = "error_count") val errorCount: Int = 0,
+    /** Issue #2463/#2464: how many per-row issues are stored; 0 for runs recorded before it. */
+    @Json(name = "issue_count") val issueCount: Int = 0,
     @Json(name = "created_at") val createdAt: String? = null
 )
+
+/**
+ * Issue #2464: `GET /contacts/import/history/{id}` — an [ImportRun] plus its stored per-row
+ * issues. Mirrors backend `ImportRunDetail`; the server never stores email or phone, so those
+ * are always blank on [issues].
+ */
+@JsonClass(generateAdapter = true)
+data class ImportRunDetail(
+    val id: Long = 0,
+    val format: String = "",
+    @Json(name = "total_processed") val totalProcessed: Int = 0,
+    val created: Int = 0,
+    val updated: Int = 0,
+    val skipped: Int = 0,
+    @Json(name = "error_count") val errorCount: Int = 0,
+    @Json(name = "issue_count") val issueCount: Int = 0,
+    @Json(name = "created_at") val createdAt: String? = null,
+    val issues: List<ImportRowIssue> = emptyList()
+) {
+    /** The shape the shared itemized report renders. */
+    fun toImportResult() = ImportResult(
+        totalProcessed = totalProcessed,
+        created = created,
+        updated = updated,
+        skipped = skipped,
+        issues = issues
+    )
+}
 
 // --- Mycorrhizal account-bundle import source (issues #1260/#1264, ADR 0028) ---
 // Mirrors backend/openapi.yaml's MycorrhizalUploadResponse / MonicaImportStatus /
@@ -215,8 +245,20 @@ data class SourceImportResult(
     @Json(name = "relationships_created") val relationshipsCreated: Int = 0,
     @Json(name = "notes_created") val notesCreated: Int = 0,
     @Json(name = "activities_created") val activitiesCreated: Int = 0,
-    @Json(name = "reminders_created") val remindersCreated: Int = 0
-)
+    @Json(name = "reminders_created") val remindersCreated: Int = 0,
+    /** Issue #2463/#2464: every skipped or failed row with its reason; `[]` when none. */
+    val issues: List<ImportRowIssue> = emptyList()
+) {
+    /** The shape the shared itemized report renders. */
+    fun toImportResult() = ImportResult(
+        totalProcessed = totalProcessed,
+        created = created,
+        updated = updated,
+        skipped = skipped,
+        errors = errors,
+        issues = issues
+    )
+}
 
 /**
  * Poll payload for a source-import session. [phase] is one of the backend's

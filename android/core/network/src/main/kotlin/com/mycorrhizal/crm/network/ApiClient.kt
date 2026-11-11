@@ -172,6 +172,7 @@ import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportRecordsRequest
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRun
+import com.mycorrhizal.crm.model.network.ImportRunDetail
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
 import com.mycorrhizal.crm.model.network.IncomingShareGrant
 import com.mycorrhizal.crm.model.network.IncomingShareGrantResponse
@@ -3132,6 +3133,15 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
                     ImportRun::class.java
                 )
             ).fromJson(body)
+        }
+
+    /**
+     * GET /api/v1/contacts/import/history/{id} (issue #2463/#2464) — one run with its stored
+     * per-row issues (skipped or failed rows and their reasons). A missing or foreign id is a 404.
+     */
+    suspend fun getImportRun(id: Long): Result<ImportRunDetail> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/import/history/$id") { _, body ->
+            moshi.adapter(ImportRunDetail::class.java).fromJson(body)
         }
 
     // M15: contact sharing (P1) — the backend endpoints have served web since

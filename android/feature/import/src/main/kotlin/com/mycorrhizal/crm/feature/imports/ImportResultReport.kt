@@ -39,7 +39,10 @@ fun ImportResultReport(
     result: ImportResult,
     onDone: () -> Unit,
     modifier: Modifier = Modifier,
-    onShareCsv: ((List<ImportRowIssue>) -> Unit)? = null
+    onShareCsv: ((List<ImportRowIssue>) -> Unit)? = null,
+    summary: String? = null,
+    summaryTag: String? = null,
+    doneTag: String? = null
 ) {
     val context = LocalContext.current
     val share = onShareCsv ?: { issues -> shareImportIssuesCsv(context, issues) }
@@ -48,7 +51,7 @@ fun ImportResultReport(
         modifier = modifier.fillMaxSize().padding(24.dp)
     ) {
         Text(
-            text = pluralStringResource(
+            text = summary ?: pluralStringResource(
                 R.plurals.import_vcf_result,
                 result.created,
                 result.created,
@@ -56,10 +59,12 @@ fun ImportResultReport(
                 result.skipped
             ),
             style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.padding(top = 24.dp, bottom = 16.dp)
+            modifier = Modifier.padding(top = 24.dp, bottom = 16.dp).optionalTestTag(summaryTag)
         )
         if (result.issues.isEmpty()) {
-            Button(onClick = onDone) { Text(stringResource(R.string.action_confirm)) }
+            Button(onClick = onDone, modifier = Modifier.optionalTestTag(doneTag)) {
+                Text(stringResource(R.string.action_confirm))
+            }
             return
         }
         Row(
@@ -79,11 +84,17 @@ fun ImportResultReport(
         LazyColumn(modifier = Modifier.weight(1f).testTag("import-report-list")) {
             itemsIndexed(result.issues) { _, issue -> IssueRow(issue) }
         }
-        Button(onClick = onDone, modifier = Modifier.padding(top = 8.dp)) {
+        Button(
+            onClick = onDone,
+            modifier = Modifier.padding(top = 8.dp).optionalTestTag(doneTag)
+        ) {
             Text(stringResource(R.string.action_confirm))
         }
     }
 }
+
+private fun Modifier.optionalTestTag(tag: String?): Modifier =
+    if (tag == null) this else testTag(tag)
 
 @Composable
 private fun IssueRow(issue: ImportRowIssue) {

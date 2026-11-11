@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.SourceImportIssue
 import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
@@ -125,5 +126,37 @@ class BundleRestoreScreenTest {
         composeTestRule.onNodeWithText("Confirm").performClick()
 
         assertEquals(1, done)
+    }
+
+    // Issue #2464/#2210: the skipped/failed reasons the backend now returns are itemized.
+    @Test
+    fun `the result step lists skipped rows with their reasons`() {
+        setContent(
+            BundleRestoreUiState(
+                step = BundleRestoreStep.RESULT,
+                result = SourceImportResult(
+                    created = 3,
+                    skipped = 1,
+                    issues = listOf(
+                        ImportRowIssue(
+                            row = 4,
+                            name = "Ada",
+                            status = "skipped",
+                            reason = "already exists"
+                        )
+                    )
+                )
+            )
+        )
+
+        composeTestRule.onNodeWithText("Row 4 · Ada").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Skipped: already exists").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an error message surfaces as a snackbar`() {
+        setContent(BundleRestoreUiState(errorText = "Restore failed"))
+
+        composeTestRule.onNodeWithText("Restore failed").assertIsDisplayed()
     }
 }
