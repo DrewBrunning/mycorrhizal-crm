@@ -2039,10 +2039,15 @@ export type ImportRun = {
   error_count?: number;
   format?: 'csv' | 'vcf' | 'jscontact' | 'records' | 'monica' | 'meerkat' | 'mycorrhizal';
   id?: number;
+  issue_count?: number;
   skipped?: number;
   total_processed?: number;
   updated?: number;
   user_id?: number;
+};
+
+export type ImportRunDetail = ImportRun & {
+  issues: ImportRowIssue[];
 };
 
 export type ImportScalarChange = {

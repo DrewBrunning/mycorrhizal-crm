@@ -4128,6 +4128,44 @@ paths:
                 $ref: "#/components/schemas/Error"
           description: Not authenticated.
 
+  /contacts/import/history/{id}:
+    get:
+      summary: One import run with its stored per-row issues
+      operationId: getImportRun
+      tags:
+        - Imports
+      description: >
+        Issue #2463 — the history row plus the per-row issues (skipped or
+        failed rows with their reasons) stored with it. Only row number, name,
+        status and reason are persisted: email and phone are always empty
+        strings here. At most 1000 issues are stored per run. Runs recorded
+        before this feature, and runs with nothing to report, return an empty
+        issues array. User-scoped: a missing or other user's id is a 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: The run and its issues.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportRunDetail"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Not authenticated.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: No import run with this id for the caller.
+
   # --- Monica import assistant (issue #549) ---
   # A five-step wizard over an in-memory session: connect (URL + API token) →
   # fetch (background snapshot pull, polled via /status) → preview (review with
@@ -21721,7 +21759,19 @@ components:
         updated: { type: integer }
         skipped: { type: integer }
         error_count: { type: integer, description: "Number of rows that errored (len of ImportResult.errors)" }
+        issue_count: { type: integer, description: "Issue #2463 — how many per-row issues are stored for this run (0 for runs recorded before the feature). The list never includes the issues themselves; fetch GET /contacts/import/history/{id}." }
         created_at: { type: string, format: date-time }
+
+    ImportRunDetail:
+      description: Issue #2463 — an ImportRun plus its stored per-row issues (always an array; email and phone are always empty).
+      allOf:
+        - $ref: "#/components/schemas/ImportRun"
+        - type: object
+          required: [issues]
+          properties:
+            issues:
+              type: array
+              items: { $ref: "#/components/schemas/ImportRowIssue" }
 
     # --- Monica import assistant (issue #549) ---
     MonicaConnectRequest:

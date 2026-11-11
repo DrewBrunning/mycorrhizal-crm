@@ -195,6 +195,9 @@ export interface ImportRun {
   updated: number;
   skipped: number;
   error_count: number;
+  // Issue #2463: stored per-row issues (0 for runs recorded earlier); the
+  // list never carries the issues themselves.
+  issue_count: number;
   created_at: string;
 }
 
