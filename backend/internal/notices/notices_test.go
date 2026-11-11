@@ -195,7 +195,7 @@ func TestCollectGoIncludesThePinnedStandardLibrary(t *testing.T) {
 	if err := os.MkdirAll(moduleDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(moduleDir, "go.mod"), []byte("module example.org/app\n\ngo 1.26.0\n\ntoolchain go1.27.3\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(moduleDir, "go.mod"), []byte("module example.org/app\n\ngo 1.26.0\n\ntoolchain go1.27.4\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(moduleDir, "LICENSE"), []byte("MIT"), 0o644); err != nil {
@@ -237,8 +237,8 @@ func TestCollectGoIncludesThePinnedStandardLibrary(t *testing.T) {
 	if stdlib == nil {
 		t.Fatalf("the Go standard library is missing: %+v", deps)
 	}
-	if stdlib.Version != "go1.27.3" {
-		t.Errorf("standard library version = %q, want the pinned toolchain go1.27.3", stdlib.Version)
+	if stdlib.Version != "go1.27.4" {
+		t.Errorf("standard library version = %q, want the pinned toolchain go1.27.4", stdlib.Version)
 	}
 	if stdlib.License != "BSD-3-Clause" || stdlib.Source != "https://go.dev/LICENSE" {
 		t.Errorf("unexpected standard library metadata: %+v", *stdlib)
