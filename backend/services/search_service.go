@@ -260,7 +260,7 @@ func clampSearchLimit(limit int) int {
 	return limit
 }
 
-// searchEntityHits runs the entities_fts query (migration 000093): the FTS hit
+// searchEntityHits runs the entities_fts query (migration 000094): the FTS hit
 // is joined to the live entities row, which re-scopes by user_id and
 // re-filters soft-deleted rows (defence in depth over the triggers).
 func searchEntityHits(db *gorm.DB, userID uint, match string, limit, offset int) ([]SearchEntityHit, error) {
@@ -508,7 +508,7 @@ func RebuildSearchIndex(db *gorm.DB) error {
 
 // RebuildSearchIndexReport truncates the four FTS virtual tables and
 // re-inserts every live (deleted_at IS NULL) row from contacts, notes,
-// activities, and entities (migration 000093) — including the denormalized contacts.addresses_flat address
+// activities, and entities (migration 000094) — including the denormalized contacts.addresses_flat address
 // text and contacts.phones_normalized phone tokens — returning the number of
 // rows written to each index.
 //

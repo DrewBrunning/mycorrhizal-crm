@@ -63,7 +63,7 @@ type FTSDivergence struct {
 	Index string `json:"index"`
 	RowID int64  `json:"rowid"`
 	// EntityID is set instead of RowID for entities_fts, which is keyed by the
-	// entity's UUID (a rowid is not stable on a TEXT-keyed table; migration 000093).
+	// entity's UUID (a rowid is not stable on a TEXT-keyed table; migration 000094).
 	EntityID string   `json:"entity_id,omitempty"`
 	Class    string   `json:"class"`
 	Columns  []string `json:"columns,omitempty"`

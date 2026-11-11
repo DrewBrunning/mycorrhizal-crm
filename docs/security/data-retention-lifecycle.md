@@ -401,7 +401,7 @@ Session/JWT cookies, TOTP recovery codes, WebAuthn passkey credentials, password
 
 ## 6. Full-text search index (SQLite FTS5)
 
-`contacts_fts`, `notes_fts`, `activities_fts`, `entities_fts` (entity names only; migration `000093`) — derived, rebuildable indexes
+`contacts_fts`, `notes_fts`, `activities_fts`, `entities_fts` (entity names only; migration `000094`) — derived, rebuildable indexes
 (`services.RebuildSearchIndex`), not a second source of truth.
 
 - **Where / who**: same SQLite file, `user_id UNINDEXED` column scopes every query to one user without a

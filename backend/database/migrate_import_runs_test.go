@@ -61,7 +61,7 @@ func TestMigrationsAddImportRuns(t *testing.T) {
 	// Down drops the table. 000042 is no longer the migration tip — later
 	// migrations sit on top — so roll those back first, then 000042's own
 	// down migration.
-	require.NoError(t, MigrateDown(dbPath)) // 000093_entity_search_fts
+	require.NoError(t, MigrateDown(dbPath)) // 000094_entity_search_fts
 	require.NoError(t, MigrateDown(dbPath)) // 000092_share_grant_lifecycle
 	require.NoError(t, MigrateDown(dbPath)) // 000091_reusable_entities
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000090_share_grants

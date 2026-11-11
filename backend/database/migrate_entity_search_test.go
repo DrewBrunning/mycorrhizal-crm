@@ -24,7 +24,7 @@ func ftsEntityIDs(t *testing.T, db *sql.DB, match string) []string {
 	return ids
 }
 
-// TestMigrationEntitySearchFTS covers 000093 (issue #2472, part of #2174): the
+// TestMigrationEntitySearchFTS covers 000094 (issue #2472, part of #2174): the
 // entities_fts index is backfilled from the live entities that already exist
 // (production data), leaves every entities row untouched, and its triggers
 // keep it in step with the base table.
@@ -51,7 +51,7 @@ func TestMigrationEntitySearchFTS(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	require.NoError(t, m.Steps(1)) // 000093
+	require.NoError(t, m.Steps(1)) // 000094
 
 	// Backfill: exactly the live rows, with the right columns.
 	var n int

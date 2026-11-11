@@ -3,7 +3,7 @@
 Full-text search (`GET /api/v1/search`, and `GET /contacts?search=`) is served
 by four SQLite FTS5 virtual tables — `contacts_fts`, `notes_fts`,
 `activities_fts`, `entities_fts` — kept in sync with the base tables by SQL
-triggers (migrations `000007`, `000010`, `000020`, and `000093` for entities).
+triggers (migrations `000007`, `000010`, `000020`, and `000094` for entities).
 The index is **derived data**: it holds nothing that is not reconstructable
 from `contacts`, `notes`, `activities`, and `entities`, so it can be rebuilt at any time and a rebuild always converges
 on exactly what the triggers would have produced.
@@ -23,7 +23,7 @@ fourth category. `entities_fts` indexes the entity **name only**: `entities.core
 is encrypted at rest, so a trigger could only see ciphertext, and custom field
 values are never indexed. It is keyed by `entity_id` rather than rowid (the
 entity id is a TEXT UUID and its rowid is not stable across `VACUUM`).
-Migration `000093` backfills it from the existing live entities, so no rebuild
+Migration `000094` backfills it from the existing live entities, so no rebuild
 is needed when upgrading. The owner's search returns entities of every
 sensitivity (ADR 0043 decision 4); the MCP `search_contacts` tool never returns
 them.
