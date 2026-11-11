@@ -639,6 +639,10 @@ jobs:
       # as the flake signal.
       - name: Run instrumented E2E tests
         id: android-e2e-attempt-1
+        # A hung test (#2494: LocalizedErrorE2eTest never finished) otherwise
+        # burns the whole job timeout; a step timeout fails it fast so the
+        # fresh-emulator retry runs. A full pass takes ~10 min.
+        timeout-minutes: 20
         continue-on-error: ${{ github.event_name != 'schedule' }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -666,6 +670,10 @@ jobs:
 
       - name: Run instrumented E2E tests (retry, fresh emulator)
         id: android-e2e-attempt-2
+        # A hung test (#2494: LocalizedErrorE2eTest never finished) otherwise
+        # burns the whole job timeout; a step timeout fails it fast so the
+        # fresh-emulator retry runs. A full pass takes ~10 min.
+        timeout-minutes: 20
         if: ${{ steps.android-e2e-attempt-1.outcome == 'failure' && github.event_name != 'schedule' }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -823,6 +831,10 @@ jobs:
       # runs only when attempt 1 failed and we are not on `schedule`.
       - name: Run instrumented E2E tests (API 26)
         id: android-e2e-min-sdk-attempt-1
+        # A hung test (#2494: LocalizedErrorE2eTest never finished) otherwise
+        # burns the whole job timeout; a step timeout fails it fast so the
+        # fresh-emulator retry runs. A full pass takes ~10 min.
+        timeout-minutes: 20
         continue-on-error: ${{ github.event_name != 'schedule' }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
@@ -847,6 +859,10 @@ jobs:
 
       - name: Run instrumented E2E tests (API 26, retry, fresh emulator)
         id: android-e2e-min-sdk-attempt-2
+        # A hung test (#2494: LocalizedErrorE2eTest never finished) otherwise
+        # burns the whole job timeout; a step timeout fails it fast so the
+        # fresh-emulator retry runs. A full pass takes ~10 min.
+        timeout-minutes: 20
         if: ${{ steps.android-e2e-min-sdk-attempt-1.outcome == 'failure' && github.event_name != 'schedule' }}
         uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
