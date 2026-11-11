@@ -10,7 +10,7 @@ name: Security stewardship cadence
 # This is a reminder, not a rotator or a re-verification. It does not read any
 # secret and cannot know whether the recorded last_done date is true — updating
 # that cell when the work is done is the human discipline. A run goes red on the
-# monthly schedule (so GitHub notifies) and emits a warning annotation naming
+# weekly schedule (so GitHub notifies) and emits a warning annotation naming
 # every overdue obligation and the register.
 #
 # It is deliberately NOT a required check and NOT in
@@ -20,7 +20,7 @@ name: Security stewardship cadence
 
 on:
   schedule:
-    - cron: '0 8 1 * *' # 08:00 UTC on the 1st of every month
+    - cron: '0 8 * * 1' # 08:00 UTC every Monday (PAT lead time is 7 days)
   workflow_dispatch:
 
 permissions:
@@ -81,3 +81,43 @@ jobs:
             echo "Do the overdue work (the register links the procedure), update its \`last_done\` cell, and open a PR. Issues #955 / #956."
           } >> "$GITHUB_STEP_SUMMARY"
           exit 1
+
+  # Opens/closes the per-entry rotation issues. A separate job so the check job
+  # above keeps read-only permissions; this one needs issues: write and nothing
+  # else. It runs even when the check job is red (overdue is exactly when an
+  # issue is wanted).
+  rotation-issues:
+    name: Open and close token-rotation issues
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ !cancelled() }}
+    needs: cadence
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Reconcile rotation issues with the register
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cd backend
+          # Exit 1 (overdue) still prints the JSON; only 2 is a real failure.
+          set +e
+          go run ./cmd/securitycadence -json > /tmp/cadence.json
+          code=$?
+          set -e
+          [ "$code" -le 1 ] || { echo "::error::securitycadence could not evaluate the register (exit $code)"; exit 1; }
+          cd ..
+          bash .github/scripts/rotation-issues.sh /tmp/cadence.json
