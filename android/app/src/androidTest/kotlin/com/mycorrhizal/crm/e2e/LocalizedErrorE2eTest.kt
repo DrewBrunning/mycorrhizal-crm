@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.e2e
 
+import android.os.Build
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -9,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.mycorrhizal.crm.data.repository.AppLocale
 import java.io.FileInputStream
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertTrue
@@ -26,8 +28,9 @@ import org.junit.runner.RunWith
  * string, so the app runs in German: seeing the German text proves the reason-code lookup ran,
  * and the absence of the English server message proves it did not fall back to it.
  *
- * The locale is switched through the platform's per-app locale service (API 33+; the app
- * declares `android:localeConfig`), the same path as the system Settings per-app language picker.
+ * The locale is switched through the platform's per-app locale service on API 33+ (the app
+ * declares `android:localeConfig`), the same path as the system Settings per-app language picker,
+ * and through the app's in-app language override below that (the minSdk 26 job).
  * [E2eBaseTest]'s rule launches the activity before `@Before`, so the switch recreates the
  * running activity rather than preceding its launch.
  */
@@ -76,6 +79,10 @@ class LocalizedErrorE2eTest : E2eBaseTest() {
     /** Runs `cmd locale set-app-locales` as the shell and waits for it to finish, then for the
      *  activity recreation it triggers to settle. */
     private fun setAppLocales(locales: String) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            setInAppLocale(locales.ifEmpty { null })
+            return
+        }
         val pkg = compose.activity.packageName
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         val pfd = automation.executeShellCommand(
@@ -83,6 +90,17 @@ class LocalizedErrorE2eTest : E2eBaseTest() {
         )
         FileInputStream(pfd.fileDescriptor).use { it.readBytes() }
         pfd.close()
+        compose.waitForIdle()
+    }
+
+    /** Below API 33 there is no per-app locale service (`cmd locale` is absent, so the minSdk 26
+     *  job timed out waiting for German). The app's own in-app override applies there instead:
+     *  persist it, update the synchronous cache `attachBaseContext` reads, then recreate. */
+    private fun setInAppLocale(tag: String?) {
+        val activity = compose.activity
+        runBlocking { activity.appSettings.setLanguageOverride(tag) }
+        AppLocale.languageTag = tag
+        InstrumentationRegistry.getInstrumentation().runOnMainSync { activity.recreate() }
         compose.waitForIdle()
     }
 

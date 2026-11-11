@@ -13,6 +13,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 ### Added
 
 - **Search finds your organisations, places and pets** ([#2472](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2472)): the top-bar search and the search results page now include them, matched by name, with a tab of their own. Nothing to do when upgrading.
+- **Standing shares on the web** ([#2292](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2292)): share a contact, note, activity or circle as a read-only, always-current view the recipient must accept. Manage them under Settings in "Shared with me" and "Shared by me". Revoking stops future access but cannot take back what was seen.
 - **Android Activities explains itself** ([#2211](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2211)): the Activities screen now says that activities are things that already happened, matching the web page and the Occasions screen, so it is easier to tell them from occasions and reminders.
 - **Organisations, places and pets on the web** ([#2301](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2301)): a new Entities page lists them with search and duplicate suggestions, and merging happens only when you confirm. Contacts link to them, a value from an entity is labelled "from <name>" and never edited as the contact's own, and the graph can show them.
 - **Standing shares on Android** ([#2293](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2293)): Share contact can now keep sharing, read-only, until you revoke it. A new Shared with me screen accepts, declines, blocks and reads shares; Shared by me shows status and expiry.
@@ -36,6 +37,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Custom fields show on the web contact page** ([#2447](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2447)): custom fields defined for contacts now load and display on a contact page; they were not being fetched, so the page showed none.
 - **Number keyboard for dotted and hyphenated dates on Android** ([#2378](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2378)): date fields now open the number keyboard when your date format uses dots or hyphens, such as 10.08.2026. Formats with slashes keep the text keyboard.
 - **Dark-mode scrollbars** ([#2363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2363)): in dark mode the navigation sidebar and page scrollbars no longer show a bright white track. Light mode is unchanged.
 
