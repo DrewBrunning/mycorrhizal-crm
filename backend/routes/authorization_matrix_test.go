@@ -344,6 +344,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/contacts":                           {class: classProtected},
 		"POST /api/v1/contacts/bulk":                      {class: classProtected},
 		"GET /api/v1/trash/contacts":                      {class: classProtected},
+		"GET /api/v1/trash/entities":                      {class: classProtected},
 		"DELETE /api/v1/trash/contacts":                   {class: classProtected},
 		"POST /api/v1/trash/contacts/:id/restore":         {class: classItem, probe: "/api/v1/trash/contacts/" + contact + "/restore"},
 		"DELETE /api/v1/trash/contacts/:id":               {class: classItem, probe: "/api/v1/trash/contacts/" + contact},

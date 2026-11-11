@@ -130,7 +130,14 @@ import type {
 import type { ContactTag, Tag } from './tags';
 import type { ContactTargetClosenessResponse } from './targetCloseness';
 import type { TIMELINE_TYPES } from './timeline';
-import type { TrashedContact, TrashList, TrashRestoreResult, TrashRestoreSkip } from './trash';
+import type {
+  TrashEntityList,
+  TrashedContact,
+  TrashedEntity,
+  TrashList,
+  TrashRestoreResult,
+  TrashRestoreSkip,
+} from './trash';
 import type { Passkey, PasskeyEnrollment } from './webauthn';
 
 // ---------------------------------------------------------------- helpers
@@ -155,7 +162,11 @@ export type ResponseDrift<Hand, Spec> = {
 
 /** Compiles only when every drift class is `never`. */
 export type NoDrift<
-  T extends { unknownFields: never; typeMismatch: never; requiredButOptionalInSpec: never },
+  T extends {
+    unknownFields: never;
+    typeMismatch: never;
+    requiredButOptionalInSpec: never;
+  },
 > = T;
 
 /**
@@ -218,6 +229,8 @@ export type Conformance = [
   NoDrift<ResponseDrift<Partial<ShareBlock>, S.ShareBlock>>,
   NoDrift<ResponseDrift<TrashedContact, S.TrashedContact>>,
   NoDrift<ResponseDrift<TrashList, S.TrashListResponse>>,
+  NoDrift<ResponseDrift<TrashedEntity, S.TrashedEntity>>,
+  NoDrift<ResponseDrift<TrashEntityList, S.TrashEntityListResponse>>,
   NoDrift<ResponseDrift<TrashRestoreResult, S.TrashRestoreResponse>>,
   NoDrift<ResponseDrift<TrashRestoreSkip, S.TrashRestoreSkip>>,
   NoDrift<ResponseDrift<CircleMember, S.CircleMember>>,

@@ -3303,6 +3303,7 @@
     "restoredWithSkipped_other": "{{name}} restaurado, pero {{count}} elementos no se pudieron restaurar porque aquello a lo que estaban vinculados ya no existe.",
     "restoredWithSkipped_many": "{{name}} restaurado, pero {{count}} elementos no se pudieron restaurar porque aquello a lo que estaban vinculados ya no existe.",
     "restoreConflict": "No se puede restaurar a {{name}}: otro contacto ya usa el ID de este contacto. Fusiona o elimina ese contacto primero.",
+    "mergedInto": "Fusionado con {{name}}",
     "purgeConfirm": "¿Eliminar a {{name}} permanentemente? Esta acción no se puede deshacer.",
     "purged": "{{name}} eliminado permanentemente.",
     "emptyConfirm_one": "¿Eliminar permanentemente {{count}} contacto de la papelera? Esta acción no se puede deshacer.",
