@@ -3305,6 +3305,7 @@
     "restoredWithSkipped_other": "{{name}} ripristinato, ma {{count}} elementi non sono stati ripristinati perché ciò a cui erano collegati non esiste più.",
     "restoredWithSkipped_many": "{{name}} ripristinato, ma {{count}} elementi non sono stati ripristinati perché ciò a cui erano collegati non esiste più.",
     "restoreConflict": "Impossibile ripristinare {{name}}: un altro contatto usa già l’ID di questo contatto. Unisci o elimina prima quel contatto.",
+    "mergedInto": "Unito a {{name}}",
     "purgeConfirm": "Eliminare definitivamente {{name}}? Questa azione non può essere annullata.",
     "purged": "{{name}} eliminato definitivamente.",
     "emptyConfirm_one": "Eliminare definitivamente {{count}} contatto dal cestino? Questa azione non può essere annullata.",

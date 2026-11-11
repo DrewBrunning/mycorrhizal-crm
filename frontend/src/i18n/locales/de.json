@@ -3205,6 +3205,7 @@
     "restoredWithSkipped_one": "{{name}} wiederhergestellt, aber {{count}} Eintrag konnte nicht wiederhergestellt werden, weil das Verknüpfte nicht mehr existiert.",
     "restoredWithSkipped_other": "{{name}} wiederhergestellt, aber {{count}} Einträge konnten nicht wiederhergestellt werden, weil das Verknüpfte nicht mehr existiert.",
     "restoreConflict": "{{name}} kann nicht wiederhergestellt werden: Ein anderer Kontakt verwendet bereits die ID dieses Kontakts. Führe diesen Kontakt zuerst zusammen oder lösche ihn.",
+    "mergedInto": "Mit {{name}} zusammengeführt",
     "purgeConfirm": "{{name}} endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
     "purged": "{{name}} endgültig gelöscht.",
     "emptyConfirm_one": "{{count}} Kontakt im Papierkorb endgültig löschen? Dies kann nicht rückgängig gemacht werden.",

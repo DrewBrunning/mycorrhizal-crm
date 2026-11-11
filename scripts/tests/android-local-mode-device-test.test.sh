@@ -10,6 +10,11 @@
 
 set -u
 
+# Fixture repos must never inherit a hook's GIT_DIR: it would redirect the
+# `git config user.*` below to the REAL repository (see backend/internal/gittest).
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR GIT_PREFIX
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPT="$SCRIPT_DIR/../android-local-mode-device-test.sh"
 LEDGER_SRC="$SCRIPT_DIR/../../.github/manual-gates.json"

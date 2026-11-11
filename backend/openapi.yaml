@@ -8155,6 +8155,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+  /trash/entities:
+    get:
+      summary: List the caller's trashed (restorable) entities
+      operationId: listTrashedEntities
+      tags:
+        - Trash
+      description: |
+        Entities (organisations, places, pets) the caller deleted or merged away that can still
+        be restored (issue #2446, ADR 0043 decision 6): those with a deletion snapshot, newest
+        deletion first. `purge_at` is when the scheduled purge hard-deletes the entity; null when
+        `DELETED_RETENTION_DAYS` is 0 (keep forever). A merge loser carries `merged_into` (the
+        survivor's id) and `merged_into_name`. Restore with `POST /entities/{id}/restore`.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, default: 25 } }
+      responses:
+        "200":
+          description: A page of trashed entities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrashEntityListResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /trash/contacts/{id}:
     parameters:
       - name: id
@@ -17249,6 +17277,26 @@ components:
         contacts:
           type: array
           items: { $ref: "#/components/schemas/TrashedContact" }
+        total: { type: integer, format: int64 }
+        page: { type: integer }
+        limit: { type: integer }
+        retention_days: { type: integer, description: "DELETED_RETENTION_DAYS; 0 means keep forever." }
+    TrashedEntity:
+      type: object
+      required: [entity, deleted_at, purge_at]
+      properties:
+        entity: { $ref: "#/components/schemas/Entity" }
+        deleted_at: { type: string, format: date-time }
+        purge_at: { type: string, format: date-time, nullable: true, description: "When the scheduled purge hard-deletes the entity; null when retention is 0 (keep forever)." }
+        merged_into: { type: string, description: "The survivor's id when the entity is a merge loser; absent for a plain delete." }
+        merged_into_name: { type: string, description: "The survivor's name; absent when the survivor is gone." }
+    TrashEntityListResponse:
+      type: object
+      required: [entities, total, page, limit, retention_days]
+      properties:
+        entities:
+          type: array
+          items: { $ref: "#/components/schemas/TrashedEntity" }
         total: { type: integer, format: int64 }
         page: { type: integer }
         limit: { type: integer }

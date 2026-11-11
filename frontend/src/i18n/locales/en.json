@@ -3205,6 +3205,7 @@
     "restoredWithSkipped_one": "Restored {{name}}, but {{count}} item could not be restored because what it linked to no longer exists.",
     "restoredWithSkipped_other": "Restored {{name}}, but {{count}} items could not be restored because what they linked to no longer exists.",
     "restoreConflict": "Can't restore {{name}}: another contact already uses this contact's ID. Merge or delete that contact first.",
+    "mergedInto": "Merged into {{name}}",
     "purgeConfirm": "Permanently delete {{name}}? This cannot be undone.",
     "purged": "Permanently deleted {{name}}.",
     "emptyConfirm_one": "Permanently delete {{count}} contact in the Trash? This cannot be undone.",
