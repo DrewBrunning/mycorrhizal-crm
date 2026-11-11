@@ -134,7 +134,7 @@ jobs:
         # security-events: write, so it skips the SARIF upload; the native
         # push/PR/schedule run of this workflow still uploads.
         if: always() && github.event_name != 'workflow_call'
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: android/results.sarif
           category: mobsfscan
@@ -206,7 +206,7 @@ jobs:
         # security-events: write, so it skips the SARIF upload; the native
         # push/PR/schedule run of this workflow still uploads.
         if: always() && github.event_name != 'workflow_call'
-        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: backend/results.sarif
           category: semgrep
