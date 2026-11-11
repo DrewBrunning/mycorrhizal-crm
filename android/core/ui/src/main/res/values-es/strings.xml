@@ -1328,6 +1328,8 @@
     <string name="settings_custom_fields_move_up_named">Mover %1$s hacia arriba</string>
     <string name="settings_custom_fields_move_down_named">Mover %1$s hacia abajo</string>
     <string name="settings_custom_fields_label">Etiqueta</string>
+    <string name="settings_custom_fields_applies_to">Se aplica a</string>
+    <string name="settings_custom_fields_target_contact">Contacto</string>
     <string name="settings_custom_fields_key">Clave</string>
     <string name="settings_custom_fields_key_hint">El nombre técnico estable; no se puede cambiar después de crearlo.</string>
     <string name="settings_custom_fields_type">Tipo</string>

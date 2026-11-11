@@ -1296,6 +1296,8 @@
     <string name="settings_custom_fields_move_up_named">%1$s nach oben verschieben</string>
     <string name="settings_custom_fields_move_down_named">%1$s nach unten verschieben</string>
     <string name="settings_custom_fields_label">Beschriftung</string>
+    <string name="settings_custom_fields_applies_to">Gilt für</string>
+    <string name="settings_custom_fields_target_contact">Kontakt</string>
     <string name="settings_custom_fields_key">Schlüssel</string>
     <string name="settings_custom_fields_key_hint">Der feste technische Name; kann nach dem Erstellen nicht mehr geändert werden.</string>
     <string name="settings_custom_fields_type">Typ</string>
