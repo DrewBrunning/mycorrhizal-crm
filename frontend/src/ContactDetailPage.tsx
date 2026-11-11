@@ -761,7 +761,15 @@ export default function ContactDetailPage() {
   // Custom field definitions (user-wide) + this contact's values (T7). Only
   // contact-targeted definitions belong on a contact: organisation/place/pet
   // ones are edited on their entity's page.
-  const { definitions: allFieldDefinitions } = useFieldDefinitions();
+  const { definitions: allFieldDefinitions, refresh: refreshFieldDefinitions } =
+    useFieldDefinitions();
+  // The hook has no mount effect of its own; without this the page never
+  // fetches definitions and custom fields silently never render (#2447).
+  // Remounting (e.g. returning from Settings after editing definitions)
+  // refetches, so edits made there show up here.
+  useEffect(() => {
+    void refreshFieldDefinitions();
+  }, [refreshFieldDefinitions]);
   const fieldDefinitions = useMemo(
     () => allFieldDefinitions.filter((d) => (d.target ?? 'contact') === 'contact'),
     [allFieldDefinitions],
