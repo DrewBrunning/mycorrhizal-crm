@@ -76,21 +76,31 @@ class LocalizedErrorE2eTest : E2eBaseTest() {
         )
     }
 
-    /** Runs `cmd locale set-app-locales` as the shell and waits for it to finish, then for the
-     *  activity recreation it triggers to settle. */
+    /** Runs `cmd locale set-app-locales` as the shell, then waits (bounded) for the activity
+     *  recreation it triggers. Every blocking step is bounded: #2494 hung the whole job for an
+     *  hour in this test's teardown, so a stuck shell read or idle wait must throw (teardown
+     *  swallows it) rather than block forever. */
     private fun setAppLocales(locales: String) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             setInAppLocale(locales.ifEmpty { null })
             return
         }
-        val pkg = compose.activity.packageName
+        val before = compose.activity
+        val pkg = before.packageName
         val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
         val pfd = automation.executeShellCommand(
             "cmd locale set-app-locales $pkg --locales ${if (locales.isEmpty()) "\"\"" else locales}"
         )
-        FileInputStream(pfd.fileDescriptor).use { it.readBytes() }
-        pfd.close()
-        compose.waitForIdle()
+        // The read ends when the shell command exits; run it off-thread so a command that never
+        // closes its output cannot block this one.
+        val reader = Thread {
+            runCatching { FileInputStream(pfd.fileDescriptor).use { it.readBytes() } }
+        }.apply { isDaemon = true; start() }
+        reader.join(SHELL_TIMEOUT_MS)
+        val stuck = reader.isAlive
+        runCatching { pfd.close() }
+        check(!stuck) { "cmd locale set-app-locales did not finish within ${SHELL_TIMEOUT_MS}ms" }
+        awaitRecreated(before)
     }
 
     /** Below API 33 there is no per-app locale service (`cmd locale` is absent, so the minSdk 26
@@ -101,10 +111,25 @@ class LocalizedErrorE2eTest : E2eBaseTest() {
         runBlocking { activity.appSettings.setLanguageOverride(tag) }
         AppLocale.languageTag = tag
         InstrumentationRegistry.getInstrumentation().runOnMainSync { activity.recreate() }
-        compose.waitForIdle()
+        awaitRecreated(activity)
+    }
+
+    /** Bounded replacement for `compose.waitForIdle()`: waits until the rule's activity is a
+     *  new, resumed instance. Throws on timeout instead of blocking. */
+    private fun awaitRecreated(old: androidx.activity.ComponentActivity) {
+        compose.waitUntil(RECREATE_TIMEOUT_MS) {
+            runCatching {
+                val now = compose.activity
+                now !== old &&
+                    now.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+            }.getOrDefault(false)
+        }
     }
 
     private companion object {
+        const val SHELL_TIMEOUT_MS = 15_000L
+        const val RECREATE_TIMEOUT_MS = 15_000L
+
         const val WRONG_PASSWORD = "definitely-not-the-password"
 
         // core/ui values-de/strings.xml: login_sign_in, error_reason_auth_invalid_credentials.
