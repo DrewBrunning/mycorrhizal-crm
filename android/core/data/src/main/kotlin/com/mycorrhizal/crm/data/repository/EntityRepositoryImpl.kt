@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntityRestoreResponse
+import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
 import com.mycorrhizal.crm.model.network.FieldValue
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
@@ -76,6 +77,12 @@ class EntityRepositoryImpl @Inject constructor(
             if (it.isSuccess) refresh(affected)
         }
     }
+
+    override suspend fun suggestions(kind: String): Result<EntitySuggestionsResponse> =
+        apiClient.listEntitySuggestions(kind)
+
+    override suspend fun dismissSuggestion(entityA: String, entityB: String): Result<Unit> =
+        apiClient.dismissEntitySuggestion(entityA, entityB).map { }
 
     override suspend fun contacts(id: String): Result<List<EntityContactLink>> =
         apiClient.listEntityContacts(id)

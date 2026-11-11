@@ -114,6 +114,7 @@ fun FieldDefinitionFormScreen(
             state = state,
             onLabelChange = viewModel::onLabelChange,
             onKeyChange = viewModel::onKeyChange,
+            onTargetChange = viewModel::onTargetChange,
             onTypeChange = viewModel::onTypeChange,
             onMultiChange = viewModel::onMultiChange,
             onMinChange = viewModel::onMinChange,
@@ -160,6 +161,7 @@ fun FieldDefinitionFormContent(
     onVcardNameChange: (String) -> Unit,
     onSensitivityChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onTargetChange: (String) -> Unit = {},
     onGroupChange: (String) -> Unit = {},
     onDelete: () -> Unit = {}
 ) {
@@ -168,6 +170,7 @@ fun FieldDefinitionFormContent(
         return
     }
 
+    var targetExpanded by remember { mutableStateOf(false) }
     var typeExpanded by remember { mutableStateOf(false) }
     var projectionExpanded by remember { mutableStateOf(false) }
     var sensitivityExpanded by remember { mutableStateOf(false) }
@@ -188,6 +191,38 @@ fun FieldDefinitionFormContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        ExposedDropdownMenuBox(
+            expanded = targetExpanded,
+            onExpandedChange = { targetExpanded = it && !state.isEdit }
+        ) {
+            OutlinedTextField(
+                value = stringResource(fieldTargetLabelRes(state.target)),
+                onValueChange = {},
+                readOnly = true,
+                enabled = !state.isEdit,
+                label = { Text(stringResource(R.string.settings_custom_fields_applies_to)) },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = targetExpanded)
+                },
+                modifier = Modifier.fillMaxWidth().menuAnchor(
+                    ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                )
+            )
+            ExposedDropdownMenu(
+                expanded = targetExpanded,
+                onDismissRequest = { targetExpanded = false }
+            ) {
+                FIELD_TARGETS.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(stringResource(fieldTargetLabelRes(option))) },
+                        onClick = {
+                            onTargetChange(option)
+                            targetExpanded = false
+                        }
+                    )
+                }
+            }
+        }
         OutlinedTextField(
             value = state.label,
             onValueChange = onLabelChange,
@@ -326,72 +361,85 @@ fun FieldDefinitionFormContent(
             }
         }
 
-        SettingsNavigationRow(
-            title = stringResource(R.string.settings_custom_fields_advanced),
-            onClick = { advancedExpanded = !advancedExpanded },
-            supporting = stringResource(R.string.settings_custom_fields_advanced_hint)
-        )
-        if (advancedExpanded) {
-            ExposedDropdownMenuBox(
-                expanded = projectionExpanded,
-                onExpandedChange = { projectionExpanded = it }
-            ) {
-                OutlinedTextField(
-                    value = if (state.projectionMode == "vcard") {
-                        stringResource(R.string.settings_custom_fields_projection_vcard)
-                    } else {
-                        stringResource(R.string.settings_custom_fields_projection_internal)
-                    },
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text(stringResource(R.string.settings_custom_fields_projection)) },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(
-                            expanded = projectionExpanded
-                        )
-                    },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(
-                        ExposedDropdownMenuAnchorType.PrimaryNotEditable
-                    )
-                )
-                ExposedDropdownMenu(
+        // Entity definitions never project into a vCard, so there is nothing advanced to set.
+        if (state.canProject) {
+            SettingsNavigationRow(
+                title = stringResource(R.string.settings_custom_fields_advanced),
+                onClick = { advancedExpanded = !advancedExpanded },
+                supporting = stringResource(R.string.settings_custom_fields_advanced_hint)
+            )
+            if (advancedExpanded) {
+                ExposedDropdownMenuBox(
                     expanded = projectionExpanded,
-                    onDismissRequest = { projectionExpanded = false }
+                    onExpandedChange = { projectionExpanded = it }
                 ) {
-                    DropdownMenuItem(
-                        text = {
+                    OutlinedTextField(
+                        value = if (state.projectionMode == "vcard") {
+                            stringResource(R.string.settings_custom_fields_projection_vcard)
+                        } else {
+                            stringResource(R.string.settings_custom_fields_projection_internal)
+                        },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = {
                             Text(
-                                stringResource(R.string.settings_custom_fields_projection_internal)
+                                stringResource(R.string.settings_custom_fields_projection)
                             )
                         },
-                        onClick = {
-                            onProjectionModeChange(
-                                "internal"
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = projectionExpanded
                             )
-                            projectionExpanded = false
-                        }
+                        },
+                        modifier = Modifier.fillMaxWidth().menuAnchor(
+                            ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                        )
                     )
-                    DropdownMenuItem(
-                        text = {
+                    ExposedDropdownMenu(
+                        expanded = projectionExpanded,
+                        onDismissRequest = { projectionExpanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(
+                                        R.string.settings_custom_fields_projection_internal
+                                    )
+                                )
+                            },
+                            onClick = {
+                                onProjectionModeChange(
+                                    "internal"
+                                )
+                                projectionExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    stringResource(R.string.settings_custom_fields_projection_vcard)
+                                )
+                            },
+                            onClick = {
+                                onProjectionModeChange("vcard")
+                                projectionExpanded = false
+                            }
+                        )
+                    }
+                }
+                if (state.projectionMode == "vcard") {
+                    OutlinedTextField(
+                        value = state.vcardName,
+                        onValueChange = onVcardNameChange,
+                        label = {
                             Text(
-                                stringResource(R.string.settings_custom_fields_projection_vcard)
+                                stringResource(R.string.settings_custom_fields_vcard_name)
                             )
                         },
-                        onClick = {
-                            onProjectionModeChange("vcard")
-                            projectionExpanded = false
-                        }
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
-            }
-            if (state.projectionMode == "vcard") {
-                OutlinedTextField(
-                    value = state.vcardName,
-                    onValueChange = onVcardNameChange,
-                    label = { Text(stringResource(R.string.settings_custom_fields_vcard_name)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
             }
         }
 

@@ -120,11 +120,14 @@ import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityContactLink
 import com.mycorrhizal.crm.model.network.EntityContactsResponse
 import com.mycorrhizal.crm.model.network.EntityDeleteResponse
+import com.mycorrhizal.crm.model.network.EntityDismissInput
+import com.mycorrhizal.crm.model.network.EntityDismissResponse
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntityRestoreResponse
+import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -3673,6 +3676,27 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         executePost("$ENTITIES_PATH/$loserId/merge", input) { _, body ->
             moshi.adapter(EntityMergeResponse::class.java).fromJson(body)
         }
+
+    /** GET /api/v1/entities/suggestions?mode=pairs - candidate duplicate pairs of one kind. */
+    suspend fun listEntitySuggestions(kind: String? = null): Result<EntitySuggestionsResponse> {
+        val builder = "$PLACEHOLDER_ORIGIN$ENTITIES_PATH/suggestions".toHttpUrl().newBuilder()
+        kind?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("kind", it) }
+        builder.addQueryParameter("mode", "pairs")
+        return executeGet(builder.build().toString()) { _, body ->
+            moshi.adapter(EntitySuggestionsResponse::class.java).fromJson(body)
+        }
+    }
+
+    /** POST /api/v1/entities/suggestions/dismiss - hides the pair for good (merge never needed). */
+    suspend fun dismissEntitySuggestion(
+        entityA: String,
+        entityB: String
+    ): Result<EntityDismissResponse> = executePost(
+        "$ENTITIES_PATH/suggestions/dismiss",
+        EntityDismissInput(entityA, entityB)
+    ) { _, body ->
+        moshi.adapter(EntityDismissResponse::class.java).fromJson(body)
+    }
 
     /** GET /api/v1/entities/{id}/contacts - the live links with role, period and primary flag. */
     suspend fun listEntityContacts(id: String): Result<List<EntityContactLink>> =

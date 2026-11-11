@@ -841,6 +841,32 @@ class ApiClientTest {
     }
 
     @Test
+    fun `search parses the entities section`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"query":"acme","notes":[],"activities":[],"entities":[
+                    {"id":"e1","kind":"organisation","name":"Acme Corp","sensitivity":"normal"}]}"""
+            )
+        )
+
+        val result = client.search("acme")
+
+        val hit = result.getOrThrow().entities.single()
+        assertEquals("e1", hit.id)
+        assertEquals("organisation", hit.kind)
+        assertEquals("Acme Corp", hit.name)
+        assertEquals("normal", hit.sensitivity)
+    }
+
+    @Test
+    fun `search tolerates a server that omits entities`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"query":"acme","notes":[]}""")
+        )
+        assertTrue(client.search("acme").getOrThrow().entities.isEmpty())
+    }
+
+    @Test
     fun `search paperless documents omits the query param when null`() = runBlocking {
         server.enqueue(
             MockResponse()

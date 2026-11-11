@@ -180,6 +180,7 @@
     <string name="contacts_search_results_hint">Notes and activities are searched too — circle and archived filters don\'t apply to them.</string>
     <string name="contacts_search_notes_group">Notes</string>
     <string name="contacts_search_activities_group">Interactions</string>
+    <string name="contacts_search_entities_group">Organisations, places and pets</string>
     <string name="contacts_search_unfiled">Unfiled</string>
     <string name="contacts_search_resolved_relation">Matched relationship: %1$s</string>
 
@@ -1314,6 +1315,8 @@
     <string name="settings_custom_fields_move_up_named">Move %1$s up</string>
     <string name="settings_custom_fields_move_down_named">Move %1$s down</string>
     <string name="settings_custom_fields_label">Label</string>
+    <string name="settings_custom_fields_applies_to">Applies to</string>
+    <string name="settings_custom_fields_target_contact">Contact</string>
     <string name="settings_custom_fields_key">Key</string>
     <string name="settings_custom_fields_key_hint">The stable machine name; cannot be changed after creation.</string>
     <string name="settings_custom_fields_type">Type</string>
@@ -3414,6 +3417,17 @@
     <string name="shared_entities_merge_open_survivor">Open %1$s</string>
     <string name="shared_entities_restore_failed">Couldn\'t restore this entity.</string>
     <string name="shared_entities_open">Open %1$s</string>
+    <string name="shared_entities_suggestions_title">Possible duplicates</string>
+    <string name="shared_entities_suggestions_description">Entities with the same or a very similar name. Nothing merges unless you choose to.</string>
+    <string name="shared_entities_suggestions_load">Find duplicates</string>
+    <string name="shared_entities_suggestions_none">No duplicates found.</string>
+    <string name="shared_entities_suggestions_failed">Couldn\'t look for duplicates.</string>
+    <string name="shared_entities_suggestions_dismiss">Not a duplicate</string>
+    <string name="shared_entities_suggestions_pair">%1$s and %2$s</string>
+    <string name="shared_entities_suggestions_open">Open %1$s</string>
+    <string name="shared_entities_suggestions_reason_exact_name">Same name</string>
+    <string name="shared_entities_suggestions_reason_similar_name">Very similar name</string>
+    <string name="shared_entities_suggestions_reason_address">Same address</string>
     <string name="contact_entity_links_from_own_none">This contact has no organisations or addresses of its own to link.</string>
     <string name="contact_entity_links_load_failed">Couldn\'t load the links for this contact.</string>
     <string name="contact_entity_links_cd_from">Shown from %1$s, read-only</string>

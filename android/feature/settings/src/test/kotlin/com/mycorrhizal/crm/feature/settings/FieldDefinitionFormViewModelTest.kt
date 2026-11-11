@@ -694,4 +694,81 @@ class FieldDefinitionFormViewModelTest {
 
         assertFalse(vm.uiState.value.isDirty)
     }
+    // --- "Applies to" (#2499, web customFields.appliesTo) ----------------------------------
+
+    @Test
+    fun `a new definition applies to contacts by default and sends that target`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slot = slot<FieldDefinitionInput>()
+            coEvery { repository.create(capture(slot)) } returns Result.success(FieldDefinition())
+            val vm = createViewModel()
+            advanceUntilIdle()
+            assertEquals("contact", vm.uiState.value.target)
+
+            vm.onLabelChange("Nickname")
+            vm.onKeyChange("nickname")
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals("contact", slot.captured.target)
+        }
+
+    @Test
+    fun `an entity target is sent and never projects to a vCard`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slot = slot<FieldDefinitionInput>()
+            coEvery { repository.create(capture(slot)) } returns Result.success(FieldDefinition())
+            val vm = createViewModel()
+            advanceUntilIdle()
+
+            vm.onProjectionModeChange("vcard")
+            vm.onVcardNameChange("FAVE")
+            vm.onTargetChange("place")
+            vm.onLabelChange("Wifi")
+            vm.onKeyChange("wifi")
+            vm.save()
+            advanceUntilIdle()
+
+            assertEquals("place", slot.captured.target)
+            assertEquals("internal-only", slot.captured.projection)
+        }
+
+    @Test
+    fun `a blank vCard name does not block an entity definition`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.create(any()) } returns Result.success(FieldDefinition())
+            val vm = createViewModel()
+            advanceUntilIdle()
+            vm.onProjectionModeChange("vcard")
+            vm.onTargetChange("pet")
+            vm.onLabelChange("Vet")
+            vm.onKeyChange("vet")
+            vm.save()
+            advanceUntilIdle()
+            assertEquals(FieldDefinitionFormEvent.Saved, vm.events.value)
+        }
+
+    @Test
+    fun `an existing definition keeps its target, which cannot be changed`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slot = slot<FieldDefinitionInput>()
+            coEvery { repository.get("d1") } returns Result.success(
+                FieldDefinition(id = "d1", label = "Wifi", key = "wifi", target = "place")
+            )
+            coEvery { repository.update("d1", capture(slot)) } returns
+                Result.success(FieldDefinition(id = "d1"))
+            val vm = editViewModel()
+            advanceUntilIdle()
+            assertEquals("place", vm.uiState.value.target)
+
+            vm.onTargetChange("pet")
+            assertEquals("place", vm.uiState.value.target)
+            assertFalse(vm.uiState.value.isDirty)
+
+            vm.onLabelChange("Wifi password")
+            vm.save()
+            advanceUntilIdle()
+            // The server rejects a changed target; an edit never sends one.
+            assertNull(slot.captured.target)
+        }
 }

@@ -36,6 +36,7 @@ import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchActivityHit
+import com.mycorrhizal.crm.model.network.SearchEntityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
 import com.mycorrhizal.crm.network.ApiClient
@@ -79,6 +80,7 @@ class ContactListScreenTest {
         onRunBulkAction: (String, String?, String?) -> Unit = { _, _, _ -> },
         onRunBulkFieldEdit: (Map<String, String>, Set<String>) -> Unit = { _, _ -> },
         onMergeSelected: (Int, List<Int>) -> Unit = { _, _ -> },
+        onOpenEntity: (String) -> Unit = {},
         onMenuClick: (() -> Unit)? = {},
         darkTheme: Boolean = false
     ) {
@@ -99,6 +101,7 @@ class ContactListScreenTest {
                     onRunBulkAction = onRunBulkAction,
                     onRunBulkFieldEdit = onRunBulkFieldEdit,
                     onMergeSelected = onMergeSelected,
+                    onOpenEntity = onOpenEntity,
                     onMenuClick = onMenuClick
                 )
             }
@@ -363,6 +366,47 @@ class ContactListScreenTest {
 
         composeTestRule.onNodeWithText("called mom").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Coffee with mom").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `entity hits render with their kind and open the entity on tap`() {
+        var opened: String? = null
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = emptyList(),
+                searchResult = SearchResult(
+                    entities = listOf(
+                        SearchEntityHit(id = "e1", kind = "organisation", name = "Acme Corp"),
+                        SearchEntityHit(id = "e2", kind = "pet", name = "Acme Rex")
+                    )
+                )
+            ),
+            onOpenEntity = { opened = it }
+        )
+
+        composeTestRule.onNodeWithTag("contact-list")
+            .performScrollToNode(hasText("Acme Corp"))
+        composeTestRule.onNodeWithText("Organisations, places and pets").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Pet").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Acme Rex").performScrollTo().performClick()
+        assertEquals("e2", opened)
+    }
+
+    @Test
+    fun `an entities-only result still renders the section`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = emptyList(),
+                searchResult = SearchResult(
+                    entities = listOf(SearchEntityHit(id = "e1", kind = "place", name = "Cabin"))
+                )
+            )
+        )
+        composeTestRule.onNodeWithTag("contact-list").performScrollToNode(hasText("Cabin"))
+        composeTestRule.onNodeWithText("Cabin").assertIsDisplayed()
     }
 
     @Test

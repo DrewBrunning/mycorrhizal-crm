@@ -185,6 +185,7 @@
     <string name="contacts_search_results_hint">Les notes et les activités sont également recherchées — les filtres de cercle et d\'archivage ne s\'y appliquent pas.</string>
     <string name="contacts_search_notes_group">Notes</string>
     <string name="contacts_search_activities_group">Interactions</string>
+    <string name="contacts_search_entities_group">Organisations, lieux et animaux</string>
     <string name="contacts_search_unfiled">Non classé</string>
     <string name="contacts_search_resolved_relation">Relation correspondante : %1$s</string>
 
@@ -1327,6 +1328,8 @@
     <string name="settings_custom_fields_move_up_named">Déplacer %1$s vers le haut</string>
     <string name="settings_custom_fields_move_down_named">Déplacer %1$s vers le bas</string>
     <string name="settings_custom_fields_label">Libellé</string>
+    <string name="settings_custom_fields_applies_to">S\'applique à</string>
+    <string name="settings_custom_fields_target_contact">Contact</string>
     <string name="settings_custom_fields_key">Clé</string>
     <string name="settings_custom_fields_key_hint">Le nom technique stable ; ne peut plus être modifié après la création.</string>
     <string name="settings_custom_fields_type">Type</string>
@@ -3495,6 +3498,17 @@
     <string name="shared_entities_merge_open_survivor">Ouvrir %1$s</string>
     <string name="shared_entities_restore_failed">Impossible de restaurer cette entité.</string>
     <string name="shared_entities_open">Ouvrir %1$s</string>
+    <string name="shared_entities_suggestions_title">Doublons possibles</string>
+    <string name="shared_entities_suggestions_description">Entités portant le même nom ou un nom très proche. Rien n\'est fusionné sans votre accord.</string>
+    <string name="shared_entities_suggestions_load">Rechercher les doublons</string>
+    <string name="shared_entities_suggestions_none">Aucun doublon trouvé.</string>
+    <string name="shared_entities_suggestions_failed">Impossible de rechercher les doublons.</string>
+    <string name="shared_entities_suggestions_dismiss">Pas un doublon</string>
+    <string name="shared_entities_suggestions_pair">%1$s et %2$s</string>
+    <string name="shared_entities_suggestions_open">Ouvrir %1$s</string>
+    <string name="shared_entities_suggestions_reason_exact_name">Même nom</string>
+    <string name="shared_entities_suggestions_reason_similar_name">Nom très proche</string>
+    <string name="shared_entities_suggestions_reason_address">Même adresse</string>
     <string name="contact_entity_links_from_own_none">Ce contact n’a aucune organisation ni adresse propre à lier.</string>
     <string name="contact_entity_links_load_failed">Impossible de charger les liens de ce contact.</string>
     <string name="contact_entity_links_cd_from">Affiché depuis %1$s, en lecture seule</string>

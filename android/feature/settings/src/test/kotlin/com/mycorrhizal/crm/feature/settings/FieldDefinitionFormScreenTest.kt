@@ -47,6 +47,7 @@ class FieldDefinitionFormScreenTest {
     private fun setContent(
         state: FieldDefinitionFormState,
         onTypeChange: (String) -> Unit = {},
+        onTargetChange: (String) -> Unit = {},
         onSave: () -> Unit = {},
         onGroupChange: (String) -> Unit = {},
         onDelete: () -> Unit = {}
@@ -66,6 +67,7 @@ class FieldDefinitionFormScreenTest {
                         onLabelChange = {},
                         onKeyChange = {},
                         onTypeChange = onTypeChange,
+                        onTargetChange = onTargetChange,
                         onMultiChange = {},
                         onMinChange = {},
                         onMaxChange = {},
@@ -399,5 +401,31 @@ class FieldDefinitionFormScreenTest {
 
         composeTestRule.onNodeWithText("delete failed").assertIsDisplayed()
         assertEquals(false, deletedCalled)
+    }
+
+    @Test
+    fun `applies to offers contacts and the three entity kinds and reports the pick`() {
+        var chosen: String? = null
+        setContent(FieldDefinitionFormState(), onTargetChange = { chosen = it })
+
+        composeTestRule.onNodeWithText("Applies to").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Contact").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Place").performClick()
+        assertEquals("place", chosen)
+    }
+
+    @Test
+    fun `an entity target hides the standards projection`() {
+        setContent(FieldDefinitionFormState(target = "pet"))
+        composeTestRule.onNodeWithText("Advanced").assertDoesNotExist()
+    }
+
+    @Test
+    fun `applies to is read-only when editing`() {
+        setContent(FieldDefinitionFormState(fieldDefinitionId = "d1", target = "place"))
+        composeTestRule.onNodeWithText("Applies to").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Place").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Place").performClick()
+        composeTestRule.onNodeWithText("Pet").assertDoesNotExist()
     }
 }

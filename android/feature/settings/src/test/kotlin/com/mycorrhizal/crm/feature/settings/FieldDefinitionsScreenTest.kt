@@ -130,6 +130,40 @@ class FieldDefinitionsScreenTest {
     }
 
     @Test
+    fun `an entity definition names what it applies to and a contact one does not`() {
+        setScreen(
+            Result.success(
+                listOf(
+                    FieldDefinition(
+                        id = "d1",
+                        label = "Wifi",
+                        type = "string",
+                        target = "place",
+                        sensitivity = "normal"
+                    ),
+                    FieldDefinition(
+                        id = "d2",
+                        label = "Nickname",
+                        type = "string",
+                        target = "contact",
+                        sensitivity = "normal"
+                    )
+                )
+            )
+        )
+
+        composeTestRule.onNodeWithText(
+            "${str(R.string.shared_entities_kind_one_place)} · " +
+                "${str(R.string.custom_field_type_string)} · " +
+                str(R.string.relationships_sensitivity_normal)
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "${str(R.string.custom_field_type_string)} · " +
+                str(R.string.relationships_sensitivity_normal)
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun `a multi-valued definition adds the multi metadata`() {
         setScreen(
             Result.success(
