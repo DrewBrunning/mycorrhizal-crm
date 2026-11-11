@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Past import reports on the web** ([#2465](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2465)): in Data settings, any past import that skipped or failed rows now has a View report button listing each row and why, with a Download as CSV option.
 - **Deleted organisations, places and pets in Trash** ([#2446](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2446)): the web Trash page now lists organisations, places and pets you deleted or merged away, with a Restore button that brings back their links and custom fields; a merged-away one returns on its own and its links stay with the one you kept.
 - **Standing shares on the web** ([#2292](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2292)): share a contact, note, activity or circle as a read-only, always-current view the recipient must accept. Manage them under Settings in "Shared with me" and "Shared by me". Revoking stops future access but cannot take back what was seen.
 - **Android Activities explains itself** ([#2211](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2211)): the Activities screen now says that activities are things that already happened, matching the web page and the Occasions screen, so it is easier to tell them from occasions and reminders.

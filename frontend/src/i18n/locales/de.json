@@ -1822,6 +1822,10 @@
           "colUpdated": "Aktualisiert",
           "colSkipped": "Übersprungen",
           "colErrors": "Fehler",
+          "colReport": "Bericht",
+          "viewReport": "Bericht ansehen",
+          "reportTitle": "Importbericht",
+          "reportLoadError": "Der Importbericht konnte nicht geladen werden.",
           "format": {
             "csv": "CSV",
             "vcf": "vCard",

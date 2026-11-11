@@ -1,10 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { suggestContactAddresses } from './api/dataSuggestions';
 import { exportContacts, exportContactsAsVcf, exportDataAsCsv } from './api/export';
-import { getImportHistory } from './api/import';
+import { getImportHistory, getImportRun } from './api/import';
 import { suggestRelationshipEdges } from './api/relationshipEdges';
 import DataSettingsPage from './DataSettingsPage';
 
@@ -102,7 +102,7 @@ vi.mock('./components/RelationshipSuggestionsInbox', () => ({ default: () => nul
 
 vi.mock('./api/import', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/import')>();
-  return { ...actual, getImportHistory: vi.fn() };
+  return { ...actual, getImportHistory: vi.fn(), getImportRun: vi.fn() };
 });
 
 vi.mock('./api/relationshipEdges', async (importOriginal) => {
@@ -126,6 +126,7 @@ vi.mock('./api/export', async (importOriginal) => {
 });
 
 const historyMock = vi.mocked(getImportHistory);
+const runMock = vi.mocked(getImportRun);
 const suggestRelationshipsMock = vi.mocked(suggestRelationshipEdges);
 const suggestAddressesMock = vi.mocked(suggestContactAddresses);
 const exportCsvMock = vi.mocked(exportDataAsCsv);
@@ -135,6 +136,7 @@ const exportCustomMock = vi.mocked(exportContacts);
 beforeEach(() => {
   historyMock.mockReset();
   historyMock.mockResolvedValue([]);
+  runMock.mockReset();
   suggestRelationshipsMock.mockReset();
   suggestAddressesMock.mockReset();
   exportCsvMock.mockReset();
@@ -182,6 +184,94 @@ test('renders one row per import run with its counts', async () => {
   expect(row).toHaveTextContent('3');
   expect(row).toHaveTextContent('1');
   expect(row).toHaveTextContent('2');
+});
+
+const runWithIssues = {
+  id: 11,
+  format: 'csv' as const,
+  total_processed: 4,
+  created: 2,
+  updated: 0,
+  skipped: 1,
+  error_count: 1,
+  issue_count: 2,
+  created_at: '2026-08-27T12:00:00Z',
+};
+
+// Issue #2465: past runs expose their itemized report.
+test('hides View report for a run without stored issues', async () => {
+  historyMock.mockResolvedValue([{ ...runWithIssues, issue_count: 0 }]);
+  renderPage();
+
+  await screen.findByText('CSV');
+  expect(screen.queryByRole('button', { name: 'View report' })).not.toBeInTheDocument();
+});
+
+test('View report opens a dialog itemizing the skipped and failed rows', async () => {
+  historyMock.mockResolvedValue([runWithIssues]);
+  runMock.mockResolvedValue({
+    ...runWithIssues,
+    issues: [
+      {
+        row: 2,
+        name: 'Ann Lee',
+        email: '',
+        phone: '',
+        status: 'skipped',
+        reason: 'duplicate of #4',
+      },
+      { row: 3, name: '', email: '', phone: '', status: 'failed', reason: 'invalid email' },
+    ],
+  });
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
+
+  const dialog = await screen.findByRole('dialog');
+  expect(await within(dialog).findByText('duplicate of #4')).toBeInTheDocument();
+  expect(within(dialog).getByText('invalid email')).toBeInTheDocument();
+  expect(within(dialog).getByText('Ann Lee')).toBeInTheDocument();
+  expect(within(dialog).getByRole('button', { name: 'Download as CSV' })).toBeInTheDocument();
+  expect(runMock).toHaveBeenCalledWith(11);
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Close' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+
+test('View report shows an error when the report cannot be loaded', async () => {
+  historyMock.mockResolvedValue([runWithIssues]);
+  runMock.mockRejectedValue(new Error('nope'));
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
+
+  const dialog = await screen.findByRole('dialog');
+  expect(await within(dialog).findByText('nope')).toBeInTheDocument();
+  expect(within(dialog).queryByRole('table')).not.toBeInTheDocument();
+});
+
+test('View report falls back to a generic message for a non-Error failure', async () => {
+  historyMock.mockResolvedValue([runWithIssues]);
+  runMock.mockRejectedValue('offline');
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
+
+  const dialog = await screen.findByRole('dialog');
+  expect(await within(dialog).findByText('Could not load the import report.')).toBeInTheDocument();
+});
+
+test('View report tolerates a detail without an issues list', async () => {
+  historyMock.mockResolvedValue([runWithIssues]);
+  runMock.mockResolvedValue({ ...runWithIssues } as never);
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
+
+  const dialog = await screen.findByRole('dialog');
+  await waitFor(() => expect(runMock).toHaveBeenCalled());
+  expect(within(dialog).queryByRole('table')).not.toBeInTheDocument();
+  expect(within(dialog).queryByRole('alert')).not.toBeInTheDocument();
 });
 
 test('surfaces a load error', async () => {
