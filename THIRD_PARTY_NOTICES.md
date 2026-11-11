@@ -27,7 +27,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 
 | Package | Version | License | Source |
 |---|---|---|---|
-| `Go standard library` | `go1.27.3` | BSD-3-Clause | https://go.dev/LICENSE |
+| `Go standard library` | `go1.27.4` | BSD-3-Clause | https://go.dev/LICENSE |
 | `github.com/SherClockHolmes/webpush-go` | `v1.4.0` | MIT | https://pkg.go.dev/github.com/SherClockHolmes/webpush-go@v1.4.0 |
 | `github.com/boombuler/barcode` | `v1.0.1-0.20190219062509-6c824513bacc` | MIT | https://pkg.go.dev/github.com/boombuler/barcode@v1.0.1-0.20190219062509-6c824513bacc |
 | `github.com/coreos/go-oidc/v3` | `v3.21.0` | Apache-2.0 | https://pkg.go.dev/github.com/coreos/go-oidc/v3@v3.21.0 |
