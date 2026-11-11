@@ -33,6 +33,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- **Blocking someone also stops one-time shares** ([#2294](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2294)): blocking a person now also ends any one-time contact share you had already sent them, not only standing shares, so they lose access at once.
+- **What organisations and places add to your contacts** ([#2298](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2298)): a contact's primary organisation or place shows as an extra organisation or address in vCard, CardDAV and shares, after your own entries. Pets never do. Nothing is written into the contact, and the stricter sensitivity applies.
 - **No more duplicate circle names** ([#2362](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2362)): creating or renaming a circle to a name you already use (any letter case) is now refused, with a message under the name field on the web. New circles also appear in name order straight away. Circles that already share a name stay as they are.
 - **Circle name errors on Android** ([#2444](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2444)): creating or renaming a circle to a name you already use now shows a message under the name field instead of a generic error, and circles are listed in name order, including right after you create or rename one.
 - **Tidier web menu** ([#2175](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2175)): Shares, Audit log, Data and, for admins, Users and System pages now sit under Settings in the left menu. Open them with the arrow beside Settings; every page keeps its address.
