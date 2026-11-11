@@ -92,6 +92,27 @@ class ActivitiesInboxScreenTest {
         ).assertDoesNotExist()
     }
 
+    // Issue #2211 (web #2177): the page explains what an Activity is, in the empty
+    // state and with a populated list, so new users can tell it from Occasions.
+    @Test
+    fun `explains what activities are in the empty state`() {
+        setContent(ActivitiesInboxUiState(isLoading = false, activities = emptyList()))
+        composeTestRule.onNodeWithText(ACTIVITIES_DESCRIPTION).assertIsDisplayed()
+    }
+
+    @Test
+    fun `explains what activities are above a populated list`() {
+        setContent(
+            ActivitiesInboxUiState(
+                isLoading = false,
+                activities = listOf(
+                    Activity(id = 1, title = "Coffee with Dana")
+                )
+            )
+        )
+        composeTestRule.onNodeWithText(ACTIVITIES_DESCRIPTION).assertIsDisplayed()
+    }
+
     @Test
     fun `shows the empty state when there are no activities`() {
         setContent(ActivitiesInboxUiState(isLoading = false, activities = emptyList()))
@@ -327,3 +348,7 @@ class ActivitiesInboxScreenTest {
         composeTestRule.onNodeWithTag("image-sensitivity-normal").assertDoesNotExist()
     }
 }
+
+private const val ACTIVITIES_DESCRIPTION =
+    "Activities are things that already happened \u2014 a call, a coffee, a message. " +
+        "Log them here to keep each contact's history complete."

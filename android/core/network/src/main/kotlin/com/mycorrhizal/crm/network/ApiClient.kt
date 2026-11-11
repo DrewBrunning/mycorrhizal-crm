@@ -51,6 +51,12 @@ import com.mycorrhizal.crm.model.network.ContactActivitiesRequest
 import com.mycorrhizal.crm.model.network.ContactActivitiesResponse
 import com.mycorrhizal.crm.model.network.ContactAddressSuggestionsResponse
 import com.mycorrhizal.crm.model.network.ContactBriefing
+import com.mycorrhizal.crm.model.network.ContactEntityLink
+import com.mycorrhizal.crm.model.network.ContactEntityLinkAdoptResponse
+import com.mycorrhizal.crm.model.network.ContactEntityLinkFromExistingInput
+import com.mycorrhizal.crm.model.network.ContactEntityLinkFromExistingResponse
+import com.mycorrhizal.crm.model.network.ContactEntityLinkInput
+import com.mycorrhizal.crm.model.network.ContactEntityLinksResponse
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactFieldValuesResponse
 import com.mycorrhizal.crm.model.network.ContactFieldVisibility
@@ -110,6 +116,15 @@ import com.mycorrhizal.crm.model.network.DuplicateDismissalInput
 import com.mycorrhizal.crm.model.network.DuplicatePairsResponse
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsInput
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
+import com.mycorrhizal.crm.model.network.Entity
+import com.mycorrhizal.crm.model.network.EntityContactLink
+import com.mycorrhizal.crm.model.network.EntityContactsResponse
+import com.mycorrhizal.crm.model.network.EntityDeleteResponse
+import com.mycorrhizal.crm.model.network.EntityInput
+import com.mycorrhizal.crm.model.network.EntityListResponse
+import com.mycorrhizal.crm.model.network.EntityMergeInput
+import com.mycorrhizal.crm.model.network.EntityMergeResponse
+import com.mycorrhizal.crm.model.network.EntityRestoreResponse
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -131,6 +146,7 @@ import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
 import com.mycorrhizal.crm.model.network.GiftsPage
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
+import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
 import com.mycorrhizal.crm.model.network.HideEmptyFieldsInput
 import com.mycorrhizal.crm.model.network.HideEmptyFieldsResponse
 import com.mycorrhizal.crm.model.network.Household
@@ -157,6 +173,9 @@ import com.mycorrhizal.crm.model.network.ImportRecordsRequest
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.model.network.ImportUploadResponse
+import com.mycorrhizal.crm.model.network.IncomingShareGrant
+import com.mycorrhizal.crm.model.network.IncomingShareGrantResponse
+import com.mycorrhizal.crm.model.network.IncomingShareGrantsPage
 import com.mycorrhizal.crm.model.network.InviteeSuggestionsResponse
 import com.mycorrhizal.crm.model.network.JobRunHealthResponse
 import com.mycorrhizal.crm.model.network.JobRunsResponse
@@ -196,6 +215,9 @@ import com.mycorrhizal.crm.model.network.OccasionEventInput
 import com.mycorrhizal.crm.model.network.OccasionEventsResponse
 import com.mycorrhizal.crm.model.network.OidcNativeExchangeRequest
 import com.mycorrhizal.crm.model.network.OidcNativeExchangeResponse
+import com.mycorrhizal.crm.model.network.OutgoingShareGrant
+import com.mycorrhizal.crm.model.network.OutgoingShareGrantResponse
+import com.mycorrhizal.crm.model.network.OutgoingShareGrantsPage
 import com.mycorrhizal.crm.model.network.OverdueCadencesResponse
 import com.mycorrhizal.crm.model.network.OverdueDataDecayPoliciesResponse
 import com.mycorrhizal.crm.model.network.PaperlessConfigInput
@@ -234,6 +256,14 @@ import com.mycorrhizal.crm.model.network.ServerHealth
 import com.mycorrhizal.crm.model.network.SessionInfo
 import com.mycorrhizal.crm.model.network.SessionsResponse
 import com.mycorrhizal.crm.model.network.SetMainImageRequest
+import com.mycorrhizal.crm.model.network.ShareBlock
+import com.mycorrhizal.crm.model.network.ShareBlocksResponse
+import com.mycorrhizal.crm.model.network.ShareGrantContent
+import com.mycorrhizal.crm.model.network.ShareGrantContentResponse
+import com.mycorrhizal.crm.model.network.ShareGrantDeclineInput
+import com.mycorrhizal.crm.model.network.ShareGrantInput
+import com.mycorrhizal.crm.model.network.ShareGrantNotifications
+import com.mycorrhizal.crm.model.network.ShareGrantPatch
 import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.SourceImportStatus
 import com.mycorrhizal.crm.model.network.SubsystemHealthResponse
@@ -277,7 +307,9 @@ import com.mycorrhizal.crm.model.network.WebhookDelivery
 import com.mycorrhizal.crm.model.network.WebhookInput
 import com.mycorrhizal.crm.model.network.WebhookTestResponse
 import com.mycorrhizal.crm.model.network.WebhooksResponse
+import com.mycorrhizal.crm.model.network.stripProjectedEntries
 import com.squareup.moshi.Moshi
+import com.squareup.moshi.Types
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -1225,7 +1257,8 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
      * so callers receive the bare ContactRecordResponse.
      */
     suspend fun createContact(input: ContactRecordInput): Result<ContactRecordResponse> =
-        executePost(CONTACTS_PATH, input) { _, body ->
+        // ADR 0043 echo suppression: a projected `ent-` ORG/ADR is never the contact's own value.
+        executePost(CONTACTS_PATH, input.stripProjectedEntries()) { _, body ->
             moshi.adapter(CreateContactResponse::class.java).fromJson(body)?.contact
         }
 
@@ -1234,10 +1267,13 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         id: Int,
         input: ContactRecordInput,
         ifMatchRevision: Int? = null
-    ): Result<ContactRecordResponse> =
-        executePut("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id", input, ifMatchRevision) { _, body ->
-            moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
-        }
+    ): Result<ContactRecordResponse> = executePut(
+        "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$id",
+        input.stripProjectedEntries(),
+        ifMatchRevision
+    ) { _, body ->
+        moshi.adapter(ContactRecordResponse::class.java).fromJson(body)
+    }
 
     // M24: top-level contact actions (delete/archive/unarchive/export). The
     // endpoints all pre-date the Android client (route table in
@@ -3158,6 +3194,142 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     suspend fun declineContactShare(id: String): Result<Unit> =
         executePostEmpty("$CONTACT_SHARES_PATH/$id/decline") { _, _ -> Unit }
 
+    // --- Standing shares (ADR 0042 decision 12, issue #2293). The server marks every response
+    // `Cache-Control: no-store` with no ETag and this client configures no HTTP cache, so a grant
+    // read is never replayed from disk; nothing here is mirrored into Room.
+
+    /** GET /api/v1/share-grants/incoming — pending and active grants offered TO the caller. */
+    suspend fun listIncomingShareGrants(
+        cursor: String? = null,
+        limit: Int? = null
+    ): Result<IncomingShareGrantsPage> =
+        executeGet(shareGrantListUrl("incoming", cursor, limit)) { _, body ->
+            moshi.adapter(IncomingShareGrantsPage::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/share-grants/outgoing — grants the caller has issued, any status. */
+    suspend fun listOutgoingShareGrants(
+        cursor: String? = null,
+        limit: Int? = null
+    ): Result<OutgoingShareGrantsPage> =
+        executeGet(shareGrantListUrl("outgoing", cursor, limit)) { _, body ->
+            moshi.adapter(OutgoingShareGrantsPage::class.java).fromJson(body)
+        }
+
+    private fun shareGrantListUrl(role: String, cursor: String?, limit: Int?): String {
+        val builder = "$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$role".toHttpUrl().newBuilder()
+        cursor?.let { builder.addQueryParameter("cursor", it) }
+        limit?.let { builder.addQueryParameter("limit", it.toString()) }
+        return builder.build().toString()
+    }
+
+    /** POST /api/v1/share-grants — issue a standing grant (starts `pending`). */
+    suspend fun createShareGrant(input: ShareGrantInput): Result<OutgoingShareGrant> =
+        executePost(SHARE_GRANTS_PATH, input) { _, body ->
+            moshi.adapter(OutgoingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+        }
+
+    /**
+     * PATCH /api/v1/share-grants/{id} — only `expires_at` and a narrowing `sections` list; the
+     * server answers 409 `share_grant_widening_refused` for a wider list. [revision] rides in
+     * `If-Match` (ADR 0008).
+     */
+    suspend fun updateShareGrant(
+        id: String,
+        patch: ShareGrantPatch,
+        revision: Int?
+    ): Result<OutgoingShareGrant> {
+        // An absent field and an explicit null differ (null clears the expiry), so the body is
+        // built field by field rather than from a nullable data class.
+        val fields = linkedMapOf<String, Any?>()
+        if (patch.clearExpiry) {
+            fields["expires_at"] = null
+        } else if (patch.expiresAt != null) {
+            fields["expires_at"] = patch.expiresAt
+        }
+        patch.sections?.let { fields["sections"] = it }
+        val json = moshi.adapter<Map<String, Any?>>(
+            Types.newParameterizedType(Map::class.java, String::class.java, Any::class.java)
+        ).serializeNulls().toJson(fields)
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$id".toHttpUrl())
+            .patch(json.toRequestBody(jsonMediaType))
+            .withIfMatch(revision)
+            .build()
+        return execute(request) { _, body ->
+            moshi.adapter(OutgoingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+        }
+    }
+
+    /** POST /api/v1/share-grants/{id}/accept — pending to active (recipient). */
+    suspend fun acceptShareGrant(id: String): Result<IncomingShareGrant> =
+        recipientShareGrantAction(id, "accept")
+
+    /** POST /api/v1/share-grants/{id}/leave — stop receiving an active or pending grant. */
+    suspend fun leaveShareGrant(id: String): Result<IncomingShareGrant> =
+        recipientShareGrantAction(id, "leave")
+
+    /** POST /api/v1/share-grants/{id}/decline — [block] also blocks the sender (ADR 0042 decision 8). */
+    suspend fun declineShareGrant(id: String, block: Boolean): Result<IncomingShareGrant> =
+        if (block) {
+            executePost(
+                "$SHARE_GRANTS_PATH/$id/decline",
+                ShareGrantDeclineInput(block = true)
+            ) { _, body ->
+                moshi.adapter(IncomingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+            }
+        } else {
+            recipientShareGrantAction(id, "decline")
+        }
+
+    private suspend fun recipientShareGrantAction(
+        id: String,
+        action: String
+    ): Result<IncomingShareGrant> = executePostEmpty("$SHARE_GRANTS_PATH/$id/$action") { _, body ->
+        moshi.adapter(IncomingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+    }
+
+    /** POST /api/v1/share-grants/{id}/revoke — end a grant (owner). Already-seen data cannot be recalled. */
+    suspend fun revokeShareGrant(id: String): Result<OutgoingShareGrant> =
+        ownerShareGrantAction(id, "revoke")
+
+    /** POST /api/v1/share-grants/{id}/reconfirm — release sections withheld after a sensitivity change. */
+    suspend fun reconfirmShareGrant(id: String): Result<OutgoingShareGrant> =
+        ownerShareGrantAction(id, "reconfirm")
+
+    private suspend fun ownerShareGrantAction(
+        id: String,
+        action: String
+    ): Result<OutgoingShareGrant> = executePostEmpty("$SHARE_GRANTS_PATH/$id/$action") { _, body ->
+        moshi.adapter(OutgoingShareGrantResponse::class.java).fromJson(body)?.shareGrant
+    }
+
+    /** GET /api/v1/share-grants/{id}/content — the one recipient read route, resolved per request. */
+    suspend fun getShareGrantContent(id: String): Result<ShareGrantContent> =
+        executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$id/content") { _, body ->
+            moshi.adapter(ShareGrantContentResponse::class.java).fromJson(body)?.content
+        }
+
+    /** GET /api/v1/share-grants/blocks — senders the caller has blocked. */
+    suspend fun listShareBlocks(): Result<List<ShareBlock>> =
+        executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/blocks") { _, body ->
+            moshi.adapter(ShareBlocksResponse::class.java).fromJson(body)?.blocks
+        }
+
+    /** DELETE /api/v1/share-grants/blocks/{user_id} — unblock a sender. */
+    suspend fun deleteShareBlock(userId: Long): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/blocks/$userId")
+
+    /** GET /api/v1/share-grants/notifications — the in-app pending badge and unread notices. */
+    suspend fun getShareGrantNotifications(): Result<ShareGrantNotifications> =
+        executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/notifications") { _, body ->
+            moshi.adapter(ShareGrantNotifications::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/share-grants/notifications/read — mark the caller's notices read. */
+    suspend fun markShareGrantNotificationsRead(): Result<Unit> =
+        executePostEmpty("$SHARE_GRANTS_PATH/notifications/read") { _, _ -> Unit }
+
     /** GET /api/v1/users/directory — every other user (id + username), for the recipient picker. */
     suspend fun getUserDirectory(): Result<List<UserDirectoryEntry>> =
         executeGet("$PLACEHOLDER_ORIGIN$USERS_PATH/directory") { _, body ->
@@ -3402,6 +3574,165 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         relation?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("relation", it) }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(GraphConnectionsResponse::class.java).fromJson(body)
+        }
+    }
+
+    // --- Reusable entities (issue #2302, ADR 0043) ---
+
+    /** GET /api/v1/entities — one page; [cursor] is the previous page's `next_cursor`. */
+    suspend fun listEntities(
+        kind: String? = null,
+        q: String? = null,
+        sensitivity: String? = null,
+        cursor: String? = null,
+        limit: Int? = null
+    ): Result<EntityListResponse> {
+        val builder = "$PLACEHOLDER_ORIGIN$ENTITIES_PATH".toHttpUrl().newBuilder()
+        kind?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("kind", it) }
+        q?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("q", it) }
+        sensitivity?.takeIf { it.isNotBlank() }?.let {
+            builder.addQueryParameter(
+                "sensitivity",
+                it
+            )
+        }
+        cursor?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("cursor", it) }
+        limit?.let { builder.addQueryParameter("limit", it.toString()) }
+        return executeGet(builder.build().toString()) { _, body ->
+            moshi.adapter(EntityListResponse::class.java).fromJson(body)
+        }
+    }
+
+    /** GET /api/v1/entities/{id} - the entity plus `link_count` / `projection_count`. */
+    suspend fun getEntity(id: String): Result<Entity> =
+        executeGet("$PLACEHOLDER_ORIGIN$ENTITIES_PATH/$id") { _, body ->
+            moshi.adapter(Entity::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/entities - raw (unwrapped) 201 entity. */
+    suspend fun createEntity(input: EntityInput): Result<Entity> =
+        executePost(ENTITIES_PATH, input) { _, body ->
+            moshi.adapter(Entity::class.java).fromJson(body)
+        }
+
+    /** PUT /api/v1/entities/{id} - full replace of name/core/sensitivity; `If-Match` per ADR 0008. */
+    suspend fun updateEntity(
+        id: String,
+        input: EntityInput,
+        ifMatchRevision: Int? = null
+    ): Result<Entity> =
+        executePut("$PLACEHOLDER_ORIGIN$ENTITIES_PATH/$id", input, ifMatchRevision) { _, body ->
+            moshi.adapter(Entity::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/entities/{id} - soft delete cascading to its links; returns the counts. */
+    suspend fun deleteEntity(
+        id: String,
+        ifMatchRevision: Int? = null
+    ): Result<EntityDeleteResponse> =
+        executeDelete("$PLACEHOLDER_ORIGIN$ENTITIES_PATH/$id", ifMatchRevision) { _, body ->
+            moshi.adapter(EntityDeleteResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/entities/{id}/restore - revives the entity and the links of its delete batch. */
+    suspend fun restoreEntity(id: String): Result<EntityRestoreResponse> =
+        executePostEmpty("$ENTITIES_PATH/$id/restore") { _, body ->
+            moshi.adapter(EntityRestoreResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/entities/{loserId}/merge - merges the loser into `input.into`. */
+    suspend fun mergeEntity(loserId: String, input: EntityMergeInput): Result<EntityMergeResponse> =
+        executePost("$ENTITIES_PATH/$loserId/merge", input) { _, body ->
+            moshi.adapter(EntityMergeResponse::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/entities/{id}/contacts - the live links with role, period and primary flag. */
+    suspend fun listEntityContacts(id: String): Result<List<EntityContactLink>> =
+        executeGet("$PLACEHOLDER_ORIGIN$ENTITIES_PATH/$id/contacts") { _, body ->
+            moshi.adapter(EntityContactsResponse::class.java).fromJson(body)?.contacts.orEmpty()
+        }
+
+    /** GET /api/v1/entities/{id}/field-values. */
+    suspend fun listEntityFieldValues(id: String): Result<ContactFieldValuesResponse> =
+        executeGet("$PLACEHOLDER_ORIGIN$ENTITIES_PATH/$id/field-values") { _, body ->
+            moshi.adapter(ContactFieldValuesResponse::class.java).fromJson(body)
+        }
+
+    /** PUT /api/v1/entities/{id}/field-values - full replace, like the contact route. */
+    suspend fun replaceEntityFieldValues(
+        id: String,
+        input: ContactFieldValuesInput
+    ): Result<ContactFieldValuesResponse> =
+        executePut("$PLACEHOLDER_ORIGIN$ENTITIES_PATH/$id/field-values", input) { _, body ->
+            moshi.adapter(ContactFieldValuesResponse::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/contacts/{id}/entity-links. */
+    suspend fun listContactEntityLinks(contactId: Int): Result<List<ContactEntityLink>> =
+        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/entity-links") { _, body ->
+            moshi.adapter(ContactEntityLinksResponse::class.java).fromJson(body)?.links.orEmpty()
+        }
+
+    /** POST /api/v1/contacts/{id}/entity-links - raw 201 link. */
+    suspend fun createContactEntityLink(
+        contactId: Int,
+        input: ContactEntityLinkInput
+    ): Result<ContactEntityLink> =
+        executePost("$CONTACTS_PATH/$contactId/entity-links", input) { _, body ->
+            moshi.adapter(ContactEntityLink::class.java).fromJson(body)
+        }
+
+    /** PUT /api/v1/contacts/{id}/entity-links/{linkId} - edits role/dates/primary/sensitivity. */
+    suspend fun updateContactEntityLink(
+        contactId: Int,
+        linkId: String,
+        input: ContactEntityLinkInput,
+        ifMatchRevision: Int? = null
+    ): Result<ContactEntityLink> = executePut(
+        "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/entity-links/$linkId",
+        input,
+        ifMatchRevision
+    ) { _, body ->
+        moshi.adapter(ContactEntityLink::class.java).fromJson(body)
+    }
+
+    /** DELETE /api/v1/contacts/{id}/entity-links/{linkId} - soft delete; the entity is kept. */
+    suspend fun deleteContactEntityLink(contactId: Int, linkId: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/entity-links/$linkId")
+
+    /** POST /api/v1/contacts/{id}/entity-links/{linkId}/adopt - copies the value into the contact. */
+    suspend fun adoptContactEntityLink(
+        contactId: Int,
+        linkId: String
+    ): Result<ContactEntityLinkAdoptResponse> =
+        executePostEmpty("$CONTACTS_PATH/$contactId/entity-links/$linkId/adopt") { _, body ->
+            moshi.adapter(ContactEntityLinkAdoptResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contacts/{id}/entity-links/from-existing - links one of the contact's own values. */
+    suspend fun linkContactEntityFromExisting(
+        contactId: Int,
+        input: ContactEntityLinkFromExistingInput
+    ): Result<ContactEntityLinkFromExistingResponse> =
+        executePost("$CONTACTS_PATH/$contactId/entity-links/from-existing", input) { _, body ->
+            moshi.adapter(ContactEntityLinkFromExistingResponse::class.java).fromJson(body)
+        }
+
+    /**
+     * GET /api/v1/graph?from=&depth=&include_entities=true - the display-only entity overlay
+     * (ADR 0043 decision 2). Never fed to traversal; the default `/graph` response is untouched
+     * because this is the only caller that sets `include_entities`.
+     */
+    suspend fun getGraphWithEntities(
+        from: String,
+        depth: Int? = null
+    ): Result<GraphEntitiesResponse> {
+        val builder = "$PLACEHOLDER_ORIGIN$GRAPH_PATH".toHttpUrl().newBuilder()
+        builder.addQueryParameter("from", from)
+        depth?.let { builder.addQueryParameter("depth", it.toString()) }
+        builder.addQueryParameter("include_entities", "true")
+        return executeGet(builder.build().toString()) { _, body ->
+            moshi.adapter(GraphEntitiesResponse::class.java).fromJson(body)
         }
     }
 
@@ -3838,6 +4169,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         private const val EXPORT_PREFLIGHT_PATH = "$API_V1/export/preflight"
         private const val ATTACHMENTS_PATH = "$API_V1/attachments"
         private const val CONTACT_SHARES_PATH = "$API_V1/contact-shares"
+        private const val SHARE_GRANTS_PATH = "$API_V1/share-grants"
         private const val AUDIT_PATH = "$API_V1/audit"
         private const val TRASH_CONTACTS_PATH = "$API_V1/trash/contacts"
         private const val AUDIT_EXPORT_PATH = "$AUDIT_PATH/export"
@@ -3847,6 +4179,8 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         private const val ADMIN_JOB_RUNS_PATH = "$API_V1/admin/job-runs"
         private const val ADMIN_JOB_RUNS_HEALTH_PATH = "$API_V1/admin/job-runs/health"
         private const val GRAPH_CONNECTIONS_PATH = "$API_V1/graph/connections"
+        private const val GRAPH_PATH = "$API_V1/graph"
+        private const val ENTITIES_PATH = "$API_V1/entities"
         private const val MAP_CONFIG_PATH = "$API_V1/config/map"
         private const val CONTACT_MAP_PATH = "$API_V1/contacts/map"
         private const val EXTERNAL_IDENTITIES_PATH = "$API_V1/external-identities"

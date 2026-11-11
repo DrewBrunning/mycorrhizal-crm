@@ -32,6 +32,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
@@ -1336,5 +1337,19 @@ class GiftDateHelpersTest {
         // all) both fall to the catch-all.
         assertEquals("other", preferenceSection("media"))
         assertEquals("other", preferenceSection("clothing_size"))
+    }
+
+    // Issue #2445: the catch-all categories group into the right screen
+    // sections and every configured category has a localized label.
+    @Test fun `other categories group into their sections`() {
+        assertEquals("media", preferenceSection("media_other"))
+        assertEquals("jewelry", preferenceSection("jewelry_other"))
+        assertEquals("gift_preferences", preferenceSection("gift_other"))
+    }
+
+    @Test fun `every configured preference category has a label resource`() {
+        com.mycorrhizal.crm.model.registry.PreferenceCategory.CONFIG.forEach {
+            assertNotNull(it.category, preferenceCategoryLabelRes(it.category))
+        }
     }
 }

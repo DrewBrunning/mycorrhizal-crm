@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -25,6 +26,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -41,6 +43,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -63,10 +66,17 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hiltViewModel()) {
+fun ShareContactScreen(
+    onBack: () -> Unit,
+    // A standing share lands on "Shared by me" so the owner sees its pending status; by default
+    // it behaves like the one-time flow and just goes back.
+    onStandingShared: () -> Unit = onBack,
+    viewModel: ShareContactViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val currentOnBack = rememberUpdatedState(onBack)
+    val currentOnStandingShared = rememberUpdatedState(onStandingShared)
     var recipientExpanded by remember { mutableStateOf(false) }
     var showSensitiveConfirm by remember { mutableStateOf(false) }
 
@@ -117,11 +127,25 @@ fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hi
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = stringResource(R.string.shares_share_dialog_description),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        ShareModeChooser(
+                            mode = state.mode,
+                            onModeChange = viewModel::setMode,
+                            enabled = !state.isSharing
                         )
+
+                        if (state.mode == ShareMode.ONE_TIME) {
+                            Text(
+                                text = stringResource(R.string.shares_share_dialog_description),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        } else {
+                            Text(
+                                text = stringResource(R.string.shares_standing_pending_note),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
 
                         RecipientField(
                             recipients = state.recipients.map { it.username },
@@ -212,18 +236,19 @@ fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hi
                             }
                         }
 
+                        if (state.mode == ShareMode.STANDING) {
+                            StandingExpiryChooser(
+                                expiryDays = state.expiryDays,
+                                onChange = viewModel::setExpiryDays
+                            )
+                        }
+
                         OutlinedButton(
                             onClick = viewModel::share,
                             enabled = state.canShare,
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(
-                                if (state.isSharing) {
-                                    stringResource(R.string.shares_sharing)
-                                } else {
-                                    stringResource(R.string.shares_share_button)
-                                }
-                            )
+                            Text(shareButtonLabel(state))
                         }
                     }
                 }
@@ -235,7 +260,17 @@ fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hi
         AlertDialog(
             onDismissRequest = { showSensitiveConfirm = false },
             title = { Text(stringResource(R.string.shares_reveal_title)) },
-            text = { Text(stringResource(R.string.shares_reveal_confirm)) },
+            text = {
+                Text(
+                    stringResource(
+                        if (state.mode == ShareMode.STANDING) {
+                            R.string.shares_standing_reveal_confirm
+                        } else {
+                            R.string.shares_reveal_confirm
+                        }
+                    )
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -263,7 +298,101 @@ fun ShareContactScreen(onBack: () -> Unit, viewModel: ShareContactViewModel = hi
     }
 
     LaunchedEffect(state.shared) {
-        if (state.shared) currentOnBack.value()
+        if (state.shared) {
+            if (state.sharedStanding) currentOnStandingShared.value() else currentOnBack.value()
+        }
+    }
+}
+
+@Composable
+private fun shareButtonLabel(state: ShareContactUiState): String = when {
+    state.mode == ShareMode.STANDING && state.isSharing -> stringResource(
+        R.string.shares_standing_sharing
+    )
+
+    state.mode == ShareMode.STANDING -> stringResource(R.string.shares_standing_share_button)
+
+    state.isSharing -> stringResource(R.string.shares_sharing)
+
+    else -> stringResource(R.string.shares_share_button)
+}
+
+/** The one-time vs standing choice (ADR 0042 decision 12). One-time is the default. */
+@Composable
+private fun ShareModeChooser(mode: ShareMode, onModeChange: (ShareMode) -> Unit, enabled: Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = stringResource(R.string.shares_mode_label),
+            style = MaterialTheme.typography.titleMedium
+        )
+        ModeOption(
+            label = stringResource(R.string.shares_mode_one_time),
+            description = stringResource(R.string.shares_mode_one_time_desc),
+            selected = mode == ShareMode.ONE_TIME,
+            enabled = enabled,
+            onSelect = { onModeChange(ShareMode.ONE_TIME) }
+        )
+        ModeOption(
+            label = stringResource(R.string.shares_mode_standing),
+            description = stringResource(R.string.shares_mode_standing_desc),
+            selected = mode == ShareMode.STANDING,
+            enabled = enabled,
+            onSelect = { onModeChange(ShareMode.STANDING) }
+        )
+    }
+}
+
+@Composable
+private fun ModeOption(
+    label: String,
+    description: String,
+    selected: Boolean,
+    enabled: Boolean,
+    onSelect: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.Top,
+        modifier = Modifier
+            .fillMaxWidth()
+            .selectable(
+                selected = selected,
+                enabled = enabled,
+                onClick = onSelect,
+                role = Role.RadioButton
+            )
+    ) {
+        RadioButton(selected = selected, onClick = null, enabled = enabled)
+        Column(modifier = Modifier.padding(start = 4.dp, top = 12.dp)) {
+            Text(text = label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** Standing only: no expiry, or one of the presets. */
+@Composable
+private fun StandingExpiryChooser(expiryDays: Int?, onChange: (Int?) -> Unit) {
+    Column {
+        Text(
+            text = stringResource(R.string.shares_standing_expiry_label),
+            style = MaterialTheme.typography.titleMedium
+        )
+        ExpiryOption(
+            label = stringResource(R.string.shares_expiry_none),
+            selected = expiryDays == null,
+            onSelect = { onChange(null) }
+        )
+        EXPIRY_PRESET_DAYS.forEach { days ->
+            ExpiryOption(
+                label = pluralStringResource(R.plurals.shares_expiry_days, days, days),
+                selected = expiryDays == days,
+                onSelect = { onChange(days) }
+            )
+        }
     }
 }
 

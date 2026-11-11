@@ -52,10 +52,12 @@ const mockUseGraphResult = {
 };
 
 const useGraphCalls: boolean[] = [];
+const useGraphEntityCalls: boolean[] = [];
 
 vi.mock('./hooks/useGraph', () => ({
-  useGraph: (full = false) => {
+  useGraph: (full = false, includeEntities = false) => {
     useGraphCalls.push(full);
+    useGraphEntityCalls.push(includeEntities);
     return mockUseGraphResult;
   },
 }));
@@ -510,4 +512,15 @@ test('a refetch error keeps the page and its controls visible', async () => {
 
   expect(screen.getByText('boom')).toBeInTheDocument();
   expect(screen.getByRole('switch', { name: 'Show entire network' })).toBeInTheDocument();
+});
+
+// Issue #2301 / ADR 0043 decision 2: entity nodes are an explicit opt-in.
+test('the entities toggle starts off and turns on include_entities', async () => {
+  useGraphEntityCalls.length = 0;
+  await renderPage();
+  const toggle = screen.getByRole('switch', { name: 'Organisations, places & pets' });
+  expect(toggle).not.toBeChecked();
+  expect(useGraphEntityCalls.every((v) => v === false)).toBe(true);
+  fireEvent.click(toggle);
+  expect(useGraphEntityCalls[useGraphEntityCalls.length - 1]).toBe(true);
 });

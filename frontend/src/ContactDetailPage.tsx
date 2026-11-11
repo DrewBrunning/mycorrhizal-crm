@@ -37,6 +37,7 @@ import {
 import type { ConversationAgenda } from './api/conversationAgenda';
 import type { DataDecayPolicy, DataDecayPolicyInput } from './api/dataDecayPolicies';
 import { suggestContactAddresses } from './api/dataSuggestions';
+import { isProjectedElementId } from './api/entities';
 import { exportContact } from './api/export';
 import type { Gift, GiftInput, GiftStatus } from './api/gifts';
 import { getImmichPeople } from './api/immich';
@@ -67,6 +68,7 @@ import CadenceDialog from './components/CadenceDialog';
 import CadencePanel from './components/CadencePanel';
 import ClothingSizesPanel from './components/ClothingSizesPanel';
 import ConnectionsPanel from './components/ConnectionsPanel';
+import ContactEntityLinksPanel from './components/ContactEntityLinksPanel';
 import ContactFieldVisibilityDialog from './components/ContactFieldVisibilityDialog';
 import ContactHeader from './components/ContactHeader';
 import ContactImageGallery from './components/ContactImageGallery';
@@ -120,6 +122,7 @@ import { useSnackbar } from './context/SnackbarContext';
 import { useCadencePolicy } from './hooks/useCadencePolicy';
 import { useContactDetailData, useContactDetailLoader } from './hooks/useContactDetailData';
 import { useContactDialogs } from './hooks/useContactDialogs';
+import { useContactEntityLinks } from './hooks/useContactEntityLinks';
 import { useContactFieldEditing } from './hooks/useContactFieldEditing';
 import { useContactFieldVisibility } from './hooks/useContactFieldVisibility';
 import { useContactFileLinks } from './hooks/useContactFileLinks';
@@ -751,8 +754,26 @@ export default function ContactDetailPage() {
     };
   }, []);
 
-  // Custom field definitions (user-wide) + this contact's values (T7).
-  const { definitions: fieldDefinitions } = useFieldDefinitions();
+  // Issue #2301 (ADR 0043): this contact's entity links. A write to one can
+  // change what the record projects (ORG/ADR), so the record is reloaded after.
+  const entityLinks = useContactEntityLinks(record?.id, { onRecordChanged: reloadRecord });
+
+  // Custom field definitions (user-wide) + this contact's values (T7). Only
+  // contact-targeted definitions belong on a contact: organisation/place/pet
+  // ones are edited on their entity's page.
+  const { definitions: allFieldDefinitions, refresh: refreshFieldDefinitions } =
+    useFieldDefinitions();
+  // The hook has no mount effect of its own; without this the page never
+  // fetches definitions and custom fields silently never render (#2447).
+  // Remounting (e.g. returning from Settings after editing definitions)
+  // refetches, so edits made there show up here.
+  useEffect(() => {
+    void refreshFieldDefinitions();
+  }, [refreshFieldDefinitions]);
+  const fieldDefinitions = useMemo(
+    () => allFieldDefinitions.filter((d) => (d.target ?? 'contact') === 'contact'),
+    [allFieldDefinitions],
+  );
   const {
     valuesByDefinition: fieldValuesByDefinition,
     refresh: refreshFieldValues,
@@ -1332,6 +1353,9 @@ export default function ContactDetailPage() {
         open={shareDialogOpen}
         onClose={() => setShareDialogOpen(false)}
         vcardUID={record.uid}
+        onStandingShared={(grant) =>
+          showSuccess(t('standingShares.form.created', { username: grant.to_username }))
+        }
       />
 
       <FeedCreateDialog
@@ -1352,6 +1376,7 @@ export default function ContactDetailPage() {
           ...(showAnniversaries
             ? [{ id: 'anniversaries', label: t('contactDetail.section.anniversaries') }]
             : []),
+          { id: 'entities', label: t('contactDetail.section.entities') },
           { id: 'people', label: t('contactDetail.section.people') },
           { id: 'timeline', label: t('contactDetail.timeline') },
           { id: 'cadence', label: t('contactDetail.section.cadence') },
@@ -1383,6 +1408,7 @@ export default function ContactDetailPage() {
           hiddenEmptyFields={hiddenEmptyKeys}
           onRevealField={revealField}
           onCustomizeFields={() => setFieldVisibilityOpen(true)}
+          entityLinks={entityLinks.links}
           fieldDefinitions={fieldDefinitions}
           fieldValuesByDefinition={fieldValuesByDefinition}
           onSaveFieldValue={handleSaveFieldValue}
@@ -1451,6 +1477,7 @@ export default function ContactDetailPage() {
               organizations={record.card.organizations ?? []}
               titles={record.card.titles ?? []}
               periods={record.crm.periods}
+              entityLinks={entityLinks.links}
               workInformation={record.crm.work_information}
               showOrganizations={showOrganizations}
               showTitles={showTitles}
@@ -1493,6 +1520,21 @@ export default function ContactDetailPage() {
           </PanelCard>
         </SectionGroup>
       )}
+
+      {/* Organisations, places & pets (issue #2301, ADR 0043): shared entities
+          this contact is linked to. Needs both this SectionGroup id and the
+          ContactJumpNav entry above (the recorded gotcha). */}
+      <SectionGroup id="entities">
+        <PanelCard title={t('contactDetail.section.entities')}>
+          <ContactEntityLinksPanel
+            api={entityLinks}
+            ownOrganizations={(record.card.organizations ?? []).filter(
+              (o) => !isProjectedElementId(o.id),
+            )}
+            ownAddresses={(record.card.addresses ?? []).filter((a) => !isProjectedElementId(a.id))}
+          />
+        </PanelCard>
+      </SectionGroup>
 
       {/* People — relationships + connections/graph */}
       <SectionGroup id="people" twoColumn>

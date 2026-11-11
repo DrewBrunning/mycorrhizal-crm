@@ -25,6 +25,21 @@
       "banner": "Estás sin conexión. Es posible que algunas funciones no estén disponibles."
     }
   },
+  "globalSearch": {
+    "placeholder": "Buscar contactos, notas, actividades…",
+    "groupContacts": "Contactos",
+    "groupNotes": "Notas",
+    "groupActivities": "Actividades",
+    "seeAll": "Ver todos los resultados de «{{query}}»",
+    "noResults": "Sin resultados para «{{query}}».",
+    "pageTitle": "Resultados de búsqueda",
+    "tabsLabel": "Categorías de resultados de búsqueda",
+    "emptyContacts": "Ningún contacto coincide con «{{query}}».",
+    "emptyNotes": "Ninguna nota coincide con «{{query}}».",
+    "emptyActivities": "Ninguna actividad coincide con «{{query}}».",
+    "capped": "Se muestran las primeras {{limit}} coincidencias de esta categoría. Afina la búsqueda para acotarlas.",
+    "unfiled": "Nota sin archivar"
+  },
   "duplicates": {
     "reviewTitle": "Revisar duplicados",
     "none": "No se encontraron posibles duplicados.",
@@ -63,7 +78,13 @@
     "systemEvents": "Eventos del sistema",
     "systemStatus": "Estado del sistema",
     "mainLabel": "Navegación principal",
-    "skipToContent": "Saltar al contenido"
+    "skipToContent": "Saltar al contenido",
+    "entities": "Entidades",
+    "sharedWithMe": "Compartido conmigo",
+    "sharedByMe": "Compartido por mí",
+    "sharedPendingBadge_one": "{{count}} recurso compartido espera tu respuesta",
+    "sharedPendingBadge_other": "{{count}} recursos compartidos esperan tu respuesta",
+    "sharedPendingBadge_many": "{{count}} recursos compartidos esperan tu respuesta"
   },
   "household": {
     "title": "Hogares",
@@ -290,7 +311,6 @@
       "next": "Ir a la página siguiente",
       "last": "Ir a la última página"
     },
-    "search": "Buscar Contactos",
     "searchPlaceholder": "Buscar contactos…",
     "searchClear": "Borrar",
     "searchMinLengthHint": "Escribe al menos dos caracteres para buscar.",
@@ -716,7 +736,8 @@
       "customFieldsUngrouped": "Campos personalizados",
       "skills": "Habilidades e intereses",
       "work": "Trabajo",
-      "anniversaries": "Aniversarios"
+      "anniversaries": "Aniversarios",
+      "entities": "Organizaciones, lugares y mascotas"
     },
     "email": "Email",
     "phone": "Teléfono",
@@ -860,6 +881,49 @@
         "saved": "Visibilidad de campos guardada.",
         "resetDone": "Visibilidad de campos restablecida.",
         "saveError": "No se pudo guardar la visibilidad de los campos."
+      }
+    },
+    "entityLinks": {
+      "add": "Vincular",
+      "linkFromOwn": "Vincular un valor propio",
+      "empty": "Aún no está vinculado a ninguna organización, lugar ni mascota.",
+      "shownAsOrg": "Se muestra como organización",
+      "shownAsAdr": "Se muestra como dirección",
+      "notCurrent": "No vigente",
+      "primary": "Principal",
+      "primaryFor": "Principal: {{name}}",
+      "adoptHint": "Copia el valor en este contacto como propio, para que se conserve aunque se elimine el vínculo o la entidad.",
+      "adoptOrganisation": "Copiar {{name}} como organización propia",
+      "adoptPlace": "Copiar {{name}} como dirección propia",
+      "adopted": "Se copió {{name}} en este contacto.",
+      "editFor": "Editar vínculo con {{name}}",
+      "removeFor": "Quitar vínculo con {{name}}",
+      "removeConfirm": "¿Quitar el vínculo con {{name}}? La entidad en sí se conserva.",
+      "saved": "Vínculo guardado.",
+      "saveFailed": "No se pudo guardar este vínculo.",
+      "addTitle": "Vincular con una organización, lugar o mascota",
+      "editTitle": "Editar vínculo con {{name}}",
+      "kind": "Tipo",
+      "entity": "Organización, lugar o mascota",
+      "create": "Crear «{{name}}»",
+      "entityRequired": "Elige una organización, un lugar o una mascota, o escribe un nombre para crearla.",
+      "role": "Rol",
+      "roleLabel": "Detalle del rol (opcional)",
+      "primaryHelp": "Principal (se muestra en la ficha de este contacto)",
+      "yearInvalid": "Introduce los años con cuatro cifras, y el final no puede ser anterior al inicio.",
+      "projectedFrom": "de {{name}}",
+      "projectedFromUnknown": "de una entidad vinculada",
+      "projectedHint": "Se muestra desde la entidad vinculada. Cámbialo en la página de la entidad, o cópialo en este contacto para editarlo aquí.",
+      "fromOwn": {
+        "title": "Vincular un valor propio",
+        "intro": "Conecta una organización o dirección propia de este contacto con una entidad compartida. El valor se queda en el contacto.",
+        "value": "Valor",
+        "createNewOrganisation": "Crear una organización nueva a partir de este valor",
+        "createNewPlace": "Crear un lugar nuevo a partir de este valor",
+        "useExistingOrganisation": "Usar la organización existente «{{name}}»",
+        "link": "Vincular",
+        "linked": "Vinculado a {{name}}.",
+        "createdAndLinked": "Se creó {{name}} y se vinculó."
       }
     }
   },
@@ -2120,7 +2184,9 @@
       "contact": "Contacto",
       "activity": "Actividad",
       "circle": "Círculo",
-      "circleEdge": "Membresía de Círculo"
+      "circleEdge": "Membresía de Círculo",
+      "entity": "Organización, lugar o mascota",
+      "entityEdge": "Vinculado a"
     },
     "filterByContact": "Centrar en Contacto",
     "showCircles": "Círculos",
@@ -2159,7 +2225,13 @@
     "panLeft": "Desplazar hacia la izquierda",
     "panRight": "Desplazar hacia la derecha",
     "egoNotice": "Se muestra tu propio contacto y todas las personas a {{depth}} conexiones de distancia. Activa «Mostrar toda la red» para cargar todos los contactos.",
-    "showEntireNetwork": "Mostrar toda la red"
+    "showEntireNetwork": "Mostrar toda la red",
+    "showEntities": "Organizaciones, lugares y mascotas",
+    "graphSummaryWithEntities": "Diagrama de red: {{contacts}}, {{activities}}, {{circles}}, {{entities}}, {{connections}}. La misma información está disponible en la vista de lista de abajo.",
+    "graphSummaryEntities_one": "{{count}} organización, lugar o mascota",
+    "graphSummaryEntities_many": "{{count}} organizaciones, lugares o mascotas",
+    "graphSummaryEntities_other": "{{count}} organizaciones, lugares o mascotas",
+    "connectionEntity": "Vinculado a {{name}}"
   },
   "map": {
     "title": "Mapa de contactos",
@@ -2661,7 +2733,11 @@
     "createSuccess": "Campo personalizado creado.",
     "updateSuccess": "Campo personalizado actualizado.",
     "deleteSuccess": "Campo personalizado eliminado.",
-    "saveError": "No se pudo guardar el campo personalizado."
+    "saveError": "No se pudo guardar el campo personalizado.",
+    "appliesTo": "Se aplica a",
+    "targets": {
+      "contact": "Contacto"
+    }
   },
   "preference": {
     "title": "Preferencias",
@@ -3227,6 +3303,7 @@
     "restoredWithSkipped_other": "{{name}} restaurado, pero {{count}} elementos no se pudieron restaurar porque aquello a lo que estaban vinculados ya no existe.",
     "restoredWithSkipped_many": "{{name}} restaurado, pero {{count}} elementos no se pudieron restaurar porque aquello a lo que estaban vinculados ya no existe.",
     "restoreConflict": "No se puede restaurar a {{name}}: otro contacto ya usa el ID de este contacto. Fusiona o elimina ese contacto primero.",
+    "mergedInto": "Fusionado con {{name}}",
     "purgeConfirm": "¿Eliminar a {{name}} permanentemente? Esta acción no se puede deshacer.",
     "purged": "{{name}} eliminado permanentemente.",
     "emptyConfirm_one": "¿Eliminar permanentemente {{count}} contacto de la papelera? Esta acción no se puede deshacer.",
@@ -3819,6 +3896,7 @@
       "contact_cadence_policy_already_exists": "Ya existe: política de cadencia",
       "calendar_subscription_not_found": "No se encontró: suscripción de calendario",
       "circle_not_found": "No se encontró: círculo",
+      "circle_already_exists": "Ya existe un círculo con este nombre",
       "circle_membership_not_found": "No se encontró: pertenencia al círculo",
       "circle_membership_already_exists": "Ya existe: pertenencia al círculo",
       "contact_not_found": "No se encontró: contacto",
@@ -4249,5 +4327,356 @@
     "uploadFailed": "No se pudo subir la foto.",
     "uploadDuplicate": "Esa foto ya está en las fotos del contacto, así que no se ha vuelto a añadir.",
     "uploading": "Subiendo..."
+  },
+  "entities": {
+    "title": "Organizaciones, lugares y mascotas",
+    "description": "Organizaciones, lugares y mascotas que comparten varios contactos. Cambia el nombre de una sola vez y todos los contactos vinculados lo reflejan.",
+    "tabsLabel": "Tipo de entidad",
+    "kind": {
+      "organisation": "Organización",
+      "place": "Lugar",
+      "pet": "Mascota"
+    },
+    "kindPlural": {
+      "organisation": "Organizaciones",
+      "place": "Lugares",
+      "pet": "Mascotas"
+    },
+    "new": {
+      "organisation": "Añadir organización",
+      "place": "Añadir lugar",
+      "pet": "Añadir mascota"
+    },
+    "empty": {
+      "organisation": "Aún no hay organizaciones. Añade una o créalas desde tus contactos en Ajustes.",
+      "place": "Aún no hay lugares. Añade uno o créalos desde tus contactos en Ajustes.",
+      "pet": "Aún no hay mascotas."
+    },
+    "search": "Buscar por nombre",
+    "noResults": "Nada coincide con tu búsqueda.",
+    "sensitivityLabel": "Sensibilidad",
+    "sensitivity": {
+      "normal": "Normal",
+      "private": "Privada",
+      "secret": "Secreta"
+    },
+    "fields": {
+      "name": "Nombre",
+      "sortAs": "Ordenar como",
+      "units": "Departamentos o unidades (uno por línea)",
+      "url": "Sitio web",
+      "notes": "Notas",
+      "street": "Calle",
+      "city": "Ciudad",
+      "region": "Región",
+      "postal": "Código postal",
+      "country": "País",
+      "address": "Dirección",
+      "species": "Especie",
+      "breed": "Raza",
+      "birth": "Nacimiento",
+      "death": "Fallecimiento",
+      "dateHint": "AAAA, AAAA-MM o AAAA-MM-DD"
+    },
+    "form": {
+      "editTitle": "Editar {{name}}",
+      "nameRequired": "Introduce un nombre.",
+      "invalidDate": "Introduce {{field}} como AAAA, AAAA-MM o AAAA-MM-DD.",
+      "saveFailed": "No se pudo guardar esta entidad.",
+      "created": "Se añadió {{name}}.",
+      "updated": "Se guardó {{name}}."
+    },
+    "detail": {
+      "back": "Todas las entidades",
+      "loadFailed": "No se pudo cargar esta entidad.",
+      "notFound": "Esta entidad no existe o se eliminó.",
+      "linkedCount_one": "Vinculada a {{count}} contacto",
+      "linkedCount_many": "Vinculada a {{count}} contactos",
+      "linkedCount_other": "Vinculada a {{count}} contactos",
+      "details": "Detalles",
+      "noDetails": "Aún no hay detalles.",
+      "customFields": "Campos personalizados",
+      "noCustomFields": "Aún no hay campos personalizados para este tipo. Añade uno en Ajustes, Datos, Campos personalizados.",
+      "customFieldsSaved": "Campo personalizado guardado.",
+      "edit": "Editar",
+      "delete": "Eliminar",
+      "merge": "Fusionar con otra…"
+    },
+    "people": {
+      "title": "Personas",
+      "empty": "Aún no hay contactos vinculados. Vincula esta entidad desde la página de un contacto.",
+      "primary": "Principal",
+      "loadFailed": "No se pudieron cargar los contactos vinculados."
+    },
+    "delete": {
+      "title": "¿Eliminar {{name}}?",
+      "projectsOrganisation_one": "{{name}} es la organización principal de {{count}} contacto; perderá esa organización.",
+      "projectsOrganisation_many": "{{name}} es la organización principal de {{count}} contactos; perderán esa organización.",
+      "projectsOrganisation_other": "{{name}} es la organización principal de {{count}} contactos; perderán esa organización.",
+      "projectsPlace_one": "{{name}} es el lugar principal de {{count}} contacto; perderá esa dirección.",
+      "projectsPlace_many": "{{name}} es el lugar principal de {{count}} contactos; perderán esa dirección.",
+      "projectsPlace_other": "{{name}} es el lugar principal de {{count}} contactos; perderán esa dirección.",
+      "links_one": "Está vinculada a {{count}} contacto en total. Esos vínculos se eliminan con ella.",
+      "links_many": "Está vinculada a {{count}} contactos en total. Esos vínculos se eliminan con ella.",
+      "links_other": "Está vinculada a {{count}} contactos en total. Esos vínculos se eliminan con ella.",
+      "plain": "{{name}} se eliminará. Podrás restaurarla justo después.",
+      "adoptOrganisation": "Conservar antes la organización en esos contactos (copiarla en cada contacto como valor propio)",
+      "adoptPlace": "Conservar antes la dirección en esos contactos (copiarla en cada contacto como valor propio)",
+      "adoptFailed_one": "No se pudo copiar a {{count}} contacto, así que no se eliminó nada.",
+      "adoptFailed_many": "No se pudo copiar a {{count}} contactos, así que no se eliminó nada.",
+      "adoptFailed_other": "No se pudo copiar a {{count}} contactos, así que no se eliminó nada.",
+      "confirm": "Eliminar",
+      "failed": "No se pudo eliminar esta entidad."
+    },
+    "deleted": {
+      "title": "Se eliminó {{name}}",
+      "body": "Ya no aparece en ningún contacto. Restáurala para recuperar la entidad y sus vínculos.",
+      "restore": "Restaurar",
+      "restored": "Se restauró {{name}}.",
+      "restoreFailed": "No se pudo restaurar esta entidad.",
+      "sameNameLive": "Ya existe otra entidad de este tipo con el mismo nombre; quizá quieras fusionarlas."
+    },
+    "merge": {
+      "title": "Fusionar {{name}}",
+      "intro": "{{loser}} se eliminará y sus contactos pasarán a {{survivor}}. No se fusiona nada si no lo confirmas aquí.",
+      "into": "Fusionar con",
+      "noCandidates": "No hay otra entidad de este tipo con la que fusionar.",
+      "swap": "Cambiar cuál se conserva",
+      "fill": "Copiar también estos datos de {{name}} (la que se conserva no los tiene):",
+      "confirm": "Fusionar",
+      "failed": "No se pudieron fusionar.",
+      "done": "Fusionada con {{name}}.",
+      "demoted_one": "{{count}} contacto tenía dos principales; se conservó la existente.",
+      "demoted_many": "{{count}} contactos tenían dos principales; se conservó la existente.",
+      "demoted_other": "{{count}} contactos tenían dos principales; se conservó la existente.",
+      "undoTitle": "{{name}} se fusionó y desapareció",
+      "undoBody": "Al restaurarla solo vuelve la entidad en sí; los vínculos se quedan con la que se conservó.",
+      "undo": "Restaurar {{name}}",
+      "summary_one": "Se movió {{count}} vínculo.",
+      "summary_many": "Se movieron {{count}} vínculos.",
+      "summary_other": "Se movieron {{count}} vínculos."
+    },
+    "suggestions": {
+      "title": "Posibles duplicados",
+      "description": "Entidades con el mismo nombre o uno muy parecido. No se fusiona nada si no lo decides tú.",
+      "load": "Buscar duplicados",
+      "none": "No se encontraron duplicados.",
+      "failed": "No se pudo buscar duplicados.",
+      "merge": "Fusionar…",
+      "dismiss": "No es un duplicado",
+      "dismissed": "Oculto para siempre.",
+      "pair": "{{a}} y {{b}}",
+      "reason": {
+        "exact_name": "Mismo nombre",
+        "normalized_name": "Nombre muy parecido",
+        "address_components": "Misma dirección"
+      }
+    },
+    "roles": {
+      "organisation": {
+        "employee": "Empleado/a",
+        "owner": "Propietario/a",
+        "contractor": "Contratista",
+        "volunteer": "Voluntario/a",
+        "member": "Miembro",
+        "other": "Otro"
+      },
+      "place": {
+        "resident": "Residente",
+        "owner": "Propietario/a",
+        "visitor": "Visitante",
+        "other": "Otro"
+      },
+      "pet": {
+        "owner": "Dueño/a",
+        "carer": "Cuidador/a",
+        "other": "Otro"
+      }
+    },
+    "fromContacts": {
+      "description": "Convierte las organizaciones y direcciones que ya tienen tus contactos en entidades compartidas. Nunca cambia ni elimina un valor de un contacto. Tú eliges cada grupo; no se crea nada automáticamente.",
+      "open": "Crear entidades desde mis contactos…",
+      "title": "Crear entidades desde mis contactos",
+      "intro": "Grupos de la misma organización o dirección encontrados en tus contactos. Marca los que quieras crear; puedes repetirlo cuando quieras, solo se ofrecen los valores aún sin vincular.",
+      "none": "No queda nada por crear a partir de tus contactos.",
+      "groupTitle_one": "{{name}} — {{count}} contacto",
+      "groupTitle_many": "{{name}} — {{count}} contactos",
+      "groupTitle_other": "{{name}} — {{count}} contactos",
+      "include": "Incluir {{name}}",
+      "nameOf": "Nombre de {{name}}",
+      "roleFor": "Rol para {{name}}",
+      "primary": "Establecer como principal",
+      "primaryFor": "Establecer como principal para {{name}}",
+      "hasPrimaryOrganisation_one": "{{count}} de ellos ya tiene una organización principal.",
+      "hasPrimaryOrganisation_many": "{{count}} de ellos ya tienen una organización principal.",
+      "hasPrimaryOrganisation_other": "{{count}} de ellos ya tienen una organización principal.",
+      "hasPrimaryPlace_one": "{{count}} de ellos ya tiene un lugar principal.",
+      "hasPrimaryPlace_many": "{{count}} de ellos ya tienen un lugar principal.",
+      "hasPrimaryPlace_other": "{{count}} de ellos ya tienen un lugar principal.",
+      "createOrganisation_one": "Crear {{count}} organización",
+      "createOrganisation_many": "Crear {{count}} organizaciones",
+      "createOrganisation_other": "Crear {{count}} organizaciones",
+      "createPlace_one": "Crear {{count}} lugar",
+      "createPlace_many": "Crear {{count}} lugares",
+      "createPlace_other": "Crear {{count}} lugares",
+      "createdOrganisation_one": "Se creó {{count}} organización.",
+      "createdOrganisation_many": "Se crearon {{count}} organizaciones.",
+      "createdOrganisation_other": "Se crearon {{count}} organizaciones.",
+      "createdPlace_one": "Se creó {{count}} lugar.",
+      "createdPlace_many": "Se crearon {{count}} lugares.",
+      "createdPlace_other": "Se crearon {{count}} lugares.",
+      "skip": {
+        "group_not_found": "{{name}}: ya no existe en tus contactos.",
+        "contact_not_in_group": "{{name}}: un contacto ya no pertenece a ese grupo.",
+        "name_invalid": "{{name}}: el nombre no es válido.",
+        "core_invalid": "{{name}}: sus datos no son válidos."
+      }
+    }
+  },
+  "standingShares": {
+    "entityTypes": {
+      "contact": "Contacto",
+      "note": "Nota",
+      "activity": "Actividad",
+      "circle": "Círculo"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "active": "Activo",
+      "declined": "Rechazado",
+      "revoked": "Revocado",
+      "expired": "Caducado"
+    },
+    "mode": {
+      "label": "Tipo de recurso compartido",
+      "oneTime": "Copia única",
+      "standing": "Compartir de forma continua"
+    },
+    "dialogTitle": {
+      "note": "Compartir esta nota",
+      "activity": "Compartir esta actividad",
+      "circle": "Compartir este círculo"
+    },
+    "shareNote": "Compartir esta nota",
+    "shareActivity": "Compartir esta actividad",
+    "shareCircle": "Compartir el círculo {{name}}",
+    "form": {
+      "description": "Un recurso compartido continuo da a una persona de esta instancia acceso de solo lectura y en vivo. Debe aceptarlo antes de ver nada, y puedes revocarlo en cualquier momento.",
+      "liveNotice": "Es en vivo: todo lo que añadas más tarde a una sección compartida, como una nueva dirección de correo, será visible para esa persona de inmediato.",
+      "noRecallNotice": "Revocar detiene las lecturas futuras. No recupera nada que ya haya visto o copiado.",
+      "privateNotice": "Los elementos privados y secretos nunca se comparten, ni siquiera en una sección que elijas.",
+      "recipient": "Destinatario",
+      "noRecipients": "No hay otros usuarios en esta instancia.",
+      "sections": "Secciones que compartir",
+      "sectionsHint": "El nombre y el apodo siempre se incluyen. Elige al menos una sección; por defecto no se comparte nada.",
+      "expires": "Caduca el (opcional)",
+      "entityNotice": {
+        "note": "Verá el texto y la fecha de esta nota, no el contacto al que está vinculada.",
+        "activity": "Verá el título, la descripción, el lugar, las fechas y el tipo, no los participantes.",
+        "circle": "Verá el nombre, la descripción, el color y los nombres de los miembros actuales del círculo. Las personas que añadas después serán visibles para ella de inmediato."
+      },
+      "previewTitle": "Lo que verá",
+      "previewHint": "Según tus datos actuales, sin los elementos privados y secretos.",
+      "previewLoading": "Cargando vista previa…",
+      "previewError": "No se pudo cargar la vista previa.",
+      "previewEmpty": "Ahora mismo no se comparte nada de estas secciones, solo el nombre.",
+      "submit": "Compartir",
+      "submitting": "Compartiendo…",
+      "created": "Recurso compartido enviado a {{username}}. Debe aceptarlo antes de ver nada."
+    },
+    "withMe": {
+      "title": "Compartido conmigo",
+      "description": "Personas de esta instancia que comparten cosas contigo. Los recursos compartidos son de solo lectura y en vivo: ves la versión actual hasta que termine el recurso.",
+      "pendingHeading": "Esperan tu respuesta",
+      "activeHeading": "Compartido contigo",
+      "empty": "Nadie comparte nada contigo.",
+      "from": "De {{username}}",
+      "pendingNote": "Podrás ver el contenido cuando aceptes.",
+      "sections": "Secciones: {{sections}}",
+      "expires": "Termina el {{date}}",
+      "accept": "Aceptar",
+      "decline": "Rechazar",
+      "view": "Ver",
+      "leave": "Dejar de recibir",
+      "block": "Bloquear al remitente",
+      "acceptLabel": "Aceptar {{label}} de {{username}}",
+      "declineLabel": "Rechazar {{label}} de {{username}}",
+      "viewLabel": "Ver {{label}} de {{username}}",
+      "leaveLabel": "Dejar de recibir {{label}} de {{username}}",
+      "blockLabel": "Bloquear a {{username}}",
+      "leaveTitle": "¿Dejar de recibir este recurso?",
+      "leaveBody": "Perderás el acceso a {{label}} de {{username}}. Tendría que volver a compartirlo contigo.",
+      "blockTitle": "¿Bloquear a este remitente?",
+      "blockBody": "Esto rechaza todo lo que {{username}} tiene pendiente contigo y termina todo lo que comparte ahora contigo. No se le avisa de que la has bloqueado. Puedes desbloquearla más abajo.",
+      "blockConfirm": "Bloquear a {{username}}",
+      "accepted": "Aceptado {{label}} de {{username}}.",
+      "declined": "Rechazado {{label}} de {{username}}.",
+      "left": "Dejaste de recibir {{label}} de {{username}}.",
+      "blocked": "Has bloqueado a {{username}}.",
+      "blockedHeading": "Remitentes bloqueados",
+      "blockedEmpty": "No has bloqueado a nadie.",
+      "blockedHelp": "Al desbloquear, esa persona puede volver a enviarte recursos nuevos. Lo que envió mientras estaba bloqueada no se restaura.",
+      "unblock": "Desbloquear",
+      "unblockLabel": "Desbloquear a {{username}}",
+      "unblocked": "Has desbloqueado a {{username}}.",
+      "actionFailed": "No funcionó: {{message}}"
+    },
+    "content": {
+      "title": "{{label}} de {{username}}",
+      "readOnly": "Solo lectura. Es una vista en vivo de lo que {{username}} comparte ahora. Puede cambiar o terminar en cualquier momento.",
+      "unavailable": "Este recurso compartido ya no está disponible.",
+      "noDetails": "No hay detalles en las secciones compartidas.",
+      "noName": "Contacto sin nombre",
+      "date": "Fecha",
+      "endDate": "Fin",
+      "location": "Lugar",
+      "type": "Tipo",
+      "description": "Descripción",
+      "members_one": "{{count}} miembro",
+      "members_other": "{{count}} miembros",
+      "members_many": "{{count}} miembros",
+      "noMembers": "Este círculo no tiene miembros ahora mismo.",
+      "membersTruncated_one": "Se muestran los primeros {{shown}} de {{count}} miembros.",
+      "membersTruncated_other": "Se muestran los primeros {{shown}} de {{count}} miembros.",
+      "membersTruncated_many": "Se muestran los primeros {{shown}} de {{count}} miembros."
+    },
+    "byMe": {
+      "title": "Compartido por mí",
+      "description": "Recursos compartidos continuos que has enviado. Revocar detiene las lecturas futuras; no recupera lo que alguien ya haya visto o copiado.",
+      "empty": "No has compartido nada de forma continua.",
+      "to": "Para {{username}}",
+      "expires": "Caduca el {{date}}",
+      "noExpiry": "Sin caducidad",
+      "sections": "Secciones: {{sections}}",
+      "members_one": "Comparte ahora a {{count}} persona",
+      "members_other": "Comparte ahora a {{count}} personas",
+      "members_many": "Comparte ahora a {{count}} personas",
+      "revokedReason": {
+        "owner_revoked": "Lo revocaste",
+        "entity_deleted": "Se eliminó el elemento compartido",
+        "recipient_deleted": "Se eliminó la cuenta del destinatario"
+      },
+      "revoke": "Revocar",
+      "revokeLabel": "Revocar {{label}} para {{username}}",
+      "revokeTitle": "¿Revocar este recurso compartido?",
+      "revokeBody": "{{username}} pierde el acceso en su próxima solicitud. Esto no recupera nada que ya haya visto o copiado. Para volver a compartir tendrás que crear un recurso nuevo.",
+      "revoked": "Revocado {{label}} para {{username}}.",
+      "reconfirmNeeded": "Oculto para {{username}} hasta que confirmes: {{sections}}. Un elemento de una sección pasó a ser privado o secreto, así que toda la sección sigue oculta hasta que la revises.",
+      "reconfirm": "Revisar y volver a confirmar",
+      "reconfirmLabel": "Volver a confirmar {{label}} para {{username}}",
+      "reconfirmTitle": "¿Volver a compartir estas secciones?",
+      "reconfirmBody": "Comprueba en la página del contacto qué contienen ahora estas secciones. Cuando confirmes, {{username}} las verá de nuevo: {{sections}}. Los elementos marcados como privados o secretos siguen sin compartirse nunca.",
+      "reconfirmConfirm": "Confirmar",
+      "reconfirmed": "Vuelto a confirmar {{label}} para {{username}}.",
+      "edit": "Editar",
+      "editLabel": "Editar {{label}} para {{username}}",
+      "editTitle": "Editar recurso compartido",
+      "editNarrowOnly": "Puedes cambiar la caducidad o quitar secciones. Para compartir más, crea un recurso nuevo.",
+      "expiresField": "Caduca el (opcional)",
+      "save": "Guardar",
+      "saved": "Recurso compartido de {{username}} actualizado.",
+      "conflict": "Este recurso se cambió en otro lugar. Se recargó la lista; inténtalo de nuevo.",
+      "actionFailed": "No funcionó: {{message}}"
+    }
   }
 }

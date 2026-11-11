@@ -402,6 +402,7 @@ func pgSpecs() []pgSpec {
 var pgExcluded = map[string]string{
 	"/entities/suggestions":   "keyset-paged over computed suggestions (opaque cursor over a stable sort key), not over a table; walked exhaustively by controllers/entity_merge_controller_test.go (TestEntitySuggestions_AreReadOnlyIdempotentAndStablyPaged)",
 	"/trash/contacts":         "offset-paginated (page+limit) read-model over the caller's trash, no next_cursor (issue #2002)",
+	"/trash/entities":         "offset-paginated (page+limit) read-model over the caller's entity trash, no next_cursor (issue #2446)",
 	"/contacts/{id}/timeline": "composite timeline cursor over several entity kinds; walked exhaustively by controllers/timeline_controller_test.go (walkTimeline)",
 	"/circles/{id}/timeline":  "same composite timeline cursor as /contacts/{id}/timeline, scoped to circle members; walked by controllers/timeline_controller_test.go (walkTimeline)",
 	"/contacts/duplicates":    "offset-paginated (page+limit) read-model, no next_cursor",

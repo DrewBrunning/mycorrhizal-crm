@@ -41,9 +41,11 @@ unleash:
         - ^diagnostics\.go$
         - ^duplicate_service\.go$
         - ^email_renderer\.go$
+        - ^entity_csv\.go$
         - ^entity_delete\.go$
         - ^entity_merge\.go$
         - ^entity_suggestions\.go$
+        - ^entity_trash\.go$
         - ^error_aggregation\.go$
         - ^etag_normalize\.go$
         - ^geocoder\.go$
@@ -71,6 +73,7 @@ unleash:
         - ^import_session\.go$
         - ^import_source\.go$
         - ^import_source_bundle\.go$
+        - ^import_source_entities\.go$
         - ^import_source_idmap\.go$
         - ^integration_fault_seam\.go$
         - ^integration_terminal\.go$

@@ -466,7 +466,15 @@ class ContactDetailViewModel @Inject constructor(
     private fun loadCustomFields() {
         viewModelScope.launch {
             fieldDefinitionRepository.list().foldApiError(
-                onSuccess = { defs -> _uiState.update { it.copy(fieldDefinitions = defs) } },
+                // Issue #2302: entity-targeted definitions (organisation/place/pet) belong on the
+                // entity page, never on a contact.
+                onSuccess = { defs ->
+                    val contactDefs = defs.filter {
+                        it.target.isNullOrBlank() ||
+                            it.target == "contact"
+                    }
+                    _uiState.update { it.copy(fieldDefinitions = contactDefs) }
+                },
                 onError = {}
             )
         }

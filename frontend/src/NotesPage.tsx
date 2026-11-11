@@ -1,6 +1,7 @@
 import { mdiNoteOutline, mdiNotePlusOutline } from '@mdi/js';
 import EditIcon from '@mui/icons-material/Edit';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ShareIcon from '@mui/icons-material/Share';
 import {
   Timeline,
   TimelineConnector,
@@ -25,7 +26,7 @@ import {
 } from '@mui/material';
 import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router';
+import { Link as RouterLink, useSearchParams } from 'react-router';
 import { createUnassignedNote, deleteNote, type Note, updateNote } from './api/notes';
 import AddNoteDialog from './components/AddNoteDialog';
 import DateField from './components/DateField';
@@ -35,6 +36,7 @@ import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import MarkdownText from './components/MarkdownText';
 import PageHeader from './components/PageHeader';
+import StandingShareDialog from './components/StandingShareDialog';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useDebouncedValue } from './hooks/useDebounce';
@@ -49,12 +51,16 @@ const NotesPage: React.FC = () => {
   useDocumentTitle(t('nav.notes'));
   const { announce } = useAnnouncer();
   const { formatDate } = useDateFormat();
-  const [searchInput, setSearchInput] = useState('');
+  // #2174: the global search deep-links here with ?search=<query>.
+  const [initialParams] = useSearchParams();
+  const [searchInput, setSearchInput] = useState(initialParams.get('search') ?? '');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   // #2180: every note by default, like Activities; 'unfiled' is the inbox view.
   const [scope, setScope] = useState<'all' | 'unfiled'>('all');
+  // Standing share (ADR 0042, #2292): the note whose Share dialog is open.
+  const [sharingNote, setSharingNote] = useState<Note | null>(null);
   const NOTES_PER_PAGE = 25;
 
   // T17: cursor pagination — the inbox pages by (updated_at, id) and a "load
@@ -392,6 +398,15 @@ const NotesPage: React.FC = () => {
                         className="edit-actions"
                         sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
                       >
+                        {note.uuid && (
+                          <IconButton
+                            size="small"
+                            onClick={() => setSharingNote(note)}
+                            aria-label={t('standingShares.shareNote')}
+                          >
+                            <ShareIcon fontSize="small" />
+                          </IconButton>
+                        )}
                         <IconButton
                           size="small"
                           onClick={() => handleEditClick(note)}
@@ -433,6 +448,18 @@ const NotesPage: React.FC = () => {
             {t('common.loadMore')}
           </Button>
         </Box>
+      )}
+
+      {sharingNote?.uuid && (
+        <StandingShareDialog
+          open
+          onClose={() => setSharingNote(null)}
+          entityType="note"
+          entityId={sharingNote.uuid}
+          onShared={(grant) =>
+            announce(t('standingShares.form.created', { username: grant.to_username }))
+          }
+        />
       )}
 
       <AddNoteDialog

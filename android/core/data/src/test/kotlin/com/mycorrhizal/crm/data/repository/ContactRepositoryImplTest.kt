@@ -622,6 +622,28 @@ class ContactRepositoryImplTest {
     }
 
     @Test
+    fun `getContact returns the projection but never caches it`() = runTest {
+        val record = ContactRecordResponse(
+            id = 5,
+            uid = "u5",
+            card = Card(
+                name = Name(full = "Dana White"),
+                organizations = listOf(
+                    com.mycorrhizal.crm.model.network.Organization(id = "ent-l1", name = "Acme")
+                )
+            )
+        )
+        coEvery { apiClient.getContact(5) } returns Result.success(record)
+
+        val result = repository.getContact(5)
+
+        assertEquals("ent-l1", result.getOrThrow().card?.organizations?.single()?.id)
+        val cached = db.cachedContactDao().getById(5)
+        assertNull(cached?.card?.organizations)
+        assertNull(cached?.org)
+    }
+
+    @Test
     fun `getContact falls back to cache on network failure`() = runTest {
         db.cachedContactDao().upsert(
             com.mycorrhizal.crm.data.local.CachedContact(

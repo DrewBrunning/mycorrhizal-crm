@@ -73,6 +73,7 @@ import BuildVersionCard from './components/BuildVersionCard';
 import CardDAVSyncScopeSettings from './components/CardDAVSyncScopeSettings';
 import DAVPasswordSettings from './components/DAVPasswordSettings';
 import DeleteAccountSettings from './components/DeleteAccountSettings';
+import EntitiesFromContactsSettings from './components/EntitiesFromContactsSettings';
 import FeedsSettings from './components/FeedsSettings';
 import GeoPulseSettings from './components/GeoPulseSettings';
 import ImmichSettings from './components/ImmichSettings';
@@ -898,6 +899,9 @@ export default function SettingsPage() {
       <NotificationSettings />
 
       <LinkFieldTypesSettings />
+
+      {/* Issue #2301 (ADR 0043 decision 9): user-triggered helper; scans nothing until opened. */}
+      <EntitiesFromContactsSettings />
 
       {/* Create token dialog */}
       <AppDialog

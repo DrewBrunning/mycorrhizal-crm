@@ -66,9 +66,9 @@ const twoUnfiledNotesResponse = () => ({
   limit: 25,
 });
 
-function renderPage() {
+function renderPage(url = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <SnackbarProvider>
         <AnnouncerProvider>
           <DateFormatProvider>
@@ -831,4 +831,66 @@ test('clearing a note’s text still sends the update; the server decides if it 
 
   await waitFor(() => expect(putBodies.length).toBe(1));
   expect(JSON.parse(putBodies[0]).content).toBe('');
+});
+
+// Standing shares (ADR 0042, #2292): a note can be shared from its card; the
+// grant names the note's stable uuid, never its integer id.
+test('a note offers a standing share that targets its uuid', async () => {
+  const posts: Array<{ url: string; body: unknown }> = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/share-grants') && init?.method === 'POST') {
+        posts.push({ url, body: JSON.parse(init.body as string) });
+        return { ok: true, json: async () => ({ share_grant: { id: 'g1', to_username: 'bob' } }) };
+      }
+      if (url.includes('/users/directory'))
+        return { ok: true, json: async () => ({ users: [{ id: 2, username: 'bob' }] }) };
+      if (url.includes('/notes?'))
+        return {
+          ok: true,
+          json: async () => ({
+            notes: [
+              {
+                ID: 1,
+                uuid: 'note-uuid-1',
+                content: 'First note',
+                date: '2026-01-01T00:00:00Z',
+                contact_id: null,
+              },
+            ],
+            next_cursor: '',
+            limit: 25,
+          }),
+        };
+      if (url.includes('/images'))
+        return { ok: true, json: async () => ({ images: [], total: 0 }) };
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'Share this note' }));
+  expect(await screen.findByRole('dialog', { name: 'Share this note' })).toBeInTheDocument();
+  const input = await screen.findByRole('combobox', { name: 'Recipient' });
+  fireEvent.keyDown(input, { key: 'ArrowDown' });
+  fireEvent.click(await screen.findByRole('option', { name: 'bob' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0].body).toEqual({ to_user_id: 2, entity_type: 'note', entity_id: 'note-uuid-1' });
+});
+
+// #2174: the global search links unfiled-note hits here with ?search=<query>.
+test('the search query parameter prefills the search box and filters the list', async () => {
+  let listUrl = '';
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.includes('/notes?')) listUrl = url;
+      return { ok: true, json: async () => emptyNotesResponse() };
+    }),
+  );
+  renderPage('/notes?search=fair%20idea');
+
+  expect(await screen.findByDisplayValue('fair idea')).toBeDefined();
+  await waitFor(() => expect(listUrl).toContain('search=fair+idea'));
 });

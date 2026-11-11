@@ -803,6 +803,10 @@ design is ADR-0010 / CON-04, issue #479).
     merge it onto the destination's own Me instead of duplicating it. Pinned by
     `backend/services/account_bundle_test.go` (scoping + full-fidelity + round-trip) and
     `backend/services/account_bundle_self_contact_test.go`.
+  - **Entities in the exports (issue #2300, ADR 0043 decision 7)**: the account bundle and the CSV backup
+    carry reusable entities, their links and entity custom-field values with every sensitivity (the same
+    full-fidelity exception as above); vCard/JSContact/CardDAV carry only the projected primary ORG/ADR.
+    Shape, restore rules and the named loss: [`docs/import/entity-backup.md`](../import/entity-backup.md).
   - **The audit-log export's** `before_snapshot` column is omitted unless the caller explicitly passes
     `?include_snapshots=true`: it is already credential-redacted at write time (`auditDenyList`,
     `models/audit.go`) but is **not** filtered by contact-field sensitivity the way the three
@@ -987,13 +991,23 @@ design is ADR-0010 / CON-04, issue #479).
 - **Where / who**: one row per **confirmed** contact import (issue #651), written by
   `models.RecordImportRun` from `ImportSessionManager.Confirm` / `.ConfirmVCF` after the import
   transaction commits, and read only by its owner via `GET /api/v1/contacts/import/history`
-  (newest 50). Unlike §14–§16, it **is** user-scoped: `import_runs.user_id` is the user who ran the
+  (newest 50; the per-run issues through `GET /api/v1/contacts/import/history/{id}`). Unlike §14–§16, it **is** user-scoped: `import_runs.user_id` is the user who ran the
   import. Distinct from §12 (the in-memory wizard staging that holds the *uploaded rows*) — this is
   the durable *outcome summary* only.
-- **What it contains**: the source format token (`csv` / `vcf` / `jscontact` / `records`), the five
-  ImportResult counts (total processed / created / updated / skipped) and an error **count** — no
-  error strings, no contact names, no field values, **no PII**. It cannot answer "which contact"
-  or "what changed", only "how many, when, from what format".
+- **What it contains**: the source format token (`csv` / `vcf` / `jscontact` / `records` / `monica` /
+  `meerkat` / `mycorrhizal`), the ImportResult counts (total processed / created / updated / skipped),
+  an error **count**, and (issue #2463) the **per-row issues** of the rows that were skipped or
+  failed: the 1-based row number, a display name (for Monica/Meerkat/bundle imports the engine's
+  record label, e.g. `contact 7 (Jane Doe)`), the status (`skipped` / `failed`) and the reason.
+  **Email, phone and every other field value are never stored** (blanked before the insert); at most
+  `models.MaxImportRunIssues` (1000) issues per run are kept, in the `issues` JSON column with
+  `issue_count` alongside. It can answer "which row was skipped and why", not "what did the row
+  contain". Runs recorded before migration `000093` have `issues = '[]'` and are not backfilled. A
+  display name is personal data about the user's contacts, so the issues are owner-only (every query
+  is `user_id`-scoped; `GET /contacts/import/history/{id}` is a 404 for anyone else's run), are not
+  returned by the list endpoint, and never leave the instance: not in sync, shares, the CSV export or
+  the account bundle. Import rows are pre-contact data with no `normal|private|secret` class, so the
+  sensitivity query filter does not apply.
 - **Retention**: no dedicated purge job. An import is a rare, human-initiated action, so the table's
   growth is self-bounding (a handful of rows per user per year); the read endpoint caps its own
   output at 50. Rows are immutable once written — no update path.
@@ -1002,9 +1016,10 @@ design is ADR-0010 / CON-04, issue #479).
   it is in the manual-cascade checklist and pinned by `controllers/delete_cascade_coverage_test.go`
   (bucket `go-cascade-user`). Not in any CardDAV/CalDAV projection, not in the Android offline
   mirror. Dropped wholesale by migration `000042`'s `down.sql`.
-- **Backups**: included in the DB snapshot like any other table; carries nothing sensitive, so it
-  needs no special handling in the backup-confidentiality boundary (§10).
+- **Backups**: included in the DB snapshot like any other table; carries imported-row names and reasons but
+  no field values, so it needs no special handling in the backup-confidentiality boundary (§10).
 - **Verification**: `backend/database/migrate_import_runs_test.go`,
+  `backend/database/migrate_import_run_issues_test.go`,
   `backend/services/import_session_history_test.go`,
   `backend/controllers/import_history_controller_test.go`,
   `backend/controllers/delete_cascade_coverage_test.go` (`import_runs` seeded + swept in the

@@ -89,9 +89,9 @@ function mockFetchRoutes(
   return calls;
 }
 
-function renderPage() {
+function renderPage(url = '/') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <AnnouncerProvider>
         <DateFormatProvider>
           <ActivitiesPage />
@@ -725,5 +725,55 @@ test('saving an activity with no description, location, date or contacts sends t
     description: '',
     location: '',
     contact_ids: [],
+  });
+});
+
+// Standing shares (ADR 0042, #2292): an activity can be shared from its card;
+// the grant names the activity's stable uuid, never its integer id.
+test('an activity offers a standing share that targets its uuid', async () => {
+  const calls = mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: {
+        body: {
+          activities: [activity({ uuid: 'act-uuid-1' })],
+          next_cursor: '',
+          limit: 25,
+        },
+      },
+    },
+    { pattern: '/users/directory', handler: { body: { users: [{ id: 2, username: 'bob' }] } } },
+    {
+      pattern: '/share-grants',
+      handler: { method: 'POST', body: { share_grant: { id: 'g1', to_username: 'bob' } } },
+    },
+  ]);
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'Share this activity' }));
+  expect(await screen.findByRole('dialog', { name: 'Share this activity' })).toBeInTheDocument();
+  const input = await screen.findByRole('combobox', { name: 'Recipient' });
+  fireEvent.keyDown(input, { key: 'ArrowDown' });
+  fireEvent.click(await screen.findByRole('option', { name: 'bob' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+  await waitFor(() => expect(calls.some((c) => c.method === 'POST')).toBe(true));
+  const post = calls.find((c) => c.method === 'POST' && c.url.includes('/share-grants'));
+  expect(post?.body).toEqual({
+    to_user_id: 2,
+    entity_type: 'activity',
+    entity_id: 'act-uuid-1',
+  });
+});
+
+// #2174: the global search links activity hits here with ?search=<query>.
+test('the search query parameter prefills the search box and filters the list', async () => {
+  const calls = mockFetchRoutes([
+    { pattern: '/activities?', handler: { body: { activities: [], next_cursor: '', limit: 25 } } },
+  ]);
+  renderPage('/activities?search=lunch');
+
+  expect(await screen.findByDisplayValue('lunch')).toBeDefined();
+  await waitFor(() => {
+    const listCall = calls.find((c) => c.method === 'GET' && c.url.includes('/activities?'));
+    expect(listCall?.url).toContain('search=lunch');
   });
 });

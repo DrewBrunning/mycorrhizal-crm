@@ -44,13 +44,16 @@ import (
 // (issue #2398). busy is therefore several times the nominal queue, and the
 // slow-hold case below pins that.
 //
-// A host stall is not unfair queueing either: a multi-second disk flush (or
-// the whole process being descheduled) keeps the head writer on the gate while
-// everyone behind it waits out busy_timeout. The test therefore tolerates
-// queue timeouts only when some write was actually in flight for at least
-// busy; a timeout with no such stall means a waiter was overtaken. A bare
-// SQLITE_BUSY is always a failure: everything in this process writes behind
-// the gate, so only a bypassed write can reach SQLite's busy handler.
+// A fixed budget is still not enough: on the push run that opened issue #2453
+// the slow-runner subtest observed a 270ms hold, so 23 writers ahead at that
+// hold already queue past the 2s budget with nobody overtaken. A host stall is
+// not unfair queueing either: a multi-second disk flush keeps the head writer
+// on the gate while everyone behind it waits out busy_timeout. The test
+// therefore bounds the longest fair wait from the holds it actually observed
+// (fairQueueCanExceedBusy) and tolerates a queue timeout only when that bound
+// reaches busy; otherwise a waiter was overtaken. A bare SQLITE_BUSY is always
+// a failure: everything in this process writes behind the gate, so only a
+// bypassed write can reach SQLite's busy handler.
 // TestOpenGormDBRoutesWritesThroughTheSharedGate pins that wiring
 // deterministically, and the writegate package's unit tests pin arrival order.
 func TestConcurrentWritersAreServedFairly(t *testing.T) {
@@ -137,11 +140,42 @@ func runWriterFairness(t *testing.T, writeHold time.Duration) {
 		"%d/%d writes bypassed the write gate and hit SQLite's busy handler", sqliteBusy.Load(), total.Load())
 	if timeouts := gateTimeouts.Load(); timeouts > 0 {
 		stall := time.Duration(maxWork.Load())
-		require.GreaterOrEqualf(t, stall, busy,
-			"%d/%d writes waited out busy_timeout (%v) although a fair queue of %d writers is at most ~%v and no write was in flight longer than %v: a writer was starved",
-			timeouts, total.Load(), busy, writers, (writers-1)*writeHold, stall)
-		t.Logf("tolerated %d/%d queue timeouts behind a %v host stall", timeouts, total.Load(), stall)
+		fairQueue := time.Duration(writers-1) * stall
+		require.Truef(t, fairQueueCanExceedBusy(writers, stall, busy),
+			"%d/%d writes waited out busy_timeout (%v) although the longest fair queue of %d writers at the slowest observed hold (%v) is only ~%v, so a writer was overtaken",
+			timeouts, total.Load(), busy, writers, stall, fairQueue)
+		t.Logf("tolerated %d/%d queue timeouts: a fair queue at the %v slowest hold can take up to ~%v", timeouts, total.Load(), stall, fairQueue)
 	}
+}
+
+// fairQueueCanExceedBusy reports whether a fair queue of writers could keep a
+// writer waiting past busy. The longest a fair waiter can be behind is the
+// writers-1 transactions ahead of it, each holding the lock no longer than the
+// slowest hold observed in this run, plus the gate's starvation window (it
+// switches to strict hand-over after a tenth of the timeout). Comparing
+// against the observed hold rather than the nominal one keeps a slow runner
+// from looking like starvation, while a writer overtaken at normal holds still
+// fails.
+func fairQueueCanExceedBusy(writers int, hold, busy time.Duration) bool {
+	const starvationFraction = 10 // writegate's starveAfter = timeout / this
+	return time.Duration(writers-1)*hold+busy/starvationFraction >= busy
+}
+
+func TestFairQueueCanExceedBusy(t *testing.T) {
+	const busy = 2 * time.Second
+	// The push run that opened issue #2453 saw a slowest hold of 270ms on the
+	// slow-runner subtest: 23 writers ahead at that hold already queue past
+	// busy, so the timeouts were a fair queue on a loaded runner, not
+	// starvation.
+	require.True(t, fairQueueCanExceedBusy(24, 270*time.Millisecond, busy))
+	// At the nominal slow-runner hold the fair queue fits well inside busy, so
+	// a timeout there still means a writer was overtaken.
+	require.False(t, fairQueueCanExceedBusy(24, 18*time.Millisecond, busy))
+	// The starvation window alone is a fraction of busy: it cannot excuse a
+	// timeout by itself.
+	require.False(t, fairQueueCanExceedBusy(24, 0, busy))
+	// A single hold that does reach busy is covered too.
+	require.True(t, fairQueueCanExceedBusy(2, busy, busy))
 }
 
 // TestOpenGormDBRoutesWritesThroughTheSharedGate pins the production wiring

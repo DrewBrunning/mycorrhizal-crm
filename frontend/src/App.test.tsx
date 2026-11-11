@@ -2,8 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
-import type { Contact, ContactsResponse } from './api/contacts';
-import { getContacts } from './api/contacts';
+import { searchAll } from './api/search';
 import { isAdmin } from './auth';
 import { AnnouncerProvider } from './context/AnnouncerContext';
 import { SnackbarProvider } from './context/SnackbarContext';
@@ -52,15 +51,26 @@ vi.mock('./api/dashboard', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/dashboard')>();
   return { ...actual, getDashboard: vi.fn().mockResolvedValue({}) };
 });
+// Standing shares (#2292): the nav badge reads the pending count; default none.
+vi.mock('./api/shareGrants', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/shareGrants')>();
+  return {
+    ...actual,
+    getShareGrantNotifications: vi.fn().mockResolvedValue({ pending_count: 0, notifications: [] }),
+  };
+});
 vi.mock('./api/circles', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/circles')>();
   return { ...actual, listCircles: vi.fn().mockResolvedValue({ circles: [] }) };
 });
-// The AppBar search test below drives getContacts's resolution order
-// directly, so it needs a controllable mock rather than a real fetch.
-vi.mock('./api/contacts', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('./api/contacts')>();
-  return { ...actual, getContacts: vi.fn().mockResolvedValue({ contacts: [] }) };
+// The AppBar search is covered in components/GlobalSearch.test.tsx; here
+// searchAll only needs to be quiet.
+vi.mock('./api/search', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/search')>();
+  return {
+    ...actual,
+    searchAll: vi.fn().mockResolvedValue({ query: '', contacts: [], notes: [], activities: [] }),
+  };
 });
 
 function renderApp() {
@@ -134,7 +144,7 @@ test('typing a search query shows the clear button, which resets the query', () 
   setLoggedInUser(false);
   renderApp();
 
-  const searchBox = screen.getByPlaceholderText('Search Contacts');
+  const searchBox = screen.getByPlaceholderText('Search contacts, notes, activities…');
   fireEvent.change(searchBox, { target: { value: 'alice' } });
 
   const clearButton = screen.getByRole('button', { name: 'Clear' });
@@ -146,64 +156,45 @@ test('typing a search query shows the clear button, which resets the query', () 
   expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
 });
 
-function contact(id: number, firstname: string, lastname: string): Contact {
-  return { ID: id, firstname, lastname };
-}
-
-// Mirrors useContacts.test.ts's overlapping-request helper (issue #556): two
-// getContacts calls return promises this test resolves in whichever order it
-// chooses, to simulate a slow response for an abandoned query landing after
-// a faster response for the query that replaced it.
-function deferred<T>() {
-  let resolve!: (v: T) => void;
-  const promise = new Promise<T>((res) => {
-    resolve = res;
-  });
-  return { promise, resolve };
-}
-
+// #960 / #2174: the AppBar search, mounted in the real shell. A slow response
+// for an abandoned query must not overwrite the newer query's grouped results.
 test('a stale AppBar search response does not clobber a newer query (#960)', async () => {
   setLoggedInUser(false);
   vi.useFakeTimers();
   try {
-    // Simulates typing "jo" then "john" before "jo"'s (slower) response
-    // arrives: the second, newer request resolves first.
-    const slowJo = deferred<ContactsResponse>();
-    const fastJohn = deferred<ContactsResponse>();
-    vi.mocked(getContacts)
-      .mockReturnValueOnce(slowJo.promise)
-      .mockReturnValueOnce(fastJohn.promise);
+    let resolveSlow!: (v: Awaited<ReturnType<typeof searchAll>>) => void;
+    const slowJo = new Promise<Awaited<ReturnType<typeof searchAll>>>((r) => {
+      resolveSlow = r;
+    });
+    vi.mocked(searchAll)
+      .mockReturnValueOnce(slowJo)
+      .mockResolvedValueOnce({
+        query: 'john',
+        contacts: [{ id: 1, uid: 'u1', firstname: 'John', lastname: 'Smith' }],
+        notes: [],
+        activities: [],
+      });
 
     renderApp();
-    const searchBox = screen.getByPlaceholderText('Search Contacts');
+    const searchBox = screen.getByPlaceholderText('Search contacts, notes, activities…');
 
     fireEvent.focus(searchBox);
     fireEvent.change(searchBox, { target: { value: 'jo' } });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300);
     });
-
     fireEvent.change(searchBox, { target: { value: 'john' } });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(300);
     });
-
-    await act(async () => {
-      fastJohn.resolve({
-        contacts: [contact(1, 'John', 'Smith')],
-        next_cursor: '',
-        limit: 10,
-      });
-    });
     expect(screen.getByText('John Smith')).toBeInTheDocument();
 
-    // The stale "jo" response settling afterwards must be dropped, not
-    // overwrite the list "john" already produced.
     await act(async () => {
-      slowJo.resolve({
-        contacts: [contact(2, 'Joanna', 'Doe')],
-        next_cursor: '',
-        limit: 10,
+      resolveSlow({
+        query: 'jo',
+        contacts: [{ id: 2, uid: 'u2', firstname: 'Joanna', lastname: 'Doe' }],
+        notes: [],
+        activities: [],
       });
     });
     expect(screen.queryByText('Joanna Doe')).not.toBeInTheDocument();
@@ -299,6 +290,8 @@ test('a path that merely shares a string prefix with a nav item is not current f
 // sub-items of Settings. URLs are unchanged; the group highlights with its child.
 const SETTINGS_CHILD_ROUTES: { path: string; label: string; adminOnly: boolean }[] = [
   { path: '/shares', label: 'Shares', adminOnly: false },
+  { path: '/shared-with-me', label: 'Shared with me', adminOnly: false },
+  { path: '/shared-by-me', label: 'Shared by me', adminOnly: false },
   { path: '/audit', label: 'Audit log', adminOnly: false },
   { path: '/settings/data', label: 'Data', adminOnly: false },
   { path: '/users', label: 'Users', adminOnly: true },
@@ -382,4 +375,27 @@ test('browser Back and Forward keep the highlight in step with the URL', async (
   });
   await waitFor(() => expect(currentNavPaths()).toEqual(['/audit']));
   expect(navLink('Settings')).toHaveClass('Mui-selected');
+});
+
+// Standing shares (#2292, ADR 0042 decision 11): the recipient's pending count
+// is a badge on the "Shared with me" entry, with an accessible name.
+test('the Shared with me nav entry carries the pending-share badge', async () => {
+  const { getShareGrantNotifications } = await import('./api/shareGrants');
+  vi.mocked(getShareGrantNotifications).mockResolvedValue({ pending_count: 3, notifications: [] });
+  setLoggedInUser(false);
+  window.history.pushState({}, '', '/settings');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  renderApp();
+  expect(await screen.findByLabelText('3 shares waiting for your answer')).toBeInTheDocument();
+});
+
+test('no badge when nothing is pending', async () => {
+  const { getShareGrantNotifications } = await import('./api/shareGrants');
+  vi.mocked(getShareGrantNotifications).mockResolvedValue({ pending_count: 0, notifications: [] });
+  setLoggedInUser(false);
+  window.history.pushState({}, '', '/settings');
+  window.dispatchEvent(new PopStateEvent('popstate'));
+  renderApp();
+  await screen.findByRole('navigation', { name: 'Main navigation' });
+  expect(screen.queryByLabelText(/waiting for your answer/)).toBeNull();
 });

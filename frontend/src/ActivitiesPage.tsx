@@ -2,6 +2,7 @@ import { mdiCalendarPlus, mdiMapMarkerOutline } from '@mdi/js';
 import EditIcon from '@mui/icons-material/Edit';
 import EventIcon from '@mui/icons-material/Event';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import ShareIcon from '@mui/icons-material/Share';
 import {
   Timeline,
   TimelineConnector,
@@ -24,7 +25,7 @@ import {
 } from '@mui/material';
 import { type MouseEvent, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link as RouterLink } from 'react-router';
+import { Link as RouterLink, useSearchParams } from 'react-router';
 import { type Activity, createActivity, deleteActivity, updateActivity } from './api/activities';
 import { type Contact, getAllContacts } from './api/contacts';
 import AddActivityDialog from './components/AddActivityDialog';
@@ -36,6 +37,7 @@ import LoadError from './components/LoadError';
 import { ListSkeleton } from './components/LoadingSkeletons';
 import MarkdownText from './components/MarkdownText';
 import PageHeader from './components/PageHeader';
+import StandingShareDialog from './components/StandingShareDialog';
 import { timelineMobileDateSx, timelinePhoneSx } from './components/timelineLayout';
 import { useAnnouncer } from './context/AnnouncerContext';
 import { useDateFormat } from './DateFormatProvider';
@@ -62,7 +64,9 @@ const ActivitiesPage: React.FC = () => {
   const activityDateLabel = (activity: Activity) =>
     formatActivityDateRange(activity.date, activity.end_date, dateFormat);
 
-  const [searchInput, setSearchInput] = useState('');
+  // #2174: the global search deep-links here with ?search=<query>.
+  const [initialParams] = useSearchParams();
+  const [searchInput, setSearchInput] = useState(initialParams.get('search') ?? '');
   const debouncedSearch = useDebouncedValue(searchInput, 400);
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -103,6 +107,8 @@ const ActivitiesPage: React.FC = () => {
     void refreshGeoPulseConfig();
   }, [refreshGeoPulseConfig]);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  // Standing share (ADR 0042, #2292): the activity whose Share dialog is open.
+  const [sharingActivity, setSharingActivity] = useState<Activity | null>(null);
   const [editValues, setEditValues] = useState<{
     activityTitle?: string;
     activityDescription?: string;
@@ -453,6 +459,15 @@ const ActivitiesPage: React.FC = () => {
                           gap: 1,
                         }}
                       >
+                        {activity.uuid && (
+                          <IconButton
+                            size="small"
+                            onClick={() => setSharingActivity(activity)}
+                            aria-label={t('standingShares.shareActivity')}
+                          >
+                            <ShareIcon fontSize="small" />
+                          </IconButton>
+                        )}
                         <IconButton
                           size="small"
                           onClick={() => void handleEditClick(activity)}
@@ -511,6 +526,18 @@ const ActivitiesPage: React.FC = () => {
         onClose={() => setAddDialogOpen(false)}
         onSave={handleActivitySave}
       />
+
+      {sharingActivity?.uuid && (
+        <StandingShareDialog
+          open
+          onClose={() => setSharingActivity(null)}
+          entityType="activity"
+          entityId={sharingActivity.uuid}
+          onShared={(grant) =>
+            announce(t('standingShares.form.created', { username: grant.to_username }))
+          }
+        />
+      )}
 
       <GeoPulseSuggestionsDialog
         open={locationDialogOpen}

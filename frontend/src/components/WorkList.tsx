@@ -9,11 +9,15 @@ import type {
   CardTemporalRange,
   CardTitle,
 } from '../api/contacts';
+import { type ContactEntityLink, isProjectedElementId } from '../api/entities';
+import ProjectedFromChip from './ProjectedFromChip';
 
 interface WorkListProps {
   organizations: CardOrganization[];
   titles: CardTitle[];
   periods?: CardEntryPeriod[];
+  // The contact's entity links; names the source of a projected organisation.
+  entityLinks?: ContactEntityLink[];
   workInformation?: string;
   // Visibility follows the enabled-contact-fields settings; each subsection
   // is independently gateable.
@@ -46,6 +50,7 @@ export default function WorkList({
   organizations,
   titles,
   periods,
+  entityLinks,
   workInformation,
   showOrganizations,
   showTitles,
@@ -76,6 +81,9 @@ export default function WorkList({
   const renderOrganization = (organization: CardOrganization) => {
     const department = organization.units?.[0]?.name;
     const period = formatPeriod(periodFor(periods, 'organization', organization.id));
+    // ADR 0043: an `ent-` entry is read-time synthesis from a primary entity
+    // link -- shown with its source, never editable as the contact's own value.
+    const projected = isProjectedElementId(organization.id);
     return (
       <Paper
         key={organization.id ?? organization.name}
@@ -99,28 +107,31 @@ export default function WorkList({
                   {period}
                 </Typography>
               )}
+              <ProjectedFromChip elementId={organization.id} entityLinks={entityLinks} />
             </Box>
           </Box>
-          <Box
-            className="work-actions"
-            sx={{ display: 'flex', gap: 0.5, opacity: 0, transition: 'opacity 0.2s' }}
-          >
-            <IconButton
-              size="small"
-              onClick={() => onEditOrganization(organization)}
-              aria-label={t('common.edit')}
+          {!projected && (
+            <Box
+              className="work-actions"
+              sx={{ display: 'flex', gap: 0.5, opacity: 0, transition: 'opacity 0.2s' }}
             >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              size="small"
-              color="error"
-              onClick={() => confirmDelete(() => onDeleteOrganization(organization))}
-              aria-label={t('common.delete')}
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Box>
+              <IconButton
+                size="small"
+                onClick={() => onEditOrganization(organization)}
+                aria-label={t('common.edit')}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                size="small"
+                color="error"
+                onClick={() => confirmDelete(() => onDeleteOrganization(organization))}
+                aria-label={t('common.delete')}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          )}
         </Box>
       </Paper>
     );

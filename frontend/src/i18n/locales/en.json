@@ -25,6 +25,21 @@
       "banner": "You're offline. Some features may be unavailable."
     }
   },
+  "globalSearch": {
+    "placeholder": "Search contacts, notes, activities…",
+    "groupContacts": "Contacts",
+    "groupNotes": "Notes",
+    "groupActivities": "Activities",
+    "seeAll": "See all results for \"{{query}}\"",
+    "noResults": "No results for \"{{query}}\".",
+    "pageTitle": "Search results",
+    "tabsLabel": "Search result categories",
+    "emptyContacts": "No contacts match \"{{query}}\".",
+    "emptyNotes": "No notes match \"{{query}}\".",
+    "emptyActivities": "No activities match \"{{query}}\".",
+    "capped": "Showing the first {{limit}} matches in this category. Refine your search to narrow it down.",
+    "unfiled": "Unfiled note"
+  },
   "duplicates": {
     "reviewTitle": "Review duplicates",
     "none": "No duplicate candidates found.",
@@ -62,7 +77,12 @@
     "systemEvents": "System events",
     "systemStatus": "System status",
     "mainLabel": "Main navigation",
-    "skipToContent": "Skip to content"
+    "skipToContent": "Skip to content",
+    "entities": "Entities",
+    "sharedWithMe": "Shared with me",
+    "sharedByMe": "Shared by me",
+    "sharedPendingBadge_one": "{{count}} share waiting for your answer",
+    "sharedPendingBadge_other": "{{count}} shares waiting for your answer"
   },
   "household": {
     "title": "Households",
@@ -284,7 +304,6 @@
       "next": "Go to next page",
       "last": "Go to last page"
     },
-    "search": "Search Contacts",
     "searchPlaceholder": "Search contacts…",
     "searchClear": "Clear",
     "searchMinLengthHint": "Type at least two characters to search.",
@@ -698,7 +717,8 @@
       "customFieldsUngrouped": "Custom fields",
       "skills": "Skills & interests",
       "work": "Work",
-      "anniversaries": "Anniversaries"
+      "anniversaries": "Anniversaries",
+      "entities": "Organisations, places & pets"
     },
     "email": "Email",
     "phone": "Phone",
@@ -842,6 +862,49 @@
         "saved": "Field visibility saved.",
         "resetDone": "Field visibility reset to the default.",
         "saveError": "Unable to save field visibility."
+      }
+    },
+    "entityLinks": {
+      "add": "Link",
+      "linkFromOwn": "Link one of my own values",
+      "empty": "Not linked to any organisation, place or pet yet.",
+      "shownAsOrg": "Shown as organisation",
+      "shownAsAdr": "Shown as address",
+      "notCurrent": "Not current",
+      "primary": "Primary",
+      "primaryFor": "Primary: {{name}}",
+      "adoptHint": "Copy the value into this contact as its own, so it stays even if the link or entity is removed.",
+      "adoptOrganisation": "Copy {{name}} as own organisation",
+      "adoptPlace": "Copy {{name}} as own address",
+      "adopted": "Copied {{name}} into this contact.",
+      "editFor": "Edit link to {{name}}",
+      "removeFor": "Remove link to {{name}}",
+      "removeConfirm": "Remove the link to {{name}}? The entity itself is kept.",
+      "saved": "Link saved.",
+      "saveFailed": "Couldn't save this link.",
+      "addTitle": "Link to an organisation, place or pet",
+      "editTitle": "Edit link to {{name}}",
+      "kind": "Kind",
+      "entity": "Organisation, place or pet",
+      "create": "Create \"{{name}}\"",
+      "entityRequired": "Choose an organisation, place or pet, or type a name to create one.",
+      "role": "Role",
+      "roleLabel": "Role detail (optional)",
+      "primaryHelp": "Primary (shown on this contact's card)",
+      "yearInvalid": "Enter years as four digits, with the end not before the start.",
+      "projectedFrom": "from {{name}}",
+      "projectedFromUnknown": "from a linked entity",
+      "projectedHint": "Shown from the linked entity. Change it on the entity's page, or copy it into this contact to edit it here.",
+      "fromOwn": {
+        "title": "Link one of my own values",
+        "intro": "Connect one of this contact's own organisations or addresses to a shared entity. The value stays on the contact.",
+        "value": "Value",
+        "createNewOrganisation": "Create a new organisation from this value",
+        "createNewPlace": "Create a new place from this value",
+        "useExistingOrganisation": "Use the existing organisation “{{name}}”",
+        "link": "Link",
+        "linked": "Linked to {{name}}.",
+        "createdAndLinked": "Created {{name}} and linked it."
       }
     }
   },
@@ -2105,7 +2168,9 @@
       "contact": "Contact",
       "activity": "Activity",
       "circle": "Circle",
-      "circleEdge": "Circle Membership"
+      "circleEdge": "Circle Membership",
+      "entity": "Organisation, place or pet",
+      "entityEdge": "Linked to"
     },
     "filterByContact": "Center on Contact",
     "showCircles": "Circles",
@@ -2138,7 +2203,12 @@
     "panLeft": "Pan left",
     "panRight": "Pan right",
     "egoNotice": "Showing your own contact and everyone within {{depth}} connections of it. Turn on \"Show entire network\" to load every contact.",
-    "showEntireNetwork": "Show entire network"
+    "showEntireNetwork": "Show entire network",
+    "showEntities": "Organisations, places & pets",
+    "graphSummaryWithEntities": "Network diagram: {{contacts}}, {{activities}}, {{circles}}, {{entities}}, {{connections}}. The same information is available in the list view below.",
+    "graphSummaryEntities_one": "{{count}} organisation, place or pet",
+    "graphSummaryEntities_other": "{{count}} organisations, places or pets",
+    "connectionEntity": "Linked to {{name}}"
   },
   "map": {
     "title": "Contact map",
@@ -2572,7 +2642,11 @@
     "createSuccess": "Custom field created.",
     "updateSuccess": "Custom field updated.",
     "deleteSuccess": "Custom field deleted.",
-    "saveError": "Failed to save custom field."
+    "saveError": "Failed to save custom field.",
+    "appliesTo": "Applies to",
+    "targets": {
+      "contact": "Contact"
+    }
   },
   "preference": {
     "title": "Preferences",
@@ -3129,6 +3203,7 @@
     "restoredWithSkipped_one": "Restored {{name}}, but {{count}} item could not be restored because what it linked to no longer exists.",
     "restoredWithSkipped_other": "Restored {{name}}, but {{count}} items could not be restored because what they linked to no longer exists.",
     "restoreConflict": "Can't restore {{name}}: another contact already uses this contact's ID. Merge or delete that contact first.",
+    "mergedInto": "Merged into {{name}}",
     "purgeConfirm": "Permanently delete {{name}}? This cannot be undone.",
     "purged": "Permanently deleted {{name}}.",
     "emptyConfirm_one": "Permanently delete {{count}} contact in the Trash? This cannot be undone.",
@@ -3716,6 +3791,7 @@
       "contact_cadence_policy_already_exists": "Cadence policy already exists",
       "calendar_subscription_not_found": "Calendar subscription not found",
       "circle_not_found": "Circle not found",
+      "circle_already_exists": "A circle with this name already exists",
       "circle_membership_not_found": "Circle membership not found",
       "circle_membership_already_exists": "Circle membership already exists",
       "contact_not_found": "Contact not found",
@@ -4144,5 +4220,339 @@
     "uploadFailed": "Could not upload the photo.",
     "uploadDuplicate": "That photo is already in the contact photos, so it was not added again.",
     "uploading": "Uploading..."
+  },
+  "entities": {
+    "title": "Organisations, places & pets",
+    "description": "Organisations, places and pets that several contacts share. Rename one once and every contact linked to it follows.",
+    "tabsLabel": "Kind of entity",
+    "kind": {
+      "organisation": "Organisation",
+      "place": "Place",
+      "pet": "Pet"
+    },
+    "kindPlural": {
+      "organisation": "Organisations",
+      "place": "Places",
+      "pet": "Pets"
+    },
+    "new": {
+      "organisation": "Add organisation",
+      "place": "Add place",
+      "pet": "Add pet"
+    },
+    "empty": {
+      "organisation": "No organisations yet. Add one, or create them from your contacts in Settings.",
+      "place": "No places yet. Add one, or create them from your contacts in Settings.",
+      "pet": "No pets yet."
+    },
+    "search": "Search by name",
+    "noResults": "Nothing matches your search.",
+    "sensitivityLabel": "Sensitivity",
+    "sensitivity": {
+      "normal": "Normal",
+      "private": "Private",
+      "secret": "Secret"
+    },
+    "fields": {
+      "name": "Name",
+      "sortAs": "Sort as",
+      "units": "Departments or units (one per line)",
+      "url": "Website",
+      "notes": "Notes",
+      "street": "Street",
+      "city": "City",
+      "region": "Region",
+      "postal": "Postal code",
+      "country": "Country",
+      "address": "Address",
+      "species": "Species",
+      "breed": "Breed",
+      "birth": "Birth",
+      "death": "Death",
+      "dateHint": "YYYY, YYYY-MM or YYYY-MM-DD"
+    },
+    "form": {
+      "editTitle": "Edit {{name}}",
+      "nameRequired": "Enter a name.",
+      "invalidDate": "Enter {{field}} as YYYY, YYYY-MM or YYYY-MM-DD.",
+      "saveFailed": "Couldn't save this entity.",
+      "created": "Added {{name}}.",
+      "updated": "Saved {{name}}."
+    },
+    "detail": {
+      "back": "All entities",
+      "loadFailed": "Couldn't load this entity.",
+      "notFound": "This entity doesn't exist or was deleted.",
+      "linkedCount_one": "Linked to {{count}} contact",
+      "linkedCount_other": "Linked to {{count}} contacts",
+      "details": "Details",
+      "noDetails": "No details yet.",
+      "customFields": "Custom fields",
+      "noCustomFields": "No custom fields for this kind yet. Add one under Settings, Custom fields.",
+      "customFieldsSaved": "Custom field saved.",
+      "edit": "Edit",
+      "delete": "Delete",
+      "merge": "Merge into another…"
+    },
+    "people": {
+      "title": "People",
+      "empty": "No contacts are linked yet. Link this from a contact's page.",
+      "primary": "Primary",
+      "loadFailed": "Couldn't load the linked contacts."
+    },
+    "delete": {
+      "title": "Delete {{name}}?",
+      "projectsOrganisation_one": "{{name}} is the primary organisation of {{count}} contact; they will lose that organisation.",
+      "projectsOrganisation_other": "{{name}} is the primary organisation of {{count}} contacts; they will lose that organisation.",
+      "projectsPlace_one": "{{name}} is the primary place of {{count}} contact; they will lose that address.",
+      "projectsPlace_other": "{{name}} is the primary place of {{count}} contacts; they will lose that address.",
+      "links_one": "It is linked to {{count}} contact in total. Those links are removed with it.",
+      "links_other": "It is linked to {{count}} contacts in total. Those links are removed with it.",
+      "plain": "{{name}} will be deleted. You can restore it right afterwards.",
+      "adoptOrganisation": "Keep the organisation on those contacts first (copy it into each contact as their own value)",
+      "adoptPlace": "Keep the address on those contacts first (copy it into each contact as their own value)",
+      "confirm": "Delete",
+      "failed": "Couldn't delete this entity.",
+      "adoptFailed_one": "Couldn't copy it to {{count}} contact, so nothing was deleted.",
+      "adoptFailed_other": "Couldn't copy it to {{count}} contacts, so nothing was deleted."
+    },
+    "deleted": {
+      "title": "{{name}} was deleted",
+      "body": "It no longer appears on any contact. Restore it to bring back the entity and its links.",
+      "restore": "Restore",
+      "restored": "Restored {{name}}.",
+      "restoreFailed": "Couldn't restore this entity.",
+      "sameNameLive": "Another entity of this kind with the same name already exists; you may want to merge them."
+    },
+    "merge": {
+      "title": "Merge {{name}}",
+      "intro": "{{loser}} will be deleted and its contacts move to {{survivor}}. Nothing is merged unless you confirm here.",
+      "into": "Merge into",
+      "noCandidates": "There is no other entity of this kind to merge into.",
+      "swap": "Swap which one is kept",
+      "fill": "Also copy these from {{name}} (the kept one has none):",
+      "confirm": "Merge",
+      "failed": "Couldn't merge these.",
+      "done": "Merged into {{name}}.",
+      "summary_one": "{{count}} link moved.",
+      "summary_other": "{{count}} links moved.",
+      "demoted_one": "{{count}} contact had two primaries; the existing one was kept.",
+      "demoted_other": "{{count}} contacts had two primaries; the existing one was kept.",
+      "undoTitle": "{{name}} was merged away",
+      "undoBody": "Restoring it brings back only the entity itself; the links stay with the kept one.",
+      "undo": "Restore {{name}}"
+    },
+    "suggestions": {
+      "title": "Possible duplicates",
+      "description": "Entities with the same or a very similar name. Nothing merges unless you choose to.",
+      "load": "Find duplicates",
+      "none": "No duplicates found.",
+      "failed": "Couldn't look for duplicates.",
+      "merge": "Merge…",
+      "dismiss": "Not a duplicate",
+      "dismissed": "Hidden for good.",
+      "pair": "{{a}} and {{b}}",
+      "reason": {
+        "exact_name": "Same name",
+        "normalized_name": "Very similar name",
+        "address_components": "Same address"
+      }
+    },
+    "roles": {
+      "organisation": {
+        "employee": "Employee",
+        "owner": "Owner",
+        "contractor": "Contractor",
+        "volunteer": "Volunteer",
+        "member": "Member",
+        "other": "Other"
+      },
+      "place": {
+        "resident": "Resident",
+        "owner": "Owner",
+        "visitor": "Visitor",
+        "other": "Other"
+      },
+      "pet": {
+        "owner": "Owner",
+        "carer": "Carer",
+        "other": "Other"
+      }
+    },
+    "fromContacts": {
+      "description": "Turn the organisations and addresses already on your contacts into shared entities. This never changes or deletes a value on a contact. You choose each group; nothing is created automatically.",
+      "open": "Create entities from my contacts…",
+      "title": "Create entities from my contacts",
+      "intro": "Groups of the same organisation or address found on your contacts. Tick the ones to create; run this again any time, only values not yet linked are offered.",
+      "none": "Nothing left to create from your contacts.",
+      "groupTitle_one": "{{name}} — {{count}} contact",
+      "groupTitle_other": "{{name}} — {{count}} contacts",
+      "include": "Include {{name}}",
+      "nameOf": "Name of {{name}}",
+      "roleFor": "Role for {{name}}",
+      "primary": "Set as primary",
+      "primaryFor": "Set as primary for {{name}}",
+      "hasPrimaryOrganisation_one": "{{count}} of them already has a primary organisation.",
+      "hasPrimaryOrganisation_other": "{{count}} of them already have a primary organisation.",
+      "hasPrimaryPlace_one": "{{count}} of them already has a primary place.",
+      "hasPrimaryPlace_other": "{{count}} of them already have a primary place.",
+      "createOrganisation_one": "Create {{count}} organisation",
+      "createOrganisation_other": "Create {{count}} organisations",
+      "createPlace_one": "Create {{count}} place",
+      "createPlace_other": "Create {{count}} places",
+      "createdOrganisation_one": "Created {{count}} organisation.",
+      "createdOrganisation_other": "Created {{count}} organisations.",
+      "createdPlace_one": "Created {{count}} place.",
+      "createdPlace_other": "Created {{count}} places.",
+      "skip": {
+        "group_not_found": "{{name}}: it no longer exists on your contacts.",
+        "contact_not_in_group": "{{name}}: a contact no longer belongs to it.",
+        "name_invalid": "{{name}}: the name is not valid.",
+        "core_invalid": "{{name}}: its details are not valid."
+      }
+    }
+  },
+  "standingShares": {
+    "entityTypes": {
+      "contact": "Contact",
+      "note": "Note",
+      "activity": "Activity",
+      "circle": "Circle"
+    },
+    "status": {
+      "pending": "Pending",
+      "active": "Active",
+      "declined": "Declined",
+      "revoked": "Revoked",
+      "expired": "Expired"
+    },
+    "mode": {
+      "label": "Kind of share",
+      "oneTime": "One-time copy",
+      "standing": "Standing share"
+    },
+    "dialogTitle": {
+      "note": "Share this note",
+      "activity": "Share this activity",
+      "circle": "Share this circle"
+    },
+    "shareNote": "Share this note",
+    "shareActivity": "Share this activity",
+    "shareCircle": "Share circle {{name}}",
+    "form": {
+      "description": "A standing share gives one person on this instance read-only, live access. They must accept it before they can see anything, and you can revoke it at any time.",
+      "liveNotice": "It is live: anything you add later to a shared section, such as a new email address, becomes visible to them right away.",
+      "noRecallNotice": "Revoking stops future reads. It does not recall anything they have already seen or copied.",
+      "privateNotice": "Private and secret items are never shared, even in a section you choose.",
+      "recipient": "Recipient",
+      "noRecipients": "There are no other users on this instance.",
+      "sections": "Sections to share",
+      "sectionsHint": "Name and nickname are always included. Choose at least one section; nothing is shared by default.",
+      "expires": "Expires on (optional)",
+      "entityNotice": {
+        "note": "They will see this note's text and date, not the contact it is linked to.",
+        "activity": "They will see the title, description, location, dates and type, not the participants.",
+        "circle": "They will see the circle's name, description, colour and the names of its current members. People you add to the circle later become visible to them right away."
+      },
+      "previewTitle": "What they will see",
+      "previewHint": "Based on your current data, with private and secret items left out.",
+      "previewLoading": "Loading preview…",
+      "previewError": "Could not load the preview.",
+      "previewEmpty": "Nothing in these sections is shared right now, only the name.",
+      "submit": "Share",
+      "submitting": "Sharing…",
+      "created": "Standing share sent to {{username}}. They need to accept it before they can see anything."
+    },
+    "withMe": {
+      "title": "Shared with me",
+      "description": "People on this instance who share things with you. Shares are read-only and live: you see the current version until the share ends.",
+      "pendingHeading": "Waiting for your answer",
+      "activeHeading": "Shared with you",
+      "empty": "Nobody is sharing anything with you.",
+      "from": "From {{username}}",
+      "pendingNote": "You can see the content once you accept.",
+      "sections": "Sections: {{sections}}",
+      "expires": "Ends {{date}}",
+      "accept": "Accept",
+      "decline": "Decline",
+      "view": "View",
+      "leave": "Stop receiving",
+      "block": "Block sender",
+      "acceptLabel": "Accept {{label}} from {{username}}",
+      "declineLabel": "Decline {{label}} from {{username}}",
+      "viewLabel": "View {{label}} from {{username}}",
+      "leaveLabel": "Stop receiving {{label}} from {{username}}",
+      "blockLabel": "Block {{username}}",
+      "leaveTitle": "Stop receiving this share?",
+      "leaveBody": "You will lose access to {{label}} from {{username}}. They would have to share it with you again.",
+      "blockTitle": "Block this sender?",
+      "blockBody": "This declines everything {{username}} has pending with you and ends everything they currently share with you. They are not told that you blocked them. You can unblock them below.",
+      "blockConfirm": "Block {{username}}",
+      "accepted": "Accepted {{label}} from {{username}}.",
+      "declined": "Declined {{label}} from {{username}}.",
+      "left": "Stopped receiving {{label}} from {{username}}.",
+      "blocked": "Blocked {{username}}.",
+      "blockedHeading": "Blocked senders",
+      "blockedEmpty": "You have not blocked anyone.",
+      "blockedHelp": "Unblocking lets someone send you new shares again. Anything they sent while blocked is not restored.",
+      "unblock": "Unblock",
+      "unblockLabel": "Unblock {{username}}",
+      "unblocked": "Unblocked {{username}}.",
+      "actionFailed": "That did not work: {{message}}"
+    },
+    "content": {
+      "title": "{{label}} from {{username}}",
+      "readOnly": "Read-only. This is a live view of what {{username}} currently shares. It can change or end at any time.",
+      "unavailable": "This share is no longer available.",
+      "noDetails": "There are no details in the shared sections.",
+      "noName": "Unnamed contact",
+      "date": "Date",
+      "endDate": "Ends",
+      "location": "Location",
+      "type": "Type",
+      "description": "Description",
+      "members_one": "{{count}} member",
+      "members_other": "{{count}} members",
+      "noMembers": "This circle has no members right now.",
+      "membersTruncated_one": "Showing the first {{shown}} of {{count}} members.",
+      "membersTruncated_other": "Showing the first {{shown}} of {{count}} members."
+    },
+    "byMe": {
+      "title": "Shared by me",
+      "description": "Standing shares you have sent. Revoking stops future reads; it does not recall what someone has already seen or copied.",
+      "empty": "You have not shared anything with a standing share.",
+      "to": "To {{username}}",
+      "expires": "Expires {{date}}",
+      "noExpiry": "No expiry",
+      "sections": "Sections: {{sections}}",
+      "members_one": "Shares {{count}} person right now",
+      "members_other": "Shares {{count}} people right now",
+      "revokedReason": {
+        "owner_revoked": "You revoked it",
+        "entity_deleted": "The shared item was deleted",
+        "recipient_deleted": "The recipient's account was removed"
+      },
+      "revoke": "Revoke",
+      "revokeLabel": "Revoke {{label}} for {{username}}",
+      "revokeTitle": "Revoke this share?",
+      "revokeBody": "{{username}} loses access on their next request. This does not recall anything they have already seen or copied. To share again you will need to create a new share.",
+      "revoked": "Revoked {{label}} for {{username}}.",
+      "reconfirmNeeded": "Hidden from {{username}} until you confirm: {{sections}}. An item in a section became private or secret, so the whole section stays hidden until you review it.",
+      "reconfirm": "Review and re-confirm",
+      "reconfirmLabel": "Re-confirm {{label}} for {{username}}",
+      "reconfirmTitle": "Share these sections again?",
+      "reconfirmBody": "Check what these sections contain now on the contact page. Once you confirm, {{username}} sees them again: {{sections}}. Items marked private or secret are still never shared.",
+      "reconfirmConfirm": "Confirm",
+      "reconfirmed": "Re-confirmed {{label}} for {{username}}.",
+      "edit": "Edit",
+      "editLabel": "Edit {{label}} for {{username}}",
+      "editTitle": "Edit share",
+      "editNarrowOnly": "You can change the expiry or remove sections. To share more, create a new share.",
+      "expiresField": "Expires on (optional)",
+      "save": "Save",
+      "saved": "Updated the share for {{username}}.",
+      "conflict": "This share was changed elsewhere. The list has been reloaded; try again.",
+      "actionFailed": "That did not work: {{message}}"
+    }
   }
 }

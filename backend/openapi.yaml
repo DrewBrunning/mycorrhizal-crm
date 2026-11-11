@@ -4128,6 +4128,44 @@ paths:
                 $ref: "#/components/schemas/Error"
           description: Not authenticated.
 
+  /contacts/import/history/{id}:
+    get:
+      summary: One import run with its stored per-row issues
+      operationId: getImportRun
+      tags:
+        - Imports
+      description: >
+        Issue #2463 — the history row plus the per-row issues (skipped or
+        failed rows with their reasons) stored with it. Only row number, name,
+        status and reason are persisted: email and phone are always empty
+        strings here. At most 1000 issues are stored per run. Runs recorded
+        before this feature, and runs with nothing to report, return an empty
+        issues array. User-scoped: a missing or other user's id is a 404.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: The run and its issues.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportRunDetail"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Not authenticated.
+        "404":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: No import run with this id for the caller.
+
   # --- Monica import assistant (issue #549) ---
   # A five-step wizard over an in-memory session: connect (URL + API token) →
   # fetch (background snapshot pull, polled via /status) → preview (review with
@@ -4608,6 +4646,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
           description: Too many concurrent Mycorrhizal import sessions for this user.
+  # Issue #2300 (ADR 0043 decision 7, amended 2026-11-10): restore the entity
+  # sections of a CSV backup. One-shot and synchronous; the contacts
+  # column-mapping import is a separate flow and is unchanged. Entity ids are
+  # re-minted behind the import ledger, so a re-run is a no-op.
+  /import/entities/csv:
+    post:
+      summary: Restore organisations, places and pets from a CSV backup
+      description: >-
+        Reads only the ENTITIES, ENTITY LINKS and ENTITY FIELDS sections of a
+        CSV file produced by GET /export (other sections are ignored; a CSV
+        without them restores nothing). Everything lands in the caller's
+        account in one transaction. Entity ids are re-minted and recorded in the
+        import ledger, references inside the file are remapped, and a row an
+        earlier run already restored, or an id the account already owns, is
+        reported as skipped, never overwritten. A link whose contact (matched by
+        Contact UID) or a value whose entity-target field definition (matched
+        by key and kind) is not in the account is reported with category
+        unsupported and is not created. Cells are stored as inert text (the
+        exporter's formula-neutralization marker is undone, nothing is
+        evaluated). Only one restore per account runs at a time.
+      operationId: restoreEntitiesCsv
+      tags:
+        - Imports
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          description: >-
+            Restore finished (the transaction committed). The counts are rows
+            created; every other row is named in issues.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntityCSVRestoreResponse"
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: No file, not a .csv, over the 20 MB cap, or unreadable / over the row limit.
+        "429":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: Another entity restore is already running for this account.
   /import/mycorrhizal/fetch:
     post:
       operationId: startMycorrhizalFetch
@@ -7315,6 +7408,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Another circle of the same user already has this name (compared
+            case-insensitively, surrounding whitespace ignored). reason_code
+            is circle_already_exists. Applies to create and rename only; a
+            rename that keeps the circle's own name succeeds. Circles that
+            already share a name before this rule are left as they are.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /circles/{id}:
     parameters:
       - name: id
@@ -7367,6 +7471,17 @@ paths:
                 $ref: "#/components/schemas/Circle"
         "400":
           description: Validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: >
+            Another circle of the same user already has this name (compared
+            case-insensitively, surrounding whitespace ignored). reason_code
+            is circle_already_exists. Applies to create and rename only; a
+            rename that keeps the circle's own name succeeds. Circles that
+            already share a name before this rule are left as they are.
           content:
             application/json:
               schema:
@@ -8034,6 +8149,34 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TrashPurgeResponse"
+        "401":
+          description: Not authenticated.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /trash/entities:
+    get:
+      summary: List the caller's trashed (restorable) entities
+      operationId: listTrashedEntities
+      tags:
+        - Trash
+      description: |
+        Entities (organisations, places, pets) the caller deleted or merged away that can still
+        be restored (issue #2446, ADR 0043 decision 6): those with a deletion snapshot, newest
+        deletion first. `purge_at` is when the scheduled purge hard-deletes the entity; null when
+        `DELETED_RETENTION_DAYS` is 0 (keep forever). A merge loser carries `merged_into` (the
+        survivor's id) and `merged_into_name`. Restore with `POST /entities/{id}/restore`.
+      parameters:
+        - { name: page, in: query, schema: { type: integer, minimum: 1, default: 1 } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, default: 25 } }
+      responses:
+        "200":
+          description: A page of trashed entities.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrashEntityListResponse"
         "401":
           description: Not authenticated.
           content:
@@ -12036,7 +12179,9 @@ paths:
         The full per-user backup as a single CSV file with section banner
         rows (CONTACTS/RELATIONSHIPS/ACTIVITIES/NOTES/REMINDERS/LIFE_EVENTS/
         GIFTS/CONVERSATION_AGENDA/CADENCE_POLICIES/PREFERENCES/
-        REMINDER_COMPLETIONS) and header rows per section. Values are
+        REMINDER_COMPLETIONS, then ENTITIES/ENTITY LINKS/ENTITY FIELDS —
+        reusable organisations, places and pets, issue #2300, see
+        docs/import/entity-backup.md) and header rows per section. Values are
         formula-injection-neutralized. This endpoint does not take
         sections/include_sensitive params — those apply only to the
         vCard/JSContact exports.
@@ -12308,6 +12453,9 @@ paths:
                   custom_field_values: []
                   occasions: []
                   occasion_events: []
+                  entities: []
+                  entity_links: []
+                  entity_field_values: []
                 attachments: []
                 images: []
                 omitted:
@@ -17127,6 +17275,26 @@ components:
         page: { type: integer }
         limit: { type: integer }
         retention_days: { type: integer, description: "DELETED_RETENTION_DAYS; 0 means keep forever." }
+    TrashedEntity:
+      type: object
+      required: [entity, deleted_at, purge_at]
+      properties:
+        entity: { $ref: "#/components/schemas/Entity" }
+        deleted_at: { type: string, format: date-time }
+        purge_at: { type: string, format: date-time, nullable: true, description: "When the scheduled purge hard-deletes the entity; null when retention is 0 (keep forever)." }
+        merged_into: { type: string, description: "The survivor's id when the entity is a merge loser; absent for a plain delete." }
+        merged_into_name: { type: string, description: "The survivor's name; absent when the survivor is gone." }
+    TrashEntityListResponse:
+      type: object
+      required: [entities, total, page, limit, retention_days]
+      properties:
+        entities:
+          type: array
+          items: { $ref: "#/components/schemas/TrashedEntity" }
+        total: { type: integer, format: int64 }
+        page: { type: integer }
+        limit: { type: integer }
+        retention_days: { type: integer, description: "DELETED_RETENTION_DAYS; 0 means keep forever." }
     TrashRestoreSkip:
       type: object
       required: [table, reason, count]
@@ -17998,6 +18166,7 @@ components:
         CreatedAt: { type: string, format: date-time }
         UpdatedAt: { type: string, format: date-time }
         DeletedAt: { type: string, format: date-time, nullable: true }
+        uuid: { type: string, format: uuid, description: "Stable portable identity; what a standing share (issue #2292) names. Read-only." }
         content: { type: string, maxLength: 5000 }
         date: { type: string, format: date-time }
         contact_id: { type: integer, nullable: true }
@@ -21590,7 +21759,19 @@ components:
         updated: { type: integer }
         skipped: { type: integer }
         error_count: { type: integer, description: "Number of rows that errored (len of ImportResult.errors)" }
+        issue_count: { type: integer, description: "Issue #2463 — how many per-row issues are stored for this run (0 for runs recorded before the feature). The list never includes the issues themselves; fetch GET /contacts/import/history/{id}." }
         created_at: { type: string, format: date-time }
+
+    ImportRunDetail:
+      description: Issue #2463 — an ImportRun plus its stored per-row issues (always an array; email and phone are always empty).
+      allOf:
+        - $ref: "#/components/schemas/ImportRun"
+        - type: object
+          required: [issues]
+          properties:
+            issues:
+              type: array
+              items: { $ref: "#/components/schemas/ImportRowIssue" }
 
     # --- Monica import assistant (issue #549) ---
     MonicaConnectRequest:
@@ -21911,6 +22092,9 @@ components:
         custom_field_values: { type: array, items: { type: object, additionalProperties: true } }
         occasions: { type: array, items: { type: object, additionalProperties: true } }
         occasion_events: { type: array, items: { type: object, additionalProperties: true } }
+        entities: { type: array, items: { type: object, additionalProperties: true }, description: "Reusable organisations, places and pets (ADR 0043, issue #2300): id, kind, name, sensitivity, core, created_at, updated_at. Additive to version 1; absent on a pre-1.7 bundle (read as none). Live rows, every sensitivity." }
+        entity_links: { type: array, items: { type: object, additionalProperties: true }, description: "Contact-to-entity links: id, contact_vcard_uid, entity_id, kind, role, role_label, is_primary, start, end, sensitivity. Additive; absent reads as none." }
+        entity_field_values: { type: array, items: { type: object, additionalProperties: true }, description: "Custom-field values owned by an entity: field_definition_id, entity_id, value. Contact-owned values stay in custom_field_values. Additive; absent reads as none." }
     AccountBundleAttachment:
       type: object
       description: Attachment metadata only; bytes are not embedded in v1.
@@ -21954,6 +22138,30 @@ components:
         custom_field_values: { type: integer }
         occasions: { type: integer }
         occasion_events: { type: integer }
+    EntityCSVRestoreIssue:
+      type: object
+      required: [record, field, category, message]
+      properties:
+        record: { type: string }
+        field: { type: string }
+        category:
+          type: string
+          description: >-
+            skipped = an id the account already owns or a row an earlier run
+            restored; unsupported = a missing contact or field definition;
+            invalid = a row that fails REST-write validation.
+          enum: [skipped, unsupported, invalid]
+        message: { type: string }
+    EntityCSVRestoreResponse:
+      type: object
+      required: [entities_created, links_created, field_values_created, issues]
+      properties:
+        entities_created: { type: integer }
+        links_created: { type: integer }
+        field_values_created: { type: integer }
+        issues:
+          type: array
+          items: { $ref: "#/components/schemas/EntityCSVRestoreIssue" }
     MycorrhizalUploadResponse:
       type: object
       required: [session_id, version, totals]

@@ -175,6 +175,7 @@ const (
 	ReasonContactCadencePolicyAlreadyExists ReasonCode = "contact_cadence_policy_already_exists"
 	ReasonCalendarSubscriptionNotFound      ReasonCode = "calendar_subscription_not_found"
 	ReasonCircleNotFound                    ReasonCode = "circle_not_found"
+	ReasonCircleAlreadyExists               ReasonCode = "circle_already_exists"
 
 	// Standing shares (ADR 0042, issue #2290). One not-found code covers every
 	// non-party / wrong-role / wrong-state / expired / blocked / entity-gone
@@ -657,6 +658,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonContactCadencePolicyAlreadyExists:         {Template: "Cadence policy already exists"},
 	ReasonCalendarSubscriptionNotFound:              {Template: "Calendar subscription not found"},
 	ReasonCircleNotFound:                            {Template: "Circle not found"},
+	ReasonCircleAlreadyExists:                       {Template: "A circle with this name already exists"},
 	ReasonShareGrantNotFound:                        {Template: "Share grant not found"},
 	ReasonShareGrantStateConflict:                   {Template: "This share can no longer be changed that way"},
 	ReasonShareGrantWideningRefused:                 {Template: "A share can only be narrowed; create a new share to grant more"},

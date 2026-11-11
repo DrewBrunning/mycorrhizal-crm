@@ -254,6 +254,13 @@ object PreferenceCategory {
             DISPOSITION
         ),
 
+        // Catch-all for media that fits no medium above (issue #2194), e.g. a magazine.
+        PreferenceCategoryConfig(
+            "media_other",
+            PreferenceSection.MEDIA,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION
+        ),
         // Activities & Hobbies — a "get to know them" fact, stays with
         // Preferences. The only category carrying a proficiency level
         // (issue #246).
@@ -301,6 +308,13 @@ object PreferenceCategory {
             DISPOSITION
         ),
 
+        // Catch-all for jewelry that fits no aspect above (issue #2194).
+        PreferenceCategoryConfig(
+            "jewelry_other",
+            PreferenceSection.JEWELRY,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION_WITH_ALLERGY
+        ),
         // Gift Preferences — single-facet "tastes", each its own category chip.
         PreferenceCategoryConfig(
             "flowers",
@@ -327,6 +341,13 @@ object PreferenceCategory {
             listOf("favorite", "like")
         ),
 
+        // Catch-all for a gift taste that fits no category above (issue #2194).
+        PreferenceCategoryConfig(
+            "gift_other",
+            PreferenceSection.GIFT_PREFERENCES,
+            PreferenceKeyMode.DISPOSITION,
+            DISPOSITION_WITH_ALLERGY
+        ),
         // Gift Avoid — general, non-domain-specific avoidance notes.
         PreferenceCategoryConfig(
             "dislike",

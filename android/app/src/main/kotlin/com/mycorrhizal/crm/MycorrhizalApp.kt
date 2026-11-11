@@ -32,6 +32,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.MoreHoriz
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
@@ -70,6 +72,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
@@ -119,6 +122,9 @@ import com.mycorrhizal.crm.feature.contacts.DashboardScreen
 import com.mycorrhizal.crm.feature.contacts.DuplicatePairsScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.contacts.PrepViewScreen
+import com.mycorrhizal.crm.feature.contacts.entities.ContactEntityLinksScreen
+import com.mycorrhizal.crm.feature.contacts.entities.EntitiesScreen
+import com.mycorrhizal.crm.feature.contacts.entities.EntityDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdsScreen
 import com.mycorrhizal.crm.feature.imports.BundleRestoreScreen
@@ -165,6 +171,10 @@ import com.mycorrhizal.crm.feature.settings.TwoFactorScreen
 import com.mycorrhizal.crm.feature.settings.WebhooksScreen
 import com.mycorrhizal.crm.feature.shares.ContactSharesScreen
 import com.mycorrhizal.crm.feature.shares.ShareContactScreen
+import com.mycorrhizal.crm.feature.shares.ShareGrantBadgeViewModel
+import com.mycorrhizal.crm.feature.shares.ShareGrantContentScreen
+import com.mycorrhizal.crm.feature.shares.SharedByMeScreen
+import com.mycorrhizal.crm.feature.shares.SharedWithMeScreen
 import com.mycorrhizal.crm.feature.sysevents.SystemEventsScreen
 import com.mycorrhizal.crm.feature.tags.TagDetailScreen
 import com.mycorrhizal.crm.feature.tags.TagsScreen
@@ -192,6 +202,7 @@ import com.mycorrhizal.crm.ui.LocalDarkTheme
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.LocalDrawerOpen
 import com.mycorrhizal.crm.ui.LocalIs24Hour
+import com.mycorrhizal.crm.ui.LocalPendingShareGrantCount
 import com.mycorrhizal.crm.ui.LocalServerCapabilities
 import com.mycorrhizal.crm.ui.LocalServerUrl
 import com.mycorrhizal.crm.ui.LocalServerVersion
@@ -617,6 +628,17 @@ private fun MainScaffold(
         }
     }
 
+    // Issue #2293 / ADR 0042 decision 11: the in-app pending-share badge. Only a count is held
+    // here. It is refreshed when the drawer opens and while on a shares screen (where the
+    // count changes), and only where the deployment offers shares at all.
+    val shareBadge = hiltViewModel<ShareGrantBadgeViewModel>()
+    val pendingShares by shareBadge.pendingCount.collectAsStateWithLifecycle()
+    val sharesOffered = serverCapabilities.supports(ServerCapability.CONTACT_SHARES)
+    val onSharesScreen = currentRoute?.startsWith("shares") == true
+    LaunchedEffect(drawerState.isOpen, onSharesScreen, sharesOffered) {
+        if (sharesOffered) shareBadge.refresh()
+    }
+
     // M5 §5a (issue #152): registers/deletes this install's FCM device with the
     // server as the session flips between logged-in and logged-out. Deliberately
     // not stored: it only reacts to session transitions.
@@ -677,7 +699,8 @@ private fun MainScaffold(
             android.text.format.DateFormat.is24HourFormat(LocalContext.current)
         ),
         LocalServerVersion provides serverVersion,
-        LocalServerCapabilities provides serverCapabilities
+        LocalServerCapabilities provides serverCapabilities,
+        LocalPendingShareGrantCount provides if (sharesOffered) pendingShares else 0
     ) {
         MainNavScaffold(
             currentRoute = currentRoute,
@@ -968,7 +991,7 @@ private fun RailDestinationItem(
     NavigationRailItem(
         selected = isSelected(currentRoute, item),
         onClick = { onDestinationClick(item.route) },
-        icon = { Icon(item.icon, contentDescription = null) },
+        icon = { NavIcon(item) },
         label = {
             Text(
                 stringResource(item.labelRes),
@@ -1058,6 +1081,27 @@ internal fun DrawerContent(
     }
 }
 
+/**
+ * A destination's icon; the Shares entry carries the pending-standing-share count (issue #2293).
+ * The badge is a count only, and its TalkBack text names it so it is not an unlabeled number.
+ */
+@Composable
+private fun NavIcon(item: TopLevelDestination) {
+    val pending = if (item.route == "shares") LocalPendingShareGrantCount.current else 0
+    if (pending > 0) {
+        val description = pluralStringResource(R.plurals.shares_pending_count, pending, pending)
+        BadgedBox(
+            badge = {
+                Badge(modifier = Modifier.semantics { contentDescription = description }) {
+                    Text(pending.toString())
+                }
+            }
+        ) { Icon(item.icon, contentDescription = null) }
+    } else {
+        Icon(item.icon, contentDescription = null)
+    }
+}
+
 @Composable
 private fun DrawerItem(
     item: TopLevelDestination,
@@ -1079,7 +1123,7 @@ private fun DrawerItem(
         // TalkBack as a selected tab-role node.
         selected = isSelected(currentRoute, item),
         onClick = { onDestinationClick(item.route) },
-        icon = { Icon(item.icon, contentDescription = null) },
+        icon = { NavIcon(item) },
         modifier = Modifier.padding(horizontal = 8.dp).testTag("drawer-${item.route}")
     )
 }
@@ -1418,6 +1462,7 @@ private fun AppNavGraph(
                 onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
                 onViewSkills = { id -> navController.navigate("contacts/$id/skills") },
                 onViewWork = { id -> navController.navigate("contacts/$id/work") },
+                onViewEntities = { id -> navController.navigate("contacts/$id/entities") },
                 onViewAnniversaries = { id ->
                     navController.navigate(
                         "contacts/$id/anniversaries"
@@ -1750,6 +1795,16 @@ private fun AppNavGraph(
         ) {
             ContactWorkScreen(onBack = { navController.popBackStack() })
         }
+        // Issue #2302 (ADR 0043): a contact's links to shared organisations, places and pets.
+        composable(
+            route = "contacts/{contactId}/entities",
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
+        ) {
+            ContactEntityLinksScreen(
+                onBack = { navController.popBackStack() },
+                onOpenEntity = { id -> navController.navigate("entities/$id") }
+            )
+        }
         composable(
             route = "contacts/{contactId}/anniversaries",
             arguments = listOf(navArgument("contactId") { type = NavType.IntType })
@@ -1778,8 +1833,38 @@ private fun AppNavGraph(
         // mirroring web's ContactSharesPage.tsx).
         composable("shares") {
             ContactSharesScreen(
-                onMenuClick = menu
+                onMenuClick = menu,
+                onOpenSharedWithMe = { navController.navigate("shares/with-me") },
+                onOpenSharedByMe = { navController.navigate("shares/by-me") }
             )
+        }
+        // Issue #2293 / ADR 0042 decision 12: the standing-share surfaces. All three sit under the
+        // "shares/" prefix, so the Shares drawer entry stays selected on them.
+        composable("shares/with-me") {
+            SharedWithMeScreen(
+                onBack = { navController.popBackStack() },
+                onOpenGrant = { grant ->
+                    navController.navigate(
+                        "shares/grants/${Uri.encode(grant.id)}" +
+                            "?sections=${Uri.encode(grant.sections.joinToString(","))}"
+                    )
+                }
+            )
+        }
+        composable("shares/by-me") {
+            SharedByMeScreen(onBack = { navController.popBackStack() })
+        }
+        composable(
+            route = "shares/grants/{grantId}?sections={sections}",
+            arguments = listOf(
+                navArgument("grantId") { type = NavType.StringType },
+                navArgument("sections") {
+                    type = NavType.StringType
+                    defaultValue = ""
+                }
+            )
+        ) {
+            ShareGrantContentScreen(onBack = { navController.popBackStack() })
         }
         // M15: the "Share this contact" flow, reached from ContactDetailScreen's
         // ⋮ action menu (mirroring web's ShareContactDialog.tsx from ContactHeader).
@@ -1796,7 +1881,12 @@ private fun AppNavGraph(
             )
         ) {
             ShareContactScreen(
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                // A standing share is pending until accepted; show it where its status lives.
+                onStandingShared = {
+                    navController.popBackStack()
+                    navController.navigate("shares/by-me")
+                }
             )
         }
         // M9: contact-agnostic drawer entries — the N4 unfiled-notes inbox and the
@@ -1907,7 +1997,9 @@ private fun AppNavGraph(
                 onContactFieldSettings = { navController.navigate("contact-field-settings") },
                 onCustomLinks = { navController.navigate("custom-links") },
                 // M26: the one-time legacy circle/tag cleanup tool.
-                onCircleTagTriage = { navController.navigate("circle-tag-triage") }
+                onCircleTagTriage = { navController.navigate("circle-tag-triage") },
+                // Issue #2302: shared organisations, places and pets.
+                onEntities = { navController.navigate("entities") }
             )
         }
         composable(SettingsRoutes.TRACKING) {
@@ -2179,6 +2271,23 @@ private fun AppNavGraph(
             MapScreen(
                 onMenuClick = menu,
                 onOpenContact = { id -> navController.navigate("contacts/$id") }
+            )
+        }
+        // Issue #2302 (ADR 0043): the shared organisations, places and pets, reached from Settings.
+        composable("entities") {
+            EntitiesScreen(
+                onBack = { navController.popBackStack() },
+                onOpenEntity = { id -> navController.navigate("entities/$id") }
+            )
+        }
+        composable(
+            route = "entities/{entityId}",
+            arguments = listOf(navArgument("entityId") { type = NavType.StringType })
+        ) {
+            EntityDetailScreen(
+                onBack = { navController.popBackStack() },
+                onOpenContact = { id -> navController.navigate("contacts/$id") },
+                onOpenEntity = { id -> navController.navigate("entities/$id") }
             )
         }
         composable("households") {

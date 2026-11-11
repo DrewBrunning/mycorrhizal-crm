@@ -72,6 +72,9 @@ export type AccountBundlePlan = {
   custom_field_definitions?: Record<string, unknown>[];
   custom_field_values?: Record<string, unknown>[];
   data_decay_policies?: Record<string, unknown>[];
+  entities?: Record<string, unknown>[];
+  entity_field_values?: Record<string, unknown>[];
+  entity_links?: Record<string, unknown>[];
   gifts?: Record<string, unknown>[];
   households?: Record<string, unknown>[];
   life_events?: Record<string, unknown>[];
@@ -1314,6 +1317,20 @@ export type Entity = {
   updated_at: string;
 };
 
+export type EntityCSVRestoreIssue = {
+  category: 'skipped' | 'unsupported' | 'invalid';
+  field: string;
+  message: string;
+  record: string;
+};
+
+export type EntityCSVRestoreResponse = {
+  entities_created: number;
+  field_values_created: number;
+  issues: EntityCSVRestoreIssue[];
+  links_created: number;
+};
+
 export type EntityContactLink = {
   contact_id: number;
   contact_vcard_uid: string;
@@ -2022,10 +2039,15 @@ export type ImportRun = {
   error_count?: number;
   format?: 'csv' | 'vcf' | 'jscontact' | 'records' | 'monica' | 'meerkat' | 'mycorrhizal';
   id?: number;
+  issue_count?: number;
   skipped?: number;
   total_processed?: number;
   updated?: number;
   user_id?: number;
+};
+
+export type ImportRunDetail = ImportRun & {
+  issues: ImportRowIssue[];
 };
 
 export type ImportScalarChange = {
@@ -2442,6 +2464,7 @@ export type Note = {
   date: string;
   deleted?: boolean;
   revision: number;
+  uuid?: string;
 };
 
 export type NoteImage = {
@@ -3287,6 +3310,14 @@ export type Title = {
   organizationId?: string;
 };
 
+export type TrashEntityListResponse = {
+  entities: TrashedEntity[];
+  limit: number;
+  page: number;
+  retention_days: number;
+  total: number;
+};
+
 export type TrashListResponse = {
   contacts: TrashedContact[];
   limit: number;
@@ -3324,6 +3355,14 @@ export type TrashRevokedShareGrant = {
 export type TrashedContact = {
   contact: ContactSummary;
   deleted_at: string;
+  purge_at: string | null;
+};
+
+export type TrashedEntity = {
+  deleted_at: string;
+  entity: Entity;
+  merged_into?: string;
+  merged_into_name?: string;
   purge_at: string | null;
 };
 

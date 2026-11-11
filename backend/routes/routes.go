@@ -308,6 +308,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/trash/contacts", controllers.EmptyTrash)
 			protected.POST("/trash/contacts/:id/restore", controllers.RestoreTrashedContact)
 			protected.DELETE("/trash/contacts/:id", controllers.PurgeTrashedContact)
+			// Entity trash listing (issue #2446); restore is POST /entities/:id/restore.
+			protected.GET("/trash/entities", controllers.ListTrashedEntities)
 			protected.POST("/contacts/:id/archive", controllers.ArchiveContact)
 			protected.POST("/contacts/:id/unarchive", controllers.UnarchiveContact)
 			// Issue #173: favorite toggle, same shape as archive/unarchive —
@@ -357,6 +359,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			// import (any format), newest first, user-scoped. Backs the history
 			// table on the Data settings page.
 			protected.GET("/contacts/import/history", controllers.GetImportHistory)
+			protected.GET("/contacts/import/history/:id", controllers.GetImportRun)
 
 			// Monica import assistant (issue #549) — connect to a live Monica
 			// instance, pull a snapshot in the background with progress, review
@@ -409,6 +412,12 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.GET("/import/mycorrhizal/preview", controllers.GetMycorrhizalImportPreview)
 			protected.POST("/import/mycorrhizal/confirm", middleware.ValidateJSONMiddleware(&models.SourceImportConfirmRequest{}), controllers.ConfirmMycorrhizalImport)
 			protected.POST("/import/mycorrhizal/cancel", controllers.CancelMycorrhizalImport)
+
+			// Entity restore from a CSV backup (issue #2300, ADR 0043 decision 7):
+			// one-shot, synchronous, dedicated to the ENTITIES / ENTITY LINKS /
+			// ENTITY FIELDS sections. Own body-size limit (services.MaxCSVSize),
+			// listed in middleware.largeBodyRoutePaths.
+			protected.POST("/import/entities/csv", middleware.BodySizeLimitMiddleware(services.MaxCSVSize), controllers.RestoreEntitiesCSV)
 
 			// P1 contact sharing — embedded mode has a single user, so there
 			// is no one to share with; the whole surface is absent (ADR 0028).

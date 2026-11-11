@@ -361,3 +361,52 @@ test('handleCreate and handleUpdate pass metadata through to the API', async () 
   expect(createCircle).toHaveBeenCalledWith('New', { color: 'blue' });
   expect(updateCircle).toHaveBeenCalledWith('c-1', 'X', { description: 'd', color: '' });
 });
+
+// Issue #2362: the list is shown in name order, and a created circle lands in
+// its sorted position immediately (before any reload).
+test('circles are ordered by name, case-insensitively', async () => {
+  vi.mocked(listCircles).mockResolvedValue({
+    circles: [circle('3', 'c'), circle('1', 'A'), circle('2', 'b')],
+    total: 3,
+    next_cursor: '',
+    limit: 200,
+  });
+  const { result } = renderHook(() => useCircles());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(result.current.circles.map((c) => c.name)).toEqual(['A', 'b', 'c']);
+});
+
+test('a created circle is inserted in sorted position without a reload', async () => {
+  vi.mocked(listCircles).mockResolvedValue({
+    circles: [circle('1', 'a'), circle('3', 'c')],
+    total: 2,
+    next_cursor: '',
+    limit: 200,
+  });
+  vi.mocked(createCircle).mockResolvedValue({ message: 'ok', circle: circle('2', 'b') });
+  const { result } = renderHook(() => useCircles());
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await act(async () => {
+    await result.current.handleCreate('b');
+  });
+
+  expect(listCircles).toHaveBeenCalledTimes(1);
+  expect(result.current.circles.map((c) => c.name)).toEqual(['a', 'b', 'c']);
+});
+
+test('a duplicate-name failure is rethrown without a snackbar (the dialog shows it inline)', async () => {
+  vi.mocked(listCircles).mockResolvedValue(emptyListResponse());
+  const dup = new ApiError('dup', 'CONFLICT', 409, undefined, undefined, 'circle_already_exists');
+  vi.mocked(createCircle).mockRejectedValue(dup);
+  vi.mocked(updateCircle).mockRejectedValue(dup);
+  const notifier = { showError: vi.fn() };
+  const { result } = renderHook(() => useCircles(notifier));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+
+  await act(async () => {
+    await expect(result.current.handleCreate('Work')).rejects.toBe(dup);
+    await expect(result.current.handleUpdate('1', 'Work')).rejects.toBe(dup);
+  });
+  expect(notifier.showError).not.toHaveBeenCalled();
+});

@@ -16,6 +16,8 @@ export interface ActivityContact {
 
 export interface Activity {
   ID: number;
+  // Stable portable identity: what a standing share names. Read-only.
+  uuid?: string;
   title: string;
   description?: string;
   location?: string;

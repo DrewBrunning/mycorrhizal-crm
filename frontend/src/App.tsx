@@ -37,11 +37,13 @@
 
 import { mdiGraphOutline, mdiNotebookOutline } from '@mdi/js';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import CallMadeIcon from '@mui/icons-material/CallMade';
+import CallReceivedIcon from '@mui/icons-material/CallReceived';
 import CelebrationIcon from '@mui/icons-material/Celebration';
-import ClearIcon from '@mui/icons-material/Clear';
 import ContactsIcon from '@mui/icons-material/Contacts';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DomainIcon from '@mui/icons-material/Domain';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -54,20 +56,18 @@ import MapIcon from '@mui/icons-material/Map';
 import MenuIcon from '@mui/icons-material/Menu';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PeopleIcon from '@mui/icons-material/People';
-import SearchIcon from '@mui/icons-material/Search';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ShareIcon from '@mui/icons-material/Share';
 import StorageIcon from '@mui/icons-material/Storage';
 import {
   AppBar,
-  Autocomplete,
+  Badge,
   Box,
   Button,
   Collapse,
   Divider,
   Drawer,
   IconButton,
-  InputAdornment,
   List,
   ListItem,
   ListItemButton,
@@ -76,22 +76,12 @@ import {
   Menu,
   MenuItem,
   SvgIcon,
-  TextField,
   Toolbar,
   Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import {
-  Fragment,
-  lazy,
-  type ReactElement,
-  Suspense,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { Fragment, lazy, type ReactElement, Suspense, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createBrowserRouter,
@@ -101,12 +91,10 @@ import {
   RouterProvider,
   Routes,
   useLocation,
-  useNavigate,
-  useSearchParams,
 } from 'react-router';
 import ActivitiesPage from './ActivitiesPage';
 import AuditPage from './AuditPage';
-import { type Contact, getContacts } from './api/contacts';
+import { getShareGrantNotifications } from './api/shareGrants';
 import { fetchAndCacheUserInfo, getToken, isAdmin, logoutAndRedirect } from './auth';
 import CirclesTagsPage from './CirclesTagsPage';
 import CircleTagTriagePage from './CircleTagTriagePage';
@@ -115,12 +103,15 @@ import ContactSharesPage from './ContactSharesPage';
 import ContactsPage from './ContactsPage';
 import BrandLogo from './components/BrandLogo';
 import ErrorBoundary from './components/ErrorBoundary';
+import GlobalSearch from './components/GlobalSearch';
 import OfflineBanner from './components/OfflineBanner';
 import RouteAnnouncer from './components/RouteAnnouncer';
 import RouteLoadingFallback from './components/RouteLoadingFallback';
 import SessionExpiredNotice from './components/SessionExpiredNotice';
 import DashboardPage from './DashboardPage';
 import DataSettingsPage from './DataSettingsPage';
+import EntitiesPage from './EntitiesPage';
+import EntityDetailPage from './EntityDetailPage';
 import HouseholdsPage from './HouseholdsPage';
 import LoginPage from './LoginPage';
 import NetworkPage from './NetworkPage';
@@ -130,6 +121,10 @@ import OccasionsPage from './OccasionsPage';
 import PrepViewPage from './PrepViewPage';
 import RegisterPage from './RegisterPage';
 import SettingsPage from './SettingsPage';
+// Imported statically like ContactSharesPage: lazy-loading these two reshuffled the
+// shared chunk split (a 273 KiB "errorHandler" chunk tripped the new-chunk gate).
+import SharedByMePage from './SharedByMePage';
+import SharedWithMePage from './SharedWithMePage';
 import SystemEventsPage from './SystemEventsPage';
 import SystemStatusPage from './SystemStatusPage';
 import UsersPage from './UsersPage';
@@ -153,6 +148,7 @@ import { AuthContext, useAuth } from './context/AuthContext';
 const MapPage = lazy(() => import('./MapPage'));
 const ShareTargetPage = lazy(() => import('./ShareTargetPage'));
 const TrashPage = lazy(() => import('./TrashPage'));
+const SearchResultsPage = lazy(() => import('./SearchResultsPage'));
 
 const drawerWidth = 256;
 
@@ -181,15 +177,6 @@ function ScrollToTop() {
   return null;
 }
 
-// T86: /search is folded into /contacts, so old bookmarks and deep links to
-// /search?q=X keep working by redirecting to the canonical ?search= form. The
-// `q` param is only ever read here, never written.
-function SearchRedirect() {
-  const [searchParams] = useSearchParams();
-  const q = (searchParams.get('q') || '').trim();
-  return <Navigate to={q ? `/contacts?search=${encodeURIComponent(q)}` : '/contacts'} replace />;
-}
-
 // Inner component that can use useLocation (must be inside Router)
 function AppContent({
   token,
@@ -201,73 +188,39 @@ function AppContent({
   const { t } = useTranslation();
   const theme = useTheme();
   const location = useLocation();
-  const navigate = useNavigate();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   // Below the `sm` breakpoint the AppBar itself is the crowded surface: even
   // title + live search + logout overflow ~360-414px. Swap to icon-only
   // primary destinations + an account menu (T33) once space is tight.
   const compactNav = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  // Standing shares (#2292): grants awaiting this user's answer, for the nav badge.
+  // Re-read on navigation so answering one on the page clears it. A failed read
+  // just shows no badge.
+  const [pendingShares, setPendingShares] = useState(0);
+  const { pathname: currentPath } = location;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: currentPath re-reads the count on navigation
+  useEffect(() => {
+    if (!token) return;
+    let cancelled = false;
+    getShareGrantNotifications()
+      .then((n) => {
+        if (!cancelled) setPendingShares(n.pending_count);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [token, currentPath]);
   const [accountMenuAnchor, setAccountMenuAnchor] = useState<HTMLElement | null>(null);
   const accountMenuOpen = Boolean(accountMenuAnchor);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState<Contact[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-
-  // Stale-response guard (issue #960), mirroring useContacts.ts's
-  // `requestRef` pattern: a keystroke can retrigger this effect while an
-  // earlier request for a since-abandoned query is still in flight. Every
-  // pass through the effect claims a new id and every state write checks it
-  // is still current before landing, so a slow response for "jo" can never
-  // overwrite the results (or the loading spinner) for a newer "john".
-  const searchRequestRef = useRef(0);
 
   const handleDrawerToggle = () => {
     setMobileDrawerOpen(!mobileDrawerOpen);
   };
 
-  // Debounced search for contacts
-  useEffect(() => {
-    const requestId = ++searchRequestRef.current;
-
-    if (!token || searchQuery.length < 2) {
-      setSearchResults([]);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      // setTimeout's callback type is void-returning; run the async work in
-      // an IIFE and void the resulting promise instead (errors are already
-      // caught internally below).
-      void (async () => {
-        setSearchLoading(true);
-        try {
-          const result = await getContacts({ search: searchQuery, limit: 10 });
-          if (searchRequestRef.current !== requestId) return;
-          setSearchResults(result.contacts || []);
-        } catch (err) {
-          if (searchRequestRef.current !== requestId) return;
-          console.error('Search error:', err);
-          setSearchResults([]);
-        } finally {
-          if (searchRequestRef.current === requestId) setSearchLoading(false);
-        }
-      })();
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, token]);
-
   const handleLogout = async () => {
     await logoutAndRedirect();
-  };
-
-  const handleSearchSubmit = () => {
-    if (searchQuery.trim()) {
-      void navigate(`/contacts?search=${encodeURIComponent(searchQuery.trim())}`);
-      setSearchQuery('');
-      setSearchResults([]);
-    }
   };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- token changes trigger admin status recalculation
@@ -283,9 +236,28 @@ function AppContent({
   // status. Routes live in the <Routes> block; this list only places them.
   const navTree = useMemo<NavItem[]>(() => {
     const settingsChildren: NavItem[] = [
-      // Shares: the contact-sharing page today; #2292 adds the new Shares UI here.
+      // Shares: the one-time contact-sharing page, then the standing-share pages
+      // (#2292). "Shared with me" carries the pending-share badge.
       { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
-      // Entities (#2301) goes here.
+      {
+        text: t('nav.sharedWithMe'),
+        icon:
+          pendingShares > 0 ? (
+            <Badge
+              badgeContent={pendingShares}
+              color="primary"
+              role="img"
+              aria-label={t('nav.sharedPendingBadge', { count: pendingShares })}
+            >
+              <CallReceivedIcon />
+            </Badge>
+          ) : (
+            <CallReceivedIcon />
+          ),
+        path: '/shared-with-me',
+      },
+      { text: t('nav.sharedByMe'), icon: <CallMadeIcon />, path: '/shared-by-me' },
+      { text: t('nav.entities'), icon: <DomainIcon />, path: '/entities' },
       { text: t('nav.audit'), icon: <HistoryIcon />, path: '/audit' },
       { text: t('nav.data'), icon: <StorageIcon />, path: '/settings/data' },
     ];
@@ -330,7 +302,7 @@ function AppContent({
         children: settingsChildren,
       },
     ];
-  }, [t, userIsAdmin]);
+  }, [t, userIsAdmin, pendingShares]);
 
   // Flat view of the tree (parents then their children) for path matching and
   // the phone AppBar / account menu, which do not nest.
@@ -519,10 +491,7 @@ function AppContent({
             variant="h6"
             component={Link}
             to="/"
-            onClick={() => {
-              setSearchQuery('');
-              setSearchResults([]);
-            }}
+            onClick={() => {}}
             sx={{
               flexGrow: 1,
               display: { xs: 'none', sm: 'block' },
@@ -590,119 +559,7 @@ function AppContent({
             </>
           ) : (
             <>
-              <Autocomplete
-                freeSolo
-                size="small"
-                options={searchResults}
-                getOptionLabel={(option) =>
-                  typeof option === 'string' ? option : `${option.firstname} ${option.lastname}`
-                }
-                loading={searchLoading}
-                onInputChange={(_, value) => setSearchQuery(value)}
-                onChange={(_, value) => {
-                  if (value && typeof value !== 'string') {
-                    void navigate(`/contacts/${value.ID}`);
-                    setSearchQuery('');
-                    setSearchResults([]);
-                  }
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    handleSearchSubmit();
-                  }
-                }}
-                inputValue={searchQuery}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder={t('contacts.search')}
-                    variant="outlined"
-                    sx={{
-                      width: { xs: 150, sm: 200, md: 250 },
-                      mr: 2,
-                      '& .MuiOutlinedInput-root': {
-                        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                        '&:hover': {
-                          backgroundColor: 'rgba(255, 255, 255, 0.25)',
-                        },
-                        '& fieldset': {
-                          borderColor: 'rgba(255, 255, 255, 0.3)',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: 'rgba(255, 255, 255, 0.5)',
-                        },
-                        // #186: checked per the issue's own instruction --
-                        // rgba(255,255,255,0.7) on the mycelium AppBar (#3E543E)
-                        // computes to 5.04:1, clearing the 3:1 floor. Not short,
-                        // no change needed here.
-                        '&.Mui-focused fieldset': {
-                          borderColor: 'rgba(255, 255, 255, 0.7)',
-                        },
-                      },
-                      '& .MuiInputBase-input': {
-                        color: 'white',
-                      },
-                      '& .MuiInputBase-input::placeholder': {
-                        color: 'rgba(255, 255, 255, 0.7)',
-                        opacity: 1,
-                      },
-                    }}
-                    slotProps={{
-                      ...params.slotProps,
-
-                      input: {
-                        ...params.slotProps.input,
-                        startAdornment: (
-                          <InputAdornment position="start">
-                            <IconButton
-                              size="small"
-                              onClick={handleSearchSubmit}
-                              aria-label={t('app.submitSearch')}
-                              sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
-                            >
-                              <SearchIcon />
-                            </IconButton>
-                          </InputAdornment>
-                        ),
-                        endAdornment: searchQuery ? (
-                          <InputAdornment position="end">
-                            <IconButton
-                              size="small"
-                              onClick={() => {
-                                setSearchQuery('');
-                                setSearchResults([]);
-                              }}
-                              aria-label={t('contacts.searchClear')}
-                              sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
-                            >
-                              <ClearIcon fontSize="small" />
-                            </IconButton>
-                          </InputAdornment>
-                        ) : null,
-                      },
-                    }}
-                  />
-                )}
-                renderOption={(props, option) => (
-                  <li {...props} key={option.ID}>
-                    <Box>
-                      <Typography variant="body1">
-                        {option.firstname} {option.lastname}
-                      </Typography>
-                      {option.email && (
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            color: 'text.secondary',
-                          }}
-                        >
-                          {option.email}
-                        </Typography>
-                      )}
-                    </Box>
-                  </li>
-                )}
-              />
+              <GlobalSearch />
               <Button
                 color="inherit"
                 startIcon={<LogoutIcon />}
@@ -888,6 +745,22 @@ function AppContent({
               }
             />
             <Route
+              path="/shared-with-me"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <SharedWithMePage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/shared-by-me"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <SharedByMePage />
+                </Suspense>
+              }
+            />
+            <Route
               path="/trash"
               element={
                 <Suspense fallback={<RouteLoadingFallback />}>
@@ -895,12 +768,35 @@ function AppContent({
                 </Suspense>
               }
             />
-            <Route path="/search" element={<SearchRedirect />} />
+            <Route
+              path="/search"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <SearchResultsPage />
+                </Suspense>
+              }
+            />
             <Route
               path="/share"
               element={
                 <Suspense fallback={<RouteLoadingFallback />}>
                   <ShareTargetPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/entities"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <EntitiesPage />
+                </Suspense>
+              }
+            />
+            <Route
+              path="/entities/:id"
+              element={
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <EntityDetailPage />
                 </Suspense>
               }
             />

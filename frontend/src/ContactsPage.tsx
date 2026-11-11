@@ -492,7 +492,13 @@ export default function ContactsPage() {
   const openEditFields = () => {
     setEditFieldsOpen(true);
     getFieldDefinitions()
-      .then((res) => setFieldDefinitions(res.field_definitions))
+      .then((res) =>
+        // Only contact-targeted definitions apply to a contact (ADR 0043 widened
+        // the target to organisation/place/pet, edited on the entity's page).
+        setFieldDefinitions(
+          res.field_definitions.filter((d) => (d.target ?? 'contact') === 'contact'),
+        ),
+      )
       .catch(() => setFieldDefinitions([]));
   };
   const submitEditFields = async (payload: BulkFieldsPayload) => {

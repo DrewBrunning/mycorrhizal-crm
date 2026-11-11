@@ -49,6 +49,7 @@ import com.mycorrhizal.crm.data.repository.ContactTimelineRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ConversationAgendaRepositoryImpl
 import com.mycorrhizal.crm.data.repository.CustomLinkActionRepositoryImpl
 import com.mycorrhizal.crm.data.repository.DuplicateRepositoryImpl
+import com.mycorrhizal.crm.data.repository.EntityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExportRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalActivityRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ExternalIdentityRepositoryImpl
@@ -74,6 +75,7 @@ import com.mycorrhizal.crm.data.repository.RelationshipEdgeRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ReminderRepositoryImpl
 import com.mycorrhizal.crm.data.repository.SeafileRepositoryImpl
 import com.mycorrhizal.crm.data.repository.ServerCompatibilityRepositoryImpl
+import com.mycorrhizal.crm.data.repository.ShareGrantRepositoryImpl
 import com.mycorrhizal.crm.data.repository.SystemEventRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TagRepositoryImpl
 import com.mycorrhizal.crm.data.repository.TrackingSettingsRepositoryImpl
@@ -110,6 +112,7 @@ import com.mycorrhizal.crm.domain.repository.ContactTimelineRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
 import com.mycorrhizal.crm.domain.repository.CustomLinkActionRepository
 import com.mycorrhizal.crm.domain.repository.DuplicateRepository
+import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.domain.repository.ExportRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
@@ -136,6 +139,7 @@ import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.domain.repository.ReminderRepository
 import com.mycorrhizal.crm.domain.repository.SeafileRepository
 import com.mycorrhizal.crm.domain.repository.ServerCompatibilityRepository
+import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.domain.repository.TrackingSettingsRepository
@@ -577,6 +581,10 @@ abstract class DataBindsModule {
 
     @Binds
     @Singleton
+    abstract fun bindEntityRepository(impl: EntityRepositoryImpl): EntityRepository
+
+    @Binds
+    @Singleton
     abstract fun bindOccasionEventRepository(
         impl: OccasionEventRepositoryImpl
     ): OccasionEventRepository
@@ -682,6 +690,10 @@ abstract class DataBindsModule {
     abstract fun bindContactShareRepository(
         impl: ContactShareRepositoryImpl
     ): ContactShareRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindShareGrantRepository(impl: ShareGrantRepositoryImpl): ShareGrantRepository
 
     @Binds
     @Singleton

@@ -1687,6 +1687,10 @@
         {
           "status": "400",
           "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
         }
       ]
     },
@@ -1733,6 +1737,10 @@
         },
         {
           "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
           "schema": "ref:Error"
         }
       ]
@@ -2528,6 +2536,31 @@
         },
         {
           "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/contacts/import/history/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ImportRunDetail"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "404",
           "schema": "ref:Error"
         }
       ]
@@ -6761,6 +6794,25 @@
     },
     {
       "method": "POST",
+      "path": "/import/entities/csv",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:EntityCSVRestoreResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/import/mycorrhizal/cancel",
       "parameters": [
         {
@@ -9980,6 +10032,32 @@
       ]
     },
     {
+      "method": "GET",
+      "path": "/trash/entities",
+      "parameters": [
+        {
+          "name": "limit",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "page",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:TrashEntityListResponse"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "POST",
       "path": "/users/2fa/confirm",
       "parameters": null,
@@ -10979,6 +11057,21 @@
         },
         {
           "name": "data_decay_policies",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "entities",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "entity_field_values",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
+          "name": "entity_links",
           "type": "array\u003cobject\u003e",
           "required": false
         },
@@ -16921,6 +17014,61 @@
       ]
     },
     {
+      "name": "EntityCSVRestoreIssue",
+      "properties": [
+        {
+          "name": "category",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "skipped",
+            "unsupported",
+            "invalid"
+          ]
+        },
+        {
+          "name": "field",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "message",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "record",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "EntityCSVRestoreResponse",
+      "properties": [
+        {
+          "name": "entities_created",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "field_values_created",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "issues",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "links_created",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "EntityContactLink",
       "properties": [
         {
@@ -19775,6 +19923,80 @@
           "required": false
         },
         {
+          "name": "issue_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "skipped",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "total_processed",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "updated",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "required": false
+        }
+      ]
+    },
+    {
+      "name": "ImportRunDetail",
+      "properties": [
+        {
+          "name": "created",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "created_at",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "format",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "csv",
+            "vcf",
+            "jscontact",
+            "records",
+            "monica",
+            "meerkat",
+            "mycorrhizal"
+          ]
+        },
+        {
+          "name": "id",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "issue_count",
+          "type": "integer",
+          "required": false
+        },
+        {
+          "name": "issues",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
           "name": "skipped",
           "type": "integer",
           "required": false
@@ -21578,6 +21800,11 @@
           "name": "revision",
           "type": "integer",
           "required": true
+        },
+        {
+          "name": "uuid",
+          "type": "string",
+          "required": false
         }
       ]
     },
@@ -24755,6 +24982,36 @@
       ]
     },
     {
+      "name": "TrashEntityListResponse",
+      "properties": [
+        {
+          "name": "entities",
+          "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "page",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "retention_days",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "integer",
+          "required": true
+        }
+      ]
+    },
+    {
       "name": "TrashListResponse",
       "properties": [
         {
@@ -24886,6 +25143,36 @@
           "name": "deleted_at",
           "type": "string",
           "required": true
+        },
+        {
+          "name": "purge_at",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "TrashedEntity",
+      "properties": [
+        {
+          "name": "deleted_at",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "entity",
+          "type": "ref:Entity",
+          "required": true
+        },
+        {
+          "name": "merged_into",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "merged_into_name",
+          "type": "string",
+          "required": false
         },
         {
           "name": "purge_at",

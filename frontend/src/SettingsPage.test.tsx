@@ -559,3 +559,12 @@ test('non-admins do not see the system-status link', async () => {
   await waitFor(() => expect(screen.getByText('About')).toBeInTheDocument());
   expect(screen.queryByText('View system status')).not.toBeInTheDocument();
 });
+
+// Issue #2301: the wizard is reachable from Settings, and opening Settings alone
+// never scans the contacts (ADR 0043: no background job, no automatic creation).
+test('Settings offers the create-entities-from-contacts helper without scanning on load', () => {
+  renderPage();
+  expect(
+    screen.getByRole('button', { name: 'Create entities from my contacts…' }),
+  ).toBeInTheDocument();
+});

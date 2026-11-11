@@ -218,7 +218,7 @@ fun DateField(
         },
         singleLine = true,
         keyboardOptions = KeyboardOptions(
-            keyboardType = KeyboardType.Text,
+            keyboardType = dateKeyboardType(dateFormat),
             imeAction = ImeAction.Done
         ),
         keyboardActions = KeyboardActions(
@@ -251,6 +251,15 @@ fun DateField(
         )
     }
 }
+
+/**
+ * Issue #2378: the keyboard a date field opens for [format]. Every format is digits plus one
+ * separator, so a `.` or `-` format gets the number keyboard; a `/` format keeps the text keyboard
+ * because the number keyboard has no `/`. The separator is the one [DateFieldInput.pattern] shows
+ * in the placeholder and error text, so an unknown id follows the same fallback as those.
+ */
+internal fun dateKeyboardType(format: String): KeyboardType =
+    if ('/' in DateFieldInput.pattern(format)) KeyboardType.Text else KeyboardType.Number
 
 /**
  * The text a focused, un-edited field offers for editing: the numeric form in

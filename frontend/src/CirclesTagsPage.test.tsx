@@ -12,6 +12,7 @@ import {
   listCircles,
   updateCircle,
 } from './api/circles';
+import { ApiError } from './api/client';
 import {
   createTag,
   deleteTag,
@@ -253,6 +254,56 @@ test('creating a circle calls createCircle with the trimmed name, refreshes, and
   await waitFor(() => expect(createCircleMock).toHaveBeenCalledWith('New Circle'));
   await waitFor(() => expect(listCirclesMock).toHaveBeenCalledTimes(2));
   expect(await screen.findByText('Circle created')).toBeInTheDocument();
+});
+
+// Issue #2362 acceptance.
+test('creating a circle whose name exists shows one inline error and no success toast', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse({ circles: [circle({ name: 'work' })] }));
+  createCircleMock.mockRejectedValue(
+    new ApiError('dup', 'CONFLICT', 409, undefined, undefined, 'circle_already_exists'),
+  );
+
+  renderPage();
+  await screen.findByText('work');
+  fireEvent.change(screen.getByPlaceholderText('New circle name…'), { target: { value: 'Work' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+
+  const messages = await screen.findAllByText('A circle with this name already exists');
+  expect(messages).toHaveLength(1); // inline only, not also a snackbar
+  expect(screen.queryByText('Circle created')).not.toBeInTheDocument();
+  expect(listCirclesMock).toHaveBeenCalledTimes(1);
+});
+
+test('a new circle appears in name order between its neighbours', async () => {
+  listCirclesMock.mockResolvedValueOnce(
+    circlesResponse({
+      circles: [circle({ id: 'a', name: 'a' }), circle({ id: 'c', name: 'c' })],
+      members: [],
+    }),
+  );
+  createCircleMock.mockResolvedValue({ message: 'ok', circle: circle({ id: 'b', name: 'b' }) });
+  // The server lists by (updated_at, id), so the new circle comes back last.
+  listCirclesMock.mockResolvedValueOnce(
+    circlesResponse({
+      circles: [
+        circle({ id: 'a', name: 'a' }),
+        circle({ id: 'c', name: 'c' }),
+        circle({ id: 'b', name: 'b' }),
+      ],
+      members: [],
+    }),
+  );
+
+  renderPage();
+  await screen.findByText('c');
+  fireEvent.change(screen.getByPlaceholderText('New circle name…'), { target: { value: 'b' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+  await screen.findByText('Circle created');
+
+  const names = screen
+    .getAllByRole('listitem')
+    .map((li) => li.querySelector('.MuiListItemText-primary')?.textContent);
+  expect(names).toEqual(['a', 'b', 'c']);
 });
 
 test('renaming a circle calls updateCircle with the id and new name', async () => {
@@ -627,4 +678,42 @@ test('circle detail shows an error when the timeline fails to load', async () =>
   fireEvent.click(screen.getByRole('button', { name: 'Circle details' }));
 
   expect(await screen.findByRole('alert')).toBeInTheDocument();
+});
+
+// Standing shares (ADR 0042, #2292): circles (not tags) can be shared; the grant
+// names the circle's id.
+test('a circle offers a standing share; tags do not', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  const posts: unknown[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/share-grants') && init?.method === 'POST') {
+        posts.push(JSON.parse(init.body as string));
+        return { ok: true, json: async () => ({ share_grant: { id: 'g1', to_username: 'bob' } }) };
+      }
+      if (url.includes('/users/directory'))
+        return { ok: true, json: async () => ({ users: [{ id: 2, username: 'bob' }] }) };
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  renderPage();
+  await screen.findByText('Book Club');
+  fireEvent.click(screen.getByRole('button', { name: 'Share circle Book Club' }));
+  expect(await screen.findByRole('dialog', { name: 'Share this circle' })).toBeInTheDocument();
+  const input = await screen.findByRole('combobox', { name: 'Recipient' });
+  fireEvent.keyDown(input, { key: 'ArrowDown' });
+  fireEvent.click(await screen.findByRole('option', { name: 'bob' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+  await waitFor(() => expect(posts).toHaveLength(1));
+  expect(posts[0]).toEqual({ to_user_id: 2, entity_type: 'circle', entity_id: 'c1' });
+  vi.unstubAllGlobals();
+});
+
+test('the tags tab has no share action', async () => {
+  listCirclesMock.mockResolvedValue(circlesResponse());
+  listTagsMock.mockResolvedValue(tagsResponse());
+  renderPage(['/circles-tags?tab=tags']);
+  await screen.findByText('VIP');
+  expect(screen.queryByRole('button', { name: /^Share circle/ })).not.toBeInTheDocument();
 });

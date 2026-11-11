@@ -46,6 +46,7 @@ import {
   valuesToCardLinks,
   valuesToCardPhones,
 } from '../api/contacts';
+import { type ContactEntityLink, isProjectedElementId } from '../api/entities';
 import type { FieldDefinition } from '../api/fieldDefinitions';
 import { type ContactFieldKey, GENDER_OPTIONS, resolveEnabledFields } from '../contactFields';
 import { hasVisibleFields } from '../contactSectionVisibility';
@@ -75,6 +76,7 @@ import KeywordsEditor from './KeywordsEditor';
 import MultiValueField from './MultiValueField';
 import OnlineServiceEditor from './OnlineServiceEditor';
 import PreferredLanguagesEditor from './PreferredLanguagesEditor';
+import ProjectedFromChip from './ProjectedFromChip';
 import RelatedToMembersSection, { hasRelatedToOrMembers } from './RelatedToMembersSection';
 import SpeakToAsEditor from './SpeakToAsEditor';
 
@@ -107,6 +109,10 @@ interface ContactInformationProps {
   fieldDefinitions?: FieldDefinition[];
   fieldValuesByDefinition?: Map<string, unknown>;
   onSaveFieldValue?: (definitionId: string, value: unknown) => Promise<void>;
+  // Issue #2301 (ADR 0043): the contact's entity links. A primary place link is
+  // projected into card.addresses as an `ent-<linkId>` entry; it is shown below
+  // the editable addresses with a "from <entity>" chip and never edited here.
+  entityLinks?: ContactEntityLink[];
 }
 
 const iconSx = { mr: 1, color: 'text.secondary', fontSize: '1.2rem' };
@@ -170,6 +176,7 @@ export default function ContactInformation({
   fieldDefinitions = [],
   fieldValuesByDefinition,
   onSaveFieldValue,
+  entityLinks,
 }: ContactInformationProps) {
   const { t } = useTranslation();
   const { formatBirthday, getBirthdayPlaceholder, calculateAge } = useDateFormat();
@@ -189,6 +196,11 @@ export default function ContactInformation({
   useEffect(() => {
     if (registryFieldsEnabled) void refreshLinkFieldTypes();
   }, [registryFieldsEnabled, refreshLinkFieldTypes]);
+
+  // Split off projected addresses (`ent-` ids) so the editor only ever holds,
+  // and saves, the contact's own.
+  const ownAddresses = (card.addresses ?? []).filter((a) => !isProjectedElementId(a.id));
+  const projectedAddresses = (card.addresses ?? []).filter((a) => isProjectedElementId(a.id));
 
   const birthday = getAnniversaryField(card.anniversaries, 'birth') || '';
 
@@ -847,25 +859,45 @@ export default function ContactInformation({
           )}
 
           {isOn('addresses') && (
-            <EditableArrayField<ContactAddress[]>
-              icon={<HomeIcon sx={iconSx} />}
-              label={t('contactDetail.address')}
-              value={cardAddressesToValues(card.addresses, crm.periods)}
-              cloneValue={cloneValues}
-              renderDisplay={renderAddressList}
-              renderEditor={(draft, setDraft) => (
-                <AddressFields
-                  label={t('contacts.address')}
-                  value={draft}
-                  onChange={setDraft}
-                  contactId={contactId}
-                />
+            <Box>
+              <EditableArrayField<ContactAddress[]>
+                icon={<HomeIcon sx={iconSx} />}
+                label={t('contactDetail.address')}
+                value={cardAddressesToValues(ownAddresses, crm.periods)}
+                cloneValue={cloneValues}
+                renderDisplay={renderAddressList}
+                renderEditor={(draft, setDraft) => (
+                  <AddressFields
+                    label={t('contacts.address')}
+                    value={draft}
+                    onChange={setDraft}
+                    contactId={contactId}
+                  />
+                )}
+                onSave={(draft) => {
+                  const { addresses, periods } = addressesToCardAndPeriods(draft);
+                  return onUpdateCard({ addresses }, { periods });
+                }}
+              />
+              {projectedAddresses.length > 0 && (
+                <Stack spacing={0.5} sx={{ pl: 4, mt: 0.5 }}>
+                  {cardAddressesToValues(projectedAddresses).map((a, i) => (
+                    <Box
+                      key={projectedAddresses[i].id}
+                      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
+                    >
+                      <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+                        {formatAddressLine(a)}
+                      </Typography>
+                      <ProjectedFromChip
+                        elementId={projectedAddresses[i].id}
+                        entityLinks={entityLinks}
+                      />
+                    </Box>
+                  ))}
+                </Stack>
               )}
-              onSave={(draft) => {
-                const { addresses, periods } = addressesToCardAndPeriods(draft);
-                return onUpdateCard({ addresses }, { periods });
-              }}
-            />
+            </Box>
           )}
 
           {isOn('emails') && (

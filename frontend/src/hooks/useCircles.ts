@@ -8,6 +8,7 @@ import {
   listCircles,
   updateCircle,
 } from '../api/circles';
+import { compareCirclesByName, isDuplicateCircleNameError } from '../utils/circleName';
 import { type ErrorNotifier, handleError, handleFetchError } from '../utils/errorHandler';
 
 export function useCircles(notifier?: ErrorNotifier) {
@@ -26,7 +27,7 @@ export function useCircles(notifier?: ErrorNotifier) {
       setError(null);
       try {
         const response = await listCircles({ limit: 200, include_members: true });
-        setCircles(response.circles || []);
+        setCircles([...(response.circles || [])].sort(compareCirclesByName));
         setMembers(response.members || []);
       } catch (err) {
         setError(handleFetchError(err, 'fetching circles'));
@@ -70,9 +71,21 @@ export function useCircles(notifier?: ErrorNotifier) {
       try {
         // Name-only calls keep the one-argument shape older callers/tests expect.
         const resp = metadata ? await createCircle(name, metadata) : await createCircle(name);
+        // Insert in name order now so the new circle is in place before (or
+        // without) any reload.
+        const created = resp.circle;
+        if (created?.id) {
+          setCircles((prev) =>
+            [...prev.filter((c) => c.id !== created.id), created].sort(compareCirclesByName),
+          );
+        }
         return resp.circle;
       } catch (err) {
-        handleError(err, { operation: 'creating circle' }, notifier);
+        // A duplicate name is shown inline by the create/rename UI (#2362), so
+        // it gets no snackbar on top.
+        if (!isDuplicateCircleNameError(err)) {
+          handleError(err, { operation: 'creating circle' }, notifier);
+        }
         throw err;
       }
     },
@@ -89,7 +102,9 @@ export function useCircles(notifier?: ErrorNotifier) {
         // and useHouseholds' handleUpdate.
         await refresh();
       } catch (err) {
-        handleError(err, { operation: 'updating circle' }, notifier);
+        if (!isDuplicateCircleNameError(err)) {
+          handleError(err, { operation: 'updating circle' }, notifier);
+        }
         throw err;
       }
     },

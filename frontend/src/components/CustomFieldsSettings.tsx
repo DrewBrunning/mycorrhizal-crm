@@ -29,6 +29,7 @@ import type { FieldDefinition, FieldDefinitionInput } from '../api/fieldDefiniti
 import { useSnackbar } from '../context/SnackbarContext';
 import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
 import { distinctGroups } from '../utils/customFieldGroups';
+import { ENTITY_KIND_KEYS } from '../utils/entityLabels';
 import FieldDefinitionDialog from './FieldDefinitionDialog';
 import LoadError from './LoadError';
 
@@ -183,6 +184,14 @@ export default function CustomFieldsSettings() {
                           primary={def.label}
                           secondary={
                             <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
+                              {def.target && def.target !== 'contact' && (
+                                <Chip
+                                  label={t(ENTITY_KIND_KEYS[def.target])}
+                                  size="small"
+                                  color="primary"
+                                  variant="outlined"
+                                />
+                              )}
                               <Chip
                                 label={t(`customFields.types.${def.type}`)}
                                 size="small"
