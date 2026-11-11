@@ -21701,6 +21701,11 @@
           "name": "revision",
           "type": "integer",
           "required": true
+        },
+        {
+          "name": "uuid",
+          "type": "string",
+          "required": false
         }
       ]
     },

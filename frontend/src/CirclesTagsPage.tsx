@@ -6,6 +6,7 @@ import { getCardDAVSyncScope } from './api/carddavSyncScope';
 import CircleDetailDialog from './components/CircleDetailDialog';
 import CircleTagEntityList from './components/CircleTagEntityList';
 import LoadError from './components/LoadError';
+import StandingShareDialog from './components/StandingShareDialog';
 import { useSnackbar } from './context/SnackbarContext';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -50,6 +51,8 @@ export default function CirclesTagsPage() {
   } = useTags({ showError });
 
   const [openCircleId, setOpenCircleId] = useState<string | null>(null);
+  // Standing share (ADR 0042, #2292): the circle whose Share dialog is open.
+  const [sharingCircleId, setSharingCircleId] = useState<string | null>(null);
   const openCircle = circles.find((c) => c.id === openCircleId) ?? null;
 
   const circleItems = useMemo(() => {
@@ -144,6 +147,7 @@ export default function CirclesTagsPage() {
               showSuccess(t('circlesTags.circleRenamed'));
             }}
             onOpen={setOpenCircleId}
+            onShare={(item) => setSharingCircleId(item.id)}
             onDelete={async (id) => {
               await handleDeleteCircle(id);
               showSuccess(t('circlesTags.circleDeleted'));
@@ -180,6 +184,17 @@ export default function CirclesTagsPage() {
             }}
           />
         </>
+      )}
+      {sharingCircleId && (
+        <StandingShareDialog
+          open
+          onClose={() => setSharingCircleId(null)}
+          entityType="circle"
+          entityId={sharingCircleId}
+          onShared={(grant) =>
+            showSuccess(t('standingShares.form.created', { username: grant.to_username }))
+          }
+        />
       )}
       <CircleDetailDialog
         key={openCircleId ?? 'closed'}

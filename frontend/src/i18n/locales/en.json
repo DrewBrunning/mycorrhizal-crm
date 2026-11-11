@@ -78,7 +78,11 @@
     "systemStatus": "System status",
     "mainLabel": "Main navigation",
     "skipToContent": "Skip to content",
-    "entities": "Entities"
+    "entities": "Entities",
+    "sharedWithMe": "Shared with me",
+    "sharedByMe": "Shared by me",
+    "sharedPendingBadge_one": "{{count}} share waiting for your answer",
+    "sharedPendingBadge_other": "{{count}} shares waiting for your answer"
   },
   "household": {
     "title": "Households",
@@ -4406,6 +4410,149 @@
         "name_invalid": "{{name}}: the name is not valid.",
         "core_invalid": "{{name}}: its details are not valid."
       }
+    }
+  },
+  "standingShares": {
+    "entityTypes": {
+      "contact": "Contact",
+      "note": "Note",
+      "activity": "Activity",
+      "circle": "Circle"
+    },
+    "status": {
+      "pending": "Pending",
+      "active": "Active",
+      "declined": "Declined",
+      "revoked": "Revoked",
+      "expired": "Expired"
+    },
+    "mode": {
+      "label": "Kind of share",
+      "oneTime": "One-time copy",
+      "standing": "Standing share"
+    },
+    "dialogTitle": {
+      "note": "Share this note",
+      "activity": "Share this activity",
+      "circle": "Share this circle"
+    },
+    "shareNote": "Share this note",
+    "shareActivity": "Share this activity",
+    "shareCircle": "Share circle {{name}}",
+    "form": {
+      "description": "A standing share gives one person on this instance read-only, live access. They must accept it before they can see anything, and you can revoke it at any time.",
+      "liveNotice": "It is live: anything you add later to a shared section, such as a new email address, becomes visible to them right away.",
+      "noRecallNotice": "Revoking stops future reads. It does not recall anything they have already seen or copied.",
+      "privateNotice": "Private and secret items are never shared, even in a section you choose.",
+      "recipient": "Recipient",
+      "noRecipients": "There are no other users on this instance.",
+      "sections": "Sections to share",
+      "sectionsHint": "Name and nickname are always included. Choose at least one section; nothing is shared by default.",
+      "expires": "Expires on (optional)",
+      "entityNotice": {
+        "note": "They will see this note's text and date, not the contact it is linked to.",
+        "activity": "They will see the title, description, location, dates and type, not the participants.",
+        "circle": "They will see the circle's name, description, colour and the names of its current members. People you add to the circle later become visible to them right away."
+      },
+      "previewTitle": "What they will see",
+      "previewHint": "Based on your current data, with private and secret items left out.",
+      "previewLoading": "Loading preview…",
+      "previewError": "Could not load the preview.",
+      "previewEmpty": "Nothing in these sections is shared right now, only the name.",
+      "submit": "Share",
+      "submitting": "Sharing…",
+      "created": "Standing share sent to {{username}}. They need to accept it before they can see anything."
+    },
+    "withMe": {
+      "title": "Shared with me",
+      "description": "People on this instance who share things with you. Shares are read-only and live: you see the current version until the share ends.",
+      "pendingHeading": "Waiting for your answer",
+      "activeHeading": "Shared with you",
+      "empty": "Nobody is sharing anything with you.",
+      "from": "From {{username}}",
+      "pendingNote": "You can see the content once you accept.",
+      "sections": "Sections: {{sections}}",
+      "expires": "Ends {{date}}",
+      "accept": "Accept",
+      "decline": "Decline",
+      "view": "View",
+      "leave": "Stop receiving",
+      "block": "Block sender",
+      "acceptLabel": "Accept {{label}} from {{username}}",
+      "declineLabel": "Decline {{label}} from {{username}}",
+      "viewLabel": "View {{label}} from {{username}}",
+      "leaveLabel": "Stop receiving {{label}} from {{username}}",
+      "blockLabel": "Block {{username}}",
+      "leaveTitle": "Stop receiving this share?",
+      "leaveBody": "You will lose access to {{label}} from {{username}}. They would have to share it with you again.",
+      "blockTitle": "Block this sender?",
+      "blockBody": "This declines everything {{username}} has pending with you and ends everything they currently share with you. They are not told that you blocked them. You can unblock them below.",
+      "blockConfirm": "Block {{username}}",
+      "accepted": "Accepted {{label}} from {{username}}.",
+      "declined": "Declined {{label}} from {{username}}.",
+      "left": "Stopped receiving {{label}} from {{username}}.",
+      "blocked": "Blocked {{username}}.",
+      "blockedHeading": "Blocked senders",
+      "blockedEmpty": "You have not blocked anyone.",
+      "blockedHelp": "Unblocking lets someone send you new shares again. Anything they sent while blocked is not restored.",
+      "unblock": "Unblock",
+      "unblockLabel": "Unblock {{username}}",
+      "unblocked": "Unblocked {{username}}.",
+      "actionFailed": "That did not work: {{message}}"
+    },
+    "content": {
+      "title": "{{label}} from {{username}}",
+      "readOnly": "Read-only. This is a live view of what {{username}} currently shares. It can change or end at any time.",
+      "unavailable": "This share is no longer available.",
+      "noDetails": "There are no details in the shared sections.",
+      "noName": "Unnamed contact",
+      "date": "Date",
+      "endDate": "Ends",
+      "location": "Location",
+      "type": "Type",
+      "description": "Description",
+      "members_one": "{{count}} member",
+      "members_other": "{{count}} members",
+      "noMembers": "This circle has no members right now.",
+      "membersTruncated_one": "Showing the first {{shown}} of {{count}} members.",
+      "membersTruncated_other": "Showing the first {{shown}} of {{count}} members."
+    },
+    "byMe": {
+      "title": "Shared by me",
+      "description": "Standing shares you have sent. Revoking stops future reads; it does not recall what someone has already seen or copied.",
+      "empty": "You have not shared anything with a standing share.",
+      "to": "To {{username}}",
+      "expires": "Expires {{date}}",
+      "noExpiry": "No expiry",
+      "sections": "Sections: {{sections}}",
+      "members_one": "Shares {{count}} person right now",
+      "members_other": "Shares {{count}} people right now",
+      "revokedReason": {
+        "owner_revoked": "You revoked it",
+        "entity_deleted": "The shared item was deleted",
+        "recipient_deleted": "The recipient's account was removed"
+      },
+      "revoke": "Revoke",
+      "revokeLabel": "Revoke {{label}} for {{username}}",
+      "revokeTitle": "Revoke this share?",
+      "revokeBody": "{{username}} loses access on their next request. This does not recall anything they have already seen or copied. To share again you will need to create a new share.",
+      "revoked": "Revoked {{label}} for {{username}}.",
+      "reconfirmNeeded": "Hidden from {{username}} until you confirm: {{sections}}. An item in a section became private or secret, so the whole section stays hidden until you review it.",
+      "reconfirm": "Review and re-confirm",
+      "reconfirmLabel": "Re-confirm {{label}} for {{username}}",
+      "reconfirmTitle": "Share these sections again?",
+      "reconfirmBody": "Check what these sections contain now on the contact page. Once you confirm, {{username}} sees them again: {{sections}}. Items marked private or secret are still never shared.",
+      "reconfirmConfirm": "Confirm",
+      "reconfirmed": "Re-confirmed {{label}} for {{username}}.",
+      "edit": "Edit",
+      "editLabel": "Edit {{label}} for {{username}}",
+      "editTitle": "Edit share",
+      "editNarrowOnly": "You can change the expiry or remove sections. To share more, create a new share.",
+      "expiresField": "Expires on (optional)",
+      "save": "Save",
+      "saved": "Updated the share for {{username}}.",
+      "conflict": "This share was changed elsewhere. The list has been reloaded; try again.",
+      "actionFailed": "That did not work: {{message}}"
     }
   }
 }
