@@ -3,6 +3,7 @@
 // contractConformance.ts).
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 import type { ContactSummaryDTO } from './contacts';
+import type { Entity } from './entities';
 
 export interface TrashedContact {
   contact: ContactSummaryDTO;
@@ -18,6 +19,33 @@ export interface TrashList {
   limit: number;
   // DELETED_RETENTION_DAYS; 0 means trashed contacts are kept forever.
   retention_days: number;
+}
+
+// Entity trash (issue #2446). Restore reuses restoreEntity (POST
+// /entities/{id}/restore) from ./entities: one restore code path.
+export interface TrashedEntity {
+  entity: Entity;
+  deleted_at: string;
+  // When the scheduled purge hard-deletes the entity; null when retention is 0.
+  purge_at: string | null;
+  // Set when the entity is a merge loser: the survivor's id and name.
+  merged_into?: string;
+  merged_into_name?: string;
+}
+
+export interface TrashEntityList {
+  entities: TrashedEntity[];
+  total: number;
+  page: number;
+  limit: number;
+  retention_days: number;
+}
+
+// The slice of POST /entities/{id}/restore the Trash page reads.
+export interface TrashEntityRestoreResult {
+  same_name_live: boolean;
+  merged_into?: string;
+  links_revived: number;
 }
 
 export interface TrashRestoreSkip {
@@ -45,6 +73,27 @@ export async function getTrashedContacts(
   const data: Partial<TrashList> = await response.json();
   return {
     contacts: data.contacts ?? [],
+    total: data.total ?? 0,
+    page: data.page ?? 1,
+    limit: data.limit ?? 25,
+    retention_days: data.retention_days ?? 0,
+  };
+}
+
+export async function getTrashedEntities(
+  params: { page?: number; limit?: number } = {},
+): Promise<TrashEntityList> {
+  const query = new URLSearchParams({
+    page: (params.page ?? 1).toString(),
+    limit: (params.limit ?? 25).toString(),
+  });
+  const response = await apiFetch(`${API_BASE_URL}/trash/entities?${query.toString()}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const data: Partial<TrashEntityList> = await response.json();
+  return {
+    entities: data.entities ?? [],
     total: data.total ?? 0,
     page: data.page ?? 1,
     limit: data.limit ?? 25,
@@ -81,4 +130,20 @@ export async function emptyTrash(): Promise<number> {
   if (!response.ok) throw await parseErrorResponse(response);
   const data: { purged?: number } = await response.json();
   return data.purged ?? 0;
+}
+
+// Restores a trashed entity through the existing entity restore route (one
+// backend restore path); there is no separate /trash/entities restore.
+export async function restoreTrashedEntity(id: string): Promise<TrashEntityRestoreResult> {
+  const response = await apiFetch(`${API_BASE_URL}/entities/${encodeURIComponent(id)}/restore`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+  const data: Partial<TrashEntityRestoreResult> = await response.json();
+  return {
+    same_name_live: data.same_name_live ?? false,
+    merged_into: data.merged_into,
+    links_revived: data.links_revived ?? 0,
+  };
 }

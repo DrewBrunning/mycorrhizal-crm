@@ -9,6 +9,8 @@ import {
 
 export interface Note {
   ID: number;
+  // Stable portable identity (issue #2292): what a standing share names. Read-only.
+  uuid?: string;
   content: string;
   date: string;
   contact_id?: number | null; // *uint without omitempty: null for an unfiled note

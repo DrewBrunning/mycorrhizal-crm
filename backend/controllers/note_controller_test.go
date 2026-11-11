@@ -999,3 +999,38 @@ func TestCreateNotePreservesMarkdownSource(t *testing.T) {
 	require.NoError(t, db.Where("user_id = ?", user.ID).Last(&stored).Error)
 	assert.Equal(t, source, stored.Content)
 }
+
+// Issue #2292: the web Share dialog needs a note's stable uuid to name it in a
+// standing share (ADR 0042 decision 4: entity_id is the portable identity, not
+// the integer PK). It is read-only on the wire; NoteInput never binds it.
+func TestNoteResponsesExposeUUID(t *testing.T) {
+	db, router := setupRouter(t)
+
+	var user models.User
+	db.First(&user)
+
+	router.GET("/notes/:id", GetNote)
+	router.GET("/notes", GetUnassignedNotes)
+
+	note := models.Note{UserID: user.ID, Content: "Shareable note"}
+	require.NoError(t, db.Create(&note).Error)
+	require.NotEmpty(t, note.UUID)
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/notes/"+strconv.Itoa(int(note.ID)), nil)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	var single map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &single))
+	assert.Equal(t, note.UUID, single["uuid"])
+
+	w = httptest.NewRecorder()
+	req, _ = http.NewRequest("GET", "/notes", nil)
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+	var list map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &list))
+	items := list["notes"].([]any)
+	require.Len(t, items, 1)
+	assert.Equal(t, note.UUID, items[0].(map[string]any)["uuid"])
+}

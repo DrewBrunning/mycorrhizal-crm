@@ -50,6 +50,8 @@ extend-exclude = [
   "android/core/ui/src/main/res/values-es/strings.xml",
   "android/core/ui/src/main/res/values-fr/strings.xml",
   "android/core/ui/src/main/res/values-it/strings.xml",
+  # Asserts German strings verbatim (issue #2379).
+  "android/app/src/androidTest/kotlin/com/mycorrhizal/crm/e2e/LocalizedErrorE2eTest.kt",
 ]
 
 [default]

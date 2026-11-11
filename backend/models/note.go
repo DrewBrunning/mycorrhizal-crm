@@ -24,9 +24,10 @@ type Note struct {
 	// UUID is the stable portable identity the account bundle carries for a
 	// note (issue #1260, ADR 0028 Decision 3). Generated in BeforeCreate when
 	// empty; migration 000067 adds the column and backfills every existing
-	// row. Kept off the existing note wire shape (json:"-") — the bundle DTO
-	// reads the field directly.
-	UUID string `gorm:"column:uuid;index" json:"-"`
+	// row. Exposed read-only on the wire (issue #2292): a standing share names
+	// a note by this identity, not by its integer PK (ADR 0042 decision 4), so
+	// the web Share dialog needs it. Requests bind NoteInput, never this struct.
+	UUID string `gorm:"column:uuid;index" json:"uuid"`
 
 	// Revision is the monotonic per-row write counter (issue #591, CON-01a —
 	// docs/adrs/0006-revision-token-schema.md): starts at 1 on create,
