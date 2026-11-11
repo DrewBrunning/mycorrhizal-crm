@@ -383,8 +383,8 @@ fun FieldDefinitionFormContent(
                         readOnly = true,
                         label = {
                             Text(
-                            stringResource(R.string.settings_custom_fields_projection)
-                        )
+                                stringResource(R.string.settings_custom_fields_projection)
+                            )
                         },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(
@@ -433,8 +433,8 @@ fun FieldDefinitionFormContent(
                         onValueChange = onVcardNameChange,
                         label = {
                             Text(
-                            stringResource(R.string.settings_custom_fields_vcard_name)
-                        )
+                                stringResource(R.string.settings_custom_fields_vcard_name)
+                            )
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth()
