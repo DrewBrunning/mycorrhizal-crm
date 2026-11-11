@@ -1385,7 +1385,7 @@
     "src/components/OccasionEventAttendeesDialog.tsx": {
       "lines": 100,
       "linesTotal": 86,
-      "branches": 84.78,
+      "branches": 97.82,
       "branchesTotal": 46
     },
     "src/components/OccasionEventDialog.tsx": {
