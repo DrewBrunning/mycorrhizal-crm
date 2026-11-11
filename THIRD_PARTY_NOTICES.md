@@ -37,18 +37,18 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `github.com/emersion/go-vcard` | `v0.1.0` | MIT | https://pkg.go.dev/github.com/emersion/go-vcard@v0.1.0 |
 | `github.com/emersion/go-webdav` | `v0.7.0` | MIT | https://pkg.go.dev/github.com/emersion/go-webdav@v0.7.0 |
 | `github.com/fxamacker/cbor/v2` | `v2.10.0` | MIT | https://pkg.go.dev/github.com/fxamacker/cbor/v2@v2.10.0 |
-| `github.com/gabriel-vasile/mimetype` | `v1.4.15` | MIT | https://pkg.go.dev/github.com/gabriel-vasile/mimetype@v1.4.15 |
+| `github.com/gabriel-vasile/mimetype` | `v1.4.16` | MIT | https://pkg.go.dev/github.com/gabriel-vasile/mimetype@v1.4.16 |
 | `github.com/gen2brain/heic` | `v0.7.2` | MIT | https://pkg.go.dev/github.com/gen2brain/heic@v0.7.2 |
-| `github.com/gin-contrib/cors` | `v1.7.9` | MIT | https://pkg.go.dev/github.com/gin-contrib/cors@v1.7.9 |
+| `github.com/gin-contrib/cors` | `v1.7.10` | MIT | https://pkg.go.dev/github.com/gin-contrib/cors@v1.7.10 |
 | `github.com/gin-contrib/sse` | `v1.1.1` | MIT | https://pkg.go.dev/github.com/gin-contrib/sse@v1.1.1 |
 | `github.com/gin-gonic/gin` | `v1.12.0` | MIT | https://pkg.go.dev/github.com/gin-gonic/gin@v1.12.0 |
 | `github.com/glebarez/go-sqlite` | `v1.23.0` | BSD-3-Clause | https://pkg.go.dev/github.com/glebarez/go-sqlite@v1.23.0 |
 | `github.com/glebarez/sqlite` | `v1.11.0` | MIT | https://pkg.go.dev/github.com/glebarez/sqlite@v1.11.0 |
 | `github.com/go-co-op/gocron` | `v1.37.0` | MIT | https://pkg.go.dev/github.com/go-co-op/gocron@v1.37.0 |
 | `github.com/go-jose/go-jose/v4` | `v4.1.6` | Apache-2.0 | https://pkg.go.dev/github.com/go-jose/go-jose/v4@v4.1.6 |
-| `github.com/go-playground/locales` | `v0.14.1` | MIT | https://pkg.go.dev/github.com/go-playground/locales@v0.14.1 |
-| `github.com/go-playground/universal-translator` | `v0.18.1` | MIT | https://pkg.go.dev/github.com/go-playground/universal-translator@v0.18.1 |
-| `github.com/go-playground/validator/v10` | `v10.30.5` | MIT | https://pkg.go.dev/github.com/go-playground/validator/v10@v10.30.5 |
+| `github.com/go-playground/locales` | `v0.14.2` | MIT | https://pkg.go.dev/github.com/go-playground/locales@v0.14.2 |
+| `github.com/go-playground/universal-translator` | `v0.18.2` | MIT | https://pkg.go.dev/github.com/go-playground/universal-translator@v0.18.2 |
+| `github.com/go-playground/validator/v10` | `v10.30.6` | MIT | https://pkg.go.dev/github.com/go-playground/validator/v10@v10.30.6 |
 | `github.com/go-viper/mapstructure/v2` | `v2.5.0` | MIT | https://pkg.go.dev/github.com/go-viper/mapstructure/v2@v2.5.0 |
 | `github.com/go-webauthn/webauthn` | `v0.18.2` | BSD-3-Clause | https://pkg.go.dev/github.com/go-webauthn/webauthn@v0.18.2 |
 | `github.com/go-webauthn/x` | `v0.3.1` | BSD-3-Clause | https://pkg.go.dev/github.com/go-webauthn/x@v0.3.1 |
@@ -98,7 +98,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `modernc.org/libc` | `v1.79.0` | MIT, BSD-3-Clause | https://pkg.go.dev/modernc.org/libc@v1.79.0 |
 | `modernc.org/mathutil` | `v1.7.1` | BSD-2-Clause | https://pkg.go.dev/modernc.org/mathutil@v1.7.1 |
 | `modernc.org/memory` | `v1.12.1` | BSD-3-Clause | https://pkg.go.dev/modernc.org/memory@v1.12.1 |
-| `modernc.org/sqlite` | `v1.61.0` | Apache-2.0, MIT, BSD-3-Clause, GPL-2.0-or-later, GPL-3.0-or-later | https://pkg.go.dev/modernc.org/sqlite@v1.61.0 |
+| `modernc.org/sqlite` | `v1.61.1` | Apache-2.0, MIT, BSD-3-Clause, GPL-2.0-or-later, GPL-3.0-or-later | https://pkg.go.dev/modernc.org/sqlite@v1.61.1 |
 
 ## npm packages
 
