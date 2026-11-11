@@ -51,6 +51,7 @@ func TestMigrationsAddStorageSamples(t *testing.T) {
 	// migrations sit on top — so roll those back first, then 000043's own down
 	// migration.
 	require.NoError(t, MigrateDown(dbPath)) // 000094_entity_search_fts
+	require.NoError(t, MigrateDown(dbPath)) // 000093_import_run_issues
 	require.NoError(t, MigrateDown(dbPath)) // 000092_share_grant_lifecycle
 	require.NoError(t, MigrateDown(dbPath)) // 000091_reusable_entities
 	require.NoError(t, MigrateDown(dbPath)) // rolls back 000090_share_grants

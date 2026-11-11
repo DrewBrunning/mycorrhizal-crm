@@ -522,6 +522,7 @@ func (m *MeerkatImportManager) runImport(ctx context.Context, db *gorm.DB, s *me
 		Updated:        result.Updated,
 		Skipped:        result.Skipped,
 		ErrorCount:     len(result.Errors),
+		Issues:         result.Issues,
 	})
 
 	tasks := m.photoTasks(db, s, plan, refToID, log)

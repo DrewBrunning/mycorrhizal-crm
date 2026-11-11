@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"mycorrhizal/internal/dbtest"
@@ -223,4 +224,85 @@ func TestConfirm_HistoryWriteFailure_DoesNotFailTheImport(t *testing.T) {
 	var contacts int64
 	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&contacts).Error)
 	assert.Equal(t, int64(1), contacts, "the contact still persisted")
+}
+
+// Issue #2463: the per-row issues of a confirmed import are persisted with the
+// run (reason + row reference only; email and phone are never stored).
+
+func TestConfirm_CSV_PersistsRowIssuesWithoutEmailOrPhone(t *testing.T) {
+	db := dbtest.New(t)
+	user := newImportHistoryUser(t, db, "csv-issues")
+	m := NewImportSessionManager()
+
+	headers := []string{"First Name", "Last Name", "Email"}
+	rows := [][]string{{"Alice", "Smith", "alice@example.com"}, {"Bob", "Jones", "bob@example.com"}}
+	id := m.CreateCSVSession(user.ID, headers, rows)
+	_, appErr := m.PreviewCSV(db, user.ID, models.ImportPreviewRequest{
+		SessionID: id,
+		Mappings: []models.ColumnMapping{
+			{CSVColumn: "First Name", ContactField: "firstname"},
+			{CSVColumn: "Last Name", ContactField: "lastname"},
+			{CSVColumn: "Email", ContactField: "email"},
+		},
+	})
+	require.Nil(t, appErr)
+
+	result, appErr := m.Confirm(db, user.ID, models.ImportConfirmRequest{
+		SessionID: id,
+		Actions: []models.RowImportAction{
+			{RowIndex: 0, Action: "add"},
+			{RowIndex: 1, Action: "skip"},
+		},
+	}, testImportLogger())
+	require.Nil(t, appErr)
+	require.Len(t, result.Issues, 1)
+	require.NotEmpty(t, result.Issues[0].Email, "the confirm response still carries the email")
+
+	runs := importRunsFor(t, db, user.ID)
+	require.Len(t, runs, 1)
+	assert.Equal(t, 1, runs[0].IssueCount)
+
+	var raw string
+	require.NoError(t, db.Raw("SELECT issues FROM import_runs WHERE id = ?", runs[0].ID).Scan(&raw).Error)
+	var stored []models.ImportRowIssue
+	require.NoError(t, json.Unmarshal([]byte(raw), &stored))
+	require.Len(t, stored, 1)
+	assert.Equal(t, result.Issues[0].Row, stored[0].Row)
+	assert.Equal(t, result.Issues[0].Name, stored[0].Name)
+	assert.Equal(t, "skipped", stored[0].Status)
+	assert.Equal(t, result.Issues[0].Reason, stored[0].Reason)
+	assert.Empty(t, stored[0].Email, "email must not be persisted")
+	assert.Empty(t, stored[0].Phone, "phone must not be persisted")
+	assert.NotContains(t, raw, "example.com")
+}
+
+func TestRecordImportRun_CapsStoredIssues(t *testing.T) {
+	db := dbtest.New(t)
+	user := newImportHistoryUser(t, db, "cap-issues")
+	issues := make([]models.ImportRowIssue, models.MaxImportRunIssues+25)
+	for i := range issues {
+		issues[i] = models.ImportRowIssue{Row: i + 1, Name: "n", Status: "skipped", Reason: "r"}
+	}
+	models.RecordImportRun(context.Background(), db, models.ImportRun{
+		UserID: user.ID, Format: models.ImportFormatCSV, Issues: issues,
+	})
+	runs := importRunsFor(t, db, user.ID)
+	require.Len(t, runs, 1)
+	assert.Equal(t, models.MaxImportRunIssues, runs[0].IssueCount)
+	var stored []models.ImportRowIssue
+	require.NoError(t, json.Unmarshal([]byte(runs[0].IssuesJSON), &stored))
+	assert.Len(t, stored, models.MaxImportRunIssues)
+	assert.Equal(t, 1, stored[0].Row, "the first issues are kept")
+}
+
+func TestSourceImportResultFromReport_MapsSkippedAndInvalidIssues(t *testing.T) {
+	report := &ImportReport{Issues: []ImportIssue{
+		{Record: "contact 7 (Jane Doe)", Field: "contact", Category: ImportIssueCategorySkipped, Message: "excluded in the import review step"},
+		{Record: "contact 9 (Bob)", Field: "email", Category: ImportIssueCategoryInvalid, Message: "not an address"},
+		{Record: "contact 9 (Bob)", Field: "birthday", Category: ImportIssueCategoryLossy, Message: "truncated"},
+	}}
+	got := sourceImportResultFromReport(report, 3)
+	require.Len(t, got.Issues, 2, "only skipped and invalid issues are row issues")
+	assert.Equal(t, models.ImportRowIssue{Row: 1, Name: "contact 7 (Jane Doe)", Status: "skipped", Reason: "excluded in the import review step"}, got.Issues[0])
+	assert.Equal(t, models.ImportRowIssue{Row: 2, Name: "contact 9 (Bob)", Status: "failed", Reason: "email: not an address"}, got.Issues[1])
 }

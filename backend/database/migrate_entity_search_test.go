@@ -36,7 +36,7 @@ func TestMigrationEntitySearchFTS(t *testing.T) {
 	defer sqlDB.Close()
 	m, err := newMigrator(sqlDB)
 	require.NoError(t, err)
-	require.NoError(t, m.Migrate(92))
+	require.NoError(t, m.Migrate(93))
 
 	_, err = sqlDB.Exec("INSERT INTO users (created_at, updated_at, username, password, email) VALUES (datetime('now'), datetime('now'), 'es', 'x', 'es@example.com')")
 	require.NoError(t, err)

@@ -167,6 +167,7 @@ func (m *ImportSessionManager) persistImportRun(db *gorm.DB, userID uint, sd *im
 		Updated:        result.Updated,
 		Skipped:        result.Skipped,
 		ErrorCount:     len(result.Errors),
+		Issues:         result.Issues,
 	})
 }
 

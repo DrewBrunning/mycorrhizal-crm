@@ -404,6 +404,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/contacts/import/jscontact/upload": {class: classProtected},
 		"POST /api/v1/contacts/import/records":          {class: classProtected},
 		"GET /api/v1/contacts/import/history":           {class: classProtected},
+		"GET /api/v1/contacts/import/history/:id":       {class: classProtected},
 		"POST /api/v1/contacts/import/monica/connect":   {class: classProtected},
 		"POST /api/v1/contacts/import/monica/fetch":     {class: classProtected},
 		"GET /api/v1/contacts/import/monica/status":     {class: classProtected},

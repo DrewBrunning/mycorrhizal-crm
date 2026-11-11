@@ -47,6 +47,7 @@ func TestMigrationsAddNoteImages(t *testing.T) {
 
 	require.NoError(t, sqlDB.Close())
 	require.NoError(t, MigrateDown(dbPath)) // 000094_entity_search_fts
+	require.NoError(t, MigrateDown(dbPath)) // 000093_import_run_issues
 	require.NoError(t, MigrateDown(dbPath)) // 000092_share_grant_lifecycle
 	require.NoError(t, MigrateDown(dbPath)) // 000091_reusable_entities
 	require.NoError(t, MigrateDown(dbPath)) // 000090_share_grants
