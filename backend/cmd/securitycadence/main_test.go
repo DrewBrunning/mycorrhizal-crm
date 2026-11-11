@@ -297,3 +297,51 @@ func TestRotationIssuesScriptIsWired(t *testing.T) {
 		t.Errorf("security-cadence.yml must run rotation-issues.sh with issues: write")
 	}
 }
+
+func TestMainExitFlags(t *testing.T) {
+	now := time.Date(2026, 11, 12, 0, 0, 0, 0, time.UTC) // just after the real register's last_done dates
+
+	var out strings.Builder
+	if code := mainExit([]string{"-nope"}, &out, now); code != 2 {
+		t.Errorf("unknown flag: got %d, want 2", code)
+	}
+
+	// Runs against the committed register (the working directory is inside the repo).
+	out.Reset()
+	if code := mainExit([]string{"-json", "-lead-days", "365"}, &out, now); code != 0 {
+		t.Fatalf("-json: got %d, want 0\n%s", code, out.String())
+	}
+	var rows []struct{ ID, Status string }
+	if err := json.Unmarshal([]byte(out.String()), &rows); err != nil {
+		t.Fatalf("-json output is not a JSON array: %v\n%s", err, out.String())
+	}
+	if len(rows) == 0 {
+		t.Fatal("-json printed no entries")
+	}
+	// A 365-day window puts every entry inside the due-soon window.
+	for _, r := range rows {
+		if r.Status != statusDueSoon {
+			t.Errorf("%s status = %q with -lead-days 365, want %q", r.ID, r.Status, statusDueSoon)
+		}
+	}
+
+	out.Reset()
+	if code := mainExit([]string{"-lead-days", "0"}, &out, now); code != 0 || strings.Contains(out.String(), "DUE SOON") {
+		t.Errorf("-lead-days 0 must disable the window: code %d\n%s", code, out.String())
+	}
+}
+
+func TestRunRejectsUnparseableRegister(t *testing.T) {
+	root := writeFixtureTree(t, "no markers here")
+	var out strings.Builder
+	if code := run(&out, root, config{registerPath: registerFile, now: time.Now()}); code != 2 {
+		t.Fatalf("got %d, want 2", code)
+	}
+}
+
+func TestRunMissingRegisterFile(t *testing.T) {
+	var out strings.Builder
+	if code := run(&out, t.TempDir(), config{registerPath: registerFile, now: time.Now()}); code != 2 {
+		t.Fatalf("got %d, want 2", code)
+	}
+}
