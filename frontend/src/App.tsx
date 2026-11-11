@@ -110,8 +110,6 @@ import RouteLoadingFallback from './components/RouteLoadingFallback';
 import SessionExpiredNotice from './components/SessionExpiredNotice';
 import DashboardPage from './DashboardPage';
 import DataSettingsPage from './DataSettingsPage';
-import EntitiesPage from './EntitiesPage';
-import EntityDetailPage from './EntityDetailPage';
 import HouseholdsPage from './HouseholdsPage';
 import LoginPage from './LoginPage';
 import NetworkPage from './NetworkPage';
@@ -148,6 +146,10 @@ import { AuthContext, useAuth } from './context/AuthContext';
 const MapPage = lazy(() => import('./MapPage'));
 const ShareTargetPage = lazy(() => import('./ShareTargetPage'));
 const TrashPage = lazy(() => import('./TrashPage'));
+const EntitiesPage = lazy(() => import('./entityPages').then((m) => ({ default: m.EntitiesPage })));
+const EntityDetailPage = lazy(() =>
+  import('./entityPages').then((m) => ({ default: m.EntityDetailPage })),
+);
 const SearchResultsPage = lazy(() => import('./SearchResultsPage'));
 
 const drawerWidth = 256;

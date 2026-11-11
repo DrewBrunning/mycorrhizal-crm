@@ -9,6 +9,13 @@ import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import i18n from './i18n/config';
 
+// Stub the lazy-load target so these tests exercise only App's wiring to it
+// (#2448), not the entity pages' own data fetching.
+vi.mock('./entityPages', () => ({
+  EntitiesPage: () => <h1>Entities list stub</h1>,
+  EntityDetailPage: () => <h1>Entity detail stub</h1>,
+}));
+
 // Mirrors index.tsx's real provider composition -- App itself doesn't
 // include these, they're only added at the root render call, so any
 // component that reaches into their context (e.g. BrandLogo's
@@ -109,6 +116,19 @@ test('an unknown URL renders the not-found page instead of silently landing on t
   expect(screen.getByRole('link', { name: 'Go to Contacts' })).toHaveAttribute('href', '/contacts');
   expect(screen.getByRole('link', { name: 'Go to Dashboard' })).toHaveAttribute('href', '/');
   expect(document.title).toBe('Page not found · Mycorrhizal CRM');
+});
+
+test.each([
+  ['/entities', 'Entities list stub'],
+  ['/entities/1', 'Entity detail stub'],
+])('%s lazy-loads its page from the shared entityPages chunk', async (path, heading) => {
+  setLoggedInUser(false);
+  window.history.pushState({}, '', path);
+  window.dispatchEvent(new PopStateEvent('popstate'));
+
+  renderApp();
+
+  expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
 });
 
 test('renders app component', () => {

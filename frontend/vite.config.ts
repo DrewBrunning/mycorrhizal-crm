@@ -99,6 +99,12 @@ export default defineConfig({
         // mapped a chunk to bare module names was removed), so match resolved
         // package names against the same groups.
         manualChunks(id) {
+          // #2448: lazy-loading the entity pages (even as one chunk) makes the bundler
+          // hoist the shared core, five locales included, into an anonymous
+          // "errorHandler" chunk over the new-chunk gate. Naming the locales chunk
+          // keeps that core split stable (index drops ~290 KiB gzip); the files are
+          // still loaded eagerly, since i18n initialises synchronously.
+          if (id.includes('/src/i18n/locales/')) return 'locales';
           if (!id.includes('/node_modules/')) return undefined;
           const rest = id.slice(id.indexOf('/node_modules/') + '/node_modules/'.length);
           const pkg = rest.startsWith('@')
