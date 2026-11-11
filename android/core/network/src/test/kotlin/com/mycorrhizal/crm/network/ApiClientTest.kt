@@ -3316,6 +3316,77 @@ class ApiClientTest {
         assertTrue(result.getOrThrow().isEmpty())
     }
 
+    // Issue #2464/#2210: issue_count on the list, and the per-run detail endpoint.
+    @Test
+    fun `getImportHistory parses issue_count and defaults it for older payloads`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """[{"id": 2, "format": "csv", "issue_count": 3}, {"id": 1, "format": "vcf"}]"""
+            )
+        )
+
+        val runs = client.getImportHistory().getOrThrow()
+
+        assertEquals(3, runs[0].issueCount)
+        assertEquals(0, runs[1].issueCount)
+    }
+
+    @Test
+    fun `getImportRun gets the run by id and parses its issues`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"id": 7, "format": "csv", "total_processed": 4, "created": 3, "updated": 0, "skipped": 1, "error_count": 0, "issue_count": 1, "created_at": "2026-09-20T12:00:00Z",
+                "issues": [{"row": 2, "name": "Erin", "email": "", "phone": "", "status": "skipped", "reason": "Invalid email"}]}"""
+            )
+        )
+
+        val result = client.getImportRun(7)
+
+        assertTrue(result.isSuccess)
+        val run = result.getOrThrow()
+        assertEquals(7L, run.id)
+        assertEquals(1, run.issueCount)
+        assertEquals(1, run.issues.size)
+        assertEquals("Invalid email", run.issues[0].reason)
+        assertEquals("skipped", run.issues[0].status)
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/contacts/import/history/7", request.path)
+    }
+
+    @Test
+    fun `getImportRun treats missing issues as empty`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody("""{"id": 7, "format": "csv"}""")
+        )
+
+        assertTrue(client.getImportRun(7).getOrThrow().issues.isEmpty())
+    }
+
+    @Test
+    fun `getImportRun surfaces a 404 as a failure`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody("""{"error": "Import run not found"}""")
+        )
+
+        assertTrue(client.getImportRun(99).isFailure)
+    }
+
+    @Test
+    fun `the source-import status result parses per-row issues`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session_id": "s", "phase": "done", "result": {"created": 1, "skipped": 1,
+                "issues": [{"row": 3, "name": "Ada", "email": "", "phone": "", "status": "skipped", "reason": "dup"}]}}"""
+            )
+        )
+
+        val issues = client.getMeerkatImportStatus("s").getOrThrow().result?.issues
+
+        assertEquals(1, issues?.size)
+        assertEquals("dup", issues?.first()?.reason)
+    }
+
     // --- M12: cadence policies (5 new client methods) ---
 
     @Test

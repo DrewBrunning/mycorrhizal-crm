@@ -2028,11 +2028,6 @@
     <string name="import_permission_rationale">Serve l\'autorizzazione ai contatti per elencare i contatti di questo dispositivo. L\'elenco viene letto solo su questo dispositivo. Durante l\'importazione vengono inviati al tuo server solo i contatti selezionati, e non viene salvato nulla finché non confermi nel passaggio di revisione.</string>
     <string name="import_permission_grant">Concedi accesso</string>
     <string name="import_permission_open_settings">Apri impostazioni</string>
-    <plurals name="import_done">
-        <item quantity="one">%1$d contatto importato.</item>
-        <item quantity="many">%1$d contatti importati.</item>
-        <item quantity="other">%1$d contatti importati.</item>
-    </plurals>
     <string name="import_duplicate">Possibile duplicato di %1$s</string>
 
     <!-- VCF file import (M9) -->
@@ -2157,6 +2152,8 @@
     <!-- Cronologia importazioni (parità web, issue #651 / #834) -->
     <string name="import_history_entry">Cronologia importazioni</string>
     <string name="import_history_title">Cronologia importazioni</string>
+    <string name="import_history_view_report">Visualizza report</string>
+    <string name="import_history_report_title">Report di importazione</string>
     <string name="import_history_empty">Nessuna importazione per ora</string>
     <string name="import_history_col_created">Creati</string>
     <string name="import_history_col_updated">Aggiornati</string>

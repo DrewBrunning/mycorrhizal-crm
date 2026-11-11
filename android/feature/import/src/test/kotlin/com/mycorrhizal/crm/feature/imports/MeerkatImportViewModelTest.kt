@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelStore
 import com.mycorrhizal.crm.domain.backup.BundleBackupStatus
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
+import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.MeerkatConnectRequest
 import com.mycorrhizal.crm.model.network.MeerkatConnectResponse
@@ -547,5 +548,25 @@ class MeerkatImportViewModelTest {
             advanceUntilIdle()
             assertTrue(vm.uiState.value.unavailable)
             assertFalse(newVm(local = false).also { advanceUntilIdle() }.uiState.value.unavailable)
+        }
+
+    // Issue #2464/#2210: the confirm result carries the per-row issues the report renders.
+    @Test
+    fun `the result state carries the per-row issues`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reviewVm()
+            val issues = listOf(
+                ImportRowIssue(row = 3, name = "Ada", status = "skipped", reason = "already exists")
+            )
+            coEvery { apiClient.confirmMeerkatImport(any()) } returns Result.success(Unit)
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returns
+                Result.success(
+                    status("done", result = SourceImportResult(skipped = 1, issues = issues))
+                )
+
+            vm.confirm()
+            advanceUntilIdle()
+
+            assertEquals(issues, vm.uiState.value.result?.issues)
         }
 }

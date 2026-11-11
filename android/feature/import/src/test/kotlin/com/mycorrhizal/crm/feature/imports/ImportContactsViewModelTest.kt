@@ -3,14 +3,18 @@ package com.mycorrhizal.crm.feature.imports
 import android.content.ContentResolver
 import android.content.Context
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportRowEdit
+import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -182,7 +186,7 @@ class ImportContactsViewModelTest {
 
             val state = vm.uiState.value
             assertEquals(ImportStep.RESULT, state.step)
-            assertEquals(2, state.importedCount)
+            assertEquals(ImportResult(created = 1, updated = 1), state.result)
             coVerify {
                 apiClient.confirmVcfImport(
                     match { request ->
@@ -263,7 +267,7 @@ class ImportContactsViewModelTest {
             vm.confirmImport()
             advanceUntilIdle()
 
-            assertNull(vm.uiState.value.importedCount.takeIf { it > 0 })
+            assertNull(vm.uiState.value.result)
             assertEquals(ImportStep.REVIEW, vm.uiState.value.step)
         }
 
@@ -305,7 +309,8 @@ class ImportContactsViewModelTest {
             val state = vm.uiState.value
             assertEquals(ImportStep.LIST, state.step)
             assertNull(state.preview)
-            assertNull(state.importedCount.takeIf { it > 0 })
+            assertNull(state.result)
+            assertEquals(emptyMap<Int, ImportRowEdit>(), state.rowEdits)
             assertEquals(1, state.contacts.size)
         }
 
@@ -337,5 +342,118 @@ class ImportContactsViewModelTest {
             advanceUntilIdle()
 
             org.junit.Assert.assertFalse(vm.uiState.value.permissionRequired)
+        }
+
+    // Issue #2464/#2210: the device-contacts review gets the same "Fix this row" flow as VCF/CSV.
+    private fun errorRowPreview() = preview(
+        ImportRowPreview(rowIndex = 0, suggestedAction = "add"),
+        ImportRowPreview(
+            rowIndex = 1,
+            suggestedAction = "add",
+            validationErrors = listOf("name required")
+        )
+    )
+
+    private suspend fun kotlinx.coroutines.test.TestScope.toReview(vm: ImportContactsViewModel) {
+        vm.load(contentResolver = mockk<ContentResolver>(relaxed = true))
+        advanceUntilIdle()
+        vm.toggle(1)
+        vm.toggle(2)
+        vm.submitSelected()
+        advanceUntilIdle()
+    }
+
+    private val twoDevices = listOf(
+        DeviceContact(1, "lk-1", "Jane", emptyList(), emptyList(), emptyList(), null, null),
+        DeviceContact(2, "lk-2", "", emptyList(), emptyList(), emptyList(), null, null)
+    )
+
+    @Test
+    fun `saving a fix keeps the errored row and sends only that edit with the confirm`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.uploadImportRecords(any()) } returns
+                Result.success(errorRowPreview())
+            val sent = slot<ImportConfirmRequest>()
+            coEvery { apiClient.confirmVcfImport(capture(sent)) } returns
+                Result.success(ImportResult())
+            val vm = vm(twoDevices)
+            toReview(vm)
+            assertEquals("skip", vm.uiState.value.rowActions[1])
+
+            val edit = ImportRowEdit(rowIndex = 1, firstname = "Dana")
+            vm.saveRowEdit(edit)
+            assertEquals("add", vm.uiState.value.rowActions[1])
+            assertEquals(edit, vm.uiState.value.rowEdits[1])
+            vm.confirmImport()
+            advanceUntilIdle()
+
+            assertEquals(listOf(edit), sent.captured.rowEdits)
+        }
+
+    @Test
+    fun `an edit for a row that is skipped again is not sent and no edits sends null`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.uploadImportRecords(any()) } returns
+                Result.success(errorRowPreview())
+            val sent = slot<ImportConfirmRequest>()
+            coEvery { apiClient.confirmVcfImport(capture(sent)) } returns
+                Result.success(ImportResult())
+            val vm = vm(twoDevices)
+            toReview(vm)
+
+            vm.saveRowEdit(ImportRowEdit(rowIndex = 1, firstname = "Dana"))
+            vm.setRowAction(1, "skip")
+            vm.confirmImport()
+            advanceUntilIdle()
+
+            assertNull(sent.captured.rowEdits)
+        }
+
+    @Test
+    fun `saving a fix for a row without errors is ignored and an unfixed error row stays skip`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.uploadImportRecords(any()) } returns
+                Result.success(errorRowPreview())
+            val vm = vm(twoDevices)
+            toReview(vm)
+
+            vm.saveRowEdit(ImportRowEdit(rowIndex = 0, firstname = "X"))
+            vm.setRowAction(1, "add")
+
+            assertEquals(emptyMap<Int, ImportRowEdit>(), vm.uiState.value.rowEdits)
+            assertEquals("skip", vm.uiState.value.rowActions[1])
+        }
+
+    @Test
+    fun `resolveAll does not unskip a fixed row`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(errorRowPreview())
+        val vm = vm(twoDevices)
+        toReview(vm)
+        vm.saveRowEdit(ImportRowEdit(rowIndex = 1, firstname = "Dana"))
+        vm.setRowAction(1, "skip")
+
+        vm.resolveAll()
+
+        assertEquals("skip", vm.uiState.value.rowActions[1])
+    }
+
+    @Test
+    fun `the result state carries the per-row issues from the confirm response`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val issues = listOf(
+                ImportRowIssue(row = 2, name = "Jane", status = "failed", reason = "name required")
+            )
+            coEvery { apiClient.uploadImportRecords(any()) } returns
+                Result.success(errorRowPreview())
+            coEvery { apiClient.confirmVcfImport(any()) } returns
+                Result.success(ImportResult(created = 1, skipped = 1, issues = issues))
+            val vm = vm(twoDevices)
+            toReview(vm)
+
+            vm.confirmImport()
+            advanceUntilIdle()
+
+            assertEquals(ImportStep.RESULT, vm.uiState.value.step)
+            assertEquals(issues, vm.uiState.value.result?.issues)
         }
 }

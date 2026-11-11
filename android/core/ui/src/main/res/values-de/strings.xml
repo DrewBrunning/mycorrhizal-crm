@@ -1963,10 +1963,6 @@
     <string name="import_permission_rationale">Zum Auflisten der Kontakte auf diesem Gerät wird die Kontaktberechtigung benötigt. Die Liste wird nur auf diesem Gerät gelesen. Beim Import werden nur die ausgewählten Kontakte an Ihren Server gesendet, und gespeichert wird nichts, bevor Sie im Prüfschritt bestätigen.</string>
     <string name="import_permission_grant">Zugriff erlauben</string>
     <string name="import_permission_open_settings">Einstellungen öffnen</string>
-    <plurals name="import_done">
-        <item quantity="one">%1$d Kontakt importiert.</item>
-        <item quantity="other">%1$d Kontakte importiert.</item>
-    </plurals>
     <string name="import_duplicate">Mögliches Duplikat von %1$s</string>
 
     <!-- VCF file import (M9) -->
@@ -2087,6 +2083,8 @@
     <!-- Import-Verlauf (Web-Parität, issue #651 / #834) -->
     <string name="import_history_entry">Importverlauf</string>
     <string name="import_history_title">Importverlauf</string>
+    <string name="import_history_view_report">Bericht ansehen</string>
+    <string name="import_history_report_title">Importbericht</string>
     <string name="import_history_empty">Noch keine Importe</string>
     <string name="import_history_col_created">Erstellt</string>
     <string name="import_history_col_updated">Aktualisiert</string>

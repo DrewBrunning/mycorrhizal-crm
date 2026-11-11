@@ -23,6 +23,10 @@ import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.model.network.ImportPreviewResponse
+import com.mycorrhizal.crm.model.network.ImportResult
+import com.mycorrhizal.crm.model.network.ImportRowIssue
+import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -84,10 +88,10 @@ class ImportContactsScreenTest {
         // null: the real host Activity's registry. Otherwise the system dialog's
         // answer, delivered through a fake registry (granting it in the shadow
         // package manager first when true, as the OS would).
-        permissionDialogAnswer: Boolean? = null
+        permissionDialogAnswer: Boolean? = null,
+        apiClient: ApiClient = mockk<ApiClient>()
     ) {
         if (grantPermission) grantContacts()
-        val apiClient = mockk<ApiClient>()
         val contactRepository = mockk<ContactRepository>()
         coEvery { contactRepository.findByEmail(any()) } returns null
         coEvery { contactRepository.findByPhone(any()) } returns null
@@ -99,6 +103,7 @@ class ImportContactsScreenTest {
             readDeviceContacts = { readDevice() }
             ioDispatcher = mainDispatcherRule.testDispatcher
         }
+        lastViewModel = viewModel
 
         val registryOwner = permissionDialogAnswer?.let { answer ->
             object : ActivityResultRegistryOwner {
@@ -140,6 +145,7 @@ class ImportContactsScreenTest {
     }
 
     private var dialogLaunches = 0
+    private lateinit var lastViewModel: ImportContactsViewModel
 
     /** A lifecycle the test drives, so pause/resume can be simulated. */
     private val lifecycleOwner = object : LifecycleOwner {
@@ -319,5 +325,60 @@ class ImportContactsScreenTest {
         composeTestRule.onNodeWithText(
             "Import 1 selected (0 possible duplicates)"
         ).assertIsDisplayed()
+    }
+
+    // Issue #2464/#2210: the device-contacts review step offers the same fix form as VCF/CSV,
+    // and the flow ends on the itemized report instead of a bare count.
+    private fun reachReview(apiClient: ApiClient) {
+        coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
+            ImportPreviewResponse(
+                sessionId = "s-dev",
+                rows = listOf(
+                    ImportRowPreview(
+                        rowIndex = 0,
+                        suggestedAction = "add",
+                        validationErrors = listOf("name required")
+                    )
+                )
+            )
+        )
+        setScreen(apiClient = apiClient)
+        composeTestRule.runOnIdle {
+            lastViewModel.toggle(1)
+            lastViewModel.submitSelected()
+        }
+        composeTestRule.waitForIdle()
+    }
+
+    @Test
+    fun `an errored device row offers the Fix this row form`() {
+        reachReview(mockk<ApiClient>())
+
+        composeTestRule.onNodeWithText("Fix this row").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the result step lists the skipped rows with their reasons`() {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.confirmVcfImport(any()) } returns Result.success(
+            ImportResult(
+                skipped = 1,
+                issues = listOf(
+                    ImportRowIssue(
+                        row = 1,
+                        name = "Jane",
+                        status = "failed",
+                        reason = "name required"
+                    )
+                )
+            )
+        )
+        reachReview(apiClient)
+
+        composeTestRule.runOnIdle { lastViewModel.confirmImport() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Row 1 · Jane").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Failed: name required").assertIsDisplayed()
     }
 }
