@@ -51,7 +51,10 @@ class LossReportGroupingTest {
             )
         )
         assertEquals(listOf("invalid", "lossy"), groups.map { it.category })
-        assertEquals(listOf("second-in-input", "third-in-input"), groups[1].issues.map { it.record })
+        assertEquals(
+            listOf("second-in-input", "third-in-input"),
+            groups[1].issues.map { it.record }
+        )
     }
 
     @Test
@@ -123,6 +126,9 @@ class SourceImportLossReportTest {
         composeTestRule.onNodeWithText("Grace").assertIsDisplayed()
         composeTestRule.onNodeWithTag("t-loss-group-skipped").performClick()
         composeTestRule.onNodeWithText("Skipped note").assertDoesNotExist()
-        assertEquals(0, composeTestRule.onAllNodesWithTag("t-loss-item-skipped-0").fetchSemanticsNodes().size)
+        assertEquals(
+            0,
+            composeTestRule.onAllNodesWithTag("t-loss-item-skipped-0").fetchSemanticsNodes().size
+        )
     }
 }

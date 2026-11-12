@@ -33,7 +33,13 @@ import com.mycorrhizal.crm.ui.R
  * Issue #2524 (web: `SourceImportLossReport.tsx`): the order categories are shown in, most
  * consequential first. Mirrors web's `CATEGORY_ORDER`; keep the two in sync.
  */
-private val LOSS_CATEGORY_ORDER = listOf("unsupported", "invalid", "lossy", "transformed", "skipped")
+private val LOSS_CATEGORY_ORDER = listOf(
+    "unsupported",
+    "invalid",
+    "lossy",
+    "transformed",
+    "skipped"
+)
 
 internal data class LossGroup(val category: String, val issues: List<SourceImportIssue>)
 
