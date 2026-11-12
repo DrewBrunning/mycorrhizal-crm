@@ -70,9 +70,9 @@ B's data and budget, and the boundary between them is enforced and tested like a
   one user's integration records its own sync-health/delivery state and emits its own event rather
   than stopping the tick for the others (`docs/int-01-integration-classification-matrix.md`).
 
-- **Standing shares (design).** [ADR 0042](../adrs/0042-standing-shares.md) adds the first intentional live cross-user read
+- **Standing shares.** [ADR 0042](../adrs/0042-standing-shares.md) adds the first intentional live cross-user read
   (a recipient reads a granted entity under their own session). It is a new trust boundary, reviewed in
-  [`standing-shares-review.md`](standing-shares-review.md); the backend API landed in #2290 (rows 4.1.3, 4.1.5, 4.2.1, 5.1.3, 8.1.1, 11.1.4 cite it); web and Android follow in v1.7.0.
+  [`standing-shares-review.md`](standing-shares-review.md); the backend API landed in #2290 (rows 4.1.3, 4.1.5, 4.2.1, 5.1.3, 8.1.1, 11.1.4 cite it); the web (#2292) and Android (#2293) UIs and the block-stops-one-time-shares follow-up (#2294) shipped in v1.7.0.
 
 **The 1.0 plan** (issue #950): the opt-in quota landed on the REST create paths. Extending the same
 `services.UserQuota` checks to the bulk-ingestion paths (CSV/VCF/JSContact import confirm,
