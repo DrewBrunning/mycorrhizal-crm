@@ -1,11 +1,18 @@
 package com.mycorrhizal.crm.feature.imports
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
+import com.mycorrhizal.crm.model.network.DiscoveredCustomProperty
+import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.ImportFieldMapping
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRowEdit
@@ -13,6 +20,7 @@ import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,7 +43,12 @@ class VcfImportScreenTest {
         onRowActionChange: (Int, String) -> Unit = { _, _ -> },
         onConfirm: () -> Unit = {},
         onRowEditSave: (ImportRowEdit) -> Unit = {},
-        onDone: () -> Unit = {}
+        onDone: () -> Unit = {},
+        onFieldMappingAction: (String, String) -> Unit = { _, _ -> },
+        onFieldMappingDefinition: (String, String) -> Unit = { _, _ -> },
+        onFieldMappingLabel: (String, String) -> Unit = { _, _ -> },
+        onFieldMappingType: (String, String) -> Unit = { _, _ -> },
+        onCustomFieldsContinue: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -44,7 +57,12 @@ class VcfImportScreenTest {
                     onRowActionChange = onRowActionChange,
                     onConfirm = onConfirm,
                     onRowEditSave = onRowEditSave,
-                    onDone = onDone
+                    onDone = onDone,
+                    onFieldMappingAction = onFieldMappingAction,
+                    onFieldMappingDefinition = onFieldMappingDefinition,
+                    onFieldMappingLabel = onFieldMappingLabel,
+                    onFieldMappingType = onFieldMappingType,
+                    onCustomFieldsContinue = onCustomFieldsContinue
                 )
             }
         }
@@ -258,5 +276,142 @@ class VcfImportScreenTest {
         composeTestRule.onNodeWithTag("import-fix-firstname").performTextInput("Dana")
         composeTestRule.onNodeWithText("Save fix").performClick()
         assertEquals(ImportRowEdit(rowIndex = 0, firstname = "Dana"), saved)
+    }
+
+    // ---- Issue #514 / #2523: the custom fields step ----
+
+    private val color = DiscoveredCustomProperty("x-favorite-color", "green")
+
+    private fun customFieldsState(
+        mapping: ImportFieldMapping = ImportFieldMapping("x-favorite-color", "ignore"),
+        definitions: List<FieldDefinition> = listOf(FieldDefinition(id = "d1", label = "Hobby")),
+        canContinue: Boolean = true
+    ): VcfImportUiState {
+        val state = VcfImportUiState(
+            step = VcfImportStep.CUSTOM_FIELDS,
+            customFieldCandidates = listOf(color),
+            fieldDefinitions = definitions,
+            fieldMappings = mapOf(color.name to mapping)
+        )
+        // canContinue is derived from the mappings, so an unmet map decision drives it false.
+        return if (canContinue) state else state.copy(
+            fieldMappings = mapOf(color.name to mapping.copy(action = "map", fieldDefinitionId = null))
+        )
+    }
+
+    @Test
+    fun `custom fields step lists the property, its sample value and per-option help`() {
+        setContent(customFieldsState())
+
+        composeTestRule.onNodeWithText("x-favorite-color").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Example value: green").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Keep as passthrough").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Map to existing field").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Create new field").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Saved untouched with the contact and exported again later, but not searchable or editable here. Nothing is lost."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Put the value into a custom field you already created, so it is searchable and editable."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Make a new searchable custom field from this property and fill it in for every imported contact."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-ignore").assertIsSelected()
+    }
+
+    @Test
+    fun `map to existing is disabled with the reason when there are no definitions`() {
+        setContent(customFieldsState(definitions = emptyList()))
+
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-map").assertIsNotEnabled()
+        composeTestRule.onNodeWithText(
+            "You have no custom fields yet. Choose “Create new field” to make one from this property."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-create").assertIsEnabled()
+    }
+
+    @Test
+    fun `choosing each action reports the property and action`() {
+        val chosen = mutableListOf<Pair<String, String>>()
+        setContent(customFieldsState(), onFieldMappingAction = { n, a -> chosen += n to a })
+
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-map").performClick()
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-create").performClick()
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-ignore").performClick()
+
+        assertEquals(
+            listOf(
+                "x-favorite-color" to "map",
+                "x-favorite-color" to "create",
+                "x-favorite-color" to "ignore"
+            ),
+            chosen
+        )
+    }
+
+    @Test
+    fun `a map decision shows the definition picker and reports the chosen definition`() {
+        val chosen = mutableListOf<Pair<String, String>>()
+        setContent(
+            customFieldsState(mapping = ImportFieldMapping("x-favorite-color", "map")),
+            onFieldMappingDefinition = { n, id -> chosen += n to id }
+        )
+
+        composeTestRule.onNodeWithText("Select a field…").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-label").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-field").performClick()
+        composeTestRule.onNodeWithText("Hobby").performClick()
+
+        assertEquals(listOf("x-favorite-color" to "d1"), chosen)
+    }
+
+    @Test
+    fun `a create decision shows an editable label and a type picker`() {
+        val labels = mutableListOf<String>()
+        val types = mutableListOf<String>()
+        setContent(
+            customFieldsState(
+                mapping = ImportFieldMapping(
+                    "x-favorite-color",
+                    "create",
+                    label = "Favorite Color",
+                    type = "text"
+                )
+            ),
+            onFieldMappingLabel = { _, l -> labels += l },
+            onFieldMappingType = { _, t -> types += t }
+        )
+
+        composeTestRule.onNodeWithText("Favorite Color").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-field").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-label").performTextReplacement("Colour")
+        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-type").performClick()
+        composeTestRule.onNodeWithText("Date").performClick()
+
+        assertTrue(labels.toString(), "Colour" in labels)
+        assertEquals(listOf("date"), types)
+    }
+
+    @Test
+    fun `continue is disabled while a map decision has no field chosen`() {
+        var continued = 0
+        setContent(
+            customFieldsState(canContinue = false),
+            onCustomFieldsContinue = { continued++ }
+        )
+
+        composeTestRule.onNodeWithTag("vcf-cf-continue").assertIsNotEnabled()
+        assertEquals(0, continued)
+    }
+
+    @Test
+    fun `continue proceeds to review when every decision is complete`() {
+        var continued = 0
+        setContent(customFieldsState(), onCustomFieldsContinue = { continued++ })
+
+        composeTestRule.onNodeWithTag("vcf-cf-continue").assertIsEnabled().performClick()
+
+        assertEquals(1, continued)
     }
 }

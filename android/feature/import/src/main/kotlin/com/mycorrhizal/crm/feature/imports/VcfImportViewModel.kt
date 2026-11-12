@@ -3,7 +3,14 @@ package com.mycorrhizal.crm.feature.imports
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.model.network.DiscoveredCustomProperty
+import com.mycorrhizal.crm.model.network.FIELD_TYPES
+import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
+import com.mycorrhizal.crm.model.network.IMPORT_FIELD_ACTION_CREATE
+import com.mycorrhizal.crm.model.network.IMPORT_FIELD_ACTION_IGNORE
+import com.mycorrhizal.crm.model.network.IMPORT_FIELD_ACTION_MAP
+import com.mycorrhizal.crm.model.network.ImportFieldMapping
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRowEdit
@@ -11,6 +18,7 @@ import com.mycorrhizal.crm.model.network.RowImportAction
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -20,7 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-enum class VcfImportStep { PICK, PREVIEW, RESULT }
+enum class VcfImportStep { PICK, CUSTOM_FIELDS, PREVIEW, RESULT }
 
 data class VcfImportUiState(
     val step: VcfImportStep = VcfImportStep.PICK,
@@ -32,11 +40,23 @@ data class VcfImportUiState(
     val rowActions: Map<Int, String> = emptyMap(),
     /** Issue #2186: row_index -> the user's fix for a row that failed validation. */
     val rowEdits: Map<Int, ImportRowEdit> = emptyMap(),
+    /** Issue #514: the X-* properties discovered in the file (union over rows, by name). */
+    val customFieldCandidates: List<DiscoveredCustomProperty> = emptyList(),
+    /** The custom-field definitions a property can map to (fetched, plus any server-matched one). */
+    val fieldDefinitions: List<FieldDefinition> = emptyList(),
+    /** property name -> the user's decision; every candidate always has an entry. */
+    val fieldMappings: Map<String, ImportFieldMapping> = emptyMap(),
     val result: ImportResult? = null,
     val isLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: ApiError? = null
-)
+) {
+    /** A "map" decision needs a chosen definition before the user can move on to review. */
+    val canContinueFromCustomFields: Boolean
+        get() = fieldMappings.values.none {
+            it.action == IMPORT_FIELD_ACTION_MAP && it.fieldDefinitionId.isNullOrEmpty()
+        }
+}
 
 /**
  * M9 item 4: VCF-file import. `uploadVcfImport`/`ImportPreviewResponse`/`ImportConfirmRequest`/
@@ -97,13 +117,20 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                         row.rowIndex to
                             if (row.validationErrors.isNotEmpty()) "skip" else row.suggestedAction
                     }
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            step = VcfImportStep.PREVIEW,
-                            preview = preview,
-                            rowActions = actions
-                        )
+                    val candidates = collectCandidates(preview)
+                    if (candidates.isEmpty()) {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                step = VcfImportStep.PREVIEW,
+                                preview = preview,
+                                rowActions = actions
+                            )
+                        }
+                    } else {
+                        // Stay in the loading state until the definitions arrive, so the step
+                        // never renders "map is unavailable" for a list that is merely in flight.
+                        viewModelScope.launch { enterCustomFieldsStep(preview, actions, candidates) }
                     }
                 },
                 onError = { error ->
@@ -115,6 +142,64 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                     }
                 }
             )
+        }
+    }
+
+    private suspend fun enterCustomFieldsStep(
+        preview: ImportPreviewResponse,
+        actions: Map<Int, String>,
+        candidates: List<DiscoveredCustomProperty>
+    ) {
+        val fetched = apiClient.listFieldDefinitions()
+        // A failed fetch is surfaced, not read as "you have no custom fields"; a definition the
+        // server already matched stays usable so the export round-trip is not lost with it.
+        val fetchError = fetched.exceptionOrNull()?.toApiError()
+        val known = fetched.getOrNull()?.definitions.orEmpty()
+        val matched = candidates.mapNotNull { c ->
+            c.matchedDefinitionId?.takeIf { it.isNotEmpty() }?.let { id ->
+                FieldDefinition(id = id, label = c.matchedDefinitionLabel)
+            }
+        }
+        val definitions = known + matched.filter { m -> known.none { it.id == m.id } }
+            .distinctBy { it.id }
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                step = VcfImportStep.CUSTOM_FIELDS,
+                preview = preview,
+                rowActions = actions,
+                customFieldCandidates = candidates,
+                fieldDefinitions = definitions,
+                fieldMappings = candidates.associate { c -> c.name to initialMapping(c, definitions) },
+                error = fetchError
+            )
+        }
+    }
+
+    /** One entry per property name (first value seen wins), in first-seen order. */
+    private fun collectCandidates(preview: ImportPreviewResponse): List<DiscoveredCustomProperty> =
+        preview.rows.flatMap { it.customFieldCandidates.orEmpty() }.distinctBy { it.name }
+
+    /** A property whose projection already matches a definition defaults to "map" (the export
+     *  round-trip); everything else defaults to keeping it in passthrough. */
+    private fun initialMapping(
+        candidate: DiscoveredCustomProperty,
+        definitions: List<FieldDefinition>
+    ): ImportFieldMapping {
+        val matchedId = candidate.matchedDefinitionId?.takeIf { id -> definitions.any { it.id == id } }
+        return ImportFieldMapping(
+            propertyName = candidate.name,
+            action = if (matchedId != null) IMPORT_FIELD_ACTION_MAP else IMPORT_FIELD_ACTION_IGNORE,
+            fieldDefinitionId = matchedId,
+            label = titleCaseFromProperty(candidate.name),
+            type = DEFAULT_FIELD_TYPE
+        )
+    }
+
+    private fun updateMapping(propertyName: String, change: (ImportFieldMapping) -> ImportFieldMapping) {
+        _uiState.update { state ->
+            val current = state.fieldMappings[propertyName] ?: return@update state
+            state.copy(fieldMappings = state.fieldMappings + (propertyName to change(current)))
         }
     }
 
@@ -156,6 +241,35 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
         }
     }
 
+    /** Unknown actions are ignored; "map" is refused while the user has no definitions to map to. */
+    fun setFieldMappingAction(propertyName: String, action: String) {
+        if (action !in FIELD_MAPPING_ACTIONS) return
+        if (action == IMPORT_FIELD_ACTION_MAP && _uiState.value.fieldDefinitions.isEmpty()) return
+        updateMapping(propertyName) { it.copy(action = action) }
+    }
+
+    /** Only one of the user's own definitions can be chosen. */
+    fun setFieldMappingDefinition(propertyName: String, definitionId: String) {
+        if (_uiState.value.fieldDefinitions.none { it.id == definitionId }) return
+        updateMapping(propertyName) { it.copy(fieldDefinitionId = definitionId) }
+    }
+
+    fun setFieldMappingLabel(propertyName: String, label: String) {
+        updateMapping(propertyName) { it.copy(label = label) }
+    }
+
+    fun setFieldMappingType(propertyName: String, type: String) {
+        if (type !in FIELD_TYPES) return
+        updateMapping(propertyName) { it.copy(type = type) }
+    }
+
+    /** Moves from the custom-fields step to review once every "map" decision has a field. */
+    fun continueFromCustomFields() {
+        val state = _uiState.value
+        if (state.step != VcfImportStep.CUSTOM_FIELDS || !state.canContinueFromCustomFields) return
+        _uiState.update { it.copy(step = VcfImportStep.PREVIEW) }
+    }
+
     fun confirm() {
         val preview = _uiState.value.preview ?: return
         if (_uiState.value.isLoading) return
@@ -171,7 +285,8 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                 ImportConfirmRequest(
                     sessionId = preview.sessionId,
                     actions = actions,
-                    rowEdits = activeRowEdits()
+                    rowEdits = activeRowEdits(),
+                    fieldMappings = confirmFieldMappings()
                 )
             ).foldApiError(
                 onSuccess = { result ->
@@ -200,11 +315,49 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
         state.rowEdits.values.filter { state.rowActions[it.rowIndex] != "skip" }.ifEmpty { null }
     }
 
+    /** One decision per discovered property, carrying only what its action uses; null (key
+     *  omitted) when the file had no X- properties. */
+    private fun confirmFieldMappings(): List<ImportFieldMapping>? =
+        _uiState.value.let { state ->
+            state.customFieldCandidates.mapNotNull { state.fieldMappings[it.name] }.map { m ->
+                when (m.action) {
+                    IMPORT_FIELD_ACTION_MAP -> ImportFieldMapping(
+                        propertyName = m.propertyName,
+                        action = m.action,
+                        fieldDefinitionId = m.fieldDefinitionId
+                    )
+
+                    IMPORT_FIELD_ACTION_CREATE -> ImportFieldMapping(
+                        propertyName = m.propertyName,
+                        action = m.action,
+                        label = m.label?.trim()?.takeIf { it.isNotEmpty() },
+                        type = m.type
+                    )
+
+                    else -> ImportFieldMapping(m.propertyName, IMPORT_FIELD_ACTION_IGNORE)
+                }
+            }.ifEmpty { null }
+        }
+
     fun onErrorShown() {
         _uiState.update { it.copy(errorRes = null, error = null) }
     }
 
     companion object {
         const val MAX_VCF_SIZE_BYTES = 50 * 1024 * 1024
+        private const val DEFAULT_FIELD_TYPE = "text"
+        private val FIELD_MAPPING_ACTIONS = setOf(
+            IMPORT_FIELD_ACTION_IGNORE,
+            IMPORT_FIELD_ACTION_MAP,
+            IMPORT_FIELD_ACTION_CREATE
+        )
+
+        /** `x-favorite-color` -> "Favorite Color"; mirrors web's `titleCaseFromProperty` and the
+         *  server's default derivation. */
+        internal fun titleCaseFromProperty(name: String): String =
+            name.replace(Regex("^x-", RegexOption.IGNORE_CASE), "")
+                .split(Regex("[^a-zA-Z0-9]+"))
+                .filter { it.isNotEmpty() }
+                .joinToString(" ") { it.replaceFirstChar(Char::uppercaseChar) }
     }
 }

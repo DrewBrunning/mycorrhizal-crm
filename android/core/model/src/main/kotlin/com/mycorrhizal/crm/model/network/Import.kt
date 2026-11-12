@@ -76,7 +76,47 @@ data class ImportRowPreview(
     @Json(name = "suggested_action") val suggestedAction: String = "add",
     val diagnostics: List<String>? = null,
     @Json(name = "merge_diff") val mergeDiff: ImportMergeDiff? = null,
-    @Json(name = "batch_duplicate_of") val batchDuplicateOf: Int? = null
+    @Json(name = "batch_duplicate_of") val batchDuplicateOf: Int? = null,
+    /**
+     * Issue #514: the unknown X-* vCard properties found on this row that can be promoted to
+     * custom fields. Absent (null) when the row carried none; never rely on it being non-null.
+     */
+    @Json(name = "custom_field_candidates") val customFieldCandidates: List<DiscoveredCustomProperty>? = null
+)
+
+/**
+ * Issue #514: one unknown X-* property found on an imported contact that can become a custom
+ * field. Mirrors backend `models.DiscoveredProperty`. [name] is the lowercase vCard property
+ * name (e.g. `x-favorite-color`); [matchedDefinitionId] / [matchedDefinitionLabel] are set when
+ * an existing definition already projects to `vcard:X-<NAME>` (the export round-trip), in which
+ * case the server auto-promotes unless the client sends an explicit decision.
+ */
+@JsonClass(generateAdapter = true)
+data class DiscoveredCustomProperty(
+    val name: String = "",
+    val value: String = "",
+    @Json(name = "matched_definition_id") val matchedDefinitionId: String? = null,
+    @Json(name = "matched_definition_label") val matchedDefinitionLabel: String? = null
+)
+
+/** [ImportFieldMapping.action] tokens — hand-mirrored from backend `oneof=ignore map create`. */
+const val IMPORT_FIELD_ACTION_IGNORE = "ignore"
+const val IMPORT_FIELD_ACTION_MAP = "map"
+const val IMPORT_FIELD_ACTION_CREATE = "create"
+
+/**
+ * Issue #514 / #2183: one decision for a discovered X-* property, sent in the confirm request's
+ * `field_mappings`. Mirrors backend `models.ImportFieldMapping`: "ignore" keeps the property in
+ * passthrough, "map" promotes it into [fieldDefinitionId] (required), "create" makes a new
+ * definition from [label] / [type] (the key and vCard projection are derived server-side).
+ */
+@JsonClass(generateAdapter = true)
+data class ImportFieldMapping(
+    @Json(name = "property_name") val propertyName: String,
+    val action: String = IMPORT_FIELD_ACTION_IGNORE,
+    @Json(name = "field_definition_id") val fieldDefinitionId: String? = null,
+    val label: String? = null,
+    val type: String? = null
 )
 
 @JsonClass(generateAdapter = true)
@@ -113,7 +153,9 @@ data class ImportConfirmRequest(
     @Json(name = "assign_circle_ids") val assignCircleIds: List<String>? = null,
     @Json(name = "assign_tag_ids") val assignTagIds: List<String>? = null,
     /** Issue #2186: corrections to preview rows that failed validation (CSV/VCF/records only). */
-    @Json(name = "row_edits") val rowEdits: List<ImportRowEdit>? = null
+    @Json(name = "row_edits") val rowEdits: List<ImportRowEdit>? = null,
+    /** Issue #514: custom-field promotion decisions for discovered X-* properties (VCF only). */
+    @Json(name = "field_mappings") val fieldMappings: List<ImportFieldMapping>? = null
 )
 
 /**

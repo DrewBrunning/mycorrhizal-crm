@@ -2007,6 +2007,20 @@
     <string name="import_vcf_title">Import VCF file</string>
     <string name="import_vcf_pick">Select a .vcf file</string>
     <string name="import_vcf_pick_hint">Choose a .vcf (vCard) file exported from another app.</string>
+    <string name="import_vcf_cf_title">Custom fields found</string>
+    <string name="import_vcf_cf_description">This file contains custom X- properties your app doesn\'t know yet. Turn them into searchable custom fields, or keep them as-is (“passthrough”): kept properties are saved untouched with the contact and exported again later, but cannot be searched or edited here.</string>
+    <string name="import_vcf_cf_sample_value">Example value: %1$s</string>
+    <string name="import_vcf_cf_action_ignore">Keep as passthrough</string>
+    <string name="import_vcf_cf_action_map">Map to existing field</string>
+    <string name="import_vcf_cf_action_create">Create new field</string>
+    <string name="import_vcf_cf_help_ignore">Saved untouched with the contact and exported again later, but not searchable or editable here. Nothing is lost.</string>
+    <string name="import_vcf_cf_help_map">Put the value into a custom field you already created, so it is searchable and editable.</string>
+    <string name="import_vcf_cf_help_map_empty">You have no custom fields yet. Choose “Create new field” to make one from this property.</string>
+    <string name="import_vcf_cf_help_create">Make a new searchable custom field from this property and fill it in for every imported contact.</string>
+    <string name="import_vcf_cf_field">Custom field</string>
+    <string name="import_vcf_cf_select_field">Select a field…</string>
+    <string name="import_vcf_cf_label">Label</string>
+    <string name="import_vcf_cf_continue">Continue</string>
 
     <!-- T96 import merge review -->
     <plurals name="import_review_remaining">

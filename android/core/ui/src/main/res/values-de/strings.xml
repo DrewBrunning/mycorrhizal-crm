@@ -1990,6 +1990,20 @@
     <string name="import_vcf_title">VCF-Datei importieren</string>
     <string name="import_vcf_pick">VCF-Datei auswählen</string>
     <string name="import_vcf_pick_hint">Wählen Sie eine .vcf-Datei (vCard), die aus einer anderen App exportiert wurde.</string>
+    <string name="import_vcf_cf_title">Benutzerdefinierte Felder gefunden</string>
+    <string name="import_vcf_cf_description">Diese Datei enthält benutzerdefinierte X-Eigenschaften, die deine App noch nicht kennt. Mach daraus durchsuchbare benutzerdefinierte Felder oder behalte sie unverändert („Passthrough“): Behaltene Eigenschaften werden unverändert beim Kontakt gespeichert und später wieder exportiert, lassen sich hier aber nicht durchsuchen oder bearbeiten.</string>
+    <string name="import_vcf_cf_sample_value">Beispielwert: %1$s</string>
+    <string name="import_vcf_cf_action_ignore">Als Passthrough behalten</string>
+    <string name="import_vcf_cf_action_map">Auf vorhandenes Feld abbilden</string>
+    <string name="import_vcf_cf_action_create">Neues Feld erstellen</string>
+    <string name="import_vcf_cf_help_ignore">Wird unverändert beim Kontakt gespeichert und später wieder exportiert, ist hier aber nicht durchsuchbar oder bearbeitbar. Nichts geht verloren.</string>
+    <string name="import_vcf_cf_help_map">Trägt den Wert in ein bereits angelegtes benutzerdefiniertes Feld ein, sodass er durchsuchbar und bearbeitbar ist.</string>
+    <string name="import_vcf_cf_help_map_empty">Du hast noch keine benutzerdefinierten Felder. Wähle „Neues Feld erstellen“, um aus dieser Eigenschaft eines anzulegen.</string>
+    <string name="import_vcf_cf_help_create">Legt aus dieser Eigenschaft ein neues durchsuchbares benutzerdefiniertes Feld an und füllt es für jeden importierten Kontakt aus.</string>
+    <string name="import_vcf_cf_field">Benutzerdefiniertes Feld</string>
+    <string name="import_vcf_cf_select_field">Feld auswählen…</string>
+    <string name="import_vcf_cf_label">Bezeichnung</string>
+    <string name="import_vcf_cf_continue">Weiter</string>
 
     <!-- T96 import merge review -->
     <plurals name="import_review_remaining">

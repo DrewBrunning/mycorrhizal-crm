@@ -2055,6 +2055,20 @@
     <string name="import_vcf_title">Importar archivo VCF</string>
     <string name="import_vcf_pick">Seleccionar un archivo .vcf</string>
     <string name="import_vcf_pick_hint">Elige un archivo .vcf (vCard) exportado desde otra aplicación.</string>
+    <string name="import_vcf_cf_title">Campos personalizados encontrados</string>
+    <string name="import_vcf_cf_description">Este archivo contiene propiedades X- personalizadas que tu aplicación aún no conoce. Conviértelas en campos personalizados con búsqueda o consérvalas tal cual («passthrough»): las propiedades conservadas se guardan intactas con el contacto y se vuelven a exportar, pero aquí no se pueden buscar ni editar.</string>
+    <string name="import_vcf_cf_sample_value">Valor de muestra: %1$s</string>
+    <string name="import_vcf_cf_action_ignore">Conservar como passthrough</string>
+    <string name="import_vcf_cf_action_map">Mapear a campo existente</string>
+    <string name="import_vcf_cf_action_create">Crear campo nuevo</string>
+    <string name="import_vcf_cf_help_ignore">Se guarda intacta con el contacto y se vuelve a exportar después, pero aquí no se puede buscar ni editar. No se pierde nada.</string>
+    <string name="import_vcf_cf_help_map">Coloca el valor en un campo personalizado que ya creaste, para poder buscarlo y editarlo.</string>
+    <string name="import_vcf_cf_help_map_empty">Todavía no tienes campos personalizados. Elige «Crear campo nuevo» para crear uno a partir de esta propiedad.</string>
+    <string name="import_vcf_cf_help_create">Crea un campo personalizado nuevo con esta propiedad y lo rellena en cada contacto importado.</string>
+    <string name="import_vcf_cf_field">Campo personalizado</string>
+    <string name="import_vcf_cf_select_field">Selecciona un campo…</string>
+    <string name="import_vcf_cf_label">Etiqueta</string>
+    <string name="import_vcf_cf_continue">Continuar</string>
 
     <!-- T96 import merge review -->
     <plurals name="import_review_remaining">

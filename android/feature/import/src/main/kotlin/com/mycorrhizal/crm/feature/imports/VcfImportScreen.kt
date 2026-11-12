@@ -69,6 +69,11 @@ fun VcfImportScreen(
         onFileTooLarge = viewModel::onFileTooLarge,
         onRowActionChange = viewModel::setRowAction,
         onResolveAll = viewModel::resolveAll,
+        onFieldMappingAction = viewModel::setFieldMappingAction,
+        onFieldMappingDefinition = viewModel::setFieldMappingDefinition,
+        onFieldMappingLabel = viewModel::setFieldMappingLabel,
+        onFieldMappingType = viewModel::setFieldMappingType,
+        onCustomFieldsContinue = viewModel::continueFromCustomFields,
         onRowEditSave = viewModel::saveRowEdit,
         onConfirm = viewModel::confirm,
         onErrorShown = viewModel::onErrorShown
@@ -92,6 +97,11 @@ fun VcfImportScreenContent(
     onFileTooLarge: () -> Unit = {},
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
     onResolveAll: () -> Unit = {},
+    onFieldMappingAction: (String, String) -> Unit = { _, _ -> },
+    onFieldMappingDefinition: (String, String) -> Unit = { _, _ -> },
+    onFieldMappingLabel: (String, String) -> Unit = { _, _ -> },
+    onFieldMappingType: (String, String) -> Unit = { _, _ -> },
+    onCustomFieldsContinue: () -> Unit = {},
     onRowEditSave: (ImportRowEdit) -> Unit = {},
     onConfirm: () -> Unit = {},
     onErrorShown: () -> Unit = {}
@@ -159,6 +169,18 @@ fun VcfImportScreenContent(
 
                 uiState.step == VcfImportStep.PICK -> PickStep(
                     onPick = { filePicker.launch("*/*") }
+                )
+
+                uiState.step == VcfImportStep.CUSTOM_FIELDS -> CustomFieldsStep(
+                    candidates = uiState.customFieldCandidates,
+                    definitions = uiState.fieldDefinitions,
+                    mappings = uiState.fieldMappings,
+                    canContinue = uiState.canContinueFromCustomFields,
+                    onActionChange = onFieldMappingAction,
+                    onDefinitionChange = onFieldMappingDefinition,
+                    onLabelChange = onFieldMappingLabel,
+                    onTypeChange = onFieldMappingType,
+                    onContinue = onCustomFieldsContinue
                 )
 
                 uiState.step == VcfImportStep.PREVIEW && uiState.preview != null ->
