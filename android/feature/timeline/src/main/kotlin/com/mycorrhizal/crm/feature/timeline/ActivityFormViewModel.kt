@@ -43,6 +43,8 @@ data class PendingActivityImage(val fileName: String, val mimeType: String, val 
 data class ActivityFormState(
     val contactId: Int = 0,
     val activityId: Int? = null,
+    /** The loaded activity's stable uuid (edit mode); what a standing share is keyed by. */
+    val uuid: String? = null,
     val title: String = "",
     val type: String = "",
     val date: String = "",
@@ -484,6 +486,7 @@ class ActivityFormViewModel @Inject constructor(
     }
 
     private fun ActivityFormState.toFormState(activity: Activity): ActivityFormState = copy(
+        uuid = activity.uuid,
         title = activity.title.orEmpty(),
         type = activity.type.orEmpty(),
         date = activity.date.orEmpty(),

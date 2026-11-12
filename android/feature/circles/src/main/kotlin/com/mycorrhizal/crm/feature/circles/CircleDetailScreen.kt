@@ -13,6 +13,7 @@ import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Message
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -54,6 +55,8 @@ fun CircleDetailScreen(
     onBack: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToContact: (Int) -> Unit = {},
+    // Issue #2518: opens the standing-share screen for this circle (given its id); null hides it.
+    onShareCircle: ((String) -> Unit)? = null,
     viewModel: CircleDetailViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -92,6 +95,16 @@ fun CircleDetailScreen(
                     )
                 },
                 actions = {
+                    if (onShareCircle != null) {
+                        AccessibleIconButton(onClick = { onShareCircle(state.circleId) }) {
+                            Icon(
+                                Icons.Outlined.Share,
+                                contentDescription = stringResource(
+                                    R.string.shares_standing_title_circle
+                                )
+                            )
+                        }
+                    }
                     AccessibleIconButton(
                         onClick = {
                             context.startActivity(
