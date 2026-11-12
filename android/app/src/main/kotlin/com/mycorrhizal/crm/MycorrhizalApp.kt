@@ -123,6 +123,7 @@ import com.mycorrhizal.crm.feature.contacts.DuplicatePairsScreen
 import com.mycorrhizal.crm.feature.contacts.MergeContactsScreen
 import com.mycorrhizal.crm.feature.contacts.PrepViewScreen
 import com.mycorrhizal.crm.feature.contacts.entities.ContactEntityLinksScreen
+import com.mycorrhizal.crm.feature.contacts.entities.EntitiesFromContactsScreen
 import com.mycorrhizal.crm.feature.contacts.entities.EntitiesScreen
 import com.mycorrhizal.crm.feature.contacts.entities.EntityDetailScreen
 import com.mycorrhizal.crm.feature.households.HouseholdDetailScreen
@@ -2279,8 +2280,14 @@ private fun AppNavGraph(
         composable("entities") {
             EntitiesScreen(
                 onBack = { navController.popBackStack() },
-                onOpenEntity = { id -> navController.navigate("entities/$id") }
+                onOpenEntity = { id -> navController.navigate("entities/$id") },
+                onCreateFromContacts = { navController.navigate("entities/from-contacts") }
             )
+        }
+        // Issue #2513: the optional create-entities-from-contacts helper (a literal route beats
+        // the `entities/{entityId}` pattern, and no entity id can be "from-contacts").
+        composable("entities/from-contacts") {
+            EntitiesFromContactsScreen(onBack = { navController.popBackStack() })
         }
         composable(
             route = "entities/{entityId}",

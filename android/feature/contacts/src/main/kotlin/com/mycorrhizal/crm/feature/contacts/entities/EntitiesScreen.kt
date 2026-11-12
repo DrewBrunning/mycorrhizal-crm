@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -70,6 +71,7 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
 fun EntitiesScreen(
     onBack: () -> Unit,
     onOpenEntity: (String) -> Unit,
+    onCreateFromContacts: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: EntitiesViewModel = hiltViewModel()
 ) {
@@ -96,10 +98,26 @@ fun EntitiesScreen(
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
+                actions = {
+                    // #2513: the helper only knows organisation and place values; pets have none.
+                    if (EntityKind.projects(state.kind)) {
+                        AccessibleIconButton(
+                            onClick = onCreateFromContacts,
+                            modifier = Modifier.testTag("entities-from-contacts")
+                        ) {
+                            Icon(
+                                Icons.Outlined.Contacts,
+                                contentDescription =
+                                stringResource(R.string.shared_entities_from_contacts_open)
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
         },

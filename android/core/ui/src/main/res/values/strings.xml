@@ -3455,4 +3455,52 @@
         <item quantity="one">Couldn\'t copy it to %1$d contact, so nothing was deleted.</item>
         <item quantity="other">Couldn\'t copy it to %1$d contacts, so nothing was deleted.</item>
     </plurals>
+    <string name="shared_entities_from_contacts_open">Create from my contacts…</string>
+    <string name="shared_entities_from_contacts_title">Create entities from my contacts</string>
+    <string name="shared_entities_from_contacts_intro">Groups of the same organisation or address found on your contacts. Tick the ones to create and choose which contacts to link. Nothing on a contact is changed or deleted. You can run this again any time: only values not yet linked are offered.</string>
+    <string name="shared_entities_from_contacts_none">Nothing left to create from your contacts.</string>
+    <string name="shared_entities_from_contacts_load_failed">Couldn\'t look through your contacts.</string>
+    <string name="shared_entities_from_contacts_create_failed">Couldn\'t create the entities.</string>
+    <string name="shared_entities_from_contacts_include_cd">Include %1$s</string>
+    <string name="shared_entities_from_contacts_variants">Also written as: %1$s</string>
+    <string name="shared_entities_from_contacts_name">Name of %1$s</string>
+    <string name="shared_entities_from_contacts_role">Role for %1$s</string>
+    <string name="shared_entities_from_contacts_primary">Set as primary</string>
+    <string name="shared_entities_from_contacts_primary_cd">Set as primary for %1$s</string>
+    <string name="shared_entities_from_contacts_contacts_heading">Contacts to link</string>
+    <string name="shared_entities_from_contacts_result_none">Nothing was created.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: it no longer exists on your contacts.</string>
+    <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s: a contact no longer belongs to it.</string>
+    <string name="shared_entities_from_contacts_skip_contact_named">%1$s: %2$s no longer belongs to it.</string>
+    <string name="shared_entities_from_contacts_skip_name_invalid">%1$s: the name is not valid.</string>
+    <string name="shared_entities_from_contacts_skip_core_invalid">%1$s: its details are not valid.</string>
+    <string name="shared_entities_from_contacts_skip_unknown">%1$s: it was not applied.</string>
+    <plurals name="shared_entities_from_contacts_group_title">
+        <item quantity="one">%1$s — %2$d contact</item>
+        <item quantity="other">%1$s — %2$d contacts</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_has_primary_organisation">
+        <item quantity="one">%1$d of them already has a primary organisation.</item>
+        <item quantity="other">%1$d of them already have a primary organisation.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_has_primary_place">
+        <item quantity="one">%1$d of them already has a primary place.</item>
+        <item quantity="other">%1$d of them already have a primary place.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_create_organisation">
+        <item quantity="one">Create %1$d organisation</item>
+        <item quantity="other">Create %1$d organisations</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_create_place">
+        <item quantity="one">Create %1$d place</item>
+        <item quantity="other">Create %1$d places</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_created_organisation">
+        <item quantity="one">Created %1$d organisation.</item>
+        <item quantity="other">Created %1$d organisations.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_created_place">
+        <item quantity="one">Created %1$d place.</item>
+        <item quantity="other">Created %1$d places.</item>
+    </plurals>
 </resources>

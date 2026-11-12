@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Create organisations and places from your contacts on Android** ([#2513](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2513)): the organisations, places and pets screen has a new button that groups equal organisation and address values on your contacts. Choose the name, role, which contacts to link and whether it is their primary, then see what was created or skipped. No contact value is changed.
 - **Choose what a custom field applies to on Android** ([#2499](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2499)): when you add a custom field you can now pick contacts, organisations, places or pets, as on the web. The list shows which kind each field is for; the choice cannot be changed afterwards.
 - **Duplicate suggestions on Android** ([#2499](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2499)): the organisations, places and pets screen can now look for possible duplicates, as the web page does. Open either one to merge it, or mark the pair Not a duplicate to hide it for good.
 - **Android search finds your organisations, places and pets** ([#2499](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2499)): searching contacts now also lists matching organisations, places and pets by name, each showing its kind. Tap one to open it.

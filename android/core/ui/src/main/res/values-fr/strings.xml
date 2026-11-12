@@ -3541,4 +3541,59 @@
         <item quantity="many">Impossible de la copier vers %1$d contacts, donc rien n\'a été supprimé.</item>
         <item quantity="other">Impossible de la copier vers %1$d contacts, donc rien n\'a été supprimé.</item>
     </plurals>
+    <string name="shared_entities_from_contacts_open">Créer à partir de mes contacts…</string>
+    <string name="shared_entities_from_contacts_title">Créer des entités à partir de mes contacts</string>
+    <string name="shared_entities_from_contacts_intro">Groupes d\'une même organisation ou adresse trouvés sur vos contacts. Cochez ceux à créer et choisissez les contacts à lier. Rien n\'est modifié ni supprimé sur un contact. Vous pouvez relancer à tout moment : seules les valeurs pas encore liées sont proposées.</string>
+    <string name="shared_entities_from_contacts_none">Il n\'y a plus rien à créer à partir de vos contacts.</string>
+    <string name="shared_entities_from_contacts_load_failed">Impossible de parcourir vos contacts.</string>
+    <string name="shared_entities_from_contacts_create_failed">Impossible de créer les entités.</string>
+    <string name="shared_entities_from_contacts_include_cd">Inclure %1$s</string>
+    <string name="shared_entities_from_contacts_variants">Aussi écrit : %1$s</string>
+    <string name="shared_entities_from_contacts_name">Nom de %1$s</string>
+    <string name="shared_entities_from_contacts_role">Rôle pour %1$s</string>
+    <string name="shared_entities_from_contacts_primary">Définir comme principale</string>
+    <string name="shared_entities_from_contacts_primary_cd">Définir comme principale pour %1$s</string>
+    <string name="shared_entities_from_contacts_contacts_heading">Contacts à lier</string>
+    <string name="shared_entities_from_contacts_result_none">Rien n\'a été créé.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s : n\'existe plus sur vos contacts.</string>
+    <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s : un contact n\'en fait plus partie.</string>
+    <string name="shared_entities_from_contacts_skip_contact_named">%1$s : %2$s n\'en fait plus partie.</string>
+    <string name="shared_entities_from_contacts_skip_name_invalid">%1$s : le nom n\'est pas valide.</string>
+    <string name="shared_entities_from_contacts_skip_core_invalid">%1$s : ses informations ne sont pas valides.</string>
+    <string name="shared_entities_from_contacts_skip_unknown">%1$s : n\'a pas été appliqué.</string>
+    <plurals name="shared_entities_from_contacts_group_title">
+        <item quantity="one">%1$s — %2$d contact</item>
+        <item quantity="many">%1$s — %2$d contacts</item>
+        <item quantity="other">%1$s — %2$d contacts</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_has_primary_organisation">
+        <item quantity="one">%1$d d\'entre eux a déjà une organisation principale.</item>
+        <item quantity="many">%1$d d\'entre eux ont déjà une organisation principale.</item>
+        <item quantity="other">%1$d d\'entre eux ont déjà une organisation principale.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_has_primary_place">
+        <item quantity="one">%1$d d\'entre eux a déjà un lieu principal.</item>
+        <item quantity="many">%1$d d\'entre eux ont déjà un lieu principal.</item>
+        <item quantity="other">%1$d d\'entre eux ont déjà un lieu principal.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_create_organisation">
+        <item quantity="one">Créer %1$d organisation</item>
+        <item quantity="many">Créer %1$d organisations</item>
+        <item quantity="other">Créer %1$d organisations</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_create_place">
+        <item quantity="one">Créer %1$d lieu</item>
+        <item quantity="many">Créer %1$d lieux</item>
+        <item quantity="other">Créer %1$d lieux</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_created_organisation">
+        <item quantity="one">%1$d organisation créée.</item>
+        <item quantity="many">%1$d organisations créées.</item>
+        <item quantity="other">%1$d organisations créées.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_created_place">
+        <item quantity="one">%1$d lieu créé.</item>
+        <item quantity="many">%1$d lieux créés.</item>
+        <item quantity="other">%1$d lieux créés.</item>
+    </plurals>
 </resources>
