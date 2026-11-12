@@ -9,11 +9,16 @@ import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityContactLink
 import com.mycorrhizal.crm.model.network.EntityDeleteResponse
 import com.mycorrhizal.crm.model.network.EntityDismissResponse
+import com.mycorrhizal.crm.model.network.EntityFromContactsCreated
+import com.mycorrhizal.crm.model.network.EntityFromContactsGroup
+import com.mycorrhizal.crm.model.network.EntityFromContactsInput
+import com.mycorrhizal.crm.model.network.EntityFromContactsResponse
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntityRestoreResponse
 import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
+import com.mycorrhizal.crm.model.network.EntityValueGroup
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import io.mockk.coEvery
@@ -169,6 +174,48 @@ class EntityRepositoryImplTest {
         coEvery { api.dismissEntitySuggestion("a", "b") } returns
             Result.failure(ApiError.Network(java.io.IOException("offline")))
         assertTrue(repository.dismissSuggestion("a", "b").isFailure)
+    }
+
+    @Test
+    fun `value groups go straight to the api and touch no contact`() = runTest {
+        val response = EntitySuggestionsResponse(
+            mode = "contact_values",
+            groups = listOf(EntityValueGroup(key = "k"))
+        )
+        coEvery { api.listEntityValueGroups("place", "c1") } returns Result.success(response)
+        assertEquals(response, repository.valueGroups("place", "c1").getOrThrow())
+        coVerify(exactly = 0) { contacts.getContact(any()) }
+    }
+
+    @Test
+    fun `creating from contacts refreshes only the contacts of groups that were created`() =
+        runTest {
+            val input = EntityFromContactsInput(
+                kind = "organisation",
+                groups = listOf(
+                    EntityFromContactsGroup("k1", "Acme", "employee", true, listOf(7, 8)),
+                    EntityFromContactsGroup("k2", null, "employee", false, listOf(9))
+                )
+            )
+            coEvery { api.createEntitiesFromContacts(input) } returns Result.success(
+                EntityFromContactsResponse(created = listOf(EntityFromContactsCreated(key = "k1")))
+            )
+            assertTrue(repository.createFromContacts(input).isSuccess)
+            coVerify(exactly = 1) { contacts.getContact(7) }
+            coVerify(exactly = 1) { contacts.getContact(8) }
+            coVerify(exactly = 0) { contacts.getContact(9) }
+        }
+
+    @Test
+    fun `a failed create from contacts refreshes nothing`() = runTest {
+        val input = EntityFromContactsInput(
+            "place",
+            listOf(EntityFromContactsGroup("k1", null, "resident", false, listOf(7)))
+        )
+        coEvery { api.createEntitiesFromContacts(input) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        assertTrue(repository.createFromContacts(input).isFailure)
+        coVerify(exactly = 0) { contacts.getContact(any()) }
     }
 
     @Test

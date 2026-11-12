@@ -3539,4 +3539,59 @@
         <item quantity="many">Impossibile copiarla in %1$d contatti, quindi non è stato eliminato nulla.</item>
         <item quantity="other">Impossibile copiarla in %1$d contatti, quindi non è stato eliminato nulla.</item>
     </plurals>
+    <string name="shared_entities_from_contacts_open">Crea dai miei contatti…</string>
+    <string name="shared_entities_from_contacts_title">Crea entità dai miei contatti</string>
+    <string name="shared_entities_from_contacts_intro">Gruppi della stessa organizzazione o indirizzo trovati nei tuoi contatti. Seleziona quelli da creare e scegli quali contatti collegare. Nulla in un contatto viene modificato o eliminato. Puoi ripetere l\'operazione quando vuoi: vengono proposti solo i valori non ancora collegati.</string>
+    <string name="shared_entities_from_contacts_none">Non resta nulla da creare dai tuoi contatti.</string>
+    <string name="shared_entities_from_contacts_load_failed">Impossibile esaminare i tuoi contatti.</string>
+    <string name="shared_entities_from_contacts_create_failed">Impossibile creare le entità.</string>
+    <string name="shared_entities_from_contacts_include_cd">Includi %1$s</string>
+    <string name="shared_entities_from_contacts_variants">Scritto anche come: %1$s</string>
+    <string name="shared_entities_from_contacts_name">Nome di %1$s</string>
+    <string name="shared_entities_from_contacts_role">Ruolo per %1$s</string>
+    <string name="shared_entities_from_contacts_primary">Imposta come principale</string>
+    <string name="shared_entities_from_contacts_primary_cd">Imposta come principale per %1$s</string>
+    <string name="shared_entities_from_contacts_contacts_heading">Contatti da collegare</string>
+    <string name="shared_entities_from_contacts_result_none">Non è stato creato nulla.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: saltato. Potrebbe esistere già o non corrispondere più ai tuoi contatti.</string>
+    <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s: un contatto non ne fa più parte.</string>
+    <string name="shared_entities_from_contacts_skip_contact_named">%1$s: %2$s non ne fa più parte.</string>
+    <string name="shared_entities_from_contacts_skip_name_invalid">%1$s: il nome non è valido.</string>
+    <string name="shared_entities_from_contacts_skip_core_invalid">%1$s: i suoi dati non sono validi.</string>
+    <string name="shared_entities_from_contacts_skip_unknown">%1$s: non è stato applicato.</string>
+    <plurals name="shared_entities_from_contacts_group_title">
+        <item quantity="one">%1$s — %2$d contatto</item>
+        <item quantity="many">%1$s — %2$d contatti</item>
+        <item quantity="other">%1$s — %2$d contatti</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_has_primary_organisation">
+        <item quantity="one">%1$d di loro ha già un\'organizzazione principale.</item>
+        <item quantity="many">%1$d di loro hanno già un\'organizzazione principale.</item>
+        <item quantity="other">%1$d di loro hanno già un\'organizzazione principale.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_has_primary_place">
+        <item quantity="one">%1$d di loro ha già un luogo principale.</item>
+        <item quantity="many">%1$d di loro hanno già un luogo principale.</item>
+        <item quantity="other">%1$d di loro hanno già un luogo principale.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_create_organisation">
+        <item quantity="one">Crea %1$d organizzazione</item>
+        <item quantity="many">Crea %1$d organizzazioni</item>
+        <item quantity="other">Crea %1$d organizzazioni</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_create_place">
+        <item quantity="one">Crea %1$d luogo</item>
+        <item quantity="many">Crea %1$d luoghi</item>
+        <item quantity="other">Crea %1$d luoghi</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_created_organisation">
+        <item quantity="one">%1$d organizzazione creata.</item>
+        <item quantity="many">%1$d organizzazioni create.</item>
+        <item quantity="other">%1$d organizzazioni create.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_created_place">
+        <item quantity="one">%1$d luogo creato.</item>
+        <item quantity="many">%1$d luoghi creati.</item>
+        <item quantity="other">%1$d luoghi creati.</item>
+    </plurals>
 </resources>

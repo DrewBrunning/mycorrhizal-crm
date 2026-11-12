@@ -385,18 +385,107 @@ data class EntitySuggestionPair(
     val b: EntitySuggestionEntity = EntitySuggestionEntity()
 )
 
+/** One contact in a [EntityValueGroup], with the spelling it has on that contact. */
+@JsonClass(generateAdapter = true)
+data class EntityValueGroupContact(
+    @Json(name = "contact_id") val contactId: Int = 0,
+    val firstname: String = "",
+    val lastname: String = "",
+    /** The organisation / address text as typed on this contact. */
+    @Json(name = "value_name") val valueName: String = "",
+    /** The contact already has a primary organisation / place, so this link would not be it. */
+    @Json(name = "has_primary") val hasPrimary: Boolean = false
+) {
+    val displayName: String get() = listOf(
+        firstname,
+        lastname
+    ).filter { it.isNotBlank() }.joinToString(" ")
+}
+
 /**
- * GET /entities/suggestions. Only the `pairs` mode is modeled; the `contact_values` groups (the
- * create-from-contacts helper) are ignored by Moshi until that surface exists on Android.
+ * One group of equal organisation / address values found on contacts (GET /entities/suggestions
+ * `mode=contact_values`, #2299). [key] is opaque: echo it to POST /entities/from-contacts.
+ * [reason] is `exact_name`, `normalized_name` or `address_components` (hardcoded mirror).
+ */
+@JsonClass(generateAdapter = true)
+data class EntityValueGroup(
+    val key: String = "",
+    val kind: String = EntityKind.ORGANISATION,
+    /** The proposed entity name (the most common spelling). */
+    val name: String = "",
+    val reason: String = "",
+    val variants: List<String>? = null,
+    val contacts: List<EntityValueGroupContact>? = null
+) {
+    val variantsOrEmpty: List<String> get() = variants.orEmpty()
+    val contactsOrEmpty: List<EntityValueGroupContact> get() = contacts.orEmpty()
+}
+
+/**
+ * GET /entities/suggestions. `pairs` is filled in `mode=pairs` and `groups` in
+ * `mode=contact_values` (the create-from-contacts helper); the other list is null or empty.
  */
 @JsonClass(generateAdapter = true)
 data class EntitySuggestionsResponse(
     val mode: String = "pairs",
     val pairs: List<EntitySuggestionPair>? = null,
+    val groups: List<EntityValueGroup>? = null,
     @Json(name = "next_cursor") val nextCursor: String? = null,
     val limit: Int = 0
 ) {
     val pairsOrEmpty: List<EntitySuggestionPair> get() = pairs.orEmpty()
+    val groupsOrEmpty: List<EntityValueGroup> get() = groups.orEmpty()
+}
+
+/**
+ * One confirmed group of POST /entities/from-contacts: the entity to create and the subset of the
+ * group's contacts to link (1..1000). A blank [name] keeps the proposed one.
+ */
+@JsonClass(generateAdapter = true)
+data class EntityFromContactsGroup(
+    val key: String,
+    val name: String? = null,
+    val role: String,
+    @Json(name = "set_primary") val setPrimary: Boolean = false,
+    @Json(name = "contact_ids") val contactIds: List<Int>
+)
+
+/** POST /entities/from-contacts body; [kind] is `organisation` or `place` (1..100 groups). */
+@JsonClass(generateAdapter = true)
+data class EntityFromContactsInput(val kind: String, val groups: List<EntityFromContactsGroup>)
+
+/** Why a confirmed group or contact was not applied (hardcoded mirror of the backend tokens). */
+object EntityFromContactsSkipReason {
+    const val GROUP_NOT_FOUND = "group_not_found"
+    const val CONTACT_NOT_IN_GROUP = "contact_not_in_group"
+    const val NAME_INVALID = "name_invalid"
+    const val CORE_INVALID = "core_invalid"
+}
+
+@JsonClass(generateAdapter = true)
+data class EntityFromContactsSkip(
+    val key: String = "",
+    @Json(name = "contact_id") val contactId: Int? = null,
+    val reason: String = ""
+)
+
+/** One entity the helper created, with the links it made. */
+@JsonClass(generateAdapter = true)
+data class EntityFromContactsCreated(
+    val key: String = "",
+    val entity: Entity? = null,
+    val links: List<ContactEntityLink>? = null
+) {
+    val linksOrEmpty: List<ContactEntityLink> get() = links.orEmpty()
+}
+
+@JsonClass(generateAdapter = true)
+data class EntityFromContactsResponse(
+    val created: List<EntityFromContactsCreated>? = null,
+    val skipped: List<EntityFromContactsSkip>? = null
+) {
+    val createdOrEmpty: List<EntityFromContactsCreated> get() = created.orEmpty()
+    val skippedOrEmpty: List<EntityFromContactsSkip> get() = skipped.orEmpty()
 }
 
 /** POST /entities/suggestions/dismiss body; either order, the server canonicalises it. */

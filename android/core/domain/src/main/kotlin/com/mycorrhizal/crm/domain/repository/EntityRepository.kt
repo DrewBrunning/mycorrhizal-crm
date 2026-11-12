@@ -9,6 +9,8 @@ import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityContactLink
 import com.mycorrhizal.crm.model.network.EntityDeleteResponse
+import com.mycorrhizal.crm.model.network.EntityFromContactsInput
+import com.mycorrhizal.crm.model.network.EntityFromContactsResponse
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeInput
@@ -50,6 +52,20 @@ interface EntityRepository {
 
     /** Hide a suggested pair for good (idempotent, order-insensitive server-side). */
     suspend fun dismissSuggestion(entityA: String, entityB: String): Result<Unit>
+
+    /**
+     * Groups of equal organisation / address values on the contacts ([kind] is `organisation` or
+     * `place`), one page at a time; read-only (the create-from-contacts helper, #2299).
+     */
+    suspend fun valueGroups(kind: String, cursor: String? = null): Result<EntitySuggestionsResponse>
+
+    /**
+     * Create the confirmed groups as entities with their links. Every contact of a group that was
+     * created is re-fetched, because the links change what the server projects into it.
+     */
+    suspend fun createFromContacts(
+        input: EntityFromContactsInput
+    ): Result<EntityFromContactsResponse>
 
     /** The live links of an entity (the "People" list). */
     suspend fun contacts(id: String): Result<List<EntityContactLink>>

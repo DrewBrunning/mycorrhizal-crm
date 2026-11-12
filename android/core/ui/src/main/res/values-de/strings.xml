@@ -3437,4 +3437,52 @@
         <item quantity="one">Das Kopieren zu %1$d Kontakt ist fehlgeschlagen, daher wurde nichts gelöscht.</item>
         <item quantity="other">Das Kopieren zu %1$d Kontakten ist fehlgeschlagen, daher wurde nichts gelöscht.</item>
     </plurals>
+    <string name="shared_entities_from_contacts_open">Aus meinen Kontakten erstellen…</string>
+    <string name="shared_entities_from_contacts_title">Einträge aus meinen Kontakten erstellen</string>
+    <string name="shared_entities_from_contacts_intro">Gruppen derselben Organisation oder Adresse, die bei deinen Kontakten gefunden wurden. Hake an, was angelegt werden soll, und wähle die zu verknüpfenden Kontakte. Bei einem Kontakt wird nichts geändert oder gelöscht. Du kannst das jederzeit erneut ausführen, angeboten werden nur noch nicht verknüpfte Werte.</string>
+    <string name="shared_entities_from_contacts_none">Aus deinen Kontakten gibt es nichts mehr anzulegen.</string>
+    <string name="shared_entities_from_contacts_load_failed">Deine Kontakte konnten nicht durchsucht werden.</string>
+    <string name="shared_entities_from_contacts_create_failed">Die Einträge konnten nicht erstellt werden.</string>
+    <string name="shared_entities_from_contacts_include_cd">%1$s einbeziehen</string>
+    <string name="shared_entities_from_contacts_variants">Auch geschrieben als: %1$s</string>
+    <string name="shared_entities_from_contacts_name">Name von %1$s</string>
+    <string name="shared_entities_from_contacts_role">Rolle für %1$s</string>
+    <string name="shared_entities_from_contacts_primary">Als primär festlegen</string>
+    <string name="shared_entities_from_contacts_primary_cd">Als primär festlegen für %1$s</string>
+    <string name="shared_entities_from_contacts_contacts_heading">Zu verknüpfende Kontakte</string>
+    <string name="shared_entities_from_contacts_result_none">Es wurde nichts angelegt.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: übersprungen. Es existiert möglicherweise schon oder passt nicht mehr zu deinen Kontakten.</string>
+    <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s: ein Kontakt gehört nicht mehr dazu.</string>
+    <string name="shared_entities_from_contacts_skip_contact_named">%1$s: %2$s gehört nicht mehr dazu.</string>
+    <string name="shared_entities_from_contacts_skip_name_invalid">%1$s: Der Name ist ungültig.</string>
+    <string name="shared_entities_from_contacts_skip_core_invalid">%1$s: Die Angaben sind ungültig.</string>
+    <string name="shared_entities_from_contacts_skip_unknown">%1$s: wurde nicht übernommen.</string>
+    <plurals name="shared_entities_from_contacts_group_title">
+        <item quantity="one">%1$s — %2$d Kontakt</item>
+        <item quantity="other">%1$s — %2$d Kontakte</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_has_primary_organisation">
+        <item quantity="one">%1$d davon hat bereits eine primäre Organisation.</item>
+        <item quantity="other">%1$d davon haben bereits eine primäre Organisation.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_has_primary_place">
+        <item quantity="one">%1$d davon hat bereits einen primären Ort.</item>
+        <item quantity="other">%1$d davon haben bereits einen primären Ort.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_create_organisation">
+        <item quantity="one">%1$d Organisation erstellen</item>
+        <item quantity="other">%1$d Organisationen erstellen</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_create_place">
+        <item quantity="one">%1$d Ort erstellen</item>
+        <item quantity="other">%1$d Orte erstellen</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_created_organisation">
+        <item quantity="one">%1$d Organisation erstellt.</item>
+        <item quantity="other">%1$d Organisationen erstellt.</item>
+    </plurals>
+    <plurals name="shared_entities_from_contacts_created_place">
+        <item quantity="one">%1$d Ort erstellt.</item>
+        <item quantity="other">%1$d Orte erstellt.</item>
+    </plurals>
 </resources>
