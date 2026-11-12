@@ -2515,6 +2515,12 @@
     </plurals>
     <string name="meerkat_import_start">Import starten</string>
     <string name="meerkat_import_working">Ihre Meerkat-Daten werden gelesen…</string>
+    <string name="import_loss_category_unsupported">Nicht importiert</string>
+    <string name="import_loss_category_invalid">Abgelehnt</string>
+    <string name="import_loss_category_lossy">Importiert, aber Details gingen verloren</string>
+    <string name="import_loss_category_transformed">Importiert mit einer Änderung</string>
+    <string name="import_loss_category_skipped">Bewusst übersprungen</string>
+    <string name="import_loss_category_other">Sonstiges</string>
     <plurals name="meerkat_import_loss">
         <item quantity="one">%1$d Element kann nicht exakt importiert werden</item>
         <item quantity="other">%1$d Elemente können nicht exakt importiert werden</item>

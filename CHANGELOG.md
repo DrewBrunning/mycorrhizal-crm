@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Itemized loss report on Android imports** ([#2524](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2524)): reviewing a Meerkat import or a bundle restore now lists what will not come across exactly, grouped by category with the record and a message for each, instead of only a count.
 - **Card list and gift shopping list on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): the Occasions screen can now share your card list as a CSV, leaving out private and secret addresses, and opens a gift shopping list for the next 30 or 90 days showing what is still needed, bought or given.
 - **Share notes, activities and circles on Android** ([#2518](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2518)): a saved note or activity, and a circle, now has a Share action that starts a read-only standing share. Choose who and when it expires; it stays pending until they accept.
 - **Standing occasions on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): a contact now has an Occasions section for the yearly card, gift or invite you keep up, with its date, lead time and notes. Add, edit and delete them there, as on the web.
