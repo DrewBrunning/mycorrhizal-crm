@@ -119,20 +119,7 @@ class TrashViewModel @Inject constructor(
             ) { response ->
                 contacts += response.contacts
                 retention = response.retentionDays
-            } ?: if (entitiesSupported == true) {
-                walkPages(
-                    fetch = { page ->
-                        trashRepository.listEntities(
-                        page = page,
-                        limit = PAGE_SIZE
-                    )
-                    },
-                    rows = { it.entitiesOrEmpty },
-                    total = { it.total }
-                ) { response -> entities += response.entitiesOrEmpty }
-            } else {
-                null
-            }
+            } ?: walkEntities(entities)
             if (failure != null) {
                 _uiState.update { it.copy(isLoading = false, error = failure) }
             } else {
@@ -146,6 +133,16 @@ class TrashViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** The entity trash, skipped entirely on a server without it (issue #2527). */
+    private suspend fun walkEntities(into: MutableList<TrashedEntity>): ApiError? {
+        if (entitiesSupported != true) return null
+        return walkPages(
+            fetch = { page -> trashRepository.listEntities(page = page, limit = PAGE_SIZE) },
+            rows = { it.entitiesOrEmpty },
+            total = { it.total }
+        ) { response -> into += response.entitiesOrEmpty }
     }
 
     /** Walks a paged list until it is exhausted; returns the first failure, or null. */

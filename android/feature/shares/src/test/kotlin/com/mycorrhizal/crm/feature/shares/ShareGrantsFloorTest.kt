@@ -45,18 +45,9 @@ class ShareGrantsFloorTest {
 
     private fun contactShares(version: AppVersion?) {
         val repository = mockk<ContactShareRepository>()
-        coEvery {
-            repository.listIncoming(
-            any(),
-            any()
-        )
-        } returns Result.success(ContactSharesPage())
-        coEvery {
-            repository.listOutgoing(
-            any(),
-            any()
-        )
-        } returns Result.success(ContactSharesPage())
+        val empty = Result.success(ContactSharesPage())
+        coEvery { repository.listIncoming(any(), any()) } returns empty
+        coEvery { repository.listOutgoing(any(), any()) } returns empty
         composeTestRule.setContent {
             CompositionLocalProvider(LocalServerVersion provides version) {
                 MycorrhizalTheme {
