@@ -11,6 +11,8 @@ import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityContactLink
 import com.mycorrhizal.crm.model.network.EntityDeleteResponse
+import com.mycorrhizal.crm.model.network.EntityFromContactsInput
+import com.mycorrhizal.crm.model.network.EntityFromContactsResponse
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeInput
@@ -80,6 +82,19 @@ class EntityRepositoryImpl @Inject constructor(
 
     override suspend fun suggestions(kind: String): Result<EntitySuggestionsResponse> =
         apiClient.listEntitySuggestions(kind)
+
+    override suspend fun valueGroups(kind: String, cursor: String?): Result<EntitySuggestionsResponse> =
+        apiClient.listEntityValueGroups(kind, cursor)
+
+    override suspend fun createFromContacts(
+        input: EntityFromContactsInput
+    ): Result<EntityFromContactsResponse> = apiClient.createEntitiesFromContacts(input).also {
+        val response = it.getOrNull() ?: return@also
+        val createdKeys = response.createdOrEmpty.map { c -> c.key }.toSet()
+        refresh(
+            input.groups.filter { g -> g.key in createdKeys }.flatMap { g -> g.contactIds }.distinct()
+        )
+    }
 
     override suspend fun dismissSuggestion(entityA: String, entityB: String): Result<Unit> =
         apiClient.dismissEntitySuggestion(entityA, entityB).map { }

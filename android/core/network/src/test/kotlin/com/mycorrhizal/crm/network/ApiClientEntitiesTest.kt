@@ -6,6 +6,8 @@ import com.mycorrhizal.crm.model.network.ContactEntityLinkInput
 import com.mycorrhizal.crm.model.network.ContactEntityLinkSource
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactRecordInput
+import com.mycorrhizal.crm.model.network.EntityFromContactsGroup
+import com.mycorrhizal.crm.model.network.EntityFromContactsInput
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntityMergeInput
@@ -170,6 +172,87 @@ class ApiClientEntitiesTest {
             assertTrue(
                 client.listEntitySuggestions(kind = "pet").getOrThrow().pairsOrEmpty.isEmpty()
             )
+        }
+
+    @Test
+    fun `listEntityValueGroups asks for contact_values and tolerates null lists`() = runBlocking {
+        enqueue(
+            """{"mode":"contact_values","pairs":null,"groups":[
+            {"key":"k1","kind":"organisation","name":"Acme","reason":"exact_name","variants":["Acme","ACME"],
+            "contacts":[{"contact_id":7,"firstname":"Ada","lastname":"L","value_name":"ACME","has_primary":true},
+            {"contact_id":8,"firstname":"Bo","lastname":"","value_name":"Acme","has_primary":false}]},
+            {"key":"k2","kind":"organisation","name":"Solo","reason":"normalized_name","variants":null,"contacts":null}],
+            "next_cursor":"c2","limit":50}"""
+        )
+        val result = client.listEntityValueGroups("organisation", cursor = "c1").getOrThrow()
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/entities/suggestions", request.requestUrl?.encodedPath)
+        assertEquals("organisation", request.requestUrl?.queryParameter("kind"))
+        assertEquals("contact_values", request.requestUrl?.queryParameter("mode"))
+        assertEquals("c1", request.requestUrl?.queryParameter("cursor"))
+        assertEquals("c2", result.nextCursor)
+        val first = result.groupsOrEmpty.first()
+        assertEquals("k1", first.key)
+        assertEquals(listOf("Acme", "ACME"), first.variantsOrEmpty)
+        assertEquals(7, first.contactsOrEmpty.first().contactId)
+        assertTrue(first.contactsOrEmpty.first().hasPrimary)
+        assertEquals("Ada L", first.contactsOrEmpty.first().displayName)
+        assertEquals("Bo", first.contactsOrEmpty[1].displayName)
+        val sparse = result.groupsOrEmpty[1]
+        assertTrue(sparse.variantsOrEmpty.isEmpty())
+        assertTrue(sparse.contactsOrEmpty.isEmpty())
+        assertTrue(result.pairsOrEmpty.isEmpty())
+
+        enqueue("""{"mode":"contact_values","pairs":null,"groups":null}""")
+        assertTrue(client.listEntityValueGroups("place").getOrThrow().groupsOrEmpty.isEmpty())
+        assertNull(server.takeRequest().requestUrl?.queryParameter("cursor"))
+    }
+
+    @Test
+    fun `createEntitiesFromContacts posts the confirmed groups and parses created and skipped`() =
+        runBlocking {
+            enqueue(
+                """{"created":[{"key":"k1","entity":$entityJson,"links":[$linkJson]}],
+                "skipped":[{"key":"k2","contact_id":8,"reason":"contact_not_in_group"},
+                {"key":"k3","reason":"a_future_reason"}]}"""
+            )
+            val result = client.createEntitiesFromContacts(
+                EntityFromContactsInput(
+                    kind = "organisation",
+                    groups = listOf(
+                        EntityFromContactsGroup(
+                            key = "k1",
+                            name = "Acme",
+                            role = "employee",
+                            setPrimary = true,
+                            contactIds = listOf(7, 8)
+                        )
+                    )
+                )
+            ).getOrThrow()
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/entities/from-contacts", request.requestUrl?.encodedPath)
+            val body = request.body.readUtf8()
+            assertTrue(body, body.contains(""""kind":"organisation""""))
+            assertTrue(body, body.contains(""""key":"k1""""))
+            assertTrue(body, body.contains(""""role":"employee""""))
+            assertTrue(body, body.contains(""""set_primary":true"""))
+            assertTrue(body, body.contains(""""contact_ids":[7,8]"""))
+            val created = result.createdOrEmpty.single()
+            assertEquals("Acme", created.entity?.name)
+            assertEquals("l1", created.linksOrEmpty.single().id)
+            assertEquals(2, result.skippedOrEmpty.size)
+            assertEquals(8, result.skippedOrEmpty[0].contactId)
+            assertNull(result.skippedOrEmpty[1].contactId)
+
+            enqueue("""{"created":null,"skipped":null}""")
+            val empty = client.createEntitiesFromContacts(
+                EntityFromContactsInput("place", listOf(EntityFromContactsGroup("k", null, "other", false, listOf(1))))
+            ).getOrThrow()
+            assertTrue(empty.createdOrEmpty.isEmpty() && empty.skippedOrEmpty.isEmpty())
+            assertFalse(server.takeRequest().body.readUtf8().contains(""""name""""))
         }
 
     @Test

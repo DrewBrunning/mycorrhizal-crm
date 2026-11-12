@@ -122,6 +122,8 @@ import com.mycorrhizal.crm.model.network.EntityContactsResponse
 import com.mycorrhizal.crm.model.network.EntityDeleteResponse
 import com.mycorrhizal.crm.model.network.EntityDismissInput
 import com.mycorrhizal.crm.model.network.EntityDismissResponse
+import com.mycorrhizal.crm.model.network.EntityFromContactsInput
+import com.mycorrhizal.crm.model.network.EntityFromContactsResponse
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeInput
@@ -3685,6 +3687,34 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         return executeGet(builder.build().toString()) { _, body ->
             moshi.adapter(EntitySuggestionsResponse::class.java).fromJson(body)
         }
+    }
+
+    /**
+     * GET /api/v1/entities/suggestions?mode=contact_values - groups of equal organisation / address
+     * values on the contacts, for the create-from-contacts helper (#2299). [kind] is
+     * `organisation` or `place`; [cursor] pages on. Read-only and idempotent.
+     */
+    suspend fun listEntityValueGroups(
+        kind: String,
+        cursor: String? = null
+    ): Result<EntitySuggestionsResponse> {
+        val builder = "$PLACEHOLDER_ORIGIN$ENTITIES_PATH/suggestions".toHttpUrl().newBuilder()
+        builder.addQueryParameter("kind", kind)
+        builder.addQueryParameter("mode", "contact_values")
+        cursor?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("cursor", it) }
+        return executeGet(builder.build().toString()) { _, body ->
+            moshi.adapter(EntitySuggestionsResponse::class.java).fromJson(body)
+        }
+    }
+
+    /**
+     * POST /api/v1/entities/from-contacts - creates one entity per confirmed group and links the
+     * chosen contacts; groups that went stale come back in `skipped`, not as an error.
+     */
+    suspend fun createEntitiesFromContacts(
+        input: EntityFromContactsInput
+    ): Result<EntityFromContactsResponse> = executePost("$ENTITIES_PATH/from-contacts", input) { _, body ->
+        moshi.adapter(EntityFromContactsResponse::class.java).fromJson(body)
     }
 
     /** POST /api/v1/entities/suggestions/dismiss - hides the pair for good (merge never needed). */
