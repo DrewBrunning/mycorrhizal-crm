@@ -1587,6 +1587,14 @@
     <string name="shares_standing_reveal_confirm">Ces sections peuvent contenir des relations privées ou des champs personnalisés. Seuls les éléments de sensibilité normale sont partagés. Tout ce que vous marquez privé ou secret reste masqué.</string>
     <string name="shares_standing_expiry_label">Expire</string>
     <string name="shares_standing_pending_note">Elle verra qui partage et de quel type d\'élément il s\'agit, et doit accepter avant de pouvoir lire quoi que ce soit.</string>
+    <!-- Issue #2518: standing shares of a note, an activity and a circle (ADR 0042). -->
+    <string name="shares_standing_title_note">Partager cette note</string>
+    <string name="shares_standing_title_activity">Partager cette activité</string>
+    <string name="shares_standing_title_circle">Partager ce cercle</string>
+    <string name="shares_standing_notice_note">Elle verra le texte et la date de cette note, pas le contact auquel elle est liée.</string>
+    <string name="shares_standing_notice_activity">Elle verra le titre, la description, le lieu, les dates et le type, pas les participants.</string>
+    <string name="shares_standing_notice_circle">Elle verra le nom, la description, la couleur et les noms des membres actuels du cercle. Les personnes que vous ajoutez plus tard lui deviennent visibles immédiatement.</string>
+    <string name="shares_error_no_entity">Cet élément ne peut pas être partagé : il n\'a pas d\'identifiant.</string>
     <plurals name="shares_pending_count">
         <item quantity="one">%1$d partage vous attend</item>
         <item quantity="many">%1$d partages vous attendent</item>

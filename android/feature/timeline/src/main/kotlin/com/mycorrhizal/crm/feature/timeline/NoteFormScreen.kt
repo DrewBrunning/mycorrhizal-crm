@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -67,6 +68,8 @@ internal fun readPickedNoteImages(
 fun NoteFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit,
+    // Issue #2518: opens the standing-share screen for the saved note (given its uuid).
+    onShare: ((String) -> Unit)? = null,
     viewModel: NoteFormViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -123,6 +126,7 @@ fun NoteFormScreen(
                 onAddImages = { imagePicker.launch(pickImageRequest) },
                 onDeleteImage = viewModel::deleteImage,
                 onSetImageSensitivity = viewModel::setImageSensitivity,
+                onShare = onShare,
                 modifier = Modifier.padding(padding)
             )
         }
@@ -155,7 +159,8 @@ fun NoteFormContent(
     modifier: Modifier = Modifier,
     onAddImages: () -> Unit = {},
     onDeleteImage: (Int) -> Unit = {},
-    onSetImageSensitivity: (Int, String) -> Unit = { _, _ -> }
+    onSetImageSensitivity: (Int, String) -> Unit = { _, _ -> },
+    onShare: ((String) -> Unit)? = null
 ) {
     Column(
         modifier = modifier
@@ -240,5 +245,14 @@ fun NoteFormContent(
             onSetSensitivity = onSetImageSensitivity,
             sensitivityFailedImageId = state.sensitivityFailedImageId
         )
+
+        // Issue #2518: a standing, read-only share of this note (ADR 0042).
+        val uuid = state.uuid
+        if (uuid != null && onShare != null) {
+            HorizontalDivider()
+            OutlinedButton(onClick = { onShare(uuid) }, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.shares_standing_title_note))
+            }
+        }
     }
 }
