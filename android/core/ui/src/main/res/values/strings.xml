@@ -2171,6 +2171,7 @@
     <string name="trash_restore_conflict">Can\'t restore %1$s: another contact already uses this contact\'s ID. Merge or delete that contact first.</string>
     <string name="trash_purge_confirm">Permanently delete %1$s? This cannot be undone.</string>
     <string name="trash_purged">Permanently deleted %1$s.</string>
+    <string name="trash_merged_into">Merged into %1$s</string>
     <plurals name="trash_empty_confirm">
         <item quantity="one">Permanently delete %1$d contact in the Trash? This cannot be undone.</item>
         <item quantity="other">Permanently delete all %1$d contacts in the Trash? This cannot be undone.</item>

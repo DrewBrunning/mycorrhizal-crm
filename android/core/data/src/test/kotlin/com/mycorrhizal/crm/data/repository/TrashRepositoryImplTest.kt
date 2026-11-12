@@ -1,9 +1,12 @@
 package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.Entity
+import com.mycorrhizal.crm.model.network.TrashEntityListResponse
 import com.mycorrhizal.crm.model.network.TrashListResponse
 import com.mycorrhizal.crm.model.network.TrashRestoreResponse
 import com.mycorrhizal.crm.model.network.TrashedContact
+import com.mycorrhizal.crm.model.network.TrashedEntity
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import io.mockk.coEvery
@@ -29,6 +32,17 @@ class TrashRepositoryImplTest {
 
         assertEquals(listOf(3), result.getOrThrow().contacts.map { it.contact.id })
         coVerify { apiClient.getTrashedContacts(page = 2, limit = 50) }
+    }
+
+    @Test
+    fun `listEntities forwards the window and returns the response`() = runTest {
+        val row = TrashedEntity(entity = Entity(id = "e1", name = "Rex"))
+        coEvery { apiClient.getTrashedEntities(page = 2, limit = 50) } returns
+            Result.success(TrashEntityListResponse(entities = listOf(row), total = 1))
+
+        val result = repository.listEntities(page = 2, limit = 50)
+
+        assertEquals(listOf("e1"), result.getOrThrow().entitiesOrEmpty.map { it.entity.id })
     }
 
     @Test

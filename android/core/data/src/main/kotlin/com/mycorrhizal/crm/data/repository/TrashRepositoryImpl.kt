@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.domain.repository.TrashRepository
+import com.mycorrhizal.crm.model.network.TrashEntityListResponse
 import com.mycorrhizal.crm.model.network.TrashListResponse
 import com.mycorrhizal.crm.model.network.TrashRestoreResponse
 import com.mycorrhizal.crm.network.ApiClient
@@ -10,6 +11,9 @@ import javax.inject.Inject
 class TrashRepositoryImpl @Inject constructor(private val apiClient: ApiClient) : TrashRepository {
     override suspend fun list(page: Int, limit: Int): Result<TrashListResponse> =
         apiClient.getTrashedContacts(page = page, limit = limit)
+
+    override suspend fun listEntities(page: Int, limit: Int): Result<TrashEntityListResponse> =
+        apiClient.getTrashedEntities(page = page, limit = limit)
 
     override suspend fun restore(id: Int): Result<TrashRestoreResponse> =
         apiClient.restoreTrashedContact(id)

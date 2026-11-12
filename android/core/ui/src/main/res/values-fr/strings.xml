@@ -2225,6 +2225,7 @@
     <string name="trash_restore_conflict">Impossible de restaurer %1$s : un autre contact utilise déjà l’ID de ce contact. Fusionnez ou supprimez d’abord ce contact.</string>
     <string name="trash_purge_confirm">Supprimer définitivement %1$s ? Cette action est irréversible.</string>
     <string name="trash_purged">%1$s supprimé définitivement.</string>
+    <string name="trash_merged_into">Fusionné avec %1$s</string>
     <plurals name="trash_empty_confirm">
         <item quantity="one">Supprimer définitivement %1$d contact de la corbeille ? Cette action est irréversible.</item>
         <item quantity="many">Supprimer définitivement les %1$d contacts de la corbeille ? Cette action est irréversible.</item>

@@ -1,12 +1,18 @@
 package com.mycorrhizal.crm.feature.trash
 
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.domain.repository.TrashRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.Entity
+import com.mycorrhizal.crm.model.network.EntityKind
+import com.mycorrhizal.crm.model.network.EntityRestoreResponse
+import com.mycorrhizal.crm.model.network.TrashEntityListResponse
 import com.mycorrhizal.crm.model.network.TrashListResponse
 import com.mycorrhizal.crm.model.network.TrashRestoreResponse
 import com.mycorrhizal.crm.model.network.TrashRestoreSkip
 import com.mycorrhizal.crm.model.network.TrashedContact
+import com.mycorrhizal.crm.model.network.TrashedEntity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -30,6 +36,7 @@ class TrashViewModelTest {
 
     private val trash = mockk<TrashRepository>()
     private val contacts = mockk<ContactRepository>()
+    private val entityRepo = mockk<EntityRepository>()
 
     private fun row(id: Int, name: String) = TrashedContact(
         contact = ContactSummary(id = id, firstname = name, lastname = "Test"),
@@ -47,10 +54,26 @@ class TrashViewModelTest {
         )
     }
 
+    private fun entityRow(id: String, name: String, kind: String = EntityKind.PET) = TrashedEntity(
+        entity = Entity(id = id, kind = kind, name = name),
+        deletedAt = "2026-10-01T00:00:00Z",
+        purgeAt = "2026-10-31T00:00:00Z"
+    )
+
+    private fun stubEntities(vararg rows: TrashedEntity) {
+        entitiesStubbed = true
+        coEvery { trash.listEntities(any(), any()) } returns Result.success(
+            TrashEntityListResponse(entities = rows.toList(), total = rows.size)
+        )
+    }
+
     private fun vm(): TrashViewModel {
         coEvery { contacts.syncContacts() } returns Result.success(Unit)
-        return TrashViewModel(trash, contacts)
+        if (!entitiesStubbed) stubEntities()
+        return TrashViewModel(trash, contacts, entityRepo)
     }
+
+    private var entitiesStubbed = false
 
     @Test
     fun `load surfaces the rows and the retention`() = runTest(mainDispatcherRule.testDispatcher) {
@@ -222,5 +245,115 @@ class TrashViewModelTest {
         advanceUntilIdle()
 
         coVerify(exactly = 1) { trash.purge(1) }
+    }
+
+    @Test
+    fun `load lists deleted entities with their kind and merge origin`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubList()
+        stubEntities(
+            entityRow("e1", "Acme", EntityKind.ORGANISATION),
+            entityRow("e2", "Rex").copy(mergedInto = "e9", mergedIntoName = "Rexy")
+        )
+
+        val model = vm()
+        advanceUntilIdle()
+
+        assertEquals(listOf("e1", "e2"), model.uiState.value.entities.map { it.entity.id })
+        assertEquals("Rexy", model.uiState.value.entities[1].mergedIntoName)
+        assertTrue(model.uiState.value.items.isEmpty())
+        assertFalse(model.uiState.value.isEmpty)
+    }
+
+    @Test
+    fun `an entity load failure sets the error`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubList(row(1, "Ada"))
+        coEvery { trash.listEntities(any(), any()) } returns
+            Result.failure(ApiError.Server(500, "boom"))
+        entitiesStubbed = true
+
+        val model = vm()
+        advanceUntilIdle()
+
+        assertNotNull(model.uiState.value.error)
+    }
+
+    @Test
+    fun `restoring an entity removes its row and reports success`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubList()
+        stubEntities(entityRow("e1", "Acme"), entityRow("e2", "Rex"))
+        coEvery { entityRepo.restore("e2") } returns Result.success(EntityRestoreResponse())
+        val model = vm()
+        advanceUntilIdle()
+
+        model.restoreEntity(model.uiState.value.entities[1])
+        advanceUntilIdle()
+
+        assertEquals(listOf("e1"), model.uiState.value.entities.map { it.entity.id })
+        assertEquals(TrashUiEvent.EntityRestored("Rex", sameNameLive = false), model.events.first())
+    }
+
+    @Test
+    fun `restoring an entity flags a live entity with the same name`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubList()
+        stubEntities(entityRow("e1", "Acme"))
+        coEvery { entityRepo.restore("e1") } returns
+            Result.success(EntityRestoreResponse(sameNameLive = true))
+        val model = vm()
+        advanceUntilIdle()
+
+        model.restoreEntity(model.uiState.value.entities.single())
+        advanceUntilIdle()
+
+        assertEquals(TrashUiEvent.EntityRestored("Acme", sameNameLive = true), model.events.first())
+    }
+
+    @Test
+    fun `a failed entity restore keeps the row and reports the error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubList()
+        stubEntities(entityRow("e1", "Acme"))
+        coEvery { entityRepo.restore("e1") } returns Result.failure(ApiError.Server(500, "boom"))
+        val model = vm()
+        advanceUntilIdle()
+
+        model.restoreEntity(model.uiState.value.entities.single())
+        advanceUntilIdle()
+
+        assertEquals(1, model.uiState.value.entities.size)
+        assertTrue(model.events.first() is TrashUiEvent.Failed)
+    }
+
+    @Test
+    fun `empty trash counts contacts only and leaves entities listed`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubList(row(1, "Ada"))
+        stubEntities(entityRow("e1", "Acme"))
+        coEvery { trash.empty() } returns Result.success(1)
+        val model = vm()
+        advanceUntilIdle()
+
+        model.emptyTrash()
+        advanceUntilIdle()
+
+        assertTrue(model.uiState.value.items.isEmpty())
+        assertEquals(1, model.uiState.value.entities.size)
+        assertFalse(model.uiState.value.isEmpty)
+    }
+
+    @Test
+    fun `nothing deleted means the trash is empty`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubList()
+        val model = vm()
+        advanceUntilIdle()
+
+        assertTrue(model.uiState.value.isEmpty)
     }
 }

@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.TrashEntityListResponse
 import com.mycorrhizal.crm.model.network.TrashListResponse
 import com.mycorrhizal.crm.model.network.TrashRestoreResponse
 
@@ -11,6 +12,12 @@ import com.mycorrhizal.crm.model.network.TrashRestoreResponse
 interface TrashRepository {
     /** GET /trash/contacts — one page of restorable deleted contacts. */
     suspend fun list(page: Int = 1, limit: Int = 25): Result<TrashListResponse>
+
+    /**
+     * GET /trash/entities — one page of restorable deleted entities. Restoring one is
+     * [EntityRepository.restore]; entities have no purge.
+     */
+    suspend fun listEntities(page: Int = 1, limit: Int = 25): Result<TrashEntityListResponse>
 
     /** POST /trash/contacts/:id/restore — 409 when a live contact already uses the UID. */
     suspend fun restore(id: Int): Result<TrashRestoreResponse>

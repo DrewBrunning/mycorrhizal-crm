@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -48,7 +49,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.TrashedContact
+import com.mycorrhizal.crm.model.network.TrashedEntity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
@@ -62,9 +65,11 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
 /**
- * Contact Trash (issue #2002, ADR 0037; mirrors web's TrashPage): restore or
- * permanently delete the contacts the user deleted. Delete forever and Empty
- * trash are confirmed; a restore that loses rows or hits a UID conflict says so.
+ * Trash (issue #2002, ADR 0037; mirrors web's TrashPage): restore or permanently delete the
+ * contacts the user deleted. Delete forever and Empty trash are confirmed; a restore that loses
+ * rows or hits a UID conflict says so. Deleted organisations, places and pets (issue #2498) are
+ * listed after the contacts and can only be restored: entities have no purge endpoint, and Empty
+ * trash covers contacts only.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,6 +112,18 @@ fun TrashScreen(
                     } else {
                         resources.getString(R.string.trash_restored, event.name)
                     }
+
+                is TrashUiEvent.EntityRestored -> {
+                    snackbarHostState.showSnackbar(
+                        resources.getString(R.string.trash_restored, event.name)
+                    )
+                    if (event.sameNameLive) {
+                        snackbarHostState.showSnackbar(
+                            resources.getString(R.string.shared_entities_deleted_same_name_live)
+                        )
+                    }
+                    null
+                }
 
                 is TrashUiEvent.RestoreConflict ->
                     resources.getString(R.string.trash_restore_conflict, event.name)
@@ -161,6 +178,7 @@ fun TrashScreen(
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             if (state.items.isNotEmpty()) {
+                // Empty trash purges contacts only (entities have no purge endpoint).
                 OutlinedButton(
                     onClick = { confirmEmpty = true },
                     enabled = !state.isWorking,
@@ -173,22 +191,22 @@ fun TrashScreen(
                 }
             }
             RefreshableContent(
-                isRefreshing = state.isLoading && state.items.isNotEmpty(),
+                isRefreshing = state.isLoading && !state.isEmpty,
                 onRefresh = viewModel::load,
                 modifier = Modifier.fillMaxSize()
             ) {
                 when {
-                    state.isLoading && state.items.isEmpty() ->
+                    state.isLoading && state.isEmpty ->
                         LoadingSkeleton(modifier = Modifier.testTag("trash-loading"))
 
-                    state.items.isEmpty() && loadError != null ->
+                    state.isEmpty && loadError != null ->
                         Text(
                             text = loadError,
                             color = MaterialTheme.colorScheme.error,
                             modifier = Modifier.fillMaxWidth().padding(16.dp)
                         )
 
-                    state.items.isEmpty() -> EmptyState(
+                    state.isEmpty -> EmptyState(
                         title = stringResource(R.string.trash_empty_state),
                         body = trashRetentionText(state.retentionDays),
                         icon = Icons.Outlined.Delete
@@ -196,17 +214,19 @@ fun TrashScreen(
 
                     else -> TrashList(
                         items = state.items,
+                        entities = state.entities,
                         retentionDays = state.retentionDays,
                         enabled = !state.isWorking,
                         onRestore = viewModel::restore,
-                        onPurge = { pendingPurge = it }
+                        onPurge = { pendingPurge = it },
+                        onRestoreEntity = viewModel::restoreEntity
                     )
                 }
             }
         }
     }
 
-    if (loadError != null && state.items.isNotEmpty()) {
+    if (loadError != null && !state.isEmpty) {
         LaunchedEffect(loadError) { snackbarHostState.showSnackbar(loadError) }
     }
 
@@ -279,7 +299,9 @@ internal fun TrashList(
     retentionDays: Int,
     enabled: Boolean,
     onRestore: (TrashedContact) -> Unit,
-    onPurge: (TrashedContact) -> Unit
+    onPurge: (TrashedContact) -> Unit,
+    entities: List<TrashedEntity> = emptyList(),
+    onRestoreEntity: (TrashedEntity) -> Unit = {}
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize().testTag("trash-list"),
@@ -294,8 +316,11 @@ internal fun TrashList(
                 modifier = Modifier.testTag("trash-retention")
             )
         }
-        items(items, key = { it.contact.id }) { item ->
+        items(items, key = { "contact-${it.contact.id}" }) { item ->
             TrashRow(item, enabled, onRestore = { onRestore(item) }, onPurge = { onPurge(item) })
+        }
+        items(entities, key = { "entity-${it.entity.id}" }) { item ->
+            TrashEntityRow(item, enabled, onRestore = { onRestoreEntity(item) })
         }
     }
 }
@@ -358,6 +383,83 @@ private fun TrashRow(
                         color = MaterialTheme.colorScheme.error
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun entityKindLabel(kind: String): String = when (kind) {
+    EntityKind.ORGANISATION -> stringResource(R.string.shared_entities_kind_one_organisation)
+    EntityKind.PLACE -> stringResource(R.string.shared_entities_kind_one_place)
+    EntityKind.PET -> stringResource(R.string.shared_entities_kind_one_pet)
+    else -> kind
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TrashEntityRow(item: TrashedEntity, enabled: Boolean, onRestore: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            // A FlowRow so the name and kind chip wrap at large font scales.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = item.entity.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                // A static label, not a chip: nothing happens when it is tapped.
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Text(
+                        text = entityKindLabel(item.entity.kind),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+            item.mergedIntoName?.takeIf { it.isNotBlank() }?.let { survivor ->
+                Text(
+                    text = stringResource(R.string.trash_merged_into, survivor),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Text(
+                text = stringResource(R.string.trash_deleted_on, formatTrashTime(item.deletedAt)),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            item.purgeAt?.let { purgeAt ->
+                Text(
+                    text = stringResource(R.string.trash_purge_on, formatTrashTime(purgeAt)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            // Restore only: entities have no purge endpoint.
+            Button(
+                onClick = onRestore,
+                enabled = enabled,
+                modifier = Modifier.testTag("trash-entity-restore-${item.entity.id}")
+            ) {
+                Text(stringResource(R.string.trash_restore))
             }
         }
     }
