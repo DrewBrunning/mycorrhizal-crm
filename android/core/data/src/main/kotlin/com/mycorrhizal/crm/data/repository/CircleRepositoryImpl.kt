@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleInput
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CircleMemberInput
+import com.mycorrhizal.crm.model.network.CircleTimelinePage
 import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
@@ -85,6 +86,23 @@ class CircleRepositoryImpl @Inject constructor(
         return result
     }
 
+    override suspend fun update(
+        id: String,
+        name: String,
+        description: String,
+        color: String
+    ): Result<Circle> {
+        val result = apiClient.updateCircle(
+            id,
+            CircleInput(name = name, description = description, color = color)
+        )
+        result.getOrNull()?.let { circleDao.upsert(it.toCached()) }
+        return result
+    }
+
+    override suspend fun getTimeline(circleId: String, cursor: String?): Result<CircleTimelinePage> =
+        apiClient.getCircleTimeline(circleId, cursor = cursor, limit = TIMELINE_PAGE_SIZE)
+
     override suspend fun delete(id: String): Result<Unit> {
         val result = apiClient.deleteCircle(id)
         if (result.isSuccess) {
@@ -122,4 +140,8 @@ class CircleRepositoryImpl @Inject constructor(
         circleId = circleId,
         memberVCardUid = memberVCardUid
     )
+
+    private companion object {
+        const val TIMELINE_PAGE_SIZE = 25
+    }
 }

@@ -1193,6 +1193,34 @@
     <string name="circles_error_missing_id">ID cerchio mancante</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
     <string name="circles_text_everyone">Scrivi a tutti</string>
+    <!-- Issue #2522: circle description, colour and member timeline (web #1995/#2361 parity). -->
+    <string name="circles_edit">Modifica cerchio</string>
+    <string name="circles_description_label">Descrizione</string>
+    <string name="circles_description_counter">%1$d/%2$d</string>
+    <string name="circles_color_label">Colore</string>
+    <string name="circles_color_none">Nessuno</string>
+    <string name="circles_color_red">Rosso</string>
+    <string name="circles_color_orange">Arancione</string>
+    <string name="circles_color_yellow">Giallo</string>
+    <string name="circles_color_green">Verde</string>
+    <string name="circles_color_teal">Verde acqua</string>
+    <string name="circles_color_blue">Blu</string>
+    <string name="circles_color_purple">Viola</string>
+    <string name="circles_color_pink">Rosa</string>
+    <string name="circles_color_grey">Grigio</string>
+    <string name="circles_timeline_title">Cronologia</string>
+    <string name="circles_timeline_empty">Ancora nessuna nota o attività per i membri di questo cerchio.</string>
+    <string name="circles_timeline_type_note">Nota</string>
+    <string name="circles_timeline_type_activity">Attività</string>
+    <string name="circles_timeline_type_completion">Promemoria completato</string>
+    <string name="circles_timeline_type_life_event">Evento di vita</string>
+    <string name="circles_timeline_type_external_activity">Attività esterna</string>
+    <string name="circles_timeline_type_gift">Regalo</string>
+    <plurals name="circles_member_count">
+        <item quantity="one">%1$d membro</item>
+        <item quantity="many">%1$d membri</item>
+        <item quantity="other">%1$d membri</item>
+    </plurals>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Classificazione cerchi ed etichette</string>
