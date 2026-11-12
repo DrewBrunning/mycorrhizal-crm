@@ -6,10 +6,10 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.model.network.DiscoveredCustomProperty
 import com.mycorrhizal.crm.model.network.FIELD_TYPES
 import com.mycorrhizal.crm.model.network.FieldDefinition
-import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.IMPORT_FIELD_ACTION_CREATE
 import com.mycorrhizal.crm.model.network.IMPORT_FIELD_ACTION_IGNORE
 import com.mycorrhizal.crm.model.network.IMPORT_FIELD_ACTION_MAP
+import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportFieldMapping
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
@@ -27,6 +27,19 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+/** What the custom fields step can ask of its owner; [VcfImportViewModel] implements it. */
+interface CustomFieldActions {
+    fun setFieldMappingAction(propertyName: String, action: String)
+
+    fun setFieldMappingDefinition(propertyName: String, definitionId: String)
+
+    fun setFieldMappingLabel(propertyName: String, label: String)
+
+    fun setFieldMappingType(propertyName: String, type: String)
+
+    fun continueFromCustomFields()
+}
 
 enum class VcfImportStep { PICK, CUSTOM_FIELDS, PREVIEW, RESULT }
 
@@ -66,7 +79,9 @@ data class VcfImportUiState(
  * `/search` — a composite flow with no single-entity home).
  */
 @HiltViewModel
-class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) : ViewModel() {
+class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
+    ViewModel(),
+    CustomFieldActions {
 
     private val _uiState = MutableStateFlow(VcfImportUiState())
     val uiState: StateFlow<VcfImportUiState> = _uiState.asStateFlow()
@@ -130,7 +145,13 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                     } else {
                         // Stay in the loading state until the definitions arrive, so the step
                         // never renders "map is unavailable" for a list that is merely in flight.
-                        viewModelScope.launch { enterCustomFieldsStep(preview, actions, candidates) }
+                        viewModelScope.launch {
+                            enterCustomFieldsStep(
+                                preview,
+                                actions,
+                                candidates
+                            )
+                        }
                     }
                 },
                 onError = { error ->
@@ -170,7 +191,12 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                 rowActions = actions,
                 customFieldCandidates = candidates,
                 fieldDefinitions = definitions,
-                fieldMappings = candidates.associate { c -> c.name to initialMapping(c, definitions) },
+                fieldMappings = candidates.associate { c ->
+                    c.name to initialMapping(
+                        c,
+                        definitions
+                    )
+                },
                 error = fetchError
             )
         }
@@ -196,7 +222,10 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
         )
     }
 
-    private fun updateMapping(propertyName: String, change: (ImportFieldMapping) -> ImportFieldMapping) {
+    private fun updateMapping(
+        propertyName: String,
+        change: (ImportFieldMapping) -> ImportFieldMapping
+    ) {
         _uiState.update { state ->
             val current = state.fieldMappings[propertyName] ?: return@update state
             state.copy(fieldMappings = state.fieldMappings + (propertyName to change(current)))
@@ -242,29 +271,29 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
     }
 
     /** Unknown actions are ignored; "map" is refused while the user has no definitions to map to. */
-    fun setFieldMappingAction(propertyName: String, action: String) {
+    override fun setFieldMappingAction(propertyName: String, action: String) {
         if (action !in FIELD_MAPPING_ACTIONS) return
         if (action == IMPORT_FIELD_ACTION_MAP && _uiState.value.fieldDefinitions.isEmpty()) return
         updateMapping(propertyName) { it.copy(action = action) }
     }
 
     /** Only one of the user's own definitions can be chosen. */
-    fun setFieldMappingDefinition(propertyName: String, definitionId: String) {
+    override fun setFieldMappingDefinition(propertyName: String, definitionId: String) {
         if (_uiState.value.fieldDefinitions.none { it.id == definitionId }) return
         updateMapping(propertyName) { it.copy(fieldDefinitionId = definitionId) }
     }
 
-    fun setFieldMappingLabel(propertyName: String, label: String) {
+    override fun setFieldMappingLabel(propertyName: String, label: String) {
         updateMapping(propertyName) { it.copy(label = label) }
     }
 
-    fun setFieldMappingType(propertyName: String, type: String) {
+    override fun setFieldMappingType(propertyName: String, type: String) {
         if (type !in FIELD_TYPES) return
         updateMapping(propertyName) { it.copy(type = type) }
     }
 
     /** Moves from the custom-fields step to review once every "map" decision has a field. */
-    fun continueFromCustomFields() {
+    override fun continueFromCustomFields() {
         val state = _uiState.value
         if (state.step != VcfImportStep.CUSTOM_FIELDS || !state.canContinueFromCustomFields) return
         _uiState.update { it.copy(step = VcfImportStep.PREVIEW) }
@@ -317,27 +346,26 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
 
     /** One decision per discovered property, carrying only what its action uses; null (key
      *  omitted) when the file had no X- properties. */
-    private fun confirmFieldMappings(): List<ImportFieldMapping>? =
-        _uiState.value.let { state ->
-            state.customFieldCandidates.mapNotNull { state.fieldMappings[it.name] }.map { m ->
-                when (m.action) {
-                    IMPORT_FIELD_ACTION_MAP -> ImportFieldMapping(
-                        propertyName = m.propertyName,
-                        action = m.action,
-                        fieldDefinitionId = m.fieldDefinitionId
-                    )
+    private fun confirmFieldMappings(): List<ImportFieldMapping>? = _uiState.value.let { state ->
+        state.customFieldCandidates.mapNotNull { state.fieldMappings[it.name] }.map { m ->
+            when (m.action) {
+                IMPORT_FIELD_ACTION_MAP -> ImportFieldMapping(
+                    propertyName = m.propertyName,
+                    action = m.action,
+                    fieldDefinitionId = m.fieldDefinitionId
+                )
 
-                    IMPORT_FIELD_ACTION_CREATE -> ImportFieldMapping(
-                        propertyName = m.propertyName,
-                        action = m.action,
-                        label = m.label?.trim()?.takeIf { it.isNotEmpty() },
-                        type = m.type
-                    )
+                IMPORT_FIELD_ACTION_CREATE -> ImportFieldMapping(
+                    propertyName = m.propertyName,
+                    action = m.action,
+                    label = m.label?.trim()?.takeIf { it.isNotEmpty() },
+                    type = m.type
+                )
 
-                    else -> ImportFieldMapping(m.propertyName, IMPORT_FIELD_ACTION_IGNORE)
-                }
-            }.ifEmpty { null }
-        }
+                else -> ImportFieldMapping(m.propertyName, IMPORT_FIELD_ACTION_IGNORE)
+            }
+        }.ifEmpty { null }
+    }
 
     fun onErrorShown() {
         _uiState.update { it.copy(errorRes = null, error = null) }

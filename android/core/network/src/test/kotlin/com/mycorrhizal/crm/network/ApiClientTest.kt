@@ -3242,28 +3242,29 @@ class ApiClientTest {
     // Issue #514/#2523: the VCF preview carries per-row custom_field_candidates; confirm sends
     // the user's decisions back as field_mappings with the backend's snake_case keys.
     @Test
-    fun `uploadVcfImport parses custom_field_candidates and tolerates their absence`() = runBlocking {
-        server.enqueue(
-            MockResponse().setResponseCode(200).setBody(
-                """{"session_id":"s-1","total_rows":2,"rows":[
+    fun `uploadVcfImport parses custom_field_candidates and tolerates their absence`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"session_id":"s-1","total_rows":2,"rows":[
                 {"row_index":0,"suggested_action":"add","custom_field_candidates":[
                   {"name":"x-favorite-color","value":"green"},
                   {"name":"x-shirt","value":"M","matched_definition_id":"def-9",
                    "matched_definition_label":"Shirt size"}]},
                 {"row_index":1,"suggested_action":"add"}]}"""
+                )
             )
-        )
 
-        val preview = client.uploadVcfImport("BEGIN:VCARD".toByteArray(), "c.vcf").getOrThrow()
+            val preview = client.uploadVcfImport("BEGIN:VCARD".toByteArray(), "c.vcf").getOrThrow()
 
-        val candidates = preview.rows[0].customFieldCandidates!!
-        assertEquals("x-favorite-color", candidates[0].name)
-        assertEquals("green", candidates[0].value)
-        assertNull(candidates[0].matchedDefinitionId)
-        assertEquals("def-9", candidates[1].matchedDefinitionId)
-        assertEquals("Shirt size", candidates[1].matchedDefinitionLabel)
-        assertNull(preview.rows[1].customFieldCandidates)
-    }
+            val candidates = preview.rows[0].customFieldCandidates!!
+            assertEquals("x-favorite-color", candidates[0].name)
+            assertEquals("green", candidates[0].value)
+            assertNull(candidates[0].matchedDefinitionId)
+            assertEquals("def-9", candidates[1].matchedDefinitionId)
+            assertEquals("Shirt size", candidates[1].matchedDefinitionLabel)
+            assertNull(preview.rows[1].customFieldCandidates)
+        }
 
     @Test
     fun `confirmVcfImport sends field_mappings with the backend keys and omits them when absent`() =

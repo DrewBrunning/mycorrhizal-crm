@@ -50,11 +50,7 @@ internal fun CustomFieldsStep(
     definitions: List<FieldDefinition>,
     mappings: Map<String, ImportFieldMapping>,
     canContinue: Boolean,
-    onActionChange: (String, String) -> Unit,
-    onDefinitionChange: (String, String) -> Unit,
-    onLabelChange: (String, String) -> Unit,
-    onTypeChange: (String, String) -> Unit,
-    onContinue: () -> Unit
+    actions: CustomFieldActions
 ) {
     Column(modifier = Modifier.fillMaxSize().testTag("vcf-custom-fields-step")) {
         LazyColumn(
@@ -83,15 +79,15 @@ internal fun CustomFieldsStep(
                     value = candidate.value,
                     mapping = mapping,
                     definitions = definitions,
-                    onActionChange = { onActionChange(candidate.name, it) },
-                    onDefinitionChange = { onDefinitionChange(candidate.name, it) },
-                    onLabelChange = { onLabelChange(candidate.name, it) },
-                    onTypeChange = { onTypeChange(candidate.name, it) }
+                    onActionChange = { actions.setFieldMappingAction(candidate.name, it) },
+                    onDefinitionChange = { actions.setFieldMappingDefinition(candidate.name, it) },
+                    onLabelChange = { actions.setFieldMappingLabel(candidate.name, it) },
+                    onTypeChange = { actions.setFieldMappingType(candidate.name, it) }
                 )
             }
         }
         Button(
-            onClick = onContinue,
+            onClick = actions::continueFromCustomFields,
             enabled = canContinue,
             modifier = Modifier.fillMaxWidth().padding(16.dp).testTag("vcf-cf-continue")
         ) {
@@ -202,7 +198,12 @@ private fun ActionOption(
         verticalAlignment = Alignment.Top,
         modifier = Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, enabled = enabled, role = Role.RadioButton, onClick = onClick)
+            .selectable(
+                selected = selected,
+                enabled = enabled,
+                role = Role.RadioButton,
+                onClick = onClick
+            )
             .padding(vertical = 4.dp)
             .testTag(tag)
     ) {

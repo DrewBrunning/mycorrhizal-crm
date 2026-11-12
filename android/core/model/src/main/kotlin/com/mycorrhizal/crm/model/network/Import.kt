@@ -81,7 +81,9 @@ data class ImportRowPreview(
      * Issue #514: the unknown X-* vCard properties found on this row that can be promoted to
      * custom fields. Absent (null) when the row carried none; never rely on it being non-null.
      */
-    @Json(name = "custom_field_candidates") val customFieldCandidates: List<DiscoveredCustomProperty>? = null
+    @Json(
+        name = "custom_field_candidates"
+    ) val customFieldCandidates: List<DiscoveredCustomProperty>? = null
 )
 
 /**

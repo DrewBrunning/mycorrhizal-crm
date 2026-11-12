@@ -44,11 +44,7 @@ class VcfImportScreenTest {
         onConfirm: () -> Unit = {},
         onRowEditSave: (ImportRowEdit) -> Unit = {},
         onDone: () -> Unit = {},
-        onFieldMappingAction: (String, String) -> Unit = { _, _ -> },
-        onFieldMappingDefinition: (String, String) -> Unit = { _, _ -> },
-        onFieldMappingLabel: (String, String) -> Unit = { _, _ -> },
-        onFieldMappingType: (String, String) -> Unit = { _, _ -> },
-        onCustomFieldsContinue: () -> Unit = {}
+        customFieldActions: CustomFieldActions = NoCustomFieldActions
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -58,11 +54,7 @@ class VcfImportScreenTest {
                     onConfirm = onConfirm,
                     onRowEditSave = onRowEditSave,
                     onDone = onDone,
-                    onFieldMappingAction = onFieldMappingAction,
-                    onFieldMappingDefinition = onFieldMappingDefinition,
-                    onFieldMappingLabel = onFieldMappingLabel,
-                    onFieldMappingType = onFieldMappingType,
-                    onCustomFieldsContinue = onCustomFieldsContinue
+                    customFieldActions = customFieldActions
                 )
             }
         }
@@ -282,6 +274,28 @@ class VcfImportScreenTest {
 
     private val color = DiscoveredCustomProperty("x-favorite-color", "green")
 
+    private fun recorder(
+        onAction: (String, String) -> Unit = { _, _ -> },
+        onDefinition: (String, String) -> Unit = { _, _ -> },
+        onLabel: (String, String) -> Unit = { _, _ -> },
+        onType: (String, String) -> Unit = { _, _ -> },
+        onContinue: () -> Unit = {}
+    ) = object : CustomFieldActions {
+        override fun setFieldMappingAction(propertyName: String, action: String) =
+            onAction(propertyName, action)
+
+        override fun setFieldMappingDefinition(propertyName: String, definitionId: String) =
+            onDefinition(propertyName, definitionId)
+
+        override fun setFieldMappingLabel(propertyName: String, label: String) =
+            onLabel(propertyName, label)
+
+        override fun setFieldMappingType(propertyName: String, type: String) =
+            onType(propertyName, type)
+
+        override fun continueFromCustomFields() = onContinue()
+    }
+
     private fun customFieldsState(
         mapping: ImportFieldMapping = ImportFieldMapping("x-favorite-color", "ignore"),
         definitions: List<FieldDefinition> = listOf(FieldDefinition(id = "d1", label = "Hobby")),
@@ -294,9 +308,15 @@ class VcfImportScreenTest {
             fieldMappings = mapOf(color.name to mapping)
         )
         // canContinue is derived from the mappings, so an unmet map decision drives it false.
-        return if (canContinue) state else state.copy(
-            fieldMappings = mapOf(color.name to mapping.copy(action = "map", fieldDefinitionId = null))
-        )
+        return if (canContinue) {
+            state
+        } else {
+            state.copy(
+                fieldMappings = mapOf(
+                    color.name to mapping.copy(action = "map", fieldDefinitionId = null)
+                )
+            )
+        }
     }
 
     @Test
@@ -334,7 +354,10 @@ class VcfImportScreenTest {
     @Test
     fun `choosing each action reports the property and action`() {
         val chosen = mutableListOf<Pair<String, String>>()
-        setContent(customFieldsState(), onFieldMappingAction = { n, a -> chosen += n to a })
+        setContent(
+            customFieldsState(),
+            customFieldActions = recorder(onAction = { n, a -> chosen += n to a })
+        )
 
         composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-map").performClick()
         composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-create").performClick()
@@ -355,7 +378,7 @@ class VcfImportScreenTest {
         val chosen = mutableListOf<Pair<String, String>>()
         setContent(
             customFieldsState(mapping = ImportFieldMapping("x-favorite-color", "map")),
-            onFieldMappingDefinition = { n, id -> chosen += n to id }
+            customFieldActions = recorder(onDefinition = { n, id -> chosen += n to id })
         )
 
         composeTestRule.onNodeWithText("Select a field…").assertIsDisplayed()
@@ -379,13 +402,17 @@ class VcfImportScreenTest {
                     type = "text"
                 )
             ),
-            onFieldMappingLabel = { _, l -> labels += l },
-            onFieldMappingType = { _, t -> types += t }
+            customFieldActions = recorder(
+                onLabel = { _, l -> labels += l },
+                onType = { _, t -> types += t }
+            )
         )
 
         composeTestRule.onNodeWithText("Favorite Color").assertIsDisplayed()
         composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-field").assertDoesNotExist()
-        composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-label").performTextReplacement("Colour")
+        composeTestRule.onNodeWithTag(
+            "vcf-cf-x-favorite-color-label"
+        ).performTextReplacement("Colour")
         composeTestRule.onNodeWithTag("vcf-cf-x-favorite-color-type").performClick()
         composeTestRule.onNodeWithText("Date").performClick()
 
@@ -398,7 +425,7 @@ class VcfImportScreenTest {
         var continued = 0
         setContent(
             customFieldsState(canContinue = false),
-            onCustomFieldsContinue = { continued++ }
+            customFieldActions = recorder(onContinue = { continued++ })
         )
 
         composeTestRule.onNodeWithTag("vcf-cf-continue").assertIsNotEnabled()
@@ -408,7 +435,7 @@ class VcfImportScreenTest {
     @Test
     fun `continue proceeds to review when every decision is complete`() {
         var continued = 0
-        setContent(customFieldsState(), onCustomFieldsContinue = { continued++ })
+        setContent(customFieldsState(), customFieldActions = recorder(onContinue = { continued++ }))
 
         composeTestRule.onNodeWithTag("vcf-cf-continue").assertIsEnabled().performClick()
 

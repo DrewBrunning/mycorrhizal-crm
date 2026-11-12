@@ -399,7 +399,10 @@ class VcfImportViewModelTest {
             val vm = uploaded(candidatePreview(null, emptyList()))
 
             assertEquals(VcfImportStep.PREVIEW, vm.uiState.value.step)
-            assertEquals(emptyList<DiscoveredCustomProperty>(), vm.uiState.value.customFieldCandidates)
+            assertEquals(
+                emptyList<DiscoveredCustomProperty>(),
+                vm.uiState.value.customFieldCandidates
+            )
             coVerify(exactly = 0) { apiClient.listFieldDefinitions(any()) }
         }
 
@@ -443,7 +446,10 @@ class VcfImportViewModelTest {
 
             vm.setFieldMappingAction("x-favorite-color", "map")
 
-            assertEquals("ignore", vm.uiState.value.fieldMappings.getValue("x-favorite-color").action)
+            assertEquals(
+                "ignore",
+                vm.uiState.value.fieldMappings.getValue("x-favorite-color").action
+            )
         }
 
     @Test
@@ -461,7 +467,10 @@ class VcfImportViewModelTest {
             val mapping = vm.uiState.value.fieldMappings.getValue("x-shirt")
             assertEquals("map", mapping.action)
             assertEquals("def-9", mapping.fieldDefinitionId)
-            assertEquals(listOf("def-9" to "Shirt size"), vm.uiState.value.fieldDefinitions.map { it.id to it.label })
+            assertEquals(
+                listOf("def-9" to "Shirt size"),
+                vm.uiState.value.fieldDefinitions.map { it.id to it.label }
+            )
             // The failure is surfaced (localizedMessage path), not swallowed as "no fields yet".
             assertTrue(vm.uiState.value.error is ApiError.Network)
             assertEquals(VcfImportStep.CUSTOM_FIELDS, vm.uiState.value.step)
@@ -503,7 +512,9 @@ class VcfImportViewModelTest {
 
             vm.setFieldMappingDefinition("x-favorite-color", "someone-elses")
 
-            assertNull(vm.uiState.value.fieldMappings.getValue("x-favorite-color").fieldDefinitionId)
+            assertNull(
+                vm.uiState.value.fieldMappings.getValue("x-favorite-color").fieldDefinitionId
+            )
         }
 
     @Test

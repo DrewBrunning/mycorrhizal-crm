@@ -61,6 +61,7 @@ fun VcfImportScreen(
     viewModel: VcfImportViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val customFieldActions = remember(viewModel) { object : CustomFieldActions by viewModel {} }
     VcfImportScreenContent(
         uiState = state,
         onBack = onBack,
@@ -69,11 +70,7 @@ fun VcfImportScreen(
         onFileTooLarge = viewModel::onFileTooLarge,
         onRowActionChange = viewModel::setRowAction,
         onResolveAll = viewModel::resolveAll,
-        onFieldMappingAction = viewModel::setFieldMappingAction,
-        onFieldMappingDefinition = viewModel::setFieldMappingDefinition,
-        onFieldMappingLabel = viewModel::setFieldMappingLabel,
-        onFieldMappingType = viewModel::setFieldMappingType,
-        onCustomFieldsContinue = viewModel::continueFromCustomFields,
+        customFieldActions = customFieldActions,
         onRowEditSave = viewModel::saveRowEdit,
         onConfirm = viewModel::confirm,
         onErrorShown = viewModel::onErrorShown
@@ -97,11 +94,7 @@ fun VcfImportScreenContent(
     onFileTooLarge: () -> Unit = {},
     onRowActionChange: (Int, String) -> Unit = { _, _ -> },
     onResolveAll: () -> Unit = {},
-    onFieldMappingAction: (String, String) -> Unit = { _, _ -> },
-    onFieldMappingDefinition: (String, String) -> Unit = { _, _ -> },
-    onFieldMappingLabel: (String, String) -> Unit = { _, _ -> },
-    onFieldMappingType: (String, String) -> Unit = { _, _ -> },
-    onCustomFieldsContinue: () -> Unit = {},
+    customFieldActions: CustomFieldActions = NoCustomFieldActions,
     onRowEditSave: (ImportRowEdit) -> Unit = {},
     onConfirm: () -> Unit = {},
     onErrorShown: () -> Unit = {}
@@ -176,11 +169,7 @@ fun VcfImportScreenContent(
                     definitions = uiState.fieldDefinitions,
                     mappings = uiState.fieldMappings,
                     canContinue = uiState.canContinueFromCustomFields,
-                    onActionChange = onFieldMappingAction,
-                    onDefinitionChange = onFieldMappingDefinition,
-                    onLabelChange = onFieldMappingLabel,
-                    onTypeChange = onFieldMappingType,
-                    onContinue = onCustomFieldsContinue
+                    actions = customFieldActions
                 )
 
                 uiState.step == VcfImportStep.PREVIEW && uiState.preview != null ->
@@ -286,3 +275,16 @@ internal fun queryFileMeta(
 /** Reads the picked file's bytes off the main thread. Only called once the size probe passes. */
 internal fun readPickedBytes(resolver: ContentResolver, uri: Uri): ByteArray =
     resolver.openInputStream(uri)?.use { it.readBytes() } ?: ByteArray(0)
+
+/** The inert default for previews and tests that do not drive the custom fields step. */
+internal object NoCustomFieldActions : CustomFieldActions {
+    override fun setFieldMappingAction(propertyName: String, action: String) = Unit
+
+    override fun setFieldMappingDefinition(propertyName: String, definitionId: String) = Unit
+
+    override fun setFieldMappingLabel(propertyName: String, label: String) = Unit
+
+    override fun setFieldMappingType(propertyName: String, type: String) = Unit
+
+    override fun continueFromCustomFields() = Unit
+}
