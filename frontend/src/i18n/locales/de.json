@@ -4411,7 +4411,7 @@
       "createdPlace_one": "{{count}} Ort erstellt.",
       "createdPlace_other": "{{count}} Orte erstellt.",
       "skip": {
-        "group_not_found": "{{name}}: existiert bei deinen Kontakten nicht mehr.",
+        "group_not_found": "{{name}}: übersprungen. Es existiert möglicherweise schon oder passt nicht mehr zu deinen Kontakten.",
         "contact_not_in_group": "{{name}}: ein Kontakt gehört nicht mehr dazu.",
         "name_invalid": "{{name}}: Der Name ist ungültig.",
         "core_invalid": "{{name}}: Die Angaben sind ungültig."
