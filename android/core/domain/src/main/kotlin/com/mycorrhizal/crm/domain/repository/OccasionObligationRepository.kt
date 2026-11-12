@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.domain.repository
 
+import com.mycorrhizal.crm.model.network.GiftShoppingItem
 import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.model.network.OccasionObligationInput
 
@@ -17,4 +18,10 @@ interface OccasionObligationRepository {
     suspend fun update(id: String, input: OccasionObligationInput): Result<OccasionObligation>
 
     suspend fun delete(id: String): Result<Unit>
+
+    /** Upcoming gift obligations within [days] (30 or 90) joined to this cycle's gift status. */
+    suspend fun giftShoppingList(days: Int): Result<List<GiftShoppingItem>>
+
+    /** The card-list CSV for obligations of [kind]; above-normal addresses are left out. */
+    suspend fun cardListCsv(kind: String): Result<ByteArray>
 }

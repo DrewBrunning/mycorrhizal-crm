@@ -151,6 +151,7 @@ import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
 import com.mycorrhizal.crm.model.network.GeocodeDraftResponse
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
+import com.mycorrhizal.crm.model.network.GiftShoppingListResponse
 import com.mycorrhizal.crm.model.network.GiftsPage
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
 import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
@@ -2213,6 +2214,32 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     suspend fun deleteOccasionObligation(id: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/$id")
 
+    /**
+     * GET /api/v1/occasion-obligations/gift-shopping-list?days=30|90 — upcoming gift obligations
+     * joined to this cycle's gift (ADR 0024 part 5). Above-normal obligations are never requested
+     * (no `include_sensitive`), matching the web surface.
+     */
+    suspend fun getGiftShoppingList(days: Int): Result<GiftShoppingListResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/gift-shopping-list"
+            .toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("days", days.toString())
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(GiftShoppingListResponse::class.java).fromJson(body)
+        }
+    }
+
+    /**
+     * GET /api/v1/occasion-obligations/card-list?kind=… — the sensitivity-filtered CSV of
+     * contacts with an active obligation of [kind] (ADR 0024 part 4). Returns the raw file bytes;
+     * above-normal addresses are left out because `include_sensitive` is never sent.
+     */
+    suspend fun exportOccasionCardListCsv(kind: String): Result<ByteArray> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/card-list"
+            .toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("kind", kind)
+        return executeGetBytes(urlBuilder.build().toString())
+    }
+
     // --- Occasion events (docs/adrs/0026-occasions-events.md, issue #1228) ---
 
     /** GET /api/v1/occasion-events — the user's events, newest-updated first. */
@@ -3387,6 +3414,37 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$id/content") { _, body ->
             moshi.adapter(ShareGrantContentResponse::class.java).fromJson(body)?.content
         }
+
+    /**
+     * GET /api/v1/export/jscontact for one contact and the chosen [sections] (issue #2519): what a
+     * standing share of those sections would expose today, as the preview on the Share screen.
+     * `include_sensitive` is never sent, so the server leaves private and secret items out, exactly
+     * as it does for a standing grant read. The card is a generic map (see [ShareGrantContent]); an
+     * unknown contact yields an empty map.
+     */
+    suspend fun previewContactJsContact(
+        vcardUid: String,
+        sections: List<String>
+    ): Result<Map<String, Any?>> {
+        val url = "$PLACEHOLDER_ORIGIN$EXPORT_JSCONTACT_PATH".toHttpUrl().newBuilder()
+            .addQueryParameter("vcard_uid", vcardUid)
+            .addQueryParameter("sections", sections.joinToString(","))
+            .build()
+            .toString()
+        return executeGet(url) { _, body ->
+            val cards = moshi.adapter<List<Map<String, Any?>>>(
+                Types.newParameterizedType(
+                    List::class.java,
+                    Types.newParameterizedType(
+                        Map::class.java,
+                        String::class.java,
+                        Any::class.java
+                    )
+                )
+            ).fromJson(body)
+            cards?.firstOrNull() ?: emptyMap()
+        }
+    }
 
     /** GET /api/v1/share-grants/blocks — senders the caller has blocked. */
     suspend fun listShareBlocks(): Result<List<ShareBlock>> =

@@ -1595,9 +1595,26 @@
     <string name="shares_mode_standing_desc">They can read the sections you pick, always up to date, until you revoke it or it expires. They must accept first and cannot edit. They can keep anything they have already seen.</string>
     <string name="shares_standing_share_button">Start sharing</string>
     <string name="shares_standing_sharing">Starting…</string>
+    <!-- Issue #2519: standing-share notices and the "What they will see" preview on Share contact. -->
+    <string name="shares_standing_live_notice">It is live: anything you add later to a shared section, such as a new email address, becomes visible to them right away.</string>
+    <string name="shares_standing_no_recall_notice">Revoking stops future reads. It does not recall anything they have already seen or copied.</string>
+    <string name="shares_standing_private_notice">Private and secret items are never shared, even in a section you choose.</string>
+    <string name="shares_standing_preview_title">What they will see</string>
+    <string name="shares_standing_preview_hint">Based on your current data, with private and secret items left out.</string>
+    <string name="shares_standing_preview_loading">Loading preview…</string>
+    <string name="shares_standing_preview_error">Could not load the preview.</string>
+    <string name="shares_standing_preview_empty">Nothing in these sections is shared right now, only the name.</string>
     <string name="shares_standing_reveal_confirm">These sections can contain private relationships or custom fields. Only items marked normal are ever shared. Anything you mark private or secret stays hidden from them.</string>
     <string name="shares_standing_expiry_label">Expires</string>
     <string name="shares_standing_pending_note">They will see who is sharing and what kind of item it is, and must accept before they can read anything.</string>
+    <!-- Issue #2518: standing shares of a note, an activity and a circle (ADR 0042). -->
+    <string name="shares_standing_title_note">Share this note</string>
+    <string name="shares_standing_title_activity">Share this activity</string>
+    <string name="shares_standing_title_circle">Share this circle</string>
+    <string name="shares_standing_notice_note">They will see this note\'s text and date, not the contact it is linked to.</string>
+    <string name="shares_standing_notice_activity">They will see the title, description, location, dates and type, not the participants.</string>
+    <string name="shares_standing_notice_circle">They will see the circle\'s name, description, colour and the names of its current members. People you add to the circle later become visible to them right away.</string>
+    <string name="shares_error_no_entity">This item can\'t be shared: it has no identifier.</string>
     <plurals name="shares_pending_count">
         <item quantity="one">%1$d share waiting for you</item>
         <item quantity="other">%1$d shares waiting for you</item>
@@ -2402,6 +2419,26 @@
     <plurals name="occasion_ob_lead_time_display">
         <item quantity="one">%1$d day lead time</item>
         <item quantity="other">%1$d days lead time</item>
+    </plurals>
+    <!-- ADR 0024 (issue #2521): card list, gift shopping list and upcoming occasions. -->
+    <string name="occasion_card_list_title">Card list</string>
+    <string name="occasion_card_list_description">Share a CSV of contacts with an active card occasion: one row per active obligation, with the contact name, their normal-sensitivity address, and the occasion. Private and secret addresses are left out.</string>
+    <string name="occasion_card_list_share">Share as CSV</string>
+    <string name="occasion_card_list_share_title">Share card list</string>
+    <string name="occasion_gift_list_title">Gift shopping list</string>
+    <string name="occasion_gift_list_description">Gifts coming up soon, and whether you have an idea, have bought one or have already given it.</string>
+    <string name="occasion_gift_list_empty">No gifts needed in this window.</string>
+    <string name="occasion_window_30">30 days</string>
+    <string name="occasion_window_90">90 days</string>
+    <string name="occasion_today">Today</string>
+    <string name="occasion_gift_status_needed">Needed</string>
+    <string name="occasion_gift_status_idea">Idea</string>
+    <string name="occasion_gift_status_purchased">Purchased</string>
+    <string name="occasion_gift_status_given">Given</string>
+    <string name="occasion_gift_status_received">Received</string>
+    <plurals name="occasion_in_days">
+        <item quantity="one">in %1$d day</item>
+        <item quantity="other">in %1$d days</item>
     </plurals>
     <string name="settings_servers_title">Servers</string>
     <string name="settings_servers_add">Add server</string>

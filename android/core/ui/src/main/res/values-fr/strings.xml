@@ -1612,9 +1612,26 @@
     <string name="shares_mode_standing_desc">Elle peut lire les sections choisies, toujours à jour, jusqu\'à ce que vous les révoquiez ou qu\'elles expirent. Elle doit d\'abord accepter et ne peut rien modifier. Elle peut conserver ce qu\'elle a déjà vu.</string>
     <string name="shares_standing_share_button">Commencer à partager</string>
     <string name="shares_standing_sharing">Démarrage…</string>
+    <!-- Issue #2519: standing-share notices and the "What they will see" preview on Share contact. -->
+    <string name="shares_standing_live_notice">Le partage est en direct : tout ce que vous ajoutez plus tard à une section partagée, comme une nouvelle adresse e-mail, lui devient visible immédiatement.</string>
+    <string name="shares_standing_no_recall_notice">La révocation arrête les lectures futures. Elle ne rappelle rien de ce que la personne a déjà vu ou copié.</string>
+    <string name="shares_standing_private_notice">Les éléments privés et secrets ne sont jamais partagés, même dans une section que vous choisissez.</string>
+    <string name="shares_standing_preview_title">Ce qu\'elle verra</string>
+    <string name="shares_standing_preview_hint">D\'après vos données actuelles, sans les éléments privés et secrets.</string>
+    <string name="shares_standing_preview_loading">Chargement de l\'aperçu…</string>
+    <string name="shares_standing_preview_error">Impossible de charger l\'aperçu.</string>
+    <string name="shares_standing_preview_empty">Rien dans ces sections n\'est partagé pour le moment, seulement le nom.</string>
     <string name="shares_standing_reveal_confirm">Ces sections peuvent contenir des relations privées ou des champs personnalisés. Seuls les éléments de sensibilité normale sont partagés. Tout ce que vous marquez privé ou secret reste masqué.</string>
     <string name="shares_standing_expiry_label">Expire</string>
     <string name="shares_standing_pending_note">Elle verra qui partage et de quel type d\'élément il s\'agit, et doit accepter avant de pouvoir lire quoi que ce soit.</string>
+    <!-- Issue #2518: standing shares of a note, an activity and a circle (ADR 0042). -->
+    <string name="shares_standing_title_note">Partager cette note</string>
+    <string name="shares_standing_title_activity">Partager cette activité</string>
+    <string name="shares_standing_title_circle">Partager ce cercle</string>
+    <string name="shares_standing_notice_note">Elle verra le texte et la date de cette note, pas le contact auquel elle est liée.</string>
+    <string name="shares_standing_notice_activity">Elle verra le titre, la description, le lieu, les dates et le type, pas les participants.</string>
+    <string name="shares_standing_notice_circle">Elle verra le nom, la description, la couleur et les noms des membres actuels du cercle. Les personnes que vous ajoutez plus tard lui deviennent visibles immédiatement.</string>
+    <string name="shares_error_no_entity">Cet élément ne peut pas être partagé : il n\'a pas d\'identifiant.</string>
     <plurals name="shares_pending_count">
         <item quantity="one">%1$d partage vous attend</item>
         <item quantity="many">%1$d partages vous attendent</item>
@@ -2464,6 +2481,27 @@
         <item quantity="one">%1$d jour de délai</item>
         <item quantity="many">%1$d jours de délai</item>
         <item quantity="other">%1$d jours de délai</item>
+    </plurals>
+    <!-- ADR 0024 (issue #2521): card list, gift shopping list and upcoming occasions. -->
+    <string name="occasion_card_list_title">Liste de cartes</string>
+    <string name="occasion_card_list_description">Partagez un CSV des contacts ayant une occasion de carte active : une ligne par obligation active, avec le nom du contact, son adresse de sensibilité normale et l\'occasion. Les adresses privées et secrètes sont exclues.</string>
+    <string name="occasion_card_list_share">Partager en CSV</string>
+    <string name="occasion_card_list_share_title">Partager la liste de cartes</string>
+    <string name="occasion_gift_list_title">Liste de cadeaux à acheter</string>
+    <string name="occasion_gift_list_description">Cadeaux à venir et si vous avez une idée, l\'avez acheté ou déjà offert.</string>
+    <string name="occasion_gift_list_empty">Aucun cadeau nécessaire sur cette période.</string>
+    <string name="occasion_window_30">30 jours</string>
+    <string name="occasion_window_90">90 jours</string>
+    <string name="occasion_today">Aujourd\'hui</string>
+    <string name="occasion_gift_status_needed">À acheter</string>
+    <string name="occasion_gift_status_idea">Idée</string>
+    <string name="occasion_gift_status_purchased">Acheté</string>
+    <string name="occasion_gift_status_given">Offert</string>
+    <string name="occasion_gift_status_received">Reçu</string>
+    <plurals name="occasion_in_days">
+        <item quantity="one">dans %1$d jour</item>
+        <item quantity="many">dans %1$d jours</item>
+        <item quantity="other">dans %1$d jours</item>
     </plurals>
     <string name="settings_servers_title">Serveurs</string>
     <string name="settings_servers_add">Ajouter un serveur</string>

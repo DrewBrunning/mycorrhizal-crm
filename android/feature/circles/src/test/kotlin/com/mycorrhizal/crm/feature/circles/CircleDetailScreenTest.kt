@@ -71,7 +71,8 @@ class CircleDetailScreenTest {
             CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice")
         ),
         resolve: Map<String, ContactSummary> = emptyMap(),
-        onNavigate: (Int) -> Unit = {}
+        onNavigate: (Int) -> Unit = {},
+        onShare: ((String) -> Unit)? = null
     ) {
         val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
         val contactRepository = mockk<ContactRepository>()
@@ -86,7 +87,12 @@ class CircleDetailScreenTest {
         )
         composeTestRule.setContent {
             MycorrhizalTheme(darkTheme = false) {
-                CircleDetailScreen(onBack = {}, onNavigateToContact = onNavigate, viewModel = vm)
+                CircleDetailScreen(
+                    onBack = {},
+                    onNavigateToContact = onNavigate,
+                    onShareCircle = onShare,
+                    viewModel = vm
+                )
             }
         }
     }
@@ -297,5 +303,25 @@ class CircleDetailScreenTest {
         // The error is both the body Text and the transient snackbar, so assert
         // on the collection rather than a single node.
         assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    // Issue #2518: a circle can be shared as a standing grant, keyed by its id.
+    @Test
+    fun `the share action hands the circle id to the callback`() {
+        var shared: String? = null
+        setScreen(onShare = { shared = it })
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.shares_standing_title_circle))
+            .assertIsDisplayed()
+            .performClick()
+
+        assertEquals("c1", shared)
+    }
+
+    @Test
+    fun `no share callback means no share action`() {
+        setScreen()
+        composeTestRule.onNodeWithContentDescription(str(R.string.shares_standing_title_circle))
+            .assertDoesNotExist()
     }
 }

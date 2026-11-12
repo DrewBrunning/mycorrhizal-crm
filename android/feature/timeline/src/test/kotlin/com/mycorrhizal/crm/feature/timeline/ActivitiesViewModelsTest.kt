@@ -625,6 +625,21 @@ class ActivityFormViewModelTest {
     }
 
     @Test
+    fun `edit mode keeps the loaded activity's uuid so it can be shared`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { activityRepository.get(7) } returns Result.success(
+            Activity(id = 7, title = "Lunch", date = "2026-08-10T14:00:00Z", uuid = "a-uuid")
+        )
+
+        val vm = createViewModel(activityId = 7)
+        advanceUntilIdle()
+
+        assertEquals("a-uuid", vm.uiState.value.uuid)
+        assertFalse("loading the uuid must not dirty the form", vm.uiState.value.isDirty)
+    }
+
+    @Test
     fun `edit hydration failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { activityRepository.get(7) } returns Result.failure(
             ApiError.Client(404, "Activity not found")

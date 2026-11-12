@@ -15,6 +15,7 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -36,6 +37,8 @@ class ShareContactViewModelTest {
         coEvery { shareRepository.userDirectory() } returns Result.success(
             listOf(UserDirectoryEntry(id = 9, username = "casey"))
         )
+        coEvery { grantRepository.previewContact(any(), any()) } returns
+            Result.success(emptyMap())
         return ShareContactViewModel(
             shareRepository,
             grantRepository,
@@ -321,5 +324,164 @@ class ShareContactViewModelTest {
         advanceUntilIdle()
         coVerify(exactly = 0) { grantRepository.create(any()) }
         assertTrue(vm.uiState.value.errorRes != null)
+    }
+
+    // --- Issue #2519: the live "What they will see" preview of a standing share ---
+
+    private val card = mapOf<String, Any?>("name" to mapOf("full" to "Dana"))
+
+    @Test
+    fun `a one-time share never asks for a preview`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.toggleSection("emails", false)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { grantRepository.previewContact(any(), any()) }
+        assertEquals(StandingPreview.Idle, vm.uiState.value.preview)
+    }
+
+    @Test
+    fun `choosing standing previews the selected sections of this contact`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = viewModel(uid = "uid-5")
+        coEvery { grantRepository.previewContact(any(), any()) } returns Result.success(card)
+        advanceUntilIdle()
+
+        vm.setMode(ShareMode.STANDING)
+        assertEquals(StandingPreview.Loading, vm.uiState.value.preview)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            grantRepository.previewContact("uid-5", ShareFieldSections.DEFAULT_SELECTED.sorted())
+        }
+        assertEquals(StandingPreview.Ready(card), vm.uiState.value.preview)
+    }
+
+    @Test
+    fun `toggling a section re-requests the preview with exactly the new selection`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.setMode(ShareMode.STANDING)
+        advanceUntilIdle()
+
+        vm.toggleSection("emails", false)
+        advanceUntilIdle()
+
+        val expected = (ShareFieldSections.DEFAULT_SELECTED - "emails").sorted()
+        coVerify(exactly = 1) { grantRepository.previewContact("uid-5", expected) }
+        assertFalse(expected.contains("emails"))
+    }
+
+    @Test
+    fun `an unselected sensitive section is not requested, a revealed and selected one is`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = viewModel()
+            advanceUntilIdle()
+            vm.setMode(ShareMode.STANDING)
+            advanceUntilIdle()
+            coVerify(exactly = 0) {
+                grantRepository.previewContact(any(), match { "related_to" in it })
+            }
+
+            vm.revealSensitive()
+            vm.toggleSection("related_to", true)
+            advanceUntilIdle()
+            coVerify(exactly = 1) {
+                grantRepository.previewContact(any(), match { "related_to" in it })
+            }
+        }
+
+    @Test
+    fun `deselecting every section clears the preview without a request`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.setMode(ShareMode.STANDING)
+        advanceUntilIdle()
+
+        ShareFieldSections.DEFAULT_SELECTED.forEach { vm.toggleSection(it, false) }
+        advanceUntilIdle()
+
+        assertEquals(StandingPreview.Idle, vm.uiState.value.preview)
+        assertFalse(vm.uiState.value.canShare)
+    }
+
+    @Test
+    fun `a failed preview is an error state that the next change recovers from`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = viewModel()
+        coEvery { grantRepository.previewContact(any(), any()) } returns
+            Result.failure(ApiError.Client(500, "boom"))
+        advanceUntilIdle()
+        vm.setMode(ShareMode.STANDING)
+        advanceUntilIdle()
+
+        val failed = vm.uiState.value.preview as StandingPreview.Error
+        assertEquals("boom", failed.error.message)
+        // A preview failure never blocks sharing or raises the form-level error.
+        assertNull(vm.uiState.value.error)
+
+        coEvery { grantRepository.previewContact(any(), any()) } returns Result.success(card)
+        vm.toggleSection("emails", false)
+        advanceUntilIdle()
+        assertEquals(StandingPreview.Ready(card), vm.uiState.value.preview)
+    }
+
+    @Test
+    fun `a slower earlier preview never overwrites a newer one`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = viewModel()
+        val slow = CompletableDeferred<Result<Map<String, Any?>>>()
+        val fresh = mapOf<String, Any?>("name" to mapOf("full" to "Fresh"))
+        coEvery { grantRepository.previewContact(any(), any()) } coAnswers { slow.await() }
+        advanceUntilIdle()
+        vm.setMode(ShareMode.STANDING)
+        advanceUntilIdle()
+
+        coEvery { grantRepository.previewContact(any(), any()) } returns Result.success(fresh)
+        vm.toggleSection("emails", false)
+        advanceUntilIdle()
+        slow.complete(Result.success(card))
+        advanceUntilIdle()
+
+        assertEquals(StandingPreview.Ready(fresh), vm.uiState.value.preview)
+    }
+
+    @Test
+    fun `going back to one-time drops the preview and ignores a late response`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = viewModel()
+        val slow = CompletableDeferred<Result<Map<String, Any?>>>()
+        coEvery { grantRepository.previewContact(any(), any()) } coAnswers { slow.await() }
+        advanceUntilIdle()
+        vm.setMode(ShareMode.STANDING)
+        advanceUntilIdle()
+
+        vm.setMode(ShareMode.ONE_TIME)
+        slow.complete(Result.success(card))
+        advanceUntilIdle()
+
+        assertEquals(StandingPreview.Idle, vm.uiState.value.preview)
+    }
+
+    @Test
+    fun `a contact without a uid has nothing to preview`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = viewModel(uid = "")
+        advanceUntilIdle()
+        vm.setMode(ShareMode.STANDING)
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { grantRepository.previewContact(any(), any()) }
+        assertEquals(StandingPreview.Idle, vm.uiState.value.preview)
     }
 }
