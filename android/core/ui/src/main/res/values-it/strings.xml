@@ -1596,6 +1596,14 @@
     <string name="shares_standing_reveal_confirm">Queste sezioni possono contenere relazioni private o campi personalizzati. Vengono condivisi solo gli elementi contrassegnati come normali. Ciò che contrassegni come privato o segreto resta nascosto.</string>
     <string name="shares_standing_expiry_label">Scade</string>
     <string name="shares_standing_pending_note">Vedranno chi condivide e che tipo di elemento è, e devono accettare prima di poter leggere qualcosa.</string>
+    <!-- Issue #2518: standing shares of a note, an activity and a circle (ADR 0042). -->
+    <string name="shares_standing_title_note">Condividi questa nota</string>
+    <string name="shares_standing_title_activity">Condividi questa attività</string>
+    <string name="shares_standing_title_circle">Condividi questa cerchia</string>
+    <string name="shares_standing_notice_note">Vedrà il testo e la data di questa nota, non il contatto a cui è collegata.</string>
+    <string name="shares_standing_notice_activity">Vedrà titolo, descrizione, luogo, date e tipo, non i partecipanti.</string>
+    <string name="shares_standing_notice_circle">Vedrà nome, descrizione, colore e i nomi dei membri attuali della cerchia. Le persone che aggiungi in seguito diventano subito visibili.</string>
+    <string name="shares_error_no_entity">Questo elemento non può essere condiviso: non ha un identificatore.</string>
     <plurals name="shares_pending_count">
         <item quantity="one">%1$d condivisione ti aspetta</item>
         <item quantity="many">%1$d condivisioni ti aspettano</item>

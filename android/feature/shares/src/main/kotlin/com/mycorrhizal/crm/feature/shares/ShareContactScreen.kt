@@ -395,7 +395,7 @@ private fun ModeOption(
 
 /** Standing only: no expiry, or one of the presets. */
 @Composable
-private fun StandingExpiryChooser(expiryDays: Int?, onChange: (Int?) -> Unit) {
+internal fun StandingExpiryChooser(expiryDays: Int?, onChange: (Int?) -> Unit) {
     Column {
         Text(
             text = stringResource(R.string.shares_standing_expiry_label),
@@ -418,7 +418,7 @@ private fun StandingExpiryChooser(expiryDays: Int?, onChange: (Int?) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RecipientField(
+internal fun RecipientField(
     recipients: List<String>,
     selectedRecipient: String?,
     expanded: Boolean,

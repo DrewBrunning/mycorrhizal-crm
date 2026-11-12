@@ -40,6 +40,8 @@ data class PendingNoteImage(val fileName: String, val mimeType: String, val byte
 data class NoteFormState(
     val contactId: Int = 0,
     val noteId: Int? = null,
+    /** The loaded note's stable uuid (edit mode); what a standing share is keyed by. */
+    val uuid: String? = null,
     val content: String = "",
     val date: String = "",
     /** Currently selected target contact; null means an unassigned note. */
@@ -430,6 +432,7 @@ class NoteFormViewModel @Inject constructor(
     }
 
     private fun NoteFormState.toFormState(note: Note): NoteFormState = copy(
+        uuid = note.uuid,
         content = note.content.orEmpty(),
         date = note.date.orEmpty(),
         targetContactId = note.contactId,

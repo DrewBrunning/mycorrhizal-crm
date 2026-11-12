@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Share notes, activities and circles on Android** ([#2518](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2518)): a saved note or activity, and a circle, now has a Share action that starts a read-only standing share. Choose who and when it expires; it stays pending until they accept.
 - **Standing occasions on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): a contact now has an Occasions section for the yearly card, gift or invite you keep up, with its date, lead time and notes. Add, edit and delete them there, as on the web.
 - **Standing-share notices and preview on Android** ([#2519](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2519)): when you choose Keep sharing on Share contact, it now says that revoking cannot recall what was seen and that later additions show at once. A "What they will see" card previews the chosen sections.
 - **Create organisations and places from your contacts on Android** ([#2513](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2513)): the organisations, places and pets screen has a new button that groups equal organisation and address values on your contacts. Choose the name, role, which contacts to link and whether it is their primary, then see what was created or skipped. No contact value is changed.
