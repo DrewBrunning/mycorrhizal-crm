@@ -1,5 +1,7 @@
 package com.mycorrhizal.crm.data.repository
 
+import com.mycorrhizal.crm.model.network.GiftShoppingItem
+import com.mycorrhizal.crm.model.network.GiftShoppingListResponse
 import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.model.network.OccasionObligationInput
 import com.mycorrhizal.crm.model.network.OccasionObligationsResponse
@@ -67,5 +69,32 @@ class OccasionObligationRepositoryImplTest {
         assertEquals("n", repository.create(input).getOrThrow().id)
         assertEquals("n", repository.update("n", input).getOrThrow().id)
         assertTrue(repository.delete("n").isSuccess)
+    }
+
+    @Test
+    fun `giftShoppingList unwraps the items for the requested window`() = runTest {
+        val item = GiftShoppingItem(contactId = 3, obligationId = "o1", status = "needed")
+        coEvery { apiClient.getGiftShoppingList(90) } returns
+            Result.success(GiftShoppingListResponse(listOf(item), days = 90))
+
+        assertEquals(listOf(item), repository.giftShoppingList(90).getOrThrow())
+    }
+
+    @Test
+    fun `giftShoppingList and cardListCsv propagate failures`() = runTest {
+        coEvery { apiClient.getGiftShoppingList(30) } returns Result.failure(RuntimeException("x"))
+        coEvery { apiClient.exportOccasionCardListCsv("card") } returns
+            Result.failure(RuntimeException("y"))
+
+        assertTrue(repository.giftShoppingList(30).isFailure)
+        assertTrue(repository.cardListCsv("card").isFailure)
+    }
+
+    @Test
+    fun `cardListCsv returns the raw bytes`() = runTest {
+        coEvery { apiClient.exportOccasionCardListCsv("gift") } returns
+            Result.success("a,b".toByteArray())
+
+        assertEquals("a,b", String(repository.cardListCsv("gift").getOrThrow()))
     }
 }

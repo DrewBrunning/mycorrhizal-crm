@@ -78,3 +78,44 @@ object OccasionObligationKinds {
 
     val ALL = listOf(CARD, GIFT, INVITE)
 }
+
+/**
+ * One row of the gift shopping list (ADR 0024 part 5, `models.GiftShoppingItem`): an upcoming
+ * gift obligation joined to this cycle's gift. [contactId] is the numeric Contact id a client
+ * links to; [date] is the next occurrence (`YYYY-MM-DD`).
+ */
+@JsonClass(generateAdapter = true)
+data class GiftShoppingItem(
+    @Json(name = "contact_id") val contactId: Int = 0,
+    @Json(name = "contact_name") val contactName: String = "",
+    @Json(name = "obligation_id") val obligationId: String = "",
+    val label: String = "",
+    val date: String = "",
+    @Json(name = "days_until") val daysUntil: Int = 0,
+    val status: String = GiftShoppingStatuses.NEEDED,
+    @Json(name = "linked_gift_id") val linkedGiftId: String? = null
+)
+
+/** GET /occasion-obligations/gift-shopping-list — `{ gift_shopping_list, days }`. */
+@JsonClass(generateAdapter = true)
+data class GiftShoppingListResponse(
+    @Json(name = "gift_shopping_list") val giftShoppingList: List<GiftShoppingItem>? = null,
+    val days: Int = 0
+) {
+    /** The server may send `null`; an empty window is an empty list. */
+    val items: List<GiftShoppingItem> get() = giftShoppingList.orEmpty()
+}
+
+/**
+ * `GiftShoppingItem.Status`: the four `Gift.Status*` values plus `needed` (no gift row found yet).
+ * A hardcoded mirror of the backend (frontend trap #4).
+ */
+object GiftShoppingStatuses {
+    const val NEEDED = "needed"
+    const val IDEA = "idea"
+    const val PURCHASED = "purchased"
+    const val GIVEN = "given"
+    const val RECEIVED = "received"
+
+    val ALL = listOf(NEEDED, IDEA, PURCHASED, GIVEN, RECEIVED)
+}

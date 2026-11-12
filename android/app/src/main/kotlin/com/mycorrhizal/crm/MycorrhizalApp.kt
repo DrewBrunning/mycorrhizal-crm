@@ -137,7 +137,9 @@ import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.map.MapScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
 import com.mycorrhizal.crm.feature.occasions.ContactOccasionsScreen
+import com.mycorrhizal.crm.feature.occasions.GiftShoppingListScreen
 import com.mycorrhizal.crm.feature.occasions.OccasionAttendeesScreen
+import com.mycorrhizal.crm.feature.occasions.OccasionListsActions
 import com.mycorrhizal.crm.feature.occasions.OccasionsScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
 import com.mycorrhizal.crm.feature.settings.AboutSettingsScreen
@@ -1768,7 +1770,21 @@ private fun AppNavGraph(
                     navController.navigate(
                         "occasions/$eventId/attendees"
                     )
+                },
+                derivedLists = {
+                    OccasionListsActions(
+                        onOpenShoppingList = {
+                            navController.navigate("occasions/gift-shopping-list")
+                        }
+                    )
                 }
+            )
+        }
+        // ADR 0024 part 5 (issue #2521): upcoming gifts and their status.
+        composable("occasions/gift-shopping-list") {
+            GiftShoppingListScreen(
+                onBack = { navController.popBackStack() },
+                onOpenContact = { id -> navController.navigate("contacts/$id") }
             )
         }
         composable(

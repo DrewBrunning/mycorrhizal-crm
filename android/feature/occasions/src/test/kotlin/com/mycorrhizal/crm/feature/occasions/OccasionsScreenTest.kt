@@ -170,4 +170,36 @@ class OccasionsScreenTest {
             "Delete “Summer BBQ”? This cannot be undone."
         ).assertIsDisplayed()
     }
+
+    // ADR 0024 parts 4-5 (issue #2521): the host's derived-lists slot scrolls with the events,
+    // both with events and when there are none.
+    private fun renderWithSlot(events: List<OccasionEvent>) {
+        coEvery { repository.list() } returns Result.success(events)
+        val viewModel = OccasionsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                OccasionsScreen(
+                    onMenuClick = {},
+                    onOpenAttendees = {},
+                    derivedLists = { androidx.compose.material3.Text("Slot content") },
+                    viewModel = viewModel
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+    }
+
+    @Test
+    fun `the derived lists slot is shown above the events`() {
+        renderWithSlot(listOf(event()))
+        composeTestRule.onNodeWithText("Slot content").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Summer BBQ").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the derived lists slot is shown with the empty state`() {
+        renderWithSlot(emptyList())
+        composeTestRule.onNodeWithText("Slot content").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No events yet").assertIsDisplayed()
+    }
 }

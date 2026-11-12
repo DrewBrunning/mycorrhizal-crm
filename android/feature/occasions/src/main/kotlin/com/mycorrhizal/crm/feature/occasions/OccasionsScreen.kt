@@ -83,6 +83,9 @@ fun OccasionsScreen(
     onOpenAttendees: (String) -> Unit,
     // Issue #1758: a top-level drawer destination; null hides the hamburger (no drawer at Expanded).
     onMenuClick: (() -> Unit)? = {},
+    // ADR 0024 parts 4-5 (issue #2521): the card-list share and gift-shopping-list entry points,
+    // supplied by the host so this screen's events tests need no extra ViewModel.
+    derivedLists: @Composable () -> Unit = {},
     viewModel: OccasionsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -156,31 +159,37 @@ fun OccasionsScreen(
                         stringResource(R.string.a11y_state_loading)
                     )
 
-                    state.events.isEmpty() -> EmptyState(
-                        title = stringResource(R.string.occasions_empty),
-                        body = stringResource(R.string.occasions_empty_body),
-                        actionLabel = stringResource(R.string.occasions_add_event),
-                        onAction = {
-                            editing = null
-                            showDialog = true
-                        }
-                    )
-
                     else -> LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                         contentPadding = FabListContentPadding,
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(state.events, key = { it.id }) { event ->
-                            OccasionEventRow(
-                                event = event,
-                                onOpen = { onOpenAttendees(event.id) },
-                                onEdit = {
-                                    editing = event
-                                    showDialog = true
-                                },
-                                onDelete = { pendingDelete = event }
-                            )
+                        // The derived lists scroll with the events instead of squeezing them.
+                        item(key = "derived-lists") { derivedLists() }
+                        if (state.events.isEmpty()) {
+                            item(key = "empty") {
+                                EmptyState(
+                                    title = stringResource(R.string.occasions_empty),
+                                    body = stringResource(R.string.occasions_empty_body),
+                                    actionLabel = stringResource(R.string.occasions_add_event),
+                                    onAction = {
+                                        editing = null
+                                        showDialog = true
+                                    }
+                                )
+                            }
+                        } else {
+                            items(state.events, key = { it.id }) { event ->
+                                OccasionEventRow(
+                                    event = event,
+                                    onOpen = { onOpenAttendees(event.id) },
+                                    onEdit = {
+                                        editing = event
+                                        showDialog = true
+                                    },
+                                    onDelete = { pendingDelete = event }
+                                )
+                            }
                         }
                     }
                 }

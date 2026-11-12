@@ -2384,6 +2384,26 @@
         <item quantity="one">%1$d day lead time</item>
         <item quantity="other">%1$d days lead time</item>
     </plurals>
+    <!-- ADR 0024 (issue #2521): card list, gift shopping list and upcoming occasions. -->
+    <string name="occasion_card_list_title">Card list</string>
+    <string name="occasion_card_list_description">Share a CSV of contacts with an active card occasion: one row per active obligation, with the contact name, their normal-sensitivity address, and the occasion. Private and secret addresses are left out.</string>
+    <string name="occasion_card_list_share">Share as CSV</string>
+    <string name="occasion_card_list_share_title">Share card list</string>
+    <string name="occasion_gift_list_title">Gift shopping list</string>
+    <string name="occasion_gift_list_description">Gifts coming up soon, and whether you have an idea, have bought one or have already given it.</string>
+    <string name="occasion_gift_list_empty">No gifts needed in this window.</string>
+    <string name="occasion_window_30">30 days</string>
+    <string name="occasion_window_90">90 days</string>
+    <string name="occasion_today">Today</string>
+    <string name="occasion_gift_status_needed">Needed</string>
+    <string name="occasion_gift_status_idea">Idea</string>
+    <string name="occasion_gift_status_purchased">Purchased</string>
+    <string name="occasion_gift_status_given">Given</string>
+    <string name="occasion_gift_status_received">Received</string>
+    <plurals name="occasion_in_days">
+        <item quantity="one">in %1$d day</item>
+        <item quantity="other">in %1$d days</item>
+    </plurals>
     <string name="settings_servers_title">Servers</string>
     <string name="settings_servers_add">Add server</string>
     <string name="settings_servers_empty">No servers yet</string>

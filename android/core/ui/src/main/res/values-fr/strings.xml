@@ -2445,6 +2445,27 @@
         <item quantity="many">%1$d jours de délai</item>
         <item quantity="other">%1$d jours de délai</item>
     </plurals>
+    <!-- ADR 0024 (issue #2521): card list, gift shopping list and upcoming occasions. -->
+    <string name="occasion_card_list_title">Liste de cartes</string>
+    <string name="occasion_card_list_description">Partagez un CSV des contacts ayant une occasion de carte active : une ligne par obligation active, avec le nom du contact, son adresse de sensibilité normale et l\'occasion. Les adresses privées et secrètes sont exclues.</string>
+    <string name="occasion_card_list_share">Partager en CSV</string>
+    <string name="occasion_card_list_share_title">Partager la liste de cartes</string>
+    <string name="occasion_gift_list_title">Liste de cadeaux à acheter</string>
+    <string name="occasion_gift_list_description">Cadeaux à venir et si vous avez une idée, l\'avez acheté ou déjà offert.</string>
+    <string name="occasion_gift_list_empty">Aucun cadeau nécessaire sur cette période.</string>
+    <string name="occasion_window_30">30 jours</string>
+    <string name="occasion_window_90">90 jours</string>
+    <string name="occasion_today">Aujourd\'hui</string>
+    <string name="occasion_gift_status_needed">À acheter</string>
+    <string name="occasion_gift_status_idea">Idée</string>
+    <string name="occasion_gift_status_purchased">Acheté</string>
+    <string name="occasion_gift_status_given">Offert</string>
+    <string name="occasion_gift_status_received">Reçu</string>
+    <plurals name="occasion_in_days">
+        <item quantity="one">dans %1$d jour</item>
+        <item quantity="many">dans %1$d jours</item>
+        <item quantity="other">dans %1$d jours</item>
+    </plurals>
     <string name="settings_servers_title">Serveurs</string>
     <string name="settings_servers_add">Ajouter un serveur</string>
     <string name="settings_servers_empty">Aucun serveur pour le moment</string>
