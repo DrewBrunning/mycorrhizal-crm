@@ -246,4 +246,45 @@ class ShareGrantApiClientTest {
         assertEquals("POST", mark.method)
         assertEquals("/api/v1/share-grants/notifications/read", mark.path)
     }
+
+    // Issue #2519: the preview is the owner's own export of the chosen sections, never sensitive.
+    @Test
+    fun `contact preview asks the export for one contact and its sections and returns the card`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setBody(
+                    """[{"@type":"Card","name":{"full":"Dana White"},
+                    "emails":{"e1":{"address":"dana@example.com"}}}]"""
+                )
+            )
+            val card = client.previewContactJsContact("uid-1", listOf("emails", "phones"))
+                .getOrThrow()
+            val request = server.takeRequest()
+            assertEquals("GET", request.method)
+            val url = request.requestUrl!!
+            assertEquals("/api/v1/export/jscontact", url.encodedPath)
+            assertEquals("uid-1", url.queryParameter("vcard_uid"))
+            assertEquals("emails,phones", url.queryParameter("sections"))
+            assertNull(url.queryParameter("include_sensitive"))
+            assertEquals("Card", card["@type"])
+            assertEquals(
+                "Dana White",
+                (card["name"] as Map<*, *>)["full"]
+            )
+        }
+
+    @Test
+    fun `contact preview of an unknown contact is an empty card`() = runBlocking {
+        server.enqueue(MockResponse().setBody("[]"))
+        assertTrue(client.previewContactJsContact("nope", listOf("emails")).getOrThrow().isEmpty())
+    }
+
+    @Test
+    fun `contact preview failure surfaces the ApiError`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(500).setBody("""{"error":{"message":"boom"}}""")
+        )
+        val error = client.previewContactJsContact("uid-1", listOf("emails")).exceptionOrNull()
+        assertTrue(error is ApiError.Server)
+    }
 }

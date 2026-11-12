@@ -54,6 +54,11 @@ class ShareGrantRepositoryImpl @Inject constructor(private val apiClient: ApiCli
     override suspend fun content(id: String): Result<ShareGrantContent> =
         apiClient.getShareGrantContent(id)
 
+    override suspend fun previewContact(
+        vcardUid: String,
+        sections: List<String>
+    ): Result<Map<String, Any?>> = apiClient.previewContactJsContact(vcardUid, sections)
+
     override suspend fun blocks(): Result<List<ShareBlock>> = apiClient.listShareBlocks()
 
     override suspend fun unblock(userId: Long): Result<Unit> = apiClient.deleteShareBlock(userId)

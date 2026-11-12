@@ -54,6 +54,13 @@ interface ShareGrantRepository {
     /** The granted entity's allowlisted fields, resolved per request. */
     suspend fun content(id: String): Result<ShareGrantContent>
 
+    /**
+     * What a standing share of [sections] of the contact [vcardUid] would show today (issue
+     * #2519): the owner's own export of those sections, sensitive items always left out. An
+     * unknown contact yields an empty map.
+     */
+    suspend fun previewContact(vcardUid: String, sections: List<String>): Result<Map<String, Any?>>
+
     suspend fun blocks(): Result<List<ShareBlock>>
 
     suspend fun unblock(userId: Long): Result<Unit>

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -55,6 +56,24 @@ internal fun expiryText(expiresAt: String?): String? {
     val dateFormat = LocalDateFormat.current
     val date = DateFormat.formatTimestamp(expiresAt, dateFormat)
     return if (date.isBlank()) null else stringResource(R.string.shares_grant_expires, date)
+}
+
+/** Renders a JSContact partial date in the user's date preference (read view and preview). */
+@Composable
+internal fun rememberGrantDateFormatter(): (Int?, Int?, Int?) -> String {
+    val dateFormat = LocalDateFormat.current
+    return remember(dateFormat) {
+        { year, month, day ->
+            when {
+                year != null && month != null && day != null ->
+                    DateFormat.formatFull(year, month, day, dateFormat)
+
+                month != null && day != null -> DateFormat.formatYearless(month, day, dateFormat)
+
+                else -> listOfNotNull(year, month, day).joinToString("-")
+            }
+        }
+    }
 }
 
 /** A titled block of lines; used by the read view. */
