@@ -270,7 +270,9 @@ class EntitiesFromContactsScreenTest {
         composeTestRule.onNodeWithTag("from-contacts-result").assertIsDisplayed()
         composeTestRule.onNodeWithText("Created 2 organisations.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Acme, Initech").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Globex: it no longer exists on your contacts.")
+        composeTestRule.onNodeWithText(
+            "Globex: skipped. It may already exist or no longer match your contacts."
+        )
             .assertIsDisplayed()
         composeTestRule.onNodeWithText("Acme: Bo Lovelace no longer belongs to it.")
             .assertIsDisplayed()
@@ -279,7 +281,9 @@ class EntitiesFromContactsScreenTest {
         composeTestRule.onNodeWithText("Bad: the name is not valid.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Worse: its details are not valid.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Odd: it was not applied.").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("from-contacts-result-dismiss").performClick()
+        composeTestRule.onNodeWithTag(
+            "from-contacts-result-dismiss"
+        ).performScrollTo().performClick()
         assertEquals(1, calls.dismissed)
     }
 
@@ -301,7 +305,9 @@ class EntitiesFromContactsScreenTest {
             )
         )
         composeTestRule.onNodeWithText("Nothing was created.").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Cabin: it no longer exists on your contacts.")
+        composeTestRule.onNodeWithText(
+            "Cabin: skipped. It may already exist or no longer match your contacts."
+        )
             .assertIsDisplayed()
     }
 

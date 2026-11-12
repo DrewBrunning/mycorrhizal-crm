@@ -3553,7 +3553,7 @@
     <string name="shared_entities_from_contacts_primary_cd">Establecer como principal para %1$s</string>
     <string name="shared_entities_from_contacts_contacts_heading">Contactos a vincular</string>
     <string name="shared_entities_from_contacts_result_none">No se creó nada.</string>
-    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: ya no existe en tus contactos.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: omitido. Puede que ya exista o que ya no coincida con tus contactos.</string>
     <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s: un contacto ya no pertenece a ese grupo.</string>
     <string name="shared_entities_from_contacts_skip_contact_named">%1$s: %2$s ya no pertenece a ese grupo.</string>
     <string name="shared_entities_from_contacts_skip_name_invalid">%1$s: el nombre no es válido.</string>

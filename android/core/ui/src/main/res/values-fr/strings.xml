@@ -3555,7 +3555,7 @@
     <string name="shared_entities_from_contacts_primary_cd">Définir comme principale pour %1$s</string>
     <string name="shared_entities_from_contacts_contacts_heading">Contacts à lier</string>
     <string name="shared_entities_from_contacts_result_none">Rien n\'a été créé.</string>
-    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s : n\'existe plus sur vos contacts.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s : ignoré. Il existe peut-être déjà ou ne correspond plus à vos contacts.</string>
     <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s : un contact n\'en fait plus partie.</string>
     <string name="shared_entities_from_contacts_skip_contact_named">%1$s : %2$s n\'en fait plus partie.</string>
     <string name="shared_entities_from_contacts_skip_name_invalid">%1$s : le nom n\'est pas valide.</string>

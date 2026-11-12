@@ -3451,7 +3451,7 @@
     <string name="shared_entities_from_contacts_primary_cd">Als primär festlegen für %1$s</string>
     <string name="shared_entities_from_contacts_contacts_heading">Zu verknüpfende Kontakte</string>
     <string name="shared_entities_from_contacts_result_none">Es wurde nichts angelegt.</string>
-    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: existiert bei deinen Kontakten nicht mehr.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: übersprungen. Es existiert möglicherweise schon oder passt nicht mehr zu deinen Kontakten.</string>
     <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s: ein Kontakt gehört nicht mehr dazu.</string>
     <string name="shared_entities_from_contacts_skip_contact_named">%1$s: %2$s gehört nicht mehr dazu.</string>
     <string name="shared_entities_from_contacts_skip_name_invalid">%1$s: Der Name ist ungültig.</string>

@@ -3469,7 +3469,7 @@
     <string name="shared_entities_from_contacts_primary_cd">Set as primary for %1$s</string>
     <string name="shared_entities_from_contacts_contacts_heading">Contacts to link</string>
     <string name="shared_entities_from_contacts_result_none">Nothing was created.</string>
-    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: it no longer exists on your contacts.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: skipped. It may already exist or no longer match your contacts.</string>
     <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s: a contact no longer belongs to it.</string>
     <string name="shared_entities_from_contacts_skip_contact_named">%1$s: %2$s no longer belongs to it.</string>
     <string name="shared_entities_from_contacts_skip_name_invalid">%1$s: the name is not valid.</string>

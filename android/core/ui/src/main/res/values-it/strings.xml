@@ -3553,7 +3553,7 @@
     <string name="shared_entities_from_contacts_primary_cd">Imposta come principale per %1$s</string>
     <string name="shared_entities_from_contacts_contacts_heading">Contatti da collegare</string>
     <string name="shared_entities_from_contacts_result_none">Non è stato creato nulla.</string>
-    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: non esiste più nei tuoi contatti.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: saltato. Potrebbe esistere già o non corrispondere più ai tuoi contatti.</string>
     <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s: un contatto non ne fa più parte.</string>
     <string name="shared_entities_from_contacts_skip_contact_named">%1$s: %2$s non ne fa più parte.</string>
     <string name="shared_entities_from_contacts_skip_name_invalid">%1$s: il nome non è valido.</string>
