@@ -39,7 +39,7 @@ interface CircleRepository {
     suspend fun update(id: String, name: String, description: String, color: String): Result<Circle>
 
     /** One page (25) of the merged timeline of the circle's live members (issue #1995/#2361). */
-    suspend fun getTimeline(circleId: String, cursor: String? = null): Result<CircleTimelinePage>
+    suspend fun getTimeline(circleId: String, cursor: String?): Result<CircleTimelinePage>
 
     /** Delete a circle (hard delete). */
     suspend fun delete(id: String): Result<Unit>
