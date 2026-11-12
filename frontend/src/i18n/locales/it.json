@@ -4532,7 +4532,7 @@
       "createdPlace_many": "{{count}} luoghi creati.",
       "createdPlace_other": "{{count}} luoghi creati.",
       "skip": {
-        "group_not_found": "{{name}}: non esiste più nei tuoi contatti.",
+        "group_not_found": "{{name}}: saltato. Potrebbe esistere già o non corrispondere più ai tuoi contatti.",
         "contact_not_in_group": "{{name}}: un contatto non ne fa più parte.",
         "name_invalid": "{{name}}: il nome non è valido.",
         "core_invalid": "{{name}}: i suoi dati non sono validi."
