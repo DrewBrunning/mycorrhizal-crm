@@ -126,7 +126,7 @@ fun NoteFormScreen(
                 onAddImages = { imagePicker.launch(pickImageRequest) },
                 onDeleteImage = viewModel::deleteImage,
                 onSetImageSensitivity = viewModel::setImageSensitivity,
-                onShare = state.uuid?.let { uuid -> onShare?.let { share -> { share(uuid) } } },
+                onShare = onShare,
                 modifier = Modifier.padding(padding)
             )
         }
@@ -160,7 +160,7 @@ fun NoteFormContent(
     onAddImages: () -> Unit = {},
     onDeleteImage: (Int) -> Unit = {},
     onSetImageSensitivity: (Int, String) -> Unit = { _, _ -> },
-    onShare: (() -> Unit)? = null
+    onShare: ((String) -> Unit)? = null
 ) {
     Column(
         modifier = modifier
@@ -247,9 +247,10 @@ fun NoteFormContent(
         )
 
         // Issue #2518: a standing, read-only share of this note (ADR 0042).
-        if (state.uuid != null && onShare != null) {
+        val uuid = state.uuid
+        if (uuid != null && onShare != null) {
             HorizontalDivider()
-            OutlinedButton(onClick = onShare, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(onClick = { onShare(uuid) }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.shares_standing_title_note))
             }
         }

@@ -51,7 +51,7 @@ class NoteFormScreenTest {
         onSave: () -> Unit = {},
         onAddImages: () -> Unit = {},
         onDeleteImage: (Int) -> Unit = {},
-        onShare: (() -> Unit)? = null
+        onShare: ((String) -> Unit)? = null
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -220,15 +220,15 @@ class NoteFormScreenTest {
     // Issue #2518: a saved note can be shared as a standing grant (keyed by its uuid).
     @Test
     fun `an existing note offers a standing share`() {
-        var shared = 0
+        var shared: String? = null
         setContent(
             NoteFormState(contactId = 5, noteId = 3, uuid = "n-uuid"),
-            onShare = { shared += 1 }
+            onShare = { shared = it }
         )
         composeTestRule.onNodeWithText(
             "Share this note"
         ).performScrollTo().assertIsDisplayed().performClick()
-        assertEquals(1, shared)
+        assertEquals("n-uuid", shared)
     }
 
     @Test

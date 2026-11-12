@@ -52,7 +52,7 @@ class ActivityFormScreenTest {
         onDeleteImage: (Int) -> Unit = {},
         onDateChange: (String) -> Unit = {},
         onSave: () -> Unit = {},
-        onShare: (() -> Unit)? = null
+        onShare: ((String) -> Unit)? = null
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -267,15 +267,15 @@ class ActivityFormScreenTest {
     // Issue #2518: a saved activity can be shared as a standing grant (keyed by its uuid).
     @Test
     fun `an existing activity offers a standing share`() {
-        var shared = 0
+        var shared: String? = null
         setContent(
             ActivityFormState(contactId = 5, activityId = 3, uuid = "a-uuid"),
-            onShare = { shared += 1 }
+            onShare = { shared = it }
         )
         composeTestRule.onNodeWithText(
             "Share this activity"
         ).performScrollTo().assertIsDisplayed().performClick()
-        assertEquals(1, shared)
+        assertEquals("a-uuid", shared)
     }
 
     @Test

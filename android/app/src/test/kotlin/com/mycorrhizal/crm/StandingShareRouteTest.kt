@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm
 
+import android.app.Application
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -8,7 +9,7 @@ import org.robolectric.annotation.Config
 
 /** Issue #2518: the route the note, activity and circle entry points navigate to. */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+@Config(sdk = [35], application = Application::class)
 class StandingShareRouteTest {
 
     @Test
