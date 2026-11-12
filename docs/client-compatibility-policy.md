@@ -119,10 +119,14 @@ not attempted at all:
 - **Between the baseline and the current release**, capabilities whose endpoints
   arrived after the baseline are hidden when the connected server predates them
   (the per-feature `minServerVersion` floors in the registry), so a newer client
-  degrades gracefully rather than offering actions that would 404. Every
-  capability that exists today shipped by the `v1.0.0` baseline (issue #1170),
-  so no per-feature floor is above it and the baseline gate is what refuses any
-  older server.
+  degrades gracefully rather than offering actions that would 404. Most
+  capabilities shipped by the `v1.0.0` baseline (issue #1170), so the baseline
+  gate is what refuses an older server. The exceptions are the capabilities that
+  landed after `v1.6.0` and so first ship in `v1.7.0` (issue #2527): standing
+  share grants (`SHARE_GRANTS`), organisations/places/pets (`ENTITIES`) and the
+  import-run report (`IMPORT_RUN_REPORT`). Each has a `v1.7.0` floor, and the
+  Android app hides their entry points against a `v1.6.x` server. The web client
+  needs no such gate: it is served by the same release as the API.
 
 ## Server-side floor enforcement
 

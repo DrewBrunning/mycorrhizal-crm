@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.timeline
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
@@ -18,9 +19,11 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
+import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ActivityImage
 import com.mycorrhizal.crm.model.network.ContactFlat
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -52,34 +55,37 @@ class ActivityFormScreenTest {
         onDeleteImage: (Int) -> Unit = {},
         onDateChange: (String) -> Unit = {},
         onSave: () -> Unit = {},
-        onShare: ((String) -> Unit)? = null
+        onShare: ((String) -> Unit)? = null,
+        serverVersion: AppVersion? = null
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
-                FormScaffold(
-                    title = "Form",
-                    onBack = {},
-                    saveLabel = if (state.isEdit) "Save changes" else "Create activity",
-                    isSaving = state.isSaving,
-                    onSave = onSave,
-                    snackbarHostState = remember { SnackbarHostState() }
-                ) { padding ->
-                    ActivityFormContent(
-                        state = state,
-                        onTitleChange = {},
-                        onTypeChange = {},
-                        onDateChange = onDateChange,
-                        onEndDateChange = {},
-                        onDescriptionChange = {},
-                        onLocationChange = {},
-                        onContactSearchChange = onSearchChange,
-                        onAddParticipant = onAddParticipant,
-                        onRemoveParticipant = onRemoveParticipant,
-                        onAddImages = onAddImages,
-                        onDeleteImage = onDeleteImage,
-                        onShare = onShare,
-                        modifier = Modifier.padding(padding)
-                    )
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme {
+                    FormScaffold(
+                        title = "Form",
+                        onBack = {},
+                        saveLabel = if (state.isEdit) "Save changes" else "Create activity",
+                        isSaving = state.isSaving,
+                        onSave = onSave,
+                        snackbarHostState = remember { SnackbarHostState() }
+                    ) { padding ->
+                        ActivityFormContent(
+                            state = state,
+                            onTitleChange = {},
+                            onTypeChange = {},
+                            onDateChange = onDateChange,
+                            onEndDateChange = {},
+                            onDescriptionChange = {},
+                            onLocationChange = {},
+                            onContactSearchChange = onSearchChange,
+                            onAddParticipant = onAddParticipant,
+                            onRemoveParticipant = onRemoveParticipant,
+                            onAddImages = onAddImages,
+                            onDeleteImage = onDeleteImage,
+                            onShare = onShare,
+                            modifier = Modifier.padding(padding)
+                        )
+                    }
                 }
             }
         }
@@ -288,5 +294,21 @@ class ActivityFormScreenTest {
     fun `no share callback means no standing share entry`() {
         setContent(ActivityFormState(contactId = 5, activityId = 3, uuid = "a-uuid"))
         composeTestRule.onNodeWithText("Share this activity").assertDoesNotExist()
+    }
+
+    // Issue #2527: Share grants shipped after v1.6.0 (floor v1.7.0), so the entry is hidden on
+    // an older server and fails open when the version is unknown.
+    private val savedState = ActivityFormState(contactId = 5, activityId = 3, uuid = "x-uuid")
+
+    @Test
+    fun `a v1_6_0 server hides the standing share entry`() {
+        setContent(savedState, onShare = {}, serverVersion = AppVersion(1, 6, 0))
+        composeTestRule.onNodeWithText("Share this activity").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a v1_7_0 server shows the standing share entry`() {
+        setContent(savedState, onShare = {}, serverVersion = AppVersion(1, 7, 0))
+        composeTestRule.onNodeWithText("Share this activity").performScrollTo().assertIsDisplayed()
     }
 }

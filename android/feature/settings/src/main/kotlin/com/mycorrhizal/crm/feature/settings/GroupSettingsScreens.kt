@@ -10,7 +10,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 
 /**
  * Settings > Contacts & fields (issue #1759): everything that shapes what a contact holds. Custom
@@ -61,7 +63,13 @@ fun ContactsFieldsSettingsContent(
             onClick = onContactFieldSettings
         )
         // Issue #2302 (ADR 0043): shared organisations, places and pets.
-        SettingsNavigationRow(stringResource(R.string.shared_entities_title), onClick = onEntities)
+        // Issue #2527: `/entities` needs a v1.7.0 server.
+        if (isServerFeatureSupported(ServerFeature.ENTITIES)) {
+            SettingsNavigationRow(
+                stringResource(R.string.shared_entities_title),
+                onClick = onEntities
+            )
+        }
         SettingsNavigationRow(stringResource(R.string.custom_links_title), onClick = onCustomLinks)
         // M26: one-time legacy circle/tag cleanup.
         SettingsNavigationRow(

@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Android hides features an older server does not have** ([#2527](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2527)): connected to a server older than v1.7.0, the app no longer shows standing shares, organisations/places/pets or the import report link, and Trash no longer fails because it asked for deleted organisations. Nothing to do when upgrading; they reappear once the server is updated.
 - **Card list and gift shopping list on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): the Occasions screen can now share your card list as a CSV, leaving out private and secret addresses, and opens a gift shopping list for the next 30 or 90 days showing what is still needed, bought or given.
 - **Share notes, activities and circles on Android** ([#2518](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2518)): a saved note or activity, and a circle, now has a Share action that starts a read-only standing share. Choose who and when it expires; it stays pending until they accept.
 - **Standing occasions on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): a contact now has an Occasions section for the yearly card, gift or invite you keep up, with its date, lead time and notes. Add, edit and delete them there, as on the web.

@@ -67,10 +67,11 @@ class TrashViewModelTest {
         )
     }
 
-    private fun vm(): TrashViewModel {
+    private fun vm(entitiesSupported: Boolean = true): TrashViewModel {
         coEvery { contacts.syncContacts() } returns Result.success(Unit)
         if (!entitiesStubbed) stubEntities()
-        return TrashViewModel(trash, contacts, entityRepo)
+        // Issue #2527: the screen starts the first load once it knows the server's version.
+        return TrashViewModel(trash, contacts, entityRepo).also { it.start(entitiesSupported) }
     }
 
     private var entitiesStubbed = false
@@ -356,4 +357,51 @@ class TrashViewModelTest {
 
         assertTrue(model.uiState.value.isEmpty)
     }
+
+    // --- Issue #2527: `GET /trash/entities` is not in a v1.6.0 server (floor v1.7.0) ---
+
+    @Test
+    fun `a server without entities never asks for the entity trash and still lists contacts`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(row(1, "Ada"))
+            // On a v1.6.0 server this route 404s; if it were called the screen would fail.
+            entitiesStubbed = true
+            coEvery { trash.listEntities(any(), any()) } returns Result.failure(
+                ApiError.Client(404, "not found")
+            )
+
+            val model = vm(entitiesSupported = false)
+            advanceUntilIdle()
+
+            assertEquals(listOf(1), model.uiState.value.items.map { it.contact.id })
+            assertNull(model.uiState.value.error)
+            assertTrue(model.uiState.value.entities.isEmpty())
+            coVerify(exactly = 0) { trash.listEntities(any(), any()) }
+        }
+
+    @Test
+    fun `a server with entities loads the entity trash too`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(row(1, "Ada"))
+            stubEntities(entityRow("e1", "Rex"))
+
+            val model = vm(entitiesSupported = true)
+            advanceUntilIdle()
+
+            assertEquals(listOf("e1"), model.uiState.value.entities.map { it.entity.id })
+            coVerify(atLeast = 1) { trash.listEntities(any(), any()) }
+        }
+
+    @Test
+    fun `reload before the screen knows the server version loads nothing`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            stubList(row(1, "Ada"))
+            coEvery { contacts.syncContacts() } returns Result.success(Unit)
+            val model = TrashViewModel(trash, contacts, entityRepo)
+
+            model.reload()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { trash.list(any(), any()) }
+        }
 }

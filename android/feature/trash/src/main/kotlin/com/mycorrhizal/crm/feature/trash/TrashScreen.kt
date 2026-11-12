@@ -49,6 +49,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.TrashedContact
 import com.mycorrhizal.crm.model.network.TrashedEntity
@@ -59,6 +60,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -86,6 +88,10 @@ fun TrashScreen(
     var pendingPurge by remember { mutableStateOf<TrashedContact?>(null) }
     var confirmEmpty by remember { mutableStateOf(false) }
     var actionFailure by remember { mutableStateOf<ApiError?>(null) }
+
+    // Issue #2527: the entity trash needs a v1.7.0 server; the first load waits for this.
+    val entitiesSupported = isServerFeatureSupported(ServerFeature.ENTITIES)
+    LaunchedEffect(entitiesSupported) { viewModel.start(entitiesSupported) }
 
     // Reload when returning to the destination: the drawer restores this entry's view model.
     val lifecycleOwner = LocalLifecycleOwner.current
