@@ -150,6 +150,7 @@ import com.mycorrhizal.crm.model.network.GeocodeDraftRequest
 import com.mycorrhizal.crm.model.network.GeocodeDraftResponse
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftInput
+import com.mycorrhizal.crm.model.network.GiftShoppingListResponse
 import com.mycorrhizal.crm.model.network.GiftsPage
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
 import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
@@ -2211,6 +2212,32 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     /** DELETE /api/v1/occasion-obligations/{id} — soft delete, `{ message }`. */
     suspend fun deleteOccasionObligation(id: String): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/$id")
+
+    /**
+     * GET /api/v1/occasion-obligations/gift-shopping-list?days=30|90 — upcoming gift obligations
+     * joined to this cycle's gift (ADR 0024 part 5). Above-normal obligations are never requested
+     * (no `include_sensitive`), matching the web surface.
+     */
+    suspend fun getGiftShoppingList(days: Int): Result<GiftShoppingListResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/gift-shopping-list"
+            .toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("days", days.toString())
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(GiftShoppingListResponse::class.java).fromJson(body)
+        }
+    }
+
+    /**
+     * GET /api/v1/occasion-obligations/card-list?kind=… — the sensitivity-filtered CSV of
+     * contacts with an active obligation of [kind] (ADR 0024 part 4). Returns the raw file bytes;
+     * above-normal addresses are left out because `include_sensitive` is never sent.
+     */
+    suspend fun exportOccasionCardListCsv(kind: String): Result<ByteArray> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/card-list"
+            .toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("kind", kind)
+        return executeGetBytes(urlBuilder.build().toString())
+    }
 
     // --- Occasion events (docs/adrs/0026-occasions-events.md, issue #1228) ---
 

@@ -2437,6 +2437,27 @@
         <item quantity="many">%1$d giorni di anticipo</item>
         <item quantity="other">%1$d giorni di anticipo</item>
     </plurals>
+    <!-- ADR 0024 (issue #2521): card list, gift shopping list and upcoming occasions. -->
+    <string name="occasion_card_list_title">Elenco biglietti</string>
+    <string name="occasion_card_list_description">Condividi un CSV dei contatti con un\'occasione di biglietto attiva: una riga per ogni impegno attivo, con il nome del contatto, il suo indirizzo di sensibilità normale e l\'occasione. Gli indirizzi privati e segreti sono esclusi.</string>
+    <string name="occasion_card_list_share">Condividi come CSV</string>
+    <string name="occasion_card_list_share_title">Condividi l\'elenco biglietti</string>
+    <string name="occasion_gift_list_title">Lista dei regali da comprare</string>
+    <string name="occasion_gift_list_description">Regali in arrivo e se hai un\'idea, l\'hai già comprato o già consegnato.</string>
+    <string name="occasion_gift_list_empty">Nessun regalo necessario in questo periodo.</string>
+    <string name="occasion_window_30">30 giorni</string>
+    <string name="occasion_window_90">90 giorni</string>
+    <string name="occasion_today">Oggi</string>
+    <string name="occasion_gift_status_needed">Necessario</string>
+    <string name="occasion_gift_status_idea">Idea</string>
+    <string name="occasion_gift_status_purchased">Acquistato</string>
+    <string name="occasion_gift_status_given">Consegnato</string>
+    <string name="occasion_gift_status_received">Ricevuto</string>
+    <plurals name="occasion_in_days">
+        <item quantity="one">tra %1$d giorno</item>
+        <item quantity="many">tra %1$d giorni</item>
+        <item quantity="other">tra %1$d giorni</item>
+    </plurals>
     <string name="settings_servers_title">Server</string>
     <string name="settings_servers_add">Aggiungi server</string>
     <string name="settings_servers_empty">Nessun server per ora</string>

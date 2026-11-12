@@ -110,4 +110,53 @@ class ApiClientOccasionObligationsTest {
         assertTrue(failed.isFailure)
         assertNull(failed.getOrNull())
     }
+
+    @Test
+    fun `gift shopping list sends the window and never asks for sensitive rows`() = runBlocking {
+        enqueue(
+            """{"gift_shopping_list":[{"contact_id":3,"contact_name":"Dana","obligation_id":"o1",
+            "label":"Gift","date":"2026-12-18","days_until":6,"status":"needed"}],"days":90}"""
+        )
+        val result = client.getGiftShoppingList(days = 90).getOrThrow()
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals(
+            "/api/v1/occasion-obligations/gift-shopping-list",
+            request.requestUrl?.encodedPath
+        )
+        assertEquals("90", request.requestUrl?.queryParameter("days"))
+        assertNull(request.requestUrl?.queryParameter("include_sensitive"))
+        assertEquals("needed", result.items.single().status)
+    }
+
+    @Test
+    fun `an invalid window surfaces the occasion_days_invalid reason`() = runBlocking {
+        enqueue(
+            """{"error":"days must be 30 or 90","code":"VALIDATION_ERROR","reason":"occasion_days_invalid"}""",
+            400
+        )
+        val failed = client.getGiftShoppingList(days = 7)
+        assertTrue(failed.isFailure)
+    }
+
+    @Test
+    fun `card list csv requests the kind and returns the raw bytes`() = runBlocking {
+        val csv = "Contact Name,Address,Obligation\nDana,1 High St,Xmas card\n"
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setHeader("Content-Type", "text/csv; charset=utf-8").setBody(csv)
+        )
+        val bytes = client.exportOccasionCardListCsv(kind = "card").getOrThrow()
+        val request = server.takeRequest()
+        assertEquals("/api/v1/occasion-obligations/card-list", request.requestUrl?.encodedPath)
+        assertEquals("card", request.requestUrl?.queryParameter("kind"))
+        assertNull(request.requestUrl?.queryParameter("include_sensitive"))
+        assertEquals(csv, String(bytes, Charsets.UTF_8))
+    }
+
+    @Test
+    fun `card list csv failure is reported not swallowed`() = runBlocking {
+        enqueue("""{"error":"boom"}""", 500)
+        assertTrue(client.exportOccasionCardListCsv(kind = "card").isFailure)
+    }
 }

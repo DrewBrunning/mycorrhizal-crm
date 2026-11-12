@@ -2359,6 +2359,26 @@
         <item quantity="one">%1$d Tag Vorlaufzeit</item>
         <item quantity="other">%1$d Tage Vorlaufzeit</item>
     </plurals>
+    <!-- ADR 0024 (issue #2521): card list, gift shopping list and upcoming occasions. -->
+    <string name="occasion_card_list_title">Kartenliste</string>
+    <string name="occasion_card_list_description">Teile eine CSV-Datei der Kontakte mit einem aktiven Kartenanlass: eine Zeile pro aktiver Verpflichtung, mit Kontaktname, ihrer Adresse mit normaler Sensibilität und dem Anlass. Private und geheime Adressen werden ausgelassen.</string>
+    <string name="occasion_card_list_share">Als CSV teilen</string>
+    <string name="occasion_card_list_share_title">Kartenliste teilen</string>
+    <string name="occasion_gift_list_title">Geschenke-Einkaufsliste</string>
+    <string name="occasion_gift_list_description">Bald anstehende Geschenke und ob du schon eine Idee hast, eines gekauft oder es bereits übergeben hast.</string>
+    <string name="occasion_gift_list_empty">In diesem Zeitraum werden keine Geschenke benötigt.</string>
+    <string name="occasion_window_30">30 Tage</string>
+    <string name="occasion_window_90">90 Tage</string>
+    <string name="occasion_today">Heute</string>
+    <string name="occasion_gift_status_needed">Benötigt</string>
+    <string name="occasion_gift_status_idea">Idee</string>
+    <string name="occasion_gift_status_purchased">Gekauft</string>
+    <string name="occasion_gift_status_given">Übergeben</string>
+    <string name="occasion_gift_status_received">Erhalten</string>
+    <plurals name="occasion_in_days">
+        <item quantity="one">in %1$d Tag</item>
+        <item quantity="other">in %1$d Tagen</item>
+    </plurals>
     <string name="settings_servers_title">Server</string>
     <string name="settings_servers_add">Server hinzufügen</string>
     <string name="settings_servers_empty">Noch keine Server</string>
