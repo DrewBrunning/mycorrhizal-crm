@@ -1766,9 +1766,7 @@ private fun AppNavGraph(
                 derivedLists = {
                     OccasionListsActions(
                         onOpenShoppingList = {
-                            navController.navigate(
-                                "occasions/gift-shopping-list"
-                            )
+                            navController.navigate("occasions/gift-shopping-list")
                         }
                     )
                 }

@@ -261,15 +261,10 @@ internal fun OccasionWindowChips(
 }
 
 @Composable
-private fun occasionWindowLabel(days: Int): String = stringResource(
-    if (days ==
-        OCCASION_WINDOWS.last()
-    ) {
-        R.string.occasion_window_90
-    } else {
-        R.string.occasion_window_30
-    }
-)
+private fun occasionWindowLabel(days: Int): String {
+    val is90 = days == OCCASION_WINDOWS.last()
+    return stringResource(if (is90) R.string.occasion_window_90 else R.string.occasion_window_30)
+}
 
 @Composable
 private fun GiftShoppingRow(item: GiftShoppingItem, onClick: () -> Unit) {
