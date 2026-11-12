@@ -98,6 +98,7 @@ import com.mycorrhizal.crm.model.network.CreateHouseholdResponse
 import com.mycorrhizal.crm.model.network.CreateLifeEventResponse
 import com.mycorrhizal.crm.model.network.CreateNoteResponse
 import com.mycorrhizal.crm.model.network.CreateOccasionEventResponse
+import com.mycorrhizal.crm.model.network.CreateOccasionObligationResponse
 import com.mycorrhizal.crm.model.network.CreatePreferenceResponse
 import com.mycorrhizal.crm.model.network.CreateRelationshipEdgeResponse
 import com.mycorrhizal.crm.model.network.CreateReminderResponse
@@ -219,6 +220,9 @@ import com.mycorrhizal.crm.model.network.OccasionEventAttendeeUpdateInput
 import com.mycorrhizal.crm.model.network.OccasionEventDetail
 import com.mycorrhizal.crm.model.network.OccasionEventInput
 import com.mycorrhizal.crm.model.network.OccasionEventsResponse
+import com.mycorrhizal.crm.model.network.OccasionObligation
+import com.mycorrhizal.crm.model.network.OccasionObligationInput
+import com.mycorrhizal.crm.model.network.OccasionObligationsResponse
 import com.mycorrhizal.crm.model.network.OidcNativeExchangeRequest
 import com.mycorrhizal.crm.model.network.OidcNativeExchangeResponse
 import com.mycorrhizal.crm.model.network.OutgoingShareGrant
@@ -2169,6 +2173,44 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         executePostEmpty("$DATA_DECAY_POLICIES_PATH/$id/verify") { _, body ->
             moshi.adapter(DataDecayPolicy::class.java).fromJson(body)
         }
+
+    // --- Occasion obligations (docs/adrs/0024-occasions.md, issue #2521) ---
+
+    /** GET /api/v1/occasion-obligations — cursor-paginated, optionally for one contact. */
+    suspend fun listOccasionObligations(
+        entityId: String? = null,
+        cursor: String? = null,
+        limit: Int? = null
+    ): Result<OccasionObligationsResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH".toHttpUrl().newBuilder()
+        entityId?.let { urlBuilder.addQueryParameter("entity_id", it) }
+        cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
+        limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(OccasionObligationsResponse::class.java).fromJson(body)
+        }
+    }
+
+    /** POST /api/v1/occasion-obligations — wrapped `{ occasion_obligation }`, unwrapped here. */
+    suspend fun createOccasionObligation(
+        input: OccasionObligationInput
+    ): Result<OccasionObligation> = executePost(OCCASION_OBLIGATIONS_PATH, input) { _, body ->
+        moshi.adapter(CreateOccasionObligationResponse::class.java)
+            .fromJson(body)?.occasionObligation
+    }
+
+    /** PUT /api/v1/occasion-obligations/{id} — full replace, raw (unwrapped) obligation. */
+    suspend fun updateOccasionObligation(
+        id: String,
+        input: OccasionObligationInput
+    ): Result<OccasionObligation> =
+        executePut("$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/$id", input) { _, body ->
+            moshi.adapter(OccasionObligation::class.java).fromJson(body)
+        }
+
+    /** DELETE /api/v1/occasion-obligations/{id} — soft delete, `{ message }`. */
+    suspend fun deleteOccasionObligation(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/$id")
 
     // --- Occasion events (docs/adrs/0026-occasions-events.md, issue #1228) ---
 
@@ -4244,6 +4286,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         private const val CADENCE_POLICIES_PATH = "$API_V1/cadence-policies"
         private const val DATA_DECAY_POLICIES_PATH = "$API_V1/data-decay-policies"
         private const val OCCASION_EVENTS_PATH = "$API_V1/occasion-events"
+        private const val OCCASION_OBLIGATIONS_PATH = "$API_V1/occasion-obligations"
         private const val DASHBOARD_PATH = "$API_V1/dashboard"
         private const val REACH_OUT_SUGGESTIONS_PATH = "$API_V1/reach-out-suggestions"
         private const val EXPORT_VCF_PATH = "$API_V1/export/vcf"

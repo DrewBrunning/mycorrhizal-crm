@@ -2406,6 +2406,37 @@
     <string name="occasions_validation_title_required">Introduce un título para este evento.</string>
     <string name="occasions_validation_start_required">Elige una fecha y hora de inicio.</string>
     <string name="occasions_validation_end_before_start">La hora de fin no puede ser anterior a la de inicio.</string>
+    <!-- ADR 0024 (issue #2521): standing occasion obligations. -->
+    <string name="contact_occasions">Ocasiones</string>
+    <string name="occasion_ob_add">Añadir ocasión</string>
+    <string name="occasion_ob_create_title">Añadir una ocasión</string>
+    <string name="occasion_ob_edit_title">Editar ocasión</string>
+    <string name="occasion_ob_empty">Aún no hay ocasiones fijas</string>
+    <string name="occasion_ob_empty_body">Añade una para una tarjeta, un regalo o una invitación recurrente.</string>
+    <string name="occasion_ob_hint">Una regla fija, como una tarjeta o un regalo anual. Una ocasión activa crea su propio recordatorio con la antelación indicada.</string>
+    <string name="occasion_ob_kind">Tipo</string>
+    <string name="occasion_ob_kind_hint">Elige tarjeta, regalo o invitación, o escribe tu propia etiqueta</string>
+    <string name="occasion_ob_kind_card">Tarjeta</string>
+    <string name="occasion_ob_kind_gift">Regalo</string>
+    <string name="occasion_ob_kind_invite">Invitación</string>
+    <string name="occasion_ob_label">Etiqueta</string>
+    <string name="occasion_ob_label_hint">p. ej. «Tarjeta de Navidad», «Regalo de cumpleaños»</string>
+    <string name="occasion_ob_anchor_month">Mes</string>
+    <string name="occasion_ob_anchor_day">Día</string>
+    <string name="occasion_ob_anchor_unset">Sin definir</string>
+    <string name="occasion_ob_lead_time">Antelación (días)</string>
+    <string name="occasion_ob_lead_time_hint">Cuántos días antes de la fecha quieres el recordatorio, p. ej. 14 para «regalo dos semanas antes»</string>
+    <string name="occasion_ob_active">Activa</string>
+    <string name="occasion_ob_inactive">Inactiva</string>
+    <string name="occasion_ob_delete_title">Eliminar ocasión</string>
+    <string name="occasion_ob_validation_label_required">Introduce una etiqueta para esta ocasión.</string>
+    <string name="occasion_ob_validation_anchor_both">Define el mes y el día, o deja ambos sin definir.</string>
+    <string name="occasion_ob_validation_lead_time">Introduce un número entero de días de antelación de 0 a 365.</string>
+    <plurals name="occasion_ob_lead_time_display">
+        <item quantity="one">%1$d día de antelación</item>
+        <item quantity="many">%1$d días de antelación</item>
+        <item quantity="other">%1$d días de antelación</item>
+    </plurals>
     <string name="settings_servers_title">Servidores</string>
     <string name="settings_servers_add">Añadir servidor</string>
     <string name="settings_servers_empty">Aún no hay servidores</string>

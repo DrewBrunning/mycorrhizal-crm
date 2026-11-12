@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Standing occasions on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): a contact now has an Occasions section for the yearly card, gift or invite you keep up, with its date, lead time and notes. Add, edit and delete them there, as on the web.
 - **Create organisations and places from your contacts on Android** ([#2513](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2513)): the organisations, places and pets screen has a new button that groups equal organisation and address values on your contacts. Choose the name, role, which contacts to link and whether it is their primary, then see what was created or skipped. No contact value is changed.
 - **Choose what a custom field applies to on Android** ([#2499](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2499)): when you add a custom field you can now pick contacts, organisations, places or pets, as on the web. The list shows which kind each field is for; the choice cannot be changed afterwards.
 - **Duplicate suggestions on Android** ([#2499](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2499)): the organisations, places and pets screen can now look for possible duplicates, as the web page does. Open either one to merge it, or mark the pair Not a duplicate to hide it for good.

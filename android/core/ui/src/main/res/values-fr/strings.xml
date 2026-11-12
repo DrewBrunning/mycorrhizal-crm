@@ -2406,6 +2406,37 @@
     <string name="occasions_validation_title_required">Saisissez un titre pour cet événement.</string>
     <string name="occasions_validation_start_required">Choisissez une date et une heure de début.</string>
     <string name="occasions_validation_end_before_start">L\'heure de fin ne peut pas précéder l\'heure de début.</string>
+    <!-- ADR 0024 (issue #2521): standing occasion obligations. -->
+    <string name="contact_occasions">Occasions</string>
+    <string name="occasion_ob_add">Ajouter une occasion</string>
+    <string name="occasion_ob_create_title">Ajouter une occasion</string>
+    <string name="occasion_ob_edit_title">Modifier l\'occasion</string>
+    <string name="occasion_ob_empty">Aucune occasion récurrente pour l\'instant</string>
+    <string name="occasion_ob_empty_body">Ajoutez-en une pour une carte, un cadeau ou une invitation récurrents.</string>
+    <string name="occasion_ob_hint">Une règle permanente, comme une carte ou un cadeau annuel. Une occasion active crée son propre rappel au délai indiqué.</string>
+    <string name="occasion_ob_kind">Type</string>
+    <string name="occasion_ob_kind_hint">Choisissez carte, cadeau ou invitation, ou saisissez votre propre libellé</string>
+    <string name="occasion_ob_kind_card">Carte</string>
+    <string name="occasion_ob_kind_gift">Cadeau</string>
+    <string name="occasion_ob_kind_invite">Invitation</string>
+    <string name="occasion_ob_label">Libellé</string>
+    <string name="occasion_ob_label_hint">p. ex. « Carte de Noël », « Cadeau d\'anniversaire »</string>
+    <string name="occasion_ob_anchor_month">Mois</string>
+    <string name="occasion_ob_anchor_day">Jour</string>
+    <string name="occasion_ob_anchor_unset">Non défini</string>
+    <string name="occasion_ob_lead_time">Délai (jours)</string>
+    <string name="occasion_ob_lead_time_hint">Combien de jours avant la date vous voulez être rappelé, p. ex. 14 pour « cadeau deux semaines avant »</string>
+    <string name="occasion_ob_active">Active</string>
+    <string name="occasion_ob_inactive">Inactive</string>
+    <string name="occasion_ob_delete_title">Supprimer l\'occasion</string>
+    <string name="occasion_ob_validation_label_required">Saisissez un libellé pour cette occasion.</string>
+    <string name="occasion_ob_validation_anchor_both">Renseignez le mois et le jour, ou laissez les deux vides.</string>
+    <string name="occasion_ob_validation_lead_time">Saisissez un nombre entier de jours de délai entre 0 et 365.</string>
+    <plurals name="occasion_ob_lead_time_display">
+        <item quantity="one">%1$d jour de délai</item>
+        <item quantity="many">%1$d jours de délai</item>
+        <item quantity="other">%1$d jours de délai</item>
+    </plurals>
     <string name="settings_servers_title">Serveurs</string>
     <string name="settings_servers_add">Ajouter un serveur</string>
     <string name="settings_servers_empty">Aucun serveur pour le moment</string>

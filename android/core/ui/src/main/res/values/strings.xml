@@ -2346,6 +2346,36 @@
     <string name="occasions_validation_title_required">Enter a title for this event.</string>
     <string name="occasions_validation_start_required">Choose a start date and time.</string>
     <string name="occasions_validation_end_before_start">The end time cannot be before the start time.</string>
+    <!-- ADR 0024 (issue #2521): standing occasion obligations. -->
+    <string name="contact_occasions">Occasions</string>
+    <string name="occasion_ob_add">Add occasion</string>
+    <string name="occasion_ob_create_title">Add an occasion</string>
+    <string name="occasion_ob_edit_title">Edit occasion</string>
+    <string name="occasion_ob_empty">No standing occasions yet</string>
+    <string name="occasion_ob_empty_body">Add one for a recurring card, gift, or invite.</string>
+    <string name="occasion_ob_hint">A standing rule, like a yearly card or gift. An active occasion creates its own reminder at the lead time.</string>
+    <string name="occasion_ob_kind">Kind</string>
+    <string name="occasion_ob_kind_hint">Pick card, gift or invite, or type your own label</string>
+    <string name="occasion_ob_kind_card">Card</string>
+    <string name="occasion_ob_kind_gift">Gift</string>
+    <string name="occasion_ob_kind_invite">Invite</string>
+    <string name="occasion_ob_label">Label</string>
+    <string name="occasion_ob_label_hint">e.g. “Christmas card”, “Birthday gift”</string>
+    <string name="occasion_ob_anchor_month">Month</string>
+    <string name="occasion_ob_anchor_day">Day</string>
+    <string name="occasion_ob_anchor_unset">Not set</string>
+    <string name="occasion_ob_lead_time">Lead time (days)</string>
+    <string name="occasion_ob_lead_time_hint">How many days before the date to be reminded, e.g. 14 for “gift two weeks before”</string>
+    <string name="occasion_ob_active">Active</string>
+    <string name="occasion_ob_inactive">Inactive</string>
+    <string name="occasion_ob_delete_title">Delete occasion</string>
+    <string name="occasion_ob_validation_label_required">Enter a label for this occasion.</string>
+    <string name="occasion_ob_validation_anchor_both">Set both a month and a day, or leave both unset.</string>
+    <string name="occasion_ob_validation_lead_time">Enter a whole number of lead-time days from 0 to 365.</string>
+    <plurals name="occasion_ob_lead_time_display">
+        <item quantity="one">%1$d day lead time</item>
+        <item quantity="other">%1$d days lead time</item>
+    </plurals>
     <string name="settings_servers_title">Servers</string>
     <string name="settings_servers_add">Add server</string>
     <string name="settings_servers_empty">No servers yet</string>
