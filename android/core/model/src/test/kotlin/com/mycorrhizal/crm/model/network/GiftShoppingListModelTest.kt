@@ -48,3 +48,38 @@ class GiftShoppingListModelTest {
         )
     }
 }
+
+/** ADR 0024 part 3 (issue #2521): the upcoming-occasions aggregate (`models/occasion_upcoming.go`). */
+class UpcomingOccasionsModelTest {
+    private val moshi = com.mycorrhizal.crm.model.MoshiProvider.get()
+
+    @Test
+    fun `every source parses and kind is only present on obligations`() {
+        val r = moshi.adapter(UpcomingOccasionsResponse::class.java).fromJson(
+            """{"occasions":[
+            {"contact_id":1,"contact_name":"Ann","source":"birthday","label":"Birthday","date":"2026-12-01","days_until":3},
+            {"contact_id":2,"contact_name":"Bo","source":"obligation","label":"Xmas card","date":"2026-12-25","days_until":27,"kind":"card"}],
+            "days":30}"""
+        )!!
+        assertEquals(30, r.days)
+        assertEquals("birthday", r.items[0].source)
+        assertNull(r.items[0].kind)
+        assertEquals("card", r.items[1].kind)
+        assertEquals(27, r.items[1].daysUntil)
+        assertEquals(2, r.items[1].contactId)
+    }
+
+    @Test
+    fun `a null occasions list is empty`() {
+        val adapter = moshi.adapter(UpcomingOccasionsResponse::class.java)
+        assertTrue(adapter.fromJson("""{"occasions":null,"days":90}""")!!.items.isEmpty())
+    }
+
+    @Test
+    fun `the source set mirrors the backend`() {
+        assertEquals(
+            listOf("birthday", "anniversary", "life_event", "obligation"),
+            UpcomingOccasionSources.ALL
+        )
+    }
+}

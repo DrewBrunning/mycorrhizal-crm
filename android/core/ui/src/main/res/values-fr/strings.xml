@@ -494,7 +494,7 @@
     <string name="prep_upcoming_dates_title">Dates à venir</string>
     <string name="prep_upcoming_dates_birthday">Anniversaire</string>
     <string name="prep_upcoming_dates_turns">Fête ses %1$d ans · %2$s</string>
-    <string name="prep_upcoming_dates_anniversary">Anniversaire de mariage</string>
+    <string name="prep_upcoming_dates_anniversary">Date anniversaire</string>
     <plurals name="prep_upcoming_dates_in_days">
         <item quantity="one">dans %1$d jour</item>
         <item quantity="many">dans %1$d jours</item>
@@ -2144,7 +2144,7 @@
     <string name="import_field_nickname">Surnom</string>
     <string name="import_field_gender">Genre</string>
     <string name="import_field_birthday">Anniversaire</string>
-    <string name="import_field_anniversary">Anniversaire de mariage</string>
+    <string name="import_field_anniversary">Date anniversaire</string>
     <string name="import_field_email">E-mail</string>
     <string name="import_field_email_label">E-mail – type</string>
     <string name="import_field_phone">Téléphone</string>
@@ -2470,6 +2470,13 @@
     <string name="occasion_gift_status_purchased">Acheté</string>
     <string name="occasion_gift_status_given">Offert</string>
     <string name="occasion_gift_status_received">Reçu</string>
+    <!-- ADR 0024 (issue #2521): upcoming occasions dashboard card. -->
+    <string name="occasion_widget_title">Occasions à venir</string>
+    <string name="occasion_widget_empty">Aucune occasion à venir sur cette période.</string>
+    <string name="occasion_source_birthday">Anniversaire</string>
+    <string name="occasion_source_anniversary">Date anniversaire</string>
+    <string name="occasion_source_life_event">Événement de vie</string>
+    <string name="occasion_source_obligation">Obligation</string>
     <plurals name="occasion_in_days">
         <item quantity="one">dans %1$d jour</item>
         <item quantity="many">dans %1$d jours</item>
