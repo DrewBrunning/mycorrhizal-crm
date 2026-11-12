@@ -82,26 +82,26 @@ class OccasionAttendeesViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
-            occasionEventRepository.get(eventId).foldApiError(
-                onSuccess = { detail ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            eventTitle = detail.occasionEvent?.title ?: it.eventTitle,
-                            attendees = detail.attendees
-                        )
-                    }
-                },
-                onError = { error ->
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = error
-                        )
-                    }
-                }
-            )
+            val error = fetchDetail()
+            _uiState.update { it.copy(isLoading = false, error = error) }
         }
+    }
+
+    /** Fetch the event and its roster into state; returns the failure, if any. */
+    private suspend fun fetchDetail(): ApiError? {
+        var failure: ApiError? = null
+        occasionEventRepository.get(eventId).foldApiError(
+            onSuccess = { detail ->
+                _uiState.update {
+                    it.copy(
+                        eventTitle = detail.occasionEvent?.title ?: it.eventTitle,
+                        attendees = detail.attendees
+                    )
+                }
+            },
+            onError = { failure = it }
+        )
+        return failure
     }
 
     private fun loadCircles() {
@@ -221,6 +221,43 @@ class OccasionAttendeesViewModel @Inject constructor(
                     }
                 }
             )
+        }
+    }
+
+    /**
+     * Invite every current suggestion (issue #2526; web `handleAddEveryone`). Sequential, and it
+     * stops at the first failure so a later add never lands after a failed one. Suggestions that
+     * were added leave the list; the failed one and any not yet tried stay so the user can retry.
+     * The roster is refreshed either way.
+     */
+    fun addAllSuggested() {
+        val pending = _uiState.value.suggestions
+        if (eventId.isBlank() || pending.isEmpty() || _uiState.value.isMutating) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isMutating = true, error = null) }
+            var remaining = pending
+            var failure: ApiError? = null
+            for (suggestion in pending) {
+                occasionEventRepository.addAttendee(
+                    eventId,
+                    OccasionEventAttendeeInput(suggestion.entityId)
+                ).foldApiError(
+                    onSuccess = { remaining = remaining.drop(1) },
+                    onError = { failure = it }
+                )
+                if (failure != null) break
+            }
+            // Refresh inline (not load()): load() clears `error`, which would erase the failure.
+            val refreshError = fetchDetail()
+            _uiState.update {
+                it.copy(
+                    isMutating = false,
+                    suggestions = remaining,
+                    error = failure ?: refreshError,
+                    contactResults = emptyList(),
+                    contactQuery = ""
+                )
+            }
         }
     }
 

@@ -2415,6 +2415,7 @@
     <string name="occasions_rsvp_maybe">Forse</string>
     <string name="occasions_suggest_from_circles">Suggerisci invitati dai cerchi</string>
     <string name="occasions_suggest">Suggerisci</string>
+    <string name="occasions_add_everyone">Aggiungi tutti (%1$d)</string>
     <string name="occasions_no_suggestions">Nessun nuovo suggerimento da quei cerchi.</string>
     <string name="occasions_no_circles">Nessun cerchio per ora</string>
     <string name="occasions_search_contacts">Cerca contatti</string>

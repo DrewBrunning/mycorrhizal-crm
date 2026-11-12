@@ -13,15 +13,18 @@ import com.mycorrhizal.crm.model.network.OccasionEventAttendee
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
 import com.mycorrhizal.crm.model.network.OccasionEventDetail
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.coVerifyOrder
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -121,6 +124,105 @@ class OccasionAttendeesViewModelTest {
 
         assertEquals(1, vm.uiState.value.suggestions.size)
         coVerify { occasionRepository.suggestInvitees(listOf("c1"), "e1") }
+    }
+
+    private val threeSuggestions = listOf(
+        InviteeSuggestion(contactId = 5, contactName = "Bob", entityId = "uid-5"),
+        InviteeSuggestion(contactId = 6, contactName = "Cy", entityId = "uid-6"),
+        InviteeSuggestion(contactId = 7, contactName = "Di", entityId = "uid-7")
+    )
+
+    private fun attendeeResult(uid: String) = Result.success(
+        OccasionEventAttendee(id = "a-$uid", eventId = "e1", entityId = uid)
+    )
+
+    private suspend fun kotlinx.coroutines.test.TestScope.suggested(
+        vm: OccasionAttendeesViewModel,
+        suggestions: List<InviteeSuggestion>
+    ) {
+        coEvery { occasionRepository.suggestInvitees(listOf("c1"), "e1") } returns
+            Result.success(suggestions)
+        vm.toggleCircle("c1")
+        vm.suggest()
+        advanceUntilIdle()
+    }
+
+    @Test
+    fun `addAllSuggested invites every suggestion in order, clears them and reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(attendees = emptyList())
+        threeSuggestions.forEach {
+            coEvery {
+                occasionRepository.addAttendee("e1", OccasionEventAttendeeInput(it.entityId))
+            } returns attendeeResult(it.entityId)
+        }
+        val vm = viewModel()
+        advanceUntilIdle()
+        suggested(vm, threeSuggestions)
+
+        vm.addAllSuggested()
+        advanceUntilIdle()
+
+        coVerifyOrder {
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-5"))
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-6"))
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-7"))
+        }
+        coVerify(atLeast = 2) { occasionRepository.get("e1") }
+        assertTrue(vm.uiState.value.suggestions.isEmpty())
+        assertEquals(null, vm.uiState.value.error)
+        assertFalse(vm.uiState.value.isMutating)
+    }
+
+    @Test
+    fun `addAllSuggested stops at the first failure and keeps the unadded suggestions`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(attendees = emptyList())
+        coEvery {
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-5"))
+        } returns attendeeResult("uid-5")
+        coEvery {
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-6"))
+        } returns Result.failure(ApiError.Client(409, "already invited"))
+        val vm = viewModel()
+        advanceUntilIdle()
+        suggested(vm, threeSuggestions)
+
+        vm.addAllSuggested()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) {
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-5"))
+        }
+        coVerify(exactly = 1) {
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-6"))
+        }
+        coVerify(exactly = 0) {
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-7"))
+        }
+        // The one that was added is gone; the failed one and the untried one stay for a retry.
+        assertEquals(listOf("uid-6", "uid-7"), vm.uiState.value.suggestions.map { it.entityId })
+        assertTrue(vm.uiState.value.error is ApiError.Client)
+        assertFalse(vm.uiState.value.isMutating)
+        // The roster is refreshed even though the batch failed part-way.
+        coVerify(atLeast = 2) { occasionRepository.get("e1") }
+    }
+
+    @Test
+    fun `addAllSuggested with no suggestions does nothing`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad()
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.addAllSuggested()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { occasionRepository.addAttendee(any(), any()) }
+        coVerify(exactly = 1) { occasionRepository.get("e1") }
     }
 
     @Test

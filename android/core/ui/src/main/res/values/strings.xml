@@ -2355,6 +2355,7 @@
     <string name="occasions_rsvp_maybe">Maybe</string>
     <string name="occasions_suggest_from_circles">Suggest invitees from circles</string>
     <string name="occasions_suggest">Suggest</string>
+    <string name="occasions_add_everyone">Add everyone (%1$d)</string>
     <string name="occasions_no_suggestions">No new suggestions from those circles.</string>
     <string name="occasions_no_circles">No circles yet</string>
     <string name="occasions_search_contacts">Search contacts</string>
