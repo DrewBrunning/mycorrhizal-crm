@@ -281,7 +281,9 @@ class ShareGrantApiClientTest {
 
     @Test
     fun `contact preview failure surfaces the ApiError`() = runBlocking {
-        server.enqueue(MockResponse().setResponseCode(500).setBody("""{"error":{"message":"boom"}}"""))
+        server.enqueue(
+            MockResponse().setResponseCode(500).setBody("""{"error":{"message":"boom"}}""")
+        )
         val error = client.previewContactJsContact("uid-1", listOf("emails")).exceptionOrNull()
         assertTrue(error is ApiError.Server)
     }

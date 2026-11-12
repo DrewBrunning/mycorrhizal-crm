@@ -428,4 +428,28 @@ class ShareContactScreenTest {
         composeTestRule.onNodeWithText(str(R.string.shares_standing_share_button))
             .performScrollTo().assertIsEnabled()
     }
+
+    @Test
+    fun `the preview words partial dates in the user's date format`() {
+        val grants = mockk<ShareGrantRepository>()
+        coEvery { grants.previewContact(any(), any()) } returns Result.success(
+            mapOf(
+                "name" to mapOf("full" to "Dana White"),
+                "anniversaries" to mapOf(
+                    "a1" to mapOf(
+                        "kind" to "birthday",
+                        "date" to mapOf("year" to 1990, "month" to 5, "day" to 17)
+                    ),
+                    "a2" to mapOf("kind" to "wedding", "date" to mapOf("month" to 6, "day" to 1)),
+                    "a3" to mapOf("kind" to "other", "date" to mapOf("year" to 1985))
+                )
+            )
+        )
+        previewScreen(grants)
+        chooseStanding()
+
+        composeTestRule.onNodeWithText("birthday: 17.05.1990").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("wedding: 01.06.").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("other: 1985").performScrollTo().assertIsDisplayed()
+    }
 }
