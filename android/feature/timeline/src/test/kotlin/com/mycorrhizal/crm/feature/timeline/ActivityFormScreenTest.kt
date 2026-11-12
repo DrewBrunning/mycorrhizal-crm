@@ -51,7 +51,8 @@ class ActivityFormScreenTest {
         onAddImages: () -> Unit = {},
         onDeleteImage: (Int) -> Unit = {},
         onDateChange: (String) -> Unit = {},
-        onSave: () -> Unit = {}
+        onSave: () -> Unit = {},
+        onShare: (() -> Unit)? = null
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -76,6 +77,7 @@ class ActivityFormScreenTest {
                         onRemoveParticipant = onRemoveParticipant,
                         onAddImages = onAddImages,
                         onDeleteImage = onDeleteImage,
+                        onShare = onShare,
                         modifier = Modifier.padding(padding)
                     )
                 }
@@ -260,5 +262,31 @@ class ActivityFormScreenTest {
             "Activity photo"
         ).performScrollTo().performClick()
         composeTestRule.onAllNodesWithContentDescription("Activity photo").assertCountEquals(2)
+    }
+
+    // Issue #2518: a saved activity can be shared as a standing grant (keyed by its uuid).
+    @Test
+    fun `an existing activity offers a standing share`() {
+        var shared = 0
+        setContent(
+            ActivityFormState(contactId = 5, activityId = 3, uuid = "a-uuid"),
+            onShare = { shared += 1 }
+        )
+        composeTestRule.onNodeWithText(
+            "Share this activity"
+        ).performScrollTo().assertIsDisplayed().performClick()
+        assertEquals(1, shared)
+    }
+
+    @Test
+    fun `a activity that is not saved yet offers no standing share`() {
+        setContent(ActivityFormState(contactId = 5), onShare = {})
+        composeTestRule.onNodeWithText("Share this activity").assertDoesNotExist()
+    }
+
+    @Test
+    fun `no share callback means no standing share entry`() {
+        setContent(ActivityFormState(contactId = 5, activityId = 3, uuid = "a-uuid"))
+        composeTestRule.onNodeWithText("Share this activity").assertDoesNotExist()
     }
 }

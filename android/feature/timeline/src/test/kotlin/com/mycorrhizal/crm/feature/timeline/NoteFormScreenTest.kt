@@ -50,7 +50,8 @@ class NoteFormScreenTest {
         onClearContact: () -> Unit = {},
         onSave: () -> Unit = {},
         onAddImages: () -> Unit = {},
-        onDeleteImage: (Int) -> Unit = {}
+        onDeleteImage: (Int) -> Unit = {},
+        onShare: (() -> Unit)? = null
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -71,6 +72,7 @@ class NoteFormScreenTest {
                         onClearContact = onClearContact,
                         onAddImages = onAddImages,
                         onDeleteImage = onDeleteImage,
+                        onShare = onShare,
                         modifier = Modifier.padding(padding)
                     )
                 }
@@ -213,5 +215,31 @@ class NoteFormScreenTest {
         setContent(NoteFormState(contactId = 5))
         composeTestRule.onNodeWithText("Change").assertDoesNotExist()
         composeTestRule.onNodeWithText("Search contacts").performScrollTo().assertIsDisplayed()
+    }
+
+    // Issue #2518: a saved note can be shared as a standing grant (keyed by its uuid).
+    @Test
+    fun `an existing note offers a standing share`() {
+        var shared = 0
+        setContent(
+            NoteFormState(contactId = 5, noteId = 3, uuid = "n-uuid"),
+            onShare = { shared += 1 }
+        )
+        composeTestRule.onNodeWithText(
+            "Share this note"
+        ).performScrollTo().assertIsDisplayed().performClick()
+        assertEquals(1, shared)
+    }
+
+    @Test
+    fun `a note that is not saved yet offers no standing share`() {
+        setContent(NoteFormState(contactId = 5), onShare = {})
+        composeTestRule.onNodeWithText("Share this note").assertDoesNotExist()
+    }
+
+    @Test
+    fun `no share callback means no standing share entry`() {
+        setContent(NoteFormState(contactId = 5, noteId = 3, uuid = "n-uuid"))
+        composeTestRule.onNodeWithText("Share this note").assertDoesNotExist()
     }
 }

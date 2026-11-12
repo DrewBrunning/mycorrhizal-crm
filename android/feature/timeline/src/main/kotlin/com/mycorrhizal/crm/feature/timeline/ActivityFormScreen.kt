@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -48,6 +49,8 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
 fun ActivityFormScreen(
     onSaved: () -> Unit,
     onBack: () -> Unit,
+    // Issue #2518: opens the standing-share screen for the saved activity (given its uuid).
+    onShare: ((String) -> Unit)? = null,
     viewModel: ActivityFormViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -121,6 +124,7 @@ fun ActivityFormScreen(
             },
             onDeleteImage = viewModel::deleteImage,
             onSetImageSensitivity = viewModel::setImageSensitivity,
+            onShare = state.uuid?.let { uuid -> onShare?.let { share -> { share(uuid) } } },
             modifier = Modifier.padding(padding)
         )
     }
@@ -156,7 +160,8 @@ fun ActivityFormContent(
     modifier: Modifier = Modifier,
     onAddImages: () -> Unit = {},
     onDeleteImage: (Int) -> Unit = {},
-    onSetImageSensitivity: (Int, String) -> Unit = { _, _ -> }
+    onSetImageSensitivity: (Int, String) -> Unit = { _, _ -> },
+    onShare: (() -> Unit)? = null
 ) {
     Column(
         modifier = modifier
@@ -276,5 +281,13 @@ fun ActivityFormContent(
             onSetSensitivity = onSetImageSensitivity,
             sensitivityFailedImageId = state.sensitivityFailedImageId
         )
+
+        // Issue #2518: a standing, read-only share of this activity (ADR 0042).
+        if (state.uuid != null && onShare != null) {
+            HorizontalDivider()
+            OutlinedButton(onClick = onShare, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.shares_standing_title_activity))
+            }
+        }
     }
 }

@@ -12,6 +12,8 @@ data class Note(
     @Json(name = "ID") val id: Int = 0,
     @Json(name = "CreatedAt") val createdAt: String? = null,
     @Json(name = "UpdatedAt") val updatedAt: String? = null,
+    /** The stable portable identity; the `entity_id` of a standing share grant (ADR 0042). */
+    val uuid: String? = null,
     val content: String? = null,
     val date: String? = null,
     @Json(name = "contact_id") val contactId: Int? = null,

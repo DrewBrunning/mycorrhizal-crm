@@ -1553,6 +1553,14 @@
     <string name="shares_standing_reveal_confirm">Diese Bereiche können private Beziehungen oder benutzerdefinierte Felder enthalten. Es werden nur Einträge mit normaler Sensibilität geteilt. Alles, was du als privat oder geheim markierst, bleibt verborgen.</string>
     <string name="shares_standing_expiry_label">Läuft ab</string>
     <string name="shares_standing_pending_note">Die Person sieht, wer teilt und um welche Art von Eintrag es geht, und muss zustimmen, bevor sie etwas lesen kann.</string>
+    <!-- Issue #2518: standing shares of a note, an activity and a circle (ADR 0042). -->
+    <string name="shares_standing_title_note">Diese Notiz teilen</string>
+    <string name="shares_standing_title_activity">Diese Aktivität teilen</string>
+    <string name="shares_standing_title_circle">Diesen Kreis teilen</string>
+    <string name="shares_standing_notice_note">Die Person sieht Text und Datum dieser Notiz, nicht den verknüpften Kontakt.</string>
+    <string name="shares_standing_notice_activity">Die Person sieht Titel, Beschreibung, Ort, Daten und Art, nicht die Teilnehmer.</string>
+    <string name="shares_standing_notice_circle">Die Person sieht Name, Beschreibung, Farbe und die Namen der aktuellen Mitglieder des Kreises. Personen, die du später hinzufügst, sind sofort für sie sichtbar.</string>
+    <string name="shares_error_no_entity">Dieser Eintrag kann nicht geteilt werden: Er hat keine Kennung.</string>
     <plurals name="shares_pending_count">
         <item quantity="one">%1$d Freigabe wartet auf dich</item>
         <item quantity="other">%1$d Freigaben warten auf dich</item>
