@@ -145,6 +145,17 @@ fun ShareContactScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            // Issue #2519: what keeping a share live means (web `liveNotice` and
+                            // `noRecallNotice`).
+                            Text(
+                                text = stringResource(R.string.shares_standing_no_recall_notice),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = stringResource(R.string.shares_standing_live_notice),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
 
                         RecipientField(
@@ -237,9 +248,18 @@ fun ShareContactScreen(
                         }
 
                         if (state.mode == ShareMode.STANDING) {
+                            Text(
+                                text = stringResource(R.string.shares_standing_private_notice),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             StandingExpiryChooser(
                                 expiryDays = state.expiryDays,
                                 onChange = viewModel::setExpiryDays
+                            )
+                            StandingPreviewCard(
+                                preview = state.preview,
+                                selectedSections = state.selectedSections
                             )
                         }
 
@@ -375,7 +395,7 @@ private fun ModeOption(
 
 /** Standing only: no expiry, or one of the presets. */
 @Composable
-private fun StandingExpiryChooser(expiryDays: Int?, onChange: (Int?) -> Unit) {
+internal fun StandingExpiryChooser(expiryDays: Int?, onChange: (Int?) -> Unit) {
     Column {
         Text(
             text = stringResource(R.string.shares_standing_expiry_label),
@@ -398,7 +418,7 @@ private fun StandingExpiryChooser(expiryDays: Int?, onChange: (Int?) -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun RecipientField(
+internal fun RecipientField(
     recipients: List<String>,
     selectedRecipient: String?,
     expanded: Boolean,

@@ -561,6 +561,28 @@ class NoteFormViewModelTest {
     }
 
     @Test
+    fun `edit mode keeps the loaded note's uuid so it can be shared`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { noteRepository.get(3) } returns Result.success(
+            Note(id = 3, content = "Loves climbing", date = "2026-08-10T14:00:00Z", uuid = "n-uuid")
+        )
+
+        val vm = createViewModel(noteId = 3)
+        advanceUntilIdle()
+
+        assertEquals("n-uuid", vm.uiState.value.uuid)
+        assertFalse("loading the uuid must not dirty the form", vm.uiState.value.isDirty)
+    }
+
+    @Test
+    fun `create mode has no uuid to share`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = createViewModel()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.uuid)
+    }
+
+    @Test
     fun `a date-only value is sent as the UTC-midnight calendar day`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {

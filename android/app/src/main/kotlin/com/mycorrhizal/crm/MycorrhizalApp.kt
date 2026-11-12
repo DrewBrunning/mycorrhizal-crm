@@ -179,6 +179,7 @@ import com.mycorrhizal.crm.feature.shares.ShareGrantBadgeViewModel
 import com.mycorrhizal.crm.feature.shares.ShareGrantContentScreen
 import com.mycorrhizal.crm.feature.shares.SharedByMeScreen
 import com.mycorrhizal.crm.feature.shares.SharedWithMeScreen
+import com.mycorrhizal.crm.feature.shares.StandingShareScreen
 import com.mycorrhizal.crm.feature.sysevents.SystemEventsScreen
 import com.mycorrhizal.crm.feature.tags.TagDetailScreen
 import com.mycorrhizal.crm.feature.tags.TagsScreen
@@ -200,6 +201,7 @@ import com.mycorrhizal.crm.feature.tracking.DeviceRegistrationViewModel
 import com.mycorrhizal.crm.feature.trash.TrashScreen
 import com.mycorrhizal.crm.feature.users.UsersScreen
 import com.mycorrhizal.crm.model.AppVersion
+import com.mycorrhizal.crm.model.network.ShareGrantEntityTypes
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.TimeFormatPreference
 import com.mycorrhizal.crm.ui.LocalDarkTheme
@@ -1572,7 +1574,10 @@ private fun AppNavGraph(
         ) {
             ActivityFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onShare = { uuid ->
+                    navController.navigate(standingShareRoute(ShareGrantEntityTypes.ACTIVITY, uuid))
+                }
             )
         }
         // Issue #1401: the full, paged contact timeline behind the contact page's "View all".
@@ -1669,7 +1674,10 @@ private fun AppNavGraph(
         ) {
             NoteFormScreen(
                 onSaved = { navController.popBackStack() },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onShare = { uuid ->
+                    navController.navigate(standingShareRoute(ShareGrantEntityTypes.NOTE, uuid))
+                }
             )
         }
         composable(
@@ -1893,6 +1901,24 @@ private fun AppNavGraph(
             )
         ) {
             ShareGrantContentScreen(onBack = { navController.popBackStack() })
+        }
+        // Issue #2518 / ADR 0042 decision 12: a standing share of a note, an activity or a circle,
+        // reached from that entity's edit form or detail screen.
+        composable(
+            route = STANDING_SHARE_ROUTE,
+            arguments = listOf(
+                navArgument("entityType") { type = NavType.StringType },
+                navArgument("entityId") { type = NavType.StringType }
+            )
+        ) {
+            StandingShareScreen(
+                onBack = { navController.popBackStack() },
+                // A new grant is pending until accepted; show it where its status lives.
+                onShared = {
+                    navController.popBackStack()
+                    navController.navigate("shares/by-me")
+                }
+            )
         }
         // M15: the "Share this contact" flow, reached from ContactDetailScreen's
         // ⋮ action menu (mirroring web's ShareContactDialog.tsx from ContactHeader).
@@ -2256,7 +2282,10 @@ private fun AppNavGraph(
         ) {
             CircleDetailScreen(
                 onBack = { navController.popBackStack() },
-                onNavigateToContact = { id -> navController.navigate("contacts/$id") }
+                onNavigateToContact = { id -> navController.navigate("contacts/$id") },
+                onShareCircle = { id ->
+                    navController.navigate(standingShareRoute(ShareGrantEntityTypes.CIRCLE, id))
+                }
             )
         }
         composable("tags") {
