@@ -1584,6 +1584,15 @@
     <string name="shares_mode_standing_desc">Pueden leer las secciones que elijas, siempre actualizadas, hasta que las revoques o caduquen. Primero deben aceptar y no pueden editar. Pueden conservar lo que ya hayan visto.</string>
     <string name="shares_standing_share_button">Empezar a compartir</string>
     <string name="shares_standing_sharing">Iniciando…</string>
+    <!-- Issue #2519: standing-share notices and the "What they will see" preview on Share contact. -->
+    <string name="shares_standing_live_notice">Es en vivo: todo lo que añadas más tarde a una sección compartida, como una nueva dirección de correo, será visible para esa persona de inmediato.</string>
+    <string name="shares_standing_no_recall_notice">Revocar detiene las lecturas futuras. No recupera nada que ya haya visto o copiado.</string>
+    <string name="shares_standing_private_notice">Los elementos privados y secretos nunca se comparten, ni siquiera en una sección que elijas.</string>
+    <string name="shares_standing_preview_title">Lo que verá</string>
+    <string name="shares_standing_preview_hint">Según tus datos actuales, sin los elementos privados y secretos.</string>
+    <string name="shares_standing_preview_loading">Cargando vista previa…</string>
+    <string name="shares_standing_preview_error">No se pudo cargar la vista previa.</string>
+    <string name="shares_standing_preview_empty">Ahora mismo no se comparte nada de estas secciones, solo el nombre.</string>
     <string name="shares_standing_reveal_confirm">Estas secciones pueden contener relaciones privadas o campos personalizados. Solo se comparten los elementos marcados como normales. Lo que marques como privado o secreto permanece oculto.</string>
     <string name="shares_standing_expiry_label">Caduca</string>
     <string name="shares_standing_pending_note">Verán quién comparte y qué tipo de elemento es, y deben aceptar antes de poder leer nada.</string>

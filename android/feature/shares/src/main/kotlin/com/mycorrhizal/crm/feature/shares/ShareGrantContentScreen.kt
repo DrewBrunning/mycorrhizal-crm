@@ -50,19 +50,8 @@ fun ShareGrantContentScreen(
     viewModel: ShareGrantContentViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val dateFormat = LocalDateFormat.current
-    LaunchedEffect(dateFormat) {
-        viewModel.setDateFormatter { year, month, day ->
-            when {
-                year != null && month != null && day != null ->
-                    DateFormat.formatFull(year, month, day, dateFormat)
-
-                month != null && day != null -> DateFormat.formatYearless(month, day, dateFormat)
-
-                else -> listOfNotNull(year, month, day).joinToString("-")
-            }
-        }
-    }
+    val dateFormatter = rememberGrantDateFormatter()
+    LaunchedEffect(dateFormatter) { viewModel.setDateFormatter(dateFormatter) }
     Scaffold(
         topBar = {
             TopAppBar(

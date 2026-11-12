@@ -18,6 +18,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +31,20 @@ import kotlinx.coroutines.launch
  * explicit choice.
  */
 enum class ShareMode { ONE_TIME, STANDING }
+
+/**
+ * Issue #2519: the "What they will see" preview of a standing share. [Idle] means there is nothing
+ * to preview (one-time mode, no section selected, or no contact uid).
+ */
+sealed interface StandingPreview {
+    data object Idle : StandingPreview
+    data object Loading : StandingPreview
+
+    /** The owner's own export of the selected sections; sensitive items are already left out. */
+    data class Ready(val card: Map<String, Any?>) : StandingPreview
+
+    data class Error(val error: ApiError) : StandingPreview
+}
 
 data class ShareContactUiState(
     val isLoading: Boolean = false,
@@ -48,7 +63,9 @@ data class ShareContactUiState(
     /** Standing only: days until the grant expires, or null for no expiry. */
     val expiryDays: Int? = null,
     /** True when the completed share was a standing grant (the recipient must still accept). */
-    val sharedStanding: Boolean = false
+    val sharedStanding: Boolean = false,
+    /** Standing only: what the recipient would see of the selected sections today. */
+    val preview: StandingPreview = StandingPreview.Idle
 ) {
     val canShare: Boolean
         get() = selectedRecipientId != null && selectedSections.isNotEmpty() && !isSharing
@@ -95,6 +112,7 @@ class ShareContactViewModel @Inject constructor(
 
     fun setMode(mode: ShareMode) {
         _uiState.update { it.copy(mode = mode) }
+        refreshPreview()
     }
 
     /** Standing only: expire the grant after [days] days, or null for no expiry. */
@@ -111,6 +129,38 @@ class ShareContactViewModel @Inject constructor(
             val next = state.selectedSections.toMutableSet()
             if (checked) next.add(token) else next.remove(token)
             state.copy(selectedSections = next)
+        }
+        refreshPreview()
+    }
+
+    private var previewJob: Job? = null
+
+    /**
+     * Re-requests the standing preview for the current selection. A newer request cancels the
+     * older one, so a slow earlier response can never overwrite a later one. include_sensitive is
+     * never sent: the preview, like the grant itself, only ever shows normal-sensitivity items.
+     */
+    private fun refreshPreview() {
+        previewJob?.cancel()
+        val state = _uiState.value
+        if (state.mode != ShareMode.STANDING ||
+            contactVCardUid.isBlank() ||
+            state.selectedSections.isEmpty()
+        ) {
+            _uiState.update { it.copy(preview = StandingPreview.Idle) }
+            return
+        }
+        _uiState.update { it.copy(preview = StandingPreview.Loading) }
+        val sections = state.selectedSections.sorted()
+        previewJob = viewModelScope.launch {
+            shareGrantRepository.previewContact(contactVCardUid, sections).foldApiError(
+                onSuccess = { card ->
+                    _uiState.update { it.copy(preview = StandingPreview.Ready(card)) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(preview = StandingPreview.Error(error)) }
+                }
+            )
         }
     }
 

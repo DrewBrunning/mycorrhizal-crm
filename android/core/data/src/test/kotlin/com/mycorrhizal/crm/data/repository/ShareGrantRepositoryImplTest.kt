@@ -95,4 +95,18 @@ class ShareGrantRepositoryImplTest {
         assertTrue(repository.markNotificationsRead().isSuccess)
         assertEquals(0, ShareGrantNotifications().pendingCount)
     }
+
+    @Test
+    fun `previewContact forwards the contact and sections and propagates failure`() = runTest {
+        coEvery { apiClient.previewContactJsContact("u1", listOf("emails")) } returns
+            Result.success(mapOf("name" to "Dana"))
+        coEvery { apiClient.previewContactJsContact("u2", listOf("emails")) } returns
+            Result.failure(ApiError.Client(404, "x"))
+
+        assertEquals(
+            mapOf<String, Any?>("name" to "Dana"),
+            repository.previewContact("u1", listOf("emails")).getOrThrow()
+        )
+        assertTrue(repository.previewContact("u2", listOf("emails")).isFailure)
+    }
 }

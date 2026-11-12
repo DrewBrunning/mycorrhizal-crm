@@ -1550,6 +1550,15 @@
     <string name="shares_mode_standing_desc">Die Person kann die gewählten Bereiche immer aktuell lesen, bis du widerrufst oder die Freigabe abläuft. Sie muss zuerst zustimmen und kann nichts ändern. Bereits Gesehenes kann sie behalten.</string>
     <string name="shares_standing_share_button">Freigabe starten</string>
     <string name="shares_standing_sharing">Wird gestartet …</string>
+    <!-- Issue #2519: standing-share notices and the "What they will see" preview on Share contact. -->
+    <string name="shares_standing_live_notice">Sie ist live: Alles, was du später zu einem freigegebenen Bereich hinzufügst, etwa eine neue E-Mail-Adresse, ist sofort für sie sichtbar.</string>
+    <string name="shares_standing_no_recall_notice">Ein Widerruf stoppt künftige Zugriffe. Er holt nichts zurück, was die Person bereits gesehen oder kopiert hat.</string>
+    <string name="shares_standing_private_notice">Private und geheime Einträge werden nie geteilt, auch nicht in einem Bereich, den du auswählst.</string>
+    <string name="shares_standing_preview_title">Das sieht die Person</string>
+    <string name="shares_standing_preview_hint">Basierend auf deinen aktuellen Daten, ohne private und geheime Einträge.</string>
+    <string name="shares_standing_preview_loading">Vorschau wird geladen …</string>
+    <string name="shares_standing_preview_error">Die Vorschau konnte nicht geladen werden.</string>
+    <string name="shares_standing_preview_empty">In diesen Bereichen wird derzeit nichts geteilt, nur der Name.</string>
     <string name="shares_standing_reveal_confirm">Diese Bereiche können private Beziehungen oder benutzerdefinierte Felder enthalten. Es werden nur Einträge mit normaler Sensibilität geteilt. Alles, was du als privat oder geheim markierst, bleibt verborgen.</string>
     <string name="shares_standing_expiry_label">Läuft ab</string>
     <string name="shares_standing_pending_note">Die Person sieht, wer teilt und um welche Art von Eintrag es geht, und muss zustimmen, bevor sie etwas lesen kann.</string>

@@ -145,6 +145,17 @@ fun ShareContactScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            // Issue #2519: what keeping a share live means (web `liveNotice` and
+                            // `noRecallNotice`).
+                            Text(
+                                text = stringResource(R.string.shares_standing_no_recall_notice),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Text(
+                                text = stringResource(R.string.shares_standing_live_notice),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
 
                         RecipientField(
@@ -237,9 +248,18 @@ fun ShareContactScreen(
                         }
 
                         if (state.mode == ShareMode.STANDING) {
+                            Text(
+                                text = stringResource(R.string.shares_standing_private_notice),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             StandingExpiryChooser(
                                 expiryDays = state.expiryDays,
                                 onChange = viewModel::setExpiryDays
+                            )
+                            StandingPreviewCard(
+                                preview = state.preview,
+                                selectedSections = state.selectedSections
                             )
                         }
 

@@ -3368,6 +3368,37 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             moshi.adapter(ShareGrantContentResponse::class.java).fromJson(body)?.content
         }
 
+    /**
+     * GET /api/v1/export/jscontact for one contact and the chosen [sections] (issue #2519): what a
+     * standing share of those sections would expose today, as the preview on the Share screen.
+     * `include_sensitive` is never sent, so the server leaves private and secret items out, exactly
+     * as it does for a standing grant read. The card is a generic map (see [ShareGrantContent]); an
+     * unknown contact yields an empty map.
+     */
+    suspend fun previewContactJsContact(
+        vcardUid: String,
+        sections: List<String>
+    ): Result<Map<String, Any?>> {
+        val url = "$PLACEHOLDER_ORIGIN$EXPORT_JSCONTACT_PATH".toHttpUrl().newBuilder()
+            .addQueryParameter("vcard_uid", vcardUid)
+            .addQueryParameter("sections", sections.joinToString(","))
+            .build()
+            .toString()
+        return executeGet(url) { _, body ->
+            val cards = moshi.adapter<List<Map<String, Any?>>>(
+                Types.newParameterizedType(
+                    List::class.java,
+                    Types.newParameterizedType(
+                        Map::class.java,
+                        String::class.java,
+                        Any::class.java
+                    )
+                )
+            ).fromJson(body)
+            cards?.firstOrNull() ?: emptyMap()
+        }
+    }
+
     /** GET /api/v1/share-grants/blocks — senders the caller has blocked. */
     suspend fun listShareBlocks(): Result<List<ShareBlock>> =
         executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/blocks") { _, body ->
