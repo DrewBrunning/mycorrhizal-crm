@@ -356,6 +356,8 @@
     "com/mycorrhizal/crm/feature/occasions/LazyDsl.kt": 100,
     "com/mycorrhizal/crm/feature/occasions/OccasionAttendeesScreen.kt": 74.07,
     "com/mycorrhizal/crm/feature/occasions/OccasionAttendeesViewModel.kt": 81.12,
+    "com/mycorrhizal/crm/feature/occasions/OccasionListsScreens.kt": 89.27,
+    "com/mycorrhizal/crm/feature/occasions/OccasionListsViewModels.kt": 99.52,
     "com/mycorrhizal/crm/feature/occasions/OccasionsScreen.kt": 82.97,
     "com/mycorrhizal/crm/feature/occasions/OccasionsViewModel.kt": 91.01,
     "com/mycorrhizal/crm/feature/relationships/LazyDsl.kt": 100,

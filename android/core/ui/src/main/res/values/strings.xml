@@ -2409,6 +2409,13 @@
     <string name="occasion_gift_status_purchased">Purchased</string>
     <string name="occasion_gift_status_given">Given</string>
     <string name="occasion_gift_status_received">Received</string>
+    <!-- ADR 0024 (issue #2521): upcoming occasions dashboard card. -->
+    <string name="occasion_widget_title">Upcoming occasions</string>
+    <string name="occasion_widget_empty">No upcoming occasions in this window.</string>
+    <string name="occasion_source_birthday">Birthday</string>
+    <string name="occasion_source_anniversary">Anniversary</string>
+    <string name="occasion_source_life_event">Life event</string>
+    <string name="occasion_source_obligation">Obligation</string>
     <plurals name="occasion_in_days">
         <item quantity="one">in %1$d day</item>
         <item quantity="other">in %1$d days</item>
