@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.e2e
 
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -52,7 +53,7 @@ class ArchiveDeleteAuditTest : E2eBaseTest() {
         // click: the direct `onNodeWithText` here flaked under CI load with
         // "could not find any node ... the unmerged tree contains '1' node"
         // (run 37929593004, #1639). clickTextWhenStable polls through that window.
-        clickTextWhenStable(archDisplayName)
+        clickTextUntil(archDisplayName, hasContentDescription("Contact actions"))
 
         // Archive through the detail action menu + confirm dialog.
         clickContentDescription("Contact actions")
@@ -113,7 +114,7 @@ class ArchiveDeleteAuditTest : E2eBaseTest() {
         // The list can recompose between the wait and the click (search results
         // settling), dropping the node — the nightly's one-off "Failed to
         // inject touch input". Re-find and click in one polled step.
-        clickTextWhenStable(delDisplayName)
+        clickTextUntil(delDisplayName, hasContentDescription("Contact actions"))
 
         // Delete through the detail action menu + confirm dialog.
         clickContentDescription("Contact actions")
