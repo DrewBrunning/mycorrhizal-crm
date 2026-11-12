@@ -61,7 +61,10 @@ class EntityScreensTest {
         onOpen: (String) -> Unit = {},
         onKind: (String) -> Unit = {},
         onFind: () -> Unit = {},
-        onDismiss: (EntitySuggestionPair) -> Unit = {}
+        onDismiss: (EntitySuggestionPair) -> Unit = {},
+        onMerge: (EntitySuggestionPair) -> Unit = {},
+        onConfirmMerge: (Boolean, Set<String>) -> Unit = { _, _ -> },
+        onDismissMerge: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -74,7 +77,10 @@ class EntityScreensTest {
                     onRetry = {},
                     onAdd = {},
                     onFindDuplicates = onFind,
-                    onDismissSuggestion = onDismiss
+                    onDismissSuggestion = onDismiss,
+                    onMergeSuggestion = onMerge,
+                    onConfirmMerge = onConfirmMerge,
+                    onDismissMerge = onDismissMerge
                 )
             }
         }
@@ -165,6 +171,97 @@ class EntityScreensTest {
         assertEquals("p1", opened)
         composeTestRule.onNodeWithText("Not a duplicate").performClick()
         assertEquals(cabinPair, dismissed)
+    }
+
+    @Test
+    fun `a pair has a Merge button that reports the pair`() {
+        var merged: EntitySuggestionPair? = null
+        setList(
+            EntitiesUiState(
+                kind = EntityKind.PLACE,
+                entities = listOf(acme.copy(kind = EntityKind.PLACE)),
+                suggestions = listOf(cabinPair)
+            ),
+            onMerge = { merged = it }
+        )
+        composeTestRule.onNodeWithTag("suggestion-merge-p1").performClick()
+        assertEquals(cabinPair, merged)
+    }
+
+    private val survivorA = Entity(id = "p1", kind = EntityKind.PLACE, name = "Cabin")
+    private val loserB = Entity(
+        id = "p2",
+        kind = EntityKind.PLACE,
+        name = "cabin.",
+        core = mapOf("notes" to "by the lake")
+    )
+
+    private fun mergeState(error: ApiError? = null, merging: Boolean = false) = EntitiesUiState(
+        kind = EntityKind.PLACE,
+        suggestions = listOf(cabinPair),
+        mergePair = cabinPair,
+        mergeA = survivorA,
+        mergeB = loserB,
+        mergeError = error,
+        isMerging = merging
+    )
+
+    @Test
+    fun `the merge dialog opens pre-filled, keeps the first and passes the choices on`() {
+        var confirmed: Pair<Boolean, Set<String>>? = null
+        setList(mergeState(), onConfirmMerge = { keep, fill -> confirmed = keep to fill })
+        composeTestRule.onNodeWithTag("entity-merge-dialog").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Merge cabin.").assertIsDisplayed()
+        // Nothing to pick: the pair is the choice, so confirm is live straight away.
+        composeTestRule.onAllNodesWithTag("entity-merge-search").assertCountEquals(0)
+        composeTestRule.onNodeWithTag("entity-merge-confirm").assertIsEnabled()
+        composeTestRule.onNodeWithText(
+            "cabin. will be deleted and its contacts move to Cabin. " +
+                "Nothing is merged unless you confirm here."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("entity-merge-fill-notes").assertIsOff()
+        composeTestRule.onNodeWithTag("entity-merge-fill-notes").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("entity-merge-confirm").performClick()
+        assertEquals(false to setOf("notes"), confirmed)
+    }
+
+    @Test
+    fun `the swap switch keeps the other side and clears ticked fields`() {
+        var confirmed: Pair<Boolean, Set<String>>? = null
+        setList(mergeState(), onConfirmMerge = { keep, fill -> confirmed = keep to fill })
+        composeTestRule.onNodeWithTag("entity-merge-swap").performScrollTo().performClick()
+        composeTestRule.onNodeWithText(
+            "Cabin will be deleted and its contacts move to cabin.. " +
+                "Nothing is merged unless you confirm here."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("entity-merge-confirm").performClick()
+        assertEquals(true to emptySet<String>(), confirmed)
+    }
+
+    @Test
+    fun `a failed merge shows its error in the dialog`() {
+        setList(mergeState(error = ApiError.Network(java.io.IOException("offline"))))
+        composeTestRule.onNodeWithTag("entity-merge-error").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `confirm is disabled while the merge runs`() {
+        setList(mergeState(merging = true))
+        composeTestRule.onNodeWithTag("entity-merge-confirm").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `cancel reports the dismissal`() {
+        var dismissed = 0
+        setList(mergeState(), onDismissMerge = { dismissed++ })
+        composeTestRule.onNodeWithText("Cancel").performClick()
+        assertEquals(1, dismissed)
+    }
+
+    @Test
+    fun `no dialog shows until both records of the pair have loaded`() {
+        setList(mergeState().copy(mergeB = null))
+        composeTestRule.onAllNodesWithTag("entity-merge-dialog").assertCountEquals(0)
     }
 
     @Test
