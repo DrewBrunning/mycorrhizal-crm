@@ -64,11 +64,7 @@ data class AddCircleMemberResponse(val message: String? = null, val member: Circ
  * backend's pointer semantics: null (key omitted) keeps the stored value on update, "" clears it.
  */
 @JsonClass(generateAdapter = true)
-data class CircleInput(
-    val name: String,
-    val description: String? = null,
-    val color: String? = null
-)
+data class CircleInput(val name: String, val description: String? = null, val color: String? = null)
 
 /** The live circle member a circle-timeline entry is about (issue #2361). */
 @JsonClass(generateAdapter = true)

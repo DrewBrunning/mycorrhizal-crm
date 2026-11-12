@@ -63,7 +63,11 @@ class CircleDetailMetadataViewModelTest {
     fun `init loads the first timeline page with its cursor and member count`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { circleRepository.getTimeline("c1", null) } returns Result.success(
-                CircleTimelinePage(items = listOf(item("1"), item("2")), nextCursor = "n2", memberCount = 5)
+                CircleTimelinePage(
+                    items = listOf(item("1"), item("2")),
+                    nextCursor = "n2",
+                    memberCount = 5
+                )
             )
 
             val vm = viewModel()

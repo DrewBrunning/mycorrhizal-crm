@@ -36,12 +36,7 @@ interface CircleRepository {
      * Update name, description and colour together (issue #1995). An empty [description] or
      * [color] clears it; [color] must be a `CircleColors` token or "". Returns the saved circle.
      */
-    suspend fun update(
-        id: String,
-        name: String,
-        description: String,
-        color: String
-    ): Result<Circle>
+    suspend fun update(id: String, name: String, description: String, color: String): Result<Circle>
 
     /** One page (25) of the merged timeline of the circle's live members (issue #1995/#2361). */
     suspend fun getTimeline(circleId: String, cursor: String? = null): Result<CircleTimelinePage>

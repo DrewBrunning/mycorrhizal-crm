@@ -100,7 +100,10 @@ class CircleRepositoryImpl @Inject constructor(
         return result
     }
 
-    override suspend fun getTimeline(circleId: String, cursor: String?): Result<CircleTimelinePage> =
+    override suspend fun getTimeline(
+        circleId: String,
+        cursor: String?
+    ): Result<CircleTimelinePage> =
         apiClient.getCircleTimeline(circleId, cursor = cursor, limit = TIMELINE_PAGE_SIZE)
 
     override suspend fun delete(id: String): Result<Unit> {

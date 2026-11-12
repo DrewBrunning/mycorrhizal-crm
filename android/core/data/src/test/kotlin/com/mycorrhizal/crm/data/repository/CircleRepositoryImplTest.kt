@@ -222,7 +222,10 @@ class CircleRepositoryImplTest {
 
         val result = repository.update("c1", "Family", "Close", "teal")
 
-        assertEquals(CircleInput(name = "Family", description = "Close", color = "teal"), slot.captured)
+        assertEquals(
+            CircleInput(name = "Family", description = "Close", color = "teal"),
+            slot.captured
+        )
         assertEquals("teal", result.getOrThrow().color)
         assertEquals("Family", db.cachedCircleDao().getById("c1")?.name)
     }
@@ -241,7 +244,9 @@ class CircleRepositoryImplTest {
     @Test
     fun `getTimeline passes the cursor through and returns the page`() = runTest {
         val page = CircleTimelinePage(
-            items = listOf(CircleTimelineItem(type = "note", id = "1", date = "2026-09-01T00:00:00Z")),
+            items = listOf(
+                CircleTimelineItem(type = "note", id = "1", date = "2026-09-01T00:00:00Z")
+            ),
             nextCursor = "n2",
             memberCount = 4
         )

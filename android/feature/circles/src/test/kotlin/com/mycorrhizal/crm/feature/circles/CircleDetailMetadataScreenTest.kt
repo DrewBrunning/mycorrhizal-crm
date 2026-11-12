@@ -60,7 +60,12 @@ class CircleDetailMetadataScreenTest {
     private val dana = CircleTimelineMember(id = 7, firstname = "Dana", lastname = "Lee")
 
     private fun setScreen(
-        circle: Circle = Circle(id = "c1", name = "Family", description = "Close ones", color = "teal"),
+        circle: Circle = Circle(
+            id = "c1",
+            name = "Family",
+            description = "Close ones",
+            color = "teal"
+        ),
         members: List<CircleMember> = listOf(CircleMember(1, "c1", "uid-dana")),
         timeline: Result<CircleTimelinePage> = Result.success(CircleTimelinePage(memberCount = 1)),
         onNavigate: (Int) -> Unit = {}
@@ -159,7 +164,9 @@ class CircleDetailMetadataScreenTest {
         setScreen(timeline = Result.failure(ApiError.Server(500, "boom")))
 
         composeTestRule.onNodeWithText(str(R.string.circles_timeline_title)).assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.action_retry)).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            str(R.string.action_retry)
+        ).performScrollTo().assertIsDisplayed()
         // Members still render: the timeline failure is scoped to its section.
         composeTestRule.onNodeWithText(str(R.string.contact_unknown)).assertIsDisplayed()
     }

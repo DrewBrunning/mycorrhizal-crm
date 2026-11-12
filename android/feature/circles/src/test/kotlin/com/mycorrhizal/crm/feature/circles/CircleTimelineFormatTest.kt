@@ -19,7 +19,10 @@ class CircleTimelineFormatTest {
     @Test
     fun `summary prefers content then title then message then name then description then type`() {
         assertEquals("c", item(mapOf("content" to "c", "title" to "t")).summary())
-        assertEquals("t", item(mapOf("content" to "  ", "title" to "t", "message" to "m")).summary())
+        assertEquals(
+            "t",
+            item(mapOf("content" to "  ", "title" to "t", "message" to "m")).summary()
+        )
         assertEquals("m", item(mapOf("message" to "m", "name" to "n")).summary())
         assertEquals("n", item(mapOf("name" to "n", "description" to "d")).summary())
         assertEquals("d", item(mapOf("description" to "d", "type" to "moved")).summary())
