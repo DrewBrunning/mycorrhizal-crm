@@ -129,6 +129,31 @@ abstract class E2eBaseTest {
         }
     }
 
+    /** Clicks the list row with [text] and re-clicks until [expected] appears.
+     *
+     *  [clickTextWhenStable] only proves the click was *delivered*; on a cold
+     *  emulator (the first test of a nightly run) a click that lands while the
+     *  search results are still settling can be swallowed without navigating,
+     *  leaving the test waiting out its full timeout on the detail screen
+     *  (nightly #2515: "Contact actions" never appeared). Each attempt waits a
+     *  short window for the destination, then clicks again. */
+    protected fun clickTextUntil(
+        text: String,
+        expected: SemanticsMatcher,
+        timeoutMs: Long = DEFAULT_TIMEOUT_MS,
+        attemptMs: Long = 5_000L
+    ) {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            clickTextWhenStable(text, timeoutMs)
+            val remaining = deadline - System.currentTimeMillis()
+            val wait = minOf(attemptMs, remaining).coerceAtLeast(1L)
+            val arrived = runCatching { waitFor(expected, wait) }.isSuccess
+            if (arrived) return
+            if (remaining <= attemptMs) waitFor(expected, 1_000L) // throws the real timeout
+        }
+    }
+
     /** Scrolls the lazy list tagged [listTag] to the descendant matching [matcher],
      *  retrying while the screen is not ready yet.
      *

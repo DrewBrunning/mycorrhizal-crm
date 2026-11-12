@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.e2e
 
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -29,7 +30,7 @@ class TrashFlowE2eTest : E2eBaseTest() {
         navigateViaDrawer("Contacts")
         searchFor(restoreGiven)
         waitForText(restoreDisplay)
-        clickTextWhenStable(restoreDisplay)
+        clickTextUntil(restoreDisplay, hasContentDescription("Contact actions"))
         clickContentDescription("Contact actions")
         waitForText("Delete contact")
         compose.onNodeWithText("Delete contact").performClick()
