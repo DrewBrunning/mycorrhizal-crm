@@ -108,7 +108,7 @@ fun EntitiesScreen(
                             Icon(
                                 Icons.Outlined.Contacts,
                                 contentDescription =
-                                stringResource(R.string.shared_entities_from_contacts_open)
+                                    stringResource(R.string.shared_entities_from_contacts_open)
                             )
                         }
                     }

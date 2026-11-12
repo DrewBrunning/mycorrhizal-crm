@@ -36,11 +36,7 @@ data class FromContactsGroupEdit(
 )
 
 /** One group or contact the server did not apply, named for the results summary. */
-data class FromContactsSkipItem(
-    val groupName: String,
-    val contactName: String?,
-    val reason: String
-)
+data class FromContactsSkipItem(val groupName: String, val contactName: String?, val reason: String)
 
 /** The results summary of one confirm (kept until dismissed or the kind changes). */
 data class FromContactsResult(
@@ -173,7 +169,9 @@ class EntitiesFromContactsViewModel @Inject constructor(private val repository: 
 
     fun setSelected(key: String, selected: Boolean) = edit(key) { it.copy(selected = selected) }
 
-    fun setName(key: String, name: String) = edit(key) { it.copy(name = name.take(MAX_NAME_LENGTH)) }
+    fun setName(key: String, name: String) = edit(
+        key
+    ) { it.copy(name = name.take(MAX_NAME_LENGTH)) }
 
     fun setRole(key: String, role: String) = edit(key) { it.copy(role = role) }
 

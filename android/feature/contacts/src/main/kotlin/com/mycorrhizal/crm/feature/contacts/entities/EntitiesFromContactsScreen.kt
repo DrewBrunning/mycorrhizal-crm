@@ -56,20 +56,6 @@ import com.mycorrhizal.crm.ui.components.LabelledDropdown
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
-/** Everything the content can ask for; the screen wires it to the view model. */
-internal data class EntitiesFromContactsActions(
-    val onSelectKind: (String) -> Unit = {},
-    val onSelected: (key: String, selected: Boolean) -> Unit = { _, _ -> },
-    val onName: (key: String, name: String) -> Unit = { _, _ -> },
-    val onRole: (key: String, role: String) -> Unit = { _, _ -> },
-    val onPrimary: (key: String, primary: Boolean) -> Unit = { _, _ -> },
-    val onContact: (key: String, contactId: Int, included: Boolean) -> Unit = { _, _, _ -> },
-    val onCreate: () -> Unit = {},
-    val onRetry: () -> Unit = {},
-    val onLoadMore: () -> Unit = {},
-    val onDismissResult: () -> Unit = {}
-)
-
 /**
  * #2513 (web #2301): the optional "create entities from my contacts" helper. Reached from the
  * entities screen; it reads nothing until opened and changes nothing until Create is pressed.
@@ -164,7 +150,9 @@ internal fun EntitiesFromContactsContent(
             state.createError?.let { error ->
                 item(key = "create-error") {
                     ErrorBlock(
-                        title = stringResource(R.string.shared_entities_from_contacts_create_failed),
+                        title = stringResource(
+                            R.string.shared_entities_from_contacts_create_failed
+                        ),
                         error = error,
                         tag = "from-contacts-error"
                     )
@@ -174,7 +162,9 @@ internal fun EntitiesFromContactsContent(
                 item(key = "load-error") {
                     Column {
                         ErrorBlock(
-                            title = stringResource(R.string.shared_entities_from_contacts_load_failed),
+                            title = stringResource(
+                                R.string.shared_entities_from_contacts_load_failed
+                            ),
                             error = error,
                             tag = "from-contacts-load-error"
                         )

@@ -38,14 +38,13 @@ class EntitiesFromContactsScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun contact(id: Int, first: String, primary: Boolean = false) =
-        EntityValueGroupContact(
-            contactId = id,
-            firstname = first,
-            lastname = "Lovelace",
-            valueName = "ACME",
-            hasPrimary = primary
-        )
+    private fun contact(id: Int, first: String, primary: Boolean = false) = EntityValueGroupContact(
+        contactId = id,
+        firstname = first,
+        lastname = "Lovelace",
+        valueName = "ACME",
+        hasPrimary = primary
+    )
 
     private val acme = EntityValueGroup(
         key = "k-acme",
@@ -238,15 +237,31 @@ class EntitiesFromContactsScreenTest {
                     kind = EntityKind.ORGANISATION,
                     createdNames = listOf("Acme", "Initech"),
                     skipped = listOf(
-                        FromContactsSkipItem("Globex", null, EntityFromContactsSkipReason.GROUP_NOT_FOUND),
+                        FromContactsSkipItem(
+                            "Globex",
+                            null,
+                            EntityFromContactsSkipReason.GROUP_NOT_FOUND
+                        ),
                         FromContactsSkipItem(
                             "Acme",
                             "Bo Lovelace",
                             EntityFromContactsSkipReason.CONTACT_NOT_IN_GROUP
                         ),
-                        FromContactsSkipItem("Acme", null, EntityFromContactsSkipReason.CONTACT_NOT_IN_GROUP),
-                        FromContactsSkipItem("Bad", null, EntityFromContactsSkipReason.NAME_INVALID),
-                        FromContactsSkipItem("Worse", null, EntityFromContactsSkipReason.CORE_INVALID),
+                        FromContactsSkipItem(
+                            "Acme",
+                            null,
+                            EntityFromContactsSkipReason.CONTACT_NOT_IN_GROUP
+                        ),
+                        FromContactsSkipItem(
+                            "Bad",
+                            null,
+                            EntityFromContactsSkipReason.NAME_INVALID
+                        ),
+                        FromContactsSkipItem(
+                            "Worse",
+                            null,
+                            EntityFromContactsSkipReason.CORE_INVALID
+                        ),
                         FromContactsSkipItem("Odd", null, "a_future_reason")
                     )
                 )
@@ -276,7 +291,11 @@ class EntitiesFromContactsScreenTest {
                     kind = EntityKind.PLACE,
                     createdNames = emptyList(),
                     skipped = listOf(
-                        FromContactsSkipItem("Cabin", null, EntityFromContactsSkipReason.GROUP_NOT_FOUND)
+                        FromContactsSkipItem(
+                            "Cabin",
+                            null,
+                            EntityFromContactsSkipReason.GROUP_NOT_FOUND
+                        )
                     )
                 )
             )

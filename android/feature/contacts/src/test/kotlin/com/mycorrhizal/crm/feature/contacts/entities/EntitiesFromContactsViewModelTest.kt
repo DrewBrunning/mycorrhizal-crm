@@ -36,14 +36,13 @@ class EntitiesFromContactsViewModelTest {
 
     private val repository = mockk<EntityRepository>()
 
-    private fun contact(id: Int, first: String, primary: Boolean = false) =
-        EntityValueGroupContact(
-            contactId = id,
-            firstname = first,
-            lastname = "Lovelace",
-            valueName = "ACME",
-            hasPrimary = primary
-        )
+    private fun contact(id: Int, first: String, primary: Boolean = false) = EntityValueGroupContact(
+        contactId = id,
+        firstname = first,
+        lastname = "Lovelace",
+        valueName = "ACME",
+        hasPrimary = primary
+    )
 
     private val acme = EntityValueGroup(
         key = "k-acme",

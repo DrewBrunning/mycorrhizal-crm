@@ -3713,7 +3713,10 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
      */
     suspend fun createEntitiesFromContacts(
         input: EntityFromContactsInput
-    ): Result<EntityFromContactsResponse> = executePost("$ENTITIES_PATH/from-contacts", input) { _, body ->
+    ): Result<EntityFromContactsResponse> = executePost(
+        "$ENTITIES_PATH/from-contacts",
+        input
+    ) { _, body ->
         moshi.adapter(EntityFromContactsResponse::class.java).fromJson(body)
     }
 

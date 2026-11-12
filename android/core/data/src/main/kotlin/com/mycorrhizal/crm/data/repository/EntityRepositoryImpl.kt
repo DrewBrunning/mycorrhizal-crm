@@ -83,8 +83,10 @@ class EntityRepositoryImpl @Inject constructor(
     override suspend fun suggestions(kind: String): Result<EntitySuggestionsResponse> =
         apiClient.listEntitySuggestions(kind)
 
-    override suspend fun valueGroups(kind: String, cursor: String?): Result<EntitySuggestionsResponse> =
-        apiClient.listEntityValueGroups(kind, cursor)
+    override suspend fun valueGroups(
+        kind: String,
+        cursor: String?
+    ): Result<EntitySuggestionsResponse> = apiClient.listEntityValueGroups(kind, cursor)
 
     override suspend fun createFromContacts(
         input: EntityFromContactsInput

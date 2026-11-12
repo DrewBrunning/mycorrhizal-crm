@@ -249,7 +249,10 @@ class ApiClientEntitiesTest {
 
             enqueue("""{"created":null,"skipped":null}""")
             val empty = client.createEntitiesFromContacts(
-                EntityFromContactsInput("place", listOf(EntityFromContactsGroup("k", null, "other", false, listOf(1))))
+                EntityFromContactsInput(
+                    "place",
+                    listOf(EntityFromContactsGroup("k", null, "other", false, listOf(1)))
+                )
             ).getOrThrow()
             assertTrue(empty.createdOrEmpty.isEmpty() && empty.skippedOrEmpty.isEmpty())
             assertFalse(server.takeRequest().body.readUtf8().contains(""""name""""))
