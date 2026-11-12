@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Upcoming occasions on the Android dashboard** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): a new card lists the birthdays, anniversaries, life events and standing occasions coming up in the next 30 or 90 days, each showing how many days away it is. Tap one to open the contact.
 - **Card list and gift shopping list on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): the Occasions screen can now share your card list as a CSV, leaving out private and secret addresses, and opens a gift shopping list for the next 30 or 90 days showing what is still needed, bought or given.
 - **Standing occasions on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): a contact now has an Occasions section for the yearly card, gift or invite you keep up, with its date, lead time and notes. Add, edit and delete them there, as on the web.
 - **Create organisations and places from your contacts on Android** ([#2513](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2513)): the organisations, places and pets screen has a new button that groups equal organisation and address values on your contacts. Choose the name, role, which contacts to link and whether it is their primary, then see what was created or skipped. No contact value is changed.

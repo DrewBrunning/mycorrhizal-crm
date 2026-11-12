@@ -1767,8 +1767,8 @@ private fun AppNavGraph(
                     OccasionListsActions(
                         onOpenShoppingList = {
                             navController.navigate(
-                            "occasions/gift-shopping-list"
-                        )
+                                "occasions/gift-shopping-list"
+                            )
                         }
                     )
                 }

@@ -34,6 +34,7 @@ import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.ReachOutKind
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
+import com.mycorrhizal.crm.model.network.UpcomingOccasion
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -143,6 +144,7 @@ class DashboardScreenTest {
         onBackUpNow: () -> Unit = {},
         onDismissBackupReminder: () -> Unit = {},
         onCreateReminder: () -> Unit = {},
+        onOccasionsDaysChange: (Int) -> Unit = {},
         darkTheme: Boolean = false,
         fontScale: Float = 1f
     ) {
@@ -159,7 +161,8 @@ class DashboardScreenTest {
                         onVerifyDataDecay = onVerifyDataDecay,
                         onBackUpNow = onBackUpNow,
                         onDismissBackupReminder = onDismissBackupReminder,
-                        onCreateReminder = onCreateReminder
+                        onCreateReminder = onCreateReminder,
+                        onOccasionsDaysChange = onOccasionsDaysChange
                     )
                 }
             }
@@ -299,6 +302,83 @@ class DashboardScreenTest {
         composeTestRule.onNodeWithText("Reasons to reach out").assertDoesNotExist()
         // Same treatment for data decay (issue #352).
         composeTestRule.onNodeWithText("Info needs a check").assertDoesNotExist()
+    }
+
+    // ADR 0024 part 3 (issue #2521): the upcoming-occasions card.
+    private fun occasion(
+        contact: Int,
+        name: String,
+        source: String,
+        label: String,
+        days: Int,
+        kind: String? = null
+    ) = UpcomingOccasion(
+        contactId = contact,
+        contactName = name,
+        source = source,
+        label = label,
+        date = "2026-12-25",
+        daysUntil = days,
+        kind = kind
+    )
+
+    @Test
+    fun `occasions list the source, kind, countdown and open the contact`() {
+        var opened: Int? = null
+        setContent(
+            populatedState().copy(
+                occasions = listOf(
+                    occasion(21, "Pat Doe", "birthday", "Birthday", 0),
+                    occasion(22, "Quin Roe", "obligation", "Xmas card", 1, kind = "card"),
+                    occasion(23, "Rae Poe", "life_event", "New job", 12)
+                )
+            ),
+            onOpenContact = { opened = it }
+        )
+
+        scrollTo("Upcoming occasions")
+        composeTestRule.onNodeWithText("Pat Doe").assertIsDisplayed()
+        scrollTo("Rae Poe")
+        // Only non-birthday/anniversary rows repeat the label after the name.
+        composeTestRule.onNodeWithText("Quin Roe — Xmas card").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Rae Poe — New job").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Today").assertIsDisplayed()
+        composeTestRule.onNodeWithText("in 1 day").assertIsDisplayed()
+        composeTestRule.onNodeWithText("in 12 days").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Obligation").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Card").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Life event").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Quin Roe — Xmas card").performClick()
+        assertEquals(22, opened)
+    }
+
+    @Test
+    fun `an empty window says so`() {
+        setContent(populatedState().copy(occasions = emptyList()))
+        scrollTo("Upcoming occasions")
+        composeTestRule.onNodeWithText("No upcoming occasions in this window.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an occasions failure shows its own message and not the empty text`() {
+        setContent(
+            populatedState().copy(
+                occasionsError = com.mycorrhizal.crm.network.ApiError.Client(500, "occ boom")
+            )
+        )
+        scrollTo("Upcoming occasions")
+        composeTestRule.onNodeWithText("occ boom").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No upcoming occasions in this window.").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the window chips report the chosen window`() {
+        var chosen = 0
+        setContent(populatedState(), onOccasionsDaysChange = { chosen = it })
+        scrollTo("Upcoming occasions")
+        composeTestRule.onNodeWithText("90 days").performClick()
+        assertEquals(90, chosen)
     }
 
     @Test
@@ -500,6 +580,8 @@ class DashboardScreenTest {
         onCreateReminder: () -> Unit = {}
     ) {
         val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getUpcomingOccasions(any()) } returns
+            Result.success(com.mycorrhizal.crm.model.network.UpcomingOccasionsResponse())
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
         coEvery { apiClient.getDashboard() } returns Result.success(fullDashboard())

@@ -265,10 +265,10 @@ private fun occasionWindowLabel(days: Int): String = stringResource(
     if (days ==
         OCCASION_WINDOWS.last()
     ) {
-            R.string.occasion_window_90
-        } else {
-            R.string.occasion_window_30
-        }
+        R.string.occasion_window_90
+    } else {
+        R.string.occasion_window_30
+    }
 )
 
 @Composable

@@ -159,4 +159,24 @@ class ApiClientOccasionObligationsTest {
         enqueue("""{"error":"boom"}""", 500)
         assertTrue(client.exportOccasionCardListCsv(kind = "card").isFailure)
     }
+
+    @Test
+    fun `upcoming occasions requests the window and parses sources`() = runBlocking {
+        enqueue(
+            """{"occasions":[{"contact_id":1,"contact_name":"Ann","source":"obligation",
+            "label":"Xmas card","date":"2026-12-25","days_until":3,"kind":"card"}],"days":90}"""
+        )
+        val result = client.getUpcomingOccasions(90).getOrThrow()
+        val request = server.takeRequest()
+        assertEquals("/api/v1/occasions/upcoming", request.requestUrl?.encodedPath)
+        assertEquals("90", request.requestUrl?.queryParameter("days"))
+        assertNull(request.requestUrl?.queryParameter("include_sensitive"))
+        assertEquals("card", result.items.single().kind)
+    }
+
+    @Test
+    fun `upcoming occasions failure is reported`() = runBlocking {
+        enqueue("""{"error":"x"}""", 500)
+        assertTrue(client.getUpcomingOccasions(30).isFailure)
+    }
 }

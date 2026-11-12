@@ -14,6 +14,7 @@ import com.mycorrhizal.crm.model.network.DashboardReminder
 import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
+import com.mycorrhizal.crm.model.network.UpcomingOccasion
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -41,6 +42,9 @@ data class DashboardTotals(
     val dataDecayOverdue: Int? = null
 )
 
+/** The only `days` windows `GET /occasions/upcoming` accepts. */
+internal val DASHBOARD_OCCASION_WINDOWS = listOf(30, 90)
+
 /** Keeps a pre-cap total in step with an optimistic row removal/restore; stays null when absent. */
 private fun Int?.adjusted(delta: Int): Int? = this?.let { (it + delta).coerceAtLeast(0) }
 
@@ -57,6 +61,12 @@ data class DashboardUiState(
     val reachOutSuggestions: List<ReachOutSuggestion> = emptyList(),
     // Issue #352: contacts whose info is due for re-verification.
     val dataDecayOverdue: List<OverdueDataDecayPolicy> = emptyList(),
+    /** ADR 0024 part 3 (issue #2521): the upcoming-occasions card, loaded apart from the composite. */
+    val occasions: List<UpcomingOccasion> = emptyList(),
+    /** The card's window in days: 30 or 90. */
+    val occasionsDays: Int = DASHBOARD_OCCASION_WINDOWS.first(),
+    /** The card's own failure; never blanks the rest of the dashboard like [error]. */
+    val occasionsError: ApiError? = null,
     /** Issue #1824: pre-cap block sizes for the "Showing N of M" captions. */
     val totals: DashboardTotals = DashboardTotals(),
     val isLoading: Boolean = false,
@@ -144,6 +154,7 @@ class DashboardViewModel @Inject constructor(
 
     fun load() {
         if (loadJob?.isActive == true) return
+        loadOccasions()
         loadJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             apiClient.getDashboard().foldApiError(
@@ -170,6 +181,41 @@ class DashboardViewModel @Inject constructor(
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }
+                }
+            )
+        }
+    }
+
+    /** Switch the upcoming-occasions window; anything but 30/90 is ignored. */
+    fun setOccasionsDays(days: Int) {
+        if (days !in DASHBOARD_OCCASION_WINDOWS || days == _uiState.value.occasionsDays) return
+        // Drop the old window's rows now so they never sit under the new window's chip.
+        _uiState.update { it.copy(occasionsDays = days, occasions = emptyList()) }
+        loadOccasions()
+    }
+
+    private fun loadOccasions() {
+        val days = _uiState.value.occasionsDays
+        viewModelScope.launch {
+            apiClient.getUpcomingOccasions(days).foldApiError(
+                onSuccess = { response ->
+                    _uiState.update {
+                        // A late response for a window the user already left must not win.
+                        if (it.occasionsDays == days) {
+                            it.copy(occasions = response.items, occasionsError = null)
+                        } else {
+                            it
+                        }
+                    }
+                },
+                onError = { error ->
+                    _uiState.update {
+                        if (it.occasionsDays == days) {
+                            it.copy(occasions = emptyList(), occasionsError = error)
+                        } else {
+                            it
+                        }
+                    }
                 }
             )
         }

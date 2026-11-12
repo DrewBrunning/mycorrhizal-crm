@@ -119,3 +119,38 @@ object GiftShoppingStatuses {
 
     val ALL = listOf(NEEDED, IDEA, PURCHASED, GIVEN, RECEIVED)
 }
+
+/**
+ * One row of the dashboard's upcoming-occasions card (ADR 0024 part 3, `models.UpcomingOccasion`).
+ * [kind] is only set for `obligation` rows (card/gift/invite or a custom classifier).
+ */
+@JsonClass(generateAdapter = true)
+data class UpcomingOccasion(
+    @Json(name = "contact_id") val contactId: Int = 0,
+    @Json(name = "contact_name") val contactName: String = "",
+    val source: String = "",
+    val label: String = "",
+    val date: String = "",
+    @Json(name = "days_until") val daysUntil: Int = 0,
+    val kind: String? = null
+)
+
+/** GET /occasions/upcoming — `{ occasions, days }`. */
+@JsonClass(generateAdapter = true)
+data class UpcomingOccasionsResponse(
+    @Json(name = "occasions") val occasions: List<UpcomingOccasion>? = null,
+    val days: Int = 0
+) {
+    /** The server may send `null`; an empty window is an empty list. */
+    val items: List<UpcomingOccasion> get() = occasions.orEmpty()
+}
+
+/** `UpcomingOccasion.Source` values (a hardcoded mirror of the backend, frontend trap #4). */
+object UpcomingOccasionSources {
+    const val BIRTHDAY = "birthday"
+    const val ANNIVERSARY = "anniversary"
+    const val LIFE_EVENT = "life_event"
+    const val OBLIGATION = "obligation"
+
+    val ALL = listOf(BIRTHDAY, ANNIVERSARY, LIFE_EVENT, OBLIGATION)
+}
