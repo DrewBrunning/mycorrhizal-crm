@@ -136,6 +136,7 @@ import com.mycorrhizal.crm.feature.imports.MeerkatImportScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.map.MapScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
+import com.mycorrhizal.crm.feature.occasions.ContactOccasionsScreen
 import com.mycorrhizal.crm.feature.occasions.OccasionAttendeesScreen
 import com.mycorrhizal.crm.feature.occasions.OccasionsScreen
 import com.mycorrhizal.crm.feature.relationships.RelationshipsScreen
@@ -1463,6 +1464,7 @@ private fun AppNavGraph(
                 onViewGifts = { id -> navController.navigate("contacts/$id/gifts") },
                 onViewTimeline = { id -> navController.navigate("contacts/$id/timeline") },
                 onViewPreferences = { id -> navController.navigate("contacts/$id/preferences") },
+                onViewOccasions = { id -> navController.navigate("contacts/$id/occasions") },
                 onViewSkills = { id -> navController.navigate("contacts/$id/skills") },
                 onViewWork = { id -> navController.navigate("contacts/$id/work") },
                 onViewEntities = { id -> navController.navigate("contacts/$id/entities") },
@@ -1784,6 +1786,13 @@ private fun AppNavGraph(
             arguments = listOf(navArgument("contactId") { type = NavType.IntType })
         ) {
             PreferencesScreen(onBack = { navController.popBackStack() })
+        }
+        // ADR 0024 (issue #2521): a contact's standing card/gift/invite obligations.
+        composable(
+            route = "contacts/{contactId}/occasions",
+            arguments = listOf(navArgument("contactId") { type = NavType.IntType })
+        ) {
+            ContactOccasionsScreen(onBack = { navController.popBackStack() })
         }
         // Issue #1728: the three drill-downs moved out of the contact edit form.
         composable(

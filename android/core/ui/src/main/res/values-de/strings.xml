@@ -2329,6 +2329,36 @@
     <string name="occasions_validation_title_required">Gib einen Titel für diese Veranstaltung ein.</string>
     <string name="occasions_validation_start_required">Wähle ein Startdatum und eine Uhrzeit.</string>
     <string name="occasions_validation_end_before_start">Das Ende darf nicht vor dem Beginn liegen.</string>
+    <!-- ADR 0024 (issue #2521): standing occasion obligations. -->
+    <string name="contact_occasions">Anlässe</string>
+    <string name="occasion_ob_add">Anlass hinzufügen</string>
+    <string name="occasion_ob_create_title">Anlass hinzufügen</string>
+    <string name="occasion_ob_edit_title">Anlass bearbeiten</string>
+    <string name="occasion_ob_empty">Noch keine festen Anlässe</string>
+    <string name="occasion_ob_empty_body">Füge einen für eine wiederkehrende Karte, ein Geschenk oder eine Einladung hinzu.</string>
+    <string name="occasion_ob_hint">Eine feste Regel, etwa eine jährliche Karte oder ein Geschenk. Ein aktiver Anlass erstellt zur Vorlaufzeit eine eigene Erinnerung.</string>
+    <string name="occasion_ob_kind">Art</string>
+    <string name="occasion_ob_kind_hint">Wähle Karte, Geschenk oder Einladung oder gib eine eigene Bezeichnung ein</string>
+    <string name="occasion_ob_kind_card">Karte</string>
+    <string name="occasion_ob_kind_gift">Geschenk</string>
+    <string name="occasion_ob_kind_invite">Einladung</string>
+    <string name="occasion_ob_label">Bezeichnung</string>
+    <string name="occasion_ob_label_hint">z. B. „Weihnachtskarte“, „Geburtstagsgeschenk“</string>
+    <string name="occasion_ob_anchor_month">Monat</string>
+    <string name="occasion_ob_anchor_day">Tag</string>
+    <string name="occasion_ob_anchor_unset">Nicht festgelegt</string>
+    <string name="occasion_ob_lead_time">Vorlaufzeit (Tage)</string>
+    <string name="occasion_ob_lead_time_hint">Wie viele Tage vor dem Datum du erinnert werden möchtest, z. B. 14 für „Geschenk zwei Wochen vorher“</string>
+    <string name="occasion_ob_active">Aktiv</string>
+    <string name="occasion_ob_inactive">Inaktiv</string>
+    <string name="occasion_ob_delete_title">Anlass löschen</string>
+    <string name="occasion_ob_validation_label_required">Gib eine Bezeichnung für diesen Anlass ein.</string>
+    <string name="occasion_ob_validation_anchor_both">Lege Monat und Tag fest oder lasse beides leer.</string>
+    <string name="occasion_ob_validation_lead_time">Gib eine ganze Zahl von 0 bis 365 für die Vorlaufzeit in Tagen ein.</string>
+    <plurals name="occasion_ob_lead_time_display">
+        <item quantity="one">%1$d Tag Vorlaufzeit</item>
+        <item quantity="other">%1$d Tage Vorlaufzeit</item>
+    </plurals>
     <string name="settings_servers_title">Server</string>
     <string name="settings_servers_add">Server hinzufügen</string>
     <string name="settings_servers_empty">Noch keine Server</string>

@@ -67,6 +67,7 @@ import com.mycorrhizal.crm.data.repository.NextcloudRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NoteRepositoryImpl
 import com.mycorrhizal.crm.data.repository.NotificationSettingsRepositoryImpl
 import com.mycorrhizal.crm.data.repository.OccasionEventRepositoryImpl
+import com.mycorrhizal.crm.data.repository.OccasionObligationRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PaperlessRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PasskeyRepositoryImpl
 import com.mycorrhizal.crm.data.repository.PendingInteractionRepositoryImpl
@@ -131,6 +132,7 @@ import com.mycorrhizal.crm.domain.repository.NextcloudRepository
 import com.mycorrhizal.crm.domain.repository.NoteRepository
 import com.mycorrhizal.crm.domain.repository.NotificationSettingsRepository
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
+import com.mycorrhizal.crm.domain.repository.OccasionObligationRepository
 import com.mycorrhizal.crm.domain.repository.PaperlessRepository
 import com.mycorrhizal.crm.domain.repository.PasskeyRepository
 import com.mycorrhizal.crm.domain.repository.PendingInteractionRepository
@@ -588,6 +590,12 @@ abstract class DataBindsModule {
     abstract fun bindOccasionEventRepository(
         impl: OccasionEventRepositoryImpl
     ): OccasionEventRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindOccasionObligationRepository(
+        impl: OccasionObligationRepositoryImpl
+    ): OccasionObligationRepository
 
     @Binds
     @Singleton

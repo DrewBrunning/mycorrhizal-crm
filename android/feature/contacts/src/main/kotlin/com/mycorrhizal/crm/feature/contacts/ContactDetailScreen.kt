@@ -49,6 +49,7 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.FileDownload
 import androidx.compose.material.icons.outlined.Forum
 import androidx.compose.material.icons.outlined.History
@@ -234,6 +235,7 @@ fun ContactDetailScreen(
     onViewLifeEvents: (Int) -> Unit = {},
     onViewGifts: (Int) -> Unit = {},
     onViewPreferences: (Int) -> Unit = {},
+    onViewOccasions: (Int) -> Unit = {},
     // Issue #1728: skills/interests, work and anniversaries moved out of the
     // edit form into their own contact-page drill-downs.
     onViewSkills: (Int) -> Unit = {},
@@ -870,6 +872,7 @@ fun ContactDetailScreen(
                         onViewLifeEvents = onViewLifeEvents,
                         onViewGifts = onViewGifts,
                         onViewPreferences = onViewPreferences,
+                        onViewOccasions = onViewOccasions,
                         onViewSkills = onViewSkills,
                         onViewWork = onViewWork,
                         onViewEntities = onViewEntities,
@@ -1362,6 +1365,7 @@ fun ContactDetailContent(
     onViewLifeEvents: (Int) -> Unit = {},
     onViewGifts: (Int) -> Unit = {},
     onViewPreferences: (Int) -> Unit = {},
+    onViewOccasions: (Int) -> Unit = {},
     // Issue #1728: skills/interests, work and anniversaries moved out of the
     // edit form into their own contact-page drill-downs.
     onViewSkills: (Int) -> Unit = {},
@@ -2060,6 +2064,16 @@ fun ContactDetailContent(
                 icon = Icons.Outlined.Tune,
                 count = preferenceCount,
                 onClick = { onViewPreferences(contact.id) }
+            )
+        }
+        // ADR 0024 (issue #2521): standing card/gift/invite obligations for this contact.
+        item {
+            DrillDownRow(
+                label = stringResource(R.string.contact_occasions),
+                icon = Icons.Outlined.Event,
+                count = null,
+                onClick = { onViewOccasions(contact.id) },
+                tag = "drill-down-occasions"
             )
         }
         item {

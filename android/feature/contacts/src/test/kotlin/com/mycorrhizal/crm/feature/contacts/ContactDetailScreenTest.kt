@@ -1226,6 +1226,29 @@ class ContactDetailScreenTest {
         assertEquals(5, opened)
     }
 
+    // ADR 0024 (issue #2521): standing occasion obligations are reached from the contact page.
+    @Test
+    fun `occasions drill-down opens that contact's obligations`() {
+        var opened = -1
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 7,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    onViewOccasions = { opened = it }
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-occasions"))
+        composeTestRule.onNodeWithTag("drill-down-occasions").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Occasions").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("drill-down-occasions").performClick()
+        assertEquals(7, opened)
+    }
+
     @Test
     fun `a projected address shows its source chip and an own address does not`() {
         val contact = ContactRecordResponse(
