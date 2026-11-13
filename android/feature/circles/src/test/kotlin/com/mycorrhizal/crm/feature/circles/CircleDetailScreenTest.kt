@@ -20,6 +20,7 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
+import com.mycorrhizal.crm.model.network.CircleTimelinePage
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
@@ -60,6 +61,11 @@ class CircleDetailScreenTest {
         lastname = "Smith"
     )
 
+    private fun stubEmptyTimeline(repository: CircleRepository) {
+        coEvery { repository.getTimeline(any(), any()) } returns
+            Result.success(CircleTimelinePage())
+    }
+
     private fun str(@StringRes res: Int, vararg args: Any): String =
         ApplicationProvider.getApplicationContext<Context>().getString(res, *args)
 
@@ -72,7 +78,7 @@ class CircleDetailScreenTest {
         onShare: ((String) -> Unit)? = null,
         serverVersion: AppVersion? = null
     ) {
-        val circleRepository = mockk<CircleRepository>()
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
         val contactRepository = mockk<ContactRepository>()
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
             CircleDetail(circle = Circle(id = "c1", name = "Family"), members = members)
@@ -196,7 +202,7 @@ class CircleDetailScreenTest {
 
     @Test
     fun `removing a member calls the repository`() {
-        val circleRepository = mockk<CircleRepository>()
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
         val contactRepository = mockk<ContactRepository>()
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
             CircleDetail(
@@ -232,7 +238,7 @@ class CircleDetailScreenTest {
 
     @Test
     fun `the add-member dialog confirms a typed uid`() {
-        val circleRepository = mockk<CircleRepository>()
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
         val contactRepository = mockk<ContactRepository>()
         coEvery { circleRepository.getWithMembers("c1") } returns Result.success(
             CircleDetail(circle = Circle(id = "c1", name = "Family"), members = emptyList())
@@ -266,7 +272,7 @@ class CircleDetailScreenTest {
 
     @Test
     fun `an initial load renders the loading skeleton`() {
-        val circleRepository = mockk<CircleRepository>()
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
         val contactRepository = mockk<ContactRepository>()
         val gate = CompletableDeferred<Result<CircleDetail>>()
         coEvery { circleRepository.getWithMembers("c1") } coAnswers { gate.await() }
@@ -286,7 +292,7 @@ class CircleDetailScreenTest {
 
     @Test
     fun `a failed load with no members renders the error text`() {
-        val circleRepository = mockk<CircleRepository>()
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
         val contactRepository = mockk<ContactRepository>()
         coEvery { circleRepository.getWithMembers("c1") } returns
             Result.failure(ApiError.Client(500, "boom"))
