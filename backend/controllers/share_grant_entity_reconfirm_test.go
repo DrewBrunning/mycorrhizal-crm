@@ -123,3 +123,19 @@ func TestReconfirm_EntityOrLinkFlipIsScopedToTheOwnersGrants(t *testing.T) {
 	require.NoError(t, f.e.db.Model(&foreign).Update("sensitivity", "secret").Error)
 	assert.Empty(t, f.reconfirmSections())
 }
+
+// Only a normal -> private/secret move marks a section: re-saving a link or
+// entity that was already non-normal (after the owner re-confirmed) must not
+// withhold it again.
+func TestReconfirm_ResavingAnAlreadyPrivateLinkOrEntityDoesNotRemark(t *testing.T) {
+	f := newEntityGrantFixture(t)
+	require.NoError(t, f.e.db.Model(&f.placeL).Update("sensitivity", "private").Error)
+	require.NoError(t, f.e.db.Model(&f.place).Update("sensitivity", "private").Error)
+	require.Equal(t, 200, f.e.do(f.e.A, http.MethodPost, "/share-grants/"+f.grantID+"/reconfirm", nil).Code)
+	require.Empty(t, f.reconfirmSections())
+
+	require.NoError(t, f.e.db.Model(&f.placeL).Update("role", "visitor").Error)
+	require.NoError(t, f.e.db.Model(&f.place).Update("name", "Cabin 2").Error)
+	require.NoError(t, f.e.db.Model(&f.placeL).Update("sensitivity", "secret").Error) // private -> secret
+	assert.Empty(t, f.reconfirmSections(), "an already-non-normal item is not re-marked")
+}
