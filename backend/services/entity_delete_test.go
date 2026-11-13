@@ -498,6 +498,20 @@ func TestRestoreContact_LinkReviveFailureAbortsRestore(t *testing.T) {
 	assert.EqualValues(t, 1, count(t, f.db, true, &models.Contact{}, "id = ? AND deleted_at IS NOT NULL", f.c1.ID), "the contact stays in the trash")
 }
 
+// The revision/etag bump is a second UPDATE of the revived row. The revive map
+// never sets revision, so a column-scoped trigger fails only the bump and
+// reaches its error return rather than the earlier revive's.
+func TestRestoreContact_LinkRevisionBumpFailureAbortsRestore(t *testing.T) {
+	f := newEntityFixture(t)
+	f.link(t, f.c1, f.org, false)
+	require.NoError(t, DeleteContact(f.db, f.c1, f.userID, entityNow))
+	failStatement(t, f.db, "force_fail_revision", "BEFORE UPDATE OF revision ON contact_entity_links")
+	_, err := RestoreContact(f.db, f.userID, f.c1.ID, entityNow)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "forced failure")
+	assert.EqualValues(t, 1, count(t, f.db, true, &models.Contact{}, "id = ? AND deleted_at IS NOT NULL", f.c1.ID), "the contact stays in the trash")
+}
+
 // Restore revives and may demote links via a bulk update; the revision/etag
 // must increase so If-Match clients do not keep a stale ETag (issue #2566).
 func TestRestoreContact_BumpsLinkRevisionOnReviveAndDemote(t *testing.T) {
