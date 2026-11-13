@@ -12,7 +12,9 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
 import java.time.Instant
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -105,6 +107,63 @@ class SharedByMeViewModelTest {
         assertNull(vm.uiState.value.prompt)
         coVerify(exactly = 2) { repository.listOutgoing(any(), any()) }
     }
+
+    @Test
+    fun `a revoke that finishes while a load is in flight still ends with the revoked list`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val firstLoad = CompletableDeferred<Unit>()
+            var calls = 0
+            coEvery { repository.listOutgoing(any(), any()) } coAnswers {
+                if (++calls == 1) {
+                    firstLoad.await()
+                    Result.success(OutgoingShareGrantsPage(shareGrants = listOf(contactGrant)))
+                } else {
+                    Result.success(
+                        OutgoingShareGrantsPage(
+                            shareGrants = listOf(
+                                contactGrant.copy(status = ShareGrantStatuses.REVOKED)
+                            )
+                        )
+                    )
+                }
+            }
+            coEvery { repository.revoke("g1") } returns
+                Result.success(contactGrant.copy(status = ShareGrantStatuses.REVOKED))
+            val vm = newVm()
+            runCurrent()
+            assertTrue(vm.uiState.value.isLoading)
+
+            vm.requestRevoke(contactGrant)
+            vm.confirmPrompt()
+            runCurrent()
+            firstLoad.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(ShareGrantStatuses.REVOKED),
+                vm.uiState.value.grants.map { it.status }
+            )
+            assertFalse(vm.uiState.value.isLoading)
+            coVerify(exactly = 2) { repository.listOutgoing(any(), any()) }
+        }
+
+    @Test
+    fun `a load tap while loading does not queue a second request`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val firstLoad = CompletableDeferred<Unit>()
+            coEvery { repository.listOutgoing(any(), any()) } coAnswers {
+                firstLoad.await()
+                Result.success(OutgoingShareGrantsPage(shareGrants = listOf(contactGrant)))
+            }
+            val vm = newVm()
+            runCurrent()
+
+            vm.load()
+            firstLoad.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { repository.listOutgoing(any(), any()) }
+        }
 
     @Test
     fun `reconfirm is confirmation gated and calls reconfirm`() = runTest(

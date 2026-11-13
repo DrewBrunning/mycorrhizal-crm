@@ -83,19 +83,36 @@ class SharedByMeViewModel @Inject constructor(private val repository: ShareGrant
         load()
     }
 
+    /** Set when a mutation finished while a load was already in flight; see [reloadAfterChange]. */
+    private var reloadPending = false
+
     fun load() {
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, loadError = null) }
-            val result = repository.listOutgoing()
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    grants = result.getOrNull()?.shareGrants.orEmpty(),
-                    loadError = result.exceptionOrNull()?.toApiError()
-                )
-            }
+            do {
+                reloadPending = false
+                val result = repository.listOutgoing()
+                // A mutation landed while this read was in flight: its rows may predate
+                // the change, so drop them and read again instead of showing them.
+                if (reloadPending) continue
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        grants = result.getOrNull()?.shareGrants.orEmpty(),
+                        loadError = result.exceptionOrNull()?.toApiError()
+                    )
+                }
+            } while (reloadPending)
         }
+    }
+
+    /**
+     * Reloads after a mutation. When a load is already in flight it is queued behind it
+     * (the in-flight read may predate the change), never skipped.
+     */
+    private fun reloadAfterChange() {
+        if (_uiState.value.isLoading) reloadPending = true else load()
     }
 
     fun requestRevoke(grant: OutgoingShareGrant) {
@@ -177,7 +194,7 @@ class SharedByMeViewModel @Inject constructor(private val repository: ShareGrant
                 }
             )
             // Success or failure, the row may differ from what the editor started with.
-            load()
+            reloadAfterChange()
         }
     }
 
@@ -215,7 +232,7 @@ class SharedByMeViewModel @Inject constructor(private val repository: ShareGrant
                     _uiState.update { it.copy(busy = false, prompt = null, actionError = error) }
                 }
             )
-            load()
+            reloadAfterChange()
         }
     }
 }
