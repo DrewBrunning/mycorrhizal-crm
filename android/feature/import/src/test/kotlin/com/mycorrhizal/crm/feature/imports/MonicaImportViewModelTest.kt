@@ -238,11 +238,8 @@ class MonicaImportViewModelTest {
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { apiClient.connectMonica(any()) } returns Result.success(connected())
             coEvery { apiClient.startMonicaFetch(any(), any(), any()) } returns Result.success(Unit)
-            coEvery {
-                apiClient.getMonicaImportStatus(
-                "s1"
-            )
-            } returns Result.success(status("ready"))
+            coEvery { apiClient.getMonicaImportStatus("s1") } returns
+                Result.success(status("ready"))
             coEvery { apiClient.getMonicaImportPreview("s1") } returns Result.success(preview)
             val vm = newVm()
             vm.startImport()
