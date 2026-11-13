@@ -55,6 +55,7 @@ import com.mycorrhizal.crm.model.network.EntityCore
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntitySensitivity
 import com.mycorrhizal.crm.model.network.EntitySuggestionPair
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
@@ -275,7 +276,16 @@ internal fun EntitiesContent(
                         EntityRow(entity, onClick = { onOpenEntity(entity.id) })
                         HorizontalDivider()
                     }
-                    if (state.nextCursor != null) {
+                    if (state.error != null) {
+                        // A failed page or refresh with rows on screen: say so with a Retry. It
+                        // replaces the skeleton row, whose effect would not re-fire anyway.
+                        item(key = "list-error") {
+                            ListErrorRow(
+                                error = state.error,
+                                onRetry = if (state.nextCursor != null) onLoadMore else onRetry
+                            )
+                        }
+                    } else if (state.nextCursor != null) {
                         item(key = "load-more") {
                             val currentOnLoadMore by rememberUpdatedState(onLoadMore)
                             LaunchedEffect(state.nextCursor) { currentOnLoadMore() }
@@ -302,6 +312,27 @@ internal fun EntitiesContent(
             onConfirm = { _, keepThis, fill -> onConfirmMerge(keepThis, fill) },
             onDismiss = onDismissMerge
         )
+    }
+}
+
+@Composable
+private fun ListErrorRow(error: ApiError, onRetry: () -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp).testTag("entities-list-error"),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.shared_entities_loading_failed),
+            color = MaterialTheme.colorScheme.error
+        )
+        Text(
+            text = error.localizedMessage(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        TextButton(onClick = onRetry, modifier = Modifier.testTag("entities-list-retry")) {
+            Text(stringResource(R.string.action_retry))
+        }
     }
 }
 

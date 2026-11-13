@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityContactLink
@@ -21,6 +23,8 @@ import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntitySuggestionEntity
 import com.mycorrhizal.crm.model.network.EntitySuggestionPair
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.TemporalRange
 import com.mycorrhizal.crm.network.ApiError
@@ -64,7 +68,9 @@ class EntityScreensTest {
         onDismiss: (EntitySuggestionPair) -> Unit = {},
         onMerge: (EntitySuggestionPair) -> Unit = {},
         onConfirmMerge: (Boolean, Set<String>) -> Unit = { _, _ -> },
-        onDismissMerge: () -> Unit = {}
+        onDismissMerge: () -> Unit = {},
+        onLoadMore: () -> Unit = {},
+        onRetry: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -73,8 +79,8 @@ class EntityScreensTest {
                     onSelectKind = onKind,
                     onQueryChange = {},
                     onOpenEntity = onOpen,
-                    onLoadMore = {},
-                    onRetry = {},
+                    onLoadMore = onLoadMore,
+                    onRetry = onRetry,
                     onAdd = {},
                     onFindDuplicates = onFind,
                     onDismissSuggestion = onDismiss,
@@ -114,6 +120,54 @@ class EntityScreensTest {
         setList(EntitiesUiState(kind = EntityKind.PET))
         composeTestRule.onNodeWithText("No pets yet.").assertIsDisplayed()
         composeTestRule.onNodeWithText("Add pet").assertIsDisplayed()
+    }
+
+    private fun reasonCoded() = ApiError.Client(
+        500,
+        "RAW SERVER TEXT",
+        reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+    )
+
+    @Test
+    fun `a failed load more shows the localized error with a Retry that loads more`() {
+        var loadMore = 0
+        var refresh = 0
+        setList(
+            EntitiesUiState(
+                entities = listOf(acme),
+                nextCursor = "c2",
+                error = reasonCoded()
+            ),
+            onLoadMore = { loadMore++ },
+            onRetry = { refresh++ }
+        )
+        composeTestRule.onNodeWithTag("entities-list")
+            .performScrollToNode(hasTestTag("entities-list-error"))
+        composeTestRule.onNodeWithTag("entities-list-error").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+        // The error replaces the skeleton row, whose effect would fire load-more by itself.
+        assertEquals(0, loadMore)
+        composeTestRule.onNodeWithTag("entities-list-retry").performClick()
+        assertEquals(1, loadMore)
+        assertEquals(0, refresh)
+    }
+
+    @Test
+    fun `a failed refresh with rows and no cursor shows the error and Retry refreshes`() {
+        var loadMore = 0
+        var refresh = 0
+        setList(
+            EntitiesUiState(entities = listOf(acme), error = reasonCoded()),
+            onLoadMore = { loadMore++ },
+            onRetry = { refresh++ }
+        )
+        composeTestRule.onNodeWithTag("entities-list")
+            .performScrollToNode(hasTestTag("entities-list-error"))
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("entities-list-retry").performClick()
+        assertEquals(1, refresh)
+        assertEquals(0, loadMore)
     }
 
     private val cabinPair = EntitySuggestionPair(
