@@ -58,6 +58,10 @@ internal fun mergeFieldLabelRes(field: String): Int = when (field) {
  * Merge this entity with another of the same kind (ADR 0043 decision 8). Nothing merges without
  * the explicit confirm; the "also copy" checkboxes start unticked (the backend `resolutions`
  * contract: only listed fields are filled, only where the kept one has none).
+ *
+ * Opened from an entity's page, the user searches for [entity]'s partner among [candidates].
+ * Opened from a duplicate suggestion (#2520), [pairedWith] is the other half of the pair: it is
+ * the partner already, so the search and the candidate list are not shown.
  */
 @Composable
 fun EntityMergeDialog(
@@ -69,15 +73,16 @@ fun EntityMergeDialog(
     onSearch: (String) -> Unit,
     onConfirm: (other: Entity, keepThis: Boolean, fill: Set<String>) -> Unit,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    pairedWith: Entity? = null
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var selectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var keepThis by rememberSaveable { mutableStateOf(false) }
     var fill by remember(selectedId, keepThis) { mutableStateOf(emptySet<String>()) }
     val currentOnSearch by rememberUpdatedState(onSearch)
-    LaunchedEffect(Unit) { currentOnSearch("") }
-    val other = candidates.firstOrNull { it.id == selectedId }
+    LaunchedEffect(Unit) { if (pairedWith == null) currentOnSearch("") }
+    val other = pairedWith ?: candidates.firstOrNull { it.id == selectedId }
     val survivor = if (keepThis) entity else other
     val loser = if (keepThis) other else entity
     val fillable = if (survivor != null && loser != null) {
@@ -100,41 +105,43 @@ fun EntityMergeDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = {
-                        query = it
-                        onSearch(it)
-                    },
-                    label = { Text(stringResource(R.string.shared_entities_merge_search)) },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth().testTag("entity-merge-search")
-                )
-                Text(
-                    stringResource(R.string.shared_entities_merge_into),
-                    style = MaterialTheme.typography.labelLarge
-                )
-                if (!loading && candidates.isEmpty()) {
-                    Text(
-                        stringResource(R.string.shared_entities_merge_no_candidates),
-                        style = MaterialTheme.typography.bodyMedium
+                if (pairedWith == null) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = {
+                            query = it
+                            onSearch(it)
+                        },
+                        label = { Text(stringResource(R.string.shared_entities_merge_search)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().testTag("entity-merge-search")
                     )
-                }
-                LazyColumn(Modifier.heightIn(max = 200.dp).testTag("entity-merge-candidates")) {
-                    items(candidates, key = { it.id }) { candidate ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth()
-                                .selectable(
-                                    selected = candidate.id == selectedId,
-                                    role = Role.RadioButton,
-                                    onClick = { selectedId = candidate.id }
-                                )
-                                .padding(vertical = 4.dp)
-                                .testTag("entity-merge-candidate-${candidate.id}"),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(selected = candidate.id == selectedId, onClick = null)
-                            Text(candidate.name, modifier = Modifier.padding(start = 8.dp))
+                    Text(
+                        stringResource(R.string.shared_entities_merge_into),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                    if (!loading && candidates.isEmpty()) {
+                        Text(
+                            stringResource(R.string.shared_entities_merge_no_candidates),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    LazyColumn(Modifier.heightIn(max = 200.dp).testTag("entity-merge-candidates")) {
+                        items(candidates, key = { it.id }) { candidate ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth()
+                                    .selectable(
+                                        selected = candidate.id == selectedId,
+                                        role = Role.RadioButton,
+                                        onClick = { selectedId = candidate.id }
+                                    )
+                                    .padding(vertical = 4.dp)
+                                    .testTag("entity-merge-candidate-${candidate.id}"),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                RadioButton(selected = candidate.id == selectedId, onClick = null)
+                                Text(candidate.name, modifier = Modifier.padding(start = 8.dp))
+                            }
                         }
                     }
                 }

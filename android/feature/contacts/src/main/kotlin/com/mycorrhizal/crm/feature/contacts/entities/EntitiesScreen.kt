@@ -14,6 +14,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Contacts
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -141,8 +142,26 @@ fun EntitiesScreen(
                 onRetry = viewModel::refresh,
                 onAdd = { showCreate = true },
                 onFindDuplicates = viewModel::findDuplicates,
-                onDismissSuggestion = viewModel::dismissSuggestion
+                onDismissSuggestion = viewModel::dismissSuggestion,
+                onMergeSuggestion = viewModel::openMerge,
+                onConfirmMerge = viewModel::confirmMerge,
+                onDismissMerge = viewModel::dismissMerge
             )
+        }
+    }
+
+    // The merge is announced once; Restore lives on the merged-away entity's page (it opens the
+    // same banner as a merge started there).
+    val merged = state.mergeDone
+    if (merged != null) {
+        val message = stringResource(
+            R.string.shared_entities_merge_summary_line,
+            merged.loser.name,
+            merged.survivor.name
+        )
+        LaunchedEffect(merged) {
+            snackbar.showSnackbar(message)
+            viewModel.onMergeDoneShown()
         }
     }
 
@@ -176,7 +195,10 @@ internal fun EntitiesContent(
     onRetry: () -> Unit,
     onAdd: () -> Unit,
     onFindDuplicates: () -> Unit = {},
-    onDismissSuggestion: (EntitySuggestionPair) -> Unit = {}
+    onDismissSuggestion: (EntitySuggestionPair) -> Unit = {},
+    onMergeSuggestion: (EntitySuggestionPair) -> Unit = {},
+    onConfirmMerge: (keepThis: Boolean, fill: Set<String>) -> Unit = { _, _ -> },
+    onDismissMerge: () -> Unit = {}
 ) {
     Column(Modifier.fillMaxSize()) {
         Text(
@@ -245,7 +267,8 @@ internal fun EntitiesContent(
                             state = state,
                             onFind = onFindDuplicates,
                             onOpen = onOpenEntity,
-                            onDismiss = onDismissSuggestion
+                            onDismiss = onDismissSuggestion,
+                            onMerge = onMergeSuggestion
                         )
                     }
                     items(state.entities, key = { it.id }) { entity ->
@@ -263,19 +286,39 @@ internal fun EntitiesContent(
             }
         }
     }
+    val mergeA = state.mergeA
+    val mergeB = state.mergeB
+    if (state.mergePair != null && mergeA != null && mergeB != null) {
+        // Opened on the pair's second entity with the first as its partner: unswapped, `b` is
+        // merged away into `a`, as on web. The dialog stays open until the call lands.
+        EntityMergeDialog(
+            entity = mergeB,
+            pairedWith = mergeA,
+            candidates = emptyList(),
+            loading = false,
+            merging = state.isMerging,
+            error = state.mergeError,
+            onSearch = {},
+            onConfirm = { _, keepThis, fill -> onConfirmMerge(keepThis, fill) },
+            onDismiss = onDismissMerge
+        )
+    }
 }
 
 /**
  * #2499 (web #2301): "Possible duplicates", loaded on demand. Nothing merges or hides unless the
- * user presses a button; merging itself is the existing Merge action on an entity's page, which
- * either side of a pair opens.
+ * user presses a button. #2520 reverses #2499's choice to leave merging to the entity page: each
+ * pair has a Merge button that opens the same [EntityMergeDialog] as the entity page's Merge
+ * action, pre-filled with the pair (survivor `a`, loser `b`, swappable); either side's page still
+ * offers its own Merge too.
  */
 @Composable
 private fun SuggestionsCard(
     state: EntitiesUiState,
     onFind: () -> Unit,
     onOpen: (String) -> Unit,
-    onDismiss: (EntitySuggestionPair) -> Unit
+    onDismiss: (EntitySuggestionPair) -> Unit,
+    onMerge: (EntitySuggestionPair) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
@@ -312,12 +355,29 @@ private fun SuggestionsCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            // A pair that could not be loaded for the merge dialog; with the dialog open its
+            // own error line shows a failed merge instead.
+            if (state.mergePair == null) {
+                state.mergeError?.let { error ->
+                    Text(
+                        error.localizedMessage(),
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.testTag("suggestion-merge-error")
+                    )
+                }
+            }
             val pairs = state.suggestions
             if (pairs != null && pairs.isEmpty()) {
                 Text(stringResource(R.string.shared_entities_suggestions_none))
             }
             pairs?.forEach { pair ->
-                SuggestionRow(pair = pair, onOpen = onOpen, onDismiss = { onDismiss(pair) })
+                SuggestionRow(
+                    pair = pair,
+                    onOpen = onOpen,
+                    onMerge = { onMerge(pair) },
+                    onDismiss = { onDismiss(pair) }
+                )
             }
         }
     }
@@ -327,6 +387,7 @@ private fun SuggestionsCard(
 private fun SuggestionRow(
     pair: EntitySuggestionPair,
     onOpen: (String) -> Unit,
+    onMerge: () -> Unit,
     onDismiss: () -> Unit
 ) {
     Column(Modifier.fillMaxWidth()) {
@@ -363,8 +424,16 @@ private fun SuggestionRow(
                 )
             }
         }
-        TextButton(onClick = onDismiss) {
-            Text(stringResource(R.string.shared_entities_suggestions_dismiss))
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Button(
+                onClick = onMerge,
+                modifier = Modifier.testTag("suggestion-merge-${pair.a.id}")
+            ) {
+                Text(stringResource(R.string.shared_entities_merge_confirm))
+            }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.shared_entities_suggestions_dismiss))
+            }
         }
     }
 }

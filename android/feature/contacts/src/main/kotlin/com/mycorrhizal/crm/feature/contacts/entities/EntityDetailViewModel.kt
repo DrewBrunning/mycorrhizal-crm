@@ -10,7 +10,6 @@ import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityContactLink
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityKind
-import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldValueInput
@@ -338,11 +337,7 @@ class EntityDetailViewModel @Inject constructor(
         val survivor = if (keepThis) entity else other
         viewModelScope.launch {
             _uiState.update { it.copy(isMerging = true, mergeError = null) }
-            val resolutions = fill.associateWith { "loser" }.ifEmpty { null }
-            repository.merge(
-                loser.id,
-                EntityMergeInput(into = survivor.id, resolutions = resolutions)
-            )
+            repository.merge(loser.id, entityMergeInput(survivor.id, fill))
                 .foldApiError(
                     onSuccess = { response ->
                         _uiState.update {

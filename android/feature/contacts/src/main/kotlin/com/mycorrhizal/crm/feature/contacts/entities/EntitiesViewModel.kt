@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntitySuggestionPair
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -36,7 +37,16 @@ data class EntitiesUiState(
     /** #2499: null until "Find duplicates" is pressed; then the pairs of [kind] still shown. */
     val suggestions: List<EntitySuggestionPair>? = null,
     val suggestionsLoading: Boolean = false,
-    val suggestionsError: ApiError? = null
+    val suggestionsError: ApiError? = null,
+    /** #2520: the pair whose Merge dialog is open (survivor `a`, loser `b` unless swapped). */
+    val mergePair: EntitySuggestionPair? = null,
+    /** Full records of [mergePair] (the dialog needs the cores to offer fillable fields). */
+    val mergeA: Entity? = null,
+    val mergeB: Entity? = null,
+    val isMerging: Boolean = false,
+    val mergeError: ApiError? = null,
+    /** The last merge from this list, until the screen has announced it. */
+    val mergeDone: MergeOutcome? = null
 )
 
 @HiltViewModel
@@ -215,6 +225,79 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
                 onError = { error -> _uiState.update { it.copy(suggestionsError = error) } }
             )
         }
+    }
+
+    /**
+     * Merge button on a suggestion: load both full records (the dialog offers fillable fields
+     * from their cores), then show the existing merge dialog. Nothing merges until it confirms.
+     */
+    fun openMerge(pair: EntitySuggestionPair) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(mergeError = null) }
+            val a = repository.get(pair.a.id)
+            val b = repository.get(pair.b.id)
+            val failure = a.exceptionOrNull() ?: b.exceptionOrNull()
+            if (failure != null) {
+                _uiState.update { it.copy(mergeError = failure.toApiError()) }
+            } else {
+                _uiState.update {
+                    it.copy(mergePair = pair, mergeA = a.getOrNull(), mergeB = b.getOrNull())
+                }
+            }
+        }
+    }
+
+    /**
+     * Confirm the open merge. The dialog is opened on the pair's second entity with the first as
+     * its partner, so [keepThis] false merges the second (`b`) into the first (`a`), as web does;
+     * true swaps the roles. Success drops every pair naming the merged-away entity; failure keeps
+     * the pair and the dialog so the error shows next to the controls.
+     */
+    fun confirmMerge(keepThis: Boolean, fill: Set<String>) {
+        val state = _uiState.value
+        val a = state.mergeA ?: return
+        val b = state.mergeB ?: return
+        if (state.isMerging) return
+        val loser = if (keepThis) a else b
+        val survivor = if (keepThis) b else a
+        viewModelScope.launch {
+            _uiState.update { it.copy(isMerging = true, mergeError = null) }
+            repository.merge(loser.id, entityMergeInput(survivor.id, fill)).foldApiError(
+                onSuccess = { response ->
+                    _uiState.update {
+                        it.copy(
+                            isMerging = false,
+                            suggestions = it.suggestions?.filterNot { p ->
+                                p.a.id == loser.id || p.b.id == loser.id
+                            },
+                            mergePair = null,
+                            mergeA = null,
+                            mergeB = null,
+                            mergeDone = MergeOutcome(
+                                loser = loser,
+                                survivor = response.survivor ?: survivor,
+                                thisWasMergedAway = !keepThis,
+                                response = response
+                            )
+                        )
+                    }
+                    refresh()
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isMerging = false, mergeError = error) }
+                }
+            )
+        }
+    }
+
+    fun dismissMerge() {
+        _uiState.update {
+            it.copy(mergePair = null, mergeA = null, mergeB = null, mergeError = null)
+        }
+    }
+
+    fun onMergeDoneShown() {
+        _uiState.update { it.copy(mergeDone = null) }
     }
 
     fun onFormDismissed() {

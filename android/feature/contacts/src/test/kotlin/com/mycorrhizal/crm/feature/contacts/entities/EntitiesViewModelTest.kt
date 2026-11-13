@@ -5,6 +5,8 @@ import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityInput
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntityListResponse
+import com.mycorrhizal.crm.model.network.EntityMergeInput
+import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntitySuggestionEntity
 import com.mycorrhizal.crm.model.network.EntitySuggestionPair
 import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
@@ -291,5 +293,196 @@ class EntitiesViewModelTest {
             advanceUntilIdle()
 
             assertNull(vm.uiState.value.suggestions)
+        }
+
+    // --- merge from a suggestion (#2520) -----------------------------------------------------
+
+    private fun full(name: String, core: Map<String, Any?> = emptyMap()) =
+        Entity(id = "id-$name", name = name, kind = EntityKind.ORGANISATION, core = core)
+
+    private fun mergeFixture(vararg pairs: EntitySuggestionPair): EntitiesViewModel {
+        coEvery { repository.list(any(), any(), any(), any()) } returns page("Acme", "ACME")
+        coEvery { repository.suggestions(any()) } returns suggestionsOf(*pairs)
+        coEvery { repository.get("id-Acme") } returns Result.success(full("Acme"))
+        coEvery { repository.get("id-ACME") } returns
+            Result.success(full("ACME", mapOf("notes" to "n")))
+        return EntitiesViewModel(repository)
+    }
+
+    private fun mergeOk(survivor: String) = Result.success(
+        EntityMergeResponse(survivor = full(survivor), loserId = "x", linksRepointed = 2)
+    )
+
+    @Test
+    fun `opening a merge loads both full records of the pair`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val acme = pair("Acme", "ACME")
+            val vm = mergeFixture(acme)
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+
+            vm.openMerge(acme)
+            advanceUntilIdle()
+
+            assertEquals(acme, vm.uiState.value.mergePair)
+            assertEquals("id-Acme", vm.uiState.value.mergeA?.id)
+            assertEquals("id-ACME", vm.uiState.value.mergeB?.id)
+            assertEquals(mapOf("notes" to "n"), vm.uiState.value.mergeB?.core)
+            coVerify(exactly = 0) { repository.merge(any(), any()) }
+        }
+
+    @Test
+    fun `a pair that cannot be loaded opens no dialog and reports why`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val acme = pair("Acme", "ACME")
+            val vm = mergeFixture(acme)
+            coEvery { repository.get("id-ACME") } returns
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+
+            vm.openMerge(acme)
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.mergePair)
+            assertNull(vm.uiState.value.mergeB)
+            assertNotNull(vm.uiState.value.mergeError)
+            assertEquals(listOf(acme), vm.uiState.value.suggestions)
+        }
+
+    @Test
+    fun `confirming merges the second into the first, drops the pair and re-reads the list`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val acme = pair("Acme", "ACME")
+            val other = pair("Cabin", "Cabin2")
+            val withLoser = pair("Acme2", "ACME")
+            val vm = mergeFixture(acme, other, withLoser)
+            coEvery { repository.merge("id-ACME", any()) } returns mergeOk("Acme")
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+            vm.openMerge(acme)
+            advanceUntilIdle()
+
+            vm.confirmMerge(keepThis = false, fill = emptySet())
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) {
+                repository.merge("id-ACME", EntityMergeInput(into = "id-Acme", resolutions = null))
+            }
+            // The merged-away entity is gone, so every pair that named it goes too.
+            assertEquals(listOf(other), vm.uiState.value.suggestions)
+            assertNull(vm.uiState.value.mergePair)
+            assertNull(vm.uiState.value.mergeError)
+            assertFalse(vm.uiState.value.isMerging)
+            assertEquals("ACME", vm.uiState.value.mergeDone?.loser?.name)
+            assertEquals("Acme", vm.uiState.value.mergeDone?.survivor?.name)
+            coVerify(atLeast = 2) { repository.list(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun `swapping keeps the second and only the ticked fields are sent`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val acme = pair("Acme", "ACME")
+            val vm = mergeFixture(acme)
+            coEvery { repository.merge("id-Acme", any()) } returns mergeOk("ACME")
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+            vm.openMerge(acme)
+            advanceUntilIdle()
+
+            vm.confirmMerge(keepThis = true, fill = setOf("notes"))
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) {
+                repository.merge(
+                    "id-Acme",
+                    EntityMergeInput(into = "id-ACME", resolutions = mapOf("notes" to "loser"))
+                )
+            }
+            assertEquals("Acme", vm.uiState.value.mergeDone?.loser?.name)
+            assertEquals(emptyList<EntitySuggestionPair>(), vm.uiState.value.suggestions)
+        }
+
+    @Test
+    fun `a failed merge keeps the pair and the dialog open with the error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val acme = pair("Acme", "ACME")
+            val vm = mergeFixture(acme)
+            coEvery { repository.merge(any(), any()) } returns
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+            vm.openMerge(acme)
+            advanceUntilIdle()
+
+            vm.confirmMerge(keepThis = false, fill = emptySet())
+            advanceUntilIdle()
+
+            assertEquals(listOf(acme), vm.uiState.value.suggestions)
+            assertEquals(acme, vm.uiState.value.mergePair)
+            assertNotNull(vm.uiState.value.mergeError)
+            assertNull(vm.uiState.value.mergeDone)
+            assertFalse(vm.uiState.value.isMerging)
+        }
+
+    @Test
+    fun `a second confirm while merging is ignored`() = runTest(mainDispatcherRule.testDispatcher) {
+        val acme = pair("Acme", "ACME")
+        val vm = mergeFixture(acme)
+        val slow = CompletableDeferred<Result<EntityMergeResponse>>()
+        coEvery { repository.merge(any(), any()) } coAnswers { slow.await() }
+        advanceUntilIdle()
+        vm.findDuplicates()
+        advanceUntilIdle()
+        vm.openMerge(acme)
+        advanceUntilIdle()
+
+        vm.confirmMerge(false, emptySet())
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.isMerging)
+        vm.confirmMerge(false, emptySet())
+        advanceUntilIdle()
+        slow.complete(mergeOk("Acme"))
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.merge(any(), any()) }
+    }
+
+    @Test
+    fun `dismissing the dialog merges nothing and clears the error, and the notice is one-shot`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val acme = pair("Acme", "ACME")
+            val vm = mergeFixture(acme)
+            coEvery { repository.merge(any(), any()) } returnsMany listOf(
+                Result.failure(ApiError.Network(java.io.IOException("offline"))),
+                mergeOk("Acme")
+            )
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+            vm.openMerge(acme)
+            advanceUntilIdle()
+            vm.confirmMerge(false, emptySet())
+            advanceUntilIdle()
+            assertNotNull(vm.uiState.value.mergeError)
+
+            vm.dismissMerge()
+            assertNull(vm.uiState.value.mergePair)
+            assertNull(vm.uiState.value.mergeA)
+            assertNull(vm.uiState.value.mergeError)
+            assertEquals(listOf(acme), vm.uiState.value.suggestions)
+
+            vm.openMerge(acme)
+            advanceUntilIdle()
+            vm.confirmMerge(false, emptySet())
+            advanceUntilIdle()
+            assertNotNull(vm.uiState.value.mergeDone)
+            vm.onMergeDoneShown()
+            assertNull(vm.uiState.value.mergeDone)
         }
 }
