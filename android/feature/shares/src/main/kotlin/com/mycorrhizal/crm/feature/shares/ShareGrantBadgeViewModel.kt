@@ -5,9 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 /**
@@ -16,18 +19,28 @@ import kotlinx.coroutines.launch
  * showing a stale number.
  */
 @HiltViewModel
-class ShareGrantBadgeViewModel @Inject constructor(private val repository: ShareGrantRepository) :
-    ViewModel() {
+class ShareGrantBadgeViewModel @Inject constructor(
+    private val repository: ShareGrantRepository,
+    private val shareGrantChanges: ShareGrantChanges = ShareGrantChanges()
+) : ViewModel() {
 
     private val _pendingCount = MutableStateFlow(0)
     val pendingCount: StateFlow<Int> = _pendingCount.asStateFlow()
 
+    private var refreshJob: Job? = null
+
     init {
         refresh()
+        // A grant changed on a share screen (issue #2557): re-read without waiting for the
+        // drawer to reopen or the route to change.
+        shareGrantChanges.changes.onEach { refresh() }.launchIn(viewModelScope)
     }
 
     fun refresh() {
-        viewModelScope.launch {
+        // A newer read supersedes an older one still in flight, so a slow response cannot
+        // overwrite the fresher count.
+        refreshJob?.cancel()
+        refreshJob = viewModelScope.launch {
             _pendingCount.value = repository.notifications().getOrNull()?.pendingCount ?: 0
         }
     }

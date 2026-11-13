@@ -51,4 +51,23 @@ class ShareGrantBadgeViewModelTest {
         advanceUntilIdle()
         assertEquals(0, vm.pendingCount.value)
     }
+
+    @Test
+    fun `a share-grant change re-reads the count without the drawer reopening`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.notifications() } returnsMany listOf(
+            Result.success(ShareGrantNotifications(pendingCount = 3)),
+            Result.success(ShareGrantNotifications(pendingCount = 2))
+        )
+        val changes = ShareGrantChanges()
+        val vm = ShareGrantBadgeViewModel(repository, changes)
+        advanceUntilIdle()
+        assertEquals(3, vm.pendingCount.value)
+
+        changes.notifyChanged()
+        advanceUntilIdle()
+
+        assertEquals(2, vm.pendingCount.value)
+    }
 }
