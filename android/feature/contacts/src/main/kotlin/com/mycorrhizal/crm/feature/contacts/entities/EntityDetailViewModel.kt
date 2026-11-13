@@ -225,6 +225,9 @@ class EntityDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isDeleting = true, error = null, adoptFailedCount = 0) }
             if (adoptAll && EntityKind.projects(entity.kind)) {
+                // The adopt targets come from the people list; deleting on a list that never
+                // loaded would silently drop the value the user asked to keep (#2552).
+                if (!ensurePeopleLoaded(entity)) return@launch
                 val today = todayProvider()
                 val targets = _uiState.value.people.filter {
                     it.projectsToday(today.year, today.monthValue, today.dayOfMonth)
@@ -259,6 +262,29 @@ class EntityDetailViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    /**
+     * True when [EntityDetailUiState.people] can be trusted as the full adopt target list. After a
+     * failed load, or an empty list although the entity says it projects somewhere, the list is
+     * re-read first; if that fails too the delete is abandoned with the error showing.
+     */
+    private suspend fun ensurePeopleLoaded(entity: Entity): Boolean {
+        val state = _uiState.value
+        val unprojected = state.people.isEmpty() && (entity.projectionCount ?: 0) > 0
+        val stale = state.peopleFailed || unprojected
+        if (!stale) return true
+        var loaded = false
+        repository.contacts(entity.id).foldApiError(
+            onSuccess = { people ->
+                loaded = true
+                _uiState.update { it.copy(people = people, peopleFailed = false) }
+            },
+            onError = { error ->
+                _uiState.update { it.copy(isDeleting = false, peopleFailed = true, error = error) }
+            }
+        )
+        return loaded
     }
 
     fun restore() {
