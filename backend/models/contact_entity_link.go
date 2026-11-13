@@ -68,6 +68,9 @@ type ContactEntityLink struct {
 	Revision int64  `gorm:"column:revision;<-:create;not null;default:1" json:"revision"`
 
 	revisionStampedOnCreate bool
+	// priorSensitivity is the stored sensitivity captured by BeforeSave for the
+	// share-grant re-confirmation check in AfterSave (issue #2564).
+	priorSensitivity string
 }
 
 // BeforeCreate generates the UUID.
@@ -90,7 +93,7 @@ func (l *ContactEntityLink) BeforeSave(tx *gorm.DB) error {
 	if l.Period != nil && l.Period.IsEmpty() {
 		l.Period = nil
 	}
-	return nil
+	return l.captureSensitivity(tx)
 }
 
 // AfterCreate stamps revision 1 and the ETag (ADR 0006).
@@ -105,6 +108,10 @@ func (l *ContactEntityLink) AfterCreate(tx *gorm.DB) error {
 func (l *ContactEntityLink) AfterSave(tx *gorm.DB) error {
 	if l.ID == "" {
 		return nil
+	}
+	// Issue #2564: withhold the projected section on a sensitivity raise.
+	if err := l.markSensitivityReclassification(tx); err != nil {
+		return err
 	}
 	if l.revisionStampedOnCreate {
 		l.revisionStampedOnCreate = false
