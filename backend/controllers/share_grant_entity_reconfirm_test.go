@@ -141,3 +141,33 @@ func TestReconfirm_ResavingAnAlreadyPrivateLinkOrEntityDoesNotRemark(t *testing.
 	require.NoError(t, f.e.db.Model(&f.placeL).Update("sensitivity", "secret").Error) // private -> secret
 	assert.Empty(t, f.reconfirmSections(), "an already-non-normal item is not re-marked")
 }
+
+// A pet never projects, so raising a pet entity or link marks nothing.
+func TestReconfirm_PetEntityAndLinkNeverMark(t *testing.T) {
+	f := newEntityGrantFixture(t)
+	pet := models.Entity{UserID: f.e.A.ID, Kind: models.EntityKindPet, Name: "Rex"}
+	require.NoError(t, pet.SetCore(&models.PetCore{Species: "dog"}))
+	require.NoError(t, f.e.db.Create(&pet).Error)
+	l := models.ContactEntityLink{UserID: f.e.A.ID, ContactVCardUID: f.contact.VCardUID, EntityID: pet.ID, Kind: pet.Kind, Role: "owner", Sensitivity: "normal"}
+	require.NoError(t, f.e.db.Create(&l).Error)
+
+	require.NoError(t, f.e.db.Model(&pet).Update("sensitivity", "secret").Error)
+	require.NoError(t, f.e.db.Model(&l).Update("sensitivity", "secret").Error)
+	assert.Empty(t, f.reconfirmSections())
+}
+
+// A partial model (only the identifying fields set, as a bulk-by-id update
+// would) still resolves the kind and contact from the stored row.
+func TestReconfirm_PartialLinkAndEntityModelsResolveFromTheRow(t *testing.T) {
+	f := newEntityGrantFixture(t)
+	// No ContactVCardUID: the hook must read it from the row. Kind and Role stay
+	// set because the role vocabulary check needs them.
+	partialLink := models.ContactEntityLink{ID: f.placeL.ID, UserID: f.e.A.ID, Kind: f.placeL.Kind, Role: f.placeL.Role, Revision: f.placeL.Revision}
+	require.NoError(t, f.e.db.Model(&partialLink).Update("sensitivity", "secret").Error)
+	assert.Equal(t, []string{"addresses"}, f.reconfirmSections(), "contact resolved from the stored link")
+
+	require.Equal(t, 200, f.e.do(f.e.A, http.MethodPost, "/share-grants/"+f.grantID+"/reconfirm", nil).Code)
+	partialEntity := models.Entity{ID: f.org.ID, UserID: f.e.A.ID, Revision: f.org.Revision}
+	require.NoError(t, f.e.db.Model(&partialEntity).Update("sensitivity", "private").Error)
+	assert.Equal(t, []string{"organizations"}, f.reconfirmSections(), "kind resolved from the stored entity")
+}
