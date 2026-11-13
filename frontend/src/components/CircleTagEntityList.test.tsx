@@ -277,5 +277,6 @@ test('other rename failures do not render an inline duplicate message and stay i
 
   await waitFor(() => expect(onRename).toHaveBeenCalledWith('1', 'Work'));
   expect(screen.queryByText('A circle with this name already exists')).not.toBeInTheDocument();
+  expect(screen.queryByText('boom')).not.toBeInTheDocument();
   expect(screen.getByDisplayValue('Work')).toBeInTheDocument();
 });

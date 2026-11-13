@@ -91,6 +91,8 @@ func TestBackend_DatabaseFailuresSurface(t *testing.T) {
 		dbtest.HideTable(t, db, "carddav_sync_scopes")
 		_, err := b.PutAddressObject(ctx, "/carddav/addressbooks/u/contacts/scope-uid.vcf", simpleCard("scope-uid", "Scope"), nil)
 		require.Error(t, err, "an unreadable scope must not fall through to an unscoped write")
+		assert.NotContains(t, err.Error(), "Forbidden", "a database fault is not reported as an out-of-scope 403")
+		assert.Contains(t, err.Error(), "carddav_sync_scopes")
 	})
 }
 
