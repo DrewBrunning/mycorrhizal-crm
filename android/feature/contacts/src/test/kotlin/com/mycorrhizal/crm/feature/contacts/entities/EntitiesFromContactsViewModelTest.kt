@@ -178,6 +178,61 @@ class EntitiesFromContactsViewModelTest {
         }
 
     @Test
+    fun `retry after a failed load more keeps the ticks and edited names and fetches only that page`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.valueGroups(EntityKind.ORGANISATION, null) } returns
+                groups(acme, next = "c2")
+            coEvery { repository.valueGroups(EntityKind.ORGANISATION, "c2") } returnsMany listOf(
+                Result.failure(ApiError.Network(java.io.IOException("offline"))),
+                groups(globex)
+            )
+            val vm = EntitiesFromContactsViewModel(repository)
+            advanceUntilIdle()
+            vm.setSelected("k-acme", true)
+            vm.setName("k-acme", "Acme Inc")
+            vm.setRole("k-acme", "owner")
+            vm.setPrimary("k-acme", true)
+            vm.setContactIncluded("k-acme", 8, false)
+            vm.loadMore()
+            advanceUntilIdle()
+            assertNotNull(vm.uiState.value.loadError)
+            assertEquals(listOf("k-acme"), vm.uiState.value.groups.map { it.key })
+
+            vm.retry()
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertNull(state.loadError)
+            assertEquals(listOf("k-acme", "k-globex"), state.groups.map { it.key })
+            val edit = state.edit(acme)
+            assertTrue(edit.selected)
+            assertEquals("Acme Inc", edit.name)
+            assertEquals("owner", edit.role)
+            assertTrue(edit.setPrimary)
+            assertEquals(setOf(8), edit.excluded)
+            coVerify(exactly = 1) { repository.valueGroups(EntityKind.ORGANISATION, null) }
+            coVerify(exactly = 2) { repository.valueGroups(EntityKind.ORGANISATION, "c2") }
+        }
+
+    @Test
+    fun `retry after a failed first load rescans from the start`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.valueGroups(EntityKind.ORGANISATION, null) } returnsMany listOf(
+                Result.failure(ApiError.Network(java.io.IOException("offline"))),
+                groups(acme)
+            )
+            val vm = EntitiesFromContactsViewModel(repository)
+            advanceUntilIdle()
+            assertNotNull(vm.uiState.value.loadError)
+
+            vm.retry()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.loadError)
+            assertEquals(listOf("k-acme"), vm.uiState.value.groups.map { it.key })
+        }
+
+    @Test
     fun `per-group choices are tracked and only included contacts count`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = vm()

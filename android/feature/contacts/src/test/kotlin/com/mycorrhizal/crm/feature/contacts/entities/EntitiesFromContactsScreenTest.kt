@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -13,14 +14,19 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.model.network.EntityFromContactsSkipReason
 import com.mycorrhizal.crm.model.network.EntityKind
+import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
 import com.mycorrhizal.crm.model.network.EntityValueGroup
 import com.mycorrhizal.crm.model.network.EntityValueGroupContact
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
+import io.mockk.coEvery
+import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -316,5 +322,43 @@ class EntitiesFromContactsScreenTest {
         val calls = set(loaded(acme).copy(nextCursor = "c2"))
         composeTestRule.onNodeWithTag("from-contacts-load-more").performScrollTo()
         assertEquals(true, calls.loadedMore >= 1)
+    }
+
+    @Test
+    fun `Retry after a failed load more keeps the ticked group and shows the next page`() {
+        val repository = mockk<EntityRepository>()
+        fun page(vararg g: EntityValueGroup, next: String? = null) = Result.success(
+            EntitySuggestionsResponse(
+                mode = "contact_values",
+                groups = g.toList(),
+                nextCursor = next
+            )
+        )
+        coEvery { repository.valueGroups(EntityKind.ORGANISATION, null) } returns
+            page(acme, next = "c2")
+        coEvery { repository.valueGroups(EntityKind.ORGANISATION, "c2") } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            page(globex)
+        )
+        val viewModel = EntitiesFromContactsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme { EntitiesFromContactsScreen(onBack = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("from-contacts-include-k-acme").performClick()
+        composeTestRule.onNodeWithTag("from-contacts-include-k-acme").assertIsOn()
+        composeTestRule.onNodeWithTag("from-contacts-list")
+            .performScrollToNode(hasTestTag("from-contacts-load-error"))
+        composeTestRule.onNodeWithTag("from-contacts-load-error").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("from-contacts-list")
+            .performScrollToNode(hasTestTag("from-contacts-group-k-globex"))
+        composeTestRule.onNodeWithTag("from-contacts-group-k-globex").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("from-contacts-list")
+            .performScrollToNode(hasTestTag("from-contacts-include-k-acme"))
+        composeTestRule.onNodeWithTag("from-contacts-include-k-acme").assertIsOn()
     }
 }
