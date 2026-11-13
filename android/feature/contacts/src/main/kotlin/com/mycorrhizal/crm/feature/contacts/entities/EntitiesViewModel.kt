@@ -133,8 +133,10 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
         val cursor = state.nextCursor ?: return
         if (state.isLoading || state.isLoadingMore) return
         val generationAtStart = generation
+        // Set before launching so a Retry tap and the load-more row's own effect cannot both
+        // pass the guard above; clearing the error is what lets a retried failure show again.
+        _uiState.update { it.copy(isLoadingMore = true, error = null) }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
             repository.list(state.kind, state.query.trim().ifEmpty { null }, cursor, PAGE_SIZE)
                 .foldApiError(
                     onSuccess = { page ->
