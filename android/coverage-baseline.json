@@ -305,7 +305,7 @@
     "com/mycorrhizal/crm/feature/contacts/entities/Comparisons.kt": 100,
     "com/mycorrhizal/crm/feature/contacts/entities/ContactEntityLinkDialogs.kt": 24.01,
     "com/mycorrhizal/crm/feature/contacts/entities/ContactEntityLinksScreen.kt": 61.46,
-    "com/mycorrhizal/crm/feature/contacts/entities/ContactEntityLinksViewModel.kt": 83.5,
+    "com/mycorrhizal/crm/feature/contacts/entities/ContactEntityLinksViewModel.kt": 84.43,
     "com/mycorrhizal/crm/feature/contacts/entities/EntitiesFromContactsActions.kt": 71.92,
     "com/mycorrhizal/crm/feature/contacts/entities/EntitiesFromContactsScreen.kt": 79.68,
     "com/mycorrhizal/crm/feature/contacts/entities/EntitiesFromContactsViewModel.kt": 93.83,
