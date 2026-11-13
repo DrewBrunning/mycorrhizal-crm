@@ -58,6 +58,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Deleting a contact ends shares of its notes** ([#2562](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2562)): a standing share of one of the contact's notes is now revoked when you delete the contact, so restoring it from Trash no longer gives the recipient access again.
 - **Custom fields show on the web contact page** ([#2447](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2447)): custom fields defined for contacts now load and display on a contact page; they were not being fetched, so the page showed none.
 - **Number keyboard for dotted and hyphenated dates on Android** ([#2378](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2378)): date fields now open the number keyboard when your date format uses dots or hyphens, such as 10.08.2026. Formats with slashes keep the text keyboard.
 - **Dark-mode scrollbars** ([#2363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2363)): in dark mode the navigation sidebar and page scrollbars no longer show a bright white track. Light mode is unchanged.
