@@ -175,7 +175,10 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
         // A failed fetch is surfaced, not read as "you have no custom fields"; a definition the
         // server already matched stays usable so the export round-trip is not lost with it.
         val fetchError = fetched.exceptionOrNull()?.toApiError()
+        // Only contact definitions can receive an X- property (the web importer and the contact
+        // page filter the same way); a missing target is a legacy contact definition (#2554).
         val known = fetched.getOrNull()?.definitions.orEmpty()
+            .filter { it.target.isNullOrBlank() || it.target == "contact" }
         val matched = candidates.mapNotNull { c ->
             c.matchedDefinitionId?.takeIf { it.isNotEmpty() }?.let { id ->
                 FieldDefinition(id = id, label = c.matchedDefinitionLabel)
