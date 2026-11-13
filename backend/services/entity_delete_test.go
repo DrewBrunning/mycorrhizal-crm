@@ -544,3 +544,24 @@ func TestRestoreContact_BumpsLinkRevisionOnReviveAndDemote(t *testing.T) {
 	require.NoError(t, f.db.First(&demoted, "id = ?", primary.ID).Error)
 	assert.False(t, demoted.IsPrimary)
 }
+
+// The dismissed-pair cascade matches the deleted entity on EITHER side of the
+// ordered pair (issue #2568): the middle entity of three is id_high in one pair
+// and id_low in the other, so a match narrowed to one column leaves a row.
+func TestDeleteEntity_DismissedPairsRemovedOnBothSides(t *testing.T) {
+	f := newEntityFixture(t)
+	third := models.Entity{UserID: f.userID, Kind: models.EntityKindOrganisation, Name: "Gamma"}
+	require.NoError(t, f.db.Create(&third).Error)
+	ids := []string{f.org.ID, f.other.ID, third.ID}
+	sort.Strings(ids)
+	lo, mid, hi := ids[0], ids[1], ids[2]
+	require.NoError(t, f.db.Create(&models.DismissedEntityPair{UserID: f.userID, IDLow: lo, IDHigh: mid}).Error) // mid is id_high
+	require.NoError(t, f.db.Create(&models.DismissedEntityPair{UserID: f.userID, IDLow: mid, IDHigh: hi}).Error) // mid is id_low
+	require.NoError(t, f.db.Create(&models.DismissedEntityPair{UserID: f.userID, IDLow: lo, IDHigh: hi}).Error)  // unrelated, kept
+
+	require.NoError(t, DeleteEntity(f.db, f.userID, mid, entityNow))
+
+	assert.Zero(t, count(t, f.db, true, &models.DismissedEntityPair{}, "id_high = ?", mid), "pair where the deleted entity is id_high is removed")
+	assert.Zero(t, count(t, f.db, true, &models.DismissedEntityPair{}, "id_low = ?", mid), "pair where the deleted entity is id_low is removed")
+	assert.EqualValues(t, 1, count(t, f.db, true, &models.DismissedEntityPair{}, "user_id = ?", f.userID), "a pair not naming the entity survives")
+}

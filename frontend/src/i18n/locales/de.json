@@ -4113,6 +4113,7 @@
       "household_suggestion_stale": "Die vorgeschlagenen Mitglieder teilen keine Adresse mehr — starte den Vorschlag-Scan erneut",
       "household_type_invalid": "type muss family_unit, roommates oder other sein",
       "import_disk_space_low": "nicht genügend Speicherplatz zum Importieren von {{total}} Kontakten: {{reason}}",
+      "import_field_mapping_target_invalid": "Ein importierter Wert kann nur in ein benutzerdefiniertes Feld für Kontakte übernommen werden",
       "import_field_mappings_invalid": "{{reason}}",
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",

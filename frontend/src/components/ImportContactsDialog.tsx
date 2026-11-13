@@ -35,7 +35,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FIELD_TYPES } from '../api/fieldDefinitions';
 import {
@@ -94,7 +94,15 @@ export default function ImportContactsDialog({
 }: ImportContactsDialogProps) {
   const { t } = useTranslation();
   const { showSuccess } = useSnackbar();
-  const { definitions: fieldDefinitions, refresh: refreshFieldDefinitions } = useFieldDefinitions();
+  const { definitions: allFieldDefinitions, refresh: refreshFieldDefinitions } =
+    useFieldDefinitions();
+  // An imported value is keyed to the contact, so only definitions that apply
+  // to contacts can receive one; organisation, place and pet fields cannot
+  // (issue #2567; the server rejects them too).
+  const fieldDefinitions = useMemo(
+    () => allFieldDefinitions.filter((def) => !def.target || def.target === 'contact'),
+    [allFieldDefinitions],
+  );
 
   // Step state
   const [activeStep, setActiveStep] = useState(0);

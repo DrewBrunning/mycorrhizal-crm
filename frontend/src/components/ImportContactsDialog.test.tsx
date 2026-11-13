@@ -252,7 +252,7 @@ test('VCF upload skips the mapping step and goes straight to preview', async () 
 // Renders a VCF preview whose first row carries the given X-* candidates.
 async function loadVcfWithCandidates(
   candidates: ImportRowPreview['custom_field_candidates'],
-  fieldDefinitions: { id: string; label: string }[] = [],
+  fieldDefinitions: { id: string; label: string; target?: string }[] = [],
 ) {
   vi.mocked(uploadVCFForImport).mockResolvedValue({
     session_id: 'sess-cf',
@@ -314,6 +314,40 @@ test('a projection-matched property pre-selects "map to existing field"', async 
 
   // The map-to-existing dropdown is shown with the matched definition loaded.
   await waitFor(() => expect(screen.getByText('Hometown')).toBeInTheDocument());
+});
+
+// Issue #2567: an imported value is keyed to the contact, so only definitions
+// that apply to contacts may be offered for "map to existing field".
+test('map to existing field lists only contact-target definitions', async () => {
+  await loadVcfWithCandidates(
+    [{ name: 'x-hometown', value: 'Springfield' }],
+    [
+      { id: 'def-c', label: 'Hometown', target: 'contact' },
+      { id: 'def-o', label: 'Org size', target: 'organisation' },
+      { id: 'def-p', label: 'Cabin colour', target: 'place' },
+      { id: 'def-t', label: 'Pet breed', target: 'pet' },
+    ],
+  );
+
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
+  fireEvent.click(await screen.findByRole('option', { name: /^Map to existing field/ }));
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown field'));
+
+  expect(await screen.findByRole('option', { name: 'Hometown' })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: 'Org size' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: 'Cabin colour' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: 'Pet breed' })).not.toBeInTheDocument();
+});
+
+test('map to existing field is unavailable when only entity definitions exist', async () => {
+  await loadVcfWithCandidates(
+    [{ name: 'x-hometown', value: 'Springfield' }],
+    [{ id: 'def-o', label: 'Org size', target: 'organisation' }],
+  );
+
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
+  const option = await screen.findByRole('option', { name: /^Map to existing field/ });
+  expect(option).toHaveAttribute('aria-disabled', 'true');
 });
 
 test('confirm sends the promotion decisions as field_mappings', async () => {

@@ -229,7 +229,16 @@ class ContactEntityLinksViewModel @Inject constructor(
             repository.updateLink(
                 contactId,
                 link.id,
-                ContactEntityLinkInput(role = link.role, isPrimary = primary),
+                // The server PUT replaces every field, so resend what the link already carries
+                // or the toggle silently wipes its role label and period (#2550).
+                ContactEntityLinkInput(
+                    entityId = link.entityId,
+                    role = link.role,
+                    roleLabel = link.roleLabel,
+                    isPrimary = primary,
+                    period = link.period,
+                    sensitivity = link.sensitivity
+                ),
                 link.revision
             ).foldInline(
                 onSuccess = {

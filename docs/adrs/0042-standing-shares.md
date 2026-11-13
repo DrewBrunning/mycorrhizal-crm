@@ -83,7 +83,7 @@ with `IncludeSensitive` forced to `false`. Consequences:
 private/secret disappears from the recipient on the next read. To satisfy "needs explicit re-confirmation before it
 is shared again", the grant also carries `reconfirm_sections` (JSON). Whenever any writer changes an item in a
 sensitivity-bearing section (`addresses`, `related_to`, `personal_info`, `custom_fields`, per
-`models.IsSensitiveSection`) from `normal` to `private`/`secret` on a contact with a pending or active grant, that
+`models.IsSensitiveSection`, plus the projected `organizations` of ADR 0043) from `normal` to `private`/`secret` on a contact with a pending or active grant, that
 section token is added to the grant's `reconfirm_sections`. While a token is in the set the whole section is
 withheld from the recipient, so a later reclassification back to `normal` does not silently resurface the item. The
 owner clears it with `POST /share-grants/{id}/reconfirm` after seeing what the section currently contains; the

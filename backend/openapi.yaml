@@ -21675,8 +21675,12 @@ components:
             Issue #514 custom-field promotion decisions — one per discovered
             X-* property. Absent/empty keeps every discovered property in
             passthrough except those matching an existing definition's vcard
-            projection, which auto-promote. Only VCF/JSContact/records
-            (VCF-like) sessions consume these.
+            projection, which auto-promote. A `map` decision must name one of
+            the caller's definitions that applies to contacts (target
+            `contact`); an organisation, place or pet definition is a 400 with
+            reason code `import_field_mapping_target_invalid` and nothing is
+            imported (issue #2567). Only VCF/JSContact/records (VCF-like)
+            sessions consume these.
         assign_circle_ids:
           type: array
           maxItems: 50
