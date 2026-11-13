@@ -31,10 +31,12 @@ import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.ImportMergeDiff
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 
 /**
  * T96: the shared per-row merge-decision review step, used by the VCF, CSV, Meerkat, bundle and
@@ -64,6 +66,11 @@ fun ImportReviewStep(
     }
     val decisions = rows.count { it.validationErrors.isEmpty() || it.rowIndex in rowEdits }
     val visibleRows = rows.filter { it.matches(filter) }
+    // Issue #2551: a server older than v1.7.0 ignores `row_edits` and imports the original
+    // invalid row when its action is "add". Offer no fix form there, so errored rows stay
+    // forced to skip.
+    val rowEditsSupported = isServerFeatureSupported(ServerFeature.IMPORT_ROW_EDITS)
+    val rowEditSave = onRowEditSave.takeIf { rowEditsSupported }
 
     Column(modifier = modifier.fillMaxSize()) {
         Text(
@@ -94,7 +101,7 @@ fun ImportReviewStep(
                     action = rowActions[row.rowIndex] ?: row.suggestedAction,
                     onActionChange = { action -> onRowActionChange(row.rowIndex, action) },
                     edit = rowEdits[row.rowIndex],
-                    onEditSave = onRowEditSave
+                    onEditSave = rowEditSave
                 )
             }
         }

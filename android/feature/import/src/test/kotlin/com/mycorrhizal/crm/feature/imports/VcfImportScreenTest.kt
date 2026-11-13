@@ -1,15 +1,19 @@
 package com.mycorrhizal.crm.feature.imports
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.DiscoveredCustomProperty
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.ImportFieldMapping
@@ -18,6 +22,7 @@ import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
+import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -44,18 +49,21 @@ class VcfImportScreenTest {
         onConfirm: () -> Unit = {},
         onRowEditSave: (ImportRowEdit) -> Unit = {},
         onDone: () -> Unit = {},
-        customFieldActions: CustomFieldActions = NoCustomFieldActions
+        customFieldActions: CustomFieldActions = NoCustomFieldActions,
+        serverVersion: AppVersion? = null
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
-                VcfImportScreenContent(
-                    uiState = uiState,
-                    onRowActionChange = onRowActionChange,
-                    onConfirm = onConfirm,
-                    onRowEditSave = onRowEditSave,
-                    onDone = onDone,
-                    customFieldActions = customFieldActions
-                )
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme {
+                    VcfImportScreenContent(
+                        uiState = uiState,
+                        onRowActionChange = onRowActionChange,
+                        onConfirm = onConfirm,
+                        onRowEditSave = onRowEditSave,
+                        onDone = onDone,
+                        customFieldActions = customFieldActions
+                    )
+                }
             }
         }
     }
@@ -268,6 +276,25 @@ class VcfImportScreenTest {
         composeTestRule.onNodeWithTag("import-fix-firstname").performTextInput("Dana")
         composeTestRule.onNodeWithText("Save fix").performClick()
         assertEquals(ImportRowEdit(rowIndex = 0, firstname = "Dana"), saved)
+    }
+
+    @Test
+    fun `a v1_6_0 server gets no fix form on an error row (issue 2551)`() {
+        setContent(
+            VcfImportUiState(
+                step = VcfImportStep.PREVIEW,
+                preview = ImportPreviewResponse(
+                    sessionId = "s",
+                    rows = listOf(
+                        ImportRowPreview(rowIndex = 0, validationErrors = listOf("name required"))
+                    )
+                ),
+                rowActions = mapOf(0 to "skip")
+            ),
+            serverVersion = AppVersion(1, 6, 0)
+        )
+        composeTestRule.onAllNodesWithText("Fix this row").assertCountEquals(0)
+        composeTestRule.onNodeWithText("Keep").assertIsNotEnabled()
     }
 
     // ---- Issue #514 / #2523: the custom fields step ----

@@ -123,8 +123,10 @@ not attempted at all:
   capabilities shipped by the `v1.0.0` baseline (issue #1170), so the baseline
   gate is what refuses an older server. The exceptions are the capabilities that
   landed after `v1.6.0` and so first ship in `v1.7.0` (issue #2527): standing
-  share grants (`SHARE_GRANTS`), organisations/places/pets (`ENTITIES`) and the
-  import-run report (`IMPORT_RUN_REPORT`). Each has a `v1.7.0` floor, and the
+  share grants (`SHARE_GRANTS`), organisations/places/pets (`ENTITIES`), the
+  import-run report (`IMPORT_RUN_REPORT`) and per-row import fixes
+  (`IMPORT_ROW_EDITS`, issue #2551: a `v1.6.x` confirm step ignores `row_edits`
+  and would import the original invalid row). Each has a `v1.7.0` floor, and the
   Android app hides their entry points against a `v1.6.x` server. The web client
   needs no such gate: it is served by the same release as the API.
 

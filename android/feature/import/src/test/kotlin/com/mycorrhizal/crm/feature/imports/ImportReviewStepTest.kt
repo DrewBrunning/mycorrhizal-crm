@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.imports
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -11,9 +12,11 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.DuplicateMatch
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
+import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -49,19 +52,22 @@ class ImportReviewStepTest {
         rows: List<ImportRowPreview> = listOf(newRow, dupRow, errRow),
         rowEdits: Map<Int, ImportRowEdit> = emptyMap(),
         onRowEditSave: ((ImportRowEdit) -> Unit)? = null,
-        onRowActionChange: (Int, String) -> Unit = { _, _ -> }
+        onRowActionChange: (Int, String) -> Unit = { _, _ -> },
+        serverVersion: AppVersion? = null
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
-                ImportReviewStep(
-                    rows = rows,
-                    rowActions = rows.associate { it.rowIndex to it.suggestedAction },
-                    onRowActionChange = onRowActionChange,
-                    onResolveAll = {},
-                    onConfirm = {},
-                    rowEdits = rowEdits,
-                    onRowEditSave = onRowEditSave
-                )
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme {
+                    ImportReviewStep(
+                        rows = rows,
+                        rowActions = rows.associate { it.rowIndex to it.suggestedAction },
+                        onRowActionChange = onRowActionChange,
+                        onResolveAll = {},
+                        onConfirm = {},
+                        rowEdits = rowEdits,
+                        onRowEditSave = onRowEditSave
+                    )
+                }
             }
         }
     }
@@ -168,5 +174,31 @@ class ImportReviewStepTest {
         )
         composeTestRule.onNodeWithText("Fix saved — checked again on import").assertIsDisplayed()
         composeTestRule.onNodeWithText("Edit fix").assertIsDisplayed()
+    }
+
+    // Issue #2551: a v1.6.x server ignores row_edits and imports the ORIGINAL invalid row when its
+    // action is "add", so the fix form must not be offered there and errored rows stay skip-only.
+    @Test
+    fun `a v1_6_0 server gets no fix form and the errored row's decisions stay disabled`() {
+        show(
+            rows = listOf(errRow),
+            onRowEditSave = {},
+            serverVersion = AppVersion(1, 6, 0)
+        )
+        composeTestRule.onAllNodesWithText("Fix this row").assertCountEquals(0)
+        composeTestRule.onNodeWithText("Keep").assertIsNotEnabled()
+        composeTestRule.onNodeWithText("Skip").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a v1_7_0 server offers the fix form`() {
+        show(rows = listOf(errRow), onRowEditSave = {}, serverVersion = AppVersion(1, 7, 0))
+        composeTestRule.onNodeWithText("Fix this row").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an unknown server version offers the fix form`() {
+        show(rows = listOf(errRow), onRowEditSave = {}, serverVersion = null)
+        composeTestRule.onNodeWithText("Fix this row").assertIsDisplayed()
     }
 }
