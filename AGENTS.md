@@ -152,6 +152,7 @@ Frontend [#1](frontend/AGENTS.md#trap-1) [#2](frontend/AGENTS.md#trap-2) [#3](fr
   implement → verify → commit → push → PR.
 - PR body says what changed and why and lists checks run and not run.
 - A user-visible change also adds one plain-language bullet to `CHANGELOG.md` under `[Unreleased]`
-  (format and limits: `docs/changelog-policy.md`); that entry is the release note. No user-visible
+  (format and limits: `docs/changelog-policy.md`; one bullet per feature across
+  platforms, naming a platform only when the change is platform-only); that entry is the release note. No user-visible
   effect means `no-changelog: <reason>` in the PR body.
 - Close the corresponding issue when a ticket lands.
