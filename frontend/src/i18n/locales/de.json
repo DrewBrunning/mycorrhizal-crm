@@ -516,7 +516,7 @@
       },
       "errors": {
         "invalidFile": "Bitte wählen Sie eine gültige CSV-Datei",
-        "fileTooLarge": "Datei ist zu groß. Maximale Größe ist 5MB",
+        "fileTooLarge": "Datei ist zu groß. Maximale Größe ist {{size}}MB",
         "noMappings": "Bitte ordnen Sie mindestens eine Spalte zu"
       }
     },
