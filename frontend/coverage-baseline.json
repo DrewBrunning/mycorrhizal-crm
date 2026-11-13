@@ -63,7 +63,7 @@
       "branchesTotal": 110
     },
     "src/DataSettingsPage.tsx": {
-      "lines": 99.2,
+      "lines": 100,
       "linesTotal": 125,
       "branches": 95.52,
       "branchesTotal": 67
@@ -1629,9 +1629,9 @@
       "branchesTotal": 1
     },
     "src/components/ShareContactDialog.tsx": {
-      "lines": 94.33,
+      "lines": 100,
       "linesTotal": 53,
-      "branches": 78.26,
+      "branches": 86.95,
       "branchesTotal": 23
     },
     "src/components/SharedContactCard.tsx": {

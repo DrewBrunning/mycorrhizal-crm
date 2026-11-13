@@ -6,7 +6,13 @@
 // end by the CI job + hand-verification in the PR; this pins the regression
 // logic itself so a loosened tolerance or a swallowed drop fails loudly.
 import { describe, expect, test } from 'vitest';
-import { compareCoverage, renderTable, unitTolerancePct } from './check-coverage-ratchet.mjs';
+import {
+  compareCoverage,
+  findBaselineDrops,
+  parseUpdateFlags,
+  renderTable,
+  unitTolerancePct,
+} from './check-coverage-ratchet.mjs';
 
 const baseline = {
   tolerancePct: 1.5,
@@ -161,5 +167,50 @@ describe('one-unit tolerance floor', () => {
     };
     expect(compareCoverage(small, one).ok).toBe(true);
     expect(compareCoverage(small, two).ok).toBe(false);
+  });
+});
+
+// issue #2569: a baseline write must not absorb drops without an explicit flag.
+describe('findBaselineDrops', () => {
+  const existing = {
+    'src/a.ts': { lines: 100, branches: 100 },
+    'src/b.ts': { lines: 90, branches: 80 },
+    'src/gone.ts': { lines: 50, branches: 50 },
+  };
+
+  test('reports every file where any gated metric would be lowered', () => {
+    const next = {
+      'src/a.ts': { lines: 100, branches: 99.2 },
+      'src/b.ts': { lines: 91, branches: 80 },
+      'src/new.ts': { lines: 1, branches: 1 },
+    };
+    const drops = findBaselineDrops(existing, next);
+    expect(drops.map((d) => d.name)).toEqual(['src/a.ts']);
+    expect(drops[0].detail).toContain('branches 100.00 -> 99.20');
+  });
+
+  test('improvements, new files and removed files are not drops', () => {
+    const next = {
+      'src/a.ts': { lines: 100, branches: 100 },
+      'src/b.ts': { lines: 95, branches: 90 },
+    };
+    expect(findBaselineDrops(existing, next)).toEqual([]);
+  });
+});
+
+describe('parseUpdateFlags', () => {
+  test('collects repeatable and comma-separated --allow-drop values', () => {
+    const f = parseUpdateFlags([
+      '--update',
+      '--allow-drop',
+      'src/a.ts,src/b.ts',
+      '--allow-drop=src/c.ts',
+    ]);
+    expect([...f.allowed].sort()).toEqual(['src/a.ts', 'src/b.ts', 'src/c.ts']);
+    expect(f.allowAll).toBe(false);
+  });
+
+  test('--allow-all-drops sets allowAll', () => {
+    expect(parseUpdateFlags(['--update', '--allow-all-drops']).allowAll).toBe(true);
   });
 });
