@@ -45,6 +45,7 @@ import com.mycorrhizal.crm.model.network.CircleDetailResponse
 import com.mycorrhizal.crm.model.network.CircleInput
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CircleMemberInput
+import com.mycorrhizal.crm.model.network.CircleTimelinePage
 import com.mycorrhizal.crm.model.network.CirclesPage
 import com.mycorrhizal.crm.model.network.CompletionsResponse
 import com.mycorrhizal.crm.model.network.ContactActivitiesRequest
@@ -298,6 +299,7 @@ import com.mycorrhizal.crm.model.network.TwoFactorCodeInput
 import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.model.network.TwoFactorStatusResponse
+import com.mycorrhizal.crm.model.network.UpcomingOccasionsResponse
 import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
 import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
 import com.mycorrhizal.crm.model.network.UploadActivityImageResponse
@@ -2239,6 +2241,18 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         return executeGetBytes(urlBuilder.build().toString())
     }
 
+    /**
+     * GET /api/v1/occasions/upcoming?days=30|90 — birthdays, anniversaries, life events and active
+     * obligations in the window (ADR 0024 part 3). `include_sensitive` is never sent.
+     */
+    suspend fun getUpcomingOccasions(days: Int): Result<UpcomingOccasionsResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$API_V1/occasions/upcoming".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("days", days.toString())
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(UpcomingOccasionsResponse::class.java).fromJson(body)
+        }
+    }
+
     // --- Occasion events (docs/adrs/0026-occasions-events.md, issue #1228) ---
 
     /** GET /api/v1/occasion-events — the user's events, newest-updated first. */
@@ -2328,6 +2342,25 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         executeGet("$PLACEHOLDER_ORIGIN$CIRCLES_PATH/$id") { _, body ->
             moshi.adapter(CircleDetailResponse::class.java).fromJson(body)
         }
+
+    /**
+     * GET /api/v1/circles/{id}/timeline — issue #1995/#2361 (web parity): a cursor page of the
+     * merged timeline of the circle's live members, each entry naming the member(s) it is about.
+     * An empty `next_cursor` is mapped to null.
+     */
+    suspend fun getCircleTimeline(
+        circleId: String,
+        cursor: String? = null,
+        limit: Int = 25
+    ): Result<CircleTimelinePage> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$CIRCLES_PATH/$circleId/timeline".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("limit", limit.toString())
+        if (!cursor.isNullOrEmpty()) urlBuilder.addQueryParameter("cursor", cursor)
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(CircleTimelinePage::class.java).fromJson(body)
+                ?.let { it.copy(nextCursor = it.nextCursor?.ifEmpty { null }) }
+        }
+    }
 
     /** POST /api/v1/circles — wrapped `{ message, circle }`, unwrapped here. */
     suspend fun createCircle(input: CircleInput): Result<Circle> =

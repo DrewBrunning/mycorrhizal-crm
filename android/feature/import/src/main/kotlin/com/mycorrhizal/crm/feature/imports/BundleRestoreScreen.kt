@@ -156,16 +156,14 @@ fun BundleRestoreScreenContent(
                 BundleRestoreStep.REVIEW -> uiState.preview?.let { preview ->
                     Column(modifier = Modifier.fillMaxSize()) {
                         if (preview.lossReport.isNotEmpty()) {
-                            Text(
-                                text = pluralStringResource(
+                            SourceImportLossReport(
+                                issues = preview.lossReport,
+                                headerText = pluralStringResource(
                                     R.plurals.bundle_restore_loss,
                                     preview.lossReport.size,
                                     preview.lossReport.size
                                 ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                    .testTag("bundle-restore-loss")
+                                tagPrefix = "bundle-restore"
                             )
                         }
                         Box(modifier = Modifier.weight(1f)) {

@@ -51,12 +51,14 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.ShareFieldSections
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 
 /**
  * M15: the "Share this contact" flow (mirrors web's ShareContactDialog) — pick
@@ -127,11 +129,15 @@ fun ShareContactScreen(
                             .padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        ShareModeChooser(
-                            mode = state.mode,
-                            onModeChange = viewModel::setMode,
-                            enabled = !state.isSharing
-                        )
+                        // Issue #2527: Keep sharing needs `/share-grants*` (v1.7.0). Without it
+                        // there is no choice to make: the one-time default stays.
+                        if (isServerFeatureSupported(ServerFeature.SHARE_GRANTS)) {
+                            ShareModeChooser(
+                                mode = state.mode,
+                                onModeChange = viewModel::setMode,
+                                enabled = !state.isSharing
+                            )
+                        }
 
                         if (state.mode == ShareMode.ONE_TIME) {
                             Text(

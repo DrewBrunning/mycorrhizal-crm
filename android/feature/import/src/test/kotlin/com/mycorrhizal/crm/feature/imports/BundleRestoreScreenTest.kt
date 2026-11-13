@@ -100,6 +100,25 @@ class BundleRestoreScreenTest {
     }
 
     @Test
+    fun `review step itemizes the loss report by category with record and message`() {
+        setContent(
+            reviewState(
+                loss = listOf(
+                    SourceImportIssue("Grace", "", "skipped", "Note skipped"),
+                    SourceImportIssue("Ada", "photo", "lossy", "Photo dropped")
+                )
+            )
+        )
+
+        composeTestRule.onNodeWithTag("bundle-restore-loss-group-lossy").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Photo dropped").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("bundle-restore-loss-group-lossy").performClick()
+        composeTestRule.onNodeWithText("Photo dropped").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Ada · photo").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Note skipped").assertDoesNotExist()
+    }
+
+    @Test
     fun `confirming from the review step invokes the callback`() {
         var confirmed = 0
         setContent(reviewState(), onConfirm = { confirmed++ })

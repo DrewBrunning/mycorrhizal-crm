@@ -30,13 +30,13 @@ private val SERVER_BASELINE: AppVersion = AppVersion(1, 0, 0)
  * capability that exists at all ships by the baseline, so a supported server
  * provides everything.
  *
- * The per-capability floors below are historical: each names the v0.x release
- * whose route table first shipped the endpoints (e.g. /admin/system-events* in
- * v0.6.2, /audit/export in v0.6.1, device grants in v0.6.10). Every one of them
- * is below the v1.0.0 baseline, so the baseline gate dominates and none of them
- * hides anything on a supported server. They survive as the map a future floor
- * raise edits: a capability added after v1.0.0 gets a floor above the baseline,
- * which is the only case [ServerCapabilities.isSupported] can act on.
+ * The per-capability floors from v0.6.x to v0.6.10 below are historical: each names the v0.x
+ * release whose route table first shipped the endpoints (e.g. /admin/system-events* in v0.6.2,
+ * /audit/export in v0.6.1, device grants in v0.6.10). Every one of them is below the v1.0.0
+ * baseline, so the baseline gate dominates and none of them hides anything on a supported
+ * server. A capability added after v1.0.0 gets a floor above the baseline, which is the only
+ * case [ServerCapabilities.isSupported] can act on: SHARE_GRANTS, ENTITIES and IMPORT_RUN_REPORT
+ * (v1.7.0, issue #2527) are the first, and their entry points are hidden on a v1.6.x server.
  *
  * Raising a floor (moving a capability onto a newer server) is a MAINT-02
  * breaking-change event and needs a recorded rationale, exactly like the
@@ -162,5 +162,34 @@ enum class ServerFeature(val minServerVersion: AppVersion) {
     API_TOKENS_ADVANCED(AppVersion(0, 6, 1)),
 
     /** Biometric device-grant sign-in: enroll/exchange/revoke (v0.6.10+). */
-    DEVICE_GRANT_SIGNIN(AppVersion(0, 6, 10))
+    DEVICE_GRANT_SIGNIN(AppVersion(0, 6, 10)),
+
+    // --- Capabilities whose endpoints shipped AFTER the v1.6.0 release (issue #2527) ---
+    // None of these routes is in the v1.6.0 route table (`git show v1.6.0:backend/routes/routes.go`);
+    // each landed on main on 2026-11-07..10, so the first release carrying them is v1.7.0.
+
+    /**
+     * Standing share grants: `/share-grants*` (ADR 0042, #2290; first in main 2026-11-07, after
+     * v1.6.0). Gates the Shared with me / by me links on the Shares screen and the pending
+     * badge's request, the Keep sharing mode on Share contact, and the Share action on notes,
+     * activities and circles. The Shares drawer entry itself is the one-time contact-share
+     * inbox (a baseline capability) and stays.
+     */
+    SHARE_GRANTS(AppVersion(1, 7, 0)),
+
+    /**
+     * Reusable entities (organisations, places, pets): `/entities*`, `/entities/from-contacts`,
+     * `/entities/suggestions*` and the entity trash listing `GET /trash/entities` (ADR 0043,
+     * #2296/#2446; first in main 2026-11-07..10, after v1.6.0). Gates the Entities screens and
+     * every entry point to them, the entity overlay on the network graph, the entity Trash
+     * section and the non-contact custom-field targets.
+     */
+    ENTITIES(AppVersion(1, 7, 0)),
+
+    /**
+     * The persisted per-row import-run report: `GET /contacts/import/history/:id` and the
+     * `issue_count` on history rows (#2463; first in main 2026-11-10, after v1.6.0). Gates the
+     * "View report" link on Import history.
+     */
+    IMPORT_RUN_REPORT(AppVersion(1, 7, 0))
 }

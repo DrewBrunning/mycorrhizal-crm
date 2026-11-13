@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Message
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Remove
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,17 +39,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.feature.contacts.ContactAvatar
 import com.mycorrhizal.crm.feature.contacts.FieldActions
 import com.mycorrhizal.crm.feature.contacts.memberDisplayName
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
-import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +65,7 @@ fun CircleDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
+    var showEditDialog by rememberSaveable { mutableStateOf(false) }
     val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
     val context = LocalContext.current
 
@@ -95,7 +99,11 @@ fun CircleDetailScreen(
                     )
                 },
                 actions = {
-                    if (onShareCircle != null) {
+                    // Issue #2527: standing shares need a v1.7.0 server.
+                    if (onShareCircle != null && isServerFeatureSupported(
+                            ServerFeature.SHARE_GRANTS
+                        )
+                    ) {
                         AccessibleIconButton(onClick = { onShareCircle(state.circleId) }) {
                             Icon(
                                 Icons.Outlined.Share,
@@ -104,6 +112,15 @@ fun CircleDetailScreen(
                                 )
                             )
                         }
+                    }
+                    AccessibleIconButton(
+                        onClick = { showEditDialog = true },
+                        enabled = state.circle != null
+                    ) {
+                        Icon(
+                            Icons.Outlined.Edit,
+                            contentDescription = stringResource(R.string.circles_edit)
+                        )
                     }
                     AccessibleIconButton(
                         onClick = {
@@ -146,14 +163,7 @@ fun CircleDetailScreen(
                 when {
                     state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
 
-                    state.members.isEmpty() && errorMessage == null ->
-                        EmptyState(
-                            title = stringResource(R.string.circles_members_empty),
-                            actionLabel = stringResource(R.string.circles_add_member),
-                            onAction = { showAddDialog = true }
-                        )
-
-                    state.members.isEmpty() && errorMessage != null -> {
+                    state.members.isEmpty() && state.circle == null && errorMessage != null -> {
                         Text(
                             text = errorMessage,
                             color = MaterialTheme.colorScheme.error,
@@ -166,7 +176,20 @@ fun CircleDetailScreen(
                             modifier = Modifier.fillMaxSize(),
                             contentPadding = FabListContentPadding
                         ) {
-                            items(state.members, key = { it.id }) { member ->
+                            item(key = "header") {
+                                CircleHeader(circle = state.circle)
+                            }
+                            if (state.members.isEmpty()) {
+                                item(key = "members-empty") {
+                                    Text(
+                                        text = stringResource(R.string.circles_members_empty),
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(16.dp)
+                                    )
+                                }
+                            }
+                            items(state.members, key = { "member-${it.id}" }) { member ->
                                 val resolved = state.contactsByUid[member.memberVCardUid]
                                 MemberRow(
                                     displayName = memberDisplayName(resolved)
@@ -178,6 +201,12 @@ fun CircleDetailScreen(
                                     onRemove = { viewModel.removeMember(member.memberVCardUid) }
                                 )
                             }
+                            circleTimelineSection(
+                                state = state,
+                                onNavigateToContact = onNavigateToContact,
+                                onLoadMore = viewModel::loadMoreTimeline,
+                                onRetry = viewModel::retryTimeline
+                            )
                         }
                     }
                 }
@@ -192,6 +221,29 @@ fun CircleDetailScreen(
                 showAddDialog = false
             },
             onDismiss = { showAddDialog = false }
+        )
+    }
+
+    val circle = state.circle
+    if (showEditDialog && circle != null) {
+        CircleEditDialog(
+            initialName = circle.name,
+            initialDescription = circle.description,
+            initialColor = circle.color,
+            isSaving = state.isSaving,
+            nameError = if (state.nameTaken) {
+                stringResource(R.string.error_reason_circle_already_exists)
+            } else {
+                null
+            },
+            onNameChange = viewModel::clearNameError,
+            onConfirm = { name, description, color ->
+                viewModel.update(name, description, color) { showEditDialog = false }
+            },
+            onDismiss = {
+                viewModel.clearNameError()
+                showEditDialog = false
+            }
         )
     }
 

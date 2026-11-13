@@ -7,7 +7,9 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.CircleColors
 import com.mycorrhizal.crm.model.network.CircleMember
+import com.mycorrhizal.crm.model.network.CircleTimelineItem
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -29,7 +31,22 @@ data class CircleDetailUiState(
     val isLoading: Boolean = false,
     val removingUid: String? = null,
     val error: ApiError? = null,
-    @StringRes val errorRes: Int? = null
+    @StringRes val errorRes: Int? = null,
+    /** Edit dialog: the save is in flight. */
+    val isSaving: Boolean = false,
+    /** Edit dialog: `circle_already_exists` is shown inline under the name field. */
+    val nameTaken: Boolean = false,
+    /** Aggregate timeline of the circle's live members (issue #1995/#2361). */
+    val timeline: List<CircleTimelineItem> = emptyList(),
+    /** Resume token for the next timeline page; null on the last page. */
+    val timelineCursor: String? = null,
+    /** Server-reported member count (archived members count but add no events); null until loaded. */
+    val timelineMemberCount: Int? = null,
+    val isTimelineLoading: Boolean = false,
+    /** True once a first page has loaded, so "empty" is distinguishable from "not loaded yet". */
+    val timelineLoaded: Boolean = false,
+    /** Scoped to the timeline section; never replaces the member list or the snackbar. */
+    val timelineError: ApiError? = null
 )
 
 @HiltViewModel
@@ -46,6 +63,9 @@ class CircleDetailViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(CircleDetailUiState(circleId = circleId))
     val uiState: StateFlow<CircleDetailUiState> = _uiState.asStateFlow()
+
+    /** Bumped on every first-page load so a slow, superseded response cannot overwrite a newer one. */
+    private var timelineGeneration = 0
 
     init {
         load()
@@ -76,6 +96,73 @@ class CircleDetailViewModel @Inject constructor(
                 }
             )
         }
+        loadTimeline(reset = true)
+    }
+
+    /** Loads the first page ([reset]) or the next page of the member timeline. */
+    private fun loadTimeline(reset: Boolean) {
+        val cursor = if (reset) null else _uiState.value.timelineCursor
+        if (!reset && (cursor == null || _uiState.value.isTimelineLoading)) return
+        val generation = if (reset) ++timelineGeneration else timelineGeneration
+        // Set before launching so a second call in the same frame sees the load in flight.
+        _uiState.update { it.copy(isTimelineLoading = true, timelineError = null) }
+        viewModelScope.launch {
+            circleRepository.getTimeline(circleId, cursor).foldApiError(
+                onSuccess = { page ->
+                    if (generation != timelineGeneration) return@foldApiError
+                    _uiState.update {
+                        it.copy(
+                            isTimelineLoading = false,
+                            timelineLoaded = true,
+                            timeline = if (reset) page.items else it.timeline + page.items,
+                            timelineCursor = page.nextCursor,
+                            timelineMemberCount = page.memberCount
+                        )
+                    }
+                },
+                onError = { error ->
+                    if (generation != timelineGeneration) return@foldApiError
+                    _uiState.update { it.copy(isTimelineLoading = false, timelineError = error) }
+                }
+            )
+        }
+    }
+
+    fun loadMoreTimeline() = loadTimeline(reset = false)
+
+    /** Retry after a failed timeline load: the next page if one is pending, else the first. */
+    fun retryTimeline() = loadTimeline(reset = !_uiState.value.timelineLoaded)
+
+    /**
+     * Saves name, description and colour. Blank names and colours outside the palette are
+     * rejected client-side (the form never offers them); [onDone] runs on success only.
+     */
+    fun update(name: String, description: String, color: String, onDone: () -> Unit = {}) {
+        val trimmedName = name.trim()
+        if (trimmedName.isEmpty() || _uiState.value.isSaving) return
+        if (color.isNotEmpty() && color !in CircleColors.ALL) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSaving = true, error = null, nameTaken = false) }
+            circleRepository.update(circleId, trimmedName, description.trim(), color).foldApiError(
+                onSuccess = { circle ->
+                    _uiState.update { it.copy(isSaving = false, circle = circle) }
+                    onDone()
+                },
+                onError = { error ->
+                    _uiState.update {
+                        if (error.isCircleNameTaken()) {
+                            it.copy(isSaving = false, nameTaken = true)
+                        } else {
+                            it.copy(isSaving = false, error = error)
+                        }
+                    }
+                }
+            )
+        }
+    }
+
+    fun clearNameError() {
+        _uiState.update { it.copy(nameTaken = false) }
     }
 
     /**
