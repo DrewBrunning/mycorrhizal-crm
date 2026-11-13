@@ -10,7 +10,9 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -106,6 +108,62 @@ class SharedWithMeViewModelTest {
         coVerify(exactly = 2) { repository.listIncoming(any(), any()) }
         assertFalse(vm.uiState.value.busy)
     }
+
+    @Test
+    fun `an accept that finishes while a load is in flight still ends with the accepted list`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val firstLoad = CompletableDeferred<Unit>()
+            var calls = 0
+            coEvery { repository.listIncoming(any(), any()) } coAnswers {
+                if (++calls == 1) {
+                    firstLoad.await()
+                    Result.success(IncomingShareGrantsPage(shareGrants = listOf(pending)))
+                } else {
+                    Result.success(
+                        IncomingShareGrantsPage(
+                            shareGrants = listOf(pending.copy(status = ShareGrantStatuses.ACTIVE))
+                        )
+                    )
+                }
+            }
+            coEvery { repository.blocks() } returns Result.success(emptyList())
+            coEvery { repository.accept("g1") } returns
+                Result.success(pending.copy(status = ShareGrantStatuses.ACTIVE))
+            val vm = SharedWithMeViewModel(repository)
+            runCurrent()
+            assertTrue(vm.uiState.value.isLoading)
+
+            vm.accept(pending)
+            runCurrent()
+            firstLoad.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(ShareGrantStatuses.ACTIVE),
+                vm.uiState.value.grants.map { it.status }
+            )
+            assertFalse(vm.uiState.value.isLoading)
+            coVerify(exactly = 2) { repository.listIncoming(any(), any()) }
+        }
+
+    @Test
+    fun `a load tap while loading does not queue a second request`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val firstLoad = CompletableDeferred<Unit>()
+            coEvery { repository.listIncoming(any(), any()) } coAnswers {
+                firstLoad.await()
+                Result.success(IncomingShareGrantsPage(shareGrants = listOf(pending)))
+            }
+            coEvery { repository.blocks() } returns Result.success(emptyList())
+            val vm = SharedWithMeViewModel(repository)
+            runCurrent()
+
+            vm.load()
+            firstLoad.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { repository.listIncoming(any(), any()) }
+        }
 
     @Test
     fun `a pending grant is never accepted without an explicit accept`() = runTest(
