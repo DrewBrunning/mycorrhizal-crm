@@ -74,6 +74,18 @@ class EntitiesScreenMergeFlowTest {
         composeTestRule.waitForIdle()
     }
 
+    private fun clickMerge() {
+        composeTestRule.onNodeWithTag("suggestion-merge-${pair.a.id}")
+            .performScrollTo()
+            .performClick()
+    }
+
+    private fun assertMergeErrorShown() {
+        composeTestRule.onNodeWithTag("suggestion-merge-error")
+            .performScrollTo()
+            .assertIsDisplayed()
+    }
+
     @Test
     fun `confirming a merge from the screen announces it once`() {
         stubList()
@@ -86,7 +98,7 @@ class EntitiesScreenMergeFlowTest {
 
         composeTestRule.onNodeWithText("Find duplicates").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("suggestion-merge-${pair.a.id}").performScrollTo().performClick()
+        clickMerge()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("entity-merge-confirm").performClick()
         composeTestRule.waitForIdle()
@@ -104,10 +116,10 @@ class EntitiesScreenMergeFlowTest {
 
         composeTestRule.onNodeWithText("Find duplicates").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithTag("suggestion-merge-${pair.a.id}").performScrollTo().performClick()
+        clickMerge()
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithTag("suggestion-merge-error").performScrollTo().assertIsDisplayed()
+        assertMergeErrorShown()
         composeTestRule.onAllNodesWithTag("entity-merge-dialog").assertCountEquals(0)
     }
 
@@ -135,6 +147,6 @@ class EntitiesScreenMergeFlowTest {
                 )
             }
         }
-        composeTestRule.onNodeWithTag("suggestion-merge-error").performScrollTo().assertIsDisplayed()
+        assertMergeErrorShown()
     }
 }
