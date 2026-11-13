@@ -299,6 +299,7 @@ import com.mycorrhizal.crm.model.network.TwoFactorCodeInput
 import com.mycorrhizal.crm.model.network.TwoFactorConfirmResponse
 import com.mycorrhizal.crm.model.network.TwoFactorSetupResponse
 import com.mycorrhizal.crm.model.network.TwoFactorStatusResponse
+import com.mycorrhizal.crm.model.network.UpcomingOccasionsResponse
 import com.mycorrhizal.crm.model.network.UpdateDateFormatRequest
 import com.mycorrhizal.crm.model.network.UpdateLanguageRequest
 import com.mycorrhizal.crm.model.network.UploadActivityImageResponse
@@ -2238,6 +2239,18 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("kind", kind)
         return executeGetBytes(urlBuilder.build().toString())
+    }
+
+    /**
+     * GET /api/v1/occasions/upcoming?days=30|90 — birthdays, anniversaries, life events and active
+     * obligations in the window (ADR 0024 part 3). `include_sensitive` is never sent.
+     */
+    suspend fun getUpcomingOccasions(days: Int): Result<UpcomingOccasionsResponse> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$API_V1/occasions/upcoming".toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("days", days.toString())
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(UpcomingOccasionsResponse::class.java).fromJson(body)
+        }
     }
 
     // --- Occasion events (docs/adrs/0026-occasions-events.md, issue #1228) ---

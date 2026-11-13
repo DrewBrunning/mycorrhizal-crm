@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -24,6 +27,7 @@ import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Cake
+import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Email
@@ -42,6 +46,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -79,12 +84,15 @@ import com.mycorrhizal.crm.model.network.Birthday
 import com.mycorrhizal.crm.model.network.DashboardContactRelationship
 import com.mycorrhizal.crm.model.network.DashboardRandomContact
 import com.mycorrhizal.crm.model.network.DashboardReminder
+import com.mycorrhizal.crm.model.network.OccasionObligationKinds
 import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.ReachOutKind
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.model.network.ReminderRecurrence
+import com.mycorrhizal.crm.model.network.UpcomingOccasion
+import com.mycorrhizal.crm.model.network.UpcomingOccasionSources
 import com.mycorrhizal.crm.model.network.contactDisplayName
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
@@ -217,7 +225,8 @@ fun DashboardScreen(
                         onVerifyDataDecay = viewModel::verifyDataDecay,
                         onBackUpNow = onBackUp,
                         onDismissBackupReminder = viewModel::dismissBackupReminder,
-                        onCreateReminder = onCreateReminder
+                        onCreateReminder = onCreateReminder,
+                        onOccasionsDaysChange = viewModel::setOccasionsDays
                     )
                 }
             }
@@ -301,7 +310,8 @@ internal fun DashboardContent(
     onVerifyDataDecay: (id: String) -> Unit = {},
     onBackUpNow: () -> Unit = {},
     onDismissBackupReminder: () -> Unit = {},
-    onCreateReminder: () -> Unit = {}
+    onCreateReminder: () -> Unit = {},
+    onOccasionsDaysChange: (Int) -> Unit = {}
 ) {
     var pendingSkip by remember { mutableStateOf<DashboardReminder?>(null) }
     val onSkipRequested: (DashboardReminder) -> Unit = { pendingSkip = it }
@@ -486,6 +496,41 @@ internal fun DashboardContent(
         } else {
             items(state.randomContacts, key = { dashboardKey("random", it.id) }) { contact ->
                 RandomContactRow(contact, onClick = { onOpenContact(contact.id) })
+            }
+        }
+        // ADR 0024 part 3 (issue #2521): birthdays, anniversaries, life events and active
+        // obligations in the next 30 or 90 days, like web's UpcomingOccasionsWidget.
+        item {
+            DashboardSectionHeader(
+                stringResource(R.string.occasion_widget_title),
+                Icons.Outlined.Celebration
+            )
+        }
+        item(key = "occasions-window") {
+            OccasionWindowChips(state.occasionsDays, onOccasionsDaysChange)
+        }
+        val occasionsError = state.occasionsError
+        when {
+            occasionsError != null -> item(key = "occasions-error") {
+                Text(
+                    occasionsError.localizedMessage(),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            state.occasions.isEmpty() -> item(key = "occasions-empty") {
+                DashboardEmptyRow(stringResource(R.string.occasion_widget_empty))
+            }
+
+            else -> itemsIndexed(
+                state.occasions,
+                // contact_id repeats across sources, so the position is part of the key.
+                key = { index, o -> dashboardKey("occasion", "$index-${o.source}-${o.contactId}") }
+            ) { _, occasion ->
+                UpcomingOccasionRow(occasion, onClick = {
+                    if (occasion.contactId > 0) onOpenContact(occasion.contactId)
+                })
             }
         }
     }
@@ -1193,4 +1238,94 @@ private fun recurrenceLabel(token: String): String? = when (token) {
     ReminderRecurrence.SIX_MONTHS -> stringResource(R.string.reminder_recurrence_six_months)
     ReminderRecurrence.YEARLY -> stringResource(R.string.reminder_recurrence_yearly)
     else -> null
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OccasionWindowChips(days: Int, onDaysChange: (Int) -> Unit) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        DASHBOARD_OCCASION_WINDOWS.forEach { window ->
+            FilterChip(
+                selected = days == window,
+                onClick = { onDaysChange(window) },
+                label = {
+                    Text(
+                        stringResource(
+                            if (window == DASHBOARD_OCCASION_WINDOWS.last()) {
+                                R.string.occasion_window_90
+                            } else {
+                                R.string.occasion_window_30
+                            }
+                        )
+                    )
+                }
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun UpcomingOccasionRow(occasion: UpcomingOccasion, onClick: () -> Unit) {
+    val named = occasion.source != UpcomingOccasionSources.BIRTHDAY &&
+        occasion.source != UpcomingOccasionSources.ANNIVERSARY
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        border = if (occasion.daysUntil == 0) {
+            BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+        } else {
+            null
+        }
+    ) {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    occasionSourceText(occasion.source),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                occasion.kind?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        occasionKindText(it),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Text(
+                if (named) "${occasion.contactName} — ${occasion.label}" else occasion.contactName,
+                style = MaterialTheme.typography.bodyLarge
+            )
+            Text(
+                if (occasion.daysUntil == 0) {
+                    stringResource(R.string.occasion_today)
+                } else {
+                    pluralStringResource(
+                        R.plurals.occasion_in_days,
+                        occasion.daysUntil,
+                        occasion.daysUntil
+                    )
+                },
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun occasionSourceText(source: String): String = when (source) {
+    UpcomingOccasionSources.BIRTHDAY -> stringResource(R.string.occasion_source_birthday)
+    UpcomingOccasionSources.ANNIVERSARY -> stringResource(R.string.occasion_source_anniversary)
+    UpcomingOccasionSources.LIFE_EVENT -> stringResource(R.string.occasion_source_life_event)
+    UpcomingOccasionSources.OBLIGATION -> stringResource(R.string.occasion_source_obligation)
+    else -> source
+}
+
+@Composable
+private fun occasionKindText(kind: String): String = when (kind) {
+    OccasionObligationKinds.CARD -> stringResource(R.string.occasion_ob_kind_card)
+    OccasionObligationKinds.GIFT -> stringResource(R.string.occasion_ob_kind_gift)
+    OccasionObligationKinds.INVITE -> stringResource(R.string.occasion_ob_kind_invite)
+    else -> kind
 }

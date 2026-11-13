@@ -18,6 +18,8 @@ import com.mycorrhizal.crm.model.network.OverdueCadence
 import com.mycorrhizal.crm.model.network.OverdueDataDecayPolicy
 import com.mycorrhizal.crm.model.network.ReachOutSuggestion
 import com.mycorrhizal.crm.model.network.ReminderCompleteResponse
+import com.mycorrhizal.crm.model.network.UpcomingOccasion
+import com.mycorrhizal.crm.model.network.UpcomingOccasionsResponse
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
@@ -54,6 +56,8 @@ class DashboardViewModelTest {
         val apiClient = mockk<ApiClient>()
         val authRepository = mockk<AuthRepository>()
         every { authRepository.observeSession() } returns flowOf(SessionState())
+        coEvery { apiClient.getUpcomingOccasions(any()) } returns
+            Result.success(UpcomingOccasionsResponse())
         val vm = DashboardViewModel(
             apiClient,
             authRepository,
@@ -613,6 +617,8 @@ class DashboardViewModelTest {
     fun `dateFormat reflects the signed-in user's date_format preference`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val apiClient = mockk<ApiClient>()
+            coEvery { apiClient.getUpcomingOccasions(any()) } returns
+                Result.success(com.mycorrhizal.crm.model.network.UpcomingOccasionsResponse())
             val authRepository = mockk<AuthRepository>()
             every { authRepository.observeSession() } returns flowOf(
                 SessionState(dateFormat = "us")
@@ -634,6 +640,8 @@ class DashboardViewModelTest {
     fun `a retry tapped while a load is in flight is a no-op`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val apiClient = mockk<ApiClient>()
+            coEvery { apiClient.getUpcomingOccasions(any()) } returns
+                Result.success(com.mycorrhizal.crm.model.network.UpcomingOccasionsResponse())
             val authRepository = mockk<AuthRepository>()
             every { authRepository.observeSession() } returns flowOf(SessionState())
             // Init load fails (drives the error state), the retry succeeds.
@@ -726,4 +734,72 @@ class DashboardViewModelTest {
         const val DAY = 24L * 60 * 60 * 1000
         const val NOW = 1_800_000_000_000L
     }
+
+    // ADR 0024 part 3 (issue #2521): the upcoming-occasions card loads on its own so its
+    // failure can never blank the rest of the dashboard.
+    private fun occasion(name: String = "Ann") = UpcomingOccasion(
+        contactId = 1,
+        contactName = name,
+        source = "birthday",
+        label = "Birthday",
+        date = "2026-12-01",
+        daysUntil = 3
+    )
+
+    @Test
+    fun `upcoming occasions load for the 30 day window beside the composite`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (vm, api, _) = newViewModel()
+            coEvery { api.getDashboard() } returns Result.success(DashboardResponse())
+            coEvery { api.getUpcomingOccasions(30) } returns
+                Result.success(UpcomingOccasionsResponse(listOf(occasion()), days = 30))
+
+            vm.load()
+            advanceUntilIdle()
+
+            assertEquals(30, vm.uiState.value.occasionsDays)
+            assertEquals(listOf("Ann"), vm.uiState.value.occasions.map { it.contactName })
+            assertNull(vm.uiState.value.error)
+        }
+
+    @Test
+    fun `an occasions failure keeps the dashboard and records its own error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (vm, api, _) = newViewModel()
+            coEvery { api.getDashboard() } returns Result.success(fullDashboard())
+            coEvery { api.getUpcomingOccasions(30) } returns
+                Result.failure(ApiError.Client(500, "boom"))
+
+            vm.load()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.error)
+            assertTrue(vm.uiState.value.birthdays.isNotEmpty())
+            assertTrue(vm.uiState.value.occasionsError is ApiError.Client)
+            assertTrue(vm.uiState.value.occasions.isEmpty())
+        }
+
+    @Test
+    fun `switching to 90 days refetches and replaces the rows, ignoring bad windows`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (vm, api, _) = newViewModel()
+            coEvery { api.getDashboard() } returns Result.success(DashboardResponse())
+            coEvery { api.getUpcomingOccasions(30) } returns
+                Result.success(UpcomingOccasionsResponse(listOf(occasion("Near"))))
+            coEvery { api.getUpcomingOccasions(90) } returns
+                Result.success(UpcomingOccasionsResponse(listOf(occasion("Far"))))
+            vm.load()
+            advanceUntilIdle()
+
+            vm.setOccasionsDays(90)
+            advanceUntilIdle()
+            assertEquals(90, vm.uiState.value.occasionsDays)
+            assertEquals(listOf("Far"), vm.uiState.value.occasions.map { it.contactName })
+
+            vm.setOccasionsDays(7)
+            vm.setOccasionsDays(90)
+            advanceUntilIdle()
+            coVerify(exactly = 0) { api.getUpcomingOccasions(7) }
+            coVerify(exactly = 1) { api.getUpcomingOccasions(90) }
+        }
 }
