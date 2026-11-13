@@ -13,6 +13,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.mycorrhizal.crm.model.network.DuplicateMatch
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.MonicaConnectResponse
@@ -273,5 +275,20 @@ class MonicaImportScreenTest {
         composeTestRule.onNodeWithText(
             "The Monica instance could not be reached"
         ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `an error with a reason code is worded from the reason, never the server text`() {
+        setContent(
+            MonicaImportUiState(
+                error = ApiError.Client(
+                    409,
+                    "RAW SERVER TEXT",
+                    reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 }

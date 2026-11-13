@@ -13,6 +13,8 @@ import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityKind
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.TrashedContact
 import com.mycorrhizal.crm.model.network.TrashedEntity
 import com.mycorrhizal.crm.network.ApiError
@@ -388,5 +390,37 @@ class TrashScreenTest {
         val vm = screenWith(TrashUiState(items = listOf(ada)), serverVersion = null)
         composeTestRule.waitForIdle()
         verify { vm.start(true) }
+    }
+
+    private fun reasonCoded() = ApiError.Client(
+        409,
+        "RAW SERVER TEXT",
+        reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+    )
+
+    @Test
+    fun `a failed first load is worded from its reason code, never the server text`() {
+        screenWith(TrashUiState(error = reasonCoded()))
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a refresh failure with items listed is worded from its reason code`() {
+        screenWith(TrashUiState(items = listOf(ada), retentionDays = 30, error = reasonCoded()))
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed action event is worded from its reason code`() {
+        val events = Channel<TrashUiEvent>(Channel.BUFFERED)
+        screenWith(TrashUiState(), events)
+        events.trySend(TrashUiEvent.Failed(reasonCoded()))
+        composeTestRule.waitUntil(5_000) {
+            composeTestRule.onAllNodesWithText("Entity not found").fetchSemanticsNodes()
+                .isNotEmpty()
+        }
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 }

@@ -9,6 +9,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.OutgoingShareGrant
 import com.mycorrhizal.crm.model.network.OutgoingShareGrantsPage
 import com.mycorrhizal.crm.model.network.ShareGrantStatuses
@@ -178,5 +180,40 @@ class SharedByMeScreenTest {
         stub(contactGrant, circleGrant, revoked)
         screen()
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `a failed load is worded from its reason code, never the server text`() {
+        coEvery { repository.listOutgoing(any(), any()) } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW SERVER TEXT",
+                reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+            )
+        )
+        screen()
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed revoke is worded from its reason code, never the server text`() {
+        stub(contactGrant)
+        coEvery { repository.revoke("g1") } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW SERVER TEXT",
+                reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+            )
+        )
+        screen()
+
+        composeTestRule.onNodeWithContentDescription("More actions for Dana White").performClick()
+        composeTestRule.onNodeWithText("Revoke").performClick()
+        composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 }

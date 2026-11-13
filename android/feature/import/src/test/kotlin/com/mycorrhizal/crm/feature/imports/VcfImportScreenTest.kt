@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.DiscoveredCustomProperty
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.ImportFieldMapping
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
@@ -22,6 +24,7 @@ import com.mycorrhizal.crm.model.network.ImportResult
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -467,5 +470,20 @@ class VcfImportScreenTest {
         composeTestRule.onNodeWithTag("vcf-cf-continue").assertIsEnabled().performClick()
 
         assertEquals(1, continued)
+    }
+
+    @Test
+    fun `an error with a reason code is worded from the reason, never the server text`() {
+        setContent(
+            VcfImportUiState(
+                error = ApiError.Client(
+                    409,
+                    "RAW SERVER TEXT",
+                    reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 }
