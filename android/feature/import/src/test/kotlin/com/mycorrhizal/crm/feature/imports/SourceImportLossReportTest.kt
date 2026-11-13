@@ -1,5 +1,8 @@
 package com.mycorrhizal.crm.feature.imports
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
@@ -106,6 +109,33 @@ class SourceImportLossReportTest {
             .assert(hasText("Imported with some detail lost", substring = true))
             .assert(hasText("2", substring = true))
         composeTestRule.onNodeWithText("Photo dropped").assertDoesNotExist()
+    }
+
+    @Test
+    fun `each category header announces whether it is expanded or collapsed`() {
+        setContent()
+        val lossy = composeTestRule.onNodeWithTag("t-loss-group-lossy")
+        val skipped = composeTestRule.onNodeWithTag("t-loss-group-skipped")
+        lossy.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        lossy.assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed")
+        )
+        skipped.assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed")
+        )
+
+        lossy.performClick()
+
+        lossy.assert(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Expanded"))
+        // Only the tapped header changes.
+        skipped.assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed")
+        )
+
+        lossy.performClick()
+        lossy.assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "Collapsed")
+        )
     }
 
     @Test
