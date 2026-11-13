@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.circles
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -16,12 +17,14 @@ import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.CircleDetail
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
+import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CircleTimelinePage
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -72,7 +75,8 @@ class CircleDetailScreenTest {
         ),
         resolve: Map<String, ContactSummary> = emptyMap(),
         onNavigate: (Int) -> Unit = {},
-        onShare: ((String) -> Unit)? = null
+        onShare: ((String) -> Unit)? = null,
+        serverVersion: AppVersion? = null
     ) {
         val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
         val contactRepository = mockk<ContactRepository>()
@@ -86,13 +90,15 @@ class CircleDetailScreenTest {
             SavedStateHandle(mapOf("circleId" to "c1"))
         )
         composeTestRule.setContent {
-            MycorrhizalTheme(darkTheme = false) {
-                CircleDetailScreen(
-                    onBack = {},
-                    onNavigateToContact = onNavigate,
-                    onShareCircle = onShare,
-                    viewModel = vm
-                )
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme(darkTheme = false) {
+                    CircleDetailScreen(
+                        onBack = {},
+                        onNavigateToContact = onNavigate,
+                        onShareCircle = onShare,
+                        viewModel = vm
+                    )
+                }
             }
         }
     }
@@ -323,5 +329,20 @@ class CircleDetailScreenTest {
         setScreen()
         composeTestRule.onNodeWithContentDescription(str(R.string.shares_standing_title_circle))
             .assertDoesNotExist()
+    }
+
+    // Issue #2527: share grants shipped after v1.6.0 (floor v1.7.0).
+    @Test
+    fun `a v1_6_0 server hides the share action`() {
+        setScreen(onShare = {}, serverVersion = AppVersion(1, 6, 0))
+        composeTestRule.onNodeWithContentDescription(str(R.string.shares_standing_title_circle))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `a v1_7_0 server shows the share action`() {
+        setScreen(onShare = {}, serverVersion = AppVersion(1, 7, 0))
+        composeTestRule.onNodeWithContentDescription(str(R.string.shares_standing_title_circle))
+            .assertIsDisplayed()
     }
 }

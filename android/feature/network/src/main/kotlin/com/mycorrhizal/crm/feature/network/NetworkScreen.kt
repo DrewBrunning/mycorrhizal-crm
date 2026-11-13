@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.ui.R
@@ -69,6 +70,7 @@ import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.healthBandLabel
 import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 
 /**
  * M14: the ego-centric network list over `GET /graph/connections` (the design
@@ -373,23 +375,26 @@ private fun NetworkControls(
 
         // Issue #2302 (ADR 0043 decision 2): organisations, places and pets are an opt-in,
         // read-only overlay: off by default, never part of the traversal below.
-        Row(
-            modifier = Modifier.fillMaxWidth()
-                .toggleable(
-                    value = uiState.showEntities,
-                    role = Role.Switch,
-                    onValueChange = onToggleEntities
+        // Issue #2527: the overlay reads `/graph?include_entities` and needs a v1.7.0 server.
+        if (isServerFeatureSupported(ServerFeature.ENTITIES)) {
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .toggleable(
+                        value = uiState.showEntities,
+                        role = Role.Switch,
+                        onValueChange = onToggleEntities
+                    )
+                    .testTag("network-entities-toggle"),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(
+                    text = stringResource(R.string.network_entities_toggle),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f)
                 )
-                .testTag("network-entities-toggle"),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.network_entities_toggle),
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
-            Switch(checked = uiState.showEntities, onCheckedChange = null)
+                Switch(checked = uiState.showEntities, onCheckedChange = null)
+            }
         }
     }
 }

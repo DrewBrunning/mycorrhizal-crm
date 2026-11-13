@@ -39,6 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.feature.contacts.ContactAvatar
 import com.mycorrhizal.crm.feature.contacts.FieldActions
 import com.mycorrhizal.crm.feature.contacts.memberDisplayName
@@ -49,6 +50,7 @@ import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,7 +99,11 @@ fun CircleDetailScreen(
                     )
                 },
                 actions = {
-                    if (onShareCircle != null) {
+                    // Issue #2527: standing shares need a v1.7.0 server.
+                    if (onShareCircle != null && isServerFeatureSupported(
+                            ServerFeature.SHARE_GRANTS
+                        )
+                    ) {
                         AccessibleIconButton(onClick = { onShareCircle(state.circleId) }) {
                             Icon(
                                 Icons.Outlined.Share,

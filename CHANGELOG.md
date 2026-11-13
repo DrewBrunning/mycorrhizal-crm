@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Android hides features an older server does not have** ([#2527](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2527)): connected to a server older than v1.7.0, the app no longer shows standing shares, organisations/places/pets or the import report link, and Trash no longer fails because it asked for deleted organisations. Nothing to do when upgrading; they reappear once the server is updated.
 - **Map X- properties to custom fields in the Android VCF import** ([#2523](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2523)): when a .vcf file has custom X- properties, a new Custom fields step lets you map each to an existing custom field, create a new one, or keep it as is, as on the web. Skipped when the file has none.
 - **Circle description, colour and timeline on Android** ([#2522](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2522)): an Edit button on a circle sets its description and one of nine colours. The circle also lists what its members have been up to, and tapping a name opens that contact. Nothing to do when upgrading.
 - **Upcoming occasions on the Android dashboard** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): a new card lists the birthdays, anniversaries, life events and standing occasions coming up in the next 30 or 90 days, each showing how many days away it is. Tap one to open the contact.

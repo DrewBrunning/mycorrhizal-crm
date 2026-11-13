@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.network
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -18,6 +19,7 @@ import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.GraphRepository
+import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.model.network.GraphChainStep
@@ -25,6 +27,7 @@ import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
 import com.mycorrhizal.crm.model.network.GraphEntityNode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -647,5 +650,44 @@ class NetworkScreenTest {
             "No organisations, places or pets are linked to these contacts."
         )
             .assertIsDisplayed()
+    }
+
+    // Issue #2527: the entity overlay needs `/entities` (floor v1.7.0).
+    private fun overlayToggle(serverVersion: AppVersion?) {
+        composeTestRule.setContent {
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme {
+                    NetworkScreenContent(
+                        uiState = state(),
+                        showMenu = false,
+                        onBack = {},
+                        onMenuClick = {},
+                        onOpenContact = {},
+                        onDepthChange = {},
+                        onRelationInputChange = {},
+                        onRelationApply = {},
+                        onCircleSelect = {},
+                        onOpenPicker = {},
+                        onClosePicker = {},
+                        onSearchContacts = {},
+                        onSelectFrom = {},
+                        onErrorShown = {},
+                        onToggleEntities = {}
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `the entity toggle is hidden on a v1_6_0 server`() {
+        overlayToggle(AppVersion(1, 6, 0))
+        composeTestRule.onNodeWithTag("network-entities-toggle").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the entity toggle shows on a v1_7_0 server`() {
+        overlayToggle(AppVersion(1, 7, 0))
+        composeTestRule.onNodeWithTag("network-entities-toggle").assertIsDisplayed()
     }
 }
