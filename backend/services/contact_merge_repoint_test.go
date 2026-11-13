@@ -662,9 +662,9 @@ func TestRepointContactAssociations_BumpsEntityLinkRevisionOnRepointAndDemote(t 
 	demoted := get(loserPrimary.ID)
 	assert.False(t, demoted.IsPrimary)
 	assert.Equal(t, keeper.VCardUID, demoted.ContactVCardUID)
-	// Demote and repoint are two changes; the revision must move past one bump
-	// only if each statement bumps, and in any case strictly above the original.
-	assert.Greater(t, demoted.Revision, loserPrimary.Revision, "demoted link revision must increase")
+	// Demote and repoint are two separate changes to the row, each bumping once;
+	// asserting +2 (not just "greater") keeps the demote statement honest.
+	assert.Equal(t, loserPrimary.Revision+2, demoted.Revision, "demote and repoint each bump the revision")
 	assert.Equal(t, fmt.Sprintf("e-%s-%d", demoted.ID, demoted.Revision), demoted.ETag)
 
 	untouched := get(keeperPrimary.ID)
