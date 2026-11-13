@@ -849,9 +849,9 @@
       "branchesTotal": 26
     },
     "src/components/ContactEntityLinkDialog.tsx": {
-      "lines": 86.3,
+      "lines": 98.63,
       "linesTotal": 73,
-      "branches": 85.71,
+      "branches": 95.23,
       "branchesTotal": 42
     },
     "src/components/ContactEntityLinksPanel.tsx": {
@@ -993,9 +993,9 @@
       "branchesTotal": 8
     },
     "src/components/EditShareGrantDialog.tsx": {
-      "lines": 91.89,
+      "lines": 100,
       "linesTotal": 37,
-      "branches": 92.3,
+      "branches": 100,
       "branchesTotal": 26
     },
     "src/components/EditTimelineItemDialog.tsx": {
@@ -1041,9 +1041,9 @@
       "branchesTotal": 51
     },
     "src/components/EntityPicker.tsx": {
-      "lines": 96.55,
+      "lines": 100,
       "linesTotal": 29,
-      "branches": 81.48,
+      "branches": 96.29,
       "branchesTotal": 27
     },
     "src/components/EntitySuggestionsPanel.tsx": {
@@ -1641,9 +1641,9 @@
       "branchesTotal": 2
     },
     "src/components/SharedGrantContentDialog.tsx": {
-      "lines": 94.44,
+      "lines": 97.22,
       "linesTotal": 36,
-      "branches": 73.8,
+      "branches": 90.47,
       "branchesTotal": 42
     },
     "src/components/SpeakToAsEditor.tsx": {
@@ -2163,9 +2163,9 @@
       "branchesTotal": 4
     },
     "src/hooks/useShareGrantList.ts": {
-      "lines": 94.28,
+      "lines": 100,
       "linesTotal": 35,
-      "branches": 43.75,
+      "branches": 100,
       "branchesTotal": 16
     },
     "src/hooks/useSourceImportWizard.ts": {
