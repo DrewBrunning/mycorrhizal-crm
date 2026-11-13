@@ -65,6 +65,9 @@ type Entity struct {
 	Revision int64  `gorm:"column:revision;<-:create;not null;default:1" json:"revision"`
 
 	revisionStampedOnCreate bool
+	// priorSensitivity is the stored sensitivity captured by BeforeSave for the
+	// share-grant re-confirmation check in AfterSave (issue #2564).
+	priorSensitivity string
 }
 
 // OrganisationCore is the core schema of an organisation entity. Name mirrors

@@ -227,6 +227,25 @@ func (d *FieldDefinition) AfterSave(tx *gorm.DB) error {
 	return markShareGrantReconfirm(tx, d.UserID, "", SectionCustomFields)
 }
 
+// priorSensitivity returns the stored sensitivity of a row about to be written
+// ("" for a new row or when the owner has no live contact grant, in which case
+// no marker is ever needed). A failed lookup fails the write.
+//
+// The entity and link hooks keep the result on the struct rather than through
+// captureSensitivity's InstanceSet: GORM hands every hook call a fresh session,
+// so an InstanceSet in BeforeSave is not visible to AfterSave.
+func priorSensitivity(tx *gorm.DB, ownerID uint, table, id string) (string, error) {
+	live, err := hasLiveContactGrant(tx, ownerID, "")
+	if err != nil || !live || id == "" {
+		return "", err
+	}
+	exists, err := rowExists(tx, table, id)
+	if err != nil || !exists {
+		return "", err
+	}
+	return sensitivityOf(tx, table, "id", id)
+}
+
 // beforeSensitivityWrite captures the pre-write sensitivity when the owner has
 // a live contact grant; a failed lookup fails the write.
 func beforeSensitivityWrite(tx *gorm.DB, ownerID uint, table, id string) error {
@@ -349,8 +368,9 @@ func entityKindSection(kind string) string {
 }
 
 // captureEntityLinkSensitivity is ContactEntityLink.BeforeSave's half.
-func (l *ContactEntityLink) captureSensitivity(tx *gorm.DB) error {
-	return beforeSensitivityWrite(tx, l.UserID, "contact_entity_links", l.ID)
+func (l *ContactEntityLink) captureSensitivity(tx *gorm.DB) (err error) {
+	l.priorSensitivity, err = priorSensitivity(tx, l.UserID, "contact_entity_links", l.ID)
+	return err
 }
 
 // markSensitivityReclassification is ContactEntityLink.AfterSave's half: a link
@@ -367,7 +387,7 @@ func (l *ContactEntityLink) markSensitivityReclassification(tx *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	if !reclassified(oldSensitivity(tx, "contact_entity_links"), nowS) {
+	if !reclassified(l.priorSensitivity, nowS) {
 		return nil
 	}
 	kind, uid := l.Kind, l.ContactVCardUID
@@ -390,8 +410,9 @@ func (l *ContactEntityLink) markSensitivityReclassification(tx *gorm.DB) error {
 }
 
 // captureSensitivity is Entity.BeforeSave's half.
-func (e *Entity) captureSensitivity(tx *gorm.DB) error {
-	return beforeSensitivityWrite(tx, e.UserID, "entities", e.ID)
+func (e *Entity) captureSensitivity(tx *gorm.DB) (err error) {
+	e.priorSensitivity, err = priorSensitivity(tx, e.UserID, "entities", e.ID)
+	return err
 }
 
 // markSensitivityReclassification is Entity.AfterSave's half: an entity that
@@ -408,7 +429,7 @@ func (e *Entity) markSensitivityReclassification(tx *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	if !reclassified(oldSensitivity(tx, "entities"), nowS) {
+	if !reclassified(e.priorSensitivity, nowS) {
 		return nil
 	}
 	kind := e.Kind

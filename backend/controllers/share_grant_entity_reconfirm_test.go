@@ -135,7 +135,9 @@ func TestReconfirm_ResavingAnAlreadyPrivateLinkOrEntityDoesNotRemark(t *testing.
 	require.Empty(t, f.reconfirmSections())
 
 	require.NoError(t, f.e.db.Model(&f.placeL).Update("role", "visitor").Error)
+	require.Empty(t, f.reconfirmSections(), "step role")
 	require.NoError(t, f.e.db.Model(&f.place).Update("name", "Cabin 2").Error)
+	require.Empty(t, f.reconfirmSections(), "step name")
 	require.NoError(t, f.e.db.Model(&f.placeL).Update("sensitivity", "secret").Error) // private -> secret
 	assert.Empty(t, f.reconfirmSections(), "an already-non-normal item is not re-marked")
 }
