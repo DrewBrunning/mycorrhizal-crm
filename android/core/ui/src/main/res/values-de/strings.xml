@@ -1169,6 +1169,33 @@
     <string name="circles_error_missing_id">Fehlende Kreis-ID</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
     <string name="circles_text_everyone">Allen schreiben</string>
+    <!-- Issue #2522: circle description, colour and member timeline (web #1995/#2361 parity). -->
+    <string name="circles_edit">Kreis bearbeiten</string>
+    <string name="circles_description_label">Beschreibung</string>
+    <string name="circles_description_counter">%1$d/%2$d</string>
+    <string name="circles_color_label">Farbe</string>
+    <string name="circles_color_none">Keine</string>
+    <string name="circles_color_red">Rot</string>
+    <string name="circles_color_orange">Orange</string>
+    <string name="circles_color_yellow">Gelb</string>
+    <string name="circles_color_green">Grün</string>
+    <string name="circles_color_teal">Türkis</string>
+    <string name="circles_color_blue">Blau</string>
+    <string name="circles_color_purple">Violett</string>
+    <string name="circles_color_pink">Rosa</string>
+    <string name="circles_color_grey">Grau</string>
+    <string name="circles_timeline_title">Zeitleiste</string>
+    <string name="circles_timeline_empty">Für die Mitglieder dieses Kreises gibt es noch keine Notizen oder Aktivitäten.</string>
+    <string name="circles_timeline_type_note">Notiz</string>
+    <string name="circles_timeline_type_activity">Aktivität</string>
+    <string name="circles_timeline_type_completion">Erledigte Erinnerung</string>
+    <string name="circles_timeline_type_life_event">Lebensereignis</string>
+    <string name="circles_timeline_type_external_activity">Externe Aktivität</string>
+    <string name="circles_timeline_type_gift">Geschenk</string>
+    <plurals name="circles_member_count">
+        <item quantity="one">%1$d Mitglied</item>
+        <item quantity="other">%1$d Mitglieder</item>
+    </plurals>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Kreis- &amp; Tag-Bereinigung</string>
@@ -1990,6 +2017,20 @@
     <string name="import_vcf_title">VCF-Datei importieren</string>
     <string name="import_vcf_pick">VCF-Datei auswählen</string>
     <string name="import_vcf_pick_hint">Wählen Sie eine .vcf-Datei (vCard), die aus einer anderen App exportiert wurde.</string>
+    <string name="import_vcf_cf_title">Benutzerdefinierte Felder gefunden</string>
+    <string name="import_vcf_cf_description">Diese Datei enthält benutzerdefinierte X-Eigenschaften, die deine App noch nicht kennt. Mach daraus durchsuchbare benutzerdefinierte Felder oder behalte sie unverändert („Passthrough“): Behaltene Eigenschaften werden unverändert beim Kontakt gespeichert und später wieder exportiert, lassen sich hier aber nicht durchsuchen oder bearbeiten.</string>
+    <string name="import_vcf_cf_sample_value">Beispielwert: %1$s</string>
+    <string name="import_vcf_cf_action_ignore">Als Passthrough behalten</string>
+    <string name="import_vcf_cf_action_map">Auf vorhandenes Feld abbilden</string>
+    <string name="import_vcf_cf_action_create">Neues Feld erstellen</string>
+    <string name="import_vcf_cf_help_ignore">Wird unverändert beim Kontakt gespeichert und später wieder exportiert, ist hier aber nicht durchsuchbar oder bearbeitbar. Nichts geht verloren.</string>
+    <string name="import_vcf_cf_help_map">Trägt den Wert in ein bereits angelegtes benutzerdefiniertes Feld ein, sodass er durchsuchbar und bearbeitbar ist.</string>
+    <string name="import_vcf_cf_help_map_empty">Du hast noch keine benutzerdefinierten Felder. Wähle „Neues Feld erstellen“, um aus dieser Eigenschaft eines anzulegen.</string>
+    <string name="import_vcf_cf_help_create">Legt aus dieser Eigenschaft ein neues durchsuchbares benutzerdefiniertes Feld an und füllt es für jeden importierten Kontakt aus.</string>
+    <string name="import_vcf_cf_field">Benutzerdefiniertes Feld</string>
+    <string name="import_vcf_cf_select_field">Feld auswählen…</string>
+    <string name="import_vcf_cf_label">Bezeichnung</string>
+    <string name="import_vcf_cf_continue">Weiter</string>
 
     <!-- T96 import merge review -->
     <plurals name="import_review_remaining">

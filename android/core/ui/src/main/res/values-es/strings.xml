@@ -1193,6 +1193,34 @@
     <string name="circles_error_missing_id">Falta el ID del círculo</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
     <string name="circles_text_everyone">Escribir a todos</string>
+    <!-- Issue #2522: circle description, colour and member timeline (web #1995/#2361 parity). -->
+    <string name="circles_edit">Editar círculo</string>
+    <string name="circles_description_label">Descripción</string>
+    <string name="circles_description_counter">%1$d/%2$d</string>
+    <string name="circles_color_label">Color</string>
+    <string name="circles_color_none">Ninguno</string>
+    <string name="circles_color_red">Rojo</string>
+    <string name="circles_color_orange">Naranja</string>
+    <string name="circles_color_yellow">Amarillo</string>
+    <string name="circles_color_green">Verde</string>
+    <string name="circles_color_teal">Verde azulado</string>
+    <string name="circles_color_blue">Azul</string>
+    <string name="circles_color_purple">Morado</string>
+    <string name="circles_color_pink">Rosa</string>
+    <string name="circles_color_grey">Gris</string>
+    <string name="circles_timeline_title">Cronología</string>
+    <string name="circles_timeline_empty">Aún no hay notas ni actividades para los miembros de este círculo.</string>
+    <string name="circles_timeline_type_note">Nota</string>
+    <string name="circles_timeline_type_activity">Actividad</string>
+    <string name="circles_timeline_type_completion">Recordatorio completado</string>
+    <string name="circles_timeline_type_life_event">Acontecimiento vital</string>
+    <string name="circles_timeline_type_external_activity">Actividad externa</string>
+    <string name="circles_timeline_type_gift">Regalo</string>
+    <plurals name="circles_member_count">
+        <item quantity="one">%1$d miembro</item>
+        <item quantity="many">%1$d miembros</item>
+        <item quantity="other">%1$d miembros</item>
+    </plurals>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Clasificación de círculos y etiquetas</string>
@@ -2055,6 +2083,20 @@
     <string name="import_vcf_title">Importar archivo VCF</string>
     <string name="import_vcf_pick">Seleccionar un archivo .vcf</string>
     <string name="import_vcf_pick_hint">Elige un archivo .vcf (vCard) exportado desde otra aplicación.</string>
+    <string name="import_vcf_cf_title">Campos personalizados encontrados</string>
+    <string name="import_vcf_cf_description">Este archivo contiene propiedades X- personalizadas que tu aplicación aún no conoce. Conviértelas en campos personalizados con búsqueda o consérvalas tal cual («passthrough»): las propiedades conservadas se guardan intactas con el contacto y se vuelven a exportar, pero aquí no se pueden buscar ni editar.</string>
+    <string name="import_vcf_cf_sample_value">Valor de muestra: %1$s</string>
+    <string name="import_vcf_cf_action_ignore">Conservar como passthrough</string>
+    <string name="import_vcf_cf_action_map">Mapear a campo existente</string>
+    <string name="import_vcf_cf_action_create">Crear campo nuevo</string>
+    <string name="import_vcf_cf_help_ignore">Se guarda intacta con el contacto y se vuelve a exportar después, pero aquí no se puede buscar ni editar. No se pierde nada.</string>
+    <string name="import_vcf_cf_help_map">Coloca el valor en un campo personalizado que ya creaste, para poder buscarlo y editarlo.</string>
+    <string name="import_vcf_cf_help_map_empty">Todavía no tienes campos personalizados. Elige «Crear campo nuevo» para crear uno a partir de esta propiedad.</string>
+    <string name="import_vcf_cf_help_create">Crea un campo personalizado nuevo con esta propiedad y lo rellena en cada contacto importado.</string>
+    <string name="import_vcf_cf_field">Campo personalizado</string>
+    <string name="import_vcf_cf_select_field">Selecciona un campo…</string>
+    <string name="import_vcf_cf_label">Etiqueta</string>
+    <string name="import_vcf_cf_continue">Continuar</string>
 
     <!-- T96 import merge review -->
     <plurals name="import_review_remaining">

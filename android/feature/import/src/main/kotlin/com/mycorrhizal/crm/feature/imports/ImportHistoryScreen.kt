@@ -35,11 +35,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -196,7 +198,8 @@ private fun ImportRunCard(run: ImportRun, onViewReport: () -> Unit) {
                 )
             }
             // Issue #2464: only runs that stored per-row issues have a report to open.
-            if (run.issueCount > 0) {
+            // Issue #2527: and only a v1.7.0+ server serves one (`GET /contacts/import/history/:id`).
+            if (run.issueCount > 0 && isServerFeatureSupported(ServerFeature.IMPORT_RUN_REPORT)) {
                 TextButton(
                     onClick = onViewReport,
                     modifier = Modifier.testTag("import-history-report-${run.id}")

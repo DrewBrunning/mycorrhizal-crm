@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.trash
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityKind
@@ -15,6 +17,7 @@ import com.mycorrhizal.crm.model.network.TrashedContact
 import com.mycorrhizal.crm.model.network.TrashedEntity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.every
 import io.mockk.mockk
@@ -113,13 +116,16 @@ class TrashScreenTest {
     private fun screenWith(
         state: TrashUiState,
         events: Channel<TrashUiEvent> = Channel(Channel.BUFFERED),
-        onMenuClick: (() -> Unit)? = {}
+        onMenuClick: (() -> Unit)? = {},
+        serverVersion: AppVersion? = null
     ): TrashViewModel {
         val vm = mockk<TrashViewModel>(relaxed = true)
         every { vm.uiState } returns MutableStateFlow(state)
         every { vm.events } returns events.receiveAsFlow()
         composeTestRule.setContent {
-            MycorrhizalTheme { TrashScreen(onMenuClick = onMenuClick, viewModel = vm) }
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme { TrashScreen(onMenuClick = onMenuClick, viewModel = vm) }
+            }
         }
         return vm
     }
@@ -359,5 +365,28 @@ class TrashScreenTest {
             composeTestRule.onAllNodesWithText("Restored Rex.").fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithText("Restored Rex.").assertIsDisplayed()
+    }
+
+    // Issue #2527: the entity trash needs a v1.7.0 server; the view model is told before loading.
+    @Test
+    fun `a v1_6_0 server starts the view model without the entity trash`() {
+        val vm = screenWith(TrashUiState(items = listOf(ada)), serverVersion = AppVersion(1, 6, 0))
+        composeTestRule.waitForIdle()
+        verify { vm.start(false) }
+        verify(exactly = 0) { vm.start(true) }
+    }
+
+    @Test
+    fun `a v1_7_0 server starts the view model with the entity trash`() {
+        val vm = screenWith(TrashUiState(items = listOf(ada)), serverVersion = AppVersion(1, 7, 0))
+        composeTestRule.waitForIdle()
+        verify { vm.start(true) }
+    }
+
+    @Test
+    fun `an unknown server version starts the view model with the entity trash`() {
+        val vm = screenWith(TrashUiState(items = listOf(ada)), serverVersion = null)
+        composeTestRule.waitForIdle()
+        verify { vm.start(true) }
     }
 }

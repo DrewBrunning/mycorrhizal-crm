@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.domain.compat
 
 import com.mycorrhizal.crm.model.AppVersion
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -22,12 +23,11 @@ class ServerCapabilitiesTest {
 
     @Test
     fun `a server at or above a feature floor supports it`() {
-        // Every capability ships by the v1.0.0 baseline, so a 1.0.0 server
-        // supports the whole registry.
-        val newest = v(1, 0, 0)
+        // 1.7.0 is the newest floor in the registry, so a 1.7.0 server supports everything.
+        val newest = v(1, 7, 0)
         ServerFeature.entries.forEach { feature ->
             assertTrue(
-                "server 1.0.0 must support ${feature.name}",
+                "server 1.7.0 must support ${feature.name}",
                 ServerCapabilities.isSupported(newest, feature)
             )
         }
@@ -90,31 +90,39 @@ class ServerCapabilitiesTest {
     // released server versions ----------------------------------------------
 
     @Test
-    fun `every feature floor ships at or before the baseline`() {
-        // The v1.0.0 baseline (issue #1170) is the oldest server this app talks
-        // to, and every capability in the registry shipped by then, so every
-        // floor is <= the baseline. A floor ABOVE the baseline would be the
-        // only way isSupported hides anything on a supported server.
-        ServerFeature.entries.forEach { feature ->
-            assertTrue(
-                "floor of ${feature.name} must be <= the 1.0.0 baseline",
-                feature.minServerVersion <= ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION
-            )
+    fun `post-1_6_0 capabilities are floored at 1_7_0 and hidden from a 1_6_0 server`() {
+        // Issue #2527. Ground truth: none of share grants, entities (incl. from-contacts,
+        // suggestions and the entity trash listing) or the import-run report is in the v1.6.0
+        // route table, so the first release carrying them is v1.7.0.
+        val floors = mapOf(
+            ServerFeature.SHARE_GRANTS to v(1, 7, 0),
+            ServerFeature.ENTITIES to v(1, 7, 0),
+            ServerFeature.IMPORT_RUN_REPORT to v(1, 7, 0)
+        )
+        floors.forEach { (feature, floor) ->
+            assertEquals(feature.name, floor, feature.minServerVersion)
+            assertFalse(feature.name, ServerCapabilities.isSupported(v(1, 6, 0), feature))
+            assertFalse(feature.name, ServerCapabilities.isSupported(v(1, 6, 99), feature))
+            assertTrue(feature.name, ServerCapabilities.isSupported(v(1, 7, 0), feature))
+            assertTrue(feature.name, ServerCapabilities.isSupported(v(2, 0, 0), feature))
+            assertTrue(feature.name, ServerCapabilities.isSupported(null, feature))
         }
     }
 
     @Test
-    fun `a released v1_0_0 server supports every feature`() {
-        // Ground truth from the git tags: every capability the registry names
-        // shipped by v1.0.0 (the device-grant endpoints in the v0.6.10 cycle
-        // were the newest before it), so the baseline server provides all of
-        // them.
-        val server = v(1, 0, 0)
-        ServerFeature.entries.forEach { feature ->
-            assertTrue(
-                "server 1.0.0 must support ${feature.name}",
-                ServerCapabilities.isSupported(server, feature)
-            )
-        }
+    fun `a post-baseline floor does not hide a baseline capability from a 1_6_0 server`() {
+        // The 1.7.0 floors must not leak onto capabilities that shipped by the baseline.
+        ServerFeature.entries
+            .filter { it.minServerVersion <= ServerCapabilities.MIN_SUPPORTED_SERVER_VERSION }
+            .forEach { feature ->
+                assertTrue(feature.name, ServerCapabilities.isSupported(v(1, 6, 0), feature))
+            }
+    }
+
+    @Test
+    fun `no feature floor is above the newest released server tag`() {
+        // The registry may only name versions that ship (or will ship) as released tags; the
+        // highest floor is the unreleased v1.7.0, which this test pins so a typo (1.70.0) fails.
+        assertEquals(v(1, 7, 0), ServerFeature.entries.maxOf { it.minServerVersion })
     }
 }

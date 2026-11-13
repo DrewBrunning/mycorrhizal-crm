@@ -41,6 +41,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.ContactShare
 import com.mycorrhizal.crm.model.network.ContactShareStatuses
 import com.mycorrhizal.crm.ui.LocalPendingShareGrantCount
@@ -50,6 +51,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 
 /**
  * M15: the standalone contact-shares screen (mirrors web's ContactSharesPage)
@@ -231,6 +233,8 @@ private fun StandingSharesLinks(
     onOpenSharedByMe: (() -> Unit)?
 ) {
     if (onOpenSharedWithMe == null && onOpenSharedByMe == null) return
+    // Issue #2527: `/share-grants*` needs a v1.7.0 server.
+    if (!isServerFeatureSupported(ServerFeature.SHARE_GRANTS)) return
     val pending = LocalPendingShareGrantCount.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp),

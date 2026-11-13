@@ -1193,6 +1193,34 @@
     <string name="circles_error_missing_id">Identifiant de cercle manquant</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
     <string name="circles_text_everyone">Écrire à tous</string>
+    <!-- Issue #2522: circle description, colour and member timeline (web #1995/#2361 parity). -->
+    <string name="circles_edit">Modifier le cercle</string>
+    <string name="circles_description_label">Description</string>
+    <string name="circles_description_counter">%1$d/%2$d</string>
+    <string name="circles_color_label">Couleur</string>
+    <string name="circles_color_none">Aucune</string>
+    <string name="circles_color_red">Rouge</string>
+    <string name="circles_color_orange">Orange</string>
+    <string name="circles_color_yellow">Jaune</string>
+    <string name="circles_color_green">Vert</string>
+    <string name="circles_color_teal">Sarcelle</string>
+    <string name="circles_color_blue">Bleu</string>
+    <string name="circles_color_purple">Violet</string>
+    <string name="circles_color_pink">Rose</string>
+    <string name="circles_color_grey">Gris</string>
+    <string name="circles_timeline_title">Chronologie</string>
+    <string name="circles_timeline_empty">Aucune note ni activité pour les membres de ce cercle pour le moment.</string>
+    <string name="circles_timeline_type_note">Note</string>
+    <string name="circles_timeline_type_activity">Activité</string>
+    <string name="circles_timeline_type_completion">Rappel terminé</string>
+    <string name="circles_timeline_type_life_event">Événement de vie</string>
+    <string name="circles_timeline_type_external_activity">Activité externe</string>
+    <string name="circles_timeline_type_gift">Cadeau</string>
+    <plurals name="circles_member_count">
+        <item quantity="one">%1$d membre</item>
+        <item quantity="many">%1$d membres</item>
+        <item quantity="other">%1$d membres</item>
+    </plurals>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Tri des cercles et étiquettes</string>
@@ -2055,6 +2083,20 @@
     <string name="import_vcf_title">Importer un fichier VCF</string>
     <string name="import_vcf_pick">Sélectionner un fichier .vcf</string>
     <string name="import_vcf_pick_hint">Choisissez un fichier .vcf (vCard) exporté depuis une autre application.</string>
+    <string name="import_vcf_cf_title">Champs personnalisés trouvés</string>
+    <string name="import_vcf_cf_description">Ce fichier contient des propriétés X- personnalisées que votre application ne connaît pas encore. Transformez-les en champs personnalisés recherchables, ou conservez-les telles quelles (« passthrough ») : les propriétés conservées sont enregistrées intactes avec le contact et réexportées plus tard, mais ne sont ni recherchables ni modifiables ici.</string>
+    <string name="import_vcf_cf_sample_value">Exemple de valeur : %1$s</string>
+    <string name="import_vcf_cf_action_ignore">Conserver en passage</string>
+    <string name="import_vcf_cf_action_map">Mapper vers un champ existant</string>
+    <string name="import_vcf_cf_action_create">Créer un nouveau champ</string>
+    <string name="import_vcf_cf_help_ignore">Enregistrée intacte avec le contact et réexportée plus tard, mais ni recherchable ni modifiable ici. Rien n\'est perdu.</string>
+    <string name="import_vcf_cf_help_map">Place la valeur dans un champ personnalisé que vous avez déjà créé, pour qu\'elle soit recherchable et modifiable.</string>
+    <string name="import_vcf_cf_help_map_empty">Vous n\'avez pas encore de champs personnalisés. Choisissez « Créer un nouveau champ » pour en créer un à partir de cette propriété.</string>
+    <string name="import_vcf_cf_help_create">Crée un nouveau champ personnalisé recherchable à partir de cette propriété et le remplit pour chaque contact importé.</string>
+    <string name="import_vcf_cf_field">Champ personnalisé</string>
+    <string name="import_vcf_cf_select_field">Sélectionner un champ…</string>
+    <string name="import_vcf_cf_label">Libellé</string>
+    <string name="import_vcf_cf_continue">Continuer</string>
 
     <!-- T96 import merge review -->
     <plurals name="import_review_remaining">
