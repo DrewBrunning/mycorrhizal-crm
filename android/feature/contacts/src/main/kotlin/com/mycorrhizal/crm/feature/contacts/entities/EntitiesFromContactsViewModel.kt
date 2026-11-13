@@ -124,13 +124,23 @@ class EntitiesFromContactsViewModel @Inject constructor(private val repository: 
         }
     }
 
+    /**
+     * Retry after a failed load. A failed *load more* retries only that page: [refresh] would
+     * reset every tick, name, role and primary choice the user already made. Without any loaded
+     * group (a failed first load) there is nothing to keep, so it rescans from the start.
+     */
+    fun retry() {
+        val state = _uiState.value
+        if (state.groups.isNotEmpty() && state.nextCursor != null) loadMore() else refresh()
+    }
+
     fun loadMore() {
         val state = _uiState.value
         val cursor = state.nextCursor ?: return
         if (state.isLoading || state.isLoadingMore) return
         val generationAtStart = generation
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoadingMore = true) }
+            _uiState.update { it.copy(isLoadingMore = true, loadError = null) }
             repository.valueGroups(state.kind, cursor).foldApiError(
                 onSuccess = { page ->
                     if (generationAtStart != generation) return@foldApiError
