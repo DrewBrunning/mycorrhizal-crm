@@ -250,7 +250,7 @@ private fun CircleListItem(
         Icon(
             imageVector = Icons.Outlined.Person,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
+            tint = circleColorOrNull(circle.color) ?: MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = circle.name,

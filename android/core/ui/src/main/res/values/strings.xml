@@ -1187,6 +1187,33 @@
     <string name="circles_error_missing_id">Missing circle id</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
     <string name="circles_text_everyone">Text everyone</string>
+    <!-- Issue #2522: circle description, colour and member timeline (web #1995/#2361 parity). -->
+    <string name="circles_edit">Edit circle</string>
+    <string name="circles_description_label">Description</string>
+    <string name="circles_description_counter">%1$d/%2$d</string>
+    <string name="circles_color_label">Color</string>
+    <string name="circles_color_none">None</string>
+    <string name="circles_color_red">Red</string>
+    <string name="circles_color_orange">Orange</string>
+    <string name="circles_color_yellow">Yellow</string>
+    <string name="circles_color_green">Green</string>
+    <string name="circles_color_teal">Teal</string>
+    <string name="circles_color_blue">Blue</string>
+    <string name="circles_color_purple">Purple</string>
+    <string name="circles_color_pink">Pink</string>
+    <string name="circles_color_grey">Grey</string>
+    <string name="circles_timeline_title">Timeline</string>
+    <string name="circles_timeline_empty">No notes or activities for this circle’s members yet.</string>
+    <string name="circles_timeline_type_note">Note</string>
+    <string name="circles_timeline_type_activity">Activity</string>
+    <string name="circles_timeline_type_completion">Completed reminder</string>
+    <string name="circles_timeline_type_life_event">Life event</string>
+    <string name="circles_timeline_type_external_activity">External activity</string>
+    <string name="circles_timeline_type_gift">Gift</string>
+    <plurals name="circles_member_count">
+        <item quantity="one">%1$d member</item>
+        <item quantity="other">%1$d members</item>
+    </plurals>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Circle &amp; tag triage</string>
