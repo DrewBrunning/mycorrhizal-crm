@@ -36,7 +36,8 @@ private val SERVER_BASELINE: AppVersion = AppVersion(1, 0, 0)
  * baseline, so the baseline gate dominates and none of them hides anything on a supported
  * server. A capability added after v1.0.0 gets a floor above the baseline, which is the only
  * case [ServerCapabilities.isSupported] can act on: SHARE_GRANTS, ENTITIES and IMPORT_RUN_REPORT
- * (v1.7.0, issue #2527) are the first, and their entry points are hidden on a v1.6.x server.
+ * (v1.7.0, issue #2527) are the first, followed by IMPORT_ROW_EDITS (v1.7.0, issue #2551); their
+ * entry points are hidden on a v1.6.x server.
  *
  * Raising a floor (moving a capability onto a newer server) is a MAINT-02
  * breaking-change event and needs a recorded rationale, exactly like the
@@ -191,5 +192,15 @@ enum class ServerFeature(val minServerVersion: AppVersion) {
      * `issue_count` on history rows (#2463; first in main 2026-11-10, after v1.6.0). Gates the
      * "View report" link on Import history.
      */
-    IMPORT_RUN_REPORT(AppVersion(1, 7, 0))
+    IMPORT_RUN_REPORT(AppVersion(1, 7, 0)),
+
+    /**
+     * Per-row fixes on the import confirm endpoints: the `row_edits` request field (#2186; first
+     * in main 2026-11-10, after v1.6.0). A v1.6.x server ignores the unknown field, and its
+     * confirm step creates the ORIGINAL row whenever the action is `add`, so a user's fix would
+     * be silently dropped and the invalid contact imported. Gates the "Fix this row" form in
+     * the shared import review step (CSV, VCF and device contacts); against an older server
+     * errored rows stay skip-only.
+     */
+    IMPORT_ROW_EDITS(AppVersion(1, 7, 0))
 }
