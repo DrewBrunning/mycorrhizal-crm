@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Itemized loss report on Android imports** ([#2524](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2524)): reviewing a Meerkat import or a bundle restore now lists what will not come across exactly, grouped by category with the record and a message for each, instead of only a count.
 - **Android hides features an older server does not have** ([#2527](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2527)): connected to a server older than v1.7.0, the app no longer shows standing shares, organisations/places/pets or the import report link, and Trash no longer fails because it asked for deleted organisations. Nothing to do when upgrading; they reappear once the server is updated.
 - **Map X- properties to custom fields in the Android VCF import** ([#2523](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2523)): when a .vcf file has custom X- properties, a new Custom fields step lets you map each to an existing custom field, create a new one, or keep it as is, as on the web. Skipped when the file has none.
 - **Circle description, colour and timeline on Android** ([#2522](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2522)): an Edit button on a circle sets its description and one of nine colours. The circle also lists what its members have been up to, and tapping a name opens that contact. Nothing to do when upgrading.

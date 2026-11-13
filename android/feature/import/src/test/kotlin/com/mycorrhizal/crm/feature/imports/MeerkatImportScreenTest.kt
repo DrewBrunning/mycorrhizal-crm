@@ -237,6 +237,24 @@ class MeerkatImportScreenTest {
     }
 
     @Test
+    fun `the review step itemizes the loss report by category with record and message`() {
+        setContent(
+            reviewState(
+                listOf(
+                    SourceImportIssue("Grace", "", "skipped", "Note skipped"),
+                    SourceImportIssue("Ada", "photo", "lossy", "Photo dropped")
+                )
+            )
+        )
+        composeTestRule.onNodeWithTag("meerkat-import-loss-group-lossy").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Photo dropped").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("meerkat-import-loss-group-lossy").performClick()
+        composeTestRule.onNodeWithText("Photo dropped").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Ada · photo").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Note skipped").assertDoesNotExist()
+    }
+
+    @Test
     fun `the result step shows the outcome and Done fires`() {
         var done = 0
         setContent(

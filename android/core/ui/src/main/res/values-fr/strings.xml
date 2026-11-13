@@ -2651,6 +2651,12 @@
     </plurals>
     <string name="meerkat_import_start">Démarrer l\'import</string>
     <string name="meerkat_import_working">Lecture de vos données Meerkat…</string>
+    <string name="import_loss_category_unsupported">Non importé</string>
+    <string name="import_loss_category_invalid">Rejeté</string>
+    <string name="import_loss_category_lossy">Importé avec perte de détail</string>
+    <string name="import_loss_category_transformed">Importé avec une modification</string>
+    <string name="import_loss_category_skipped">Ignoré délibérément</string>
+    <string name="import_loss_category_other">Autre</string>
     <plurals name="meerkat_import_loss">
         <item quantity="one">%1$d élément ne peut pas être importé exactement</item>
         <item quantity="many">%1$d éléments ne peuvent pas être importés exactement</item>
