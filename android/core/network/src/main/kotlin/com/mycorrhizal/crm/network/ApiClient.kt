@@ -199,6 +199,9 @@ import com.mycorrhizal.crm.model.network.MeerkatConnectRequest
 import com.mycorrhizal.crm.model.network.MeerkatConnectResponse
 import com.mycorrhizal.crm.model.network.MeerkatFetchRequest
 import com.mycorrhizal.crm.model.network.MessageResponse
+import com.mycorrhizal.crm.model.network.MonicaConnectRequest
+import com.mycorrhizal.crm.model.network.MonicaConnectResponse
+import com.mycorrhizal.crm.model.network.MonicaFetchRequest
 import com.mycorrhizal.crm.model.network.MycorrhizalFetchRequest
 import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
 import com.mycorrhizal.crm.model.network.NextcloudConfigInput
@@ -324,6 +327,7 @@ import com.mycorrhizal.crm.model.network.WebhooksResponse
 import com.mycorrhizal.crm.model.network.stripProjectedEntries
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.HttpUrl.Companion.toHttpUrl
@@ -602,7 +606,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
             .post(jsonBody.toRequestBody(jsonMediaType))
             .build()
-        return execute(request, mapper)
+        return execute(request, mapper = mapper)
     }
 
     private suspend fun deleteWebAuthnCredentialWithBody(
@@ -3228,6 +3232,60 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .build()
             .toString()
 
+    // --- Monica live-API import (issues #549, #2525) ---
+
+    /**
+     * POST /api/v1/contacts/import/monica/connect — validates the Monica address and API
+     * token (the server makes an outbound fetch) and opens an import session. The server
+     * probes Monica serially at about one request per second and bounds that at 150 s, so
+     * this call gets [MONICA_CONNECT_TIMEOUT_SECONDS]: giving up earlier would strand a
+     * live session that holds the token. The token is never logged (the HTTP logger runs
+     * at BASIC level, which records no bodies).
+     */
+    suspend fun connectMonica(request: MonicaConnectRequest): Result<MonicaConnectResponse> =
+        executePost(
+            "$IMPORT_MONICA_PATH/connect",
+            request,
+            readTimeoutSeconds = MONICA_CONNECT_TIMEOUT_SECONDS
+        ) { _, body -> moshi.adapter(MonicaConnectResponse::class.java).fromJson(body) }
+
+    /** POST /api/v1/contacts/import/monica/fetch — starts the background snapshot fetch (202). */
+    suspend fun startMonicaFetch(
+        sessionId: String,
+        includeRelationships: Boolean,
+        includeExtras: Boolean
+    ): Result<Unit> = executePost(
+        "$IMPORT_MONICA_PATH/fetch",
+        MonicaFetchRequest(sessionId, includeRelationships, includeExtras)
+    ) { _, _ -> Unit }
+
+    /** GET /api/v1/contacts/import/monica/status — the session's phase and progress. */
+    suspend fun getMonicaImportStatus(sessionId: String): Result<SourceImportStatus> =
+        executeGet(monicaSessionUrl("status", sessionId)) { _, body ->
+            moshi.adapter(SourceImportStatus::class.java).fromJson(body)
+        }
+
+    /** GET /api/v1/contacts/import/monica/preview — review rows + loss report. */
+    suspend fun getMonicaImportPreview(sessionId: String): Result<SourceImportPreviewResponse> =
+        executeGet(monicaSessionUrl("preview", sessionId)) { _, body ->
+            moshi.adapter(SourceImportPreviewResponse::class.java).fromJson(body)
+        }
+
+    /** POST /api/v1/contacts/import/monica/confirm — starts the import with per-row actions (202). */
+    suspend fun confirmMonicaImport(request: ImportConfirmRequest): Result<Unit> =
+        executePost("$IMPORT_MONICA_PATH/confirm", request) { _, _ -> Unit }
+
+    /** POST /api/v1/contacts/import/monica/cancel — cancels an in-flight import or drops the session. */
+    suspend fun cancelMonicaImport(sessionId: String): Result<Unit> = executePostEmpty(
+        monicaSessionUrl("cancel", sessionId).removePrefix(PLACEHOLDER_ORIGIN)
+    ) { _, _ -> Unit }
+
+    private fun monicaSessionUrl(action: String, sessionId: String): String =
+        "$PLACEHOLDER_ORIGIN$IMPORT_MONICA_PATH/$action".toHttpUrl().newBuilder()
+            .addQueryParameter("session_id", sessionId)
+            .build()
+            .toString()
+
     /**
      * GET /api/v1/contacts/import/history (issue #651) — the caller's recent
      * import outcomes, newest first, as a bare JSON array (never null, even
@@ -3996,13 +4054,14 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         mapper: (okhttp3.Response, String) -> T?
     ): Result<T> {
         val request = Request.Builder().url(url).get().build()
-        return execute(request, mapper)
+        return execute(request, mapper = mapper)
     }
 
     private suspend fun <T> executePost(
         path: String,
         body: Any,
         idempotencyKey: String? = null,
+        readTimeoutSeconds: Long? = null,
         mapper: (okhttp3.Response, String) -> T?
     ): Result<T> {
         val requestBuilder = Request.Builder()
@@ -4013,7 +4072,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         if (idempotencyKey != null) {
             requestBuilder.addHeader(IDEMPOTENCY_KEY_HEADER, idempotencyKey)
         }
-        return execute(requestBuilder.build(), mapper)
+        return execute(requestBuilder.build(), readTimeoutSeconds, mapper)
     }
 
     private suspend fun <T> executePostEmpty(
@@ -4024,7 +4083,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
             .post(ByteArray(0).toRequestBody(null))
             .build()
-        return execute(request, mapper)
+        return execute(request, mapper = mapper)
     }
 
     private suspend fun <T> executePut(
@@ -4038,7 +4097,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .put(body.toJsonBody())
             .withIfMatch(ifMatchRevision)
             .build()
-        return execute(request, mapper)
+        return execute(request, mapper = mapper)
     }
 
     private suspend fun <T> executePatch(
@@ -4052,7 +4111,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .url(url.toHttpUrl())
             .patch(body.toJsonBody())
             .build()
-        return execute(request, mapper)
+        return execute(request, mapper = mapper)
     }
 
     private suspend fun <T> executePatchEmpty(
@@ -4063,7 +4122,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .url(url.toHttpUrl())
             .patch(ByteArray(0).toRequestBody(null))
             .build()
-        return execute(request, mapper)
+        return execute(request, mapper = mapper)
     }
 
     private suspend fun <T> executeMultipartUpload(
@@ -4095,7 +4154,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .url("$PLACEHOLDER_ORIGIN$path".toHttpUrl())
             .post(body)
         if (idempotencyKey != null) request.addHeader(IDEMPOTENCY_KEY_HEADER, idempotencyKey)
-        return execute(request.build(), mapper)
+        return execute(request.build(), mapper = mapper)
     }
 
     /** A valid (<= 70 chars, token-safe) multipart boundary determined by [idempotencyKey]. */
@@ -4128,7 +4187,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             .delete()
             .withIfMatch(ifMatchRevision)
             .build()
-        return execute(request, mapper)
+        return execute(request, mapper = mapper)
     }
 
     /**
@@ -4169,10 +4228,17 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     @Suppress("TooGenericExceptionCaught")
     private suspend fun <T> execute(
         request: Request,
+        // A longer read timeout for the one call that legitimately outlasts the default.
+        readTimeoutSeconds: Long? = null,
         mapper: (okhttp3.Response, String) -> T?
     ): Result<T> = withContext(Dispatchers.IO) {
         try {
-            val response = okHttpClient.newCall(request).execute()
+            val callClient = if (readTimeoutSeconds == null) {
+                okHttpClient
+            } else {
+                okHttpClient.newBuilder().readTimeout(readTimeoutSeconds, TimeUnit.SECONDS).build()
+            }
+            val response = callClient.newCall(request).execute()
             response.use {
                 val body = it.body?.string().orEmpty()
                 if (!it.isSuccessful) {
@@ -4384,6 +4450,11 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         private const val EXPORT_PATH = "$API_V1/export"
         private const val IMPORT_MYCORRHIZAL_PATH = "$API_V1/import/mycorrhizal"
         private const val IMPORT_MEERKAT_PATH = "$API_V1/contacts/import/meerkat"
+        private const val IMPORT_MONICA_PATH = "$API_V1/contacts/import/monica"
+
+        // The server bounds Monica's connect probe at 150 s (backend monicaConnectTimeout);
+        // keep this above it so the response is never abandoned while the session exists.
+        private const val MONICA_CONNECT_TIMEOUT_SECONDS = 160L
         private const val EXPORT_JSCONTACT_PATH = "$API_V1/export/jscontact"
         private const val EXPORT_PREFLIGHT_PATH = "$API_V1/export/preflight"
         private const val ATTACHMENTS_PATH = "$API_V1/attachments"

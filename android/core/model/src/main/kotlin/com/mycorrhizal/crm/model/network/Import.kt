@@ -408,3 +408,46 @@ data class MeerkatFetchRequest(
     @Json(name = "session_id") val sessionId: String,
     @Json(name = "accept_untested") val acceptUntested: Boolean = false
 )
+
+// --- Monica live-API import source (issues #549, #2525) ---
+// Mirrors backend/models/monica_import.go (MonicaConnectRequest / MonicaConnectResponse /
+// MonicaFetchRequest / MonicaEntityCounts). The status/preview/confirm/cancel calls reuse
+// the shared source-import shapes above.
+
+/**
+ * The Monica instance address and API token. The token is third-party credential
+ * material: it is sent once, the server keeps it in memory for the session only, and
+ * the client never logs or persists it.
+ */
+@JsonClass(generateAdapter = true)
+data class MonicaConnectRequest(
+    @Json(name = "base_url") val baseUrl: String,
+    @Json(name = "api_token") val apiToken: String
+)
+
+@JsonClass(generateAdapter = true)
+data class MonicaEntityCounts(
+    val contacts: Int = 0,
+    val activities: Int = 0,
+    val notes: Int = 0,
+    val reminders: Int = 0,
+    val calls: Int = 0,
+    val tasks: Int = 0,
+    val gifts: Int = 0,
+    val debts: Int = 0
+)
+
+@JsonClass(generateAdapter = true)
+data class MonicaConnectResponse(
+    @Json(name = "session_id") val sessionId: String = "",
+    val totals: MonicaEntityCounts = MonicaEntityCounts(),
+    @Json(name = "estimated_fetch_seconds") val estimatedFetchSeconds: Int = 0
+)
+
+/** Both toggles default on, as on web; they only change what the background fetch pulls. */
+@JsonClass(generateAdapter = true)
+data class MonicaFetchRequest(
+    @Json(name = "session_id") val sessionId: String,
+    @Json(name = "include_relationships") val includeRelationships: Boolean = true,
+    @Json(name = "include_extras") val includeExtras: Boolean = true
+)

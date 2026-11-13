@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Import from Monica on Android** ([#2525](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2525)): Import has a new Monica option. Enter your Monica address and an API token, review each contact, choose add, skip or merge, then share the report of skipped rows as a CSV. Not available on this-device-only profiles.
 - **Add everyone to a circle's event on Android** ([#2526](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2526)): when you suggest invitees from circles, an "Add everyone" button now invites all of the suggestions in one tap, as on the web. If one cannot be added, it stops there, tells you why and keeps the remaining suggestions to retry.
 - **Itemized loss report on Android imports** ([#2524](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2524)): reviewing a Meerkat import or a bundle restore now lists what will not come across exactly, grouped by category with the record and a message for each, instead of only a count.
 - **Android hides features an older server does not have** ([#2527](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2527)): connected to a server older than v1.7.0, the app no longer shows standing shares, organisations/places/pets or the import report link, and Trash no longer fails because it asked for deleted organisations. Nothing to do when upgrading; they reappear once the server is updated.

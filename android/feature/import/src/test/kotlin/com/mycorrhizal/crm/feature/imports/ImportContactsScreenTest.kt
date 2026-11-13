@@ -14,6 +14,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.core.app.ActivityOptionsCompat
@@ -53,7 +54,9 @@ import org.robolectric.annotation.GraphicsMode
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35])
+// A phone-sized viewport: with the Monica entry the four import entries plus the permission
+// rationale no longer fit Robolectric's default 470dp-tall window.
+@Config(sdk = [35], qualifiers = "w360dp-h800dp")
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ImportContactsScreenTest {
 
@@ -84,6 +87,8 @@ class ImportContactsScreenTest {
         grantPermission: Boolean = true,
         onImportVcf: () -> Unit = {},
         onImportCsv: () -> Unit = {},
+        onImportMeerkat: () -> Unit = {},
+        onImportMonica: () -> Unit = {},
         readDevice: () -> List<DeviceContact> = { listOf(jane) },
         // null: the real host Activity's registry. Otherwise the system dialog's
         // answer, delivered through a fake registry (granting it in the shadow
@@ -129,7 +134,9 @@ class ImportContactsScreenTest {
                         ImportContactsScreen(
                             viewModel = viewModel,
                             onImportVcf = onImportVcf,
-                            onImportCsv = onImportCsv
+                            onImportCsv = onImportCsv,
+                            onImportMeerkat = onImportMeerkat,
+                            onImportMonica = onImportMonica
                         )
                     }
                     if (registryOwner != null) {
@@ -210,6 +217,26 @@ class ImportContactsScreenTest {
         composeTestRule.onNodeWithText("Import from a CSV file").performClick()
         assertEquals(1, vcf)
         assertEquals(1, csv)
+    }
+
+    // Issue #2525: the Monica assistant sits next to the Meerkat one and is reachable without
+    // the contacts permission, since it reads nothing from the device.
+    @Test
+    fun `the Monica and Meerkat imports are separate entries reachable without the permission`() {
+        var monica = 0
+        var meerkat = 0
+        setScreen(
+            grantPermission = false,
+            onImportMonica = { monica++ },
+            onImportMeerkat = { meerkat++ }
+        )
+
+        composeTestRule.onNodeWithTag("import-monica-entry").performClick()
+        assertEquals(1, monica)
+        assertEquals(0, meerkat)
+        composeTestRule.onNodeWithTag("import-meerkat-entry").performClick()
+        assertEquals(1, meerkat)
+        composeTestRule.onNodeWithText("Import from Monica").assertIsDisplayed()
     }
 
     @Test

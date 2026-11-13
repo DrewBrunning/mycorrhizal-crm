@@ -2670,6 +2670,48 @@
     </plurals>
     <string name="meerkat_import_unavailable">L\'import depuis un Meerkat en fonctionnement nécessite un profil serveur. Passez à un profil serveur pour l\'utiliser.</string>
     <string name="meerkat_import_error_failed">L\'import n\'a pas abouti. Rien n\'a été modifié.</string>
+    <string name="monica_import_entry">Importer depuis Monica</string>
+    <string name="monica_import_title">Importer depuis Monica</string>
+    <string name="monica_import_description">Connectez-vous à votre compte Monica et vos contacts et leur historique sont récupérés directement via son API. Aucun fichier d\'export n\'est nécessaire, et rien n\'est écrit avant que vous ayez vérifié et confirmé.</string>
+    <string name="monica_import_url_label">Adresse de Monica</string>
+    <string name="monica_import_url_help">L\'adresse web avec laquelle vous ouvrez Monica, p. ex. https://app.monicahq.com</string>
+    <string name="monica_import_token_label">Jeton d\'API</string>
+    <string name="monica_import_token_help">Créez-en un dans Monica, sous Paramètres, puis API. Il est utilisé une seule fois et conservé uniquement pour cet import.</string>
+    <string name="monica_import_include_relationships">Inclure les relations entre contacts</string>
+    <string name="monica_import_include_extras">Inclure les appels, tâches, cadeaux et dettes</string>
+    <string name="monica_import_connect">Se connecter</string>
+    <string name="monica_import_connecting">Connexion…</string>
+    <string name="monica_import_found">%1$s, %2$s et %3$s trouvés.</string>
+    <plurals name="monica_import_found_contacts">
+        <item quantity="one">%1$d contact</item>
+        <item quantity="many">%1$d contacts</item>
+        <item quantity="other">%1$d contacts</item>
+    </plurals>
+    <plurals name="monica_import_found_activities">
+        <item quantity="one">%1$d activité</item>
+        <item quantity="many">%1$d activités</item>
+        <item quantity="other">%1$d activités</item>
+    </plurals>
+    <plurals name="monica_import_found_notes">
+        <item quantity="one">%1$d note</item>
+        <item quantity="many">%1$d notes</item>
+        <item quantity="other">%1$d notes</item>
+    </plurals>
+    <string name="monica_import_estimate">Tout récupérer prend environ %1$d min.</string>
+    <string name="monica_import_start">Démarrer l\'import</string>
+    <string name="monica_import_working">Récupération de vos données Monica…</string>
+    <plurals name="monica_import_loss">
+        <item quantity="one">%1$d élément ne peut pas être importé exactement</item>
+        <item quantity="many">%1$d éléments ne peuvent pas être importés exactement</item>
+        <item quantity="other">%1$d éléments ne peuvent pas être importés exactement</item>
+    </plurals>
+    <plurals name="monica_import_result">
+        <item quantity="one">Importé : %1$d créé, %2$d mis à jour, %3$d ignorés</item>
+        <item quantity="many">Importé : %1$d créés, %2$d mis à jour, %3$d ignorés</item>
+        <item quantity="other">Importé : %1$d créés, %2$d mis à jour, %3$d ignorés</item>
+    </plurals>
+    <string name="monica_import_unavailable">L\'import depuis Monica nécessite un profil serveur. Passez à un profil serveur pour l\'utiliser.</string>
+    <string name="monica_import_error_failed">L\'import n\'a pas abouti. Rien n\'a été modifié.</string>
     <string name="dashboard_backup_reminder_title">Sauvegardez vos données</string>
     <string name="dashboard_backup_reminder_body">Vos données n\'existent que sur cet appareil. Enregistrez une archive de compte pour pouvoir les restaurer si l\'appareil est perdu ou réinitialisé.</string>
     <string name="dashboard_backup_reminder_action">Sauvegarder</string>
