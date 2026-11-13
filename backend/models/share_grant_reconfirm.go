@@ -373,13 +373,11 @@ func (l *ContactEntityLink) captureSensitivity(tx *gorm.DB) (err error) {
 	return err
 }
 
-// markSensitivityReclassification is ContactEntityLink.AfterSave's half: a link
+// markSensitivityReclassification is ContactEntityLink.AfterSave's half (called
+// only with the link's ID set): a link
 // that moved from normal to private/secret withholds the contact's projected
 // section of the link's kind until the owner re-confirms.
 func (l *ContactEntityLink) markSensitivityReclassification(tx *gorm.DB) error {
-	if l.ID == "" {
-		return nil
-	}
 	if live, err := hasLiveContactGrant(tx, l.UserID, l.ContactVCardUID); err != nil || !live {
 		return err
 	}
@@ -419,9 +417,6 @@ func (e *Entity) captureSensitivity(tx *gorm.DB) (err error) {
 // moved from normal to private/secret withholds the projected section on every
 // contact linked to it.
 func (e *Entity) markSensitivityReclassification(tx *gorm.DB) error {
-	if e.ID == "" {
-		return nil
-	}
 	if live, err := hasLiveContactGrant(tx, e.UserID, ""); err != nil || !live {
 		return err
 	}
