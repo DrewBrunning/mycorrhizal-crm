@@ -35,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.DateField
@@ -42,6 +43,7 @@ import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 
 /**
  * Reads the picked URIs into upload payloads. Extracted from the composable so
@@ -248,7 +250,11 @@ fun NoteFormContent(
 
         // Issue #2518: a standing, read-only share of this note (ADR 0042).
         val uuid = state.uuid
-        if (uuid != null && onShare != null) {
+        // Issue #2527: standing shares need a v1.7.0 server.
+        if (uuid != null && onShare != null && isServerFeatureSupported(
+                ServerFeature.SHARE_GRANTS
+            )
+        ) {
             HorizontalDivider()
             OutlinedButton(onClick = { onShare(uuid) }, modifier = Modifier.fillMaxWidth()) {
                 Text(stringResource(R.string.shares_standing_title_note))

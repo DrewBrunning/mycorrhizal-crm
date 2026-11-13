@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.domain.repository
 
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
+import com.mycorrhizal.crm.model.network.CircleTimelinePage
 
 /**
  * Circle data access. Online-first: writes go to the server and the returned
@@ -30,6 +31,15 @@ interface CircleRepository {
 
     /** Rename a circle; returns the updated circle. */
     suspend fun rename(id: String, name: String): Result<Circle>
+
+    /**
+     * Update name, description and colour together (issue #1995). An empty [description] or
+     * [color] clears it; [color] must be a `CircleColors` token or "". Returns the saved circle.
+     */
+    suspend fun update(id: String, name: String, description: String, color: String): Result<Circle>
+
+    /** One page (25) of the merged timeline of the circle's live members (issue #1995/#2361). */
+    suspend fun getTimeline(circleId: String, cursor: String?): Result<CircleTimelinePage>
 
     /** Delete a circle (hard delete). */
     suspend fun delete(id: String): Result<Unit>

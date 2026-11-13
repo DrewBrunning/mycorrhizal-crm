@@ -76,11 +76,26 @@ class TrashViewModel @Inject constructor(
     private val _events = Channel<TrashUiEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
-    init {
+    private var loadJob: Job? = null
+
+    /**
+     * Whether the connected server serves the entity trash (`GET /trash/entities`, ServerFeature
+     * ENTITIES, v1.7.0); null until the screen has told us. A v1.6.0 server answers 404 for that
+     * route, which would fail the whole screen including the contact trash it does have, so the
+     * entity listing is skipped there (issue #2527).
+     */
+    private var entitiesSupported: Boolean? = null
+
+    /**
+     * Starts the first load once the screen knows the server's version. A change of the answer
+     * (the version resolves after the screen opened) reloads.
+     */
+    fun start(entitiesSupported: Boolean) {
+        if (this.entitiesSupported == entitiesSupported) return
+        this.entitiesSupported = entitiesSupported
+        loadJob?.cancel()
         load()
     }
-
-    private var loadJob: Job? = null
 
     /**
      * Refetch on screen resume. The drawer restores the saved back-stack entry, so this view
@@ -88,7 +103,7 @@ class TrashViewModel @Inject constructor(
      * the init load is still running and is skipped.
      */
     fun reload() {
-        if (loadJob?.isActive != true) load()
+        if (entitiesSupported != null && loadJob?.isActive != true) load()
     }
 
     fun load() {
@@ -104,11 +119,7 @@ class TrashViewModel @Inject constructor(
             ) { response ->
                 contacts += response.contacts
                 retention = response.retentionDays
-            } ?: walkPages(
-                fetch = { page -> trashRepository.listEntities(page = page, limit = PAGE_SIZE) },
-                rows = { it.entitiesOrEmpty },
-                total = { it.total }
-            ) { response -> entities += response.entitiesOrEmpty }
+            } ?: walkEntities(entities)
             if (failure != null) {
                 _uiState.update { it.copy(isLoading = false, error = failure) }
             } else {
@@ -122,6 +133,16 @@ class TrashViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** The entity trash, skipped entirely on a server without it (issue #2527). */
+    private suspend fun walkEntities(into: MutableList<TrashedEntity>): ApiError? {
+        if (entitiesSupported != true) return null
+        return walkPages(
+            fetch = { page -> trashRepository.listEntities(page = page, limit = PAGE_SIZE) },
+            rows = { it.entitiesOrEmpty },
+            total = { it.total }
+        ) { response -> into += response.entitiesOrEmpty }
     }
 
     /** Walks a paged list until it is exhausted; returns the first failure, or null. */

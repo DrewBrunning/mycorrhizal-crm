@@ -36,7 +36,7 @@ internal fun circleNameComparator(locale: Locale = Locale.getDefault()): Compara
     return Comparator<Circle> { a, b -> collator.compare(a.name, b.name) }.thenBy { it.id }
 }
 
-private fun ApiError.isCircleNameTaken(): Boolean =
+internal fun ApiError.isCircleNameTaken(): Boolean =
     this is ApiError.Client && reason?.code == ErrorReasonCode.CIRCLE_ALREADY_EXISTS
 
 @HiltViewModel

@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -27,6 +28,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Anniversary
 import com.mycorrhizal.crm.model.network.AnniversaryDate
@@ -57,6 +59,7 @@ import com.mycorrhizal.crm.model.network.Pronouns
 import com.mycorrhizal.crm.model.network.Reminder
 import com.mycorrhizal.crm.model.network.Resource
 import com.mycorrhizal.crm.model.network.SpeakToAs
+import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.every
 import io.mockk.mockk
@@ -1224,6 +1227,41 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Organisations, places & pets").assertIsDisplayed()
         composeTestRule.onNodeWithTag("drill-down-entities").performClick()
         assertEquals(5, opened)
+    }
+
+    // Issue #2527: `/entities` needs a v1.7.0 server, so the drill-down is hidden before that.
+    private fun entitiesDrillDown(serverVersion: AppVersion?) {
+        composeTestRule.setContent {
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme {
+                    ContactDetailContent(
+                        contact = ContactRecordResponse(
+                            id = 5,
+                            card = Card(name = Name(full = "Dana White"))
+                        ),
+                        onViewEntities = {}
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `entities drill-down is hidden on a v1_6_0 server`() {
+        entitiesDrillDown(AppVersion(1, 6, 0))
+        // Scroll to the row that always follows it, so an absent row is not just "not composed yet".
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-occasions"))
+        composeTestRule.onNodeWithTag("drill-down-occasions").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("drill-down-entities").assertDoesNotExist()
+    }
+
+    @Test
+    fun `entities drill-down shows on a v1_7_0 server`() {
+        entitiesDrillDown(AppVersion(1, 7, 0))
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-entities"))
+        composeTestRule.onNodeWithTag("drill-down-entities").assertIsDisplayed()
     }
 
     // ADR 0024 (issue #2521): standing occasion obligations are reached from the contact page.

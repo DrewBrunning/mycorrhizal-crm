@@ -1193,6 +1193,34 @@
     <string name="circles_error_missing_id">ID cerchio mancante</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
     <string name="circles_text_everyone">Scrivi a tutti</string>
+    <!-- Issue #2522: circle description, colour and member timeline (web #1995/#2361 parity). -->
+    <string name="circles_edit">Modifica cerchio</string>
+    <string name="circles_description_label">Descrizione</string>
+    <string name="circles_description_counter">%1$d/%2$d</string>
+    <string name="circles_color_label">Colore</string>
+    <string name="circles_color_none">Nessuno</string>
+    <string name="circles_color_red">Rosso</string>
+    <string name="circles_color_orange">Arancione</string>
+    <string name="circles_color_yellow">Giallo</string>
+    <string name="circles_color_green">Verde</string>
+    <string name="circles_color_teal">Verde acqua</string>
+    <string name="circles_color_blue">Blu</string>
+    <string name="circles_color_purple">Viola</string>
+    <string name="circles_color_pink">Rosa</string>
+    <string name="circles_color_grey">Grigio</string>
+    <string name="circles_timeline_title">Cronologia</string>
+    <string name="circles_timeline_empty">Ancora nessuna nota o attività per i membri di questo cerchio.</string>
+    <string name="circles_timeline_type_note">Nota</string>
+    <string name="circles_timeline_type_activity">Attività</string>
+    <string name="circles_timeline_type_completion">Promemoria completato</string>
+    <string name="circles_timeline_type_life_event">Evento di vita</string>
+    <string name="circles_timeline_type_external_activity">Attività esterna</string>
+    <string name="circles_timeline_type_gift">Regalo</string>
+    <plurals name="circles_member_count">
+        <item quantity="one">%1$d membro</item>
+        <item quantity="many">%1$d membri</item>
+        <item quantity="other">%1$d membri</item>
+    </plurals>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Classificazione cerchi ed etichette</string>
@@ -2055,6 +2083,20 @@
     <string name="import_vcf_title">Importa file VCF</string>
     <string name="import_vcf_pick">Seleziona un file .vcf</string>
     <string name="import_vcf_pick_hint">Scegli un file .vcf (vCard) esportato da un\'altra app.</string>
+    <string name="import_vcf_cf_title">Campi personalizzati trovati</string>
+    <string name="import_vcf_cf_description">Questo file contiene proprietà X- personalizzate che la tua app non conosce ancora. Trasformale in campi personalizzati ricercabili oppure mantienile così come sono («passthrough»): le proprietà mantenute vengono salvate intatte con il contatto e riesportate in seguito, ma qui non si possono cercare né modificare.</string>
+    <string name="import_vcf_cf_sample_value">Valore di esempio: %1$s</string>
+    <string name="import_vcf_cf_action_ignore">Mantieni come passaggio</string>
+    <string name="import_vcf_cf_action_map">Mappa su campo esistente</string>
+    <string name="import_vcf_cf_action_create">Crea nuovo campo</string>
+    <string name="import_vcf_cf_help_ignore">Viene salvata intatta con il contatto e riesportata in seguito, ma qui non è ricercabile né modificabile. Non si perde nulla.</string>
+    <string name="import_vcf_cf_help_map">Inserisce il valore in un campo personalizzato che hai già creato, così è ricercabile e modificabile.</string>
+    <string name="import_vcf_cf_help_map_empty">Non hai ancora campi personalizzati. Scegli «Crea nuovo campo» per crearne uno da questa proprietà.</string>
+    <string name="import_vcf_cf_help_create">Crea un nuovo campo personalizzato ricercabile da questa proprietà e lo compila per ogni contatto importato.</string>
+    <string name="import_vcf_cf_field">Campo personalizzato</string>
+    <string name="import_vcf_cf_select_field">Seleziona un campo…</string>
+    <string name="import_vcf_cf_label">Etichetta</string>
+    <string name="import_vcf_cf_continue">Continua</string>
 
     <!-- T96 import merge review -->
     <plurals name="import_review_remaining">
@@ -2610,6 +2652,12 @@
     </plurals>
     <string name="meerkat_import_start">Avvia importazione</string>
     <string name="meerkat_import_working">Lettura dei dati di Meerkat…</string>
+    <string name="import_loss_category_unsupported">Non importato</string>
+    <string name="import_loss_category_invalid">Rifiutato</string>
+    <string name="import_loss_category_lossy">Importato con perdita di dettagli</string>
+    <string name="import_loss_category_transformed">Importato con una modifica</string>
+    <string name="import_loss_category_skipped">Saltato deliberatamente</string>
+    <string name="import_loss_category_other">Altro</string>
     <plurals name="meerkat_import_loss">
         <item quantity="one">%1$d elemento non può essere importato esattamente</item>
         <item quantity="many">%1$d elementi non possono essere importati esattamente</item>

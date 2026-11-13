@@ -44,12 +44,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.FIELD_TYPES
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 
 /**
  * Issue #830: the field-definition create/edit form — a full screen (not an `AlertDialog`, unlike
@@ -191,35 +193,39 @@ fun FieldDefinitionFormContent(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        ExposedDropdownMenuBox(
-            expanded = targetExpanded,
-            onExpandedChange = { targetExpanded = it && !state.isEdit }
-        ) {
-            OutlinedTextField(
-                value = stringResource(fieldTargetLabelRes(state.target)),
-                onValueChange = {},
-                readOnly = true,
-                enabled = !state.isEdit,
-                label = { Text(stringResource(R.string.settings_custom_fields_applies_to)) },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = targetExpanded)
-                },
-                modifier = Modifier.fillMaxWidth().menuAnchor(
-                    ExposedDropdownMenuAnchorType.PrimaryNotEditable
-                )
-            )
-            ExposedDropdownMenu(
+        // Issue #2527: entity-targeted fields need `/entities` (v1.7.0). Older servers only know
+        // contact fields, so there is nothing to choose.
+        if (isServerFeatureSupported(ServerFeature.ENTITIES)) {
+            ExposedDropdownMenuBox(
                 expanded = targetExpanded,
-                onDismissRequest = { targetExpanded = false }
+                onExpandedChange = { targetExpanded = it && !state.isEdit }
             ) {
-                FIELD_TARGETS.forEach { option ->
-                    DropdownMenuItem(
-                        text = { Text(stringResource(fieldTargetLabelRes(option))) },
-                        onClick = {
-                            onTargetChange(option)
-                            targetExpanded = false
-                        }
+                OutlinedTextField(
+                    value = stringResource(fieldTargetLabelRes(state.target)),
+                    onValueChange = {},
+                    readOnly = true,
+                    enabled = !state.isEdit,
+                    label = { Text(stringResource(R.string.settings_custom_fields_applies_to)) },
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = targetExpanded)
+                    },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(
+                        ExposedDropdownMenuAnchorType.PrimaryNotEditable
                     )
+                )
+                ExposedDropdownMenu(
+                    expanded = targetExpanded,
+                    onDismissRequest = { targetExpanded = false }
+                ) {
+                    FIELD_TARGETS.forEach { option ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(fieldTargetLabelRes(option))) },
+                            onClick = {
+                                onTargetChange(option)
+                                targetExpanded = false
+                            }
+                        )
+                    }
                 }
             }
         }

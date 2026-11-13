@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.settings
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsDisplayed
@@ -19,8 +20,10 @@ import androidx.compose.ui.test.swipeDown
 import androidx.compose.ui.test.swipeUp
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
+import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
@@ -50,39 +53,42 @@ class FieldDefinitionFormScreenTest {
         onTargetChange: (String) -> Unit = {},
         onSave: () -> Unit = {},
         onGroupChange: (String) -> Unit = {},
-        onDelete: () -> Unit = {}
+        onDelete: () -> Unit = {},
+        serverVersion: AppVersion? = null
     ) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
-                FormScaffold(
-                    title = "Form",
-                    onBack = {},
-                    saveLabel = if (state.isEdit) "Save" else "Create",
-                    isSaving = state.isSaving,
-                    onSave = onSave,
-                    snackbarHostState = remember { SnackbarHostState() }
-                ) { padding ->
-                    FieldDefinitionFormContent(
-                        state = state,
-                        onLabelChange = {},
-                        onKeyChange = {},
-                        onTypeChange = onTypeChange,
-                        onTargetChange = onTargetChange,
-                        onMultiChange = {},
-                        onMinChange = {},
-                        onMaxChange = {},
-                        onMaxLengthChange = {},
-                        onPatternChange = {},
-                        onAddEnumValue = {},
-                        onUpdateEnumValue = { _, _ -> },
-                        onRemoveEnumValue = {},
-                        onProjectionModeChange = {},
-                        onVcardNameChange = {},
-                        onSensitivityChange = {},
-                        onGroupChange = onGroupChange,
-                        onDelete = onDelete,
-                        modifier = Modifier.padding(padding)
-                    )
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme {
+                    FormScaffold(
+                        title = "Form",
+                        onBack = {},
+                        saveLabel = if (state.isEdit) "Save" else "Create",
+                        isSaving = state.isSaving,
+                        onSave = onSave,
+                        snackbarHostState = remember { SnackbarHostState() }
+                    ) { padding ->
+                        FieldDefinitionFormContent(
+                            state = state,
+                            onLabelChange = {},
+                            onKeyChange = {},
+                            onTypeChange = onTypeChange,
+                            onTargetChange = onTargetChange,
+                            onMultiChange = {},
+                            onMinChange = {},
+                            onMaxChange = {},
+                            onMaxLengthChange = {},
+                            onPatternChange = {},
+                            onAddEnumValue = {},
+                            onUpdateEnumValue = { _, _ -> },
+                            onRemoveEnumValue = {},
+                            onProjectionModeChange = {},
+                            onVcardNameChange = {},
+                            onSensitivityChange = {},
+                            onGroupChange = onGroupChange,
+                            onDelete = onDelete,
+                            modifier = Modifier.padding(padding)
+                        )
+                    }
                 }
             }
         }
@@ -427,5 +433,18 @@ class FieldDefinitionFormScreenTest {
         composeTestRule.onNodeWithText("Place").assertIsDisplayed()
         composeTestRule.onNodeWithText("Place").performClick()
         composeTestRule.onNodeWithText("Pet").assertDoesNotExist()
+    }
+
+    // Issue #2527: entity-targeted custom fields need `/entities` (floor v1.7.0).
+    @Test
+    fun `a v1_6_0 server has no applies-to choice`() {
+        setContent(FieldDefinitionFormState(), serverVersion = AppVersion(1, 6, 0))
+        composeTestRule.onNodeWithText("Applies to").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a v1_7_0 server offers the applies-to choice`() {
+        setContent(FieldDefinitionFormState(), serverVersion = AppVersion(1, 7, 0))
+        composeTestRule.onNodeWithText("Applies to").performScrollTo().assertIsDisplayed()
     }
 }

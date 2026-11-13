@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.imports
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -7,11 +8,13 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.model.network.ImportRunDetail
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
@@ -37,10 +40,12 @@ class ImportHistoryScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun setScreen(apiClient: ApiClient) {
+    private fun setScreen(apiClient: ApiClient, serverVersion: AppVersion? = null) {
         composeTestRule.setContent {
-            MycorrhizalTheme {
-                ImportHistoryScreen(onBack = {}, viewModel = ImportHistoryViewModel(apiClient))
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme {
+                    ImportHistoryScreen(onBack = {}, viewModel = ImportHistoryViewModel(apiClient))
+                }
             }
         }
     }
@@ -177,5 +182,32 @@ class ImportHistoryScreenTest {
 
         composeTestRule.onNodeWithText("server error").assertIsDisplayed()
         composeTestRule.onNodeWithTag("import-history-list").assertIsDisplayed()
+    }
+
+    // Issue #2527: the per-row report (`GET /contacts/import/history/:id`, `issue_count`) needs a
+    // v1.7.0 server, so the link is hidden on an older one even if a row claims issues.
+    @Test
+    fun `a v1_6_0 server offers no View report link`() {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getImportHistory() } returns Result.success(
+            listOf(ImportRun(id = 1, format = "csv", skipped = 2, issueCount = 2))
+        )
+
+        setScreen(apiClient, serverVersion = AppVersion(1, 6, 0))
+
+        composeTestRule.onNodeWithText("csv", substring = true, ignoreCase = true).assertExists()
+        composeTestRule.onAllNodesWithText("View report").assertCountEquals(0)
+    }
+
+    @Test
+    fun `a v1_7_0 server offers the View report link`() {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getImportHistory() } returns Result.success(
+            listOf(ImportRun(id = 1, format = "csv", skipped = 2, issueCount = 2))
+        )
+
+        setScreen(apiClient, serverVersion = AppVersion(1, 7, 0))
+
+        composeTestRule.onAllNodesWithText("View report").assertCountEquals(1)
     }
 }

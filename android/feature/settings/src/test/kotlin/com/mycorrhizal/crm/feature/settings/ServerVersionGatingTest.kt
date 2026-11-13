@@ -215,4 +215,33 @@ class ServerVersionGatingTest {
         composeTestRule.onNodeWithContentDescription("Rotate CI token").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Revoke CI token").assertIsDisplayed()
     }
+
+    // --- Issue #2527: Contacts & fields > Organisations, places & pets needs `/entities` (v1.7.0) ---
+
+    private fun setContactsFields(serverVersion: AppVersion?) {
+        composeTestRule.setContent {
+            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+                MycorrhizalTheme { ContactsFieldsSettingsContent() }
+            }
+        }
+    }
+
+    @Test
+    fun `contacts and fields hides the entities row on a v1_6_0 server`() {
+        setContactsFields(serverVersion = version(1, 6, 0))
+        composeTestRule.onNodeWithText("Custom fields").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisations, places & pets").assertDoesNotExist()
+    }
+
+    @Test
+    fun `contacts and fields shows the entities row on a v1_7_0 server`() {
+        setContactsFields(serverVersion = version(1, 7, 0))
+        composeTestRule.onNodeWithText("Organisations, places & pets").assertIsDisplayed()
+    }
+
+    @Test
+    fun `contacts and fields shows the entities row when the server version is unknown`() {
+        setContactsFields(serverVersion = null)
+        composeTestRule.onNodeWithText("Organisations, places & pets").assertIsDisplayed()
+    }
 }

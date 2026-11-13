@@ -156,16 +156,14 @@ fun MeerkatImportScreenContent(
                 MeerkatImportStep.REVIEW -> uiState.preview?.let { preview ->
                     Column(modifier = Modifier.fillMaxSize()) {
                         if (preview.lossReport.isNotEmpty()) {
-                            Text(
-                                text = pluralStringResource(
+                            SourceImportLossReport(
+                                issues = preview.lossReport,
+                                headerText = pluralStringResource(
                                     R.plurals.meerkat_import_loss,
                                     preview.lossReport.size,
                                     preview.lossReport.size
                                 ),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                    .testTag("meerkat-import-loss")
+                                tagPrefix = "meerkat-import"
                             )
                         }
                         Box(modifier = Modifier.weight(1f)) {
