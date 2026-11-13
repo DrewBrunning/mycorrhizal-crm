@@ -3,6 +3,8 @@ package services
 import (
 	"testing"
 
+	"mycorrhizal/internal/dbtest"
+
 	"gorm.io/gorm"
 
 	"mycorrhizal/models"
@@ -102,4 +104,33 @@ func TestRestoreContact_RevokesNoteGrantsLeftLiveByAnEarlierDelete(t *testing.T)
 	require.NoError(t, err)
 	assert.Equal(t, models.ShareGrantStatusRevoked, f.reload(t, g.ID).Status)
 	require.Len(t, res.RevokedGrants, 1)
+}
+
+// A failure to look up or revoke the note grants fails the whole delete and
+// leaves everything in place: the revoke shares the delete's transaction.
+func TestContactDelete_NoteGrantFailuresRollBackTheDelete(t *testing.T) {
+	t.Run("lookup fails", func(t *testing.T) {
+		f := newGrantRevokeFixture(t)
+		contact := models.Contact{UserID: f.owner.ID, Firstname: "Del"}
+		require.NoError(t, f.db.Create(&contact).Error)
+		seedNoteWithGrant(t, f, contact, "n", models.ShareGrantStatusActive)
+		dbtest.HideTable(t, f.db, "share_grants")
+
+		require.Error(t, DeleteContact(f.db, contact, f.owner.ID, f.nowRef))
+		var n int64
+		require.NoError(t, f.db.Model(&models.Note{}).Where("contact_id = ?", contact.ID).Count(&n).Error)
+		assert.EqualValues(t, 1, n, "the note is not deleted when the delete rolls back")
+	})
+	t.Run("revoke fails", func(t *testing.T) {
+		f := newGrantRevokeFixture(t)
+		contact := models.Contact{UserID: f.owner.ID, Firstname: "Del"}
+		require.NoError(t, f.db.Create(&contact).Error)
+		seedNoteWithGrant(t, f, contact, "n", models.ShareGrantStatusActive)
+		require.NoError(t, f.db.Exec(`CREATE TRIGGER fail_grant_update BEFORE UPDATE ON share_grants BEGIN SELECT RAISE(ABORT, 'boom'); END`).Error)
+
+		require.Error(t, DeleteContact(f.db, contact, f.owner.ID, f.nowRef))
+		var n int64
+		require.NoError(t, f.db.Model(&models.Note{}).Where("contact_id = ?", contact.ID).Count(&n).Error)
+		assert.EqualValues(t, 1, n)
+	})
 }
