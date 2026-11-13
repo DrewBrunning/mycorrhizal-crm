@@ -3345,6 +3345,7 @@
     <string name="error_reason_household_suggestion_stale">The suggested members no longer share an address — re-run the suggestion scan</string>
     <string name="error_reason_household_type_invalid">type must be one of family_unit, roommates, other</string>
     <string name="error_reason_import_disk_space_low">not enough disk space to import %1$s contacts: %2$s</string>
+    <string name="error_reason_import_field_mapping_target_invalid">An imported value can only go into a custom field that applies to contacts</string>
     <string name="error_reason_import_field_mappings_invalid">%1$s</string>
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>

@@ -89,6 +89,31 @@ func byMemberUID(t ContactCascadeTarget) (string, []any) {
 	return "member_vcard_uid = ? AND user_id = ?", []any{t.VCardUID, t.UserID}
 }
 
+// noteUUIDsOfContact is the subquery naming every note (soft-deleted or not)
+// that belongs to the contact being deleted, by its stable UUID.
+const noteUUIDsOfContact = "SELECT uuid FROM notes WHERE contact_id = ? AND user_id = ?"
+
+// revokeNoteGrantsForContact revokes the owner's live standing-share grants on
+// every note of the contact (issue #2562). It runs in the delete's
+// transaction, after the notes are soft-deleted, and goes through the shared
+// RevokeShareGrantsForEntity helper so audit and recipient notices match a
+// direct note delete.
+func revokeNoteGrantsForContact(tx *gorm.DB, t ContactCascadeTarget, now time.Time) error {
+	var uuids []string
+	if err := tx.Model(&models.ShareGrant{}).Distinct().
+		Where("from_user_id = ? AND entity_type = ? AND status IN ? AND entity_id IN ("+noteUUIDsOfContact+")",
+			t.UserID, models.ShareGrantEntityNote, models.ShareGrantLiveStatuses, t.ID, t.UserID).
+		Pluck("entity_id", &uuids).Error; err != nil {
+		return err
+	}
+	for _, id := range uuids {
+		if _, err := RevokeShareGrantsForEntity(tx, t.UserID, models.ShareGrantEntityNote, id, now); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func byContactUID(t ContactCascadeTarget) (string, []any) {
 	return "contact_vcard_uid = ? AND user_id = ?", []any{t.VCardUID, t.UserID}
 }
@@ -142,12 +167,20 @@ func ContactCascadeRegistry() []CascadeStep {
 			// stale updated_at on a cascaded gift, life event or reminder is
 			// never read by a sync client (#1471 grooming item 3). Add the same
 			// bump if one of them gains a change feed.
+			//
+			// Issue #2562, ADR 0042 decision 10: the notes are soft-deleted and
+			// come back on a trash restore, so a standing-share grant on one of
+			// them is revoked here (a direct note delete does the same). Without
+			// it a restore would re-arm access the owner already ended.
 			After: func(tx *gorm.DB, t ContactCascadeTarget, now time.Time) error {
-				return tx.Model(&models.Note{}).Unscoped().
+				if err := tx.Model(&models.Note{}).Unscoped().
 					Where("contact_id = ? AND user_id = ? AND deleted_at IS NOT NULL", t.ID, t.UserID).
-					UpdateColumn("updated_at", now).Error
+					UpdateColumn("updated_at", now).Error; err != nil {
+					return err
+				}
+				return revokeNoteGrantsForContact(tx, t, now)
 			},
-			Reason: "user-authored content: soft delete; FK cascade to contacts never fires",
+			Reason: "user-authored content: soft delete; FK cascade to contacts never fires; live standing-share grants on the notes are revoked (entity_deleted) in the After hook so a restore cannot re-arm them (issue #2562)",
 		},
 		{
 			Table: "activity_contacts", Mode: CascadeHard,

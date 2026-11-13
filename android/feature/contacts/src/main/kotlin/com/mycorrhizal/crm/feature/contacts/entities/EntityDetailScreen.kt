@@ -228,6 +228,7 @@ internal fun EntityDetailContent(
             entity = entity,
             deleting = state.isDeleting,
             adoptFailedCount = state.adoptFailedCount,
+            peopleFailed = state.peopleFailed,
             error = state.error,
             onConfirm = onDelete,
             onDismiss = { showDelete = false }
@@ -528,9 +529,12 @@ internal fun EntityDeleteDialog(
     adoptFailedCount: Int,
     error: ApiError?,
     onConfirm: (adoptAll: Boolean) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    // The people list failed to load: there is nobody to copy the value to, so adopt-all is off.
+    peopleFailed: Boolean = false
 ) {
-    var adoptAll by remember { mutableStateOf(false) }
+    var adoptAllTicked by remember { mutableStateOf(false) }
+    val adoptAll = adoptAllTicked && !peopleFailed
     val projections = entity.projectionCount ?: 0
     val links = entity.linkCount ?: 0
     val projects = EntityKind.projects(entity.kind)
@@ -565,13 +569,18 @@ internal fun EntityDeleteDialog(
                         modifier = Modifier.fillMaxWidth()
                             .toggleable(
                                 value = adoptAll,
+                                enabled = !peopleFailed,
                                 role = Role.Checkbox,
-                                onValueChange = { adoptAll = it }
+                                onValueChange = { adoptAllTicked = it }
                             )
                             .testTag("entity-delete-adopt"),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Checkbox(checked = adoptAll, onCheckedChange = null)
+                        Checkbox(
+                            checked = adoptAll,
+                            onCheckedChange = null,
+                            enabled = !peopleFailed
+                        )
                         Text(
                             stringResource(
                                 if (entity.kind == EntityKind.PLACE) {

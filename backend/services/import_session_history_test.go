@@ -306,3 +306,97 @@ func TestSourceImportResultFromReport_MapsSkippedAndInvalidIssues(t *testing.T) 
 	assert.Equal(t, models.ImportRowIssue{Row: 1, Name: "contact 7 (Jane Doe)", Status: "skipped", Reason: "excluded in the import review step"}, got.Issues[0])
 	assert.Equal(t, models.ImportRowIssue{Row: 2, Name: "contact 9 (Bob)", Status: "failed", Reason: "email: not an address"}, got.Issues[1])
 }
+
+// Issue #2563: a row with no name is reported under its email or phone in the
+// live confirm response, but that fallback must never reach the persisted
+// history (docs/security/pii-inventory.md: "never email, phone").
+
+func rawStoredIssues(t *testing.T, db *gorm.DB, userID uint) (string, []models.ImportRowIssue) {
+	t.Helper()
+	runs := importRunsFor(t, db, userID)
+	require.Len(t, runs, 1)
+	var raw string
+	require.NoError(t, db.Raw("SELECT issues FROM import_runs WHERE id = ?", runs[0].ID).Scan(&raw).Error)
+	var stored []models.ImportRowIssue
+	require.NoError(t, json.Unmarshal([]byte(raw), &stored))
+	return raw, stored
+}
+
+func TestConfirm_CSV_NamelessRowsDoNotPersistEmailOrPhoneAsName(t *testing.T) {
+	db := dbtest.New(t)
+	user := newImportHistoryUser(t, db, "csv-nameless")
+	m := NewImportSessionManager()
+
+	headers := []string{"First Name", "Email", "Phone"}
+	rows := [][]string{{"", "jane.private@example.org", ""}, {"", "", "+14155550142"}}
+	id := m.CreateCSVSession(user.ID, headers, rows)
+	_, appErr := m.PreviewCSV(db, user.ID, models.ImportPreviewRequest{
+		SessionID: id,
+		Mappings: []models.ColumnMapping{
+			{CSVColumn: "First Name", ContactField: "firstname"},
+			{CSVColumn: "Email", ContactField: "email"},
+			{CSVColumn: "Phone", ContactField: "phone"},
+		},
+	})
+	require.Nil(t, appErr)
+
+	result, appErr := m.Confirm(db, user.ID, models.ImportConfirmRequest{
+		SessionID: id,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "skip"}, {RowIndex: 1, Action: "skip"}},
+	}, testImportLogger())
+	require.Nil(t, appErr)
+	require.Len(t, result.Issues, 2)
+	assert.Equal(t, "jane.private@example.org", result.Issues[0].Name, "the live response keeps the fallback name")
+	assert.Equal(t, "+14155550142", result.Issues[1].Name)
+
+	raw, stored := rawStoredIssues(t, db, user.ID)
+	require.Len(t, stored, 2)
+	assert.NotContains(t, raw, "jane.private@example.org")
+	assert.NotContains(t, raw, "4155550142")
+	assert.Equal(t, 1, stored[0].Row, "the row reference survives")
+	assert.Equal(t, 2, stored[1].Row)
+}
+
+func TestConfirmVCF_NamelessRowsDoNotPersistEmailOrPhoneAsName(t *testing.T) {
+	db := dbtest.New(t)
+	user := newImportHistoryUser(t, db, "vcf-nameless")
+	m := NewImportSessionManager()
+
+	id := m.CreateVCFSession(user.ID,
+		[]VCFContactData{{Contact: &models.Contact{}}, {Contact: &models.Contact{}}},
+		[]models.ImportRowPreview{
+			{RowIndex: 0, ParsedContact: map[string]any{"email": "jane.private@example.org"}, SuggestedAction: "skip"},
+			{RowIndex: 1, ParsedContact: map[string]any{"phone": "+14155550142"}, SuggestedAction: "skip"},
+		})
+	result, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
+		SessionID: id,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "skip"}, {RowIndex: 1, Action: "skip"}},
+	}, testImportConfig(t), testImportLogger())
+	require.Nil(t, appErr)
+	require.Len(t, result.Issues, 2)
+	assert.Equal(t, "jane.private@example.org", result.Issues[0].Name, "the live response keeps the fallback name")
+
+	raw, stored := rawStoredIssues(t, db, user.ID)
+	require.Len(t, stored, 2)
+	assert.NotContains(t, raw, "jane.private@example.org")
+	assert.NotContains(t, raw, "4155550142")
+}
+
+// A real name that merely resembles nothing sensitive is kept.
+func TestStoredImportIssues_KeepsRealNamesAndBlanksDerivedOnes(t *testing.T) {
+	db := dbtest.New(t)
+	user := newImportHistoryUser(t, db, "name-keep")
+	models.RecordImportRun(context.Background(), db, models.ImportRun{
+		UserID: user.ID, Format: models.ImportFormatCSV,
+		Issues: []models.ImportRowIssue{
+			{Row: 1, Name: "Alice Smith", Email: "alice@example.com", Status: "skipped", Reason: "r"},
+			{Row: 2, Name: "bob@example.com", Email: "bob@example.com", Status: "skipped", Reason: "r"},
+			{Row: 3, Name: "+14155550142", Phone: "+14155550142", Status: "skipped", Reason: "r"},
+		},
+	})
+	_, stored := rawStoredIssues(t, db, user.ID)
+	require.Len(t, stored, 3)
+	assert.Equal(t, "Alice Smith", stored[0].Name)
+	assert.Empty(t, stored[1].Name)
+	assert.Empty(t, stored[2].Name)
+}

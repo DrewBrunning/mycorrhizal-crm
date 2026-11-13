@@ -23,7 +23,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class MonicaImportStep { CONNECT, WORKING, REVIEW, RESULT }
 
@@ -89,6 +91,13 @@ class MonicaImportViewModel @Inject constructor(
      */
     private var importConfirmed = false
 
+    /**
+     * True while the confirm request is on the wire. The server may already have
+     * started the import by the time the user backs out, so [cancel] must not roll
+     * it back in that window ([importConfirmed] is only set once the call returns).
+     */
+    private var confirmInFlight = false
+
     init {
         viewModelScope.launch {
             bundleBackupRepository.observeStatus().collect { status ->
@@ -121,7 +130,15 @@ class MonicaImportViewModel @Inject constructor(
             it.copy(isConnecting = true, errorRes = null, error = null, errorText = null)
         }
         viewModelScope.launch {
-            apiClient.connectMonica(request).fold(
+            // NonCancellable: leaving the screen must not abort the request mid-flight
+            // and leave a session (holding the Monica token) nobody knows about.
+            val result = withContext(NonCancellable) { apiClient.connectMonica(request) }
+            if (!isActive) {
+                // The screen was left while connecting; nobody will use this session.
+                result.getOrNull()?.let { cancelSession(it.sessionId) }
+                return@launch
+            }
+            result.fold(
                 onSuccess = { connected ->
                     _uiState.update {
                         // The server holds the token now; drop it from the form state.
@@ -215,9 +232,13 @@ class MonicaImportViewModel @Inject constructor(
             val actions = _uiState.value.rowActions.map { (index, action) ->
                 RowImportAction(index, action)
             }
-            apiClient.confirmMonicaImport(ImportConfirmRequest(preview.sessionId, actions))
-                .exceptionOrNull()
-                ?.let { return@launch failToReview(it.toApiError()) }
+            confirmInFlight = true
+            val confirmed = try {
+                apiClient.confirmMonicaImport(ImportConfirmRequest(preview.sessionId, actions))
+            } finally {
+                confirmInFlight = false
+            }
+            confirmed.exceptionOrNull()?.let { return@launch failToReview(it.toApiError()) }
             importConfirmed = true
             val polled = pollUntil(preview.sessionId, terminal = setOf(PHASE_DONE))
             val status = polled.terminal
@@ -253,7 +274,7 @@ class MonicaImportViewModel @Inject constructor(
     fun cancel() {
         val state = _uiState.value
         val sessionId = state.connected?.sessionId ?: return
-        if (state.step == MonicaImportStep.RESULT || importConfirmed) return
+        if (state.step == MonicaImportStep.RESULT || importConfirmed || confirmInFlight) return
         cancelSession(sessionId)
     }
 

@@ -194,6 +194,35 @@ class ContactEntityLinksViewModelTest {
         }
 
     @Test
+    fun `toggling primary resends the entity, role label, period and sensitivity unchanged`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val period = TemporalRange(
+                start = PartialDate(year = 2019),
+                end = PartialDate(year = 2023, month = 6)
+            )
+            val richLink = acmeLink.copy(
+                roleLabel = "Head chef",
+                period = period,
+                sensitivity = "private"
+            )
+            coEvery { repository.linksForContact(5) } returns Result.success(listOf(richLink))
+            val sent = mutableListOf<ContactEntityLinkInput>()
+            coEvery { repository.updateLink(5, "l1", capture(sent), 2) } returns
+                Result.success(richLink.copy(isPrimary = false, revision = 3))
+            val vm = vm()
+            advanceUntilIdle()
+            vm.setPrimary(richLink, false)
+            advanceUntilIdle()
+            val input = sent.single()
+            assertEquals("e1", input.entityId)
+            assertEquals("employee", input.role)
+            assertEquals("Head chef", input.roleLabel)
+            assertEquals(period, input.period)
+            assertEquals("private", input.sensitivity)
+            assertEquals(false, input.isPrimary)
+        }
+
+    @Test
     fun `a stale revision asks the user to reload instead of overwriting`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.updateLink(any(), any(), any(), any()) } returns

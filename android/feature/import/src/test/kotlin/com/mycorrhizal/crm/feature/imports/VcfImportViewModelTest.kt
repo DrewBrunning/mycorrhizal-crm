@@ -518,6 +518,61 @@ class VcfImportViewModelTest {
         }
 
     @Test
+    fun `only contact-target definitions are offered and an excluded id is ignored`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = uploaded(
+                candidatePreview(listOf(color)),
+                Result.success(
+                    FieldDefinitionsResponse(
+                        fieldDefinitions = listOf(
+                            FieldDefinition(id = "c1", label = "Hobby", target = "contact"),
+                            FieldDefinition(id = "c2", label = "Legacy", target = null),
+                            FieldDefinition(id = "c3", label = "Blank", target = " "),
+                            FieldDefinition(id = "o1", label = "Industry", target = "organisation"),
+                            FieldDefinition(id = "p1", label = "Breed", target = "pet")
+                        )
+                    )
+                )
+            )
+
+            assertEquals(
+                listOf("c1", "c2", "c3"),
+                vm.uiState.value.fieldDefinitions.map { it.id }
+            )
+            vm.setFieldMappingAction("x-favorite-color", "map")
+            vm.setFieldMappingDefinition("x-favorite-color", "o1")
+            assertNull(
+                vm.uiState.value.fieldMappings.getValue("x-favorite-color").fieldDefinitionId
+            )
+            vm.setFieldMappingDefinition("x-favorite-color", "c1")
+            assertEquals(
+                "c1",
+                vm.uiState.value.fieldMappings.getValue("x-favorite-color").fieldDefinitionId
+            )
+        }
+
+    @Test
+    fun `with only non-contact definitions the map action is unavailable`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = uploaded(
+                candidatePreview(listOf(color)),
+                Result.success(
+                    FieldDefinitionsResponse(
+                        fieldDefinitions = listOf(
+                            FieldDefinition(id = "o1", label = "Industry", target = "organisation")
+                        )
+                    )
+                )
+            )
+            assertEquals(emptyList<FieldDefinition>(), vm.uiState.value.fieldDefinitions)
+            vm.setFieldMappingAction("x-favorite-color", "map")
+            assertEquals(
+                "ignore",
+                vm.uiState.value.fieldMappings.getValue("x-favorite-color").action
+            )
+        }
+
+    @Test
     fun `confirm sends one mapping per property carrying only the fields its action uses`() =
         runTest(mainDispatcherRule.testDispatcher) {
             val vm = uploaded(

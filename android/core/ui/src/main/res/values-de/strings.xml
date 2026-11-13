@@ -3328,6 +3328,7 @@
     <string name="error_reason_household_suggestion_stale">Die vorgeschlagenen Mitglieder teilen keine Adresse mehr — starte den Vorschlag-Scan erneut</string>
     <string name="error_reason_household_type_invalid">type muss family_unit, roommates oder other sein</string>
     <string name="error_reason_import_disk_space_low">nicht genügend Speicherplatz zum Importieren von %1$s Kontakten: %2$s</string>
+    <string name="error_reason_import_field_mapping_target_invalid">Ein importierter Wert kann nur in ein benutzerdefiniertes Feld für Kontakte übernommen werden</string>
     <string name="error_reason_import_field_mappings_invalid">%1$s</string>
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>

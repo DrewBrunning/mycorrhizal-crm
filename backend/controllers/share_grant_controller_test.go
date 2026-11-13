@@ -394,14 +394,45 @@ func TestShareGrantContent_CrossOwnerSameUID(t *testing.T) {
 	const uid = "11111111-2222-4333-8444-555555555555"
 	ca := models.Contact{UserID: e.A.ID, Firstname: "OwnerSide", VCardUID: uid}
 	cc := models.Contact{UserID: e.C.ID, Firstname: "ForeignSide", VCardUID: uid}
-	require.NoError(t, e.db.Create(&ca).Error)
+	// The foreign row goes in FIRST: a query that lost its owner scope would
+	// otherwise be rescued by returning the owner's (earlier) row (issue #2568).
 	require.NoError(t, e.db.Create(&cc).Error)
+	require.NoError(t, e.db.Create(&ca).Error)
 	id := e.grant(e.A, e.B, "contact", uid, []string{"emails"})
 	require.Equal(t, 200, e.do(e.B, http.MethodPost, "/share-grants/"+id+"/accept", nil).Code)
 	w := e.do(e.B, http.MethodGet, "/share-grants/"+id+"/content", nil)
 	require.Equal(t, 200, w.Code, w.Body.String())
 	assert.Contains(t, w.Body.String(), "OwnerSide")
 	assert.NotContains(t, w.Body.String(), "ForeignSide")
+}
+
+// A grant row whose entity belongs to someone other than the grant's owner
+// (a forged or stale row) never resolves that entity: every read path scopes
+// by the grant's from_user_id, not just by identity (issue #2568). The grant is
+// inserted directly so the create-time ownership check does not mask the read.
+func TestShareGrantContent_ForeignOwnedEntityIs404ForEveryType(t *testing.T) {
+	e := newSGEnv(t)
+	foreignContact := e.contact(e.C, "ForeignContact")
+	foreignNote := e.note(e.C, "foreign note text")
+	foreignActivity := e.activity(e.C, "ForeignActivity")
+	foreignCircle := e.circle(e.C, "ForeignCircle")
+	cases := map[string]string{
+		models.ShareGrantEntityContact:  foreignContact.VCardUID,
+		models.ShareGrantEntityNote:     foreignNote.UUID,
+		models.ShareGrantEntityActivity: foreignActivity.UUID,
+		models.ShareGrantEntityCircle:   foreignCircle.ID,
+	}
+	for etype, eid := range cases {
+		t.Run(etype, func(t *testing.T) {
+			g := models.ShareGrant{ID: "forged-" + etype, FromUserID: e.A.ID, ToUserID: e.B.ID, EntityType: etype, EntityID: eid,
+				Sections: []string{"emails"}, ReconfirmSections: []string{}, Status: models.ShareGrantStatusActive}
+			require.NoError(t, e.db.Create(&g).Error)
+			w := e.do(e.B, http.MethodGet, "/share-grants/"+g.ID+"/content", nil)
+			assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
+			assert.NotContains(t, w.Body.String(), "Foreign")
+			assert.NotContains(t, w.Body.String(), "foreign note text")
+		})
+	}
 }
 
 // ---------------------------------------------------------------- transitions
@@ -770,6 +801,41 @@ func TestShareGrantContent_CircleLiveMembersNamesOnly(t *testing.T) {
 	assert.NotContains(t, body, "Mia")
 	assert.NotContains(t, body, "Noah", "archived members are excluded")
 	assert.Contains(t, body, "Olive")
+}
+
+// A soft-deleted member contact is not a live member: its name disappears and
+// member_count drops (issue #2568; the `contacts.deleted_at IS NULL` filter).
+func TestShareGrantContent_CircleSoftDeletedMemberExcluded(t *testing.T) {
+	e := newSGEnv(t)
+	circ := e.circle(e.A, "Family")
+	m1, m2 := e.contact(e.A, "Mia"), e.contact(e.A, "Noah")
+	for _, m := range []models.Contact{m1, m2} {
+		require.NoError(t, e.db.Create(&models.CircleMember{CircleID: circ.ID, UserID: e.A.ID, MemberVCardUID: m.VCardUID}).Error)
+	}
+	id := e.grant(e.A, e.B, "circle", circ.ID, nil)
+	require.Equal(t, 200, e.do(e.B, http.MethodPost, "/share-grants/"+id+"/accept", nil).Code)
+	read := func() (string, int) {
+		w := e.do(e.B, http.MethodGet, "/share-grants/"+id+"/content", nil)
+		require.Equal(t, 200, w.Code, w.Body.String())
+		var out struct {
+			Content struct {
+				Circle struct {
+					MemberCount int `json:"member_count"`
+				} `json:"circle"`
+			} `json:"share_grant_content"`
+		}
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out), w.Body.String())
+		return w.Body.String(), out.Content.Circle.MemberCount
+	}
+	body, n := read()
+	assert.Contains(t, body, "Mia")
+	assert.Equal(t, 2, n)
+
+	require.NoError(t, e.db.Delete(&models.Contact{}, m1.ID).Error)
+	body, n = read()
+	assert.NotContains(t, body, "Mia", "a soft-deleted member's name is gone")
+	assert.Contains(t, body, "Noah")
+	assert.Equal(t, 1, n, "member_count drops with the soft-deleted member")
 }
 
 func TestShareGrantContent_CircleMemberCap(t *testing.T) {
