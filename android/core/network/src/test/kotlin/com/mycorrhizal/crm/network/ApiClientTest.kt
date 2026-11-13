@@ -10,6 +10,7 @@ import com.mycorrhizal.crm.model.network.DeviceRegistrationInput
 import com.mycorrhizal.crm.model.network.ImageCrop
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.MeerkatConnectRequest
+import com.mycorrhizal.crm.model.network.MonicaConnectRequest
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.NoteInput
 import com.mycorrhizal.crm.model.network.PreferenceInput
@@ -6957,5 +6958,181 @@ class ApiClientTest {
         val contact = client.getContact(5).getOrThrow()
         assertEquals(9, contact.mainImageId)
         assertEquals(7, contact.revision)
+    }
+
+    // --- Monica live-API import (issues #549, #2525) ---
+
+    @Test
+    fun `connectMonica posts the url and token and parses the counts`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session_id":"mo1","totals":{"contacts":12,"activities":4,"notes":30,""" +
+                    """"reminders":1,"calls":2,"tasks":3,"gifts":5,"debts":6},"estimated_fetch_seconds":95}"""
+            )
+        )
+
+        val result = client.connectMonica(
+            MonicaConnectRequest(baseUrl = "https://monica.example", apiToken = "tok")
+        ).getOrThrow()
+
+        assertEquals("mo1", result.sessionId)
+        assertEquals(12, result.totals.contacts)
+        assertEquals(30, result.totals.notes)
+        assertEquals(6, result.totals.debts)
+        assertEquals(95, result.estimatedFetchSeconds)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/import/monica/connect", request.path)
+        assertEquals(
+            """{"base_url":"https://monica.example","api_token":"tok"}""",
+            request.body.readUtf8()
+        )
+    }
+
+    @Test
+    fun `connectMonica tolerates a sparse response and defaults the missing fields`() =
+        runBlocking {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"session_id":"mo2"}"""))
+
+            val result = client.connectMonica(MonicaConnectRequest("https://m", "t")).getOrThrow()
+
+            assertEquals("mo2", result.sessionId)
+            assertEquals(0, result.totals.contacts)
+            assertEquals(0, result.estimatedFetchSeconds)
+        }
+
+    @Test
+    fun `connectMonica surfaces the token-rejected reason code from the error envelope`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(400).setBody(
+                    """{"error":{"code":"INVALID_INPUT","message":"Monica rejected the API token",""" +
+                        """"reason_code":"monica_token_rejected"}}"""
+                )
+            )
+
+            val error = client.connectMonica(MonicaConnectRequest("https://m", "bad"))
+                .exceptionOrNull() as ApiError.Client
+
+            assertEquals(400, error.code)
+            assertEquals("monica_token_rejected", error.reason?.code)
+        }
+
+    @Test
+    fun `connectMonica outlasts the default read timeout because the server probes Monica serially`() =
+        runBlocking {
+            // The server's Connect makes nine rate-limited requests (up to 150 s). A client that
+            // gave up at its default read timeout would strand a live session holding the token.
+            val shortClient = ApiClient(
+                OkHttpClient.Builder()
+                    .readTimeout(200, java.util.concurrent.TimeUnit.MILLISECONDS)
+                    .addInterceptor(
+                        BaseUrlInterceptor(
+                            BaseUrlProvider { server.url("/").toString().trimEnd('/') }
+                        )
+                    )
+                    .build(),
+                Moshi.Builder().add(KotlinJsonAdapterFactory()).build()
+            )
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody("""{"session_id":"slow"}""")
+                    .setBodyDelay(800, java.util.concurrent.TimeUnit.MILLISECONDS)
+            )
+
+            val result = shortClient.connectMonica(MonicaConnectRequest("https://m", "t"))
+
+            assertEquals("slow", result.getOrThrow().sessionId)
+        }
+
+    @Test
+    fun `startMonicaFetch posts the session id and both include flags`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+
+        assertTrue(
+            client.startMonicaFetch(
+                "mo1",
+                includeRelationships = false,
+                includeExtras = true
+            ).isSuccess
+        )
+
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/import/monica/fetch", request.path)
+        assertEquals(
+            """{"session_id":"mo1","include_relationships":false,"include_extras":true}""",
+            request.body.readUtf8()
+        )
+    }
+
+    @Test
+    fun `monica status and preview send session_id and parse the shared shapes`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(200)
+                .setBody(
+                    """{"session_id":"mo1","phase":"fetching_notes","phase_done":4,"phase_total":9}"""
+                )
+        )
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"session_id":"mo1","rows":[{"row_index":0,"suggested_action":"update"}],""" +
+                    """"total_rows":1,"valid_rows":1,"loss_report":[{"record":"Ada","field":"photo",""" +
+                    """"category":"dropped","message":"not imported"}]}"""
+            )
+        )
+
+        val status = client.getMonicaImportStatus("mo1").getOrThrow()
+        val preview = client.getMonicaImportPreview("mo1").getOrThrow()
+
+        assertEquals("fetching_notes", status.phase)
+        assertEquals(4, status.phaseDone)
+        assertEquals("update", preview.rows.single().suggestedAction)
+        assertEquals("Ada", preview.lossReport.single().record)
+        assertEquals(
+            "/api/v1/contacts/import/monica/status?session_id=mo1",
+            server.takeRequest().path
+        )
+        assertEquals(
+            "/api/v1/contacts/import/monica/preview?session_id=mo1",
+            server.takeRequest().path
+        )
+    }
+
+    @Test
+    fun `monica confirm posts the per-row actions and cancel posts the session id`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
+        server.enqueue(MockResponse().setResponseCode(200).setBody("{}"))
+
+        assertTrue(
+            client.confirmMonicaImport(
+                ImportConfirmRequest(
+                    "mo1",
+                    listOf(RowImportAction(0, "add"), RowImportAction(1, "update"))
+                )
+            ).isSuccess
+        )
+        assertTrue(client.cancelMonicaImport("mo1").isSuccess)
+
+        val confirm = server.takeRequest()
+        assertEquals("/api/v1/contacts/import/monica/confirm", confirm.path)
+        val body = confirm.body.readUtf8()
+        assertTrue(body.contains("\"session_id\":\"mo1\""))
+        assertTrue(body.contains("""{"row_index":1,"action":"update"}"""))
+        val cancel = server.takeRequest()
+        assertEquals("POST", cancel.method)
+        assertEquals("/api/v1/contacts/import/monica/cancel?session_id=mo1", cancel.path)
+    }
+
+    @Test
+    fun `an unreachable Monica surfaces as a typed server error`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(502).setBody(
+                """{"error":{"code":"EXTERNAL_SERVICE_ERROR","message":"x","reason_code":"monica_unreachable"}}"""
+            )
+        )
+
+        val error = client.connectMonica(MonicaConnectRequest("https://m", "t")).exceptionOrNull()
+
+        assertEquals("monica_unreachable", (error as ApiError.Server).reason?.code)
     }
 }
