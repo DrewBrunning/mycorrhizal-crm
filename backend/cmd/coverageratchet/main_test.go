@@ -320,3 +320,92 @@ func TestRun_DefaultProfileIsTheCrossPackageProfile(t *testing.T) {
 		t.Fatalf("default profile not picked up: exit %d: %s", code, out.String())
 	}
 }
+
+// issue #2569: a baseline write must not absorb coverage drops silently. The
+// raise commit that lowered 11 entries for files the PR never touched is the
+// failure this guards.
+func TestRun_UpdateRefusesToLowerABaselineEntryWithoutAFlag(t *testing.T) {
+	dir := t.TempDir()
+	profile := writeProfile(t, dir, "coverage.out", twoFileProfile)
+	var out bytes.Buffer
+	if code := run([]string{"-profile", profile, "-root", dir, "-update"}, &out); code != 0 {
+		t.Fatalf("first -update exited %d: %s", code, out.String())
+	}
+	baselineFile := filepath.Join(dir, baselinePath)
+	before, err := os.ReadFile(baselineFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// bar.go falls from 2/3 to 0/3; qux.go is unchanged.
+	regressed := `mode: atomic
+mycorrhizal/internal/foo/bar.go:1.1,3.2 2 0
+mycorrhizal/internal/foo/bar.go:5.1,5.2 1 0
+mycorrhizal/internal/baz/qux.go:1.1,2.2 1 3
+`
+	profile2 := writeProfile(t, dir, "coverage2.out", regressed)
+
+	out.Reset()
+	if code := run([]string{"-profile", profile2, "-root", dir, "-update"}, &out); code != 1 {
+		t.Fatalf("-update over a drop exited %d, want 1: %s", code, out.String())
+	}
+	if !strings.Contains(out.String(), "internal/foo/bar.go") || !strings.Contains(out.String(), "refusing") {
+		t.Errorf("refusal must name the dropped file; got %q", out.String())
+	}
+	after, _ := os.ReadFile(baselineFile)
+	if !bytes.Equal(before, after) {
+		t.Error("a refused -update must leave the baseline untouched")
+	}
+
+	// Allowing a different file does not cover bar.go.
+	out.Reset()
+	if code := run([]string{"-profile", profile2, "-root", dir, "-update", "-allow-drop", "internal/baz/qux.go"}, &out); code != 1 {
+		t.Fatalf("-allow-drop for another file exited %d, want 1: %s", code, out.String())
+	}
+
+	// Naming the file accepts exactly that drop.
+	out.Reset()
+	if code := run([]string{"-profile", profile2, "-root", dir, "-update", "-allow-drop", "internal/foo/bar.go"}, &out); code != 0 {
+		t.Fatalf("-allow-drop for the dropped file exited %d, want 0: %s", code, out.String())
+	}
+	if !strings.Contains(out.String(), "accepted drop") {
+		t.Errorf("an accepted drop must be reported; got %q", out.String())
+	}
+	var b struct{ Files map[string]float64 }
+	data, _ := os.ReadFile(baselineFile)
+	if err := json.Unmarshal(data, &b); err != nil {
+		t.Fatal(err)
+	}
+	if b.Files["internal/foo/bar.go"] != 0 {
+		t.Errorf("accepted drop must be written; got %v", b.Files["internal/foo/bar.go"])
+	}
+}
+
+func TestRun_UpdateAllowAllDropsAcceptsEveryDrop(t *testing.T) {
+	dir := t.TempDir()
+	profile := writeProfile(t, dir, "coverage.out", twoFileProfile)
+	var out bytes.Buffer
+	if code := run([]string{"-profile", profile, "-root", dir, "-update"}, &out); code != 0 {
+		t.Fatalf("first -update exited %d", code)
+	}
+	regressed := "mode: atomic\nmycorrhizal/internal/foo/bar.go:1.1,3.2 2 0\nmycorrhizal/internal/foo/bar.go:5.1,5.2 1 0\nmycorrhizal/internal/baz/qux.go:1.1,2.2 1 0\n"
+	profile2 := writeProfile(t, dir, "coverage2.out", regressed)
+	out.Reset()
+	if code := run([]string{"-profile", profile2, "-root", dir, "-update", "-allow-all-drops"}, &out); code != 0 {
+		t.Fatalf("-allow-all-drops exited %d: %s", code, out.String())
+	}
+}
+
+func TestRun_UpdateImprovementsAndNewFilesNeedNoFlag(t *testing.T) {
+	dir := t.TempDir()
+	low := "mode: atomic\nmycorrhizal/internal/foo/bar.go:1.1,3.2 2 0\n"
+	var out bytes.Buffer
+	if code := run([]string{"-profile", writeProfile(t, dir, "a.out", low), "-root", dir, "-update"}, &out); code != 0 {
+		t.Fatalf("first -update exited %d", code)
+	}
+	high := "mode: atomic\nmycorrhizal/internal/foo/bar.go:1.1,3.2 2 4\nmycorrhizal/internal/new/n.go:1.1,2.2 1 0\n"
+	out.Reset()
+	if code := run([]string{"-profile", writeProfile(t, dir, "b.out", high), "-root", dir, "-update"}, &out); code != 0 {
+		t.Fatalf("raising and adding exited %d: %s", code, out.String())
+	}
+}

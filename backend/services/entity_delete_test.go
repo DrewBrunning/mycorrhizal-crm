@@ -5,6 +5,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
@@ -495,4 +496,72 @@ func TestRestoreContact_LinkReviveFailureAbortsRestore(t *testing.T) {
 	_, err := RestoreContact(f.db, f.userID, f.c1.ID, entityNow)
 	require.Error(t, err)
 	assert.EqualValues(t, 1, count(t, f.db, true, &models.Contact{}, "id = ? AND deleted_at IS NOT NULL", f.c1.ID), "the contact stays in the trash")
+}
+
+// The revision/etag bump is a second UPDATE of the revived row. The revive map
+// never sets revision, so a column-scoped trigger fails only the bump and
+// reaches its error return rather than the earlier revive's.
+func TestRestoreContact_LinkRevisionBumpFailureAbortsRestore(t *testing.T) {
+	f := newEntityFixture(t)
+	f.link(t, f.c1, f.org, false)
+	require.NoError(t, DeleteContact(f.db, f.c1, f.userID, entityNow))
+	failStatement(t, f.db, "force_fail_revision", "BEFORE UPDATE OF revision ON contact_entity_links")
+	_, err := RestoreContact(f.db, f.userID, f.c1.ID, entityNow)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "forced failure")
+	assert.EqualValues(t, 1, count(t, f.db, true, &models.Contact{}, "id = ? AND deleted_at IS NOT NULL", f.c1.ID), "the contact stays in the trash")
+}
+
+// Restore revives and may demote links via a bulk update; the revision/etag
+// must increase so If-Match clients do not keep a stale ETag (issue #2566).
+func TestRestoreContact_BumpsLinkRevisionOnReviveAndDemote(t *testing.T) {
+	f := newEntityFixture(t)
+	plain := f.link(t, f.c1, f.org, false)
+	primary := f.link(t, f.c1, f.other, true)
+	require.NoError(t, DeleteContact(f.db, f.c1, f.userID, entityNow))
+	var deleted map[string]models.ContactEntityLink = map[string]models.ContactEntityLink{}
+	for _, id := range []string{plain.ID, primary.ID} {
+		var l models.ContactEntityLink
+		require.NoError(t, f.db.Unscoped().First(&l, "id = ?", id).Error)
+		deleted[id] = l
+	}
+	// Take the primary slot so the revived primary is demoted.
+	third := models.Entity{UserID: f.userID, Kind: models.EntityKindOrganisation, Name: "Gamma"}
+	require.NoError(t, f.db.Create(&third).Error)
+	require.NoError(t, f.db.Create(&models.ContactEntityLink{UserID: f.userID, ContactVCardUID: f.c1.VCardUID, EntityID: third.ID,
+		Kind: third.Kind, Role: "owner", IsPrimary: true, Sensitivity: "normal"}).Error)
+
+	_, err := RestoreContact(f.db, f.userID, f.c1.ID, entityNow.Add(time.Hour))
+	require.NoError(t, err)
+
+	for _, id := range []string{plain.ID, primary.ID} {
+		var got models.ContactEntityLink
+		require.NoError(t, f.db.First(&got, "id = ?", id).Error)
+		assert.Greater(t, got.Revision, deleted[id].Revision, "revived link %s revision must increase", id)
+		assert.Equal(t, fmt.Sprintf("e-%s-%d", id, got.Revision), got.ETag)
+	}
+	var demoted models.ContactEntityLink
+	require.NoError(t, f.db.First(&demoted, "id = ?", primary.ID).Error)
+	assert.False(t, demoted.IsPrimary)
+}
+
+// The dismissed-pair cascade matches the deleted entity on EITHER side of the
+// ordered pair (issue #2568): the middle entity of three is id_high in one pair
+// and id_low in the other, so a match narrowed to one column leaves a row.
+func TestDeleteEntity_DismissedPairsRemovedOnBothSides(t *testing.T) {
+	f := newEntityFixture(t)
+	third := models.Entity{UserID: f.userID, Kind: models.EntityKindOrganisation, Name: "Gamma"}
+	require.NoError(t, f.db.Create(&third).Error)
+	ids := []string{f.org.ID, f.other.ID, third.ID}
+	sort.Strings(ids)
+	lo, mid, hi := ids[0], ids[1], ids[2]
+	require.NoError(t, f.db.Create(&models.DismissedEntityPair{UserID: f.userID, IDLow: lo, IDHigh: mid}).Error) // mid is id_high
+	require.NoError(t, f.db.Create(&models.DismissedEntityPair{UserID: f.userID, IDLow: mid, IDHigh: hi}).Error) // mid is id_low
+	require.NoError(t, f.db.Create(&models.DismissedEntityPair{UserID: f.userID, IDLow: lo, IDHigh: hi}).Error)  // unrelated, kept
+
+	require.NoError(t, DeleteEntity(f.db, f.userID, mid, entityNow))
+
+	assert.Zero(t, count(t, f.db, true, &models.DismissedEntityPair{}, "id_high = ?", mid), "pair where the deleted entity is id_high is removed")
+	assert.Zero(t, count(t, f.db, true, &models.DismissedEntityPair{}, "id_low = ?", mid), "pair where the deleted entity is id_low is removed")
+	assert.EqualValues(t, 1, count(t, f.db, true, &models.DismissedEntityPair{}, "user_id = ?", f.userID), "a pair not naming the entity survives")
 }

@@ -136,3 +136,64 @@ test('revealing and selecting a sensitive section sends the explicit opt-in', as
   expect(sentBody?.include_sensitive).toBe(true);
   expect(sentBody?.sections).toContain('related_to');
 });
+
+// issue #2569: restores the branches the standing-shares PR left uncovered.
+test('a failed directory load shows the error', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => {
+      throw new Error('directory down');
+    }),
+  );
+  renderDialog();
+  expect(await screen.findByText(/directory down/)).toBeInTheDocument();
+});
+
+test('unchecking a section removes it from what is shared', async () => {
+  let sentBody: Record<string, unknown> | undefined;
+  mockFetchByUrl({
+    '/users/directory': directoryResponse,
+    '/contact-shares': (_url, init) => {
+      sentBody = JSON.parse(init?.body as string);
+      return { message: 'Share created', contact_share: { id: 'share-1' } };
+    },
+  });
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+  await waitFor(() => expect(fetch).toHaveBeenCalled());
+  fireEvent.mouseDown(await screen.findByLabelText('Recipient'));
+  fireEvent.click(await screen.findByText('bob'));
+
+  const section = EXPORT_FIELD_SECTIONS.find((s) => !s.sensitive);
+  if (!section) throw new Error('no non-sensitive section');
+  const box = screen.getAllByRole('checkbox').find((c) => !c.hasAttribute('disabled'));
+  if (!box) throw new Error('no enabled checkbox');
+  const wasChecked = (box as HTMLInputElement).checked;
+  fireEvent.click(box);
+  expect((box as HTMLInputElement).checked).toBe(!wasChecked);
+  fireEvent.click(box);
+  expect((box as HTMLInputElement).checked).toBe(wasChecked);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(sentBody?.sections).toBeDefined();
+});
+
+test('a failed share shows the error and keeps the dialog open', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.includes('/users/directory'))
+        return { ok: true, json: async () => directoryResponse() };
+      throw new Error('share refused');
+    }),
+  );
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+  await waitFor(() => expect(fetch).toHaveBeenCalled());
+  fireEvent.mouseDown(await screen.findByLabelText('Recipient'));
+  fireEvent.click(await screen.findByText('bob'));
+  fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+  expect(await screen.findByText(/share refused/)).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+});

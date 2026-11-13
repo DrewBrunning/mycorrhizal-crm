@@ -91,13 +91,15 @@ class ServerCapabilitiesTest {
 
     @Test
     fun `post-1_6_0 capabilities are floored at 1_7_0 and hidden from a 1_6_0 server`() {
-        // Issue #2527. Ground truth: none of share grants, entities (incl. from-contacts,
-        // suggestions and the entity trash listing) or the import-run report is in the v1.6.0
-        // route table, so the first release carrying them is v1.7.0.
+        // Issues #2527/#2551. Ground truth: none of share grants, entities (incl. from-contacts,
+        // suggestions and the entity trash listing), the import-run report or the import
+        // row_edits field is in the v1.6.0 route table or request models, so the first release
+        // carrying them is v1.7.0.
         val floors = mapOf(
             ServerFeature.SHARE_GRANTS to v(1, 7, 0),
             ServerFeature.ENTITIES to v(1, 7, 0),
-            ServerFeature.IMPORT_RUN_REPORT to v(1, 7, 0)
+            ServerFeature.IMPORT_RUN_REPORT to v(1, 7, 0),
+            ServerFeature.IMPORT_ROW_EDITS to v(1, 7, 0)
         )
         floors.forEach { (feature, floor) ->
             assertEquals(feature.name, floor, feature.minServerVersion)

@@ -60,21 +60,39 @@ class SharedWithMeViewModel @Inject constructor(
         load()
     }
 
+    /** Set when a mutation finished while a load was already in flight; see [reloadAfterChange]. */
+    private var reloadPending = false
+
     fun load() {
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, loadError = null) }
-            val incoming = repository.listIncoming()
-            val blocks = repository.blocks()
-            _uiState.update {
-                it.copy(
-                    isLoading = false,
-                    grants = incoming.getOrNull()?.shareGrants.orEmpty(),
-                    blocks = blocks.getOrNull().orEmpty(),
-                    loadError = (incoming.exceptionOrNull() ?: blocks.exceptionOrNull())?.toApiError()
-                )
-            }
+            do {
+                reloadPending = false
+                val incoming = repository.listIncoming()
+                val blocks = repository.blocks()
+                // A mutation landed while these reads were in flight: they may predate the
+                // change, so drop them and read again instead of showing them.
+                if (reloadPending) continue
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        grants = incoming.getOrNull()?.shareGrants.orEmpty(),
+                        blocks = blocks.getOrNull().orEmpty(),
+                        loadError =
+                            (incoming.exceptionOrNull() ?: blocks.exceptionOrNull())?.toApiError()
+                    )
+                }
+            } while (reloadPending)
         }
+    }
+
+    /**
+     * Reloads after a mutation. When a load is already in flight it is queued behind it
+     * (the in-flight read may predate the change), never skipped.
+     */
+    private fun reloadAfterChange() {
+        if (_uiState.value.isLoading) reloadPending = true else load()
     }
 
     fun accept(grant: IncomingShareGrant) = runAction { repository.accept(grant.id) }
@@ -125,7 +143,7 @@ class SharedWithMeViewModel @Inject constructor(
             )
             // Accept, decline, block, leave and unblock all move the pending count.
             shareGrantChanges.notifyChanged()
-            load()
+            reloadAfterChange()
         }
     }
 }

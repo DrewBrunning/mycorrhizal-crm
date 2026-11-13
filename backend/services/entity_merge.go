@@ -205,6 +205,13 @@ func MergeEntities(db *gorm.DB, userID uint, loserID, survivorID string, resolut
 	}
 	res := &EntityMergeResult{PrimariesDemoted: []models.EntityMergeDemotion{}, FieldValuesDropped: []string{}, ResolvedFields: []string{}}
 	err := db.Transaction(func(tx *gorm.DB) error {
+		// Repointing moves each primary link from the loser's value to the
+		// survivor's, and the survivor may absorb field resolutions: bump the
+		// contacts of both whose projection moved (#2565).
+		snap, err := snapshotEntityProjections(tx, userID, loserID, survivorID)
+		if err != nil {
+			return err
+		}
 		var loser, survivor models.Entity
 		if err := tx.Where("id = ? AND user_id = ?", loserID, userID).First(&loser).Error; err != nil {
 			return err
@@ -308,10 +315,42 @@ func MergeEntities(db *gorm.DB, userID uint, loserID, survivorID string, resolut
 		// The loser goes through the ordinary entity delete: batch id, snapshot,
 		// trash entry. Its remaining links (none) and dismissals are cascaded by
 		// EntityCascadeRegistry; the snapshot remembers the survivor.
-		return deleteEntity(tx, userID, loser.ID, now, survivor.ID)
+		if err := deleteEntity(tx, userID, loser.ID, now, survivor.ID); err != nil {
+			return err
+		}
+		_, err = snap.BumpChanged(tx)
+		return err
 	})
 	if err != nil {
 		return nil, err
 	}
 	return res, nil
+}
+
+// SaveEntity saves an edited entity and bumps every contact whose projected
+// ORG/ADR the edit changed (issue #2565, ADR 0043 decision 3), in one
+// transaction. Edits the projection does not show (notes, URL, a pet) bump
+// nothing.
+func SaveEntity(db *gorm.DB, e *models.Entity) error {
+	return db.Transaction(func(tx *gorm.DB) error {
+		snap, err := snapshotEntityProjections(tx, e.UserID, e.ID)
+		if err != nil {
+			return err
+		}
+		if err := tx.Save(e).Error; err != nil {
+			return err
+		}
+		_, err = snap.BumpChanged(tx)
+		return err
+	})
+}
+
+// snapshotEntityProjections snapshots the projection of every contact linked to
+// any of entityIDs, the "before" half of an entity-level write (#2565).
+func snapshotEntityProjections(tx *gorm.DB, userID uint, entityIDs ...string) (*models.EntityProjectionSnapshot, error) {
+	uids, err := models.ProjectingContactUIDs(tx, userID, entityIDs...)
+	if err != nil {
+		return nil, err
+	}
+	return models.SnapshotEntityProjections(tx, userID, uids)
 }

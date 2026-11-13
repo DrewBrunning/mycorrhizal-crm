@@ -52,7 +52,11 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
    `DeleteContact` and `DeleteUser` enumerate every dependent table explicitly — if you add an
    entity, add it there. The contact side is the declarative `services.ContactCascadeRegistry`
    (`services/contact_delete.go`, ADR 0035): add a `CascadeStep` (table, soft/hard, reason) and the
-   completeness test fails until any table referencing a contact is registered. A `hard` (or mutate)
+   completeness test fails until any table referencing a contact is registered. The entity side is
+   `services.EntityCascadeRegistry` (`services/entity_delete.go`, ADR 0043 decision 6), guarded by
+   `TestEntityCascadeRegistry_CoversEverySchemaTableReferencingAnEntity` (`services/entity_delete_test.go`):
+   a table whose `entity_id`/`id_low`/`id_high` or foreign key holds an `entities.id` needs a step there
+   or a reasoned `entityCascadeNotRegistered` entry. A `hard` (or mutate)
    step must also be captured in the Trash snapshot or carry a `SnapshotSkip` reason (ADR 0037;
    `TestContactDeletionPayload_StepsAreSnapshottedOrSkippedWithReason`), and a trashed contact's files
    stay on disk until purge removes them after commit — never delete them at delete time. `DeleteUser`'s
@@ -68,8 +72,16 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
    the index partial (`... WHERE deleted_at IS NULL`, as `idx_contacts_vcard_uid_user` does). Do not
    vary this by operation — the failure is silent. `gorm.Model` only works on uint-PK entities; for
    UUID-PK entities add `DeletedAt gorm.DeletedAt \`gorm:"index" json:"-"\`` instead of embedding it.
-   **`DeleteUser` is the single deliberate exception** — it hard-deletes via `Unscoped()` so the
-   unique `users.email`/`username` can be reused. Re-read this section before adding a second one.
+   **`DeleteUser` is a deliberate exception** — it hard-deletes via `Unscoped()` so the
+   unique `users.email`/`username` can be reused. Re-read this section before adding another.
+   Two entity-era rows sit apart from the two lists above. `ContactEntityLink` is a **soft-deleting
+   join row** (ADR 0043 decision 6): it carries authored data (role, dates, primary flag), so an entity
+   or contact delete tombstones it with a `deletion_batch_id` and restore revives exactly that batch;
+   its raw-SQL writes must bump `revision`/`etag` (both `<-:create`, so a GORM `Updates` drops them).
+   `ShareGrant` has **no `deleted_at`** (ADR 0042): its lifecycle is the `status` column
+   (`pending`/`active`/`declined`/`revoked`/`expired`/`blocked`), deleting the shared contact, note,
+   activity, circle or entity *revokes* live grants with reason `entity_deleted` rather than deleting
+   them, and terminal rows are purged after the retention window. `Entity` itself soft-deletes.
 
 8. <a id="trap-8"></a>**`gorm.DB.Transaction` returns the closure's error verbatim**, so you can
    return a typed `*apperrors.AppError` from inside and type-assert it after to preserve a 404/400

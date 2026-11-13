@@ -131,6 +131,47 @@ class EntitiesViewModelTest {
         }
 
     @Test
+    fun `a failed load more keeps the rows and the cursor, and a retry appends the page`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val failure = ApiError.Unknown(RuntimeException("timeout"))
+            coEvery { repository.list(EntityKind.ORGANISATION, null, null, any()) } returns
+                page("A", next = "c2")
+            coEvery { repository.list(EntityKind.ORGANISATION, null, "c2", any()) } returns
+                Result.failure(failure)
+            val vm = EntitiesViewModel(repository)
+            advanceUntilIdle()
+            vm.loadMore()
+            advanceUntilIdle()
+            assertEquals(listOf("A"), vm.uiState.value.entities.map { it.name })
+            assertEquals("c2", vm.uiState.value.nextCursor)
+            assertNotNull(vm.uiState.value.error)
+            assertFalse(vm.uiState.value.isLoadingMore)
+
+            coEvery { repository.list(EntityKind.ORGANISATION, null, "c2", any()) } returns
+                page("B")
+            vm.loadMore()
+            advanceUntilIdle()
+            assertEquals(listOf("A", "B"), vm.uiState.value.entities.map { it.name })
+            assertNull(vm.uiState.value.error)
+            assertNull(vm.uiState.value.nextCursor)
+        }
+
+    @Test
+    fun `a failed refresh keeps the rows already shown`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list(EntityKind.ORGANISATION, null, null, any()) } returns
+                page("A")
+            val vm = EntitiesViewModel(repository)
+            advanceUntilIdle()
+            coEvery { repository.list(EntityKind.ORGANISATION, null, null, any()) } returns
+                Result.failure(ApiError.Unknown(RuntimeException("x")))
+            vm.onResumed()
+            advanceUntilIdle()
+            assertEquals(listOf("A"), vm.uiState.value.entities.map { it.name })
+            assertNotNull(vm.uiState.value.error)
+        }
+
+    @Test
     fun `a failure is kept for display and cleared by a retry`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list(any(), any(), any(), any()) } returns

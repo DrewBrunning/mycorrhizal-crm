@@ -546,3 +546,15 @@ test('opening and closing the Mycorrhizal import dialog, then reloading history 
 
   await waitFor(() => expect(historyMock).toHaveBeenCalledTimes(1));
 });
+
+// issue #2569: the dialog's own onClose (Escape / backdrop), not just its Close button.
+test('Escape closes the itemized report dialog', async () => {
+  historyMock.mockResolvedValue([runWithIssues]);
+  runMock.mockResolvedValue({ ...runWithIssues, issues: [] });
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
