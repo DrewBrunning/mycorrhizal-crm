@@ -1,5 +1,5 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter, useNavigate } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import type { SearchResult } from './api/search';
@@ -138,4 +138,72 @@ test('an empty entities tab explains itself, and a full one says it is capped', 
   vi.mocked(searchAll).mockResolvedValue({ ...data, entities: many });
   renderPage('/search?q=org&tab=entities');
   expect(await screen.findByText(/Showing the first 50 matches/)).toBeInTheDocument();
+});
+
+function Navigator({ to }: { to: string }) {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => void navigate(to)}>
+      go to {to}
+    </button>
+  );
+}
+
+// issue #2570: the requestRef guard. A slow response for an abandoned query
+// must not overwrite the newer query's results (mirrors GlobalSearch #960).
+test('a stale response for an abandoned query does not clobber the newer one', async () => {
+  let resolveSlow!: (r: SearchResult) => void;
+  vi.mocked(searchAll)
+    .mockReturnValueOnce(new Promise<SearchResult>((r) => (resolveSlow = r)))
+    .mockResolvedValueOnce({
+      ...data,
+      query: 'john',
+      contacts: [{ id: 2, uid: 'u2', firstname: 'John', lastname: 'Smith' }],
+      notes: [],
+      entities: [],
+    });
+  render(
+    <MemoryRouter initialEntries={['/search?q=jo']}>
+      <DateFormatProvider>
+        <Navigator to="/search?q=john" />
+        <SearchResultsPage />
+      </DateFormatProvider>
+    </MemoryRouter>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'go to /search?q=john' }));
+  expect(await screen.findByRole('link', { name: /John Smith/ })).toBeInTheDocument();
+
+  await act(async () => {
+    resolveSlow({
+      ...data,
+      query: 'jo',
+      contacts: [{ id: 3, uid: 'u3', firstname: 'Joanna', lastname: 'Doe' }],
+      notes: [],
+      entities: [],
+    });
+  });
+  expect(screen.queryByRole('link', { name: /Joanna Doe/ })).not.toBeInTheDocument();
+  expect(screen.getByRole('link', { name: /John Smith/ })).toBeInTheDocument();
+});
+
+test('a stale failure for an abandoned query does not replace the newer results with an error', async () => {
+  let rejectSlow!: (e: Error) => void;
+  vi.mocked(searchAll)
+    .mockReturnValueOnce(new Promise<SearchResult>((_, rej) => (rejectSlow = rej)))
+    .mockResolvedValueOnce({ ...data, query: 'john', notes: [], entities: [] });
+  render(
+    <MemoryRouter initialEntries={['/search?q=jo']}>
+      <DateFormatProvider>
+        <Navigator to="/search?q=john" />
+        <SearchResultsPage />
+      </DateFormatProvider>
+    </MemoryRouter>,
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'go to /search?q=john' }));
+  await screen.findByRole('tab', { name: 'Contacts (1)' });
+  await act(async () => {
+    rejectSlow(new Error('slow boom'));
+  });
+  expect(screen.queryByText(/slow boom/)).not.toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Contacts (1)' })).toBeInTheDocument();
 });
