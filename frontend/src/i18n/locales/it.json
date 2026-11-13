@@ -535,7 +535,7 @@
       },
       "errors": {
         "invalidFile": "Seleziona un file CSV valido",
-        "fileTooLarge": "Il file è troppo grande. La dimensione massima è 5MB",
+        "fileTooLarge": "Il file è troppo grande. La dimensione massima è {{size}}MB",
         "noMappings": "Mappa almeno una colonna"
       }
     },

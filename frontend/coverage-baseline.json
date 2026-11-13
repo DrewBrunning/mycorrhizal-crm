@@ -1220,6 +1220,12 @@
       "branches": 100,
       "branchesTotal": 6
     },
+    "src/components/ImportIssuesReport.tsx": {
+      "lines": 100,
+      "linesTotal": 14,
+      "branches": 100,
+      "branchesTotal": 6
+    },
     "src/components/ImportedResourcesSection.tsx": {
       "lines": 100,
       "linesTotal": 18,
@@ -2498,6 +2504,12 @@
       "branches": 100,
       "branchesTotal": 13
     },
+    "src/utils/importLimits.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 0
+    },
     "src/utils/importReportCsv.ts": {
       "lines": 100,
       "linesTotal": 8,
@@ -2599,12 +2611,6 @@
       "linesTotal": 17,
       "branches": 100,
       "branchesTotal": 5
-    },
-    "src/components/ImportIssuesReport.tsx": {
-      "lines": 100,
-      "linesTotal": 14,
-      "branches": 100,
-      "branchesTotal": 6
     }
   }
 }

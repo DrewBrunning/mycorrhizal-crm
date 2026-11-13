@@ -1,6 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import '../i18n/config';
 import { getFieldDefinitions } from '../api/fieldDefinitions';
 import {
   confirmImport,
@@ -12,6 +11,7 @@ import {
   uploadVCFForImport,
 } from '../api/import';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import i18n from '../i18n/config';
 import ImportContactsDialog from './ImportContactsDialog';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -1195,4 +1195,37 @@ test('dropping something that is not a file does nothing', () => {
   });
   expect(uploadCSVForImport).not.toHaveBeenCalled();
   expect(uploadVCFForImport).not.toHaveBeenCalled();
+// #2595: the message used to hardcode "5MB" in every locale, ignoring the
+// interpolated limit. The real server limits are 20 MB (CSV) and 50 MB (VCF).
+function oversizeFile(name: string, bytes: number): File {
+  const file = new File(['x'], name);
+  Object.defineProperty(file, 'size', { value: bytes });
+  return file;
+});
+
+test.each([
+  ['en', 'contacts.csv', 20 * 1024 * 1024 + 1, ' 20MB'],
+  ['en', 'contacts.vcf', 50 * 1024 * 1024 + 1, ' 50MB'],
+  ['de', 'contacts.csv', 20 * 1024 * 1024 + 1, ' 20MB'],
+  ['de', 'contacts.vcf', 50 * 1024 * 1024 + 1, ' 50MB'],
+])('an oversize file names the real limit (%s, %s)', async (lng, name, bytes, expected) => {
+  await i18n.changeLanguage(lng);
+  try {
+    renderDialog();
+    selectFile(oversizeFile(name, bytes));
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain(expected);
+    expect(alert.textContent).not.toContain('5MB');
+    expect(uploadCSVForImport).not.toHaveBeenCalled();
+    expect(uploadVCFForImport).not.toHaveBeenCalled();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
+
+test('a CSV just under 20MB but over 5MB is not rejected as too large', async () => {
+  vi.mocked(uploadCSVForImport).mockRejectedValue(new Error('server exploded'));
+  renderDialog();
+  selectFile(oversizeFile('contacts.csv', 6 * 1024 * 1024));
+  await waitFor(() => expect(uploadCSVForImport).toHaveBeenCalledTimes(1));
 });

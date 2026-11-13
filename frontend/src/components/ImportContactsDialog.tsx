@@ -63,6 +63,7 @@ import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
 import { isContactPickerSupported, pickContactsAsVCardFile } from '../utils/contactPicker';
 import { EMPTY_VALUE } from '../utils/emptyValue';
 import { getErrorMessage } from '../utils/errorHandler';
+import { MAX_CSV_IMPORT_MB, MAX_VCF_IMPORT_MB } from '../utils/importLimits';
 import AppDialog from './AppDialog';
 import ImportFixedAssignmentPicker from './ImportFixedAssignmentPicker';
 import ImportIssuesReport from './ImportIssuesReport';
@@ -183,13 +184,13 @@ export default function ImportContactsDialog({
       return;
     }
 
-    // Keep in sync with backend/services/import_service.go's MaxVCFSize /
-    // MaxCSVSize (T56 raised them for full address-book imports).
-    const maxSize = isVCF ? 50 * 1024 * 1024 : 20 * 1024 * 1024; // 50MB VCF, 20MB CSV
-    if (file.size > maxSize) {
+    // Limits mirror the server's (see utils/importLimits.ts); the same number
+    // feeds the check and the message so they cannot disagree (#2595).
+    const maxMB = isVCF ? MAX_VCF_IMPORT_MB : MAX_CSV_IMPORT_MB;
+    if (file.size > maxMB * 1024 * 1024) {
       setError(
         t('contacts.import.errors.fileTooLarge', 'File is too large. Maximum size is {{size}}MB', {
-          size: maxSize / (1024 * 1024),
+          size: maxMB,
         }),
       );
       return;
