@@ -603,3 +603,13 @@ func TestImageService_RestoreMetadataUpdateFailure(t *testing.T) {
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
 }
+
+func TestNearestHashIndex(t *testing.T) {
+	h := func(v int64) *int64 { return &v }
+	// A nil hash is skipped (never dereferenced), a hash past DedupeMaxHamming
+	// is not a match, and the nearest wins with the earlier one taking a tie.
+	assert.Equal(t, -1, nearestHashIndex(nil, 0))
+	assert.Equal(t, 1, nearestHashIndex([]*int64{nil, h(0b1)}, 0))
+	assert.Equal(t, -1, nearestHashIndex([]*int64{h(-1)}, 0), "64 differing bits is not a duplicate")
+	assert.Equal(t, 1, nearestHashIndex([]*int64{h(0b111), h(0b1), h(0b1)}, 0))
+}

@@ -165,6 +165,15 @@ func exporterForVersion(version string) contactmodel.Exporter {
 	return vcard4.Adapter{}
 }
 
+// importerFor and exporterFor are the call sites' indirection over
+// importerForVCard/exporterForVersion. Production never reassigns them; tests
+// swap in a failing adapter to reach the defensive error branches, which the
+// real adapters cannot trigger from a card the encoder just produced.
+var (
+	importerFor = importerForVCard
+	exporterFor = exporterForVersion
+)
+
 // importerForVCard sniffs the VERSION property already decoded onto card
 // (go-webdav's Put handler parses the request body into a vcard.Card before
 // calling Backend.PutAddressObject) and returns the matching adapter.
@@ -431,9 +440,9 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	if err := vcard.NewEncoder(&buf).Encode(card); err != nil {
 		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("carddav: failed to re-encode vCard: %w", err))
 	}
-	record, diags, err := importerForVCard(card).Import(buf.Bytes())
+	record, diags, err := importerFor(card).Import(buf.Bytes())
 	if err != nil {
-		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("carddav: failed to parse vCard: %w", err)) // # pragma: no cover — the bytes were just produced by vcard.Encoder from a card it accepted; go-vcard decodes everything it encodes
+		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("carddav: failed to parse vCard: %w", err))
 	}
 	for _, d := range diags {
 		logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV PUT: " + logger.SanitizeLogField(d.Message))
@@ -602,18 +611,18 @@ func (b *Backend) contactToAddressObject(ctx context.Context, contact *models.Co
 	// served. PutAddressObject pairs this with PreserveSensitiveAddresses so a
 	// later client PUT cannot delete what it was never shown.
 	record := models.RecordForContactForSync(contact, b.getPhotoDir(ctx), b.db)
-	data, diags, err := exporterForVersion(version).Export(record)
+	data, diags, err := exporterFor(version).Export(record)
 
 	card := make(vcard.Card)
 	if err != nil {
-		logger.Warn().Err(err).Str("vcard_uid", contact.VCardUID).Str("version", version).Msg("CardDAV: failed to export contact as vCard") // # pragma: no cover — defensive: the exporters only fail on a record the neutral model cannot build, which RecordForContactForSync does not produce
+		logger.Warn().Err(err).Str("vcard_uid", contact.VCardUID).Str("version", version).Msg("CardDAV: failed to export contact as vCard")
 	} else {
 		for _, d := range diags {
 			logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV export: " + logger.SanitizeLogField(d.Message))
 		}
 		decoded, decodeErr := vcard.NewDecoder(bytes.NewReader(data)).Decode()
 		if decodeErr != nil {
-			logger.Warn().Err(decodeErr).Str("vcard_uid", contact.VCardUID).Msg("CardDAV: failed to decode exported vCard") // # pragma: no cover — defensive: the adapter's own output is valid vCard (round-trip suites pin it)
+			logger.Warn().Err(decodeErr).Str("vcard_uid", contact.VCardUID).Msg("CardDAV: failed to decode exported vCard")
 		} else {
 			card = decoded
 			// CardDAV cannot carry the RFC 9554 ADR GEO parameter — go-webdav

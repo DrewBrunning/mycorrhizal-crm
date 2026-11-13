@@ -208,20 +208,32 @@ func (s *ImageService[T, P]) findDuplicate(ctx context.Context, userID uint, own
 	if err := s.baseQuery(ctx, userID, owner).Where("dhash IS NOT NULL").Order("id ASC").Find(&rows).Error; err != nil {
 		return nil, apperrors.ErrDatabase("Failed to check for a duplicate image").WithError(err)
 	}
-	best, bestDist := -1, imaging.DedupeMaxHamming+1
+	hashes := make([]*int64, len(rows))
 	for i := range rows {
-		hash := P(&rows[i]).Fields().DHash
+		hashes[i] = P(&rows[i]).Fields().DHash
+	}
+	best := nearestHashIndex(hashes, dhash)
+	if best < 0 {
+		return nil, nil
+	}
+	return &rows[best], nil
+}
+
+// nearestHashIndex returns the index of the hash within imaging.DedupeMaxHamming
+// of dhash and nearest to it (the first wins a tie), or -1. A nil hash is
+// skipped: the query already filters them out, so the guard only protects the
+// dereference, and taking a plain slice lets a test exercise it directly.
+func nearestHashIndex(hashes []*int64, dhash int64) int {
+	best, bestDist := -1, imaging.DedupeMaxHamming+1
+	for i, hash := range hashes {
 		if hash == nil {
-			continue // # pragma: no cover — the query selects only rows with dhash IS NOT NULL; the guard protects the dereference below
+			continue
 		}
 		if d := imaging.HammingDistance(*hash, dhash); d < bestDist {
 			best, bestDist = i, d
 		}
 	}
-	if best < 0 {
-		return nil, nil
-	}
-	return &rows[best], nil
+	return best
 }
 
 // processUpload validates and processes one image without touching disk or the
