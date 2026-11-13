@@ -349,7 +349,7 @@
     "com/mycorrhizal/crm/feature/imports/SourceImportLossReport.kt": 99.38,
     "com/mycorrhizal/crm/feature/imports/VcfCustomFieldsStep.kt": 96.39,
     "com/mycorrhizal/crm/feature/imports/VcfImportScreen.kt": 48.42,
-    "com/mycorrhizal/crm/feature/imports/VcfImportViewModel.kt": 97.15,
+    "com/mycorrhizal/crm/feature/imports/VcfImportViewModel.kt": 97.19,
     "com/mycorrhizal/crm/feature/map/ContactMapView.kt": 0,
     "com/mycorrhizal/crm/feature/map/Effects.kt": 100,
     "com/mycorrhizal/crm/feature/map/LazyDsl.kt": 100,
