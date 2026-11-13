@@ -23,7 +23,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -513,6 +515,70 @@ class MonicaImportViewModelTest {
             advanceTimeBy(50)
             assertEquals(MonicaImportStep.WORKING, vm.uiState.value.step)
             vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { apiClient.cancelMonicaImport(any()) }
+        }
+
+    @Test
+    fun `leaving while the confirm request is in flight does not cancel the import being confirmed`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reviewVm()
+            val gate = CompletableDeferred<Unit>()
+            coEvery { apiClient.confirmMonicaImport(any()) } coAnswers {
+                gate.await()
+                Result.success(Unit)
+            }
+            coEvery { apiClient.cancelMonicaImport(any()) } returns Result.success(Unit)
+            coEvery { apiClient.getMonicaImportStatus("s1") } returns
+                Result.success(status("importing"))
+
+            vm.confirm()
+            runCurrent()
+            vm.leaveScreen()
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { apiClient.cancelMonicaImport(any()) }
+        }
+
+    @Test
+    fun `a session that connects after the screen was left is cancelled`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            coEvery { apiClient.connectMonica(any()) } coAnswers {
+                gate.await()
+                Result.success(connected())
+            }
+            coEvery { apiClient.cancelMonicaImport(any()) } returns Result.success(Unit)
+            val vm = newVm()
+            vm.fillForm()
+
+            vm.connect()
+            runCurrent()
+            vm.leaveScreen()
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.cancelMonicaImport("s1") }
+        }
+
+    @Test
+    fun `a connect that fails after the screen was left sends no cancel`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val gate = CompletableDeferred<Unit>()
+            coEvery { apiClient.connectMonica(any()) } coAnswers {
+                gate.await()
+                Result.failure(ApiError.Client(401, "bad token"))
+            }
+            coEvery { apiClient.cancelMonicaImport(any()) } returns Result.success(Unit)
+            val vm = newVm()
+            vm.fillForm()
+
+            vm.connect()
+            runCurrent()
+            vm.leaveScreen()
+            gate.complete(Unit)
             advanceUntilIdle()
 
             coVerify(exactly = 0) { apiClient.cancelMonicaImport(any()) }
