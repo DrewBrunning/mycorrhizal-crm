@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Merge duplicates from the Android suggestions** ([#2520](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2520)): each possible duplicate on the organisations, places and pets screen now has a Merge button that opens the merge dialog already set up for that pair, as on the web. The pair leaves the list once the merge succeeds, and the merged-away entity can still be restored from its own page.
 - **Card list and gift shopping list on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): the Occasions screen can now share your card list as a CSV, leaving out private and secret addresses, and opens a gift shopping list for the next 30 or 90 days showing what is still needed, bought or given.
 - **Share notes, activities and circles on Android** ([#2518](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2518)): a saved note or activity, and a circle, now has a Share action that starts a read-only standing share. Choose who and when it expires; it stays pending until they accept.
 - **Standing occasions on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): a contact now has an Occasions section for the yearly card, gift or invite you keep up, with its date, lead time and notes. Add, edit and delete them there, as on the web.
