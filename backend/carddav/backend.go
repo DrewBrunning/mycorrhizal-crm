@@ -433,7 +433,7 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	}
 	record, diags, err := importerForVCard(card).Import(buf.Bytes())
 	if err != nil {
-		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("carddav: failed to parse vCard: %w", err))
+		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("carddav: failed to parse vCard: %w", err)) // # pragma: no cover — the bytes were just produced by vcard.Encoder from a card it accepted; go-vcard decodes everything it encodes
 	}
 	for _, d := range diags {
 		logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV PUT: " + logger.SanitizeLogField(d.Message))
@@ -606,14 +606,14 @@ func (b *Backend) contactToAddressObject(ctx context.Context, contact *models.Co
 
 	card := make(vcard.Card)
 	if err != nil {
-		logger.Warn().Err(err).Str("vcard_uid", contact.VCardUID).Str("version", version).Msg("CardDAV: failed to export contact as vCard")
+		logger.Warn().Err(err).Str("vcard_uid", contact.VCardUID).Str("version", version).Msg("CardDAV: failed to export contact as vCard") // # pragma: no cover — defensive: the exporters only fail on a record the neutral model cannot build, which RecordForContactForSync does not produce
 	} else {
 		for _, d := range diags {
 			logger.Debug().Str("severity", d.Severity).Str("concept", d.Concept).Msg("CardDAV export: " + logger.SanitizeLogField(d.Message))
 		}
 		decoded, decodeErr := vcard.NewDecoder(bytes.NewReader(data)).Decode()
 		if decodeErr != nil {
-			logger.Warn().Err(decodeErr).Str("vcard_uid", contact.VCardUID).Msg("CardDAV: failed to decode exported vCard")
+			logger.Warn().Err(decodeErr).Str("vcard_uid", contact.VCardUID).Msg("CardDAV: failed to decode exported vCard") // # pragma: no cover — defensive: the adapter's own output is valid vCard (round-trip suites pin it)
 		} else {
 			card = decoded
 			// CardDAV cannot carry the RFC 9554 ADR GEO parameter — go-webdav

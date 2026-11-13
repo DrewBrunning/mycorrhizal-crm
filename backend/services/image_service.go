@@ -212,7 +212,7 @@ func (s *ImageService[T, P]) findDuplicate(ctx context.Context, userID uint, own
 	for i := range rows {
 		hash := P(&rows[i]).Fields().DHash
 		if hash == nil {
-			continue
+			continue // # pragma: no cover — the query selects only rows with dhash IS NOT NULL; the guard protects the dereference below
 		}
 		if d := imaging.HammingDistance(*hash, dhash); d < bestDist {
 			best, bestDist = i, d

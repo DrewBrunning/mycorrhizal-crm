@@ -266,3 +266,16 @@ test('other create failures do not render an inline duplicate message', async ()
   await waitFor(() => expect(onCreate).toHaveBeenCalled());
   expect(screen.queryByText('A circle with this name already exists')).not.toBeInTheDocument();
 });
+
+test('other rename failures do not render an inline duplicate message and stay in edit mode', async () => {
+  const onRename = vi.fn().mockRejectedValue(new ApiError('boom', 'INTERNAL_ERROR', 500));
+  renderList({ onRename });
+
+  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.change(screen.getByDisplayValue('Close Friends'), { target: { value: 'Work' } });
+  fireEvent.click(screen.getByLabelText('Save'));
+
+  await waitFor(() => expect(onRename).toHaveBeenCalledWith('1', 'Work'));
+  expect(screen.queryByText('A circle with this name already exists')).not.toBeInTheDocument();
+  expect(screen.getByDisplayValue('Work')).toBeInTheDocument();
+});

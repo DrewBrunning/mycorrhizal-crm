@@ -1,8 +1,12 @@
 package controllers
 
 import (
+	"errors"
+
 	"bytes"
 	"encoding/json"
+	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -147,4 +151,51 @@ func TestUpdateNote_ImageCountFailureIs500(t *testing.T) {
 	dbtest.HideTable(t, env.db, "note_images")
 	rec := noteJSON(t, env, "PUT", "/notes/"+strconv.FormatUint(uint64(note.ID), 10), map[string]any{"content": "", "date": "2024-01-01T00:00:00Z"})
 	require.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+}
+
+// A note image route without an authenticated user stops before touching the
+// database (the owner lookup needs the caller).
+func TestListNoteImages_WithoutUserIsUnauthorized(t *testing.T) {
+	env := setupNoteImageRouter(t)
+	bare := gin.New()
+	bare.Use(func(c *gin.Context) { c.Set("db", env.db); c.Next() })
+	bare.GET("/notes/:id/images", ListNoteImages)
+	req, _ := http.NewRequest("GET", "/notes/1/images", nil)
+	rec := httptest.NewRecorder()
+	bare.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusUnauthorized, rec.Code, rec.Body.String())
+}
+
+// The live-image count that guards the last image of an empty note runs inside
+// the delete's transaction; when it fails the delete is a 500 and the image
+// stays.
+func TestDeleteNoteImage_CountFailureIs500AndKeepsTheImage(t *testing.T) {
+	env := imageOnlyEnv(t)
+	note := models.Note{UserID: env.user.ID, Content: "", Date: testDate()}
+	require.NoError(t, env.db.Create(&note).Error)
+	up := uploadNoteImageForTest(t, env, note.ID, testJPEG(t))
+	require.Equal(t, http.StatusCreated, up.Code, up.Body.String())
+	var created struct {
+		Image NoteImageDTO `json:"image"`
+	}
+	require.NoError(t, json.Unmarshal(up.Body.Bytes(), &created))
+
+	// Fail every note_images read that follows the delete statement.
+	deleted := false
+	require.NoError(t, env.db.Callback().Delete().After("gorm:delete").Register("test:mark_deleted", func(tx *gorm.DB) { deleted = true }))
+	require.NoError(t, env.db.Callback().Query().Before("gorm:query").Register("test:fail_count", func(tx *gorm.DB) {
+		if deleted && tx.Statement.Table == "note_images" {
+			_ = tx.AddError(errors.New("count failed"))
+		}
+	}))
+
+	req, _ := http.NewRequest("DELETE", "/notes/"+strconv.FormatUint(uint64(note.ID), 10)+"/images/"+strconv.FormatUint(uint64(created.Image.ID), 10), nil)
+	rec := httptest.NewRecorder()
+	env.router.ServeHTTP(rec, req)
+	require.Equal(t, http.StatusInternalServerError, rec.Code, rec.Body.String())
+
+	deleted = false
+	var live int64
+	require.NoError(t, env.db.Model(&models.NoteImage{}).Where("note_id = ?", note.ID).Count(&live).Error)
+	assert.EqualValues(t, 1, live, "the failed delete rolled back")
 }

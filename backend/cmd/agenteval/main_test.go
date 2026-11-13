@@ -768,3 +768,88 @@ func TestRunPromoteFindsRepoRoot(t *testing.T) {
 		t.Fatalf("promote = %d, stderr %q stdout %q", code, stderr, stdout)
 	}
 }
+
+// chdirInto runs the rest of the test with dir as the working directory.
+func chdirInto(t *testing.T, dir string) {
+	t.Helper()
+	old, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(old) })
+	if err := os.Chdir(dir); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Without -root, run discovers the repository from the working directory.
+func TestRunDiscoversRootFromWorkingDirectory(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	chdirInto(t, root)
+	out := filepath.Join(t.TempDir(), "out")
+	if err := os.WriteFile(out, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// An unwritable -out ends the run right after the (cheap) task run, so the
+	// assertion is that the task was found under the discovered root.
+	code, _, stderr := runCLI(t, "-task", "demo", "-out", filepath.Join(out, "sub"), "-no-control")
+	if code != 1 || !strings.Contains(stderr, "write artifact") {
+		t.Fatalf("run = %d, stderr = %q", code, stderr)
+	}
+}
+
+func TestRunPromoteRootDiscovery(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	artifact := writePromotionArtifact(t, root, nil)
+
+	t.Run("outside a repository", func(t *testing.T) {
+		chdirInto(t, t.TempDir())
+		code, _, stderr := runCLI(t, "-promote-artifact", artifact, "-write-baseline", "testdata/agent-eval/baseline.json")
+		if code != 1 || !strings.Contains(stderr, "could not locate repository root") {
+			t.Fatalf("run = %d, stderr %q", code, stderr)
+		}
+	})
+	t.Run("inside a repository", func(t *testing.T) {
+		chdirInto(t, root)
+		code, stdout, stderr := runCLI(t, "-promote-artifact", artifact, "-write-baseline", "testdata/agent-eval/baseline.json")
+		if code != 0 || !strings.Contains(stdout, "Promoted pinned/demo") {
+			t.Fatalf("run = %d, stderr %q stdout %q", code, stderr, stdout)
+		}
+	})
+	t.Run("working directory removed", func(t *testing.T) {
+		gone := t.TempDir()
+		chdirInto(t, gone)
+		if err := os.Remove(gone); err != nil {
+			t.Skipf("cannot remove the working directory here: %v", err)
+		}
+		t.Setenv("PWD", "")
+		code, _, stderr := runCLI(t, "-promote-artifact", artifact, "-write-baseline", "baseline.json", "-root", "relative-root")
+		if code != 1 || !strings.Contains(stderr, "agenteval:") {
+			t.Fatalf("run = %d, stderr %q", code, stderr)
+		}
+	})
+}
+
+// A baseline that cannot be written is reported, not swallowed.
+func TestRunPromoteBaselineWriteFailure(t *testing.T) {
+	root, _ := fixtureRepo(t)
+	writeFile(t, root, "testdata/agent-eval/agents.yaml", "version: 1\nprofiles:\n  pinned:\n    command: \": {prompt}\"\n    name: pinned\n    model: test-model\n    version: \"1.0.0\"\n")
+	ro := filepath.Join(t.TempDir(), "ro")
+	if err := os.MkdirAll(ro, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = os.Chmod(ro, 0o755) }()
+	code, _, stderr := runCLI(t, "-promote-artifact", writePromotionArtifact(t, root, nil),
+		"-write-baseline", filepath.Join(ro, "baseline.json"), "-root", root)
+	if code != 1 || !strings.Contains(stderr, "write baseline") {
+		t.Fatalf("run = %d, stderr %q", code, stderr)
+	}
+}
+
+func TestWriteArtifactRejectsUnmarshalableTimestamp(t *testing.T) {
+	bad := agenteval.Artifact{Task: "demo", StartedAt: time.Date(10000, 1, 1, 0, 0, 0, 0, time.UTC)}
+	if _, _, err := writeArtifact(t.TempDir(), "out", bad); err == nil {
+		t.Fatal("timestamp outside the JSON range should fail")
+	}
+}

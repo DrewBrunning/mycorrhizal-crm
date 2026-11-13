@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import AuditPage from './AuditPage';
-import { type AuditEvent, getAuditEvents, undoAuditEvent } from './api/audit';
+import { type AuditEvent, exportAuditLog, getAuditEvents, undoAuditEvent } from './api/audit';
 import { ApiError } from './api/client';
 import { type Contact, getContactsByUid } from './api/contacts';
 import { SnackbarProvider } from './context/SnackbarContext';
@@ -19,7 +19,7 @@ afterEach(() => {
 
 vi.mock('./api/audit', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/audit')>();
-  return { ...actual, getAuditEvents: vi.fn(), undoAuditEvent: vi.fn() };
+  return { ...actual, getAuditEvents: vi.fn(), undoAuditEvent: vi.fn(), exportAuditLog: vi.fn() };
 });
 vi.mock('./api/contacts', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/contacts')>();
@@ -28,6 +28,7 @@ vi.mock('./api/contacts', async (importOriginal) => {
 
 const auditGetMock = vi.mocked(getAuditEvents);
 const undoMock = vi.mocked(undoAuditEvent);
+const exportMock = vi.mocked(exportAuditLog);
 const contactsByUidMock = vi.mocked(getContactsByUid);
 
 function ev(overrides: Partial<AuditEvent>): AuditEvent {
@@ -48,6 +49,7 @@ function contact(uid: string, ID: number, firstname: string, lastname: string): 
 beforeEach(() => {
   auditGetMock.mockReset();
   undoMock.mockReset();
+  exportMock.mockReset();
   contactsByUidMock.mockReset();
   const alice = contact('uid-1', 5, 'Alice', 'Johnson');
   contactsByUidMock.mockResolvedValue(new Map<string, Contact>([['uid-1', alice]]));
@@ -345,4 +347,75 @@ test('audit timestamps follow the date preference and omit seconds', async () =>
     setDateFormatPreference('eu');
     setTimeFormat('auto');
   }
+});
+
+// Issue #416: the CSV export button downloads the caller's whole audit trail,
+// without snapshots, and reports the outcome.
+test('Export CSV downloads the audit log and confirms, disabling the button meanwhile', async () => {
+  auditGetMock.mockResolvedValue({ audit_events: [], total: 0 });
+  let finish: () => void = () => undefined;
+  exportMock.mockReturnValue(
+    new Promise<void>((resolve) => {
+      finish = resolve;
+    }),
+  );
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Export CSV' }));
+  const busy = await screen.findByRole('button', { name: 'Exporting...' });
+  expect((busy as HTMLButtonElement).disabled).toBe(true);
+  expect(exportMock).toHaveBeenCalledTimes(1);
+  expect(exportMock).toHaveBeenCalledWith();
+
+  finish();
+  expect(await screen.findByText('Your audit log has been exported successfully.')).toBeDefined();
+  expect(
+    ((await screen.findByRole('button', { name: 'Export CSV' })) as HTMLButtonElement).disabled,
+  ).toBe(false);
+});
+
+test('Export CSV reports a failed export and re-enables the button', async () => {
+  auditGetMock.mockResolvedValue({ audit_events: [], total: 0 });
+  exportMock.mockRejectedValue(new ApiError('Export is unavailable', 'INTERNAL_ERROR', 500));
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Export CSV' }));
+  expect(await screen.findByText('Export is unavailable')).toBeDefined();
+  expect(screen.queryByText('Your audit log has been exported successfully.')).toBeNull();
+  await waitFor(() =>
+    expect((screen.getByRole('button', { name: 'Export CSV' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    ),
+  );
+});
+
+// A full window of 100 events offers Load more, which widens the window.
+test('Load more appears for a full window and re-queries with a larger limit', async () => {
+  const page = (n: number) =>
+    Array.from({ length: n }, (_, i) =>
+      ev({ id: i + 1, entity_id: `uid-${i + 1}`, operation: 'delete' }),
+    );
+  auditGetMock.mockResolvedValueOnce({ audit_events: page(100), total: 100 });
+  auditGetMock.mockResolvedValueOnce({ audit_events: page(120), total: 120 });
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Load more' }));
+  await waitFor(() => expect(auditGetMock).toHaveBeenCalledTimes(2));
+  expect(auditGetMock.mock.calls[0][0]).toMatchObject({ limit: 100 });
+  expect(auditGetMock.mock.calls[1][0]).toMatchObject({ limit: 200 });
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull());
+});
+
+test('a failed load shows the error with a Retry that reloads', async () => {
+  auditGetMock.mockRejectedValueOnce(new ApiError('Audit log unavailable', 'INTERNAL_ERROR', 500));
+  auditGetMock.mockResolvedValueOnce({
+    audit_events: [ev({ id: 1, operation: 'delete' })],
+    total: 1,
+  });
+  renderPage();
+
+  expect(await screen.findByText('Audit log unavailable')).toBeDefined();
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(screen.queryByText('Audit log unavailable')).toBeNull());
+  expect(auditGetMock).toHaveBeenCalledTimes(2);
 });

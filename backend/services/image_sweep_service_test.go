@@ -10,6 +10,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -112,4 +113,25 @@ func TestSweepImages_MissingDirIsNotAnError(t *testing.T) {
 	res, err := SweepImages(context.Background(), db, config.Config{ImagesDir: filepath.Join(t.TempDir(), "absent")})
 	require.NoError(t, err)
 	assert.Zero(t, res.FilesRemoved)
+}
+
+// An empty note whose soft delete fails is skipped and logged: the sweep keeps
+// going and reports no removal.
+func TestSweepImages_EmptyNoteDeleteFailureIsSkipped(t *testing.T) {
+	logtest.AllowWarnings(t, "drives the sweep's logged per-note failure on purpose")
+	useFakeClock(t, svcT0)
+	db := dbtest.New(t)
+	user := models.User{Username: "sweep3", Password: "password123!A", Email: "sweep3@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	n := models.Note{UserID: user.ID, Content: "", Date: svcT0}
+	require.NoError(t, db.Create(&n).Error)
+	require.NoError(t, db.Model(&models.Note{}).Where("id = ?", n.ID).UpdateColumn("created_at", Now().Add(-2*time.Hour)).Error)
+	failStatement(t, db, "fail_note_delete", "BEFORE UPDATE OF deleted_at ON notes")
+
+	res, err := SweepImages(context.Background(), db, config.Config{ImagesDir: t.TempDir()})
+	require.NoError(t, err)
+	assert.Zero(t, res.NotesRemoved)
+	var live int64
+	require.NoError(t, db.Model(&models.Note{}).Where("id = ?", n.ID).Count(&live).Error)
+	assert.EqualValues(t, 1, live, "the note stays")
 }

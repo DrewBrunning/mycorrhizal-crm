@@ -21,9 +21,9 @@
       "branchesTotal": 31
     },
     "src/AuditPage.tsx": {
-      "lines": 88.15,
+      "lines": 97.36,
       "linesTotal": 76,
-      "branches": 88,
+      "branches": 96,
       "branchesTotal": 50
     },
     "src/CircleTagTriagePage.tsx": {
@@ -39,9 +39,9 @@
       "branchesTotal": 40
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 86.09,
-      "linesTotal": 410,
-      "branches": 75.17,
+      "lines": 87.62,
+      "linesTotal": 412,
+      "branches": 77.55,
       "branchesTotal": 294
     },
     "src/ContactSharesPage.tsx": {
@@ -815,13 +815,13 @@
     "src/components/CircleDetailDialog.tsx": {
       "lines": 98.07,
       "linesTotal": 52,
-      "branches": 94.82,
+      "branches": 98.27,
       "branchesTotal": 58
     },
     "src/components/CircleTagEntityList.tsx": {
       "lines": 100,
       "linesTotal": 62,
-      "branches": 96.22,
+      "branches": 98.11,
       "branchesTotal": 53
     },
     "src/components/ClothingSizesPanel.tsx": {
@@ -1209,10 +1209,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 88.66,
-      "linesTotal": 344,
-      "branches": 83.56,
-      "branchesTotal": 286
+      "lines": 91.61,
+      "linesTotal": 346,
+      "branches": 85.41,
+      "branchesTotal": 288
     },
     "src/components/ImportFixedAssignmentPicker.tsx": {
       "lines": 84.21,
