@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"mycorrhizal/logger"
@@ -82,13 +83,18 @@ func (r ImportRun) Detail() ImportRunDetail {
 }
 
 // storedImportIssues returns the capped, PII-minimised copy of issues that is
-// persisted: email and phone blanked.
+// persisted: email and phone blanked, and a Name that is only the row's email
+// or phone (the live report's fallback label for a nameless row) blanked too
+// (issue #2563). The Row number still locates the row.
 func storedImportIssues(issues []ImportRowIssue) []ImportRowIssue {
 	if len(issues) > MaxImportRunIssues {
 		issues = issues[:MaxImportRunIssues]
 	}
 	out := make([]ImportRowIssue, len(issues))
 	for i, iss := range issues {
+		if n := strings.TrimSpace(iss.Name); n != "" && (n == strings.TrimSpace(iss.Email) || n == strings.TrimSpace(iss.Phone)) {
+			iss.Name = ""
+		}
 		iss.Email, iss.Phone = "", ""
 		out[i] = iss
 	}
