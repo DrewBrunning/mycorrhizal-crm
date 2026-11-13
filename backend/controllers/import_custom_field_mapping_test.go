@@ -152,3 +152,51 @@ func TestImportVCF_CustomFieldMapping_RejectsForeignDefinition(t *testing.T) {
 	require.NoError(t, db.Model(&models.FieldValue{}).Where("field_definition_id = ?", foreignDef.ID).Count(&valueCount).Error)
 	assert.Zero(t, valueCount)
 }
+
+// Issue #2567: mapping a property into an organisation/place/pet definition is
+// a 400 with its own reason code, and no value is written under it.
+func TestImportVCF_CustomFieldMapping_RejectsNonContactDefinition(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "cfmtarget", Password: "password123!A", Email: "cfmtarget@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	orgDef := models.FieldDefinition{
+		UserID: user.ID, Label: "Org size", Key: "org_size",
+		Target: models.FieldDefinitionTargetOrganisation, Type: models.FieldTypeText,
+		Projection: "internal-only", Sensitivity: "normal",
+	}
+	require.NoError(t, db.Create(&orgDef).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	registerImportRoutes(router, &config.Config{})
+
+	vcf := "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Cora Owner\r\nN:Owner;Cora;;;\r\nUID:77777777-7777-4777-8777-777777777777\r\nX-HOMETOWN:Springfield\r\nEND:VCARD\r\n"
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/vcf/upload", "contacts.vcf", []byte(vcf)))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var preview models.ImportPreviewResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &preview))
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, newJSONRequest(t, "/contacts/import/vcf/confirm", models.ImportConfirmRequest{
+		SessionID: preview.SessionID,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+		FieldMappings: []models.ImportFieldMapping{
+			{PropertyName: "x-hometown", Action: "map", FieldDefinitionID: orgDef.ID},
+		},
+	}))
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), `"reason_code":"import_field_mapping_target_invalid"`)
+	assert.Equal(t, "INVALID_INPUT", decodeError(t, w).Error.Code)
+
+	var contactCount, valueCount int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&contactCount).Error)
+	require.NoError(t, db.Model(&models.FieldValue{}).Where("field_definition_id = ?", orgDef.ID).Count(&valueCount).Error)
+	assert.Zero(t, contactCount)
+	assert.Zero(t, valueCount)
+}

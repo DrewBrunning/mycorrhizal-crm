@@ -827,3 +827,84 @@ func TestConfirmVCF_InvalidMappingFailsClosed(t *testing.T) {
 	_, sessErr := m.get(sessionID, user.ID)
 	require.Nil(t, sessErr, "an invalid mapping must not consume the session")
 }
+
+// --- issue #2567: only contact-target definitions may receive imported values --
+
+func createImportTargetDef(t *testing.T, db *gorm.DB, userID uint, key, target, projection string) models.FieldDefinition {
+	t.Helper()
+	def := models.FieldDefinition{
+		UserID: userID, Label: key, Key: key, Target: target, Type: models.FieldTypeText,
+		Projection: projection, Sensitivity: "normal",
+	}
+	require.NoError(t, db.Create(&def).Error)
+	return def
+}
+
+func TestBuildImportFieldPlan_MapRejectsNonContactDefinitions(t *testing.T) {
+	db := dbtest.New(t)
+	user := createImportFieldMapTestUser(t, db)
+	for _, target := range []string{models.FieldDefinitionTargetOrganisation, models.FieldDefinitionTargetPlace, models.FieldDefinitionTargetPet} {
+		def := createImportTargetDef(t, db, user.ID, "k_"+target, target, "internal-only")
+		_, err := buildImportFieldPlan(db, user.ID, []models.ImportFieldMapping{
+			{PropertyName: "x-thing", Action: "map", FieldDefinitionID: def.ID},
+		})
+		require.ErrorIs(t, err, errImportFieldMappingTargetInvalid, "target %s", target)
+		require.ErrorIs(t, err, errInvalidImportFieldMapping)
+	}
+}
+
+func TestBuildImportFieldPlan_MapAcceptsBlankTargetAsContact(t *testing.T) {
+	db := dbtest.New(t)
+	user := createImportFieldMapTestUser(t, db)
+	def := createImportTargetDef(t, db, user.ID, "legacy", "", "internal-only")
+	plan, err := buildImportFieldPlan(db, user.ID, []models.ImportFieldMapping{
+		{PropertyName: "x-thing", Action: "map", FieldDefinitionID: def.ID},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, def.ID, plan["x-thing"].ID)
+}
+
+// A same-key entity definition must be neither reused by "create" nor
+// auto-mapped through its projection.
+func TestBuildImportFieldPlan_CreateAndAutoMapIgnoreEntityDefinitions(t *testing.T) {
+	db := dbtest.New(t)
+	user := createImportFieldMapTestUser(t, db)
+	orgDef := createImportTargetDef(t, db, user.ID, "hometown", models.FieldDefinitionTargetOrganisation, "internal-only")
+	projected := createImportTargetDef(t, db, user.ID, "shade", models.FieldDefinitionTargetPlace, "vcard:X-SHADE")
+
+	plan, err := buildImportFieldPlan(db, user.ID, []models.ImportFieldMapping{
+		{PropertyName: "x-hometown", Action: "create"},
+	})
+	require.NoError(t, err)
+	assert.NotEqual(t, orgDef.ID, plan["x-hometown"].ID, "the organisation definition is not reused")
+	assert.Equal(t, models.FieldDefinitionTargetContact, plan["x-hometown"].Target)
+	_, autoMapped := plan["x-shade"]
+	assert.False(t, autoMapped, "a place definition (%s) is not auto-mapped", projected.ID)
+}
+
+func TestConfirmVCF_MapToNonContactDefinitionFailsClosedWithReasonCode(t *testing.T) {
+	db := dbtest.New(t)
+	user := createImportFieldMapTestUser(t, db)
+	orgDef := createImportTargetDef(t, db, user.ID, "hometown", models.FieldDefinitionTargetOrganisation, "internal-only")
+
+	contacts, previews, _, err := ParseVCF(strings.NewReader(fieldMapVCard("X-HOMETOWN:Springfield")), db, user.ID)
+	require.NoError(t, err)
+	m := NewImportSessionManager()
+	sessionID := m.CreateVCFSession(user.ID, contacts, previews)
+	_, appErr := m.ConfirmVCF(context.Background(), db, user.ID, models.ImportConfirmRequest{
+		SessionID: sessionID,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+		FieldMappings: []models.ImportFieldMapping{
+			{PropertyName: "x-hometown", Action: "map", FieldDefinitionID: orgDef.ID},
+		},
+	}, testImportConfig(t), testImportLogger())
+	require.NotNil(t, appErr)
+	assert.Equal(t, apperrors.ErrCodeInvalidInput, appErr.Code)
+	assert.Equal(t, string(apperrors.ReasonImportFieldMappingTargetInvalid), appErr.ReasonCode)
+
+	var contactCount, valueCount int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&contactCount).Error)
+	require.NoError(t, db.Model(&models.FieldValue{}).Where("field_definition_id = ?", orgDef.ID).Count(&valueCount).Error)
+	assert.Zero(t, contactCount, "nothing is imported")
+	assert.Zero(t, valueCount, "no value is written under the organisation definition")
+}

@@ -820,6 +820,9 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 	})
 
 	if txErr != nil {
+		if errors.Is(txErr, errImportFieldMappingTargetInvalid) {
+			return nil, apperrors.ErrInvalidInput("field_mappings", "the field does not apply to contacts").WithReason(apperrors.ReasonImportFieldMappingTargetInvalid, nil)
+		}
 		if errors.Is(txErr, errInvalidImportFieldMapping) {
 			return nil, apperrors.ErrInvalidInput("field_mappings", strings.TrimPrefix(txErr.Error(), errInvalidImportFieldMapping.Error()+": ")).WithReason(apperrors.ReasonImportFieldMappingsInvalid, map[string]any{"reason": strings.TrimPrefix(txErr.Error(), errInvalidImportFieldMapping.Error()+": ")})
 		}
