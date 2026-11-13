@@ -53,6 +53,11 @@ Format: `- **Bold lead phrase** ([#123](https://github.com/DrewBrunning/mycorrhi
 
 - One bullet per change, **two lines of prose and about 40 words at most**. No
   sub-bullets. Several PRs that deliver one feature get one bullet.
+- **One bullet per feature across platforms.** A feature or fix that lands on the web and
+  Android (or the backend) in the same release is one bullet with every issue linked, and the
+  bullet does not name a platform. Name a platform only for something that exists on that
+  platform alone, or that catches one platform up to a feature the other shipped in an earlier
+  release. Follow-up PRs that finish the same feature extend its existing bullet.
 - Link the GitHub **issue** (not the PR number GitHub appends to a squashed
   subject) with a full URL, so the file reads correctly outside GitHub. No issue,
   no link.
