@@ -48,8 +48,10 @@ data class SharedWithMeUiState(
  * state lives only in memory and a failed reload drops the rows instead of keeping stale ones.
  */
 @HiltViewModel
-class SharedWithMeViewModel @Inject constructor(private val repository: ShareGrantRepository) :
-    ViewModel() {
+class SharedWithMeViewModel @Inject constructor(
+    private val repository: ShareGrantRepository,
+    private val shareGrantChanges: ShareGrantChanges = ShareGrantChanges()
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SharedWithMeUiState())
     val uiState: StateFlow<SharedWithMeUiState> = _uiState.asStateFlow()
@@ -121,6 +123,8 @@ class SharedWithMeViewModel @Inject constructor(private val repository: ShareGra
                     _uiState.update { it.copy(busy = false, prompt = null, actionError = error) }
                 }
             )
+            // Accept, decline, block, leave and unblock all move the pending count.
+            shareGrantChanges.notifyChanged()
             load()
         }
     }
