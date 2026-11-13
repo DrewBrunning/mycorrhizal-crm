@@ -429,6 +429,7 @@
     "models/dtos.go": 100,
     "models/entity.go": 98.68,
     "models/entity_deletion_snapshot.go": 100,
+    "models/entity_projection_bump.go": 98.63,
     "models/export_loss.go": 100,
     "models/external_activity.go": 100,
     "models/external_identity.go": 100,

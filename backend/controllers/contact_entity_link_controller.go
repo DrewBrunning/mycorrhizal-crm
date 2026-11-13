@@ -299,7 +299,7 @@ func DeleteContactEntityLink(c *gin.Context) {
 	if !checkIfMatch(c, link.Revision) {
 		return
 	}
-	if err := db.Delete(link).Error; err != nil {
+	if err := services.DeleteContactEntityLink(db, link); err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to delete entity link").WithError(err))
 		return
 	}

@@ -604,6 +604,11 @@ func TestEntityHelper_CreatesEntitiesAndLinksWithoutTouchingContactValuesAndIsRe
 	// c2 already has an organisation primary elsewhere
 	other := e.org(t, "Initech")
 	e.addLink(t, c2, map[string]any{"entity_id": other.ID, "role": "employee", "is_primary": true})
+	// That primary link projects a new ORG onto c2, so it legitimately bumps c2
+	// (#2565); the revisions the helper must not move are the ones after it.
+	var c2fresh models.Contact
+	require.NoError(t, e.db.First(&c2fresh, c2.ID).Error)
+	revBefore[c2.ID] = c2fresh.Revision
 
 	group := e.suggestions(t, "mode=contact_values&kind=organisation").Groups
 	var acme models.EntityValueGroup

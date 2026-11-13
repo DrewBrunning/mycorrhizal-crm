@@ -120,68 +120,110 @@ func loadEntityProjections(db *gorm.DB, userID uint, vcardUID string, includeSen
 	if db == nil || vcardUID == "" {
 		return nil, nil
 	}
-	q := db.Where("user_id = ? AND contact_vcard_uid = ? AND is_primary = ? AND kind IN ?",
-		userID, vcardUID, true, []string{EntityKindOrganisation, EntityKindPlace})
-	if !includeSensitive {
-		q = q.Where("sensitivity = ?", RelationshipSensitivityNormal)
-	}
-	var links []ContactEntityLink
-	if err := q.Order("kind, id").Find(&links).Error; err != nil {
-		return nil, err
-	}
-	if len(links) == 0 {
-		return nil, nil
-	}
-	today := projectionToday()
-	ids := make([]string, 0, len(links))
-	for _, l := range links {
-		ids = append(ids, l.EntityID)
-	}
-	eq := db.Where("user_id = ? AND id IN ?", userID, ids)
-	if !includeSensitive {
-		eq = eq.Where("sensitivity = ?", RelationshipSensitivityNormal)
-	}
-	var entities []Entity
-	if err := eq.Find(&entities).Error; err != nil {
-		return nil, err
-	}
-	byID := make(map[string]*Entity, len(entities))
-	for i := range entities {
-		byID[entities[i].ID] = &entities[i]
-	}
+	m, err := loadEntityProjectionsFor(db, userID, []string{vcardUID}, includeSensitive)
+	return m[vcardUID], err
+}
 
-	var out []projectedEntity
-	for _, l := range links {
-		e := byID[l.EntityID]
-		if e == nil || e.Kind != l.Kind || !linkIsCurrent(l.Period, today) {
+// entityProjectionLookupChunk bounds the IN-list of one lookup statement, well
+// under SQLite's bound-variable limit.
+const entityProjectionLookupChunk = 400
+
+// loadEntityProjectionsFor is the batch form of loadEntityProjections: one links
+// query and one entities query per chunk of contacts, not per contact. The
+// result maps vCard UID to that contact's entries in (kind, link id) order;
+// contacts with no projection are absent. It is the single place that decides
+// what a contact projects, shared by the read path and by the write-side
+// change detection (EntityProjectionSnapshot).
+func loadEntityProjectionsFor(db *gorm.DB, userID uint, uids []string, includeSensitive bool) (map[string][]projectedEntity, error) {
+	out := map[string][]projectedEntity{}
+	today := projectionToday()
+	for start := 0; start < len(uids); start += entityProjectionLookupChunk {
+		chunk := uids[start:min(start+entityProjectionLookupChunk, len(uids))]
+		q := db.Where("user_id = ? AND contact_vcard_uid IN ? AND is_primary = ? AND kind IN ?",
+			userID, chunk, true, []string{EntityKindOrganisation, EntityKindPlace})
+		if !includeSensitive {
+			q = q.Where("sensitivity = ?", RelationshipSensitivityNormal)
+		}
+		var links []ContactEntityLink
+		if err := q.Order("contact_vcard_uid, kind, id").Find(&links).Error; err != nil {
+			return nil, err
+		}
+		if len(links) == 0 {
 			continue
 		}
-		core, err := e.DecodeCore()
-		if err != nil { // # pragma: no cover — core is validated JSON on every write
-			continue
+		byID, err := loadProjectedEntities(db, userID, links, includeSensitive)
+		if err != nil {
+			return nil, err
 		}
-		effective := maxSensitivity(e.Sensitivity, l.Sensitivity)
-		switch v := core.(type) {
-		case *OrganisationCore:
-			org := v.Organization
-			if strings.TrimSpace(org.Name) == "" {
-				org.Name = e.Name
-			}
-			org.ID = EntityProjectionIDPrefix + l.ID
-			out = append(out, projectedEntity{LinkID: l.ID, Org: &org})
-		case *PlaceCore:
-			addr := v.Address
-			if len(addr.Components) == 0 && strings.TrimSpace(addr.Full) == "" {
+		for _, l := range links {
+			e := byID[l.EntityID]
+			if e == nil || e.Kind != l.Kind || !linkIsCurrent(l.Period, today) {
 				continue
 			}
-			addr.ID = EntityProjectionIDPrefix + l.ID
-			if effective != RelationshipSensitivityNormal {
-				addr.Sensitivity = effective
+			if p, ok := projectEntityLink(e, &l); ok {
+				out[l.ContactVCardUID] = append(out[l.ContactVCardUID], p)
 			}
-			out = append(out, projectedEntity{LinkID: l.ID, Addr: &addr})
 		}
 	}
 	return out, nil
+}
+
+// loadProjectedEntities loads the live entities the links point at (at normal
+// sensitivity only unless includeSensitive), keyed by id.
+func loadProjectedEntities(db *gorm.DB, userID uint, links []ContactEntityLink, includeSensitive bool) (map[string]*Entity, error) {
+	seen := make(map[string]bool, len(links))
+	ids := make([]string, 0, len(links))
+	for _, l := range links {
+		if !seen[l.EntityID] {
+			seen[l.EntityID] = true
+			ids = append(ids, l.EntityID)
+		}
+	}
+	byID := make(map[string]*Entity, len(ids))
+	for start := 0; start < len(ids); start += entityProjectionLookupChunk {
+		eq := db.Where("user_id = ? AND id IN ?", userID, ids[start:min(start+entityProjectionLookupChunk, len(ids))])
+		if !includeSensitive {
+			eq = eq.Where("sensitivity = ?", RelationshipSensitivityNormal)
+		}
+		var entities []Entity
+		if err := eq.Find(&entities).Error; err != nil {
+			return nil, err
+		}
+		for i := range entities {
+			byID[entities[i].ID] = &entities[i]
+		}
+	}
+	return byID, nil
+}
+
+// projectEntityLink builds the ORG/ADR entry link l projects from its entity e, or
+// false when it projects nothing (an empty address, an undecodable core).
+func projectEntityLink(e *Entity, l *ContactEntityLink) (projectedEntity, bool) {
+	core, err := e.DecodeCore()
+	if err != nil { // # pragma: no cover — core is validated JSON on every write
+		return projectedEntity{}, false
+	}
+	effective := maxSensitivity(e.Sensitivity, l.Sensitivity)
+	switch v := core.(type) {
+	case *OrganisationCore:
+		org := v.Organization
+		if strings.TrimSpace(org.Name) == "" {
+			org.Name = e.Name
+		}
+		org.ID = EntityProjectionIDPrefix + l.ID
+		return projectedEntity{LinkID: l.ID, Org: &org}, true
+	case *PlaceCore:
+		addr := v.Address
+		if len(addr.Components) == 0 && strings.TrimSpace(addr.Full) == "" {
+			return projectedEntity{}, false
+		}
+		addr.ID = EntityProjectionIDPrefix + l.ID
+		if effective != RelationshipSensitivityNormal {
+			addr.Sensitivity = effective
+		}
+		return projectedEntity{LinkID: l.ID, Addr: &addr}, true
+	}
+	return projectedEntity{}, false
 }
 
 var sensitivityRank = map[string]int{"": 0, "normal": 0, "private": 1, "secret": 2}
@@ -203,7 +245,12 @@ func maxSensitivity(a, b string) string {
 // own address's. It never mutates the backing arrays and never writes back to
 // the stored Card.
 func projectPrimaryEntities(db *gorm.DB, userID uint, vcardUID string, card *contactmodel.Card, includeSensitive bool) {
-	projs := currentEntityProjections(db, userID, vcardUID, includeSensitive)
+	appendProjections(card, currentEntityProjections(db, userID, vcardUID, includeSensitive))
+}
+
+// appendProjections is projectPrimaryEntities' merge step: projs appended to
+// COPIES of card's Organizations/Addresses with the precedence rules above.
+func appendProjections(card *contactmodel.Card, projs []projectedEntity) {
 	if len(projs) == 0 {
 		return
 	}
