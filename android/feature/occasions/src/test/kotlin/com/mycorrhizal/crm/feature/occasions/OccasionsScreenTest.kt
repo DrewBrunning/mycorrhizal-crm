@@ -8,6 +8,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.OccasionEvent
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -201,5 +203,25 @@ class OccasionsScreenTest {
         renderWithSlot(emptyList())
         composeTestRule.onNodeWithText("Slot content").assertIsDisplayed()
         composeTestRule.onNodeWithText("No events yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed load is worded from its reason code, never the server text`() {
+        coEvery { repository.list() } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW SERVER TEXT",
+                reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+            )
+        )
+        val viewModel = OccasionsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                OccasionsScreen(onMenuClick = {}, onOpenAttendees = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 }
