@@ -337,6 +337,14 @@ func reviveContactEntityLinks(tx *gorm.DB, userID uint, ids []string, now time.T
 			Updates(updates).Error; err != nil {
 			return nil, err
 		}
+		// revision/etag move with the revive (the delete bumped them too) so an
+		// If-Match client never holds a stale ETag. Both are <-:create, which a
+		// GORM update silently drops, so this is a raw statement like the delete
+		// cascade's.
+		if err := tx.Exec(`UPDATE contact_entity_links SET revision = revision + 1,
+			etag = 'e-' || id || '-' || (revision + 1) WHERE id = ? AND user_id = ?`, link.ID, userID).Error; err != nil {
+			return nil, err
+		}
 	}
 	reasons := make([]string, 0, len(counts))
 	for r := range counts {

@@ -5,6 +5,7 @@ package services
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
 	"strings"
 	"testing"
@@ -495,4 +496,37 @@ func TestRestoreContact_LinkReviveFailureAbortsRestore(t *testing.T) {
 	_, err := RestoreContact(f.db, f.userID, f.c1.ID, entityNow)
 	require.Error(t, err)
 	assert.EqualValues(t, 1, count(t, f.db, true, &models.Contact{}, "id = ? AND deleted_at IS NOT NULL", f.c1.ID), "the contact stays in the trash")
+}
+
+// Restore revives and may demote links via a bulk update; the revision/etag
+// must increase so If-Match clients do not keep a stale ETag (issue #2566).
+func TestRestoreContact_BumpsLinkRevisionOnReviveAndDemote(t *testing.T) {
+	f := newEntityFixture(t)
+	plain := f.link(t, f.c1, f.org, false)
+	primary := f.link(t, f.c1, f.other, true)
+	require.NoError(t, DeleteContact(f.db, f.c1, f.userID, entityNow))
+	var deleted map[string]models.ContactEntityLink = map[string]models.ContactEntityLink{}
+	for _, id := range []string{plain.ID, primary.ID} {
+		var l models.ContactEntityLink
+		require.NoError(t, f.db.Unscoped().First(&l, "id = ?", id).Error)
+		deleted[id] = l
+	}
+	// Take the primary slot so the revived primary is demoted.
+	third := models.Entity{UserID: f.userID, Kind: models.EntityKindOrganisation, Name: "Gamma"}
+	require.NoError(t, f.db.Create(&third).Error)
+	require.NoError(t, f.db.Create(&models.ContactEntityLink{UserID: f.userID, ContactVCardUID: f.c1.VCardUID, EntityID: third.ID,
+		Kind: third.Kind, Role: "owner", IsPrimary: true, Sensitivity: "normal"}).Error)
+
+	_, err := RestoreContact(f.db, f.userID, f.c1.ID, entityNow.Add(time.Hour))
+	require.NoError(t, err)
+
+	for _, id := range []string{plain.ID, primary.ID} {
+		var got models.ContactEntityLink
+		require.NoError(t, f.db.First(&got, "id = ?", id).Error)
+		assert.Greater(t, got.Revision, deleted[id].Revision, "revived link %s revision must increase", id)
+		assert.Equal(t, fmt.Sprintf("e-%s-%d", id, got.Revision), got.ETag)
+	}
+	var demoted models.ContactEntityLink
+	require.NoError(t, f.db.First(&demoted, "id = ?", primary.ID).Error)
+	assert.False(t, demoted.IsPrimary)
 }

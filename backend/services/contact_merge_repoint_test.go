@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -621,4 +622,51 @@ func TestBuildContactMergeNoteContent_OmitsSyncLineWhenNoneDiscarded(t *testing.
 		models.ContactMergeAssociationCounts{}, 0)
 
 	assert.NotContains(t, content, "CardDAV sync link")
+}
+
+// A merge repoints and demotes contact_entity_links with raw SQL; the link's
+// revision/etag must move with it or an If-Match client keeps a stale ETag
+// for a link whose contact or primary flag changed (issue #2566).
+func TestRepointContactAssociations_BumpsEntityLinkRevisionOnRepointAndDemote(t *testing.T) {
+	db, userID := newMergeDB(t)
+	keeper := makeMergeContact(t, db, userID, "Keeper")
+	loser := makeMergeContact(t, db, userID, "Loser")
+	org1 := models.Entity{UserID: userID, Kind: models.EntityKindOrganisation, Name: "Acme"}
+	org2 := models.Entity{UserID: userID, Kind: models.EntityKindOrganisation, Name: "Beta"}
+	org3 := models.Entity{UserID: userID, Kind: models.EntityKindOrganisation, Name: "Gamma"}
+	require.NoError(t, db.Create(&org1).Error)
+	require.NoError(t, db.Create(&org2).Error)
+	require.NoError(t, db.Create(&org3).Error)
+	mk := func(c *models.Contact, e models.Entity, primary bool) models.ContactEntityLink {
+		l := models.ContactEntityLink{UserID: userID, ContactVCardUID: c.VCardUID, EntityID: e.ID, Kind: e.Kind, Role: "employee", IsPrimary: primary, Sensitivity: "normal"}
+		require.NoError(t, db.Create(&l).Error)
+		return l
+	}
+	keeperPrimary := mk(keeper, org1, true)
+	loserPrimary := mk(loser, org2, true) // collides with keeper's primary: demoted
+	loserPlain := mk(loser, org3, false)  // plain repoint
+
+	_, err := RepointContactAssociations(db, userID, keeper, loser, nil, map[string]string{})
+	require.NoError(t, err)
+
+	get := func(id string) models.ContactEntityLink {
+		var l models.ContactEntityLink
+		require.NoError(t, db.First(&l, "id = ?", id).Error)
+		return l
+	}
+	plain := get(loserPlain.ID)
+	assert.Equal(t, keeper.VCardUID, plain.ContactVCardUID)
+	assert.Greater(t, plain.Revision, loserPlain.Revision, "repointed link revision must increase")
+	assert.Equal(t, fmt.Sprintf("e-%s-%d", plain.ID, plain.Revision), plain.ETag)
+
+	demoted := get(loserPrimary.ID)
+	assert.False(t, demoted.IsPrimary)
+	assert.Equal(t, keeper.VCardUID, demoted.ContactVCardUID)
+	// Demote and repoint are two changes; the revision must move past one bump
+	// only if each statement bumps, and in any case strictly above the original.
+	assert.Greater(t, demoted.Revision, loserPrimary.Revision, "demoted link revision must increase")
+	assert.Equal(t, fmt.Sprintf("e-%s-%d", demoted.ID, demoted.Revision), demoted.ETag)
+
+	untouched := get(keeperPrimary.ID)
+	assert.Equal(t, keeperPrimary.Revision, untouched.Revision, "the keeper's own link is not bumped")
 }
