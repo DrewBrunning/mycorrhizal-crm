@@ -48,6 +48,8 @@ func TestReconfirmHooks_SingleStatementFailuresFailTheWrite(t *testing.T) {
 		pref    models.Preference
 		edge    models.RelationshipEdge
 		def     models.FieldDefinition
+		place   models.Entity
+		link    models.ContactEntityLink
 	}
 	build := func(t *testing.T) *world {
 		db := dbtest.New(t)
@@ -68,6 +70,12 @@ func TestReconfirmHooks_SingleStatementFailuresFailTheWrite(t *testing.T) {
 		w.def = models.FieldDefinition{UserID: a.ID, Label: "F", Key: "f", Target: models.FieldDefinitionTargetContact,
 			Type: models.FieldTypeString, Projection: "vcard:X-F", Sensitivity: "normal"}
 		require.NoError(t, db.Create(&w.def).Error)
+		w.place = models.Entity{UserID: a.ID, Kind: models.EntityKindPlace, Name: "Cabin"}
+		require.NoError(t, w.place.SetCore(&models.PlaceCore{}))
+		require.NoError(t, db.Create(&w.place).Error)
+		w.link = models.ContactEntityLink{UserID: a.ID, ContactVCardUID: w.contact.VCardUID, EntityID: w.place.ID,
+			Kind: w.place.Kind, Role: "resident", IsPrimary: true, Sensitivity: "normal"}
+		require.NoError(t, db.Create(&w.link).Error)
 		require.NoError(t, db.Model(&w.contact).Updates(map[string]any{"firstname": "Alice"}).Error)
 		return w
 	}
@@ -75,6 +83,8 @@ func TestReconfirmHooks_SingleStatementFailuresFailTheWrite(t *testing.T) {
 		"preference": func(w *world) error { return w.db.Model(&w.pref).Update("sensitivity", "private").Error },
 		"edge":       func(w *world) error { return w.db.Model(&w.edge).Update("sensitivity", "secret").Error },
 		"field-def":  func(w *world) error { return w.db.Model(&w.def).Update("sensitivity", "private").Error },
+		"entity":     func(w *world) error { return w.db.Model(&w.place).Update("sensitivity", "private").Error },
+		"link":       func(w *world) error { return w.db.Model(&w.link).Update("sensitivity", "secret").Error },
 		"address": func(w *world) error {
 			var c models.Contact
 			if err := w.db.First(&c, w.contact.ID).Error; err != nil {

@@ -416,6 +416,15 @@ class EntityScreensTest {
     }
 
     @Test
+    fun `adopt-all is disabled while the people list failed to load`() {
+        setDetail(
+            EntityDetailUiState(entity = acme, isLoading = false, peopleFailed = true)
+        )
+        composeTestRule.onNodeWithTag("entity-delete").performClick()
+        composeTestRule.onNodeWithTag("entity-delete-adopt").assertIsNotEnabled()
+    }
+
+    @Test
     fun `a pet's delete never offers adopt`() {
         setDetail(
             EntityDetailUiState(

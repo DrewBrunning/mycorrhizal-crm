@@ -65,6 +65,9 @@ type Entity struct {
 	Revision int64  `gorm:"column:revision;<-:create;not null;default:1" json:"revision"`
 
 	revisionStampedOnCreate bool
+	// priorSensitivity is the stored sensitivity captured by BeforeSave for the
+	// share-grant re-confirmation check in AfterSave (issue #2564).
+	priorSensitivity string
 }
 
 // OrganisationCore is the core schema of an organisation entity. Name mirrors
@@ -196,9 +199,11 @@ func (e *Entity) BeforeSave(tx *gorm.DB) error {
 		e.Core = "{}"
 	}
 	if e.Kind != "" {
-		return ValidateEntityCore(e.Kind, e.Core)
+		if err := ValidateEntityCore(e.Kind, e.Core); err != nil {
+			return err
+		}
 	}
-	return nil
+	return e.captureSensitivity(tx)
 }
 
 // AfterCreate stamps revision 1 and the ETag (ADR 0006).
@@ -213,6 +218,10 @@ func (e *Entity) AfterCreate(tx *gorm.DB) error {
 func (e *Entity) AfterSave(tx *gorm.DB) error {
 	if e.ID == "" {
 		return nil
+	}
+	// Issue #2564: withhold the projected section on every linked contact.
+	if err := e.markSensitivityReclassification(tx); err != nil {
+		return err
 	}
 	if e.revisionStampedOnCreate {
 		e.revisionStampedOnCreate = false

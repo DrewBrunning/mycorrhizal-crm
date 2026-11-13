@@ -14,6 +14,8 @@ import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntityRestoreResponse
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.FieldDefinition
 import com.mycorrhizal.crm.model.network.FieldValue
 import com.mycorrhizal.crm.model.network.PartialDate
@@ -31,6 +33,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -214,6 +217,70 @@ class EntityDetailViewModelTest {
         assertFalse(vm.uiState.value.deleted)
         assertEquals(1, vm.uiState.value.adoptFailedCount)
     }
+
+    @Test
+    fun `adopt-all aborts without deleting when the people list cannot be re-read`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val failure = ApiError.Client(
+                500,
+                "RAW",
+                reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+            )
+            coEvery { repository.contacts("e1") } returns Result.failure(failure)
+            val vm = vm()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.peopleFailed)
+            vm.delete(adoptAll = true)
+            advanceUntilIdle()
+            coVerify(exactly = 2) { repository.contacts("e1") }
+            coVerify(exactly = 0) { repository.delete(any(), any()) }
+            coVerify(exactly = 0) { repository.adopt(any(), any()) }
+            assertFalse(vm.uiState.value.deleted)
+            assertFalse(vm.uiState.value.isDeleting)
+            assertSame(failure, vm.uiState.value.error)
+        }
+
+    @Test
+    fun `adopt-all with a failed people list adopts after a successful re-read`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.contacts("e1") } returnsMany listOf(
+                Result.failure(ApiError.Unknown(RuntimeException("x"))),
+                Result.success(listOf(person(7, "l7", true)))
+            )
+            coEvery { repository.adopt(7, "l7") } returns
+                Result.success(ContactEntityLinkAdoptResponse(adopted = true))
+            coEvery { repository.delete("e1", 3) } returns Result.success(EntityDeleteResponse())
+            val vm = vm()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.peopleFailed)
+            vm.delete(adoptAll = true)
+            advanceUntilIdle()
+            coVerifyOrder {
+                repository.adopt(7, "l7")
+                repository.delete("e1", 3)
+            }
+            assertTrue(vm.uiState.value.deleted)
+            assertFalse(vm.uiState.value.peopleFailed)
+        }
+
+    @Test
+    fun `adopt-all with no people loaded but projections re-reads before deleting`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            // The default stub returns an empty list although the entity says it projects to 1.
+            coEvery { repository.contacts("e1") } returnsMany listOf(
+                Result.success(emptyList()),
+                Result.success(listOf(person(7, "l7", true)))
+            )
+            coEvery { repository.adopt(7, "l7") } returns
+                Result.success(ContactEntityLinkAdoptResponse(adopted = true))
+            coEvery { repository.delete("e1", 3) } returns Result.success(EntityDeleteResponse())
+            val vm = vm()
+            advanceUntilIdle()
+            vm.delete(adoptAll = true)
+            advanceUntilIdle()
+            coVerify(exactly = 1) { repository.adopt(7, "l7") }
+            assertTrue(vm.uiState.value.deleted)
+        }
 
     @Test
     fun `a pet never adopts because it never projects`() = runTest(

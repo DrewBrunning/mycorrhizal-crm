@@ -141,10 +141,10 @@
       "branchesTotal": 38
     },
     "src/SearchResultsPage.tsx": {
-      "lines": 98.27,
-      "linesTotal": 58,
-      "branches": 77.41,
-      "branchesTotal": 62
+      "lines": 98.3,
+      "linesTotal": 59,
+      "branches": 87.83,
+      "branchesTotal": 74
     },
     "src/SettingsPage.tsx": {
       "lines": 83.13,
@@ -1023,9 +1023,9 @@
       "branchesTotal": 55
     },
     "src/components/EntityDeleteDialog.tsx": {
-      "lines": 96.77,
+      "lines": 100,
       "linesTotal": 31,
-      "branches": 71.87,
+      "branches": 75,
       "branchesTotal": 32
     },
     "src/components/EntityFormDialog.tsx": {
@@ -1047,9 +1047,9 @@
       "branchesTotal": 27
     },
     "src/components/EntitySuggestionsPanel.tsx": {
-      "lines": 92.85,
+      "lines": 100,
       "linesTotal": 28,
-      "branches": 68.75,
+      "branches": 81.25,
       "branchesTotal": 16
     },
     "src/components/ErrorAggregationPanel.tsx": {
@@ -1263,9 +1263,9 @@
       "branchesTotal": 30
     },
     "src/components/LinkFromOwnValueDialog.tsx": {
-      "lines": 93.87,
+      "lines": 97.95,
       "linesTotal": 49,
-      "branches": 81.39,
+      "branches": 86.04,
       "branchesTotal": 43
     },
     "src/components/LoadError.tsx": {

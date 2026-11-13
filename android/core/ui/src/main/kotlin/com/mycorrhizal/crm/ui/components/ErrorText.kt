@@ -1875,6 +1875,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
             }
         }
 
+        ErrorReasonCode.IMPORT_FIELD_MAPPING_TARGET_INVALID ->
+            stringResource(R.string.error_reason_import_field_mapping_target_invalid)
+
         ErrorReasonCode.IMPORT_FIELD_MAPPINGS_INVALID -> reason.str(
             "reason"
         )?.let { stringResource(R.string.error_reason_import_field_mappings_invalid, it) }

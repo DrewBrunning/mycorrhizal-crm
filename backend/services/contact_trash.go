@@ -314,7 +314,12 @@ func RestoreContact(db *gorm.DB, userID, contactID uint, now time.Time) (*Restor
 		}
 		models.RecordAuditEvent(tx, models.AuditEntityContact, contact.VCardUID, models.AuditOpRestore, userID)
 		res.Contact = contact
-		revoked, err := revokedShareGrantsForRestore(tx, userID, contact.VCardUID, snap.TrashedAt)
+		// A contact trashed before issue #2562 was fixed still has live grants
+		// on its notes; the restore brings the notes back, so end them now.
+		if err := revokeNoteGrantsForContact(tx, ContactCascadeTarget{ID: contact.ID, VCardUID: contact.VCardUID, UserID: userID}, now); err != nil {
+			return err
+		}
+		revoked, err := revokedShareGrantsForRestore(tx, userID, contact, snap.TrashedAt)
 		if err != nil {
 			return err
 		}
@@ -616,12 +621,16 @@ func collectContactFiles(tx *gorm.DB, userID uint, contact models.Contact, share
 // revokedShareGrantsForRestore lists the owner's grants on the contact that
 // the delete that created this trash entry revoked: reason entity_deleted and
 // revoked at or after the moment of trashing (older revokes belong to an
-// earlier delete/restore cycle the person already saw). Owner-scoped.
-func revokedShareGrantsForRestore(tx *gorm.DB, userID uint, vcardUID string, trashedAt time.Time) ([]models.TrashRevokedShareGrant, error) {
+// earlier delete/restore cycle the person already saw). Grants on the
+// contact's notes count too: the delete cascaded to them (issue #2562).
+// Owner-scoped.
+func revokedShareGrantsForRestore(tx *gorm.DB, userID uint, contact models.Contact, trashedAt time.Time) ([]models.TrashRevokedShareGrant, error) {
 	var rows []models.ShareGrant
-	if err := tx.Where("from_user_id = ? AND entity_type = ? AND entity_id = ? AND status = ? AND revoked_reason = ? AND revoked_at >= ?",
-		userID, models.ShareGrantEntityContact, vcardUID, models.ShareGrantStatusRevoked,
-		models.ShareGrantReasonEntityDeleted, trashedAt.UTC()).Order("created_at, id").Find(&rows).Error; err != nil {
+	if err := tx.Where("from_user_id = ? AND status = ? AND revoked_reason = ? AND revoked_at >= ? AND "+
+		"((entity_type = ? AND entity_id = ?) OR (entity_type = ? AND entity_id IN ("+noteUUIDsOfContact+")))",
+		userID, models.ShareGrantStatusRevoked, models.ShareGrantReasonEntityDeleted, trashedAt.UTC(),
+		models.ShareGrantEntityContact, contact.VCardUID,
+		models.ShareGrantEntityNote, contact.ID, userID).Order("created_at, id").Find(&rows).Error; err != nil {
 		return nil, err
 	}
 	out := make([]models.TrashRevokedShareGrant, 0, len(rows))

@@ -129,6 +129,16 @@ type importFieldPlan map[string]models.FieldDefinition
 // failure (500).
 var errInvalidImportFieldMapping = errors.New("invalid import field mapping")
 
+// errImportFieldMappingTargetInvalid is the "map" decision naming a definition
+// that does not apply to contacts (an organisation, place or pet field,
+// issue #2567). It wraps errInvalidImportFieldMapping, so it is still a 400,
+// and carries its own reason code for clients to localize.
+var errImportFieldMappingTargetInvalid = fmt.Errorf("%w: the field does not apply to contacts", errInvalidImportFieldMapping)
+
+// contactTargetSQL matches the definitions that apply to contacts: the
+// "contact" target, or a blank one (the column is NOT NULL, never NULL).
+const contactTargetSQL = "(target = 'contact' OR target = '')"
+
 // buildImportFieldPlan resolves the wizard's ImportFieldMapping decisions
 // into a per-property plan. Precedence, from strongest to weakest:
 //
@@ -152,7 +162,7 @@ func buildImportFieldPlan(tx *gorm.DB, userID uint, mappings []models.ImportFiel
 	projectionByName := map[string]models.FieldDefinition{}
 
 	var projected []models.FieldDefinition
-	if err := tx.Where("user_id = ? AND projection LIKE ?", userID, "vcard:%").Find(&projected).Error; err != nil {
+	if err := tx.Where("user_id = ? AND projection LIKE ? AND "+contactTargetSQL, userID, "vcard:%").Find(&projected).Error; err != nil {
 		// Best-effort auto-map, same discipline as projectCustomFields
 		// (models/contact_record.go): a lookup failure degrades to "no
 		// auto-match" rather than failing the whole import — including the
@@ -187,6 +197,11 @@ func buildImportFieldPlan(tx *gorm.DB, userID uint, mappings []models.ImportFiel
 			var def models.FieldDefinition
 			if err := tx.Where("id = ? AND user_id = ?", m.FieldDefinitionID, userID).First(&def).Error; err != nil {
 				return nil, fmt.Errorf("%w: field_definition_id %q is not one of your definitions: %v", errInvalidImportFieldMapping, m.FieldDefinitionID, err)
+			}
+			// An entity (organisation/place/pet) definition would get a value
+			// keyed to the contact's vcard_uid it can never read back.
+			if def.Target != "" && def.Target != models.FieldDefinitionTargetContact {
+				return nil, errImportFieldMappingTargetInvalid
 			}
 			plan[lower] = def
 		case "create":
@@ -224,7 +239,7 @@ func createOrReuseImportedFieldDefinition(tx *gorm.DB, userID uint, propLower, l
 	}
 
 	var existing models.FieldDefinition
-	err := tx.Where("user_id = ? AND key = ?", userID, key).First(&existing).Error
+	err := tx.Where("user_id = ? AND key = ? AND "+contactTargetSQL, userID, key).First(&existing).Error
 	if err == nil {
 		return existing, nil
 	}

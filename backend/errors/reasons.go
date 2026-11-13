@@ -502,6 +502,7 @@ const (
 	ReasonHouseholdSuggestionStale              ReasonCode = "household_suggestion_stale"
 	ReasonHouseholdTypeInvalid                  ReasonCode = "household_type_invalid"
 	ReasonImportDiskSpaceLow                    ReasonCode = "import_disk_space_low"
+	ReasonImportFieldMappingTargetInvalid       ReasonCode = "import_field_mapping_target_invalid"
 	ReasonImportFieldMappingsInvalid            ReasonCode = "import_field_mappings_invalid"
 	ReasonImportFileUnreadable                  ReasonCode = "import_file_unreadable"
 	ReasonIntegrationRequestBodyInvalid         ReasonCode = "integration_request_body_invalid"
@@ -980,6 +981,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonHouseholdSuggestionStale:              {Template: "The suggested members no longer share an address — re-run the suggestion scan", Params: nil},
 	ReasonHouseholdTypeInvalid:                  {Template: "type must be one of family_unit, roommates, other", Params: nil},
 	ReasonImportDiskSpaceLow:                    {Template: "not enough disk space to import {total} contacts: {reason}", Params: []string{"total", "reason"}},
+	ReasonImportFieldMappingTargetInvalid:       {Template: "An imported value can only go into a custom field that applies to contacts", Params: nil},
 	ReasonImportFieldMappingsInvalid:            {Template: "{reason}", Params: []string{"reason"}},
 	ReasonImportFileUnreadable:                  {Template: "{reason}", Params: []string{"reason"}},
 	ReasonIntegrationRequestBodyInvalid:         {Template: "{reason}", Params: []string{"reason"}},

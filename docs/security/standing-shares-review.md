@@ -103,7 +103,8 @@ Sensitivity is enforced **in the query / projection, on every read, independent 
 - Reclassification: moving an item to private/secret removes it on the next read (the query filter), and adds the
   section to `reconfirm_sections` (ADR 0042 decision 5), withholding the section until the owner re-confirms. Moving
   it back to normal does not re-expose it. The marker is set at the persistence point for each sensitivity-bearing
-  item (address, relationship edge, preference, field value), not in controllers, and a census test enumerates every
+  item (address, relationship edge, preference, field value, and the entity or entity link behind a projected
+  organisation or place), not in controllers, and a census test enumerates every
   writer of those columns (REST, import, CardDAV pull, merge, bundle restore) and requires each to go through it.
 - Not an access boundary: #1997's per-contact field visibility. A grant read neither consults nor trusts it
   (ADR 0042 decision 14). A test hides a field via #1997 and asserts the grant projection is unchanged.
