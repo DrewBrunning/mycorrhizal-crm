@@ -114,6 +114,11 @@ type FieldDefinition struct {
 	// SQL keyword); the JSON name stays `group` and is deliberately not
 	// omitempty so clients always see it.
 	Group string `gorm:"column:group_label;not null" json:"group" validate:"max=100"`
+
+	// priorSensitivity is the stored sensitivity captured by BeforeSave for the
+	// share-grant re-confirmation check in AfterSave (issue #2578). It lives on
+	// the struct because GORM hands each hook a fresh session.
+	priorSensitivity string
 }
 
 // BeforeCreate generates a UUID for new FieldDefinitions, mirroring

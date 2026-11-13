@@ -37,10 +37,6 @@ import (
 //
 // Each hook is a cheap no-op unless the owner has a live grant on the contact.
 
-const (
-	shareGrantOldSensitivityKey = "share_grant:old_sensitivity"
-)
-
 // liveShareGrantStatuses are the statuses a marker applies to. `blocked` is
 // the sender's "pending" so it is treated the same.
 var liveShareGrantStatuses = ShareGrantLiveStatuses
@@ -125,26 +121,6 @@ func sensitivityOf(tx *gorm.DB, table, idColumn string, id any) (string, error) 
 	return s, err
 }
 
-// captureSensitivity stores the row's pre-write sensitivity on the statement
-// instance for the matching After hook. "" means the row is new.
-func captureSensitivity(tx *gorm.DB, table string, id any, isNew bool) error {
-	old := ""
-	if !isNew {
-		var err error
-		if old, err = sensitivityOf(tx, table, "id", id); err != nil {
-			return err
-		}
-	}
-	tx.InstanceSet(shareGrantOldSensitivityKey+table, old)
-	return nil
-}
-
-func oldSensitivity(tx *gorm.DB, table string) string {
-	v, _ := tx.InstanceGet(shareGrantOldSensitivityKey + table)
-	s, _ := v.(string)
-	return s
-}
-
 // reclassified reports whether a row moved from normal (or did not exist)
 // to a non-normal sensitivity.
 func reclassified(oldS, newS string) bool {
@@ -154,8 +130,9 @@ func reclassified(oldS, newS string) bool {
 
 // --- RelationshipEdge (related_to) ---
 
-func (r *RelationshipEdge) BeforeSave(tx *gorm.DB) error {
-	return beforeSensitivityWrite(tx, r.UserID, "relationship_edges", r.ID)
+func (r *RelationshipEdge) BeforeSave(tx *gorm.DB) (err error) {
+	r.priorSensitivity, err = priorSensitivity(tx, r.UserID, "relationship_edges", r.ID)
+	return err
 }
 
 func (r *RelationshipEdge) AfterSave(tx *gorm.DB) error {
@@ -169,7 +146,7 @@ func (r *RelationshipEdge) AfterSave(tx *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	if !reclassified(oldSensitivity(tx, "relationship_edges"), nowS) {
+	if !reclassified(r.priorSensitivity, nowS) {
 		return nil
 	}
 	// An edge appears in the projection of both endpoints.
@@ -183,8 +160,9 @@ func (r *RelationshipEdge) AfterSave(tx *gorm.DB) error {
 
 // --- Preference (personal_info) ---
 
-func (p *Preference) BeforeSave(tx *gorm.DB) error {
-	return beforeSensitivityWrite(tx, p.UserID, "preferences", p.ID)
+func (p *Preference) BeforeSave(tx *gorm.DB) (err error) {
+	p.priorSensitivity, err = priorSensitivity(tx, p.UserID, "preferences", p.ID)
+	return err
 }
 
 func (p *Preference) AfterSave(tx *gorm.DB) error {
@@ -198,7 +176,7 @@ func (p *Preference) AfterSave(tx *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	if !reclassified(oldSensitivity(tx, "preferences"), nowS) {
+	if !reclassified(p.priorSensitivity, nowS) {
 		return nil
 	}
 	return markShareGrantReconfirm(tx, p.UserID, p.EntityID, SectionPersonalInfo)
@@ -206,8 +184,9 @@ func (p *Preference) AfterSave(tx *gorm.DB) error {
 
 // --- FieldDefinition (custom_fields) ---
 
-func (d *FieldDefinition) BeforeSave(tx *gorm.DB) error {
-	return beforeSensitivityWrite(tx, d.UserID, "field_definitions", d.ID)
+func (d *FieldDefinition) BeforeSave(tx *gorm.DB) (err error) {
+	d.priorSensitivity, err = priorSensitivity(tx, d.UserID, "field_definitions", d.ID)
+	return err
 }
 
 func (d *FieldDefinition) AfterSave(tx *gorm.DB) error {
@@ -221,7 +200,7 @@ func (d *FieldDefinition) AfterSave(tx *gorm.DB) error {
 	if err != nil {
 		return err
 	}
-	if !reclassified(oldSensitivity(tx, "field_definitions"), nowS) {
+	if !reclassified(d.priorSensitivity, nowS) {
 		return nil
 	}
 	return markShareGrantReconfirm(tx, d.UserID, "", SectionCustomFields)
@@ -231,9 +210,9 @@ func (d *FieldDefinition) AfterSave(tx *gorm.DB) error {
 // ("" for a new row or when the owner has no live contact grant, in which case
 // no marker is ever needed). A failed lookup fails the write.
 //
-// The entity and link hooks keep the result on the struct rather than through
-// captureSensitivity's InstanceSet: GORM hands every hook call a fresh session,
-// so an InstanceSet in BeforeSave is not visible to AfterSave.
+// Every writer keeps the result on its struct (BeforeSave to AfterSave) rather
+// than in GORM's InstanceSet: GORM hands every hook call a fresh session, so an
+// InstanceSet in BeforeSave is not visible to AfterSave (issues #2564, #2578).
 func priorSensitivity(tx *gorm.DB, ownerID uint, table, id string) (string, error) {
 	live, err := hasLiveContactGrant(tx, ownerID, "")
 	if err != nil || !live || id == "" {
@@ -244,24 +223,6 @@ func priorSensitivity(tx *gorm.DB, ownerID uint, table, id string) (string, erro
 		return "", err
 	}
 	return sensitivityOf(tx, table, "id", id)
-}
-
-// beforeSensitivityWrite captures the pre-write sensitivity when the owner has
-// a live contact grant; a failed lookup fails the write.
-func beforeSensitivityWrite(tx *gorm.DB, ownerID uint, table, id string) error {
-	live, err := hasLiveContactGrant(tx, ownerID, "")
-	if err != nil || !live {
-		return err
-	}
-	isNew := id == ""
-	if !isNew {
-		exists, err := rowExists(tx, table, id)
-		if err != nil {
-			return err
-		}
-		isNew = !exists
-	}
-	return captureSensitivity(tx, table, id, isNew)
 }
 
 func rowExists(tx *gorm.DB, table string, id any) (bool, error) {
