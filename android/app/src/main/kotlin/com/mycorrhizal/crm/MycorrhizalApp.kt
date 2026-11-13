@@ -133,6 +133,7 @@ import com.mycorrhizal.crm.feature.imports.CsvImportScreen
 import com.mycorrhizal.crm.feature.imports.ImportContactsScreen
 import com.mycorrhizal.crm.feature.imports.ImportHistoryScreen
 import com.mycorrhizal.crm.feature.imports.MeerkatImportScreen
+import com.mycorrhizal.crm.feature.imports.MonicaImportScreen
 import com.mycorrhizal.crm.feature.imports.VcfImportScreen
 import com.mycorrhizal.crm.feature.map.MapScreen
 import com.mycorrhizal.crm.feature.network.NetworkScreen
@@ -1351,6 +1352,7 @@ private fun AppNavGraph(
                 onImportVcf = { navController.navigate("import/vcf") },
                 onImportCsv = { navController.navigate("import/csv") },
                 onImportMeerkat = { navController.navigate("import/meerkat") },
+                onImportMonica = { navController.navigate("import/monica") },
                 onImportHistory = { navController.navigate("import/history") }
             )
         }
@@ -1364,6 +1366,13 @@ private fun AppNavGraph(
         // Issue #2013: connect to a running Meerkat over its API.
         composable("import/meerkat") {
             MeerkatImportScreen(
+                onBack = { navController.popBackStack() },
+                onDone = { navController.popBackStack() }
+            )
+        }
+        // Issue #2525: connect to a Monica account over its API.
+        composable("import/monica") {
+            MonicaImportScreen(
                 onBack = { navController.popBackStack() },
                 onDone = { navController.popBackStack() }
             )

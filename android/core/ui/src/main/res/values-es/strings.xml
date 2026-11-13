@@ -2621,6 +2621,48 @@
     </plurals>
     <string name="meerkat_import_unavailable">Importar desde un Meerkat en funcionamiento requiere un perfil de servidor. Cambie a un perfil de servidor para usarlo.</string>
     <string name="meerkat_import_error_failed">La importación no se completó. No se cambió nada.</string>
+    <string name="monica_import_entry">Importar desde Monica</string>
+    <string name="monica_import_title">Importar desde Monica</string>
+    <string name="monica_import_description">Conecta con tu cuenta de Monica y tus contactos y su historial se obtienen directamente por su API. No hace falta un archivo de exportación y no se escribe nada hasta que revises y confirmes.</string>
+    <string name="monica_import_url_label">Dirección de Monica</string>
+    <string name="monica_import_url_help">La dirección web con la que abres Monica, p. ej. https://app.monicahq.com</string>
+    <string name="monica_import_token_label">Token de API</string>
+    <string name="monica_import_token_help">Crea uno en Monica, en Ajustes y luego API. Se usa una vez y solo se conserva para esta importación.</string>
+    <string name="monica_import_include_relationships">Incluir las relaciones entre contactos</string>
+    <string name="monica_import_include_extras">Incluir llamadas, tareas, regalos y deudas</string>
+    <string name="monica_import_connect">Conectar</string>
+    <string name="monica_import_connecting">Conectando…</string>
+    <string name="monica_import_found">Se encontraron %1$s, %2$s y %3$s.</string>
+    <plurals name="monica_import_found_contacts">
+        <item quantity="one">%1$d contacto</item>
+        <item quantity="many">%1$d contactos</item>
+        <item quantity="other">%1$d contactos</item>
+    </plurals>
+    <plurals name="monica_import_found_activities">
+        <item quantity="one">%1$d actividad</item>
+        <item quantity="many">%1$d actividades</item>
+        <item quantity="other">%1$d actividades</item>
+    </plurals>
+    <plurals name="monica_import_found_notes">
+        <item quantity="one">%1$d nota</item>
+        <item quantity="many">%1$d notas</item>
+        <item quantity="other">%1$d notas</item>
+    </plurals>
+    <string name="monica_import_estimate">Obtenerlo todo tarda unos %1$d min.</string>
+    <string name="monica_import_start">Iniciar importación</string>
+    <string name="monica_import_working">Obteniendo tus datos de Monica…</string>
+    <plurals name="monica_import_loss">
+        <item quantity="one">%1$d elemento no se puede importar exactamente</item>
+        <item quantity="many">%1$d elementos no se pueden importar exactamente</item>
+        <item quantity="other">%1$d elementos no se pueden importar exactamente</item>
+    </plurals>
+    <plurals name="monica_import_result">
+        <item quantity="one">Importado: %1$d creados, %2$d actualizados, %3$d omitidos</item>
+        <item quantity="many">Importado: %1$d creados, %2$d actualizados, %3$d omitidos</item>
+        <item quantity="other">Importado: %1$d creados, %2$d actualizados, %3$d omitidos</item>
+    </plurals>
+    <string name="monica_import_unavailable">Importar desde Monica requiere un perfil de servidor. Cambia a un perfil de servidor para usarlo.</string>
+    <string name="monica_import_error_failed">La importación no se completó. No se cambió nada.</string>
     <string name="dashboard_backup_reminder_title">Haz una copia de tus datos</string>
     <string name="dashboard_backup_reminder_body">Tus datos solo existen en este dispositivo. Guarda un paquete de cuenta para poder restaurarlos si el dispositivo se pierde o se restablece.</string>
     <string name="dashboard_backup_reminder_action">Copiar ahora</string>

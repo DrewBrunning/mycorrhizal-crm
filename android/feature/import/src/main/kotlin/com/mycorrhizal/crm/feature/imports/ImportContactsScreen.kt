@@ -79,6 +79,8 @@ fun ImportContactsScreen(
     onImportHistory: () -> Unit = {},
     // Issue #2013: connect to a running Meerkat over its API.
     onImportMeerkat: () -> Unit = {},
+    // Issue #2525: connect to a Monica account over its API.
+    onImportMonica: () -> Unit = {},
     viewModel: ImportContactsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -216,6 +218,18 @@ fun ImportContactsScreen(
                         modifier = Modifier.padding(end = 8.dp)
                     )
                     Text(stringResource(R.string.meerkat_import_entry))
+                }
+                TextButton(
+                    onClick = onImportMonica,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+                        .testTag("import-monica-entry")
+                ) {
+                    Icon(
+                        Icons.Outlined.FileUpload,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                    Text(stringResource(R.string.monica_import_entry))
                 }
             }
             when {
