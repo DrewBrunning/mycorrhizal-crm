@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
+import com.mycorrhizal.crm.model.network.CircleTimelinePage
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -307,6 +308,9 @@ class CircleDetailViewModelTest {
     fun setUp() {
         // Name/phone resolution is best-effort; tests that don't care get an empty map.
         coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+        // The timeline section loads alongside the members; tests that don't care get an empty page.
+        coEvery { circleRepository.getTimeline(any(), any()) } returns
+            Result.success(CircleTimelinePage())
     }
 
     private fun viewModel(id: String = "c1"): CircleDetailViewModel = CircleDetailViewModel(

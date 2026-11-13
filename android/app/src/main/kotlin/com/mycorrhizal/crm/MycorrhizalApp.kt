@@ -234,6 +234,18 @@ private fun isDestinationAvailable(
 }
 
 /**
+ * Whether the standing-share surfaces (and so the pending-share badge and its `/share-grants`
+ * count request) are offered: the deployment must offer shares at all, and the connected server
+ * must be new enough to have `/share-grants*` (v1.7.0, issue #2527). The "Shares" drawer entry
+ * itself is the one-time contact-share inbox, a baseline capability, so it is not gated by this.
+ */
+internal fun standingSharesOffered(
+    capabilities: ServerCapabilitiesInfo,
+    serverVersion: AppVersion?
+): Boolean = capabilities.supports(ServerCapability.CONTACT_SHARES) &&
+    ServerCapabilities.isSupported(serverVersion, ServerFeature.SHARE_GRANTS)
+
+/**
  * ADR 0028 ("arm64-v8a only") / issue #1262: the embedded server ships only for
  * arm64-v8a, so on any other ABI the `Local` kind is not offered and the "Use on
  * this device only" entry is hidden. The build flag is the kill switch;
@@ -640,7 +652,7 @@ private fun MainScaffold(
     // count changes), and only where the deployment offers shares at all.
     val shareBadge = hiltViewModel<ShareGrantBadgeViewModel>()
     val pendingShares by shareBadge.pendingCount.collectAsStateWithLifecycle()
-    val sharesOffered = serverCapabilities.supports(ServerCapability.CONTACT_SHARES)
+    val sharesOffered = standingSharesOffered(serverCapabilities, serverVersion)
     val onSharesScreen = currentRoute?.startsWith("shares") == true
     LaunchedEffect(drawerState.isOpen, onSharesScreen, sharesOffered) {
         if (sharesOffered) shareBadge.refresh()

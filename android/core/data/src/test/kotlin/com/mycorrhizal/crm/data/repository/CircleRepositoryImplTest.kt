@@ -11,11 +11,14 @@ import com.mycorrhizal.crm.model.network.CircleDetailResponse
 import com.mycorrhizal.crm.model.network.CircleInput
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CircleMemberInput
+import com.mycorrhizal.crm.model.network.CircleTimelineItem
+import com.mycorrhizal.crm.model.network.CircleTimelinePage
 import com.mycorrhizal.crm.model.network.CirclesPage
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import io.mockk.coEvery
 import io.mockk.mockk
+import io.mockk.slot
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -208,5 +211,57 @@ class CircleRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         assertTrue(db.cachedCircleMemberDao().getByCircleId("c1").isEmpty())
+    }
+
+    @Test
+    fun `update sends all three fields and mirrors the saved circle`() = runTest {
+        val slot = slot<CircleInput>()
+        coEvery { apiClient.updateCircle("c1", capture(slot)) } returns Result.success(
+            Circle(id = "c1", name = "Family", description = "Close", color = "teal")
+        )
+
+        val result = repository.update("c1", "Family", "Close", "teal")
+
+        assertEquals(
+            CircleInput(name = "Family", description = "Close", color = "teal"),
+            slot.captured
+        )
+        assertEquals("teal", result.getOrThrow().color)
+        assertEquals("Family", db.cachedCircleDao().getById("c1")?.name)
+    }
+
+    @Test
+    fun `update failure propagates and leaves the cache untouched`() = runTest {
+        coEvery { apiClient.updateCircle("c1", any()) } returns
+            Result.failure(ApiError.Server(500, "boom"))
+
+        val result = repository.update("c1", "Family", "", "")
+
+        assertTrue(result.isFailure)
+        assertNull(db.cachedCircleDao().getById("c1"))
+    }
+
+    @Test
+    fun `getTimeline passes the cursor through and returns the page`() = runTest {
+        val page = CircleTimelinePage(
+            items = listOf(
+                CircleTimelineItem(type = "note", id = "1", date = "2026-09-01T00:00:00Z")
+            ),
+            nextCursor = "n2",
+            memberCount = 4
+        )
+        coEvery { apiClient.getCircleTimeline("c1", "cur", 25) } returns Result.success(page)
+
+        val result = repository.getTimeline("c1", "cur")
+
+        assertEquals(page, result.getOrThrow())
+    }
+
+    @Test
+    fun `getTimeline failure propagates`() = runTest {
+        coEvery { apiClient.getCircleTimeline("c1", null, 25) } returns
+            Result.failure(ApiError.Server(500, "boom"))
+
+        assertTrue(repository.getTimeline("c1", null).isFailure)
     }
 }

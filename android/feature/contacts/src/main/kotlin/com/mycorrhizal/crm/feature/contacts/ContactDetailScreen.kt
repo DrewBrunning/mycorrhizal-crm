@@ -136,6 +136,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.feature.contacts.entities.ProjectedFromChip
 import com.mycorrhizal.crm.feature.timeline.TimelineSection
 import com.mycorrhizal.crm.feature.timeline.toTimelineItems
@@ -189,6 +190,7 @@ import com.mycorrhizal.crm.ui.components.targetStatusBand
 import com.mycorrhizal.crm.ui.components.targetStatusLabel
 import com.mycorrhizal.crm.ui.components.targetTierLabel
 import com.mycorrhizal.crm.ui.components.typeOptionLabel
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 import com.mycorrhizal.crm.ui.theme.AppTypography
 import com.mycorrhizal.crm.ui.theme.MycorrhizalFonts
 import com.yalantis.ucrop.UCrop
@@ -1460,6 +1462,7 @@ fun ContactDetailContent(
     // the delete/archive confirmations) since opening/closing this dialog has
     // no side effect to drive through the ViewModel.
     var showScoreDetails by remember { mutableStateOf(false) }
+    val entitiesSupported = isServerFeatureSupported(ServerFeature.ENTITIES)
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -2038,14 +2041,17 @@ fun ContactDetailContent(
         }
         // Issue #2302: shared organisations, places and pets this contact is linked to. Always
         // shown (it is not a Card field, so the enabled-fields setting does not gate it).
-        item {
-            DrillDownRow(
-                label = stringResource(R.string.contact_entities),
-                icon = Icons.Outlined.Business,
-                count = null,
-                onClick = { onViewEntities(contact.id) },
-                tag = "drill-down-entities"
-            )
+        // Issue #2527: `/entities` needs a v1.7.0 server, so the row is hidden before that.
+        if (entitiesSupported) {
+            item {
+                DrillDownRow(
+                    label = stringResource(R.string.contact_entities),
+                    icon = Icons.Outlined.Business,
+                    count = null,
+                    onClick = { onViewEntities(contact.id) },
+                    tag = "drill-down-entities"
+                )
+            }
         }
         if (ContactFieldKey.ANNIVERSARIES in enabledFields) {
             item {
