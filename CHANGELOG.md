@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Circle description, colour and timeline on Android** ([#2522](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2522)): an Edit button on a circle sets its description and one of nine colours. The circle also lists what its members have been up to, and tapping a name opens that contact. Nothing to do when upgrading.
 - **Upcoming occasions on the Android dashboard** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): a new card lists the birthdays, anniversaries, life events and standing occasions coming up in the next 30 or 90 days, each showing how many days away it is. Tap one to open the contact.
 - **Card list and gift shopping list on Android** ([#2521](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2521)): the Occasions screen can now share your card list as a CSV, leaving out private and secret addresses, and opens a gift shopping list for the next 30 or 90 days showing what is still needed, bought or given.
 - **Share notes, activities and circles on Android** ([#2518](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2518)): a saved note or activity, and a circle, now has a Share action that starts a read-only standing share. Choose who and when it expires; it stays pending until they accept.

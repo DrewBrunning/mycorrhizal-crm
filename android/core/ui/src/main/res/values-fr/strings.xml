@@ -1193,6 +1193,34 @@
     <string name="circles_error_missing_id">Identifiant de cercle manquant</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
     <string name="circles_text_everyone">Écrire à tous</string>
+    <!-- Issue #2522: circle description, colour and member timeline (web #1995/#2361 parity). -->
+    <string name="circles_edit">Modifier le cercle</string>
+    <string name="circles_description_label">Description</string>
+    <string name="circles_description_counter">%1$d/%2$d</string>
+    <string name="circles_color_label">Couleur</string>
+    <string name="circles_color_none">Aucune</string>
+    <string name="circles_color_red">Rouge</string>
+    <string name="circles_color_orange">Orange</string>
+    <string name="circles_color_yellow">Jaune</string>
+    <string name="circles_color_green">Vert</string>
+    <string name="circles_color_teal">Sarcelle</string>
+    <string name="circles_color_blue">Bleu</string>
+    <string name="circles_color_purple">Violet</string>
+    <string name="circles_color_pink">Rose</string>
+    <string name="circles_color_grey">Gris</string>
+    <string name="circles_timeline_title">Chronologie</string>
+    <string name="circles_timeline_empty">Aucune note ni activité pour les membres de ce cercle pour le moment.</string>
+    <string name="circles_timeline_type_note">Note</string>
+    <string name="circles_timeline_type_activity">Activité</string>
+    <string name="circles_timeline_type_completion">Rappel terminé</string>
+    <string name="circles_timeline_type_life_event">Événement de vie</string>
+    <string name="circles_timeline_type_external_activity">Activité externe</string>
+    <string name="circles_timeline_type_gift">Cadeau</string>
+    <plurals name="circles_member_count">
+        <item quantity="one">%1$d membre</item>
+        <item quantity="many">%1$d membres</item>
+        <item quantity="other">%1$d membres</item>
+    </plurals>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Tri des cercles et étiquettes</string>

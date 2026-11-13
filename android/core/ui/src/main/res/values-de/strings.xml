@@ -1169,6 +1169,33 @@
     <string name="circles_error_missing_id">Fehlende Kreis-ID</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
     <string name="circles_text_everyone">Allen schreiben</string>
+    <!-- Issue #2522: circle description, colour and member timeline (web #1995/#2361 parity). -->
+    <string name="circles_edit">Kreis bearbeiten</string>
+    <string name="circles_description_label">Beschreibung</string>
+    <string name="circles_description_counter">%1$d/%2$d</string>
+    <string name="circles_color_label">Farbe</string>
+    <string name="circles_color_none">Keine</string>
+    <string name="circles_color_red">Rot</string>
+    <string name="circles_color_orange">Orange</string>
+    <string name="circles_color_yellow">Gelb</string>
+    <string name="circles_color_green">Grün</string>
+    <string name="circles_color_teal">Türkis</string>
+    <string name="circles_color_blue">Blau</string>
+    <string name="circles_color_purple">Violett</string>
+    <string name="circles_color_pink">Rosa</string>
+    <string name="circles_color_grey">Grau</string>
+    <string name="circles_timeline_title">Zeitleiste</string>
+    <string name="circles_timeline_empty">Für die Mitglieder dieses Kreises gibt es noch keine Notizen oder Aktivitäten.</string>
+    <string name="circles_timeline_type_note">Notiz</string>
+    <string name="circles_timeline_type_activity">Aktivität</string>
+    <string name="circles_timeline_type_completion">Erledigte Erinnerung</string>
+    <string name="circles_timeline_type_life_event">Lebensereignis</string>
+    <string name="circles_timeline_type_external_activity">Externe Aktivität</string>
+    <string name="circles_timeline_type_gift">Geschenk</string>
+    <plurals name="circles_member_count">
+        <item quantity="one">%1$d Mitglied</item>
+        <item quantity="other">%1$d Mitglieder</item>
+    </plurals>
 
     <!-- Circle & tag triage (M26) -->
     <string name="settings_circle_tag_triage">Kreis- &amp; Tag-Bereinigung</string>
