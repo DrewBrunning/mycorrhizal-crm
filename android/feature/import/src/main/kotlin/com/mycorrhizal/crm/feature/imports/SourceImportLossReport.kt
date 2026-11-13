@@ -25,6 +25,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.SourceImportIssue
 import com.mycorrhizal.crm.ui.R
@@ -99,12 +101,16 @@ internal fun SourceImportLossReport(
 @Composable
 private fun LossGroupSection(group: LossGroup, tagPrefix: String) {
     var expanded by rememberSaveable(group.category) { mutableStateOf(false) }
+    val stateText = stringResource(
+        if (expanded) R.string.a11y_state_expanded else R.string.a11y_state_collapsed
+    )
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
             .fillMaxWidth()
             .clickable(role = Role.Button) { expanded = !expanded }
+            .semantics { stateDescription = stateText }
             .padding(vertical = 12.dp)
             .testTag("$tagPrefix-loss-group-${group.category}")
     ) {

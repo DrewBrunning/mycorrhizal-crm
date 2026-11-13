@@ -1,12 +1,19 @@
 package com.mycorrhizal.crm.feature.occasions
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
 import androidx.lifecycle.SavedStateHandle
@@ -166,6 +173,20 @@ class ContactOccasionsScreenTest {
         }
         // The form closed: the list is showing again.
         composeTestRule.onNodeWithText("Add an occasion").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the Active row exposes its on or off state as a switch and toggles on tap`() {
+        render(emptyList())
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+        val active = composeTestRule.onNodeWithText("Active").performScrollTo()
+        active.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch))
+        active.assertIsOn()
+
+        active.performClick()
+        active.assertIsOff()
+        active.performClick()
+        active.assertIsOn()
     }
 
     @Test
