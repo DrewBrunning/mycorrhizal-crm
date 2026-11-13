@@ -39,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -174,6 +175,20 @@ fun OccasionAttendeesScreen(
                         ) { Text(stringResource(R.string.occasions_suggest)) }
                     }
 
+                    if (state.suggestions.isNotEmpty()) {
+                        OutlinedButton(
+                            enabled = !state.isMutating,
+                            onClick = { viewModel.addAllSuggested() },
+                            modifier = Modifier.testTag("occasion-add-everyone")
+                        ) {
+                            Text(
+                                stringResource(
+                                    R.string.occasions_add_everyone,
+                                    state.suggestions.size
+                                )
+                            )
+                        }
+                    }
                     state.suggestions.forEach { suggestion ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),

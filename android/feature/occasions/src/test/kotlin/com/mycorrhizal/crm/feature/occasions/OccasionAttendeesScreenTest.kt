@@ -12,10 +12,13 @@ import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.InviteeSuggestion
 import com.mycorrhizal.crm.model.network.OccasionEvent
+import com.mycorrhizal.crm.model.network.OccasionEventAttendee
+import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
 import com.mycorrhizal.crm.model.network.OccasionEventDetail
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import org.junit.Rule
 import org.junit.Test
@@ -106,5 +109,36 @@ class OccasionAttendeesScreenTest {
         composeTestRule.onNodeWithText("Suggest").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Bob").assertIsDisplayed()
+    }
+
+    @Test
+    fun `Add everyone shows the suggestion count, adds them all and clears the list`() {
+        render()
+        coEvery {
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-5"))
+        } returns Result.success(
+            OccasionEventAttendee(id = "a5", eventId = "e1", entityId = "uid-5")
+        )
+        composeTestRule.onNodeWithText("Friends").performClick()
+        composeTestRule.onNodeWithText("Suggest").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Add everyone (1)").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify(exactly = 1) {
+            occasionRepository.addAttendee("e1", OccasionEventAttendeeInput("uid-5"))
+        }
+        composeTestRule.onNodeWithText("Add everyone (1)").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Add everyone is absent until there are suggestions`() {
+        render()
+        composeTestRule.onNodeWithText("Add everyone (1)").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Friends").performClick()
+        composeTestRule.onNodeWithText("Suggest").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Add everyone (1)").assertIsDisplayed()
     }
 }

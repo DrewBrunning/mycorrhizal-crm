@@ -12,6 +12,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **Add everyone to a circle's event on Android** ([#2526](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2526)): when you suggest invitees from circles, an "Add everyone" button now invites all of the suggestions in one tap, as on the web. If one cannot be added, it stops there, tells you why and keeps the remaining suggestions to retry.
 - **Itemized loss report on Android imports** ([#2524](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2524)): reviewing a Meerkat import or a bundle restore now lists what will not come across exactly, grouped by category with the record and a message for each, instead of only a count.
 - **Android hides features an older server does not have** ([#2527](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2527)): connected to a server older than v1.7.0, the app no longer shows standing shares, organisations/places/pets or the import report link, and Trash no longer fails because it asked for deleted organisations. Nothing to do when upgrading; they reappear once the server is updated.
 - **Map X- properties to custom fields in the Android VCF import** ([#2523](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2523)): when a .vcf file has custom X- properties, a new Custom fields step lets you map each to an existing custom field, create a new one, or keep it as is, as on the web. Skipped when the file has none.

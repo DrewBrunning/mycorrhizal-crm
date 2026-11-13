@@ -2379,6 +2379,7 @@
     <string name="occasions_rsvp_maybe">Vielleicht</string>
     <string name="occasions_suggest_from_circles">Gäste aus Kreisen vorschlagen</string>
     <string name="occasions_suggest">Vorschlagen</string>
+    <string name="occasions_add_everyone">Alle hinzufügen (%1$d)</string>
     <string name="occasions_no_suggestions">Keine neuen Vorschläge aus diesen Kreisen.</string>
     <string name="occasions_no_circles">Noch keine Kreise</string>
     <string name="occasions_search_contacts">Kontakte suchen</string>
