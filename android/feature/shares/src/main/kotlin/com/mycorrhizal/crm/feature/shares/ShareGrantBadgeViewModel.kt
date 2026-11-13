@@ -9,6 +9,8 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 /**
@@ -31,7 +33,7 @@ class ShareGrantBadgeViewModel @Inject constructor(
         refresh()
         // A grant changed on a share screen (issue #2557): re-read without waiting for the
         // drawer to reopen or the route to change.
-        viewModelScope.launch { shareGrantChanges.changes.collect { refresh() } }
+        shareGrantChanges.changes.onEach { refresh() }.launchIn(viewModelScope)
     }
 
     fun refresh() {
