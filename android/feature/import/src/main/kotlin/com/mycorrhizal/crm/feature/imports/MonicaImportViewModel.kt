@@ -113,7 +113,10 @@ class MonicaImportViewModel @Inject constructor(
     fun connect() {
         val state = _uiState.value
         if (!state.canConnect) return
-        val request = MonicaConnectRequest(baseUrl = state.baseUrl.trim(), apiToken = state.apiToken)
+        val request = MonicaConnectRequest(
+            baseUrl = state.baseUrl.trim(),
+            apiToken = state.apiToken
+        )
         _uiState.update {
             it.copy(isConnecting = true, errorRes = null, error = null, errorText = null)
         }

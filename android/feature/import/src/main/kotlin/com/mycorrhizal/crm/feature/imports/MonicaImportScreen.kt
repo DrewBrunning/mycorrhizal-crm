@@ -327,9 +327,21 @@ private fun ConnectedSummary(
         Text(
             text = stringResource(
                 R.string.monica_import_found,
-                pluralStringResource(R.plurals.monica_import_found_contacts, totals.contacts, totals.contacts),
-                pluralStringResource(R.plurals.monica_import_found_activities, totals.activities, totals.activities),
-                pluralStringResource(R.plurals.monica_import_found_notes, totals.notes, totals.notes)
+                pluralStringResource(
+                    R.plurals.monica_import_found_contacts,
+                    totals.contacts,
+                    totals.contacts
+                ),
+                pluralStringResource(
+                    R.plurals.monica_import_found_activities,
+                    totals.activities,
+                    totals.activities
+                ),
+                pluralStringResource(
+                    R.plurals.monica_import_found_notes,
+                    totals.notes,
+                    totals.notes
+                )
             ),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.testTag("monica-import-found")

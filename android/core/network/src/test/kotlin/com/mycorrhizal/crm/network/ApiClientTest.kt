@@ -6972,7 +6972,13 @@ class ApiClientTest {
     fun `startMonicaFetch posts the session id and both include flags`() = runBlocking {
         server.enqueue(MockResponse().setResponseCode(202).setBody("{}"))
 
-        assertTrue(client.startMonicaFetch("mo1", includeRelationships = false, includeExtras = true).isSuccess)
+        assertTrue(
+            client.startMonicaFetch(
+                "mo1",
+                includeRelationships = false,
+                includeExtras = true
+            ).isSuccess
+        )
 
         val request = server.takeRequest()
         assertEquals("POST", request.method)
@@ -6987,7 +6993,9 @@ class ApiClientTest {
     fun `monica status and preview send session_id and parse the shared shapes`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200)
-                .setBody("""{"session_id":"mo1","phase":"fetching_notes","phase_done":4,"phase_total":9}""")
+                .setBody(
+                    """{"session_id":"mo1","phase":"fetching_notes","phase_done":4,"phase_total":9}"""
+                )
         )
         server.enqueue(
             MockResponse().setResponseCode(200).setBody(
@@ -7021,7 +7029,10 @@ class ApiClientTest {
 
         assertTrue(
             client.confirmMonicaImport(
-                ImportConfirmRequest("mo1", listOf(RowImportAction(0, "add"), RowImportAction(1, "update")))
+                ImportConfirmRequest(
+                    "mo1",
+                    listOf(RowImportAction(0, "add"), RowImportAction(1, "update"))
+                )
             ).isSuccess
         )
         assertTrue(client.cancelMonicaImport("mo1").isSuccess)

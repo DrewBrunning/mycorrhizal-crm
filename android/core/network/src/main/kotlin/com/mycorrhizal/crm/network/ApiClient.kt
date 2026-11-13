@@ -197,10 +197,10 @@ import com.mycorrhizal.crm.model.network.MapConfig
 import com.mycorrhizal.crm.model.network.MeerkatConnectRequest
 import com.mycorrhizal.crm.model.network.MeerkatConnectResponse
 import com.mycorrhizal.crm.model.network.MeerkatFetchRequest
+import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.MonicaConnectRequest
 import com.mycorrhizal.crm.model.network.MonicaConnectResponse
 import com.mycorrhizal.crm.model.network.MonicaFetchRequest
-import com.mycorrhizal.crm.model.network.MessageResponse
 import com.mycorrhizal.crm.model.network.MycorrhizalFetchRequest
 import com.mycorrhizal.crm.model.network.MycorrhizalUploadResponse
 import com.mycorrhizal.crm.model.network.NextcloudConfigInput

@@ -109,7 +109,9 @@ class MonicaImportScreenTest {
             onIncludeRelationshipsChange = { relationships += it },
             onIncludeExtrasChange = { extras += it }
         )
-        composeTestRule.onNodeWithTag("monica-import-relationships").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag(
+            "monica-import-relationships"
+        ).performScrollTo().performClick()
         composeTestRule.onNodeWithTag("monica-import-extras").performScrollTo().performClick()
         assertEquals(listOf(false), relationships)
         assertEquals(listOf(true), extras)
@@ -139,7 +141,11 @@ class MonicaImportScreenTest {
     fun `a very short estimate still reads as at least one minute`() {
         setContent(
             MonicaImportUiState(
-                connected = MonicaConnectResponse("s1", MonicaEntityCounts(), estimatedFetchSeconds = 5)
+                connected = MonicaConnectResponse(
+                    "s1",
+                    MonicaEntityCounts(),
+                    estimatedFetchSeconds = 5
+                )
             )
         )
         composeTestRule.onNodeWithTag("monica-import-estimate")
@@ -238,7 +244,12 @@ class MonicaImportScreenTest {
                     created = 3,
                     skipped = 1,
                     issues = listOf(
-                        ImportRowIssue(row = 4, name = "Ada", status = "skipped", reason = "already exists")
+                        ImportRowIssue(
+                            row = 4,
+                            name = "Ada",
+                            status = "skipped",
+                            reason = "already exists"
+                        )
                     )
                 )
             )
@@ -259,6 +270,8 @@ class MonicaImportScreenTest {
     @Test
     fun `a job failure text is shown`() {
         setContent(MonicaImportUiState(errorText = "The Monica instance could not be reached"))
-        composeTestRule.onNodeWithText("The Monica instance could not be reached").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "The Monica instance could not be reached"
+        ).assertIsDisplayed()
     }
 }

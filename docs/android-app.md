@@ -86,6 +86,16 @@ notification channels, admin/user management, webhooks, API tokens and DAV are
 not available on-device, and their Settings entries are hidden. Reminders are
 not pushed to external channels. File-based imports and exports work as usual.
 
+On a server profile, **Import from Monica** (Import screen, next to Import from
+Meerkat) connects to a Monica account with its address and an API token, fetches
+the data on the server, then walks the same review as the web wizard: per-row
+add, skip or merge, a count of items that cannot be imported exactly, and an
+itemized result report that can be shared as a CSV. The token is typed into a
+password field, sent once and dropped from app state as soon as the server holds
+it; the server keeps it in memory for that import only. The server makes the
+outbound request to Monica, so a private Monica address is refused when the
+server blocks them.
+
 Constraints:
 
 - **arm64-v8a devices only.** The embedded server is built for, and shipped on,
