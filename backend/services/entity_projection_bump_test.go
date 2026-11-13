@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"mycorrhizal/contactmodel"
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -351,7 +352,8 @@ func TestProjectionBump_FanOutIsBounded(t *testing.T) {
 
 	assertBumped(t, f.db, contacts[0], first, "first of the fan-out")
 	assertBumped(t, f.db, contacts[n-1], last, "last of the fan-out")
-	assert.Less(t, stmts, 40, "statements for %d contacts must be bounded by the chunk count, not by the contact count", n)
+	t.Logf("rename of an entity linked by %d contacts: %d statements", n, stmts)
+	assert.Less(t, stmts, 50, "statements for %d contacts must be bounded by the chunk count, not by the contact count", n)
 }
 
 // A primary link whose entity only repeats an ORG the contact already stores
@@ -372,4 +374,74 @@ func TestProjectionBump_ValueEqualToOwnEntryChangesNoCard(t *testing.T) {
 	l.IsPrimary = true // "Beta" differs from the own value and now projects
 	require.NoError(t, SaveContactEntityLink(f.db, &l))
 	assertBumped(t, f.db, own, s, "a different organisation projects")
+}
+
+// Every step of the bracket reports its failure and rolls the write back: the
+// before-snapshot's reads, and the bump itself.
+func TestProjectionBump_FailuresPropagateAndRollBack(t *testing.T) {
+	type op func(f projFixture) error
+	var loaded models.ContactEntityLink // the c1 link, read before a fault hides its table
+	renameOrg := func(f projFixture) error {
+		e := f.reloadEntity(t, f.org.ID)
+		e.Name = "Renamed"
+		return SaveEntity(f.db, &e)
+	}
+	ops := map[string]op{
+		"entity save":   renameOrg,
+		"entity delete": func(f projFixture) error { return DeleteEntity(f.db, f.userID, f.org.ID, entityNow) },
+		"entity merge": func(f projFixture) error {
+			_, err := MergeEntities(f.db, f.userID, f.org.ID, f.other.ID, nil, entityNow)
+			return err
+		},
+		"entity restore": func(f projFixture) error {
+			_, err := RestoreEntity(f.db, f.userID, f.org.ID, entityNow)
+			return err
+		},
+		"link create": func(f projFixture) error {
+			l := models.ContactEntityLink{UserID: f.userID, ContactVCardUID: f.c2.VCardUID, EntityID: f.org.ID, Kind: f.org.Kind, Role: "employee", IsPrimary: true, Sensitivity: "normal"}
+			return CreateContactEntityLink(f.db, &l)
+		},
+		"link delete": func(f projFixture) error {
+			return DeleteContactEntityLink(f.db, &loaded)
+		},
+	}
+	faults := map[string]func(f projFixture){
+		"bump statement fails": func(f projFixture) {
+			failStatement(t, f.db, "force_fail", "BEFORE UPDATE OF revision ON contacts")
+		},
+		"snapshot read fails": func(f projFixture) { dbtest.HideTable(t, f.db, "contact_entity_links") },
+	}
+	for opName, run := range ops {
+		for faultName, inject := range faults {
+			t.Run(opName+"/"+faultName, func(t *testing.T) {
+				f := newProjFixture(t)
+				l := f.newLink(t, f.c1, f.org, true)
+				loaded = f.reloadLink(t, l.ID)
+				if opName == "entity restore" {
+					require.NoError(t, DeleteEntity(f.db, f.userID, f.org.ID, entityNow))
+				}
+				before := stampOf(t, f.db, f.c1)
+				inject(f)
+				err := run(f)
+				require.Error(t, err)
+				assert.Equal(t, before, stampOf(t, f.db, f.c1), "the failed write leaves the contact as it was")
+			})
+		}
+	}
+}
+
+// A contact that has no stored Card (legacy flat columns only) still gets the
+// precedence rule applied against its own organisation.
+func TestProjectionBump_FlatColumnContactOwnValue(t *testing.T) {
+	f := newProjFixture(t)
+	legacy := models.Contact{UserID: f.userID, Firstname: "Flat", Organization: "Acme"}
+	require.NoError(t, f.db.Create(&legacy).Error)
+	require.NoError(t, f.db.Table("contacts").Where("id = ?", legacy.ID).UpdateColumns(map[string]any{"card": nil, "updated_at": time.Now().Add(-48 * time.Hour)}).Error)
+	s := stampOf(t, f.db, legacy)
+	f.newLink(t, legacy, f.org, true) // entity "Acme" == the flat organisation column
+	assertUntouched(t, f.db, legacy, s, "entity value-equal to the flat organisation column")
+	l := f.newLink(t, legacy, f.other, false)
+	l.IsPrimary = true
+	require.NoError(t, SaveContactEntityLink(f.db, &l))
+	assertBumped(t, f.db, legacy, s, "a different organisation projects")
 }

@@ -2,7 +2,7 @@
 
 - **Status:** accepted
 - **Date:** 2026-10-30
-- **Amended:** 2026-11-10 — entity ids are re-minted on bundle/CSV restore (issue #2300), see the amendment at the end
+- **Amended:** 2026-11-10 — entity ids are re-minted on bundle/CSV restore (issue #2300); 2026-11-13 — projection changes bump the affected contacts' revision (issue #2565). See the amendments at the end
 - **Decides:** issue #1999 (ported from fbuchner/meerkat-crm#91). Implementation targets v1.7.0.
 - **Related:** `docs/adrs/0001-neutral-hub-and-spoke-contact-model.md`,
   `docs/adrs/0002-correspondence-table-locked-oracle.md`, `docs/adrs/0004-soft-vs-hard-delete-semantics.md`,
@@ -473,8 +473,8 @@ from their own.
 - **Using the relationship graph** (decision 2).
 - **A separate field schema for entities** (decision 5): duplicates validation, editors and the visibility concept.
 - **Writing the entity's value into the contact on link or on primary change:** overwrites or duplicates the
-  contact's data, the thing the maintainer ruled out, and makes entity edits fan out to N contact writes with ETag
-  bumps and CardDAV churn.
+  contact's data, the thing the maintainer ruled out. (Its other stated cost, ETag bumps and CardDAV churn on entity
+  edits, is now accepted for the read-time projection too: see the 2026-11-13 amendment.)
 - **Automatic entity creation or matching on import or sync** (decision 3).
 - **Hard-deleting links:** loses role/date/primary data that trash restore should return (decision 6).
 - **Merging automatically** on exact name match: even exact matches are different employers sometimes ("Springfield
@@ -515,3 +515,38 @@ that behaviour and amend this ADR rather than the code:
 
 Reason: one id policy for all restored rows keeps the engine's same-instance multi-account guarantees; preserving
 source ids would have made entities the lone exception. The rest of decision 7 is unchanged.
+
+## Amendment, 2026-11-13 (sync visibility of projection changes, issue #2565)
+
+This ADR rejected "fan-out ETag bumps" and was silent about the consequence for projection: a link or entity write
+changed the card `RecordForContactForSync` emits without touching the contact, so its ETag and `updated_at` stayed
+put and an already-synced client (DAVx5, any `?since=` consumer) kept the stale ORG/ADR until an unrelated edit. The
+maintainer decided on 2026-11-13 to **bump the affected contacts**.
+
+**Decision.** Every write that changes the ORG/ADR entries a contact's card would emit advances that contact's
+`revision`, `etag` (`e-<id>-<revision>`, ADR 0006) and `updated_at`, in the writer's transaction. The covered
+writes: link create, update (primary flip, sensitivity, period), delete and the demotion of the previous primary;
+entity rename, core change, sensitivity change, delete, restore and merge (both entities' contacts). Contacts whose
+emitted card does not change are untouched: a pet (never projects), a non-primary link, a link whose period is not
+current, an edit of role/notes/URL, and a link whose entity only repeats a value the contact already stores (the
+precedence rule drops it). Soft-deleted contacts are never touched; no contact audit event is written (no stored
+field changed). Merge/restore/trash of a *contact* already saves the contact, so it needed no change.
+
+**Mechanism.** `models.EntityProjectionSnapshot` (`backend/models/entity_projection_bump.go`) digests what each
+candidate contact would emit on both the owner's full view and the normal-sensitivity sync view (the real
+projection code, plus the own-value precedence rule) before and after the write, and bumps only the contacts whose
+digest moved. Detection is by value, so a future projected field is covered without a new field list. It is a
+set-based `UPDATE ... revision = revision + 1` in chunks, the same expression the delete cascades use for links; the
+per-row compare-and-swap of `bumpRevisionCAS` is not needed because the writer holds the SQLite write lock. A stale
+client `If-Match` therefore gets 412 (ADR 0008) after a projection change, which is correct: the card it edited is
+no longer the card served. Writers that can change a projection must bracket the write with the snapshot
+(`services.writeLink`, `DeleteContactEntityLink`, `SaveEntity`, entity delete/restore/merge do).
+
+**Cost.** (1) A rename or delete of an entity linked as primary by N contacts rewrites N contact rows: with the
+snapshot reads that is about 12 statements per 400 contacts (37 statements for 1200 contacts, pinned by
+`TestProjectionBump_FanOutIsBounded`), not per contact, but each updated contact row also fires the contacts FTS
+update trigger, and every one of the N clients re-downloads one card. That is the "CardDAV churn" the original
+rejection named; it is bounded by the user's own contacts and only happens on an edit that really changes a card.
+(2) A link/entity write now takes a few extra reads. (3) A projection change that happens with no write (a dated
+link becoming current or ending at midnight) is still not pushed: it appears on the next contact write or a full
+resync. (4) Relationship edges and tags still do not bump the contact (unchanged; separate decision).
