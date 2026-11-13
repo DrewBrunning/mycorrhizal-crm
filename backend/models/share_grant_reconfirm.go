@@ -28,6 +28,12 @@ import (
 //	related_to     RelationshipEdge hooks (Sensitivity, both endpoints)
 //	personal_info  Preference hooks (Sensitivity)
 //	custom_fields  FieldDefinition hooks (Sensitivity; a vcard: projection)
+//	organizations  ContactEntityLink and Entity hooks (organisation kind; ADR 0043)
+//	addresses      ContactEntityLink and Entity hooks (place kind; ADR 0043)
+//
+// The two entity writers cover the projected ORG/ADR entries (issue #2564): a
+// link or its entity moving to private/secret withholds the section, and an
+// entity change fans out to every contact linked to it.
 //
 // Each hook is a cheap no-op unless the owner has a live grant on the contact.
 
@@ -44,7 +50,9 @@ var liveShareGrantStatuses = ShareGrantLiveStatuses
 // such grant of the owner (a field definition applies to all their contacts).
 // The match is scoped by from_user_id (trap #5).
 func markShareGrantReconfirm(tx *gorm.DB, ownerID uint, vcardUID, section string) error {
-	if ownerID == 0 || !IsSensitiveSection(section) {
+	// organizations is not a sensitive section (an own ORG has no sensitivity)
+	// but a projected organisation entry does, so it can be re-confirmed too.
+	if ownerID == 0 || (!IsSensitiveSection(section) && section != SectionOrganizations) {
 		return nil
 	}
 	db := tx.Session(&gorm.Session{NewDB: true})
@@ -324,4 +332,105 @@ func RecordShareGrantAudit(tx *gorm.DB, g *ShareGrant, userID uint, op string) {
 func RecordContactShareAudit(tx *gorm.DB, id, status string, actorID uint, op string) {
 	snap, _ := json.Marshal(map[string]any{"id": id, "status": status}) // a string map cannot fail to marshal
 	recordAudit(tx, AuditEntityContactShare, id, op, actorID, string(snap))
+}
+
+// --- ContactEntityLink and Entity (projected organizations / addresses) ---
+
+// entityKindSection is the grant section an entity kind projects into
+// (ADR 0043 decision 3); pets never project, so they map to "".
+func entityKindSection(kind string) string {
+	switch kind {
+	case EntityKindOrganisation:
+		return SectionOrganizations
+	case EntityKindPlace:
+		return SectionAddresses
+	}
+	return ""
+}
+
+// captureEntityLinkSensitivity is ContactEntityLink.BeforeSave's half.
+func (l *ContactEntityLink) captureSensitivity(tx *gorm.DB) error {
+	return beforeSensitivityWrite(tx, l.UserID, "contact_entity_links", l.ID)
+}
+
+// markSensitivityReclassification is ContactEntityLink.AfterSave's half: a link
+// that moved from normal to private/secret withholds the contact's projected
+// section of the link's kind until the owner re-confirms.
+func (l *ContactEntityLink) markSensitivityReclassification(tx *gorm.DB) error {
+	if l.ID == "" {
+		return nil
+	}
+	if live, err := hasLiveContactGrant(tx, l.UserID, l.ContactVCardUID); err != nil || !live {
+		return err
+	}
+	nowS, err := sensitivityOf(tx, "contact_entity_links", "id", l.ID)
+	if err != nil {
+		return err
+	}
+	if !reclassified(oldSensitivity(tx, "contact_entity_links"), nowS) {
+		return nil
+	}
+	kind, uid := l.Kind, l.ContactVCardUID
+	if kind == "" || uid == "" { // a partial struct (Model(&ContactEntityLink{ID: x}).Update)
+		var row struct {
+			Kind            string
+			ContactVCardUID string `gorm:"column:contact_vcard_uid"`
+		}
+		if err := tx.Session(&gorm.Session{NewDB: true}).Table("contact_entity_links").
+			Select("kind", "contact_vcard_uid").Where("id = ?", l.ID).Limit(1).Scan(&row).Error; err != nil {
+			return err
+		}
+		kind, uid = row.Kind, row.ContactVCardUID
+	}
+	section := entityKindSection(kind)
+	if section == "" || uid == "" {
+		return nil
+	}
+	return markShareGrantReconfirm(tx, l.UserID, uid, section)
+}
+
+// captureSensitivity is Entity.BeforeSave's half.
+func (e *Entity) captureSensitivity(tx *gorm.DB) error {
+	return beforeSensitivityWrite(tx, e.UserID, "entities", e.ID)
+}
+
+// markSensitivityReclassification is Entity.AfterSave's half: an entity that
+// moved from normal to private/secret withholds the projected section on every
+// contact linked to it.
+func (e *Entity) markSensitivityReclassification(tx *gorm.DB) error {
+	if e.ID == "" {
+		return nil
+	}
+	if live, err := hasLiveContactGrant(tx, e.UserID, ""); err != nil || !live {
+		return err
+	}
+	nowS, err := sensitivityOf(tx, "entities", "id", e.ID)
+	if err != nil {
+		return err
+	}
+	if !reclassified(oldSensitivity(tx, "entities"), nowS) {
+		return nil
+	}
+	kind := e.Kind
+	if kind == "" {
+		if err := tx.Session(&gorm.Session{NewDB: true}).Table("entities").Select("kind").Where("id = ?", e.ID).Limit(1).Scan(&kind).Error; err != nil {
+			return err
+		}
+	}
+	section := entityKindSection(kind)
+	if section == "" {
+		return nil
+	}
+	var uids []string
+	if err := tx.Session(&gorm.Session{NewDB: true}).Table("contact_entity_links").
+		Where("entity_id = ? AND user_id = ? AND deleted_at IS NULL", e.ID, e.UserID).
+		Distinct().Pluck("contact_vcard_uid", &uids).Error; err != nil {
+		return err
+	}
+	for _, uid := range uids {
+		if err := markShareGrantReconfirm(tx, e.UserID, uid, section); err != nil {
+			return err
+		}
+	}
+	return nil
 }
