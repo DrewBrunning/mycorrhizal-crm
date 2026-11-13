@@ -130,6 +130,12 @@ func deleteEntity(db *gorm.DB, userID uint, entityID string, now time.Time, merg
 		if err := tx.Where("id = ? AND user_id = ?", entityID, userID).First(&entity).Error; err != nil {
 			return err
 		}
+		// The cascade tombstones the links, so every contact projecting this
+		// entity loses its ORG/ADR: bump those whose projection moved (#2565).
+		snap, err := snapshotEntityProjections(tx, userID, entity.ID)
+		if err != nil {
+			return err
+		}
 		target := EntityCascadeTarget{ID: entity.ID, UserID: userID, BatchID: uuid.NewString()}
 
 		var values []models.FieldValue
@@ -153,10 +159,14 @@ func deleteEntity(db *gorm.DB, userID uint, entityID string, now time.Time, merg
 		if err != nil {
 			return err
 		}
-		return tx.Create(&models.EntityDeletionSnapshot{
+		if err := tx.Create(&models.EntityDeletionSnapshot{
 			UserID: userID, EntityID: entity.ID, DeletionBatchID: target.BatchID,
 			TrashedAt: now, PayloadVersion: models.EntityDeletionSnapshotVersion, Payload: string(raw),
-		}).Error
+		}).Error; err != nil {
+			return err
+		}
+		_, err = snap.BumpChanged(tx)
+		return err
 	})
 }
 
@@ -211,6 +221,13 @@ func RestoreEntity(db *gorm.DB, userID uint, entityID string, now time.Time) (*E
 		dec := json.NewDecoder(bytes.NewReader([]byte(snap.Payload)))
 		if err := dec.Decode(&payload); err != nil {
 			return fmt.Errorf("decode entity deletion snapshot: %w", err)
+		}
+
+		// The revived entity and links project again: bump the contacts whose
+		// projection moved (#2565). Tombstoned links are in the snapshot's set.
+		projSnap, err := snapshotEntityProjections(tx, userID, entity.ID)
+		if err != nil {
+			return err
 		}
 
 		// Un-delete without hooks, then Save so the revision/ETag advance.
@@ -271,6 +288,9 @@ func RestoreEntity(db *gorm.DB, userID uint, entityID string, now time.Time) (*E
 		res.SameNameLive = same > 0
 
 		if err := tx.Delete(&snap).Error; err != nil {
+			return err
+		}
+		if _, err := projSnap.BumpChanged(tx); err != nil {
 			return err
 		}
 		res.Entity = entity
@@ -335,6 +355,14 @@ func reviveContactEntityLinks(tx *gorm.DB, userID uint, ids []string, now time.T
 		}
 		if err := tx.Unscoped().Model(&models.ContactEntityLink{}).Where("id = ? AND user_id = ?", link.ID, userID).
 			Updates(updates).Error; err != nil {
+			return nil, err
+		}
+		// revision/etag move with the revive (the delete bumped them too) so an
+		// If-Match client never holds a stale ETag. Both are <-:create, which a
+		// GORM update silently drops, so this is a raw statement like the delete
+		// cascade's.
+		if err := tx.Exec(`UPDATE contact_entity_links SET revision = revision + 1,
+			etag = 'e-' || id || '-' || (revision + 1) WHERE id = ? AND user_id = ?`, link.ID, userID).Error; err != nil {
 			return nil, err
 		}
 	}

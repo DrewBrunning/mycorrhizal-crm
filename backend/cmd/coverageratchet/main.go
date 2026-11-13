@@ -17,7 +17,8 @@
 // Normal workflow:
 //
 //	cd backend && go run ./cmd/coverageratchet                # check (default)
-//	cd backend && go run ./cmd/coverageratchet -update         # regenerate the baseline
+//	cd backend && go run ./cmd/coverageratchet -update         # regenerate the baseline (refuses to lower any entry)
+//	cd backend && go run ./cmd/coverageratchet -update -allow-drop path/file.go  # accept a named, justified drop
 //	cd backend && go run ./cmd/coverageratchet -profile x.out  # check a different profile
 //
 // Generate the profile (heavy: whole suite, ~4 min), by hand:
@@ -34,6 +35,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"mycorrhizal/internal/coverageratchet"
 )
@@ -59,6 +61,9 @@ func run(args []string, w interface{ Write([]byte) (int, error) }) int {
 	fs := flag.NewFlagSet("coverageratchet", flag.ContinueOnError)
 	profile := fs.String("profile", "coverage-cross.out", "path to the cross-package Go coverprofile (go test ./... -coverpkg=./...)")
 	update := fs.Bool("update", false, "regenerate the committed baseline instead of checking it")
+	allowAll := fs.Bool("allow-all-drops", false, "with -update: accept every per-file drop (a deliberate, reviewed act; name the reason in the PR)")
+	var allowed stringList
+	fs.Var(&allowed, "allow-drop", "with -update: accept the drop of this baseline-relative file (repeatable or comma-separated)")
 	root := fs.String("root", ".", "source root the coverprofile's module paths resolve against (normally backend/)")
 	if err := fs.Parse(args); err != nil {
 		return 2 // # pragma: no cover — flag.ContinueOnError already prints the usage error itself
@@ -93,6 +98,23 @@ func run(args []string, w interface{ Write([]byte) (int, error) }) int {
 			existing = &b
 		}
 		next := coverageratchet.BuildBaseline(stats, existing, defaultTolerancePct)
+		if existing != nil {
+			// A baseline write is a "raise" by default: it must not silently
+			// absorb a drop in a file the author never touched (issue #2569).
+			var refused []string
+			for _, file := range coverageratchet.BaselineDrops(*existing, next) {
+				if *allowAll || allowed.has(file) {
+					fmt.Fprintf(w, "accepted drop: %s %.2f -> %.2f\n", file, existing.Files[file], next.Files[file])
+					continue
+				}
+				refused = append(refused, file)
+				fmt.Fprintf(w, "refusing to lower: %s %.2f -> %.2f\n", file, existing.Files[file], next.Files[file])
+			}
+			if len(refused) > 0 {
+				fmt.Fprintf(os.Stderr, "\ncoverageratchet: refusing -update: %d file(s) would drop. Restore the coverage, or accept the drop with -allow-drop <file> (or -allow-all-drops) and justify it in the PR. Baseline left unchanged.\n", len(refused))
+				return 1
+			}
+		}
 		if err := coverageratchet.SaveBaseline(baselineFile, next); err != nil {
 			fmt.Fprintf(os.Stderr, "coverageratchet: %v\n", err)
 			return 2
@@ -124,4 +146,27 @@ func run(args []string, w interface{ Write([]byte) (int, error) }) int {
 	}
 	fmt.Fprintln(w, "coverageratchet: ok")
 	return 0
+}
+
+// stringList is a repeatable, comma-separable string flag.
+type stringList []string
+
+func (l *stringList) String() string { return strings.Join(*l, ",") }
+
+func (l *stringList) Set(v string) error {
+	for _, p := range strings.Split(v, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			*l = append(*l, p)
+		}
+	}
+	return nil
+}
+
+func (l stringList) has(file string) bool {
+	for _, f := range l {
+		if f == file {
+			return true
+		}
+	}
+	return false
 }

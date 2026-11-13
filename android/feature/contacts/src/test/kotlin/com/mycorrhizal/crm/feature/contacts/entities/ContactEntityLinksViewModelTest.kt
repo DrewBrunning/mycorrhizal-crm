@@ -22,7 +22,9 @@ import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -342,5 +344,117 @@ class ContactEntityLinksViewModelTest {
             vm.searchEntities(EntityKind.PLACE, "ca")
             advanceUntilIdle()
             assertEquals(listOf("p1"), vm.uiState.value.searchResults.map { it.id })
+        }
+
+    @Test
+    fun `a slow search for the previous kind does not replace the newer results`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slowPlaces = CompletableDeferred<Result<EntityListResponse>>()
+            coEvery { repository.list(EntityKind.PLACE, "ca", null, any()) } coAnswers {
+                slowPlaces.await()
+            }
+            coEvery { repository.list(EntityKind.ORGANISATION, "ac", null, any()) } returns
+                Result.success(
+                    EntityListResponse(entities = listOf(Entity(id = "o9", name = "Acme West")))
+                )
+            val vm = vm()
+            advanceUntilIdle()
+
+            vm.searchEntities(EntityKind.PLACE, "ca")
+            runCurrent()
+            vm.searchEntities(EntityKind.ORGANISATION, "ac")
+            advanceUntilIdle()
+            slowPlaces.complete(
+                Result.success(
+                    EntityListResponse(
+                        entities = listOf(
+                            Entity(id = "p1", name = "Cabin", kind = EntityKind.PLACE)
+                        )
+                    )
+                )
+            )
+            advanceUntilIdle()
+
+            assertEquals(listOf("o9"), vm.uiState.value.searchResults.map { it.id })
+            assertFalse(vm.uiState.value.searching)
+        }
+
+    @Test
+    fun `a search response that arrives after the search was cleared is dropped`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slow = CompletableDeferred<Result<EntityListResponse>>()
+            coEvery { repository.list(EntityKind.PLACE, "ca", null, any()) } coAnswers {
+                slow.await()
+            }
+            val vm = vm()
+            advanceUntilIdle()
+
+            vm.searchEntities(EntityKind.PLACE, "ca")
+            runCurrent()
+            vm.clearSearch()
+            slow.complete(
+                Result.success(
+                    EntityListResponse(
+                        entities = listOf(
+                            Entity(id = "p1", name = "Cabin", kind = EntityKind.PLACE)
+                        )
+                    )
+                )
+            )
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.searchResults.isEmpty())
+            assertFalse(vm.uiState.value.searching)
+        }
+
+    @Test
+    fun `a slow match for the previous organization does not replace the newer match`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slow = CompletableDeferred<Result<EntityListResponse>>()
+            coEvery { repository.list(EntityKind.ORGANISATION, "Globex", null, any()) } coAnswers {
+                slow.await()
+            }
+            coEvery { repository.list(EntityKind.ORGANISATION, "Initech", null, any()) } returns
+                Result.success(
+                    EntityListResponse(entities = listOf(Entity(id = "e2", name = "Initech")))
+                )
+            val vm = vm()
+            advanceUntilIdle()
+
+            vm.findMatch(OwnValue("organization", "o1", 0, "Globex"))
+            runCurrent()
+            vm.findMatch(OwnValue("organization", "o2", 1, "Initech"))
+            advanceUntilIdle()
+            slow.complete(
+                Result.success(
+                    EntityListResponse(entities = listOf(Entity(id = "e1", name = "Globex")))
+                )
+            )
+            advanceUntilIdle()
+
+            assertEquals("e2", vm.uiState.value.ownMatch?.id)
+        }
+
+    @Test
+    fun `a slow match does not appear once the user moved to an address value`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val slow = CompletableDeferred<Result<EntityListResponse>>()
+            coEvery { repository.list(EntityKind.ORGANISATION, "Globex", null, any()) } coAnswers {
+                slow.await()
+            }
+            val vm = vm()
+            advanceUntilIdle()
+
+            vm.findMatch(OwnValue("organization", "o1", 0, "Globex"))
+            runCurrent()
+            vm.findMatch(OwnValue("address", "a1", 0, "1 High St"))
+            slow.complete(
+                Result.success(
+                    EntityListResponse(entities = listOf(Entity(id = "e1", name = "Globex")))
+                )
+            )
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.ownMatch)
         }
 }

@@ -23,6 +23,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -322,11 +323,17 @@ class ContactEntityLinksViewModel @Inject constructor(
         }
     }
 
+    // The newest search / match wins: starting one (or clearing) cancels the previous request, so
+    // a slow answer for an earlier query, kind or value can never overwrite newer state.
+    private var matchJob: Job? = null
+    private var searchJob: Job? = null
+
     /** Offer an existing organisation with the same name as an own organization (never for a place). */
     fun findMatch(value: OwnValue) {
+        matchJob?.cancel()
         _uiState.update { it.copy(ownMatch = null) }
         if (value.kind != "organization" || value.label.isBlank()) return
-        viewModelScope.launch {
+        matchJob = viewModelScope.launch {
             repository.list(
                 EntityKind.ORGANISATION,
                 value.label,
@@ -345,7 +352,8 @@ class ContactEntityLinksViewModel @Inject constructor(
     }
 
     fun searchEntities(kind: String, query: String) {
-        viewModelScope.launch {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
             _uiState.update { it.copy(searching = true) }
             repository.list(kind, query.trim().ifEmpty { null }, null, SEARCH_PAGE_SIZE).foldInline(
                 onSuccess = { page ->
@@ -362,7 +370,16 @@ class ContactEntityLinksViewModel @Inject constructor(
     }
 
     fun clearSearch() {
-        _uiState.update { it.copy(searchResults = emptyList(), ownMatch = null, formError = null) }
+        searchJob?.cancel()
+        matchJob?.cancel()
+        _uiState.update {
+            it.copy(
+                searchResults = emptyList(),
+                ownMatch = null,
+                searching = false,
+                formError = null
+            )
+        }
     }
 
     fun onConflictLoadLatest() {

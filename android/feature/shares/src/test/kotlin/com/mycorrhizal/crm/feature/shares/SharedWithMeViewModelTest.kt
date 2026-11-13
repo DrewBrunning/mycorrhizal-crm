@@ -4,13 +4,18 @@ import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.IncomingShareGrant
 import com.mycorrhizal.crm.model.network.IncomingShareGrantsPage
 import com.mycorrhizal.crm.model.network.ShareBlock
+import com.mycorrhizal.crm.model.network.ShareGrantNotifications
 import com.mycorrhizal.crm.model.network.ShareGrantStatuses
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -106,6 +111,120 @@ class SharedWithMeViewModelTest {
         coVerify(exactly = 2) { repository.listIncoming(any(), any()) }
         assertFalse(vm.uiState.value.busy)
     }
+
+    @Test
+    fun `accepting a grant drops the drawer badge count without leaving the screen`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad()
+        coEvery { repository.accept("g1") } returns Result.success(pending.copy(status = "active"))
+        coEvery { repository.notifications() } returnsMany listOf(
+            Result.success(ShareGrantNotifications(pendingCount = 1)),
+            Result.success(ShareGrantNotifications(pendingCount = 0))
+        )
+        // The same singleton the app injects into both view models.
+        val changes = ShareGrantChanges()
+        val badge = ShareGrantBadgeViewModel(repository, changes)
+        val vm = SharedWithMeViewModel(repository, changes)
+        advanceUntilIdle()
+        assertEquals(1, badge.pendingCount.value)
+
+        vm.accept(pending)
+        advanceUntilIdle()
+
+        assertEquals(0, badge.pendingCount.value)
+    }
+
+    @Test
+    fun `every recipient action signals a share-grant change, a failed one included`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad()
+        coEvery { repository.accept(any()) } returns Result.success(pending)
+        coEvery { repository.decline(any(), any()) } returns Result.success(pending)
+        coEvery { repository.leave(any()) } returns Result.failure(ApiError.Client(409, "x"))
+        coEvery { repository.unblock(any()) } returns Result.success(Unit)
+        val changes = ShareGrantChanges()
+        var signals = 0
+        changes.changes.onEach { signals++ }.launchIn(backgroundScope)
+        val vm = SharedWithMeViewModel(repository, changes)
+        advanceUntilIdle()
+
+        vm.accept(pending)
+        advanceUntilIdle()
+        assertEquals(1, signals)
+        vm.requestDecline(pending)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+        assertEquals(2, signals)
+        vm.requestBlock(pending)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+        assertEquals(3, signals)
+        vm.requestLeave(active)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+        assertEquals(4, signals)
+        vm.unblock(ShareBlock(7, "mallory"))
+        advanceUntilIdle()
+        assertEquals(5, signals)
+    }
+
+    @Test
+    fun `an accept that finishes while a load is in flight still ends with the accepted list`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val firstLoad = CompletableDeferred<Unit>()
+            var calls = 0
+            coEvery { repository.listIncoming(any(), any()) } coAnswers {
+                if (++calls == 1) {
+                    firstLoad.await()
+                    Result.success(IncomingShareGrantsPage(shareGrants = listOf(pending)))
+                } else {
+                    Result.success(
+                        IncomingShareGrantsPage(
+                            shareGrants = listOf(pending.copy(status = ShareGrantStatuses.ACTIVE))
+                        )
+                    )
+                }
+            }
+            coEvery { repository.blocks() } returns Result.success(emptyList())
+            coEvery { repository.accept("g1") } returns
+                Result.success(pending.copy(status = ShareGrantStatuses.ACTIVE))
+            val vm = SharedWithMeViewModel(repository)
+            runCurrent()
+            assertTrue(vm.uiState.value.isLoading)
+
+            vm.accept(pending)
+            runCurrent()
+            firstLoad.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf(ShareGrantStatuses.ACTIVE),
+                vm.uiState.value.grants.map { it.status }
+            )
+            assertFalse(vm.uiState.value.isLoading)
+            coVerify(exactly = 2) { repository.listIncoming(any(), any()) }
+        }
+
+    @Test
+    fun `a load tap while loading does not queue a second request`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val firstLoad = CompletableDeferred<Unit>()
+            coEvery { repository.listIncoming(any(), any()) } coAnswers {
+                firstLoad.await()
+                Result.success(IncomingShareGrantsPage(shareGrants = listOf(pending)))
+            }
+            coEvery { repository.blocks() } returns Result.success(emptyList())
+            val vm = SharedWithMeViewModel(repository)
+            runCurrent()
+
+            vm.load()
+            firstLoad.complete(Unit)
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { repository.listIncoming(any(), any()) }
+        }
 
     @Test
     fun `a pending grant is never accepted without an explicit accept`() = runTest(

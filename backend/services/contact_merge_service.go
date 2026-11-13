@@ -475,14 +475,14 @@ func RepointContactAssociations(
 	// primary index allows one live primary per kind, so a loser primary of a
 	// kind the keeper already has a primary for is demoted first.
 	if err := tx.Exec(
-		"UPDATE contact_entity_links SET is_primary = 0 WHERE contact_vcard_uid = ? AND user_id = ? AND is_primary = 1 AND deleted_at IS NULL AND kind IN "+
+		"UPDATE contact_entity_links SET is_primary = 0, revision = revision + 1, etag = 'e-' || id || '-' || (revision + 1) WHERE contact_vcard_uid = ? AND user_id = ? AND is_primary = 1 AND deleted_at IS NULL AND kind IN "+
 			"(SELECT kind FROM contact_entity_links WHERE contact_vcard_uid = ? AND user_id = ? AND is_primary = 1 AND deleted_at IS NULL)",
 		loser.VCardUID, userID, keeper.VCardUID, userID,
 	).Error; err != nil {
 		return 0, err
 	}
 	if err := tx.Exec(
-		"UPDATE contact_entity_links SET contact_vcard_uid = ? WHERE contact_vcard_uid = ? AND user_id = ?",
+		"UPDATE contact_entity_links SET contact_vcard_uid = ?, revision = revision + 1, etag = 'e-' || id || '-' || (revision + 1) WHERE contact_vcard_uid = ? AND user_id = ?",
 		keeper.VCardUID, loser.VCardUID, userID,
 	).Error; err != nil {
 		return 0, err

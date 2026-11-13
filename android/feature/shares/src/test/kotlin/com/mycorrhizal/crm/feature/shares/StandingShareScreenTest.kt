@@ -2,10 +2,12 @@ package com.mycorrhizal.crm.feature.shares
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -13,6 +15,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.OutgoingShareGrant
 import com.mycorrhizal.crm.model.network.ShareGrantEntityTypes
 import com.mycorrhizal.crm.model.network.ShareGrantInput
@@ -25,6 +29,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -167,5 +172,56 @@ class StandingShareScreenTest {
     fun `the screen has no accessibility violations`() {
         mount(ShareGrantEntityTypes.NOTE)
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    @Test
+    fun `a failed create is worded from its reason code, never the server text`() {
+        coEvery { grants.create(any()) } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW SERVER TEXT",
+                reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+            )
+        )
+        val vm = mount(ShareGrantEntityTypes.ACTIVITY)
+        vm.selectRecipient(1)
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(str(R.string.shares_standing_share_button))
+            .performScrollTo()
+            .performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed directory load is worded from its reason code, never the server text`() {
+        coEvery { directory.userDirectory() } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW SERVER TEXT",
+                reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+            )
+        )
+        val vm = StandingShareViewModel(
+            directory,
+            grants,
+            SavedStateHandle(mapOf("entityType" to ShareGrantEntityTypes.NOTE, "entityId" to "e-1"))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                StandingShareScreen(onBack = {}, onShared = {}, viewModel = vm)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        // Shown both as the empty-state title and as the snackbar, so count rather than pick one.
+        assertTrue(
+            composeTestRule.onAllNodesWithText("Entity not found").fetchSemanticsNodes()
+                .isNotEmpty()
+        )
+        composeTestRule.onAllNodesWithText("RAW SERVER TEXT").assertCountEquals(0)
     }
 }

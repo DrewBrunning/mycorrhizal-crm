@@ -105,7 +105,7 @@ fun EntitiesFromContactsScreen(
                     onPrimary = viewModel::setPrimary,
                     onContact = viewModel::setContactIncluded,
                     onCreate = viewModel::create,
-                    onRetry = viewModel::refresh,
+                    onRetry = viewModel::retry,
                     onLoadMore = viewModel::loadMore,
                     onDismissResult = viewModel::dismissResult
                 )

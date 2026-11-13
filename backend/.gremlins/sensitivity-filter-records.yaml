@@ -51,6 +51,7 @@ unleash:
         - ^entity\.go$
         - ^entity_deletion_snapshot\.go$
         - ^entity_merge_dto\.go$
+        - ^entity_projection_bump\.go$
         - ^export_loss\.go$
         - ^external_activity\.go$
         - ^external_identity\.go$

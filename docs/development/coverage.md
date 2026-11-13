@@ -447,6 +447,26 @@ cd backend && go run ./cmd/androidcoverageratchet -update  # rewrite android/cov
 All three regenerate in place, keeping the existing `tolerancePercentPoints` /
 `tolerancePct` unless you edit it by hand.
 
+**A baseline write is a "raise", never a silent lowering (issue #2569).** The
+backend and frontend `-update` / `--update` commands compare the regenerated
+numbers with the committed baseline and **refuse** (exit 1, baseline left
+untouched) if any file's entry would go *down*, printing each file with its
+old and new value. This exists because a regeneration run for one PR once
+lowered 11 entries, most for files that PR never touched, under a commit titled
+"raise". To accept a drop on purpose, name it and justify it in the PR:
+
+```bash
+cd backend && go run ./cmd/coverageratchet -update -allow-drop services/foo.go   # repeatable or comma-separated
+cd backend && go run ./cmd/coverageratchet -update -allow-all-drops
+cd frontend && yarn coverage:ratchet:update --allow-drop src/Foo.tsx
+cd frontend && yarn coverage:ratchet:update --allow-all-drops
+```
+
+Accepted drops are printed as `accepted drop: ...` so they show up in the run
+log. A file you did not touch should never need the flag: restore its coverage
+instead. Improvements and new files never need it. The Android ratchet's
+`-update` is not covered by this guard yet.
+
 **Tolerance rationale.** The backend suite includes
 property/generative tests (TEST-07, issue #435) whose iteration budget
 (`RAPID_CHECKS`) is tiered by trigger — 200 on a PR, 1000 on a push, 8000 on

@@ -29,9 +29,11 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.just
 import io.mockk.mockk
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -801,5 +803,47 @@ class DashboardViewModelTest {
             advanceUntilIdle()
             coVerify(exactly = 0) { api.getUpcomingOccasions(7) }
             coVerify(exactly = 1) { api.getUpcomingOccasions(90) }
+        }
+
+    @Test
+    fun `a late 30 day response never replaces the 90 day rows the user switched to`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (vm, api, _) = newViewModel()
+            val slow30 = CompletableDeferred<Result<UpcomingOccasionsResponse>>()
+            coEvery { api.getDashboard() } returns Result.success(DashboardResponse())
+            coEvery { api.getUpcomingOccasions(30) } coAnswers { slow30.await() }
+            coEvery { api.getUpcomingOccasions(90) } returns
+                Result.success(UpcomingOccasionsResponse(listOf(occasion("Far"))))
+            vm.load()
+            runCurrent()
+
+            vm.setOccasionsDays(90)
+            advanceUntilIdle()
+            slow30.complete(Result.success(UpcomingOccasionsResponse(listOf(occasion("Near")))))
+            advanceUntilIdle()
+
+            assertEquals(90, vm.uiState.value.occasionsDays)
+            assertEquals(listOf("Far"), vm.uiState.value.occasions.map { it.contactName })
+        }
+
+    @Test
+    fun `a late 30 day failure never blanks the 90 day rows or sets an error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val (vm, api, _) = newViewModel()
+            val slow30 = CompletableDeferred<Result<UpcomingOccasionsResponse>>()
+            coEvery { api.getDashboard() } returns Result.success(DashboardResponse())
+            coEvery { api.getUpcomingOccasions(30) } coAnswers { slow30.await() }
+            coEvery { api.getUpcomingOccasions(90) } returns
+                Result.success(UpcomingOccasionsResponse(listOf(occasion("Far"))))
+            vm.load()
+            runCurrent()
+
+            vm.setOccasionsDays(90)
+            advanceUntilIdle()
+            slow30.complete(Result.failure(ApiError.Client(500, "boom")))
+            advanceUntilIdle()
+
+            assertEquals(listOf("Far"), vm.uiState.value.occasions.map { it.contactName })
+            assertNull(vm.uiState.value.occasionsError)
         }
 }

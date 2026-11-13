@@ -593,4 +593,11 @@ class EntityScreensTest {
         assertNotNull(address["components"])
         assertEquals(EntityKind.PLACE, input.kind)
     }
+
+    @Test
+    fun `a failed first load with no rows words the error from its reason code`() {
+        setList(EntitiesUiState(error = reasonCoded()))
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
 }

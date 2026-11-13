@@ -275,7 +275,7 @@ func UpdateEntity(c *gin.Context) {
 	if input.Sensitivity != "" {
 		e.Sensitivity = input.Sensitivity
 	}
-	if err := db.Save(e).Error; err != nil {
+	if err := services.SaveEntity(db, e); err != nil {
 		if handleRevisionConflict(c, "Entity", err) {
 			return
 		}

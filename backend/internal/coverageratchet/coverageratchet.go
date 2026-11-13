@@ -305,6 +305,20 @@ func BuildBaseline(stats map[string]FileStat, existing *Baseline, defaultToleran
 	return Baseline{Comment: baselineComment, TolerancePct: tolerance, Files: files}
 }
 
+// BaselineDrops lists the files whose recorded percentage next would LOWER
+// relative to existing (issue #2569). Improvements, new files and files absent
+// from next are not drops. The result is sorted.
+func BaselineDrops(existing, next Baseline) []string {
+	var drops []string
+	for file, was := range existing.Files {
+		if now, ok := next.Files[file]; ok && now < was {
+			drops = append(drops, file)
+		}
+	}
+	sort.Strings(drops)
+	return drops
+}
+
 func round2(f float64) float64 {
 	return float64(int(f*100+0.5)) / 100
 }
