@@ -130,6 +130,12 @@ func deleteEntity(db *gorm.DB, userID uint, entityID string, now time.Time, merg
 		if err := tx.Where("id = ? AND user_id = ?", entityID, userID).First(&entity).Error; err != nil {
 			return err
 		}
+		// The cascade tombstones the links, so every contact projecting this
+		// entity loses its ORG/ADR: bump those whose projection moved (#2565).
+		snap, err := snapshotEntityProjections(tx, userID, entity.ID)
+		if err != nil {
+			return err
+		}
 		target := EntityCascadeTarget{ID: entity.ID, UserID: userID, BatchID: uuid.NewString()}
 
 		var values []models.FieldValue
@@ -153,10 +159,14 @@ func deleteEntity(db *gorm.DB, userID uint, entityID string, now time.Time, merg
 		if err != nil {
 			return err
 		}
-		return tx.Create(&models.EntityDeletionSnapshot{
+		if err := tx.Create(&models.EntityDeletionSnapshot{
 			UserID: userID, EntityID: entity.ID, DeletionBatchID: target.BatchID,
 			TrashedAt: now, PayloadVersion: models.EntityDeletionSnapshotVersion, Payload: string(raw),
-		}).Error
+		}).Error; err != nil {
+			return err
+		}
+		_, err = snap.BumpChanged(tx)
+		return err
 	})
 }
 
@@ -211,6 +221,13 @@ func RestoreEntity(db *gorm.DB, userID uint, entityID string, now time.Time) (*E
 		dec := json.NewDecoder(bytes.NewReader([]byte(snap.Payload)))
 		if err := dec.Decode(&payload); err != nil {
 			return fmt.Errorf("decode entity deletion snapshot: %w", err)
+		}
+
+		// The revived entity and links project again: bump the contacts whose
+		// projection moved (#2565). Tombstoned links are in the snapshot's set.
+		projSnap, err := snapshotEntityProjections(tx, userID, entity.ID)
+		if err != nil {
+			return err
 		}
 
 		// Un-delete without hooks, then Save so the revision/ETag advance.
@@ -271,6 +288,9 @@ func RestoreEntity(db *gorm.DB, userID uint, entityID string, now time.Time) (*E
 		res.SameNameLive = same > 0
 
 		if err := tx.Delete(&snap).Error; err != nil {
+			return err
+		}
+		if _, err := projSnap.BumpChanged(tx); err != nil {
 			return err
 		}
 		res.Entity = entity

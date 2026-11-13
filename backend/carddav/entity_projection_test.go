@@ -14,7 +14,10 @@ import (
 
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/models"
+	"mycorrhizal/services"
 
+	"github.com/emersion/go-webdav"
+	webdavcarddav "github.com/emersion/go-webdav/carddav"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -150,4 +153,41 @@ func TestCardDAV_ClientEditOfProjectedValueBecomesOrdinaryValue(t *testing.T) {
 		names = append(names, o.Name)
 	}
 	assert.Equal(t, []string{"Own Co", "Acme Renamed"}, names)
+}
+
+// Issue #2565 (ADR 0043 amendment): an entity edit that changes the projected
+// ORG moves the ETag the CardDAV server serves, so a client that already holds
+// the card re-fetches it; a write the card does not show leaves it alone; and a
+// PUT made against the old ETag is refused with 412 (ADR 0008).
+func TestCardDAV_ProjectedEntityChangeMovesTheServedETag(t *testing.T) {
+	p := newProjectedContact(t, "normal")
+	served := func() (string, string) {
+		obj, err := p.backend.GetAddressObject(p.ctx, p.path, nil)
+		require.NoError(t, err)
+		return obj.ETag, encodeCard(t, obj.Card)
+	}
+	etag0, _ := served()
+
+	var org models.Entity
+	require.NoError(t, p.backend.db.First(&org, "id = ?", p.linkOrg.EntityID).Error)
+	require.NoError(t, org.SetCore(&models.OrganisationCore{Organization: contactmodel.Organization{Name: "Acme Corp", Units: []contactmodel.OrgUnit{{Name: "Rocketry"}}}, Notes: "internal"}))
+	require.NoError(t, services.SaveEntity(p.backend.db, &org))
+	etag1, _ := served()
+	assert.Equal(t, etag0, etag1, "a notes-only edit does not change the card, so not the ETag")
+
+	org.Name = "Acme Global"
+	require.NoError(t, org.SetCore(&models.OrganisationCore{Organization: contactmodel.Organization{Name: "Acme Global"}}))
+	require.NoError(t, services.SaveEntity(p.backend.db, &org))
+	etag2, body := served()
+	assert.NotEqual(t, etag1, etag2, "the projected ORG changed, so the ETag moves")
+	assert.Contains(t, body, "Acme Global")
+
+	obj, err := p.backend.GetAddressObject(p.ctx, p.path, nil)
+	require.NoError(t, err)
+	_, err = p.backend.PutAddressObject(p.ctx, p.path, obj.Card,
+		&webdavcarddav.PutAddressObjectOptions{IfMatch: webdav.ConditionalMatch(`"` + etag1 + `"`)})
+	require.Error(t, err, "a write against the pre-change ETag is stale")
+	_, err = p.backend.PutAddressObject(p.ctx, p.path, obj.Card,
+		&webdavcarddav.PutAddressObjectOptions{IfMatch: webdav.ConditionalMatch(`"` + etag2 + `"`)})
+	require.NoError(t, err, "the current ETag is accepted")
 }
