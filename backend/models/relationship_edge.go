@@ -144,6 +144,11 @@ type RelationshipEdge struct {
 	//
 	// Ships as a column now rather than being retrofitted later.
 	Sensitivity string `gorm:"not null;default:normal;index" json:"sensitivity" validate:"required,oneof=normal private secret"`
+
+	// priorSensitivity is the stored sensitivity captured by BeforeSave for the
+	// share-grant re-confirmation check in AfterSave (issue #2578). It lives on
+	// the struct because GORM hands each hook a fresh session.
+	priorSensitivity string
 }
 
 // BeforeCreate generates a UUID for new edges, mirroring Contact.VCardUID's
