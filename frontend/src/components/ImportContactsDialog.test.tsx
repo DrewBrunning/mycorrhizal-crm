@@ -1195,13 +1195,15 @@ test('dropping something that is not a file does nothing', () => {
   });
   expect(uploadCSVForImport).not.toHaveBeenCalled();
   expect(uploadVCFForImport).not.toHaveBeenCalled();
+});
+
 // #2595: the message used to hardcode "5MB" in every locale, ignoring the
 // interpolated limit. The real server limits are 20 MB (CSV) and 50 MB (VCF).
 function oversizeFile(name: string, bytes: number): File {
   const file = new File(['x'], name);
   Object.defineProperty(file, 'size', { value: bytes });
   return file;
-});
+}
 
 test.each([
   ['en', 'contacts.csv', 20 * 1024 * 1024 + 1, ' 20MB'],
