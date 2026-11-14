@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
@@ -142,4 +142,54 @@ test('a duplicate-name save failure shows an inline error on the name field', as
   expect(input).toHaveAttribute('aria-invalid', 'true');
   fireEvent.change(input, { target: { value: 'Work 2' } });
   expect(screen.queryByText('A circle with this name already exists')).not.toBeInTheDocument();
+});
+
+function renderWith(onSave: React.ComponentProps<typeof CircleDetailDialog>['onSave']) {
+  return render(
+    <MemoryRouter>
+      <DateFormatProvider>
+        <CircleDetailDialog circle={circle} memberCount={1} onClose={vi.fn()} onSave={onSave} />
+      </DateFormatProvider>
+    </MemoryRouter>,
+  );
+}
+
+// Failures other than a duplicate name are reported by the caller's notifier:
+// the dialog shows no inline name error and the Save button comes back.
+test('a non-duplicate save failure shows no inline name error and re-enables Save', async () => {
+  getCircleTimeline.mockResolvedValue({ items: [], member_count: 1, next_cursor: '' });
+  const onSave = vi.fn().mockRejectedValue(new ApiError('boom', 'INTERNAL', 500));
+  renderWith(onSave);
+
+  const input = screen.getByLabelText('Name');
+  fireEvent.change(input, { target: { value: 'Work' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith('c1', 'Work', { description: '', color: '' }),
+  );
+  await waitFor(() =>
+    expect((screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    ),
+  );
+  expect(input).not.toHaveAttribute('aria-invalid', 'true');
+});
+
+// Clicking the selected colour again clears it (ToggleButtonGroup reports null).
+test('clicking the selected colour again clears the colour', async () => {
+  getCircleTimeline.mockResolvedValue({ items: [], member_count: 1, next_cursor: '' });
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderWith(onSave);
+
+  const red = screen.getByRole('button', { name: 'Red' });
+  fireEvent.click(red);
+  expect(red).toHaveAttribute('aria-pressed', 'true');
+  fireEvent.click(red);
+  expect(red).toHaveAttribute('aria-pressed', 'false');
+  fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Work' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  await waitFor(() =>
+    expect(onSave).toHaveBeenCalledWith('c1', 'Work', { description: '', color: '' }),
+  );
 });

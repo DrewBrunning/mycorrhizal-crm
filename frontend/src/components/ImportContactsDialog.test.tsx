@@ -1146,6 +1146,57 @@ test('#2183: each choice shows plain-language help, passthrough explained', asyn
   expect(screen.getByText(/new searchable custom field/i)).toBeInTheDocument();
 });
 
+test('a CSV over the size limit is refused before any upload', async () => {
+  renderDialog();
+  const file = new File(['a,b'], 'big.csv', { type: 'text/csv' });
+  Object.defineProperty(file, 'size', { value: 21 * 1024 * 1024 }); // limit: 20 MB CSV
+  selectFile(file);
+
+  expect(await screen.findByText(/file is too large/i)).toBeInTheDocument();
+  expect(uploadCSVForImport).not.toHaveBeenCalled();
+});
+
+test('a VCF between the CSV and VCF limits is accepted (the limits differ per type)', async () => {
+  vi.mocked(uploadVCFForImport).mockRejectedValue(new Error('stop here'));
+  renderDialog();
+  const file = new File(['BEGIN:VCARD'], 'big.vcf', { type: 'text/vcard' });
+  Object.defineProperty(file, 'size', { value: 21 * 1024 * 1024 }); // over the CSV limit, under 50 MB
+  selectFile(file);
+
+  await waitFor(() => expect(uploadVCFForImport).toHaveBeenCalledTimes(1));
+  expect(screen.queryByText(/file is too large/i)).toBeNull();
+});
+
+test('dropping a CSV on the dropzone uploads it; dragging highlights and leaving clears the highlight', async () => {
+  vi.mocked(uploadCSVForImport).mockResolvedValue({
+    session_id: 'sess-drop',
+    headers: ['Name'],
+    suggested_mappings: [{ csv_column: 'Name', contact_field: 'firstname', group: 0 }],
+    row_count: 1,
+    sample_data: [['Ada']],
+  });
+  renderDialog();
+  // The drag events bubble from the label up to the dropzone's handlers.
+  const target = screen.getByText(/drag and drop a csv or vcf file/i);
+
+  fireEvent.dragOver(target);
+  fireEvent.dragLeave(target);
+
+  const file = new File(['Name\nAda'], 'people.csv', { type: 'text/csv' });
+  fireEvent.drop(target, { dataTransfer: { files: [file] } });
+  await waitFor(() => expect(uploadCSVForImport).toHaveBeenCalledTimes(1));
+  expect(vi.mocked(uploadCSVForImport).mock.calls[0][0]).toBe(file);
+});
+
+test('dropping something that is not a file does nothing', () => {
+  renderDialog();
+  fireEvent.drop(screen.getByText(/drag and drop a csv or vcf file/i), {
+    dataTransfer: { files: [] },
+  });
+  expect(uploadCSVForImport).not.toHaveBeenCalled();
+  expect(uploadVCFForImport).not.toHaveBeenCalled();
+});
+
 // #2595: the message used to hardcode "5MB" in every locale, ignoring the
 // interpolated limit. The real server limits are 20 MB (CSV) and 50 MB (VCF).
 function oversizeFile(name: string, bytes: number): File {

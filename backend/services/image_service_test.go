@@ -227,8 +227,14 @@ func TestImageService_DeleteLogsFileRemovalFailures(t *testing.T) {
 		path := filepath.Join(dir, "u"+strconv.FormatUint(uint64(userID), 10), name)
 		require.NoError(t, os.Remove(path))
 		require.NoError(t, os.Mkdir(path, 0o700))
+		// A non-empty directory: os.Remove on an empty one would succeed and
+		// the failure branch would never run.
+		require.NoError(t, os.WriteFile(filepath.Join(path, "keep"), []byte("x"), 0o600))
 	}
 	assert.NoError(t, svc.Delete(context.Background(), userID, owner, img.ID))
+	for _, name := range []string{img.StoredName, img.ThumbName} {
+		assert.DirExists(t, filepath.Join(dir, "u"+strconv.FormatUint(uint64(userID), 10), name), "the unremovable path is left in place")
+	}
 }
 
 func TestImageService_OwnerValueForContactUsesUID(t *testing.T) {
@@ -576,4 +582,34 @@ func TestImageService_UploadReadErrorIsCorrupt(t *testing.T) {
 	var appErr *apperrors.AppError
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, string(apperrors.ReasonImageCorrupt), appErr.ReasonCode)
+}
+
+// Capacity checks clamp a negative byte count to zero rather than crediting it.
+func TestImageService_CheckCapacityClampsNegativeSize(t *testing.T) {
+	svc, _, userID, _ := imageServiceEnv(t)
+	assert.NoError(t, svc.checkCapacity(userID, -1))
+}
+
+// Restore re-applies the bundle's metadata after the upload; a failing update
+// is reported as a database error.
+func TestImageService_RestoreMetadataUpdateFailure(t *testing.T) {
+	svc, activity, userID, _ := imageServiceEnv(t)
+	require.NoError(t, svc.DB.Callback().Update().Before("gorm:update").Register("test:fail_restore_update", func(tx *gorm.DB) {
+		_ = tx.AddError(errors.New("boom"))
+	}))
+	_, err := svc.Restore(context.Background(), userID, OwnerRef{ID: activity.ID}, bytes.NewReader(imageTestJPEG(t)),
+		ImageRestoreMeta{Sensitivity: models.ImageSensitivityPrivate})
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.ErrCodeDatabase, appErr.Code)
+}
+
+func TestNearestHashIndex(t *testing.T) {
+	h := func(v int64) *int64 { return &v }
+	// A nil hash is skipped (never dereferenced), a hash past DedupeMaxHamming
+	// is not a match, and the nearest wins with the earlier one taking a tie.
+	assert.Equal(t, -1, nearestHashIndex(nil, 0))
+	assert.Equal(t, 1, nearestHashIndex([]*int64{nil, h(0b1)}, 0))
+	assert.Equal(t, -1, nearestHashIndex([]*int64{h(-1)}, 0), "64 differing bits is not a duplicate")
+	assert.Equal(t, 1, nearestHashIndex([]*int64{h(0b111), h(0b1), h(0b1)}, 0))
 }

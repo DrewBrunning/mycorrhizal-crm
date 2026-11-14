@@ -165,6 +165,15 @@ func exporterForVersion(version string) contactmodel.Exporter {
 	return vcard4.Adapter{}
 }
 
+// importerFor and exporterFor are the call sites' indirection over
+// importerForVCard/exporterForVersion. Production never reassigns them; tests
+// swap in a failing adapter to reach the defensive error branches, which the
+// real adapters cannot trigger from a card the encoder just produced.
+var (
+	importerFor = importerForVCard
+	exporterFor = exporterForVersion
+)
+
 // importerForVCard sniffs the VERSION property already decoded onto card
 // (go-webdav's Put handler parses the request body into a vcard.Card before
 // calling Backend.PutAddressObject) and returns the matching adapter.
@@ -431,7 +440,7 @@ func (b *Backend) PutAddressObject(ctx context.Context, urlPath string, card vca
 	if err := vcard.NewEncoder(&buf).Encode(card); err != nil {
 		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("carddav: failed to re-encode vCard: %w", err))
 	}
-	record, diags, err := importerForVCard(card).Import(buf.Bytes())
+	record, diags, err := importerFor(card).Import(buf.Bytes())
 	if err != nil {
 		return nil, webdav.NewHTTPError(http.StatusBadRequest, fmt.Errorf("carddav: failed to parse vCard: %w", err))
 	}
@@ -602,7 +611,7 @@ func (b *Backend) contactToAddressObject(ctx context.Context, contact *models.Co
 	// served. PutAddressObject pairs this with PreserveSensitiveAddresses so a
 	// later client PUT cannot delete what it was never shown.
 	record := models.RecordForContactForSync(contact, b.getPhotoDir(ctx), b.db)
-	data, diags, err := exporterForVersion(version).Export(record)
+	data, diags, err := exporterFor(version).Export(record)
 
 	card := make(vcard.Card)
 	if err != nil {

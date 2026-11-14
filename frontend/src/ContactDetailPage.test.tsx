@@ -1536,6 +1536,58 @@ test('editing an organization keeps its ID and period; deleting a title drops it
   ]);
 });
 
+test('deleting an organization drops its period and leaves the other entries alone', async () => {
+  const calls = mockFetch({
+    record: {
+      ...contactRecord,
+      card: {
+        ...contactRecord.card,
+        organizations: [
+          { id: 'org-1', name: 'Acme' },
+          { id: 'org-2', name: 'Globex' },
+        ],
+      },
+      crm: {
+        ...contactRecord.crm,
+        periods: [
+          { kind: 'organization', entry_id: 'org-1', range: { start: { year: 2019 } } },
+          { kind: 'organization', entry_id: 'org-2', range: { start: { year: 2021 } } },
+        ],
+      },
+    },
+    enabledFields: ['organizations'],
+  });
+  await renderLoaded();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+  const acme = rowWith('Acme', section('work'));
+  fireEvent.click(within(acme).getByLabelText('Delete'));
+
+  await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(1));
+  const body = lastPutBody(calls);
+  expect(body?.card?.organizations).toEqual([{ id: 'org-2', name: 'Globex' }]);
+  expect(body?.crm?.periods).toEqual([
+    { kind: 'organization', entry_id: 'org-2', range: { start: { year: 2021 } } },
+  ]);
+});
+
+test('deleting the only organization clears the list', async () => {
+  const calls = mockFetch({
+    record: {
+      ...contactRecord,
+      card: { ...contactRecord.card, organizations: [{ name: 'Acme' }] },
+    },
+    enabledFields: ['organizations'],
+  });
+  await renderLoaded();
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+  fireEvent.click(within(rowWith('Acme', section('work'))).getByLabelText('Delete'));
+
+  await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(1));
+  expect(lastPutBody(calls)?.card?.organizations).toBeUndefined();
+});
+
 test('editing an anniversary updates it in place; deleting it removes the entry', async () => {
   const calls = mockFetch({
     record: {
@@ -1887,6 +1939,31 @@ test('deleting a reminder completion from the timeline confirms, deletes, and re
   expect(confirmSpy).toHaveBeenCalledWith(
     'Are you sure you want to remove this completed reminder from the timeline?',
   );
+});
+
+test('a failed completion delete keeps the row on the timeline and does not refresh', async () => {
+  consoleError.mockImplementation(() => {});
+  const calls = mockFetch();
+  const inner = globalThis.fetch;
+  vi.stubGlobal('fetch', (input: RequestInfo | URL, init?: RequestInit) =>
+    init?.method === 'DELETE' && String(input).endsWith('/reminder-completions/5')
+      ? Promise.resolve(errorResponse('Could not delete the completion'))
+      : inner(input, init),
+  );
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+  await renderLoaded();
+  const row = within(section('timeline'))
+    .getByText('Fixture completed reminder')
+    .closest('.MuiTimelineItem-root') as HTMLElement;
+  const notesLoads = () =>
+    calls.filter((c) => c.method === 'GET' && c.url.endsWith('/contacts/1/notes')).length;
+  const before = notesLoads();
+
+  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+  await waitFor(() => expect(consoleError).toHaveBeenCalled());
+
+  expect(within(section('timeline')).getByText('Fixture completed reminder')).toBeInTheDocument();
+  expect(notesLoads()).toBe(before);
 });
 
 test('deleting a note from its edit dialog sends the DELETE', async () => {

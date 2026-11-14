@@ -412,3 +412,14 @@ func TestRunUnresolvableMasterKeyExitsTwo(t *testing.T) {
 	assert.Equal(t, 2, code)
 	assert.Contains(t, errOut.String(), "backupverify:")
 }
+
+// An unusable DATA_ENCRYPTION_KEY stops the signature check with exit code 2
+// ("authentication could not be attempted"), not 1 ("not authenticated").
+func TestCheckSnapshotSignatureUnusableKeyIsExitTwo(t *testing.T) {
+	dbPath, _, _ := setupSet(t)
+	t.Setenv("DATA_ENCRYPTION_KEY", "not-a-valid-key")
+	detail, code, err := checkSnapshotSignature(dbPath)
+	require.Error(t, err)
+	assert.Equal(t, 2, code)
+	assert.Empty(t, detail)
+}

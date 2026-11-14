@@ -42,7 +42,7 @@ func EvaluateAlerts(db *gorm.DB, cfg config.Config) {
 	ctx := logger.JobContext(models.JobNameAlertEval)
 
 	acquired, err := acquireJobLock(db, models.JobNameAlertEval, alertEvalMinInterval(cfg))
-	if err != nil {
+	if err != nil { // # pragma: no cover — acquireJobLock folds every failure into acquired=false with a nil error; the branch guards a future signature change
 		logger.Ctx(ctx).Error().Err(err).Msg("alerting: failed to check job lock")
 		return
 	}
