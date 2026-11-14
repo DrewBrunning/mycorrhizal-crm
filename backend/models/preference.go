@@ -214,6 +214,11 @@ type Preference struct {
 	// deleted_at. gorm:"-" keeps it out of the schema; it exists purely so an
 	// incremental sync client can apply the deletion.
 	Deleted bool `gorm:"-" json:"deleted,omitempty"`
+
+	// priorSensitivity is the stored sensitivity captured by BeforeSave for the
+	// share-grant re-confirmation check in AfterSave (issue #2578). It lives on
+	// the struct because GORM hands each hook a fresh session.
+	priorSensitivity string
 }
 
 // AfterDelete advances updated_at on a soft delete so T17 change feeds see
