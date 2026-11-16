@@ -44,6 +44,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **SSO login on the web** ([#2636](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2636)): signing in with your identity provider no longer reloads the login page, and the return to the app completes, when the app and API share one address.
 - **Correct file-size limit in the import message** ([#2595](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2595)): when a contact file is too large to import, the message now states the real limit, 20 MB for CSV and 50 MB for vCard files, instead of always saying 5 MB. It is shown in all five languages.
 - **Custom fields show on the web contact page** ([#2447](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2447)): custom fields defined for contacts now load and display on a contact page; they were not being fetched, so the page showed none.
 - **Number keyboard for dotted and hyphenated dates on Android** ([#2378](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2378)): date fields now open the number keyboard when your date format uses dots or hyphens, such as 10.08.2026. Formats with slashes keep the text keyboard.

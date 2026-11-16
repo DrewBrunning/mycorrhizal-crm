@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, SKIP_A11Y_SCAN, test } from './fixtures';
 
 // The service worker must stay registered across page loads.
 //
@@ -52,6 +52,44 @@ test.describe('Service worker', () => {
 
     expect(after.count, 'the registration must survive a reload').toBeGreaterThan(0);
     expect(after.scopes).toContain(scope);
+  });
+
+  // Issue #2636: OIDC login and callback are top-level navigations to the
+  // same-origin API, not fetches. The app-shell route used to intercept every
+  // navigation without a file extension (including /api/...), answer it with
+  // index.html, and reload the SPA -- so the login request never reached the
+  // server and SSO could not start (and the callback could not finish).
+  //
+  // This spec runs against the production build, where the worker is active,
+  // which is exactly the deployment shape that broke. OIDC is not configured
+  // in the e2e stack, so the backend answers the (now un-intercepted) login
+  // path with its plain 404 rather than index.html.
+  test('leaves backend navigations to the network instead of serving index.html', {
+    annotation: {
+      type: SKIP_A11Y_SCAN,
+      description: 'ends on the backend plain-text 404, which has no document shell to audit',
+    },
+  }, async ({ page }) => {
+    await page.goto('/');
+
+    // The worker must be in control, otherwise this test proves nothing:
+    // an uncontrolled navigation reaches the backend even without the fix.
+    await expect
+      .poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)), {
+        message: 'the service worker must control the page before the navigation',
+        timeout: 15000,
+      })
+      .toBe(true);
+
+    const response = await page.goto('/api/v1/auth/oidc/login');
+
+    expect(response, 'the navigation must produce a response').not.toBeNull();
+    // Without the fix the worker answered with the precached app shell: 200
+    // text/html. With it, nginx proxies to the backend, which has no OIDC
+    // route in this stack and returns its plain 404.
+    expect(response?.status()).toBe(404);
+    expect(response?.headers()['content-type'] ?? '').not.toContain('text/html');
+    expect(await response?.text()).toContain('404 page not found');
   });
 
   test('serves the service worker script with a revalidating cache header', async ({ page }) => {
