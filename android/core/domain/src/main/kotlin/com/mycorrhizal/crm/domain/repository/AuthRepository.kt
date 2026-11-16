@@ -58,10 +58,7 @@ sealed interface LoginOutcome {
  * server ceremony token plus the raw PublicKeyCredentialRequestOptions JSON.
  * Both are transient; neither is persisted.
  */
-data class PasswordlessPasskeyChallenge(
-    val ceremonyToken: String,
-    val optionsJson: String
-)
+data class PasswordlessPasskeyChallenge(val ceremonyToken: String, val optionsJson: String)
 
 /**
  * Authentication and session management.
