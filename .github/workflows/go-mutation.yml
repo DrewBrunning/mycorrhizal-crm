@@ -45,10 +45,13 @@ jobs:
     runs-on: ubuntu-latest
     # controllers-delete-cascade and services-import each carry their whole
     # package's existing (real-sqlite) test suite as the per-mutant retest
-    # cost, not just the target files' own tests — measured well over an
-    # hour on a 4-core GitHub-hosted runner. Generous because this is
-    # nightly/dispatch only, never a PR or merge gate.
-    timeout-minutes: 150
+    # cost, not just the target files' own tests. services-import typically
+    # runs 2h07–2h21 on a 4-core GitHub-hosted runner, so the old 150-minute
+    # cap sat only ~10 minutes above its normal worst case and killed a run
+    # that was still making progress (nightly #2634). 210 minutes keeps a real
+    # margin without approaching the 6-hour per-job ceiling; generous because
+    # this is nightly/dispatch only, never a PR or merge gate.
+    timeout-minutes: 210
     strategy:
       fail-fast: false
       matrix:
