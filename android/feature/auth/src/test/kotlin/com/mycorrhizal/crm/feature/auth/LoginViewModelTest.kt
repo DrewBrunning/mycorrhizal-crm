@@ -1190,6 +1190,108 @@ class LoginViewModelTest {
     }
 
     @Test
+    fun `a provider failure on passwordless passkey points at the password form`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            passkeyAvailable = true
+        )
+        advanceUntilIdle()
+        coEvery { h.authRepository.beginPasswordlessPasskeyLogin() } returns
+            Result.success(PasswordlessPasskeyChallenge("tok", "{}"))
+        h.passkeyClient.getResult = PasskeyResult.Failed("provider blew up")
+
+        h.viewModel.onUsePasswordlessPasskey(context)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_passkey_failed_password,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `biometric re-auth validates the server url before prompting`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(passkeyAvailable = false, biometricAvailable = true)
+        advanceUntilIdle()
+
+        h.viewModel.onUseBiometric(biometricActivity)
+        advanceUntilIdle()
+
+        assertEquals(R.string.login_error_valid_server_url, h.viewModel.uiState.value.errorRes)
+        assertEquals(0, h.localAuthPrompt.calls)
+    }
+
+    @Test
+    fun `a biometric prompt error shows the retry message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = true,
+            localAuthOutcome = LocalAuthOutcome.ERROR
+        )
+        advanceUntilIdle()
+
+        h.viewModel.onUseBiometric(biometricActivity)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_biometric_failed,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `a grant removed between the gate check and the prompt stays unavailable`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = true,
+            deviceGrantToken = null
+        )
+        advanceUntilIdle()
+
+        h.viewModel.onUseBiometric(biometricActivity)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_biometric_unavailable,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertFalse(h.viewModel.uiState.value.biometricAvailable)
+        coVerify(exactly = 0) { h.authRepository.loginWithDeviceGrant(any()) }
+    }
+
+    @Test
+    fun `a generic biometric exchange failure points at the password`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = true
+        )
+        advanceUntilIdle()
+        coEvery { h.authRepository.loginWithDeviceGrant(any()) } returns
+            Result.failure(ApiError.Server(500, "boom"))
+
+        h.viewModel.onUseBiometric(biometricActivity)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_biometric_failed,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
     fun `a second passwordless tap while the ceremony runs is ignored`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
