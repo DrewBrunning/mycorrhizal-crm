@@ -122,6 +122,25 @@ Three candidate designs were evaluated:
 | 7. Security docs | `masvs-l1.md` P7, `asvs-l2.md` P7, `data-retention-lifecycle.md` §8 note |
 | 8. Tests | Controller state machine, settings VM + screen, root branch, lock VM + screen, prompt-posture guard |
 
+## Addendum — login-screen biometric re-auth (discussion #2355 follow-up)
+
+The device grant is now also offered on the **unauthenticated login screen** as **Sign in with
+biometrics**, not only as the invisible 401 resume and the app-lock gate:
+
+- The action appears only when the active profile still owns a stored grant for the URL currently in
+  the server field and the device can complete the OS check; editing the URL to another server hides
+  it (a grant is never sent to a different origin).
+- Tapping it runs the same CryptoObject-bound `BiometricPrompt` as the app lock, then exchanges the
+  stored grant at `POST /auth/device/session` and persists the session through the normal login path
+  (`AuthRepository.loginWithDeviceGrant`). The server still sees one possession factor.
+- An **explicit logout keeps the grant** so biometric sign-in remains available next time, matching
+  the opt-in the user gave. Logging out ends the session and clears app data, but does not by itself
+  remove the device credential. **Turn off biometric sign-in** in Settings, or switching App lock
+  off, revokes the grant on the server first (fail-closed) and removes it locally; password
+  change/reset, 2FA posture changes and account deletion also revoke it server-side.
+- The app lock is unchanged: it still gates resumed sessions, and a fresh interactive login
+  (password/passkey/API token/2FA/OIDC/biometric re-auth) is not gated.
+
 ## Consequences
 
 - **Positive:** a lost/stolen-unlocked-device attacker (the threat-model actor this closes) must now

@@ -107,6 +107,16 @@
     <string name="login_two_factor_passkey_no_provider_only_description">Tu cuenta usa una llave de acceso, pero este dispositivo no tiene ningún proveedor de llaves de acceso configurado. Introduce uno de tus códigos de recuperación para iniciar sesión.</string>
     <string name="login_error_passkey_failed">Falló el inicio de sesión con llave de acceso. Inténtalo de nuevo o introduce un código.</string>
     <string name="login_error_passkey_no_match">No se encontró ninguna llave de acceso coincidente en este dispositivo. Inténtalo de nuevo o introduce un código.</string>
+    <string name="login_sign_in_with_passkey">Iniciar sesión con una llave de acceso</string>
+    <string name="login_error_passkey_failed_password">Falló el inicio de sesión con llave de acceso. Inténtalo de nuevo o usa tu contraseña.</string>
+    <string name="login_error_passkey_no_match_password">No se encontró ninguna llave de acceso coincidente en este dispositivo. Inténtalo de nuevo o usa tu contraseña.</string>
+    <string name="login_error_passkey_unavailable_password">Las llaves de acceso no están disponibles en esta app para este servidor. Usa tu contraseña.</string>
+    <string name="login_sign_in_with_biometrics">Iniciar sesión con biometría</string>
+    <string name="login_biometric_prompt_title">Iniciar sesión con biometría</string>
+    <string name="login_biometric_prompt_subtitle">Desbloquea este dispositivo para iniciar sesión.</string>
+    <string name="login_biometric_prompt_cancel">Cancelar</string>
+    <string name="login_error_biometric_failed">Falló el inicio de sesión con biometría. Inténtalo de nuevo o usa tu contraseña.</string>
+    <string name="login_error_biometric_unavailable">El inicio de sesión con biometría no está disponible en este dispositivo o para este servidor. Usa tu contraseña.</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">¿No tienes cuenta? Crea una</string>

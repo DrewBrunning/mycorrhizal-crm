@@ -245,6 +245,16 @@ Phone (have) + biometric (are) is verified
 *locally* by the OS; the server sees a single possession factor — the standard refresh-token model,
 which is how the docs describe it rather than claiming server-verified 2FA.
 
+**Login-screen re-auth (discussion #2355 follow-up).** The stored grant is now also offered as
+**Sign in with biometrics** on the unauthenticated login screen, not only as the invisible 401
+resume/app-lock path. The action appears only when the active profile owns a grant for the URL still
+in the server field (editing it to another origin hides the action); it runs the same CryptoObject
+prompt, then exchanges the grant and persists a normal session through
+`AuthRepository.loginWithDeviceGrant`. An explicit logout keeps the grant so the opt-in remains
+useful; **Turn off biometric sign-in** or switching App lock off revokes it server-first, and
+password/2FA posture changes revoke it server-side. Pinned by `LoginViewModelTest` (biometric
+availability, success/cancel/unavailable/revoked/lockout cases) and `AuthRepositoryImplTest`.
+
 ### P8 — Embedded local store: field-level at-rest encryption + FBE, with accepted plaintext residue (issue #1262)
 
 The local-only Android mode (ADR 0028 Decision 2) runs the real Go backend on the device, so a `Local`

@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.data.session.DefaultSessionManager
 import com.mycorrhizal.crm.data.session.FakeSessionPrefsStorage
 import com.mycorrhizal.crm.data.session.FakeTokenStorage
 import com.mycorrhizal.crm.domain.repository.LoginOutcome
+import com.mycorrhizal.crm.domain.repository.PasswordlessPasskeyChallenge
 import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.EnabledContactFieldsResponse
@@ -15,6 +16,7 @@ import com.mycorrhizal.crm.model.network.UserProfile
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.LoginResult
+import com.mycorrhizal.crm.network.PasswordlessLoginBegin
 import com.mycorrhizal.crm.network.ReissuedTokenResult
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -1134,6 +1136,89 @@ class AuthRepositoryImplTest {
         assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
     }
 
+    // --- Discussion #2355 passwordless discoverable passkey ---
+
+    @Test
+    fun `beginPasswordlessPasskeyLogin maps the challenge`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.webauthnPasswordlessLoginBegin() } returns Result.success(
+            PasswordlessLoginBegin("tok-1", """{"challenge":"abc"}""")
+        )
+
+        assertEquals(
+            PasswordlessPasskeyChallenge("tok-1", """{"challenge":"abc"}"""),
+            h.repository.beginPasswordlessPasskeyLogin().getOrThrow()
+        )
+    }
+
+    @Test
+    fun `beginPasswordlessPasskeyLogin surfaces a begin failure`() = runTest {
+        val h = Harness()
+        coEvery { h.apiClient.webauthnPasswordlessLoginBegin() } returns Result.failure(
+            ApiError.Client(409, "Passkeys not configured")
+        )
+
+        val error = h.repository.beginPasswordlessPasskeyLogin().exceptionOrNull() as ApiError
+        assertEquals(409, (error as ApiError.Client).code)
+        assertEquals("Passkeys not configured", error.message)
+    }
+
+    @Test
+    fun `completePasswordlessPasskeyLogin persists the session and profile`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        coEvery {
+            h.apiClient.webauthnPasswordlessLoginFinish("tok-1", "{assertion}")
+        } returns Result.success(LoginResult(token = "jwt-pl", language = "en", dateFormat = "eu"))
+        coEvery { h.apiClient.currentUser() } returns Result.success(
+            UserProfile(id = 9, username = "alice", language = "en")
+        )
+
+        val result = h.repository.completePasswordlessPasskeyLogin(
+            PasswordlessPasskeyChallenge("tok-1", """{"challenge":"abc"}"""),
+            "{assertion}"
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals("jwt-pl", h.sessionManager.bearerToken())
+        assertTrue(h.sessionManager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
+    fun `completePasswordlessPasskeyLogin rolls back on a failed profile fetch`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        coEvery {
+            h.apiClient.webauthnPasswordlessLoginFinish("tok-1", "{assertion}")
+        } returns Result.success(LoginResult(token = "jwt-pl", language = null, dateFormat = null))
+        coEvery { h.apiClient.currentUser() } returns Result.failure(ApiError.Server(500, "boom"))
+
+        val result = h.repository.completePasswordlessPasskeyLogin(
+            PasswordlessPasskeyChallenge("tok-1", "{}"),
+            "{assertion}"
+        )
+
+        assertTrue(result.isFailure)
+        assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
+    fun `completePasswordlessPasskeyLogin fails when no token is returned`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        coEvery {
+            h.apiClient.webauthnPasswordlessLoginFinish(any(), any())
+        } returns Result.success(LoginResult(token = null, language = null, dateFormat = null))
+
+        val result = h.repository.completePasswordlessPasskeyLogin(
+            PasswordlessPasskeyChallenge("tok-1", "{}"),
+            "{assertion}"
+        )
+
+        assertTrue((result.exceptionOrNull() as ApiError) is ApiError.Parse)
+        assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
+    }
+
     @Test
     fun `setupTwoFactor maps a code proof to a trimmed code`() = runTest {
         val h = Harness()
@@ -1172,5 +1257,36 @@ class AuthRepositoryImplTest {
         val error = h.repository.setupTwoFactor(SecondFactorProof.Code("0")).exceptionOrNull()
 
         assertEquals(400, (error as ApiError.Client).code)
+    }
+
+    @Test
+    fun `loginWithDeviceGrant exchanges the grant and persists the session`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        coEvery { h.apiClient.exchangeDeviceSession("grant-token") } returns
+            Result.success("jwt-grant")
+        coEvery { h.apiClient.currentUser() } returns Result.success(
+            UserProfile(id = 3, username = "alice", language = "en")
+        )
+
+        val result = h.repository.loginWithDeviceGrant("grant-token")
+
+        assertTrue(result.isSuccess)
+        assertEquals("jwt-grant", h.sessionManager.bearerToken())
+        assertTrue(h.sessionManager.observeSession().first().isLoggedIn)
+    }
+
+    @Test
+    fun `loginWithDeviceGrant rolls back on a failed profile fetch`() = runTest {
+        val h = Harness()
+        h.sessionManager.setServerUrl("https://crm.example.com")
+        coEvery { h.apiClient.exchangeDeviceSession("grant-token") } returns
+            Result.success("jwt-grant")
+        coEvery { h.apiClient.currentUser() } returns Result.failure(ApiError.Server(500, "boom"))
+
+        val result = h.repository.loginWithDeviceGrant("grant-token")
+
+        assertTrue(result.isFailure)
+        assertFalse(h.sessionManager.observeSession().first().isLoggedIn)
     }
 }

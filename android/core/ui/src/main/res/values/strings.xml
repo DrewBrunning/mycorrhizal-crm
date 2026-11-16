@@ -102,6 +102,16 @@
     <string name="login_two_factor_passkey_no_provider_only_description">Your account uses a passkey, but this device has no passkey provider set up. Enter one of your recovery codes to sign in.</string>
     <string name="login_error_passkey_failed">Passkey sign-in failed. Please try again or enter a code.</string>
     <string name="login_error_passkey_no_match">No matching passkey was found on this device. Try again or enter a code.</string>
+    <string name="login_sign_in_with_passkey">Sign in with a passkey</string>
+    <string name="login_error_passkey_failed_password">Passkey sign-in failed. Please try again or use your password.</string>
+    <string name="login_error_passkey_no_match_password">No matching passkey was found on this device. Try again or use your password.</string>
+    <string name="login_error_passkey_unavailable_password">Passkeys aren\'t available on this app for this server. Use your password.</string>
+    <string name="login_sign_in_with_biometrics">Sign in with biometrics</string>
+    <string name="login_biometric_prompt_title">Sign in with biometrics</string>
+    <string name="login_biometric_prompt_subtitle">Unlock this device to sign in.</string>
+    <string name="login_biometric_prompt_cancel">Cancel</string>
+    <string name="login_error_biometric_failed">Biometric sign-in failed. Please try again or use your password.</string>
+    <string name="login_error_biometric_unavailable">Biometric sign-in isn\'t available on this device or for this server. Use your password.</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">No account? Create one</string>

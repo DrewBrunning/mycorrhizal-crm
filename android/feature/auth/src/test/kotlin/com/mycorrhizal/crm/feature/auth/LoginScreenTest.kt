@@ -45,6 +45,8 @@ class LoginScreenTest {
         onSubmit: (String, String, String, String) -> Unit = { _, _, _, _ -> },
         onTwoFactorSubmit: (String) -> Unit = {},
         onUsePasskey: () -> Unit = {},
+        onUsePasswordlessPasskey: () -> Unit = {},
+        onUseBiometric: () -> Unit = {},
         onBackToCredentials: () -> Unit = {}
     ) {
         composeTestRule.setContent {
@@ -56,6 +58,8 @@ class LoginScreenTest {
                     onSubmit = onSubmit,
                     onTwoFactorSubmit = onTwoFactorSubmit,
                     onUsePasskey = onUsePasskey,
+                    onUsePasswordlessPasskey = onUsePasswordlessPasskey,
+                    onUseBiometric = onUseBiometric,
                     onBackToCredentials = onBackToCredentials
                 )
             }
@@ -68,6 +72,63 @@ class LoginScreenTest {
     fun `a network failure is shown in German`() {
         setContent(uiState = LoginUiState(error = ApiError.Network(UnknownHostException())))
         composeTestRule.onNodeWithText("Keine Verbindung").assertIsDisplayed()
+    }
+
+    // --- Discussion #2355: login-screen alternatives ---
+
+    @Test
+    fun `an available passkey offers passwordless sign-in and invokes its action`() {
+        var used = 0
+        setContent(
+            uiState = LoginUiState(
+                serverUrl = "https://crm.example.com",
+                passkeyAvailable = true
+            ),
+            onUsePasswordlessPasskey = { used++ }
+        )
+        composeTestRule.onNodeWithText("Sign in with a passkey")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+        assertEquals(1, used)
+    }
+
+    @Test
+    fun `an available device grant offers biometric sign-in and invokes its action`() {
+        var used = 0
+        setContent(
+            uiState = LoginUiState(
+                serverUrl = "https://crm.example.com",
+                biometricAvailable = true
+            ),
+            onUseBiometric = { used++ }
+        )
+        composeTestRule.onNodeWithText("Sign in with biometrics")
+            .performScrollTo()
+            .assertIsDisplayed()
+            .performClick()
+        assertEquals(1, used)
+    }
+
+    @Test
+    fun `the login alternatives are hidden when their gates are closed`() {
+        setContent(uiState = LoginUiState(serverUrl = "https://crm.example.com"))
+        composeTestRule.onNodeWithText("Sign in with a passkey").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Sign in with biometrics").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the login alternatives are not offered in api token mode`() {
+        setContent(
+            uiState = LoginUiState(
+                serverUrl = "https://crm.example.com",
+                mode = LoginMode.API_TOKEN,
+                passkeyAvailable = true,
+                biometricAvailable = true
+            )
+        )
+        composeTestRule.onNodeWithText("Sign in with a passkey").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Sign in with biometrics").assertDoesNotExist()
     }
 
     @Test

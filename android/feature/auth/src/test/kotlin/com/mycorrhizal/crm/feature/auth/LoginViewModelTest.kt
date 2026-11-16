@@ -1,6 +1,9 @@
 package com.mycorrhizal.crm.feature.auth
 
+import android.app.Activity
 import app.cash.turbine.test
+import com.mycorrhizal.crm.data.auth.LocalAuthOutcome
+import com.mycorrhizal.crm.data.auth.LocalAuthPrompt
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.passkey.PasskeyIssue
 import com.mycorrhizal.crm.data.passkey.PasskeyResult
@@ -11,7 +14,10 @@ import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.data.session.SessionPrefsStorage
 import com.mycorrhizal.crm.data.session.TokenStorage
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.DeviceGrantRepository
+import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
 import com.mycorrhizal.crm.domain.repository.LoginOutcome
+import com.mycorrhizal.crm.domain.repository.PasswordlessPasskeyChallenge
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.usecase.LoginUseCase
 import com.mycorrhizal.crm.domain.usecase.LoginWithApiTokenUseCase
@@ -43,14 +49,33 @@ class LoginViewModelTest {
         val viewModel: LoginViewModel,
         val authRepository: AuthRepository,
         val sessionManager: SessionManager,
-        val passkeyClient: FakePasskeyClient
+        val passkeyClient: FakePasskeyClient,
+        val deviceGrantRepository: DeviceGrantRepository,
+        val localAuthPrompt: RecordingLocalAuthPrompt
     )
+
+    private class RecordingLocalAuthPrompt(var outcome: LocalAuthOutcome) : LocalAuthPrompt {
+        var calls = 0
+
+        override suspend fun requestUnlock(
+            activity: Activity,
+            title: String,
+            subtitle: String,
+            negativeButtonText: String?
+        ): LocalAuthOutcome {
+            calls++
+            return outcome
+        }
+    }
 
     private fun harness(
         storedServerUrl: String? = null,
         passkeyAvailable: Boolean = false,
         passkeyAvailableProvider: (() -> Boolean)? = null,
-        passkeyClient: FakePasskeyClient = FakePasskeyClient()
+        passkeyClient: FakePasskeyClient = FakePasskeyClient(),
+        biometricAvailable: Boolean = false,
+        deviceGrantToken: String? = "grant-token",
+        localAuthOutcome: LocalAuthOutcome = LocalAuthOutcome.SUCCESS
     ): Harness {
         val authRepository = mockk<AuthRepository>()
         coEvery { authRepository.observeSession() } returns MutableStateFlow(SessionState())
@@ -62,6 +87,12 @@ class LoginViewModelTest {
         // server URL so the login screen can pre-fill it after a logout.
         coEvery { sessionManager.awaitHydrated() } returns Unit
         coEvery { sessionManager.serverUrl() } returns storedServerUrl
+        val deviceGrantRepository = mockk<DeviceGrantRepository>()
+        coEvery { deviceGrantRepository.hasStoredGrantFor(any()) } returns biometricAvailable
+        coEvery { deviceGrantRepository.storedGrantToken() } returns deviceGrantToken
+        val localAuthCapabilities = mockk<LocalAuthCapabilities>()
+        every { localAuthCapabilities.canEnableLocalAuth() } returns biometricAvailable
+        val localAuthPrompt = RecordingLocalAuthPrompt(localAuthOutcome)
         val viewModel = LoginViewModel(
             loginUseCase = LoginUseCase(authRepository),
             loginWithApiTokenUseCase = LoginWithApiTokenUseCase(authRepository),
@@ -71,9 +102,19 @@ class LoginViewModelTest {
                 passkeyAvailableProvider?.invoke()
                     ?: passkeyAvailable
             },
-            passkeyClient = passkeyClient
+            passkeyClient = passkeyClient,
+            deviceGrantRepository = deviceGrantRepository,
+            localAuthCapabilities = localAuthCapabilities,
+            localAuthPrompt = localAuthPrompt
         )
-        return Harness(viewModel, authRepository, sessionManager, passkeyClient)
+        return Harness(
+            viewModel,
+            authRepository,
+            sessionManager,
+            passkeyClient,
+            deviceGrantRepository,
+            localAuthPrompt
+        )
     }
 
     private fun submit(
@@ -175,7 +216,10 @@ class LoginViewModelTest {
                 sessionManager = manager,
                 authRepository = authRepository,
                 passkeyAvailability = PasskeyAvailability { false },
-                passkeyClient = FakePasskeyClient()
+                passkeyClient = FakePasskeyClient(),
+                deviceGrantRepository = mockk<DeviceGrantRepository>(relaxed = true),
+                localAuthCapabilities = mockk<LocalAuthCapabilities>(relaxed = true),
+                localAuthPrompt = LocalAuthPrompt { _, _, _, _ -> LocalAuthOutcome.NOT_AVAILABLE }
             )
             advanceUntilIdle()
 
@@ -203,7 +247,10 @@ class LoginViewModelTest {
                 sessionManager = manager,
                 authRepository = authRepository,
                 passkeyAvailability = PasskeyAvailability { false },
-                passkeyClient = FakePasskeyClient()
+                passkeyClient = FakePasskeyClient(),
+                deviceGrantRepository = mockk<DeviceGrantRepository>(relaxed = true),
+                localAuthCapabilities = mockk<LocalAuthCapabilities>(relaxed = true),
+                localAuthPrompt = LocalAuthPrompt { _, _, _, _ -> LocalAuthOutcome.NOT_AVAILABLE }
             )
             advanceUntilIdle()
 
@@ -424,6 +471,11 @@ class LoginViewModelTest {
             asked++
             true
         })
+        // The credentials step now consults the gate for its own optional
+        // passwordless action; reset the counter before the 2FA login so this
+        // test still pins "a TOTP-only account's 2FA prompt does not ask".
+        advanceUntilIdle()
+        asked = 0
         assertEquals(
             SecondFactorPrompt.STANDARD,
             loginWithMethods(h, listOf("totp")).twoFactorPrompt
@@ -895,6 +947,438 @@ class LoginViewModelTest {
             assertTrue(awaitItem() is LoginEvent.LoggedIn)
         }
         assertFalse(h.viewModel.uiState.value.twoFactorStep)
+    }
+
+    // --- Discussion #2355: passwordless passkey from the credentials step ---
+
+    @Test
+    fun `the credentials step offers passkey sign-in when the gate is open`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(passkeyAvailable = true)
+        advanceUntilIdle()
+
+        assertTrue(h.viewModel.uiState.value.passkeyAvailable)
+    }
+
+    @Test
+    fun `the credentials step hides passkey sign-in when the gate is closed`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(passkeyAvailable = false)
+        advanceUntilIdle()
+
+        assertFalse(h.viewModel.uiState.value.passkeyAvailable)
+    }
+
+    @Test
+    fun `passwordless passkey completes the login and emits LoggedIn`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            passkeyAvailable = true
+        )
+        advanceUntilIdle()
+        val challenge = PasswordlessPasskeyChallenge(
+            "tok-1",
+            """{"publicKey":{"challenge":"c"}}"""
+        )
+        coEvery { h.authRepository.beginPasswordlessPasskeyLogin() } returns
+            Result.success(challenge)
+        h.passkeyClient.getResult = PasskeyResult.Success("""{"id":"asserted"}""")
+        coEvery {
+            h.authRepository.completePasswordlessPasskeyLogin(
+                challenge,
+                """{"id":"asserted"}"""
+            )
+        } returns Result.success(Unit)
+
+        h.viewModel.events.test {
+            h.viewModel.onUsePasswordlessPasskey(context)
+            advanceUntilIdle()
+            assertEquals(LoginEvent.ServerUrlUpdated, awaitItem())
+            assertEquals(LoginEvent.LoggedIn, awaitItem())
+        }
+
+        assertEquals(
+            listOf("""{"publicKey":{"challenge":"c"}}"""),
+            h.passkeyClient.requested
+        )
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `a dismissed passwordless prompt is silent and keeps the form`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            passkeyAvailable = true
+        )
+        advanceUntilIdle()
+        coEvery { h.authRepository.beginPasswordlessPasskeyLogin() } returns
+            Result.success(PasswordlessPasskeyChallenge("tok", "{}"))
+        h.passkeyClient.getResult = PasskeyResult.Cancelled
+
+        h.viewModel.onUsePasswordlessPasskey(context)
+        advanceUntilIdle()
+
+        val state = h.viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.errorRes)
+        assertNull(state.error)
+        assertTrue(state.passkeyAvailable)
+    }
+
+    @Test
+    fun `no matching passwordless passkey points at the password form`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            passkeyAvailable = true
+        )
+        advanceUntilIdle()
+        coEvery { h.authRepository.beginPasswordlessPasskeyLogin() } returns
+            Result.success(PasswordlessPasskeyChallenge("tok", "{}"))
+        h.passkeyClient.getResult = PasskeyResult.NoMatchingPasskey
+
+        h.viewModel.onUsePasswordlessPasskey(context)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_passkey_no_match_password,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `a closed server gate explains and never prompts the provider`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            passkeyAvailable = false
+        )
+        advanceUntilIdle()
+
+        h.viewModel.onUsePasswordlessPasskey(context)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_passkey_unavailable_password,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertFalse(h.viewModel.uiState.value.passkeyAvailable)
+        coVerify(exactly = 0) { h.authRepository.beginPasswordlessPasskeyLogin() }
+        assertTrue(h.passkeyClient.requested.isEmpty())
+    }
+
+    @Test
+    fun `association and provider failures hide the passwordless action`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        for (failure in listOf(PasskeyResult.NotAssociated, PasskeyResult.NoProvider)) {
+            val h = harness(
+                storedServerUrl = "https://crm.example.com",
+                passkeyAvailable = true
+            )
+            advanceUntilIdle()
+            coEvery { h.authRepository.beginPasswordlessPasskeyLogin() } returns
+                Result.success(PasswordlessPasskeyChallenge("tok", "{}"))
+            h.passkeyClient.getResult = failure
+
+            h.viewModel.onUsePasswordlessPasskey(context)
+            advanceUntilIdle()
+
+            assertEquals(
+                R.string.login_error_passkey_unavailable_password,
+                h.viewModel.uiState.value.errorRes
+            )
+            assertFalse(h.viewModel.uiState.value.passkeyAvailable)
+        }
+    }
+
+    @Test
+    fun `a passwordless begin failure explains why and does not prompt`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            passkeyAvailable = true
+        )
+        advanceUntilIdle()
+        coEvery { h.authRepository.beginPasswordlessPasskeyLogin() } returns
+            Result.failure(ApiError.Client(409, "FRONTEND_URL is not configured"))
+
+        h.viewModel.onUsePasswordlessPasskey(context)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_passkey_unavailable_password,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertTrue(h.passkeyClient.requested.isEmpty())
+    }
+
+    @Test
+    fun `a rejected passwordless assertion points at the password form`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            passkeyAvailable = true
+        )
+        advanceUntilIdle()
+        val challenge = PasswordlessPasskeyChallenge("tok", "{}")
+        coEvery { h.authRepository.beginPasswordlessPasskeyLogin() } returns
+            Result.success(challenge)
+        coEvery {
+            h.authRepository.completePasswordlessPasskeyLogin(any(), any())
+        } returns Result.failure(ApiError.Client(401, "Passkey could not be verified"))
+
+        h.viewModel.onUsePasswordlessPasskey(context)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_passkey_failed_password,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `a passwordless lockout surfaces the server text`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            passkeyAvailable = true
+        )
+        advanceUntilIdle()
+        val challenge = PasswordlessPasskeyChallenge("tok", "{}")
+        coEvery { h.authRepository.beginPasswordlessPasskeyLogin() } returns
+            Result.success(challenge)
+        coEvery {
+            h.authRepository.completePasswordlessPasskeyLogin(any(), any())
+        } returns Result.failure(ApiError.Client(429, "Too many failed login attempts"))
+
+        h.viewModel.onUsePasswordlessPasskey(context)
+        advanceUntilIdle()
+
+        assertEquals(
+            "Too many failed login attempts",
+            h.viewModel.uiState.value.error?.message
+        )
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `passwordless passkey validates the server url before prompting`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(passkeyAvailable = true)
+        advanceUntilIdle()
+
+        h.viewModel.onUsePasswordlessPasskey(context)
+        advanceUntilIdle()
+
+        assertEquals(R.string.login_error_valid_server_url, h.viewModel.uiState.value.errorRes)
+        coVerify(exactly = 0) { h.authRepository.beginPasswordlessPasskeyLogin() }
+    }
+
+    @Test
+    fun `a second passwordless tap while the ceremony runs is ignored`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            passkeyAvailable = true
+        )
+        advanceUntilIdle()
+        val challenge = PasswordlessPasskeyChallenge("tok", "{}")
+        coEvery { h.authRepository.beginPasswordlessPasskeyLogin() } returns
+            Result.success(challenge)
+        coEvery {
+            h.authRepository.completePasswordlessPasskeyLogin(any(), any())
+        } returns Result.success(Unit)
+
+        h.viewModel.onUsePasswordlessPasskey(context)
+        h.viewModel.onUsePasswordlessPasskey(context)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { h.authRepository.beginPasswordlessPasskeyLogin() }
+    }
+
+    // --- Issue #722 follow-up: login-screen biometric re-auth ---
+
+    private val biometricActivity = mockk<Activity>(relaxed = true)
+
+    @Test
+    fun `the credentials step offers biometrics when a grant exists and the device supports it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val h = harness(
+                storedServerUrl = "https://crm.example.com",
+                biometricAvailable = true
+            )
+            advanceUntilIdle()
+
+            assertTrue(h.viewModel.uiState.value.biometricAvailable)
+        }
+
+    @Test
+    fun `biometric re-auth prompts then exchanges the stored grant for a session`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = true
+        )
+        advanceUntilIdle()
+        coEvery { h.authRepository.loginWithDeviceGrant("grant-token") } returns
+            Result.success(Unit)
+
+        h.viewModel.events.test {
+            h.viewModel.onUseBiometric(biometricActivity)
+            advanceUntilIdle()
+            assertEquals(LoginEvent.ServerUrlUpdated, awaitItem())
+            assertEquals(LoginEvent.LoggedIn, awaitItem())
+        }
+
+        assertEquals(1, h.localAuthPrompt.calls)
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `a dismissed biometric prompt is silent`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = true,
+            localAuthOutcome = LocalAuthOutcome.CANCELLED
+        )
+        advanceUntilIdle()
+
+        h.viewModel.onUseBiometric(biometricActivity)
+        advanceUntilIdle()
+
+        val state = h.viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.errorRes)
+        assertNull(state.error)
+        assertTrue(state.biometricAvailable)
+        coVerify(exactly = 0) { h.authRepository.loginWithDeviceGrant(any()) }
+    }
+
+    @Test
+    fun `an unavailable local check hides the action and points at the password`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = true,
+            localAuthOutcome = LocalAuthOutcome.NOT_AVAILABLE
+        )
+        advanceUntilIdle()
+
+        h.viewModel.onUseBiometric(biometricActivity)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_biometric_unavailable,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertFalse(h.viewModel.uiState.value.biometricAvailable)
+    }
+
+    @Test
+    fun `a revoked grant hides biometric sign-in and points at the password`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = true
+        )
+        advanceUntilIdle()
+        coEvery { h.authRepository.loginWithDeviceGrant(any()) } returns
+            Result.failure(ApiError.Client(401, "Unknown grant"))
+
+        h.viewModel.onUseBiometric(biometricActivity)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_biometric_unavailable,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertFalse(h.viewModel.uiState.value.biometricAvailable)
+    }
+
+    @Test
+    fun `a biometric lockout surfaces the server text`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = true
+        )
+        advanceUntilIdle()
+        coEvery { h.authRepository.loginWithDeviceGrant(any()) } returns
+            Result.failure(ApiError.Client(429, "Too many failed login attempts"))
+
+        h.viewModel.onUseBiometric(biometricActivity)
+        advanceUntilIdle()
+
+        assertEquals(
+            "Too many failed login attempts",
+            h.viewModel.uiState.value.error?.message
+        )
+        assertFalse(h.viewModel.uiState.value.isLoading)
+    }
+
+    @Test
+    fun `no grant means no biometric prompt`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = false
+        )
+        advanceUntilIdle()
+
+        h.viewModel.onUseBiometric(biometricActivity)
+        advanceUntilIdle()
+
+        assertEquals(
+            R.string.login_error_biometric_unavailable,
+            h.viewModel.uiState.value.errorRes
+        )
+        assertEquals(0, h.localAuthPrompt.calls)
+        coVerify(exactly = 0) { h.authRepository.loginWithDeviceGrant(any()) }
+    }
+
+    @Test
+    fun `editing the server url hides a grant belonging to another profile`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val h = harness(
+            storedServerUrl = "https://crm.example.com",
+            biometricAvailable = true
+        )
+        advanceUntilIdle()
+        assertTrue(h.viewModel.uiState.value.biometricAvailable)
+
+        // The harness only has a grant for the stored URL; the gate must close
+        // once the form points elsewhere.
+        coEvery {
+            h.deviceGrantRepository.hasStoredGrantFor("https://other.example.com")
+        } returns false
+        h.viewModel.onServerUrlChange("https://other.example.com")
+        advanceUntilIdle()
+
+        assertFalse(h.viewModel.uiState.value.biometricAvailable)
     }
 
     // Issue #678: the authenticating leg of the session state machine. While a

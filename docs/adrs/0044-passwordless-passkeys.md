@@ -96,8 +96,11 @@ authenticator has no discoverable credential for this relying party.
 
 ## Consequences
 
-- Web users get standard passwordless passkey sign-in. Android keeps its existing second-factor flow
-  until it adopts the same two endpoints; the backend path is platform-neutral.
+- Web and Android get standard passwordless passkey sign-in; Android uses the same two endpoints
+  through Credential Manager. The existing password + passkey second-factor path remains for
+  non-discoverable keys. Android's separate device-grant biometric flow is also exposed on the login
+  screen (ADR 0014 addendum), so an enrolled install can choose either a passkey or its stored
+  biometric credential.
 - A passkey can now be a single factor. `asvs-l2.md` V2.3.2/V2.8.7 and the threat model record that,
   with user verification required.
 - Passkeys created by a non-discoverable authenticator still work, but only as a second factor.

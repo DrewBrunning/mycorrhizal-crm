@@ -54,6 +54,16 @@ sealed interface LoginOutcome {
 }
 
 /**
+ * Passwordless discoverable-passkey challenge (discussion #2355): the one-use
+ * server ceremony token plus the raw PublicKeyCredentialRequestOptions JSON.
+ * Both are transient; neither is persisted.
+ */
+data class PasswordlessPasskeyChallenge(
+    val ceremonyToken: String,
+    val optionsJson: String
+)
+
+/**
  * Authentication and session management.
  */
 interface AuthRepository {
@@ -94,6 +104,33 @@ interface AuthRepository {
      * success or a failed profile fetch consumes it.
      */
     suspend fun completePasskeyLogin(assertionJson: String): Result<Unit>
+
+    /**
+     * Discussion #2355: begin a passwordless, client-side discoverable passkey
+     * login. No password or `2fa_pending` challenge is involved; the returned
+     * challenge carries the one-use ceremony token and the raw assertion
+     * options. The server resolves the account from the credential.
+     */
+    suspend fun beginPasswordlessPasskeyLogin(): Result<PasswordlessPasskeyChallenge>
+
+    /**
+     * Discussion #2355: complete the passwordless ceremony and persist the
+     * session through exactly the same path as [login] / [completePasskeyLogin]
+     * (persist token, then profile fetch, rolling back on a failed fetch).
+     */
+    suspend fun completePasswordlessPasskeyLogin(
+        challenge: PasswordlessPasskeyChallenge,
+        assertionJson: String
+    ): Result<Unit>
+
+    /**
+     * Issue #722 / discussion #2355 follow-up: turn possession of an enrolled
+     * device grant — presented only after the local biometric/device-credential
+     * prompt succeeded — into a real session. This is the login-screen
+     * re-auth path, distinct from [DeviceGrantRepository.exchangeDeviceSession],
+     * which refreshes an existing session past JWT expiry.
+     */
+    suspend fun loginWithDeviceGrant(deviceToken: String): Result<Unit>
 
     /** Authenticate with a `mycorrhizal_` API token (no password; bypasses 2FA). */
     suspend fun loginWithApiToken(token: String): Result<Unit>

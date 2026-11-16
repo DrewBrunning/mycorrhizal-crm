@@ -325,6 +325,7 @@ import com.mycorrhizal.crm.model.network.WebhookInput
 import com.mycorrhizal.crm.model.network.WebhookTestResponse
 import com.mycorrhizal.crm.model.network.WebhooksResponse
 import com.mycorrhizal.crm.model.network.stripProjectedEntries
+import com.squareup.moshi.JsonReader
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import java.util.concurrent.TimeUnit
@@ -336,6 +337,7 @@ import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okio.Buffer
 
 /**
  * Hand-written typed client for the Phase-1 backend surface (login, current
@@ -452,6 +454,53 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
                 moshi.adapter(
                     LoginResponse::class.java
                 ).fromJson(body)
+            }.getOrNull()
+            LoginResult(
+                token = extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE),
+                language = loginResponse?.language,
+                dateFormat = loginResponse?.dateFormat
+            )
+        }
+    }
+
+    /**
+     * POST /api/v1/webauthn/login/passwordless/begin — passwordless passkey
+     * login (discussion #2355). Public: no password and no `2fa_pending`
+     * cookie. Returns the one-use ceremony token plus the raw
+     * PublicKeyCredentialRequestOptions JSON.
+     */
+    suspend fun webauthnPasswordlessLoginBegin(): Result<PasswordlessLoginBegin> {
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/login/passwordless/begin".toHttpUrl())
+            .post(ByteArray(0).toRequestBody(null))
+            .build()
+        return execute(request) { _, body -> parsePasswordlessLoginBegin(body) }
+    }
+
+    /**
+     * POST /api/v1/webauthn/login/passwordless/finish — [credentialJson] is the
+     * serialized PublicKeyCredential from the authenticator, sent verbatim as
+     * the body's `assertion` object alongside the ceremony token. On success
+     * the real `auth_token` cookie is captured exactly like [webauthnLoginFinish].
+     */
+    suspend fun webauthnPasswordlessLoginFinish(
+        ceremonyToken: String,
+        credentialJson: String
+    ): Result<LoginResult> {
+        if (!isJsonObject(credentialJson)) {
+            return Result.failure(ApiError.Parse(ASSERTION_NOT_OBJECT))
+        }
+        val tokenJson = moshi.adapter(String::class.java).toJson(ceremonyToken)
+        val body = """{"ceremony_token":$tokenJson,"assertion":$credentialJson}"""
+        val request = Request.Builder()
+            .url("$PLACEHOLDER_ORIGIN$WEBAUTHN_PATH/login/passwordless/finish".toHttpUrl())
+            .post(body.toRequestBody(jsonMediaType))
+            .build()
+        return execute(request) { response, responseBody ->
+            val loginResponse = runCatching {
+                moshi.adapter(
+                    LoginResponse::class.java
+                ).fromJson(responseBody)
             }.getOrNull()
             LoginResult(
                 token = extractCookie(response.headers("Set-Cookie"), AUTH_COOKIE),
@@ -4223,8 +4272,36 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             }
         }
 
-    // detekt(TooGenericExceptionCaught): same request-boundary rationale as
-    // executeGetBytes — every failure funnels through toApiError().
+    /**
+     * Extracts `ceremony_token` and the raw `publicKey` object from the
+     * passwordless begin response. The publicKey member is kept verbatim for
+     * Credential Manager; a missing/blank token or options object fails closed.
+     */
+    @Suppress("TooGenericExceptionCaught", "SwallowedException")
+    private fun parsePasswordlessLoginBegin(body: String): PasswordlessLoginBegin? = try {
+        val reader = JsonReader.of(Buffer().writeUtf8(body))
+        var token: String? = null
+        var publicKey: String? = null
+        reader.beginObject()
+        while (reader.hasNext()) {
+            when (reader.nextName()) {
+                "ceremony_token" -> token = reader.nextString()
+                "publicKey" -> publicKey = reader.nextSource().readUtf8()
+                else -> reader.skipValue()
+            }
+        }
+        reader.endObject()
+        val ceremonyToken = token
+        val optionsJson = publicKey
+        if (ceremonyToken.isNullOrBlank() || optionsJson.isNullOrBlank()) {
+            null
+        } else {
+            PasswordlessLoginBegin(ceremonyToken, optionsJson)
+        }
+    } catch (e: Exception) {
+        null
+    }
+
     @Suppress("TooGenericExceptionCaught")
     private suspend fun <T> execute(
         request: Request,
@@ -4505,6 +4582,13 @@ data class LoginResult(
     /** Issue #1293: enrolled second-factor tokens (see `SecondFactorMethod`); null from an older server. */
     val methods: List<String>? = null
 )
+
+/**
+ * Passwordless discoverable-passkey challenge: the one-use server ceremony
+ * token plus the raw PublicKeyCredentialRequestOptions JSON Credential Manager
+ * consumes. Neither value is persisted.
+ */
+data class PasswordlessLoginBegin(val ceremonyToken: String, val optionsJson: String)
 
 /**
  * A 2FA-management mutation whose success re-issued the caller's session
