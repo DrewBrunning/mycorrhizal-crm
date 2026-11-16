@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -199,6 +200,41 @@ func TestWebAuthn_PasswordlessLoginRejectsBadRequests(t *testing.T) {
 	assert.Equal(t, http.StatusConflict, w.Code)
 	w, _ = e.do("POST", "/webauthn/login/passwordless/finish", map[string]any{"ceremony_token": "x", "assertion": va.assertion("eA")}, "")
 	assert.Equal(t, http.StatusConflict, w.Code)
+}
+
+// TestWebAuthn_PasswordlessLoginEnvelopeBranches covers the missing-token and
+// unparseable-assertion paths.
+func TestWebAuthn_PasswordlessLoginEnvelopeBranches(t *testing.T) {
+	e := newWAEnv(t)
+	va := e.auth()
+	va.userHandle = []byte(fmt.Sprintf("user-%d", e.user.ID))
+	_, _, _ = e.enroll(va, "Laptop", e.session())
+
+	w, _ := e.do("POST", "/webauthn/login/passwordless/finish", map[string]any{
+		"assertion": va.assertion("eA"),
+	}, "")
+	assert.Equal(t, http.StatusBadRequest, w.Code, "a blank ceremony token is a missing field")
+
+	token, _ := e.passwordlessBegin()
+	w, _ = e.do("POST", "/webauthn/login/passwordless/finish", map[string]any{
+		"ceremony_token": token,
+		"assertion":      "not-an-object",
+	}, "")
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Empty(t, w.Result().Cookies())
+}
+
+// TestWebAuthn_PasswordlessLoginTokenGenerationFailure: the otherwise
+// unreachable crypto/rand failure still answers 500, never a session.
+func TestWebAuthn_PasswordlessLoginTokenGenerationFailure(t *testing.T) {
+	e := newWAEnv(t)
+	old := generateCeremonyToken
+	generateCeremonyToken = func() (string, error) { return "", errors.New("entropy exhausted") }
+	t.Cleanup(func() { generateCeremonyToken = old })
+
+	w, cookies := e.do("POST", "/webauthn/login/passwordless/begin", nil, "")
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Nil(t, cookies["auth_token"])
 }
 
 // TestWebAuthn_PasswordlessLoginStoreFailureIs500: a failing store must never

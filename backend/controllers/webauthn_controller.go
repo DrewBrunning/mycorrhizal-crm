@@ -347,6 +347,10 @@ func WebAuthnLoginFinish(c *gin.Context, cfg *config.Config) {
 	issueLoginSession(c, cfg, db, user)
 }
 
+// generateCeremonyToken is a test seam for the otherwise unreachable
+// crypto/rand failure path in WebAuthnPasswordlessLoginBegin.
+var generateCeremonyToken = services.GenerateStateToken
+
 // WebAuthnPasswordlessLoginBegin starts a client-side discoverable
 // (usernameless) passkey login. Unlike WebAuthnLoginBegin this needs no
 // password and no 2fa_pending cookie: the authenticator chooses a resident
@@ -362,7 +366,7 @@ func WebAuthnPasswordlessLoginBegin(c *gin.Context, cfg *config.Config) {
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Could not start passkey sign-in").WithError(err)) // # pragma: no cover — go-webauthn only errors here on an invalid Config, which NewWebAuthn already rejected
 		return
 	}
-	token, err := services.GenerateStateToken()
+	token, err := generateCeremonyToken()
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrInternal("Could not start passkey sign-in").WithError(err)) // # pragma: no cover — crypto/rand failure only
 		return
