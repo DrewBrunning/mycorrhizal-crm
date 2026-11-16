@@ -78,6 +78,9 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"PATCH /users/time-format": bindingFor(controllers.UpdateTimeFormatInput{}),
 	// Issue #1793: the handler binds a tiny inline {"name": ...} struct.
 	"PATCH /webauthn/credentials/{id}": {boundFieldsOverride: []string{"name"}},
+	"POST /webauthn/login/passwordless/finish": {
+		boundFieldsOverride: []string{"ceremony_token", "assertion"}, // webauthn_controller.go WebAuthnPasswordlessLoginFinish
+	},
 	"POST /check-password-strength": {
 		boundFieldsOverride: []string{"password"}, // user_controller.go CheckPasswordStrength
 	},
@@ -290,6 +293,7 @@ var noBodyMutatingRoutes = map[string]bool{
 	// anonymous-struct label — no Go request struct to pin against the schema.
 	"POST /webauthn/login/begin":                        true,
 	"POST /webauthn/login/finish":                       true,
+	"POST /webauthn/login/passwordless/begin":           true,
 	"POST /webauthn/register/begin":                     true,
 	"POST /webauthn/register/finish":                    true,
 	"POST /webauthn/assert/begin":                       true,

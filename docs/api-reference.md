@@ -81,6 +81,8 @@ Every request and response carries an `X-Request-ID` header created by the middl
 | `POST` | `/login/2fa` | Complete a two-step login with a TOTP or recovery code |
 | `POST` | `/webauthn/login/begin` | Start a passkey assertion for a pending two-step login (public, rate-limited) |
 | `POST` | `/webauthn/login/finish` | Complete a two-step login with a passkey assertion and set the session cookie |
+| `POST` | `/webauthn/login/passwordless/begin` | Start a passwordless, discoverable-passkey sign-in (public, rate-limited) |
+| `POST` | `/webauthn/login/passwordless/finish` | Complete a passwordless passkey sign-in and set the session cookie |
 | `POST` | `/webauthn/register/begin`, `/webauthn/register/finish` | Enroll a passkey (needs a live second-factor proof once one is already enrolled) |
 | `POST` | `/webauthn/assert/begin` | Start a passkey assertion used as the proof for removing a passkey or adding a factor |
 | `GET` | `/webauthn/credentials` | List the caller's passkeys |

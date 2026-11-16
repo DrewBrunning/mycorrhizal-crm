@@ -260,21 +260,25 @@ func buildTable(s seeded) map[string]authzRow {
 	contact := s.contact
 	return map[string]authzRow{
 		// --- public (no auth boundary) -------------------------------------
-		"GET /health":                          {class: classPublic},
-		"GET /health/live":                     {class: classPublic},
-		"GET /health/ready":                    {class: classPublic},
-		"GET /.well-known/assetlinks.json":     {class: classPublic}, // ADR 0034: Google fetches it; 404 unless native Android passkeys are effective
-		"GET /api/v1/auth/oidc/config":         {class: classPublic},
-		"GET /api/v1/config/map":               {class: classPublic}, // ADR 0031: MapLibre style URL bootstrap, deliberately narrow
-		"POST /api/v1/register":                {class: classPublic},
-		"POST /api/v1/login":                   {class: classPublic},
-		"POST /api/v1/login/2fa":               {class: classPublic},
-		"POST /api/v1/webauthn/login/begin":    {class: classPublic},
-		"POST /api/v1/webauthn/login/finish":   {class: classPublic},
-		"POST /api/v1/logout":                  {class: classPublic},
-		"POST /api/v1/check-password-strength": {class: classPublic},
-		"POST /api/v1/password-reset/request":  {class: classPublic},
-		"POST /api/v1/password-reset/confirm":  {class: classPublic},
+		"GET /health":                        {class: classPublic},
+		"GET /health/live":                   {class: classPublic},
+		"GET /health/ready":                  {class: classPublic},
+		"GET /.well-known/assetlinks.json":   {class: classPublic}, // ADR 0034: Google fetches it; 404 unless native Android passkeys are effective
+		"GET /api/v1/auth/oidc/config":       {class: classPublic},
+		"GET /api/v1/config/map":             {class: classPublic}, // ADR 0031: MapLibre style URL bootstrap, deliberately narrow
+		"POST /api/v1/register":              {class: classPublic},
+		"POST /api/v1/login":                 {class: classPublic},
+		"POST /api/v1/login/2fa":             {class: classPublic},
+		"POST /api/v1/webauthn/login/begin":  {class: classPublic},
+		"POST /api/v1/webauthn/login/finish": {class: classPublic},
+		// Discussion #2355: passwordless discoverable passkey login is a public
+		// sign-in path (rate-limited like /login); finish mints the session.
+		"POST /api/v1/webauthn/login/passwordless/begin":  {class: classPublic},
+		"POST /api/v1/webauthn/login/passwordless/finish": {class: classPublic},
+		"POST /api/v1/logout":                             {class: classPublic},
+		"POST /api/v1/check-password-strength":            {class: classPublic},
+		"POST /api/v1/password-reset/request":             {class: classPublic},
+		"POST /api/v1/password-reset/confirm":             {class: classPublic},
 		// Issue #722: possession of an unrevoked device grant exchanges for a
 		// session without a password — public (rate-limited like /login), never
 		// a passwordless back door for a stale API session.

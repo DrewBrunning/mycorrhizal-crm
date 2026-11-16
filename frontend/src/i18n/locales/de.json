@@ -237,7 +237,10 @@
     "backToCredentials": "Zurück zur Anmeldung",
     "passkeyOption": "Stattdessen einen Passkey verwenden",
     "passkeyCancelled": "Die Anmeldung mit Passkey wurde abgebrochen. Versuchen Sie es erneut oder geben Sie einen Code ein.",
-    "passkeyFailed": "Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder geben Sie einen Code ein."
+    "passkeyFailed": "Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder geben Sie einen Code ein.",
+    "passkeyLogin": "Mit einem Passkey anmelden",
+    "passkeyLoginCancelled": "Die Anmeldung mit Passkey wurde abgebrochen. Versuchen Sie es erneut oder verwenden Sie Ihr Passwort.",
+    "passkeyLoginFailed": "Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder verwenden Sie Ihr Passwort."
   },
   "sessionExpired": {
     "bannerMessage": "Ihre Sitzung ist abgelaufen.",

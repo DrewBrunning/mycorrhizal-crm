@@ -48,6 +48,8 @@ func TestRegisterRoutes_EmbeddedOmitsNetworkSurfaces(t *testing.T) {
 		"POST /api/v1/login/2fa",
 		"POST /api/v1/webauthn/login/begin",
 		"POST /api/v1/webauthn/login/finish",
+		"POST /api/v1/webauthn/login/passwordless/begin",
+		"POST /api/v1/webauthn/login/passwordless/finish",
 		"POST /api/v1/webauthn/register/begin",
 		"POST /api/v1/auth/device/session",
 		"POST /api/v1/password-reset/request",

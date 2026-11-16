@@ -74,6 +74,8 @@ func newWAEnv(t *testing.T) *waEnv {
 	router.POST("/login/2fa", func(c *gin.Context) { Complete2FALogin(c, cfg) })
 	router.POST("/webauthn/login/begin", func(c *gin.Context) { WebAuthnLoginBegin(c, cfg) })
 	router.POST("/webauthn/login/finish", func(c *gin.Context) { WebAuthnLoginFinish(c, cfg) })
+	router.POST("/webauthn/login/passwordless/begin", func(c *gin.Context) { WebAuthnPasswordlessLoginBegin(c, cfg) })
+	router.POST("/webauthn/login/passwordless/finish", func(c *gin.Context) { WebAuthnPasswordlessLoginFinish(c, cfg) })
 	p := router.Group("/")
 	p.Use(middleware.AuthMiddleware(cfg))
 	p.GET("/users/2fa/status", GetTwoFactorStatus)

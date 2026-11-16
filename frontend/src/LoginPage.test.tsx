@@ -2,7 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { AppThemeProvider } from './AppThemeProvider';
-import { API_BASE_URL, isAuthenticated, login2FA, loginUser, loginWithPasskey } from './auth';
+import {
+  API_BASE_URL,
+  isAuthenticated,
+  login2FA,
+  loginUser,
+  loginWithPasskey,
+  loginWithPasskeyPasswordless,
+} from './auth';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
 import i18n from './i18n/config';
 import LoginPage from './LoginPage';
@@ -16,6 +23,7 @@ vi.mock('./auth', async (importOriginal) => {
     loginUser: vi.fn(),
     login2FA: vi.fn(),
     loginWithPasskey: vi.fn(),
+    loginWithPasskeyPasswordless: vi.fn(),
     isAuthenticated: vi.fn(),
   };
 });
@@ -25,6 +33,7 @@ vi.mock('./hooks/useOIDCConfig', () => ({ useOIDCConfig: vi.fn() }));
 const loginUserMock = vi.mocked(loginUser);
 const login2FAMock = vi.mocked(login2FA);
 const loginWithPasskeyMock = vi.mocked(loginWithPasskey);
+const loginWithPasskeyPasswordlessMock = vi.mocked(loginWithPasskeyPasswordless);
 const isAuthenticatedMock = vi.mocked(isAuthenticated);
 const useOIDCConfigMock = vi.mocked(useOIDCConfig);
 
@@ -35,6 +44,7 @@ beforeEach(() => {
   loginUserMock.mockReset();
   login2FAMock.mockReset();
   loginWithPasskeyMock.mockReset();
+  loginWithPasskeyPasswordlessMock.mockReset();
   isAuthenticatedMock.mockReset();
   useOIDCConfigMock.mockReturnValue({
     enabled: false,
@@ -224,6 +234,58 @@ describe('LoginPage OIDC', () => {
     } finally {
       Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
     }
+  });
+});
+
+// Discussion #2355: passkeys are a passwordless first factor, so the
+// credentials step offers them alongside the username/password form.
+describe('LoginPage passwordless passkey', () => {
+  test('is offered on the credentials step when the browser supports WebAuthn', () => {
+    stubWebAuthn();
+    renderLogin();
+    expect(screen.getByRole('button', { name: 'Sign in with a passkey' })).toBeInTheDocument();
+  });
+
+  test('is not offered when the browser lacks WebAuthn', () => {
+    renderLogin();
+    expect(
+      screen.queryByRole('button', { name: 'Sign in with a passkey' }),
+    ).not.toBeInTheDocument();
+  });
+
+  test('signs in without filling in the username or password', async () => {
+    stubWebAuthn();
+    loginWithPasskeyPasswordlessMock.mockResolvedValue({ language: 'en', date_format: 'eu' });
+    isAuthenticatedMock.mockReturnValue(true);
+    renderLogin();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in with a passkey' }));
+
+    await waitFor(() => expect(loginWithPasskeyPasswordlessMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(isAuthenticatedMock).toHaveBeenCalled());
+    expect(loginUserMock).not.toHaveBeenCalled();
+    expect(login2FAMock).not.toHaveBeenCalled();
+  });
+
+  test('a dismissed prompt shows the soft message and keeps the credentials form', async () => {
+    stubWebAuthn();
+    loginWithPasskeyPasswordlessMock.mockRejectedValue(cancelledError());
+    renderLogin();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in with a passkey' }));
+
+    expect(await screen.findByText(/Passkey sign-in was cancelled/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/username or email/i)).toBeInTheDocument();
+  });
+
+  test('a backend rejection shows its message', async () => {
+    stubWebAuthn();
+    loginWithPasskeyPasswordlessMock.mockRejectedValue(new Error('Passkey could not be verified'));
+    renderLogin();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in with a passkey' }));
+
+    expect(await screen.findByText('Passkey could not be verified')).toBeInTheDocument();
   });
 });
 

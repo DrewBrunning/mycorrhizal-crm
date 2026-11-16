@@ -155,14 +155,26 @@ an identity provider". Second-factor policy for those accounts belongs to the id
 <a id="passkeys"></a>
 
 **Settings → Passkeys** lets you use your device's fingerprint, face or screen lock (or a hardware
-security key) as the second step instead of typing a code. A passkey works alongside an authenticator
-app; you can have both, and at sign-in either satisfies the second step (the sign-in page offers
-**Use a passkey instead**).
+security key) to sign in. On the web, a passkey can be your **only** sign-in method: choose
+**Sign in with a passkey** on the sign-in page and confirm with your device, with no username or
+password to type. A passkey also works alongside an authenticator app: after a password login, either
+one satisfies the second step (the sign-in page offers **Use a passkey instead**). An account with an
+authenticator app can still use its passkey alone for the passwordless sign-in.
+
+Passwordless sign-in needs a **discoverable** (resident) passkey and a device check — your browser or
+operating system prompts for the same fingerprint, face, screen lock or security-key PIN it uses for
+the passkey. Passkeys created by this app normally support it. A non-discoverable hardware security
+key can still be used as the second step after your password, but not as the only sign-in method.
 
 - **Add a passkey:** optionally give it a name (for example "Laptop" or "YubiKey"), choose **Add a
   passkey** and follow your browser's prompt. If you cancel or the prompt times out, nothing is
   saved. If this passkey is your account's first second factor, you are shown recovery codes once —
   see [Recovery codes](#recovery-codes) — and your other sessions are signed out.
+- **Sign in with a passkey:** on the sign-in page choose **Sign in with a passkey**. There is no
+  username or password step; the browser offers the passkeys for this instance, and you confirm with
+  your device. If you dismiss the prompt, the normal username and password form is still there. If
+  the browser says no passkey is available, use the password form; the passkey may belong to a
+  different browser profile or may not be a discoverable credential.
 - **The list** shows each passkey's name, when it was added and when it was last used. A passkey
   added without a name is labelled after the browser and device that created it (for example
   "Chrome 153 on Linux"). **Rename** changes the label at any time; it needs no extra proof, since a

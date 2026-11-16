@@ -237,7 +237,10 @@
     "backToCredentials": "Back to sign in",
     "passkeyOption": "Use a passkey instead",
     "passkeyCancelled": "Passkey sign-in was cancelled. You can try again or enter a code.",
-    "passkeyFailed": "Passkey sign-in failed. Please try again or enter a code."
+    "passkeyFailed": "Passkey sign-in failed. Please try again or enter a code.",
+    "passkeyLogin": "Sign in with a passkey",
+    "passkeyLoginCancelled": "Passkey sign-in was cancelled. You can try again or use your password.",
+    "passkeyLoginFailed": "Passkey sign-in failed. Try again or use your password."
   },
   "sessionExpired": {
     "bannerMessage": "Your session has expired.",

@@ -6,7 +6,7 @@
 import { localizeReason } from './i18n/reason';
 import { initializeTimeFormatFromBackend } from './timeFormat';
 import { clearAllSessionDrafts } from './utils/sessionDraftStorage';
-import { getAssertion } from './webauthnCeremony';
+import { getAssertion, type WireRequestOptions } from './webauthnCeremony';
 
 // `?.` (not just `||`) because this module is also loaded directly by Node in
 // the Playwright harness (e2e imports contacts.ts → client.ts → auth.ts),
@@ -134,6 +134,44 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
     body: JSON.stringify(assertion),
+  });
+  if (!finish.ok) {
+    throw new Error(await signInErrorMessage(finish, 'Passkey could not be verified.'));
+  }
+  const data = await finish.json();
+
+  await fetchAndCacheUserInfo();
+
+  return {
+    language: data.language,
+    date_format: data.date_format,
+    time_format: data.time_format,
+  };
+}
+
+// loginWithPasskeyPasswordless is the passwordless sign-in path: a discoverable
+// passkey (fingerprint/face/PIN) identifies the account, so there is no
+// username, password or 2fa_pending challenge. The server returns a short-lived
+// ceremony token alongside the WebAuthn options and verifies it on finish.
+export async function loginWithPasskeyPasswordless(): Promise<LoginResponse> {
+  const begin = await fetch(`${API_BASE_URL}/webauthn/login/passwordless/begin`, {
+    method: 'POST',
+    credentials: 'include',
+  });
+  if (!begin.ok) {
+    throw new Error(await signInErrorMessage(begin, 'Unable to start passkey sign-in.'));
+  }
+  const options = (await begin.json()) as WireRequestOptions & { ceremony_token?: unknown };
+  if (typeof options.ceremony_token !== 'string' || options.ceremony_token === '') {
+    throw new Error('Unable to start passkey sign-in.');
+  }
+  const assertion = await getAssertion(options);
+
+  const finish = await fetch(`${API_BASE_URL}/webauthn/login/passwordless/finish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ ceremony_token: options.ceremony_token, assertion }),
   });
   if (!finish.ok) {
     throw new Error(await signInErrorMessage(finish, 'Passkey could not be verified.'));
