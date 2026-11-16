@@ -3,7 +3,7 @@
 // TestMatrixRowsHaveCoverage (coverage_test.go) proves a matrix row's named
 // CI job still EXISTS. It never proves that job still tests the SAME version
 // the doc states as the floor -- min-version-tests.yml hardcodes each floor
-// as its own literal (`go-version: '1.26.0'`, `node-version: '24.15.0'`, the
+// as its own literal (`go-version: '1.26.10'`, `node-version: '24.15.0'`, the
 // `yarn-1.22.0` download, `api-level: 26` in android-tests.yml), entirely
 // independently of docs/development/supported-runtime-matrix.md's prose. A
 // PR that bumps one without the other passes both the doc's own claim ("this
@@ -18,6 +18,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -106,6 +108,65 @@ func TestGoFloorMatchesMinVersionJob(t *testing.T) {
 		t.Errorf("Go floor drift: %s states the floor as %q, but %s's go-minimum job installs %q -- "+
 			"raising or lowering the floor means updating BOTH (and it's a breaking change under "+
 			"docs/breaking-change-policy.md, MAINT-02)", matrixDocRel, docFloor, minVersionsWorkflowRel, m[1])
+	}
+}
+
+// goModDirectivePattern reads the `go X.Y.Z` line from backend/go.mod. The go
+// directive -- not the toolchain line -- is the module's declared minimum.
+var goModDirectivePattern = regexp.MustCompile(`(?m)^go ([0-9]+\.[0-9]+\.[0-9]+)\r?$`)
+
+// TestGoFloorMatchesGoModDirective closes the gap that let #2489 redden both
+// Go floor jobs: a dependency bump raised backend/go.mod's `go` directive to
+// 1.26.10, but the matrix doc and min-version-tests.yml still pinned 1.26.0.
+// TestGoFloorMatchesMinVersionJob only compared those two copies to each
+// other; this ties both to the directive that actually decides what the module
+// requires, so a dependency raising it can no longer slip through unnoticed.
+func TestGoFloorMatchesGoModDirective(t *testing.T) {
+	docFloor := matrixFloor(t, matrixGoFloorPattern, "a `| **Go** | `X.Y.Z` ...` row")
+
+	goMod, err := os.ReadFile(filepath.Join(workflowsDirRel, "..", "..", "backend", "go.mod"))
+	if err != nil {
+		t.Fatalf("reading backend/go.mod: %v", err)
+	}
+	m := goModDirectivePattern.FindSubmatch(goMod)
+	if m == nil {
+		t.Fatalf("backend/go.mod has no full-semver `go X.Y.Z` directive -- update goModDirectivePattern in version_test.go")
+	}
+	if string(m[1]) != docFloor {
+		t.Errorf("Go floor drift: backend/go.mod requires go %s, but %s states the floor as %q -- "+
+			"a dependency that raises the module's go directive must update the matrix row and "+
+			"min-version-tests.yml in the same change", m[1], matrixDocRel, docFloor)
+	}
+}
+
+// TestGoBelowMinimumIsOnePatchBelowFloor keeps the below-floor job honest: it
+// must install exactly one patch below the declared floor and grep for the
+// floor it is actually testing. A floor bump that misses this job would leave
+// it asserting a stale message it can never match.
+func TestGoBelowMinimumIsOnePatchBelowFloor(t *testing.T) {
+	docFloor := matrixFloor(t, matrixGoFloorPattern, "a `| **Go** | `X.Y.Z` ...` row")
+
+	parts := strings.Split(docFloor, ".")
+	patch, err := strconv.Atoi(parts[len(parts)-1])
+	if err != nil || patch == 0 {
+		t.Fatalf("matrix Go floor %q has no usable patch component to step below", docFloor)
+	}
+	want := strings.Join(append(parts[:len(parts)-1], strconv.Itoa(patch-1)), ".")
+
+	wf := readWorkflow(t, minVersionsWorkflowRel)
+	block := jobBlock(t, wf, minVersionsWorkflowRel, "go-below-minimum")
+	m := jobGoVersionPattern.FindStringSubmatch(block)
+	if m == nil {
+		t.Fatalf("%s: go-below-minimum job has no go-version: '...' step -- did setup-go's input change?",
+			minVersionsWorkflowRel)
+	}
+	if m[1] != want {
+		t.Errorf("%s: go-below-minimum installs Go %q, want one patch below the %q floor (%q)",
+			minVersionsWorkflowRel, m[1], docFloor, want)
+	}
+	if !strings.Contains(block, "'go.mod requires go >= "+docFloor+"'") {
+		t.Errorf("%s: go-below-minimum does not grep for 'go.mod requires go >= %s'; the floor message it asserts must match the current directive",
+			minVersionsWorkflowRel, docFloor)
 	}
 }
 

@@ -131,7 +131,7 @@ var matrixCoverage = map[string]coverage{
 // run.
 
 // matrixRowPattern matches a table row's bolded first column, e.g.
-// "| **Go** | `1.26.0` ... |" -> "Go", "| **Node.js** (contributor/CI...) | ..." -> "Node.js".
+// "| **Go** | `1.26.10` ... |" -> "Go", "| **Node.js** (contributor/CI...) | ..." -> "Node.js".
 // Only the table body matters here (header/separator rows have no `**`).
 var matrixRowPattern = regexp.MustCompile(`(?m)^\|\s*\*\*([^*]+)\*\*`)
 

@@ -2,7 +2,7 @@
 # Issue #1487: `go test` with a bounded, loud retry of the FAILED PACKAGES only.
 #
 # Data (release.yml runs, 2026-09-19..22): min-version-tests' Go-floor leg
-# (`go test ./...` at the declared 1.26.0 floor, no -race) failed three times,
+# (`go test ./...` at the then-declared 1.26.0 floor, no -race) failed three times,
 # each time in a different, timing-sensitive test -- a SQLITE_BUSY lock-release
 # race in services' db-integrity webhook test (twice, `services` also takes
 # ~2-3 minutes under a contended runner), a reach-out suggestion test, and a
