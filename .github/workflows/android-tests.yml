@@ -129,7 +129,7 @@ jobs:
       # call: the Gradle daemon captures PATH when it starts, and the
       # buildEmbeddedServer Exec task inherits that environment. With the
       # runner's preinstalled Go (1.24.x) the task fails go.mod's `go >= 1.26`
-      # requirement ("go.mod requires go >= 1.26.0 (running go 1.24.13)").
+      # requirement ("go.mod requires go >= 1.26.10 (running go 1.24.13)").
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -309,7 +309,7 @@ jobs:
       # call: the Gradle daemon captures PATH when it starts, and the
       # buildEmbeddedServer Exec task inherits that environment. With the
       # runner's preinstalled Go (1.24.x) the task fails go.mod's `go >= 1.26`
-      # requirement ("go.mod requires go >= 1.26.0 (running go 1.24.13)").
+      # requirement ("go.mod requires go >= 1.26.10 (running go 1.24.13)").
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -356,7 +356,7 @@ jobs:
       # call: the Gradle daemon captures PATH when it starts, and the
       # buildEmbeddedServer Exec task inherits that environment. With the
       # runner's preinstalled Go (1.24.x) the task fails go.mod's `go >= 1.26`
-      # requirement ("go.mod requires go >= 1.26.0 (running go 1.24.13)").
+      # requirement ("go.mod requires go >= 1.26.10 (running go 1.24.13)").
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
@@ -424,7 +424,7 @@ jobs:
       # call: the Gradle daemon captures PATH when it starts, and the
       # buildEmbeddedServer Exec task inherits that environment. With the
       # runner's preinstalled Go (1.24.x) the task fails go.mod's `go >= 1.26`
-      # requirement ("go.mod requires go >= 1.26.0 (running go 1.24.13)").
+      # requirement ("go.mod requires go >= 1.26.10 (running go 1.24.13)").
       - name: Set up Go
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:

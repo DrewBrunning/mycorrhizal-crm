@@ -51,6 +51,10 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Number keyboard for dotted and hyphenated dates on Android** ([#2378](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2378)): date fields now open the number keyboard when your date format uses dots or hyphens, such as 10.08.2026. Formats with slashes keep the text keyboard.
 - **Dark-mode scrollbars** ([#2363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2363)): in dark mode the navigation sidebar and page scrollbars no longer show a bright white track. Light mode is unchanged.
 
+### Security
+
+- **Source builds now need Go 1.26.10** ([#2635](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2635)): a dependency update raised the minimum Go toolchain from 1.26.0 to 1.26.10 for anyone building the server from source. The published Docker image is unaffected.
+
 ## [1.6.0] - 2026-11-06
 
 > **Upgrade**: database migrations run automatically on first start. Images are stored in a new

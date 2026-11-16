@@ -45,11 +45,14 @@ permissions:
 
 jobs:
   # --- Go -----------------------------------------------------------------
-  # go.mod declares `go 1.26.0` (this row's floor) and `toolchain go1.27.4`
+  # go.mod declares `go 1.26.10` (this row's floor) and `toolchain go1.27.4`
   # (what every other job builds with); go-version-file would install the
   # toolchain, not the floor, so the version is hardcoded here instead.
+  # 1.26.10 is the floor because gin-contrib/cors v1.7.10 (bumped in #2489)
+  # declares `go 1.26.10` in its own go.mod; a dependency's directive is a
+  # hard lower bound on this module's.
   go-minimum:
-    name: Go minimum version (1.26.0)
+    name: Go minimum version (1.26.10)
     permissions:
       contents: read
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
@@ -70,11 +73,11 @@ jobs:
       - name: Install Go at the declared floor
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.26.0'
+          go-version: '1.26.10'
           check-latest: false
 
       # GOTOOLCHAIN=local is load-bearing: without it go.mod's `toolchain
-      # go1.27.4` line would silently switch the 1.26.0 binary to 1.27.4,
+      # go1.27.4` line would silently switch the 1.26.10 binary to 1.27.4,
       # passing regardless of whether the floor itself still builds.
       - name: Build, vet, and test at the floor
         working-directory: backend
@@ -92,7 +95,7 @@ jobs:
           GO_TEST_FLAGS='-timeout 25m' bash ../.github/scripts/go-test-retry-failed.sh
 
   go-below-minimum:
-    name: Go below minimum fails clearly (1.25.5)
+    name: Go below minimum fails clearly (1.26.9)
     permissions:
       contents: read
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
@@ -106,7 +109,7 @@ jobs:
       - name: Install a Go one patch below the floor
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25.5'
+          go-version: '1.26.9'
           check-latest: false
 
       - name: Assert the too-old toolchain refuses with a comprehensible message
@@ -120,10 +123,10 @@ jobs:
           set -e
           echo "$output"
           if [ "$status" -eq 0 ]; then
-            echo "::error::go build succeeded on Go 1.25.5 -- the declared >=1.26.0 floor is no longer real, or this job stopped testing it"
+            echo "::error::go build succeeded on Go 1.26.9 -- the declared >=1.26.10 floor is no longer real, or this job stopped testing it"
             exit 1
           fi
-          if ! echo "$output" | grep -qF 'go.mod requires go >= 1.26.0'; then
+          if ! echo "$output" | grep -qF 'go.mod requires go >= 1.26.10'; then
             echo "::error::build failed as expected but not with the comprehensible go.mod floor message: $output"
             exit 1
           fi
