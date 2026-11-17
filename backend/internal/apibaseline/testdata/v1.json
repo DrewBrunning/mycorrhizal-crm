@@ -17574,7 +17574,17 @@
           ]
         },
         {
+          "name": "link_count",
+          "type": "integer",
+          "required": true
+        },
+        {
           "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "updated_at",
           "type": "string",
           "required": true
         }
