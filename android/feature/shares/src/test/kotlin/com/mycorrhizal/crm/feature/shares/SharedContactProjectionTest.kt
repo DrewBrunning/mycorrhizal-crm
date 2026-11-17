@@ -59,6 +59,18 @@ class SharedContactProjectionTest {
     }
 
     @Test
+    fun `anniversary and personal-info kinds are shown through the supplied label, not as raw tokens`() {
+        val view = projectSharedContact(
+            full,
+            grantedSections = setOf("anniversaries", "personal_info"),
+            kindLabel = { "L-$it" }
+        )
+        val byToken = view.sections.associate { it.token to it.lines }
+        assertEquals(listOf("L-birth: 1990-03-07"), byToken["anniversaries"])
+        assertEquals(listOf("L-hobby: Chess"), byToken["personal_info"])
+    }
+
+    @Test
     fun `every section projects its allowlisted fields in canonical order`() {
         val all = projectSharedContact(full, grantedSections = null)
         val byToken = all.sections.associate { it.token to it.lines }

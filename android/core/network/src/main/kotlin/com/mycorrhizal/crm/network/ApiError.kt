@@ -5,6 +5,7 @@ import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import javax.net.ssl.SSLException
 
 /**
  * Wraps every known backend failure in a single sealed hierarchy (ticket
@@ -20,7 +21,7 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
 
     val displayMessage: String
         get() = when (this) {
-            is Network -> "No connection"
+            is Network -> "Can't reach your server"
 
             is Timeout -> "Request timed out"
 
@@ -111,10 +112,22 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
  */
 fun Throwable.toApiError(): ApiError = when (this) {
     is ApiError -> this
+
     is ArchivedProfileWriteException -> ApiError.ArchivedProfile(this)
+
     is UnknownHostException, is ConnectException -> ApiError.Network(this)
+
     is SocketTimeoutException -> ApiError.Timeout(this)
+
+    // A TLS failure means the server answered; "can't reach" would misdirect the user.
+    is SSLException -> ApiError.Unknown(this)
+
+    // Every other IO failure (no route, aborted connection, call timeout, truncated stream) is the
+    // server being unreachable, not an unexplained error (issue #2629).
+    is IOException -> ApiError.Network(this)
+
     is com.squareup.moshi.JsonDataException -> ApiError.Parse(this.message ?: "Parse error")
+
     else -> ApiError.Unknown(this)
 }
 

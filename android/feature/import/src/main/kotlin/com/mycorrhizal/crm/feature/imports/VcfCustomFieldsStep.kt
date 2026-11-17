@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Button
@@ -19,6 +21,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -107,6 +115,19 @@ private fun CandidateCard(
     onLabelChange: (String) -> Unit,
     onTypeChange: (String) -> Unit
 ) {
+    // Issue #2630: choosing map/create reveals a picker under the radio group; scroll it into
+    // view so the user is not left looking at the options with the next control off-screen.
+    val pickerInView = remember { BringIntoViewRequester() }
+    var lastAction by remember { mutableStateOf(mapping.action) }
+    LaunchedEffect(mapping.action) {
+        if (mapping.action != lastAction) {
+            lastAction = mapping.action
+            if (mapping.action != IMPORT_FIELD_ACTION_IGNORE) {
+                withFrameNanos { }
+                pickerInView.bringIntoView()
+            }
+        }
+    }
     Card(modifier = Modifier.fillMaxWidth().testTag("vcf-cf-card-$name")) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -159,7 +180,8 @@ private fun CandidateCard(
                         ?: stringResource(R.string.import_vcf_cf_select_field),
                     options = definitions.map { DropdownOption(it.id, it.label.orEmpty()) },
                     onSelect = onDefinitionChange,
-                    modifier = Modifier.testTag("vcf-cf-$name-field")
+                    modifier = Modifier.bringIntoViewRequester(pickerInView)
+                        .testTag("vcf-cf-$name-field")
                 )
 
                 IMPORT_FIELD_ACTION_CREATE -> {
@@ -168,7 +190,9 @@ private fun CandidateCard(
                         onValueChange = onLabelChange,
                         label = { Text(stringResource(R.string.import_vcf_cf_label)) },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth().testTag("vcf-cf-$name-label")
+                        modifier = Modifier.fillMaxWidth()
+                            .bringIntoViewRequester(pickerInView)
+                            .testTag("vcf-cf-$name-label")
                     )
                     LabelledDropdown(
                         label = stringResource(R.string.settings_custom_fields_type),

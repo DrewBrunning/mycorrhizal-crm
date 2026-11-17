@@ -122,6 +122,9 @@ class OccasionAttendeesScreenTest {
         render()
         composeTestRule.onNodeWithContentDescription("Remove attendee Alice").performClick()
         composeTestRule.onNodeWithText("Remove Alice from this event?").assertIsDisplayed()
+        // Removing an attendee is not deleting data: the confirm button says "Remove".
+        composeTestRule.onNodeWithText("Remove").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Delete").assertDoesNotExist()
     }
 
     @Test

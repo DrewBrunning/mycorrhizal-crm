@@ -29,6 +29,12 @@ class CircleTimelineFormatTest {
     }
 
     @Test
+    fun `a type fallback goes through the supplied token label, other fields stay verbatim`() {
+        assertEquals("L-moved", item(mapOf("type" to "moved")).summary { "L-$it" })
+        assertEquals("Hi", item(mapOf("content" to "Hi", "type" to "moved")).summary { "L-$it" })
+    }
+
+    @Test
     fun `summary skips non-string values and tolerates missing data`() {
         assertEquals("t", item(mapOf("content" to 12, "title" to "t")).summary())
         assertEquals("", item(null).summary())

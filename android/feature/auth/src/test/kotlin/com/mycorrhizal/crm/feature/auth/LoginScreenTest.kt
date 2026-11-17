@@ -71,7 +71,8 @@ class LoginScreenTest {
     @Config(qualifiers = "de")
     fun `a network failure is shown in German`() {
         setContent(uiState = LoginUiState(error = ApiError.Network(UnknownHostException())))
-        composeTestRule.onNodeWithText("Keine Verbindung").assertIsDisplayed()
+        composeTestRule.onNodeWithText("nicht erreichbar", substring = true)
+            .assertIsDisplayed()
     }
 
     // --- Discussion #2355: login-screen alternatives ---

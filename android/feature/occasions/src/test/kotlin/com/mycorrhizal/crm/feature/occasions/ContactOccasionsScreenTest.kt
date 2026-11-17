@@ -248,6 +248,48 @@ class ContactOccasionsScreenTest {
         }
     }
 
+    private fun kindField() = composeTestRule.onNodeWithTag("occasion-ob-kind")
+
+    @Test
+    fun `the Kind field shows a known kind as its label and still saves the stored token`() {
+        render(listOf(ob(kind = "gift")))
+        coEvery { repository.update("o1", any()) } returns Result.success(ob(kind = "gift"))
+        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        kindField().assertTextContains("Gift")
+        composeTestRule.onNodeWithText("Save").performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify { repository.update("o1", match { it.kind == "gift" }) }
+    }
+
+    @Test
+    fun `picking a suggestion chip stores its token and a typed custom kind is kept verbatim`() {
+        render(emptyList())
+        coEvery { repository.create(any()) } returns Result.success(ob("n", "x", kind = "invite"))
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+        composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Dinner")
+        composeTestRule.onNodeWithText("Invite").performClick()
+        kindField().assertTextContains("Invite")
+        composeTestRule.onNodeWithTag("occasion-ob-kind").performTextReplacement("Flowers")
+        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify { repository.create(match { it.kind == "Flowers" }) }
+    }
+
+    @Test
+    fun `typing a known label maps back to its token`() {
+        render(emptyList())
+        coEvery { repository.create(any()) } returns Result.success(ob("n", "x", kind = "gift"))
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+        composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Present")
+        composeTestRule.onNodeWithTag("occasion-ob-kind").performTextReplacement("Gift")
+        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify { repository.create(match { it.kind == "gift" }) }
+    }
+
     @Test
     fun `delete asks for confirmation then deletes`() {
         render(listOf(ob()))

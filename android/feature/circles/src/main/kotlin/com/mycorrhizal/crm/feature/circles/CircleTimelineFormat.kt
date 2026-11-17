@@ -8,12 +8,17 @@ import java.util.Locale
 
 private val SUMMARY_KEYS = listOf("content", "title", "message", "name", "description", "type")
 
-/** A one-line summary of a timeline entry: the first non-blank text field (mirrors the web dialog). */
-internal fun CircleTimelineItem.summary(): String {
+/**
+ * A one-line summary of a timeline entry: the first non-blank text field (mirrors the web dialog).
+ * The `type` fallback is a stored token (`married`), so it goes through [tokenLabel] (issue #2626).
+ */
+internal fun CircleTimelineItem.summary(tokenLabel: (String) -> String = { it }): String {
     val values = data ?: return ""
     for (key in SUMMARY_KEYS) {
         val value = values[key]
-        if (value is String && value.isNotBlank()) return value
+        if (value is String && value.isNotBlank()) {
+            return if (key == "type") tokenLabel(value) else value
+        }
     }
     return ""
 }
