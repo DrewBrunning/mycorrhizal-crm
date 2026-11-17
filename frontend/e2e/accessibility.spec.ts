@@ -515,3 +515,27 @@ test.describe('audit log at narrow widths (#1788, #1792)', {
     });
   }
 });
+
+// #2695: the open top-bar search dropdown had invalid listbox/group ARIA
+// (aria-required-children / aria-required-parent) and an unnamed input.
+test.describe('global search dropdown (#2695)', {
+  annotation: { type: SKIP_A11Y_SCAN, description: 'scans the open dropdown explicitly' },
+}, () => {
+  for (const theme of THEMES) {
+    test(`open dropdown (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
+      await gotoWithTheme(page, '/', theme);
+      const box = page.getByRole('combobox', { name: 'Search everything' });
+      await box.fill('Alice');
+      await expect(page.getByRole('listbox')).toBeVisible();
+      await assertNoBlockingViolations(page);
+      await assertNoAxeRuleViolations(page, [
+        'aria-required-children',
+        'aria-required-parent',
+        'list',
+        'aria-input-field-name',
+      ]);
+    });
+  }
+});

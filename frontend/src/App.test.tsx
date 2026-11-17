@@ -459,6 +459,18 @@ function setPhoneViewport(phone: boolean) {
   })) as unknown as typeof window.matchMedia;
 }
 
+// #2692: below the sm breakpoint the AppBar has no search box, so it offers a
+// button to the results page (which carries its own search field).
+test('a phone-width AppBar offers a search button that opens the search page (#2692)', async () => {
+  setPhoneViewport(true);
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/');
+  const link = await screen.findByRole('link', { name: 'Search' });
+  expect(link).toHaveAttribute('href', '/search');
+  fireEvent.click(link);
+  expect(await screen.findByRole('searchbox', { name: 'Search everything' })).toBeInTheDocument();
+});
+
 function visibleBadges(name: string): HTMLElement[] {
   return screen.queryAllByRole('img', { name, hidden: true }).filter((el) => {
     try {

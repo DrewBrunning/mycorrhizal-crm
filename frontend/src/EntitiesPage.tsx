@@ -77,6 +77,8 @@ export default function EntitiesPage() {
         onChange={(_, v: EntityKind) => selectKind(v)}
         aria-label={t('entities.tabsLabel')}
         variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{ mb: 2 }}
       >
         {ENTITY_KINDS.map((k) => (
