@@ -113,8 +113,8 @@ export default function CircleDetailDialog({
 
   if (!circle) return null;
 
+  // Save is disabled while the name is empty, so no guard is needed here.
   const handleSave = async () => {
-    if (!trimmedName) return;
     setSaving(true);
     setNameError(null);
     try {

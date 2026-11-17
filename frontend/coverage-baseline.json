@@ -183,10 +183,10 @@
       "branchesTotal": 122
     },
     "src/TrashPage.tsx": {
-      "lines": 86.66,
-      "linesTotal": 45,
-      "branches": 86.84,
-      "branchesTotal": 38
+      "lines": 87.75,
+      "linesTotal": 49,
+      "branches": 89.36,
+      "branchesTotal": 47
     },
     "src/UsersPage.tsx": {
       "lines": 91.95,
@@ -448,7 +448,7 @@
     },
     "src/api/import.ts": {
       "lines": 100,
-      "linesTotal": 35,
+      "linesTotal": 37,
       "branches": 100,
       "branchesTotal": 20
     },
@@ -813,10 +813,10 @@
       "branchesTotal": 12
     },
     "src/components/CircleDetailDialog.tsx": {
-      "lines": 98.07,
-      "linesTotal": 52,
-      "branches": 98.27,
-      "branchesTotal": 58
+      "lines": 98.14,
+      "linesTotal": 54,
+      "branches": 100,
+      "branchesTotal": 55
     },
     "src/components/CircleTagEntityList.tsx": {
       "lines": 100,
@@ -1209,10 +1209,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 91.61,
-      "linesTotal": 346,
-      "branches": 85.41,
-      "branchesTotal": 288
+      "lines": 93.68,
+      "linesTotal": 364,
+      "branches": 85.76,
+      "branchesTotal": 302
     },
     "src/components/ImportFixedAssignmentPicker.tsx": {
       "lines": 84.21,
