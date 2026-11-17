@@ -22,7 +22,7 @@ test('renders related entities with their relation list', () => {
     />,
   );
 
-  expect(screen.getByText('Related Entities')).toBeInTheDocument();
+  expect(screen.getByText('Related organisations, places & pets')).toBeInTheDocument();
   expect(screen.getByText('Related to')).toBeInTheDocument();
   expect(
     screen.getByText('https://example.com/urn:uuid:alice (friend, colleague)'),

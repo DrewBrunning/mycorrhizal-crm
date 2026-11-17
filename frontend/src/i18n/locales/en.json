@@ -884,7 +884,7 @@
       "adopted": "Copied {{name}} into this contact.",
       "editFor": "Edit link to {{name}}",
       "removeFor": "Remove link to {{name}}",
-      "removeConfirm": "Remove the link to {{name}}? {{name}} itself is kept.",
+      "removeConfirm": "Remove the link to {{name}}? The linked item itself is kept.",
       "saved": "Link saved.",
       "saveFailed": "Couldn't save this link.",
       "addTitle": "Link to an organisation, place or pet",

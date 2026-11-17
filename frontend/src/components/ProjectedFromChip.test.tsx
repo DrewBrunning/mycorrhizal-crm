@@ -25,10 +25,10 @@ test('names the source entity and links to its page', () => {
 
 test('falls back to a generic label while the links are unknown', () => {
   renderChip('ent-zzz', links);
-  expect(screen.getByText('from a linked entity')).toBeInTheDocument();
+  expect(screen.getByText('from a linked item')).toBeInTheDocument();
   cleanup();
   renderChip('ent-l1', undefined);
-  expect(screen.getByText('from a linked entity')).toBeInTheDocument();
+  expect(screen.getByText('from a linked item')).toBeInTheDocument();
 });
 
 test('renders nothing for a contact’s own (non-projected) value', () => {

@@ -903,7 +903,7 @@
       "adopted": "{{name}} copié dans ce contact.",
       "editFor": "Modifier le lien avec {{name}}",
       "removeFor": "Supprimer le lien avec {{name}}",
-      "removeConfirm": "Supprimer le lien avec {{name}} ? {{name}} lui-même est conservé.",
+      "removeConfirm": "Supprimer le lien avec {{name}} ? L'élément lié lui-même est conservé.",
       "saved": "Lien enregistré.",
       "saveFailed": "Impossible d'enregistrer ce lien.",
       "addTitle": "Lier à une organisation, un lieu ou un animal",

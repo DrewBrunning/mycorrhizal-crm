@@ -903,7 +903,7 @@
       "adopted": "Se copió {{name}} en este contacto.",
       "editFor": "Editar vínculo con {{name}}",
       "removeFor": "Quitar vínculo con {{name}}",
-      "removeConfirm": "¿Quitar el vínculo con {{name}}? {{name}} en sí se conserva.",
+      "removeConfirm": "¿Quitar el vínculo con {{name}}? El elemento vinculado en sí se conserva.",
       "saved": "Vínculo guardado.",
       "saveFailed": "No se pudo guardar este vínculo.",
       "addTitle": "Vincular con una organización, lugar o mascota",

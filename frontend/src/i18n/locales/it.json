@@ -903,7 +903,7 @@
       "adopted": "{{name}} copiato in questo contatto.",
       "editFor": "Modifica il collegamento con {{name}}",
       "removeFor": "Rimuovi il collegamento con {{name}}",
-      "removeConfirm": "Rimuovere il collegamento con {{name}}? {{name}} stesso viene conservato.",
+      "removeConfirm": "Rimuovere il collegamento con {{name}}? L'elemento collegato stesso viene conservato.",
       "saved": "Collegamento salvato.",
       "saveFailed": "Impossibile salvare questo collegamento.",
       "addTitle": "Collega a un'organizzazione, un luogo o un animale",
