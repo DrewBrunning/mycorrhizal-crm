@@ -213,7 +213,7 @@ test('with no tab parameter the first non-empty tab is selected (#2698)', async 
   vi.mocked(searchAll).mockResolvedValue({ ...data, contacts: [], notes: [], activities: [] });
   renderPage('/search?q=lakeside');
   expect(await screen.findByText('Alice Springs House')).toBeInTheDocument();
-  expect(screen.getByRole('tab', { name: 'Entities (2)' })).toHaveAttribute(
+  expect(screen.getByRole('tab', { name: 'Organisations, places & pets (2)' })).toHaveAttribute(
     'aria-selected',
     'true',
   );

@@ -230,7 +230,7 @@ test('the open dropdown is a valid listbox: presentation wrappers, named groups,
   for (const child of Array.from(listbox.children)) {
     expect(child.getAttribute('role')).toBe('presentation');
   }
-  for (const name of ['Contacts', 'Notes', 'Activities', 'Entities']) {
+  for (const name of ['Contacts', 'Notes', 'Activities', 'Organisations, places & pets']) {
     expect(within(listbox).getByRole('group', { name })).toBeInTheDocument();
   }
   // aria-required-parent: every option sits in a group (or the listbox itself).
