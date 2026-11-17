@@ -449,7 +449,7 @@ describe('SharedWithMePage pending-count refresh signal', () => {
       share_grant: { ...pending, status: 'declined' },
     });
     const refresh = renderWithSignal();
-    fireEvent.click(await screen.findByRole('button', { name: 'Block bob' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Block sender bob' }));
     const dialog = await screen.findByRole('dialog');
     fireEvent.click(within(dialog).getByRole('button', { name: 'Block bob' }));
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
