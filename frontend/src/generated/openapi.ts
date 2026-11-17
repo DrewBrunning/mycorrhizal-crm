@@ -2021,12 +2021,13 @@ export type ImportRowEdit = {
 };
 
 export type ImportRowIssue = {
+  concept?: 'birthday' | 'anniversary';
   email: string;
   name: string;
   phone: string;
   reason: string;
   row: number;
-  status: 'skipped' | 'failed';
+  status: 'skipped' | 'failed' | 'warning';
 };
 
 export type ImportRowPreview = {

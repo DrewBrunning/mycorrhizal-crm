@@ -535,6 +535,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Created++
+					reportImportWarnings(&result, preview)
 					if isVCFImport {
 						vcfContacts[preview.RowIndex].Contact.ID = contact.ID
 					}
@@ -582,6 +583,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Updated++
+					reportImportWarnings(&result, preview)
 					if isVCFImport {
 						vcfContacts[preview.RowIndex].Contact.ID = existing.ID
 					}
@@ -754,6 +756,7 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Created++
+					reportImportWarnings(&result, preview)
 					// Queue photo processing (either embedded data or URL)
 					if len(vcfData.PhotoData) > 0 || vcfData.PhotoURL != "" {
 						photoTasks = append(photoTasks, photoTask{
@@ -804,6 +807,7 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Updated++
+					reportImportWarnings(&result, preview)
 					// Queue photo processing only if contact doesn't already have a photo
 					if existing.Photo == "" && (len(vcfData.PhotoData) > 0 || vcfData.PhotoURL != "") {
 						photoTasks = append(photoTasks, photoTask{
