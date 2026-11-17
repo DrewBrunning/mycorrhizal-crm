@@ -912,7 +912,7 @@ fun ContactDetailScreen(
                         seafileConfigured = state.seafileConfigured,
                         nextcloudConfigured = state.nextcloudConfigured,
                         lifeEventCount = state.lifeEventCount,
-                        giftCount = state.giftCount,
+                        giftCount = state.giftRowCount,
                         preferenceCount = state.preferenceCount,
                         agendaCount = state.agendaCount,
                         relationshipCount = state.relationshipCount,
