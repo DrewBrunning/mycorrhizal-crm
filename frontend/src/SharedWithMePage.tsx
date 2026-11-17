@@ -25,6 +25,7 @@ import PageHeader from './components/PageHeader';
 import ShareConfirmDialog from './components/ShareConfirmDialog';
 import SharedGrantContentDialog from './components/SharedGrantContentDialog';
 import { useAnnouncer } from './context/AnnouncerContext';
+import { usePendingShares } from './context/PendingSharesContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useShareGrantList } from './hooks/useShareGrantList';
@@ -41,6 +42,7 @@ export default function SharedWithMePage() {
   const { t } = useTranslation();
   useDocumentTitle(t('standingShares.withMe.title'));
   const { announce } = useAnnouncer();
+  const { refreshPendingShares } = usePendingShares();
   const { formatDate } = useDateFormat();
   const { items, nextCursor, loading, error, refresh, loadMore, replace, remove } =
     useShareGrantList<ShareGrantRecipientView>(listIncomingShareGrants);
@@ -82,6 +84,7 @@ export default function SharedWithMePage() {
   const handleAccept = (g: ShareGrantRecipientView) =>
     run(g.id, async () => {
       replace(await acceptShareGrant(g.id));
+      refreshPendingShares();
       announce(t('standingShares.withMe.accepted', params(g)));
     });
 
@@ -89,6 +92,7 @@ export default function SharedWithMePage() {
     run(g.id, async () => {
       await declineShareGrant(g.id, { block: false });
       remove(g.id);
+      refreshPendingShares();
       announce(t('standingShares.withMe.declined', params(g)));
     });
 
@@ -100,11 +104,13 @@ export default function SharedWithMePage() {
       if (kind === 'leave') {
         await leaveShareGrant(grant.id);
         remove(grant.id);
+        refreshPendingShares();
         announce(t('standingShares.withMe.left', params(grant)));
       } else {
         await declineShareGrant(grant.id, { block: true });
         // The block ended every pending/active grant from this sender.
         await Promise.all([refresh(), refreshBlocks()]);
+        refreshPendingShares();
         announce(t('standingShares.withMe.blocked', { username: grant.from_username }));
       }
     });
@@ -116,6 +122,7 @@ export default function SharedWithMePage() {
     try {
       await deleteShareBlock(b.user_id);
       setBlocks((prev) => prev.filter((x) => x.user_id !== b.user_id));
+      refreshPendingShares();
       announce(t('standingShares.withMe.unblocked', { username: b.username }));
     } catch (err) {
       setActionError(t('standingShares.withMe.actionFailed', { message: getErrorMessage(err) }));

@@ -1,5 +1,5 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, expect, onTestFinished, test, vi } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
 import { searchAll } from './api/search';
@@ -29,6 +29,8 @@ afterEach(() => {
   // file's not-found test cannot leak its location into later App tests.
   window.dispatchEvent(new PopStateEvent('popstate'));
   vi.clearAllMocks();
+  // @ts-expect-error -- restore jsdom's "no matchMedia" default
+  delete window.matchMedia;
 });
 
 vi.mock('./auth', async (importOriginal) => {
@@ -64,6 +66,11 @@ vi.mock('./api/shareGrants', async (importOriginal) => {
   return {
     ...actual,
     getShareGrantNotifications: vi.fn().mockResolvedValue({ pending_count: 0, notifications: [] }),
+    listIncomingShareGrants: vi
+      .fn()
+      .mockResolvedValue({ share_grants: [], next_cursor: '', limit: 25 }),
+    listShareBlocks: vi.fn().mockResolvedValue([]),
+    acceptShareGrant: vi.fn(),
   };
 });
 vi.mock('./api/circles', async (importOriginal) => {
@@ -407,10 +414,12 @@ test('the Shared with me nav entry carries the pending-share badge', async () =>
   const { getShareGrantNotifications } = await import('./api/shareGrants');
   vi.mocked(getShareGrantNotifications).mockResolvedValue({ pending_count: 3, notifications: [] });
   setLoggedInUser(false);
-  window.history.pushState({}, '', '/settings');
+  // On the page itself the Settings group is open, so the one badge is on the child.
+  window.history.pushState({}, '', '/shared-with-me');
   window.dispatchEvent(new PopStateEvent('popstate'));
   renderApp();
-  expect(await screen.findByLabelText('3 shares waiting for your answer')).toBeInTheDocument();
+  const badge = await screen.findByLabelText('3 shares waiting for your answer');
+  expect(badge.closest('a')).toHaveAttribute('href', '/shared-with-me');
 });
 
 test('no badge when nothing is pending', async () => {
@@ -424,15 +433,22 @@ test('no badge when nothing is pending', async () => {
   expect(screen.queryByLabelText(/waiting for your answer/)).toBeNull();
 });
 
-// #2692: below the sm breakpoint the AppBar has no search box, so it offers a
-// button to the results page (which carries its own search field).
-test('a phone-width AppBar offers a search button that opens the search page (#2692)', async () => {
-  const originalMatchMedia = window.matchMedia;
-  onTestFinished(() => {
-    window.matchMedia = originalMatchMedia;
+// #2690: the Settings group is collapsed on every page but its own, so the
+// "Shared with me" badge inside it was never visible. The collapsed Settings
+// parent carries the count; the child badge takes over once the group opens.
+const PENDING_ONE = '1 share waiting for your answer';
+
+async function setPending(count: number) {
+  const { getShareGrantNotifications } = await import('./api/shareGrants');
+  vi.mocked(getShareGrantNotifications).mockResolvedValue({
+    pending_count: count,
+    notifications: [],
   });
-  const mm = ((query: string) => ({
-    matches: query.includes('max-width'),
+}
+
+function setPhoneViewport(phone: boolean) {
+  window.matchMedia = ((query: string) => ({
+    matches: phone && query.includes('max-width'),
     media: query,
     onchange: null,
     addEventListener: () => {},
@@ -441,11 +457,119 @@ test('a phone-width AppBar offers a search button that opens the search page (#2
     removeListener: () => {},
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
-  window.matchMedia = mm;
+}
+
+// #2692: below the sm breakpoint the AppBar has no search box, so it offers a
+// button to the results page (which carries its own search field).
+test('a phone-width AppBar offers a search button that opens the search page (#2692)', async () => {
+  setPhoneViewport(true);
   vi.mocked(isAdmin).mockReturnValue(false);
   visit('/');
   const link = await screen.findByRole('link', { name: 'Search' });
   expect(link).toHaveAttribute('href', '/search');
   fireEvent.click(link);
   expect(await screen.findByRole('searchbox', { name: 'Search everything' })).toBeInTheDocument();
+});
+
+function visibleBadges(name: string): HTMLElement[] {
+  return screen.queryAllByRole('img', { name, hidden: true }).filter((el) => {
+    try {
+      expect(el).toBeVisible();
+      return true;
+    } catch {
+      return false;
+    }
+  });
+}
+
+test('a pending share shows a visible badge on the collapsed Settings group (#2690)', async () => {
+  await setPending(1);
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/');
+  await waitFor(() => expect(visibleBadges(PENDING_ONE)).toHaveLength(1));
+  expect(visibleBadges(PENDING_ONE)[0].closest('a')).toHaveAttribute('href', '/settings');
+});
+
+test('expanding Settings moves the badge onto Shared with me, never two at once (#2690)', async () => {
+  await setPending(1);
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/');
+  await waitFor(() => expect(visibleBadges(PENDING_ONE)).toHaveLength(1));
+  fireEvent.click(screen.getByRole('button', { name: 'Settings sub-pages' }));
+  await waitFor(() =>
+    expect(visibleBadges(PENDING_ONE)[0]?.closest('a')).toHaveAttribute('href', '/shared-with-me'),
+  );
+  expect(visibleBadges(PENDING_ONE)).toHaveLength(1);
+});
+
+test('the phone hamburger button carries the pending-share badge (#2690)', async () => {
+  setPhoneViewport(true);
+  await setPending(1);
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/');
+  const toggle = await screen.findByRole('button', { name: 'Open navigation' });
+  await waitFor(() => expect(within(toggle).getByRole('img', { name: PENDING_ONE })).toBeVisible());
+});
+
+// #2712: the drawer toggle had a hard-coded English name and no state.
+test('the drawer toggle is named, reports its expanded state and controls the drawer (#2712)', async () => {
+  setPhoneViewport(true);
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/');
+  const toggle = await screen.findByRole('button', { name: 'Open navigation' });
+  expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  expect(toggle).toHaveAttribute('aria-controls', 'mobile-nav-drawer');
+  fireEvent.click(toggle);
+  expect(toggle).toHaveAttribute('aria-expanded', 'true');
+  expect(document.getElementById('mobile-nav-drawer')).not.toBeNull();
+});
+
+test('the drawer toggle name follows the UI language (#2712)', async () => {
+  setPhoneViewport(true);
+  vi.mocked(isAdmin).mockReturnValue(false);
+  await i18n.changeLanguage('de');
+  try {
+    visit('/');
+    expect(await screen.findByRole('button', { name: 'Navigation öffnen' })).toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
+
+// #2691: answering a share on /shared-with-me does not navigate, so the badge
+// must be re-read when the page reports a mutation.
+test('answering a pending share lowers the nav badge without navigating (#2691)', async () => {
+  const shares = await import('./api/shareGrants');
+  const grant = (id: string, label: string) => ({
+    id,
+    from_username: 'bob',
+    entity_type: 'contact' as const,
+    label,
+    sections: [],
+    status: 'pending' as const,
+    expires_at: null,
+    responded_at: null,
+    created_at: '2026-01-01T00:00:00Z',
+  });
+  vi.mocked(shares.listIncomingShareGrants).mockResolvedValue({
+    share_grants: [grant('g1', 'Board game night'), grant('g2', 'Book club')],
+    next_cursor: '',
+    limit: 25,
+  } as never);
+  vi.mocked(shares.listShareBlocks).mockResolvedValue([]);
+  vi.mocked(shares.acceptShareGrant).mockResolvedValue({
+    ...grant('g1', 'Board game night'),
+    status: 'active',
+  } as never);
+  vi.mocked(shares.getShareGrantNotifications)
+    .mockResolvedValueOnce({ pending_count: 2, notifications: [] })
+    .mockResolvedValue({ pending_count: 1, notifications: [] });
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/shared-with-me');
+  expect(
+    await screen.findByRole('img', { name: '2 shares waiting for your answer' }),
+  ).toBeVisible();
+  fireEvent.click(await screen.findByRole('button', { name: /^Accept Board game night/ }));
+  expect(await screen.findByRole('img', { name: PENDING_ONE })).toBeVisible();
+  expect(window.location.pathname).toBe('/shared-with-me');
 });

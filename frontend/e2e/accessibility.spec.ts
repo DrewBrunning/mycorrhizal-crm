@@ -198,6 +198,24 @@ test.describe('accessibility dialog scans', {
       await assertNoBlockingViolations(page, '[role="dialog"]');
     });
 
+    // Issue #2661/#2674: the upload step must be keyboard-startable and every
+    // "Maps To" select must carry an accessible name.
+    test(`import mapping step (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
+      await gotoWithTheme(page, '/contacts', theme);
+      await page.getByRole('button', { name: /import/i }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByRole('button', { name: /choose file/i })).toBeVisible();
+      await dialog.locator('#import-file-input').setInputFiles({
+        name: 'a11y.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from('First Name,Last Name,Email\nAda,Lovelace,ada@example.com\n'),
+      });
+      await expect(dialog.getByRole('combobox', { name: 'Map column Email to' })).toBeVisible();
+      await assertNoBlockingViolations(page, '[role="dialog"]');
+    });
+
     test(`review duplicates dialog (${theme}) has no critical or serious a11y violations`, async ({
       page,
     }) => {

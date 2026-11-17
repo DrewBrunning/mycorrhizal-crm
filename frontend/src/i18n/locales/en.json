@@ -3,6 +3,7 @@
     "title": "Mycorrhizal CRM",
     "logout": "Logout",
     "accountMenu": "Account",
+    "openNavigation": "Open navigation",
     "update": {
       "available": "A new version of Mycorrhizal CRM is available.",
       "reload": "Reload"
@@ -406,6 +407,7 @@
       "title": "Import Contacts",
       "upload": {
         "dragDrop": "Drag and drop a CSV or VCF file here, or click to select",
+        "chooseFile": "Choose file",
         "maxSize": "Maximum file size: 50MB (VCF) / 20MB (CSV)",
         "supportedFormats": "Supported formats: CSV (spreadsheet), VCF (vCard)",
         "pickFromDevice": "Pick from this device's contacts",
@@ -416,6 +418,7 @@
         "description": "Match your CSV columns to contact fields. Columns marked 'Ignore' will not be imported.",
         "csvColumn": "CSV Column",
         "mapsTo": "Maps To",
+        "mapsToFor": "Map column {{column}} to",
         "sampleData": "Sample",
         "ignore": "-- Ignore --",
         "duplicateWarning": "These single-value fields are mapped to more than one column; only the last column will be used: {{fields}}",
@@ -1651,6 +1654,14 @@
       "title": "Export Data",
       "description": "Download all your data as a CSV file. This includes contacts, activities, notes, reminders, and relationships. Profile photos are not included.",
       "sensitivityNotice": "This is a complete backup, so it also includes items you marked private or secret, and relationships still awaiting your confirmation — each labelled in the file. To hand a copy to someone else, use the vCard or JSContact export instead, which leaves sensitive fields out unless you opt in.",
+      "bundleDescription": "Download a complete, re-importable copy of your account as one JSON file, to move to another Mycorrhizal server or keep as a backup.",
+      "bundleButton": "Export account bundle",
+      "bundleExporting": "Exporting…",
+      "bundleConfirmTitle": "Export account bundle?",
+      "bundleConfirmMessage": "The bundle is a full-fidelity backup. It includes everything you marked private or secret, and relationships still awaiting your confirmation, readable in one unencrypted file. Keep it somewhere safe and do not share it. To give a copy to someone else, use the vCard or JSContact export instead. File attachments are not included.",
+      "bundleConfirmAction": "Download bundle",
+      "bundleSuccess": "Account bundle downloaded.",
+      "bundleError": "The account bundle could not be exported. Please try again.",
       "downloadButton": "Download CSV",
       "exporting": "Exporting...",
       "success": "Your data has been exported successfully.",
