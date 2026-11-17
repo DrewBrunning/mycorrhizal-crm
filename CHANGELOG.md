@@ -45,7 +45,6 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Clearer import review on Android** ([#2610](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2610), [#2611](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2611), [#2620](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2620), [#2621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2621)): a row with a birthday error now says it cannot be fixed there, a fixed row shows its new values, an unreachable Monica is explained under the address, and finished imports end with "Done".
 - **Dates follow your format on Android** ([#2618](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2618)): Trash, import history and circle timelines now use your date and time format, without seconds.
 - **Merging contacts on Android** ([#2604](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2604), [#2605](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2605)): merging two contacts that have no addresses, links or circles no longer fails with "Unexpected server response", and the bulk action bar on the contact list now sits above the system navigation buttons.
 - **SSO login on the web** ([#2636](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2636)): signing in with your identity provider no longer reloads the login page, and the return to the app completes, when the app and API share one address.
