@@ -144,6 +144,7 @@ fun OccasionsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
+        val orderedEvents = remember(state.events) { orderOccasionEvents(state.events) }
         Column(Modifier.fillMaxSize().padding(padding)) {
             Text(
                 text = stringResource(R.string.occasions_description),
@@ -179,7 +180,7 @@ fun OccasionsScreen(
                                 )
                             }
                         } else {
-                            items(state.events, key = { it.id }) { event ->
+                            items(orderedEvents, key = { it.id }) { event ->
                                 OccasionEventRow(
                                     event = event,
                                     onOpen = { onOpenAttendees(event.id) },
@@ -580,6 +581,26 @@ private fun InstantPickerDialog(
             }
         )
     }
+}
+
+/**
+ * Issue #2628: upcoming events first, soonest first; then past events, most recent first.
+ * An event is upcoming until it has ended (its end, else its start, is not before [now]); a start
+ * that does not parse sorts last. The sort is stable, so equal instants keep the server's order.
+ */
+internal fun orderOccasionEvents(
+    events: List<OccasionEvent>,
+    now: Instant = Instant.now()
+): List<OccasionEvent> {
+    fun instant(value: String?) = value?.let { runCatching { Instant.parse(it) }.getOrNull() }
+    val (upcoming, rest) = events.partition { event ->
+        val end = instant(event.endsAt) ?: instant(event.startsAt)
+        end != null && !end.isBefore(now)
+    }
+    val (past, unparseable) = rest.partition { instant(it.startsAt) != null }
+    return upcoming.sortedBy { instant(it.startsAt) ?: Instant.MAX } +
+        past.sortedByDescending { instant(it.startsAt) } +
+        unparseable
 }
 
 /**

@@ -15,9 +15,12 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
+import java.time.Instant
 import java.util.Locale
 import java.util.TimeZone
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -223,5 +226,53 @@ class OccasionsScreenTest {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    private fun at(id: String, startsAt: String, endsAt: String? = null) =
+        OccasionEvent(id = id, title = id, startsAt = startsAt, endsAt = endsAt)
+
+    @Test
+    fun `upcoming events come first soonest first, then past events most recent first`() {
+        val now = Instant.parse("2026-11-13T12:00:00Z")
+        val ordered = orderOccasionEvents(
+            listOf(
+                at("past-old", "2026-01-01T10:00:00Z"),
+                at("later", "2027-03-01T10:00:00Z"),
+                at("past-recent", "2026-11-01T10:00:00Z"),
+                at("soon", "2026-11-20T10:00:00Z")
+            ),
+            now
+        )
+        assertEquals(listOf("soon", "later", "past-recent", "past-old"), ordered.map { it.id })
+    }
+
+    @Test
+    fun `an event still running counts as upcoming and an unparseable start sorts last`() {
+        val now = Instant.parse("2026-11-13T12:00:00Z")
+        val ordered = orderOccasionEvents(
+            listOf(
+                at("garbage", "not a date"),
+                at("finished", "2026-11-13T08:00:00Z", endsAt = "2026-11-13T11:00:00Z"),
+                at("running", "2026-11-13T09:00:00Z", endsAt = "2026-11-13T18:00:00Z"),
+                at("tomorrow", "2026-11-14T09:00:00Z")
+            ),
+            now
+        )
+        assertEquals(listOf("running", "tomorrow", "finished", "garbage"), ordered.map { it.id })
+    }
+
+    @Test
+    fun `the list renders upcoming events before past ones regardless of server order`() {
+        render(
+            listOf(
+                at("Past gala", "2001-05-01T10:00:00Z"),
+                at("Far future", "2099-06-01T10:00:00Z"),
+                at("Near future", "2099-01-01T10:00:00Z")
+            )
+        )
+        fun top(title: String) = composeTestRule.onNodeWithText(title)
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue(top("Near future") < top("Far future"))
+        assertTrue(top("Far future") < top("Past gala"))
     }
 }

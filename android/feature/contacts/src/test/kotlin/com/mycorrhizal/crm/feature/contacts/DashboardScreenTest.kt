@@ -38,6 +38,7 @@ import com.mycorrhizal.crm.model.network.UpcomingOccasion
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.ui.LocalToday
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.every
@@ -53,6 +54,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+
+private val TODAY: java.time.LocalDate = java.time.LocalDate.of(2026, 11, 13)
 
 /**
  * Renders the dashboard's four widget sections from a real [DashboardUiState]
@@ -150,7 +153,10 @@ class DashboardScreenTest {
     ) {
         composeTestRule.setContent {
             val density = LocalDensity.current
-            CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
+            CompositionLocalProvider(
+                LocalDensity provides Density(density.density, fontScale),
+                LocalToday provides TODAY
+            ) {
                 MycorrhizalTheme(darkTheme = darkTheme) {
                     DashboardContent(
                         state = state,
@@ -317,7 +323,7 @@ class DashboardScreenTest {
         contactName = name,
         source = source,
         label = label,
-        date = "2026-12-25",
+        date = TODAY.plusDays(days.toLong()).toString(),
         daysUntil = days,
         kind = kind
     )
@@ -351,6 +357,23 @@ class DashboardScreenTest {
 
         composeTestRule.onNodeWithText("Quin Roe — Xmas card").performClick()
         assertEquals(22, opened)
+    }
+
+    @Test
+    fun `an occasion counts down from the device date, not the server's days_until`() {
+        // The audit repro: the server's zone had already rolled to the next day, so it sent
+        // days_until 0 for a date that is still tomorrow on the device.
+        setContent(
+            populatedState().copy(
+                occasions = listOf(
+                    occasion(21, "Eve Doe", "birthday", "Birthday", 0)
+                        .copy(date = TODAY.plusDays(1).toString())
+                )
+            )
+        )
+        scrollTo("Upcoming occasions")
+        composeTestRule.onNodeWithText("in 1 day").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Today").assertDoesNotExist()
     }
 
     @Test

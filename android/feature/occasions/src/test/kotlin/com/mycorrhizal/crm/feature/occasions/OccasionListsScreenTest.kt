@@ -1,18 +1,23 @@
 package com.mycorrhizal.crm.feature.occasions
 
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.domain.repository.OccasionObligationRepository
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.GiftShoppingItem
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.ui.LocalToday
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import java.io.File
+import java.time.LocalDate
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -23,6 +28,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+
+private val TODAY: LocalDate = LocalDate.of(2026, 11, 13)
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
@@ -49,7 +56,7 @@ class OccasionListsScreenTest {
         contactName = name,
         obligationId = id,
         label = label,
-        date = "2026-12-18",
+        date = TODAY.plusDays(days.toLong()).toString(),
         daysUntil = days,
         status = status
     )
@@ -61,8 +68,14 @@ class OccasionListsScreenTest {
         coEvery { repository.giftShoppingList(30) } returns result
         val vm = GiftShoppingListViewModel(repository)
         composeTestRule.setContent {
-            MycorrhizalTheme {
-                GiftShoppingListScreen(onBack = {}, onOpenContact = onOpenContact, viewModel = vm)
+            CompositionLocalProvider(LocalToday provides TODAY) {
+                MycorrhizalTheme {
+                    GiftShoppingListScreen(
+                        onBack = {},
+                        onOpenContact = onOpenContact,
+                        viewModel = vm
+                    )
+                }
             }
         }
         composeTestRule.waitForIdle()
@@ -202,5 +215,40 @@ class OccasionListsScreenTest {
         composeTestRule.onNodeWithText("Share as CSV").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Share as CSV").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a shopping list load failure is worded from its reason code, never the server text`() {
+        renderShopping(Result.failure(reasonCoded()))
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a card list download failure is worded from its reason code, never the server text`() {
+        coEvery { repository.cardListCsv("card") } returns Result.failure(reasonCoded())
+        renderActions()
+        composeTestRule.onNodeWithText("Share as CSV").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    private fun reasonCoded() = ApiError.Client(
+        409,
+        "RAW SERVER TEXT",
+        reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+    )
+
+    @Test
+    fun `the countdown follows the device date, not the server's days_until`() {
+        // Server zone already rolled over: it says 0 ("Today") for a date that is tomorrow here.
+        renderShopping(
+            Result.success(
+                listOf(item("a").copy(date = TODAY.plusDays(1).toString(), daysUntil = 0))
+            )
+        )
+        composeTestRule.onNodeWithText("in 1 day").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Today").assertDoesNotExist()
     }
 }
