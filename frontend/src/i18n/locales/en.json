@@ -27,6 +27,11 @@
   },
   "globalSearch": {
     "placeholder": "Search contacts, notes, activities, places…",
+    "label": "Search everything",
+    "open": "Search",
+    "resultCount_one": "{{count}} result",
+    "resultCount_other": "{{count}} results",
+    "failed": "Couldn't search right now. Press Enter to open the results page.",
     "groupContacts": "Contacts",
     "groupNotes": "Notes",
     "groupActivities": "Activities",

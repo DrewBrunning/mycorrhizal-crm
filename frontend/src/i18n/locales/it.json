@@ -27,6 +27,12 @@
   },
   "globalSearch": {
     "placeholder": "Cerca contatti, note, attività, luoghi…",
+    "label": "Cerca ovunque",
+    "open": "Cerca",
+    "resultCount_one": "{{count}} risultato",
+    "resultCount_other": "{{count}} risultati",
+    "resultCount_many": "{{count}} risultati",
+    "failed": "Impossibile cercare al momento. Premi Invio per aprire la pagina dei risultati.",
     "groupContacts": "Contatti",
     "groupNotes": "Note",
     "groupActivities": "Attività",

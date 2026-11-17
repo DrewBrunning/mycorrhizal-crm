@@ -56,6 +56,7 @@ import MapIcon from '@mui/icons-material/Map';
 import MenuIcon from '@mui/icons-material/Menu';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PeopleIcon from '@mui/icons-material/People';
+import SearchIcon from '@mui/icons-material/Search';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ShareIcon from '@mui/icons-material/Share';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -527,6 +528,17 @@ function AppContent({
                 </IconButton>
               ))}
               <Box sx={{ flexGrow: 1 }} />
+              {/* #2692: the AppBar has no room for the search box here, so this
+                  opens the results page, which carries its own search field. */}
+              <IconButton
+                component={Link}
+                to="/search"
+                color="inherit"
+                aria-label={t('globalSearch.open')}
+                sx={{ mr: 0.5 }}
+              >
+                <SearchIcon />
+              </IconButton>
               <IconButton
                 color="inherit"
                 aria-label={t('app.accountMenu')}
