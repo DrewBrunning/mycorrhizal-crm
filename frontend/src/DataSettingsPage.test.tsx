@@ -654,3 +654,13 @@ test('a failed bundle export says so and the button comes back', async () => {
   // (the confirmation dialog is still fading out, so wait for the page to be exposed)
   expect(await screen.findByRole('button', { name: 'Export account bundle' })).toBeEnabled();
 });
+
+test('Escape dismisses the account bundle confirmation without downloading', async () => {
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Export account bundle' }));
+  fireEvent.keyDown(await screen.findByRole('dialog'), { key: 'Escape' });
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(exportBundleMock).not.toHaveBeenCalled();
+});
