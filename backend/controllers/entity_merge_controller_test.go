@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"testing"
 
 	"mycorrhizal/contactmodel"
@@ -733,4 +734,46 @@ func TestEntityHelper_PlacesCarryAddressSensitivityAndName(t *testing.T) {
 	assert.Equal(t, "private", out.Created[0].Entity.Sensitivity, "the entity takes the strictest address sensitivity")
 	assert.NotContains(t, string(out.Created[0].Entity.Core), "sensitivity")
 	assert.Empty(t, e.suggestions(t, "mode=contact_values&kind=place").Groups)
+}
+
+// Issue #2631: spelling variants of one organisation pair as normalized_name
+// (both in the entity pairs and in the create-from-contacts groups), while
+// different names that merely share a suffix or a prefix do not.
+func TestEntitySuggestions_OrganisationSpellingVariantsPairAndDifferentNamesDoNot(t *testing.T) {
+	e := newMergeEnv(t)
+	e.org(t, "Coop")
+	e.org(t, "Co-op")
+	e.org(t, "Cooper")
+	e.org(t, "Acme Ltd")
+	e.org(t, "Acme Limited")
+	e.org(t, "Globex Ltd")
+	e.org(t, "Globex Incorporated")
+
+	got := e.suggestions(t, "kind=organisation&limit=100")
+	var keys []string
+	for _, p := range got.Pairs {
+		assert.Equal(t, models.EntitySuggestionReasonNormalName, p.Reason, pairKey(p))
+		names := []string{p.A.Name, p.B.Name}
+		sort.Strings(names)
+		keys = append(keys, names[0]+"+"+names[1])
+	}
+	assert.ElementsMatch(t, []string{
+		"Co-op+Coop",
+		"Acme Limited+Acme Ltd",
+		"Globex Incorporated+Globex Ltd",
+	}, keys, "Cooper, and Acme vs Globex, stay apart")
+
+	orgContact(e, t, "Ada", "Coop")
+	orgContact(e, t, "Bob", "Co-op")
+	orgContact(e, t, "Cy", "Cooper")
+	groups := e.suggestions(t, "mode=contact_values&kind=organisation").Groups
+	require.Len(t, groups, 2, "Coop/Co-op share a group; Cooper is its own")
+	for _, g := range groups {
+		if len(g.Contacts) == 2 {
+			assert.ElementsMatch(t, []string{"Coop", "Co-op"}, g.Variants)
+			assert.Equal(t, models.EntitySuggestionReasonNormalName, g.Reason)
+		} else {
+			assert.Equal(t, []string{"Cooper"}, g.Variants)
+		}
+	}
 }

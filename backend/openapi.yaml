@@ -8996,8 +8996,9 @@ paths:
         Read-only and idempotent; nothing is created, linked or merged by calling it. `mode=pairs` (default)
         lists candidate duplicate pairs of the caller's live entities, minus dismissed pairs, with a `reason`:
         `exact_name` (equal normalized name key: NFC, case-folded, whitespace collapsed, edge punctuation
-        trimmed), `normalized_name` (organisations only: the same after dropping trailing legal suffixes such as
-        Inc, LLC, Ltd, GmbH, AG, Corp, Co, SA, BV, for comparison only) or `address_components` (places: the
+        trimmed), `normalized_name` (organisations only: the same after removing full stops, dropping trailing
+        legal suffixes such as Inc/Incorporated, LLC, Ltd/Limited, GmbH, AG, Corp/Corporation, Co/Company, SA, BV,
+        for comparison only, and ignoring word breaks, so Coop and Co-op match) or `address_components` (places: the
         normalized number, name, locality, postcode and country). Pets match on name key and species. No
         diacritic folding. `mode=contact_values` (needs `kind` organisation or place) lists groups of the
         contacts' own ORG or ADR values that compare equal, excluding values already matched by a live link, for
