@@ -2246,13 +2246,29 @@
     <!-- Cronologia importazioni (parità web, issue #651 / #834) -->
     <string name="import_history_entry">Cronologia importazioni</string>
     <string name="import_history_title">Cronologia importazioni</string>
+    <plurals name="import_history_created_count">
+        <item quantity="one">%1$d creato</item>
+        <item quantity="many">%1$d creati</item>
+        <item quantity="other">%1$d creati</item>
+    </plurals>
+    <plurals name="import_history_updated_count">
+        <item quantity="one">%1$d aggiornato</item>
+        <item quantity="many">%1$d aggiornati</item>
+        <item quantity="other">%1$d aggiornati</item>
+    </plurals>
+    <plurals name="import_history_skipped_count">
+        <item quantity="one">%1$d saltato</item>
+        <item quantity="many">%1$d saltati</item>
+        <item quantity="other">%1$d saltati</item>
+    </plurals>
+    <plurals name="import_history_error_count">
+        <item quantity="one">%1$d errore</item>
+        <item quantity="many">%1$d errori</item>
+        <item quantity="other">%1$d errori</item>
+    </plurals>
     <string name="import_history_view_report">Visualizza report</string>
     <string name="import_history_report_title">Report di importazione</string>
     <string name="import_history_empty">Nessuna importazione per ora</string>
-    <string name="import_history_col_created">Creati</string>
-    <string name="import_history_col_updated">Aggiornati</string>
-    <string name="import_history_col_skipped">Saltati</string>
-    <string name="import_history_col_errors">Errori</string>
     <string name="import_history_format_csv">CSV</string>
     <string name="import_history_format_vcf">VCF</string>
     <string name="import_history_format_jscontact">JSContact</string>

@@ -2246,13 +2246,29 @@
     <!-- Historique des importations (parité web, issue #651 / #834) -->
     <string name="import_history_entry">Historique des importations</string>
     <string name="import_history_title">Historique des importations</string>
+    <plurals name="import_history_created_count">
+        <item quantity="one">%1$d créé</item>
+        <item quantity="many">%1$d créés</item>
+        <item quantity="other">%1$d créés</item>
+    </plurals>
+    <plurals name="import_history_updated_count">
+        <item quantity="one">%1$d mis à jour</item>
+        <item quantity="many">%1$d mis à jour</item>
+        <item quantity="other">%1$d mis à jour</item>
+    </plurals>
+    <plurals name="import_history_skipped_count">
+        <item quantity="one">%1$d ignoré</item>
+        <item quantity="many">%1$d ignorés</item>
+        <item quantity="other">%1$d ignorés</item>
+    </plurals>
+    <plurals name="import_history_error_count">
+        <item quantity="one">%1$d erreur</item>
+        <item quantity="many">%1$d erreurs</item>
+        <item quantity="other">%1$d erreurs</item>
+    </plurals>
     <string name="import_history_view_report">Voir le rapport</string>
     <string name="import_history_report_title">Rapport d’importation</string>
     <string name="import_history_empty">Aucune importation pour le moment</string>
-    <string name="import_history_col_created">Créés</string>
-    <string name="import_history_col_updated">Mis à jour</string>
-    <string name="import_history_col_skipped">Ignorés</string>
-    <string name="import_history_col_errors">Erreurs</string>
     <string name="import_history_format_csv">CSV</string>
     <string name="import_history_format_vcf">VCF</string>
     <string name="import_history_format_jscontact">JSContact</string>

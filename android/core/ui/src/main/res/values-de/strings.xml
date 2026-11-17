@@ -2174,13 +2174,25 @@
     <!-- Import-Verlauf (Web-Parität, issue #651 / #834) -->
     <string name="import_history_entry">Importverlauf</string>
     <string name="import_history_title">Importverlauf</string>
+    <plurals name="import_history_created_count">
+        <item quantity="one">%1$d erstellt</item>
+        <item quantity="other">%1$d erstellt</item>
+    </plurals>
+    <plurals name="import_history_updated_count">
+        <item quantity="one">%1$d aktualisiert</item>
+        <item quantity="other">%1$d aktualisiert</item>
+    </plurals>
+    <plurals name="import_history_skipped_count">
+        <item quantity="one">%1$d übersprungen</item>
+        <item quantity="other">%1$d übersprungen</item>
+    </plurals>
+    <plurals name="import_history_error_count">
+        <item quantity="one">%1$d Fehler</item>
+        <item quantity="other">%1$d Fehler</item>
+    </plurals>
     <string name="import_history_view_report">Bericht ansehen</string>
     <string name="import_history_report_title">Importbericht</string>
     <string name="import_history_empty">Noch keine Importe</string>
-    <string name="import_history_col_created">Erstellt</string>
-    <string name="import_history_col_updated">Aktualisiert</string>
-    <string name="import_history_col_skipped">Übersprungen</string>
-    <string name="import_history_col_errors">Fehler</string>
     <string name="import_history_format_csv">CSV</string>
     <string name="import_history_format_vcf">VCF</string>
     <string name="import_history_format_jscontact">JSContact</string>

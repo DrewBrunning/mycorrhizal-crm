@@ -2191,13 +2191,25 @@
     <!-- Import history (web parity, issue #651 / #834) -->
     <string name="import_history_entry">Import history</string>
     <string name="import_history_title">Import history</string>
+    <plurals name="import_history_created_count">
+        <item quantity="one">%1$d created</item>
+        <item quantity="other">%1$d created</item>
+    </plurals>
+    <plurals name="import_history_updated_count">
+        <item quantity="one">%1$d updated</item>
+        <item quantity="other">%1$d updated</item>
+    </plurals>
+    <plurals name="import_history_skipped_count">
+        <item quantity="one">%1$d skipped</item>
+        <item quantity="other">%1$d skipped</item>
+    </plurals>
+    <plurals name="import_history_error_count">
+        <item quantity="one">%1$d error</item>
+        <item quantity="other">%1$d errors</item>
+    </plurals>
     <string name="import_history_view_report">View report</string>
     <string name="import_history_report_title">Import report</string>
     <string name="import_history_empty">No imports yet</string>
-    <string name="import_history_col_created">Created</string>
-    <string name="import_history_col_updated">Updated</string>
-    <string name="import_history_col_skipped">Skipped</string>
-    <string name="import_history_col_errors">Errors</string>
     <string name="import_history_format_csv">CSV</string>
     <string name="import_history_format_vcf">VCF</string>
     <string name="import_history_format_jscontact">JSContact</string>
