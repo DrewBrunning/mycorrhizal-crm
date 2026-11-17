@@ -1,8 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { AnnouncerProvider } from './context/AnnouncerContext';
+import { PendingSharesContext } from './context/PendingSharesContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import SharedWithMePage from './SharedWithMePage';
 import { errorEnvelope, mockApi, server, setupMswServer } from './test/mswServer';
@@ -359,5 +360,82 @@ describe('SharedWithMePage read view', () => {
     expect(
       await within(dialog).findByText('This share is no longer available.'),
     ).toBeInTheDocument();
+  });
+});
+
+// #2691: answering a share does not navigate, so the app shell's nav badge is
+// told to re-read the pending count after every mutation that can change it.
+describe('SharedWithMePage pending-count refresh signal', () => {
+  function renderWithSignal() {
+    const refreshPendingShares = vi.fn();
+    render(
+      <MemoryRouter>
+        <PendingSharesContext.Provider value={{ refreshPendingShares }}>
+          <AnnouncerProvider>
+            <DateFormatProvider>
+              <SharedWithMePage />
+            </DateFormatProvider>
+          </AnnouncerProvider>
+        </PendingSharesContext.Provider>
+      </MemoryRouter>,
+    );
+    return refreshPendingShares;
+  }
+
+  test('accept refreshes once', async () => {
+    setup([pending]);
+    mockApi('post', '/share-grants/p1/accept', { share_grant: { ...pending, status: 'active' } });
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: /^Accept Alice Anderson/ }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('decline refreshes once', async () => {
+    setup([pending]);
+    mockApi('post', '/share-grants/p1/decline', {
+      share_grant: { ...pending, status: 'declined' },
+    });
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: /^Decline Alice Anderson/ }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('leave refreshes once', async () => {
+    setup([active]);
+    mockApi('post', '/share-grants/a1/leave', { share_grant: { ...active, status: 'declined' } });
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: /^Stop receiving Book Club/ }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Stop receiving' }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('block refreshes once', async () => {
+    setup([pending]);
+    mockApi('post', '/share-grants/p1/decline', {
+      share_grant: { ...pending, status: 'declined' },
+    });
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: 'Block bob' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Block bob' }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('unblock refreshes once', async () => {
+    setup([], [{ user_id: 7, username: 'bob', created_at: '2026-01-01T00:00:00Z' }]);
+    mockApi('delete', '/share-grants/blocks/7', new Response(null, { status: 204 }));
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: 'Unblock bob' }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('a failed accept does not refresh', async () => {
+    setup([pending]);
+    mockApi('post', '/share-grants/p1/accept', errorEnvelope(409, 'CONFLICT', 'nope'));
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: /^Accept Alice Anderson/ }));
+    await screen.findByRole('alert');
+    expect(refresh).not.toHaveBeenCalled();
   });
 });
