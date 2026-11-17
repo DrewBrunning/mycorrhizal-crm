@@ -114,6 +114,16 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			v1.POST("/webauthn/login/finish", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
 				controllers.WebAuthnLoginFinish(c, cfg)
 			})
+			// Passwordless passkey login: a client-side discoverable credential
+			// (fingerprint/face/PIN) signs in without a username or password.
+			// Public and rate-limited like /login; finish mints the session and
+			// enforces the client-version floor.
+			v1.POST("/webauthn/login/passwordless/begin", middleware.AuthRateLimitMiddleware(), func(c *gin.Context) {
+				controllers.WebAuthnPasswordlessLoginBegin(c, cfg)
+			})
+			v1.POST("/webauthn/login/passwordless/finish", middleware.AuthRateLimitMiddleware(), middleware.EnforceMinClientVersion(cfg), func(c *gin.Context) {
+				controllers.WebAuthnPasswordlessLoginFinish(c, cfg)
+			})
 			// Issue #722: fully biometric login — a device that holds an
 			// unrevoked device grant (and whose owner just passed the local
 			// biometric gate) exchanges it for a fresh session JWT. Rate-limited

@@ -3437,6 +3437,16 @@ export type WebAuthnDeleteInput = {
   code?: string;
 };
 
+export type WebAuthnPasswordlessLoginBeginResponse = {
+  ceremony_token: string;
+  publicKey: Record<string, unknown>;
+};
+
+export type WebAuthnPasswordlessLoginInput = {
+  assertion: Record<string, unknown>;
+  ceremony_token: string;
+};
+
 export type WebAuthnProofBeginInput = {
   exclude_id?: string;
 };

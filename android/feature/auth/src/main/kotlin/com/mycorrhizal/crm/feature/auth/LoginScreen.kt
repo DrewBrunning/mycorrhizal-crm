@@ -13,6 +13,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
@@ -114,6 +115,8 @@ fun LoginScreen(
         onSubmit = viewModel::onSubmit,
         onTwoFactorSubmit = viewModel::onSubmitTwoFactorCode,
         onUsePasskey = { viewModel.onUsePasskey(context) },
+        onUsePasswordlessPasskey = { viewModel.onUsePasswordlessPasskey(context) },
+        onUseBiometric = { viewModel.onUseBiometric(context) },
         onBackToCredentials = viewModel::onBackToCredentials,
         onSignInWithSso = onSignInWithSso,
         onRegisterClick = onRegisterClick,
@@ -142,6 +145,8 @@ fun LoginScreenContent(
     modifier: Modifier = Modifier,
     onTwoFactorSubmit: (String) -> Unit = {},
     onUsePasskey: () -> Unit = {},
+    onUsePasswordlessPasskey: () -> Unit = {},
+    onUseBiometric: () -> Unit = {},
     onBackToCredentials: () -> Unit = {},
     onSignInWithSso: (String) -> Unit = {},
     onRegisterClick: () -> Unit = {},
@@ -298,6 +303,30 @@ fun LoginScreenContent(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(stringResource(R.string.login_sign_in))
+                    }
+                }
+
+                // Discussion #2355: passwordless passkey sign-in from the
+                // credentials step. The server/device gate is re-checked when
+                // tapped, so this is intentionally an additive action beside the
+                // password form rather than a replacement.
+                if (uiState.passkeyAvailable && uiState.mode == LoginMode.PASSWORD) {
+                    OutlinedButton(
+                        onClick = onUsePasswordlessPasskey,
+                        enabled = serverUrl.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.login_sign_in_with_passkey))
+                    }
+                }
+
+                if (uiState.biometricAvailable && uiState.mode == LoginMode.PASSWORD) {
+                    OutlinedButton(
+                        onClick = onUseBiometric,
+                        enabled = serverUrl.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(stringResource(R.string.login_sign_in_with_biometrics))
                     }
                 }
 

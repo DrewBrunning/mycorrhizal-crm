@@ -182,16 +182,19 @@ func SecondFactorMethods(db *gorm.DB, user models.User) ([]string, error) {
 // ---------------------------------------------------------------------------
 // Ceremony store. Session data (challenge etc.) must survive between the begin
 // and finish requests. This is a single-process app, so an in-memory,
-// single-use, short-TTL store keyed by (purpose, user) is enough and needs no
-// cookie: begin overwrites any earlier in-flight ceremony for the same key,
-// and finish consumes it so a captured response can never be replayed.
+// single-use, short-TTL store is enough and needs no cookie: a keyed begin
+// overwrites any earlier in-flight ceremony for the same key, and finish
+// consumes it so a captured response can never be replayed. Second-factor
+// ceremonies key on (purpose, user); a discoverable login keys on
+// (purpose, random token) because the user is unknown at begin.
 // ---------------------------------------------------------------------------
 
 // Ceremony purposes.
 const (
-	CeremonyRegister = "register"
-	CeremonyLogin    = "login"
-	CeremonyProof    = "proof" // re-authentication for a sensitive operation
+	CeremonyRegister          = "register"
+	CeremonyLogin             = "login"
+	CeremonyProof             = "proof"        // re-authentication for a sensitive operation
+	CeremonyPasswordlessLogin = "passwordless" // client-side discoverable (usernameless) login
 )
 
 type ceremonyEntry struct {
@@ -216,6 +219,8 @@ func NewCeremonyStore() *CeremonyStore {
 var DefaultCeremonies = NewCeremonyStore()
 
 func ceremonyKey(purpose string, userID uint) string { return fmt.Sprintf("%s:%d", purpose, userID) }
+
+func ceremonyTokenKey(purpose, token string) string { return purpose + ":" + token }
 
 // Put stores (replacing any prior) the ceremony for (purpose, userID).
 func (s *CeremonyStore) Put(purpose string, userID uint, session webauthn.SessionData, name string) {
@@ -245,6 +250,38 @@ func (s *CeremonyStore) Take(purpose string, userID uint) (session webauthn.Sess
 		return webauthn.SessionData{}, "", false
 	}
 	return e.session, e.name, true
+}
+
+// PutToken stores a discoverable-login ceremony under an unguessable client
+// token instead of a user id: at begin time the user is not known yet. The
+// token travels in the begin response (never a cookie) and is single-use.
+func (s *CeremonyStore) PutToken(purpose, token string, session webauthn.SessionData) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := s.now()
+	for k, e := range s.entries { // opportunistic sweep; the map stays tiny
+		if now.After(e.expires) {
+			delete(s.entries, k)
+		}
+	}
+	s.entries[ceremonyTokenKey(purpose, token)] = ceremonyEntry{session: session, expires: now.Add(webAuthnCeremonyTTL)}
+}
+
+// TakeToken removes and returns the ceremony stored under token; ok is false
+// if there is none or it expired.
+func (s *CeremonyStore) TakeToken(purpose, token string) (session webauthn.SessionData, ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	k := ceremonyTokenKey(purpose, token)
+	e, found := s.entries[k]
+	if !found {
+		return webauthn.SessionData{}, false
+	}
+	delete(s.entries, k)
+	if s.now().After(e.expires) {
+		return webauthn.SessionData{}, false
+	}
+	return e.session, true
 }
 
 // RandomCredentialLabel is the last-resort label when the client supplies

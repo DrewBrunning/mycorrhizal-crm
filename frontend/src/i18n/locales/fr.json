@@ -244,7 +244,10 @@
     "backToCredentials": "Retour à la connexion",
     "passkeyOption": "Utiliser plutôt une clé d'accès",
     "passkeyCancelled": "La connexion par clé d'accès a été annulée. Vous pouvez réessayer ou saisir un code.",
-    "passkeyFailed": "La connexion par clé d'accès a échoué. Réessayez ou saisissez un code."
+    "passkeyFailed": "La connexion par clé d'accès a échoué. Réessayez ou saisissez un code.",
+    "passkeyLogin": "Se connecter avec une clé d'accès",
+    "passkeyLoginCancelled": "La connexion par clé d'accès a été annulée. Vous pouvez réessayer ou utiliser votre mot de passe.",
+    "passkeyLoginFailed": "La connexion par clé d'accès a échoué. Réessayez ou utilisez votre mot de passe."
   },
   "sessionExpired": {
     "bannerMessage": "Votre session a expiré.",

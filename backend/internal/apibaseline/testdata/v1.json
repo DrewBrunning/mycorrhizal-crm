@@ -10570,6 +10570,59 @@
     },
     {
       "method": "POST",
+      "path": "/webauthn/login/passwordless/begin",
+      "parameters": null,
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:WebAuthnPasswordlessLoginBeginResponse"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/webauthn/login/passwordless/finish",
+      "parameters": [
+        {
+          "name": "X-Client-Version",
+          "in": "header",
+          "required": false
+        }
+      ],
+      "request_body": "ref:WebAuthnPasswordlessLoginInput",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:LoginResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "403",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "429",
+          "schema": "ref:AccountLocked"
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/webauthn/register/begin",
       "parameters": null,
       "request_body": "ref:WebAuthnRegisterBeginInput",
@@ -25449,6 +25502,36 @@
           "name": "code",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnPasswordlessLoginBeginResponse",
+      "properties": [
+        {
+          "name": "ceremony_token",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "publicKey",
+          "type": "object",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "WebAuthnPasswordlessLoginInput",
+      "properties": [
+        {
+          "name": "assertion",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "ceremony_token",
+          "type": "string",
+          "required": true
         }
       ]
     },

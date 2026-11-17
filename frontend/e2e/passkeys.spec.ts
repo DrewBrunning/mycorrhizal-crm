@@ -84,7 +84,15 @@ test.describe('Passkeys', () => {
         (await cdp.send('WebAuthn.getCredentials', { authenticatorId })).credentials,
       ).toHaveLength(1);
 
-      // --- sign out, then the passkey is the second factor ---
+      // --- passwordless passkey sign-in (discussion #2355) ---
+      await page.getByRole('button', { name: /logout/i }).click();
+      await expect(page.getByRole('heading', { name: /login/i })).toBeVisible({ timeout: 10000 });
+      await page.getByRole('button', { name: 'Sign in with a passkey' }).click();
+      await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({
+        timeout: 15000,
+      });
+
+      // --- sign out, then the passkey is also the second factor ---
       await page.getByRole('button', { name: /logout/i }).click();
       await expect(page.getByRole('heading', { name: /login/i })).toBeVisible({ timeout: 10000 });
 

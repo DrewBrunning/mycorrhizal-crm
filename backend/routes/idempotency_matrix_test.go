@@ -261,6 +261,8 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/login/2fa",
 		"POST /api/v1/webauthn/login/begin",
 		"POST /api/v1/webauthn/login/finish",
+		"POST /api/v1/webauthn/login/passwordless/begin",
+		"POST /api/v1/webauthn/login/passwordless/finish",
 		"POST /api/v1/auth/device/session",
 		"POST /api/v1/logout",
 		"POST /api/v1/check-password-strength",

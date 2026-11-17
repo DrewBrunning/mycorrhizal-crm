@@ -4,6 +4,7 @@ import com.mycorrhizal.crm.data.session.ProfileUpdate
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.LoginOutcome
+import com.mycorrhizal.crm.domain.repository.PasswordlessPasskeyChallenge
 import com.mycorrhizal.crm.domain.repository.SecondFactorProof
 import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.model.network.AuthConfig
@@ -113,6 +114,32 @@ class AuthRepositoryImpl @Inject constructor(
         )
     }
 
+    override suspend fun beginPasswordlessPasskeyLogin(): Result<PasswordlessPasskeyChallenge> {
+        val begin = apiClient.webauthnPasswordlessLoginBegin().getOrElse { error ->
+            return Result.failure(error.toApiError())
+        }
+        return Result.success(
+            PasswordlessPasskeyChallenge(begin.ceremonyToken, begin.optionsJson)
+        )
+    }
+
+    override suspend fun completePasswordlessPasskeyLogin(
+        challenge: PasswordlessPasskeyChallenge,
+        assertionJson: String
+    ): Result<Unit> {
+        val login = apiClient.webauthnPasswordlessLoginFinish(
+            challenge.ceremonyToken,
+            assertionJson
+        ).getOrElse { error ->
+            return Result.failure(error.toApiError())
+        }
+        val token = login.token
+        if (token == null || token.isBlank()) {
+            return Result.failure(ApiError.Parse("Login succeeded but no auth token was returned"))
+        }
+        return persistSessionWithProfileFetch(token)
+    }
+
     /**
      * The shared tail of every 2FA step-2 ([complete2faLogin] and
      * [completePasskeyLogin]): turn the finished login into a persisted
@@ -144,6 +171,16 @@ class AuthRepositoryImpl @Inject constructor(
         if (apiError is ApiError.Client && apiError.code == 401) {
             pending2faCookie = null
         }
+    }
+
+    override suspend fun loginWithDeviceGrant(deviceToken: String): Result<Unit> {
+        val token = apiClient.exchangeDeviceSession(deviceToken).getOrElse { error ->
+            return Result.failure(error.toApiError())
+        }
+        if (token.isBlank()) {
+            return Result.failure(ApiError.Parse("Device grant exchange returned no token"))
+        }
+        return persistSessionWithProfileFetch(token)
     }
 
     override suspend fun loginWithApiToken(token: String): Result<Unit> =

@@ -376,6 +376,8 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/login/2fa":                           exempt(reasonAuth),
 		"POST /api/v1/webauthn/login/begin":                exempt(reasonAuth),
 		"POST /api/v1/webauthn/login/finish":               exempt(reasonAuth),
+		"POST /api/v1/webauthn/login/passwordless/begin":   exempt(reasonAuth),
+		"POST /api/v1/webauthn/login/passwordless/finish":  exempt(reasonAuth),
 		"POST /api/v1/auth/device/session":                 exempt(reasonAuth),
 		"POST /api/v1/logout":                              exempt(reasonAuth),
 		"POST /api/v1/check-password-strength":             exempt(reasonAuth),

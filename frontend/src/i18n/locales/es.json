@@ -244,7 +244,10 @@
     "backToCredentials": "Volver al inicio de sesión",
     "passkeyOption": "Usar una llave de acceso",
     "passkeyCancelled": "Se canceló el inicio de sesión con llave de acceso. Puedes intentarlo de nuevo o introducir un código.",
-    "passkeyFailed": "Falló el inicio de sesión con llave de acceso. Inténtalo de nuevo o introduce un código."
+    "passkeyFailed": "Falló el inicio de sesión con llave de acceso. Inténtalo de nuevo o introduce un código.",
+    "passkeyLogin": "Iniciar sesión con una llave de acceso",
+    "passkeyLoginCancelled": "Se canceló el inicio de sesión con llave de acceso. Puedes intentarlo de nuevo o usar tu contraseña.",
+    "passkeyLoginFailed": "Falló el inicio de sesión con llave de acceso. Inténtalo de nuevo o usa tu contraseña."
   },
   "sessionExpired": {
     "bannerMessage": "Tu sesión ha caducado.",

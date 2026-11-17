@@ -46,6 +46,25 @@ Your contacts and history live on your server, so a reinstall re-downloads them 
 Only the app's on-device settings and offline mirror are local; the app is safe to uninstall if you
 can sign in again.
 
+## Signing in
+
+The login screen offers the methods the active server supports:
+
+- **Username and password**, the password-manager/autofill form, or a `mycorrhizal_` **API token**.
+- **SSO** when the server has OIDC configured.
+- **Sign in with a passkey** when the operator enabled native Android passkeys on this server
+  (ADR 0034) and the device has Credential Manager. It is a passwordless, discoverable credential;
+  the device's fingerprint/face/screen-lock/PIN is verified locally.
+- **Sign in with biometrics** when this install already holds a device grant (ADR 0014 addendum).
+  The button appears only while the server field still names the grant's server; it runs the same
+  OS biometric/device-credential prompt as App lock, then exchanges the revocable grant for a
+  session. An explicit logout keeps this credential so you can sign in with biometrics next time;
+  **Settings → Privacy & security → Turn off biometric sign-in**, or turning App lock off, revokes
+  it (server first). Password changes/resets and 2FA posture changes also revoke it.
+
+The password/passkey/biometric form is never shown without the server URL, and a failed or dismissed
+prompt leaves the password form usable.
+
 ## Server profiles
 
 The app keeps a list of **server profiles**, exactly one active at a time

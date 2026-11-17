@@ -129,6 +129,20 @@ interface DeviceGrantRepository {
      */
     suspend fun exchangeDeviceSession(deviceToken: String): Result<Unit>
 
+    /**
+     * The plaintext grant stored for the active profile, or null. Only used by
+     * the login-screen re-auth path after the local biometric prompt succeeds;
+     * callers must never persist or log it.
+     */
+    suspend fun storedGrantToken(): String?
+
+    /**
+     * True when the active profile is [serverUrl] and it has a stored grant.
+     * The URL match prevents a typed server change from sending one server's
+     * grant to another.
+     */
+    suspend fun hasStoredGrantFor(serverUrl: String): Boolean
+
     /** POST /api/v1/auth/device/grants/revoke-all — the lost-phone path. */
     suspend fun revokeAllDeviceGrants(): Result<Unit>
 }

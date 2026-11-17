@@ -107,6 +107,16 @@
     <string name="login_two_factor_passkey_no_provider_only_description">Votre compte utilise une clé d\'accès, mais aucun fournisseur de clés d\'accès n\'est configuré sur cet appareil. Saisissez l\'un de vos codes de récupération pour vous connecter.</string>
     <string name="login_error_passkey_failed">La connexion par clé d\'accès a échoué. Réessayez ou saisissez un code.</string>
     <string name="login_error_passkey_no_match">Aucune clé d\'accès correspondante n\'a été trouvée sur cet appareil. Réessayez ou saisissez un code.</string>
+    <string name="login_sign_in_with_passkey">Se connecter avec une clé d\'accès</string>
+    <string name="login_error_passkey_failed_password">La connexion par clé d\'accès a échoué. Réessayez ou utilisez votre mot de passe.</string>
+    <string name="login_error_passkey_no_match_password">Aucune clé d\'accès correspondante n\'a été trouvée sur cet appareil. Réessayez ou utilisez votre mot de passe.</string>
+    <string name="login_error_passkey_unavailable_password">Les clés d\'accès ne sont pas disponibles dans cette application pour ce serveur. Utilisez votre mot de passe.</string>
+    <string name="login_sign_in_with_biometrics">Se connecter avec la biométrie</string>
+    <string name="login_biometric_prompt_title">Se connecter avec la biométrie</string>
+    <string name="login_biometric_prompt_subtitle">Déverrouillez cet appareil pour vous connecter.</string>
+    <string name="login_biometric_prompt_cancel">Annuler</string>
+    <string name="login_error_biometric_failed">La connexion biométrique a échoué. Réessayez ou utilisez votre mot de passe.</string>
+    <string name="login_error_biometric_unavailable">La connexion biométrique n\'est pas disponible sur cet appareil ou pour ce serveur. Utilisez votre mot de passe.</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">Pas de compte ? Créez-en un</string>

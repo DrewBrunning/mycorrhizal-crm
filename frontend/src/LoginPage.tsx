@@ -4,7 +4,14 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { notifySessionRestored } from './api/sessionExpiry';
-import { API_BASE_URL, isAuthenticated, login2FA, loginUser, loginWithPasskey } from './auth';
+import {
+  API_BASE_URL,
+  isAuthenticated,
+  login2FA,
+  loginUser,
+  loginWithPasskey,
+  loginWithPasskeyPasswordless,
+} from './auth';
 import BrandLogo from './components/BrandLogo';
 import ForgotPasswordDialog from './components/ForgotPasswordDialog';
 import { initializeDateFormatFromBackend } from './DateFormatProvider';
@@ -49,6 +56,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
   const [forgotOpen, setForgotOpen] = useState(false);
   const navigate = useNavigate();
   const oidcConfig = useOIDCConfig();
+  const passwordlessPasskeyAvailable = isWebAuthnSupported();
 
   const finishLogin = async ({
     language,
@@ -122,6 +130,16 @@ export default function LoginPage({ setToken }: LoginPageProps) {
     }
   };
 
+  const passkeyErrorMessage = (err: unknown, cancelledKey: string, failedKey: string) =>
+    // A dismissed browser prompt is not a failure worth alarming about; the
+    // fallback names the form still on screen (a code field or the password
+    // form).
+    isCeremonyCancelled(err)
+      ? t(cancelledKey)
+      : err instanceof Error && err.message
+        ? err.message
+        : t(failedKey);
+
   const handlePasskey = async () => {
     setLoading(true);
     setError('');
@@ -129,15 +147,20 @@ export default function LoginPage({ setToken }: LoginPageProps) {
       const result = await loginWithPasskey();
       await finishLogin(result);
     } catch (err) {
-      // A dismissed browser prompt is not a failure worth alarming about; the
-      // TOTP field is still right there.
-      setError(
-        isCeremonyCancelled(err)
-          ? t('login.passkeyCancelled')
-          : err instanceof Error && err.message
-            ? err.message
-            : t('login.passkeyFailed'),
-      );
+      setError(passkeyErrorMessage(err, 'login.passkeyCancelled', 'login.passkeyFailed'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordlessPasskey = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const result = await loginWithPasskeyPasswordless();
+      await finishLogin(result);
+    } catch (err) {
+      setError(passkeyErrorMessage(err, 'login.passkeyLoginCancelled', 'login.passkeyLoginFailed'));
     } finally {
       setLoading(false);
     }
@@ -275,19 +298,30 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                     {t('login.noAccount')}
                   </Button>
                 )}
+                {(passwordlessPasskeyAvailable || oidcConfig.enabled) && (
+                  <Divider>{t('login.orSeparator')}</Divider>
+                )}
+                {passwordlessPasskeyAvailable && (
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<KeyIcon />}
+                    onClick={() => void handlePasswordlessPasskey()}
+                    disabled={loading}
+                  >
+                    {t('login.passkeyLogin')}
+                  </Button>
+                )}
                 {oidcConfig.enabled && (
-                  <>
-                    <Divider>{t('login.orSeparator')}</Divider>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      onClick={() => {
-                        window.location.href = `${API_BASE_URL}/auth/oidc/login`;
-                      }}
-                    >
-                      {t('login.ssoButton', { provider: oidcConfig.provider_name })}
-                    </Button>
-                  </>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={() => {
+                      window.location.href = `${API_BASE_URL}/auth/oidc/login`;
+                    }}
+                  >
+                    {t('login.ssoButton', { provider: oidcConfig.provider_name })}
+                  </Button>
                 )}
               </Stack>
             </form>

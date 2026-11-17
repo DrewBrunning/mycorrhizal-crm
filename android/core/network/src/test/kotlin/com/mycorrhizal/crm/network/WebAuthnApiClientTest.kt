@@ -170,6 +170,95 @@ class WebAuthnApiClientTest {
             )
         }
 
+    // --- passwordless / discoverable login (discussion #2355) ---
+
+    @Test
+    fun `passwordless begin posts publicly and returns the ceremony token and raw options`() =
+        runBlocking {
+            val options = """{"publicKey":{"challenge":"abc"},"extra":1}"""
+            server.enqueue(
+                MockResponse().setResponseCode(200)
+                    .setBody("""{"ceremony_token":"tok-1","publicKey":$options}""")
+            )
+
+            val began = client.webauthnPasswordlessLoginBegin().getOrThrow()
+
+            assertEquals("tok-1", began.ceremonyToken)
+            assertEquals(options, began.optionsJson)
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/webauthn/login/passwordless/begin", request.path)
+            assertNull(request.getHeader("Cookie"))
+        }
+
+    @Test
+    fun `passwordless begin fails closed on a missing token or options`() = runBlocking {
+        for (body in listOf(
+            """{"publicKey":{"challenge":"abc"}}""",
+            """{"ceremony_token":"t"}""",
+            """{"ceremony_token":"","publicKey":{"challenge":"abc"}}""",
+            "not json"
+        )) {
+            server.enqueue(MockResponse().setResponseCode(200).setBody(body))
+            val error = client.webauthnPasswordlessLoginBegin().exceptionOrNull()
+            assertTrue("expected a Parse failure, was $error", error is ApiError.Parse)
+        }
+    }
+
+    @Test
+    fun `passwordless finish wraps the token and assertion and captures the session`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(200)
+                    .setHeader("Set-Cookie", "auth_token=pl-session; Path=/; HttpOnly")
+                    .setBody("""{"language":"de","date_format":"eu"}""")
+            )
+            val credential = """{"id":"AAA","response":{"clientDataJSON":"e30"},"type":"public-key"}"""
+
+            val login = client.webauthnPasswordlessLoginFinish("tok-1", credential).getOrThrow()
+
+            assertEquals("pl-session", login.token)
+            assertEquals("de", login.language)
+            assertEquals("eu", login.dateFormat)
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/api/v1/webauthn/login/passwordless/finish", request.path)
+            assertNull(request.getHeader("Cookie"))
+            assertEquals(
+                """{"ceremony_token":"tok-1","assertion":$credential}""",
+                request.body.readUtf8()
+            )
+        }
+
+    @Test
+    fun `passwordless finish refuses a non-object assertion before making a request`() =
+        runBlocking {
+            val error = client.webauthnPasswordlessLoginFinish("tok", "[1,2]").exceptionOrNull()
+            assertTrue("expected a Parse failure, was $error", error is ApiError.Parse)
+            assertEquals(0, server.requestCount)
+        }
+
+    @Test
+    fun `passwordless finish maps rejection and lockout`() = runBlocking {
+        for (code in listOf(400, 401, 403, 409)) {
+            server.enqueue(
+                MockResponse().setResponseCode(
+                    code
+                ).setBody("""{"error":{"code":"x","message":"m$code"}}""")
+            )
+            clientError(client.webauthnPasswordlessLoginFinish("t", "{}"), code)
+        }
+        server.enqueue(
+            MockResponse().setResponseCode(
+                429
+            ).setBody("""{"error":"locked","message":"Try again later."}""")
+        )
+        assertEquals(
+            "Try again later.",
+            clientError(client.webauthnPasswordlessLoginFinish("t", "{}"), 429).message
+        )
+    }
+
     // --- enrollment ---
 
     @Test

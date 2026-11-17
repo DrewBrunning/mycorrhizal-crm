@@ -29,10 +29,18 @@ class DeviceGrantManager @Inject constructor(
 ) : DeviceGrantRepository {
 
     /** The plaintext grant stored for the active profile, or null. */
-    suspend fun storedGrantToken(): String? = activeProfileId()?.let { storage.loadToken(it) }
+    override suspend fun storedGrantToken(): String? =
+        activeProfileId()?.let { storage.loadToken(it) }
 
     /** Whether the active profile has an enrolled (stored) grant. */
     suspend fun isEnrolled(): Boolean = storedGrantToken() != null
+
+    override suspend fun hasStoredGrantFor(serverUrl: String): Boolean {
+        val profile = sessionManager.activeProfile() ?: return false
+        val profileUrl = profile.remoteUrl?.trimEnd('/') ?: return false
+        if (profileUrl != serverUrl.trimEnd('/')) return false
+        return storedGrantToken() != null
+    }
 
     fun enrollmentStatus(): Flow<BiometricEnrollmentStatus> = settings.biometricEnrollmentStatus()
 

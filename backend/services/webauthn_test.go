@@ -163,6 +163,42 @@ func TestCeremonyStore_SingleUseAndExpiry(t *testing.T) {
 	assert.Len(t, s.entries, 1, "stale entries are swept on Put")
 }
 
+func TestCeremonyStoreToken_SingleUseExpiryAndScope(t *testing.T) {
+	s := NewCeremonyStore()
+	now := time.Now()
+	s.now = func() time.Time { return now }
+
+	s.PutToken(CeremonyPasswordlessLogin, "tok", webauthn.SessionData{Challenge: "a"})
+	sess, ok := s.TakeToken(CeremonyPasswordlessLogin, "tok")
+	require.True(t, ok)
+	assert.Equal(t, "a", sess.Challenge)
+	_, ok = s.TakeToken(CeremonyPasswordlessLogin, "tok")
+	assert.False(t, ok, "a token ceremony is single-use")
+
+	// Purpose and token scope the key.
+	s.PutToken(CeremonyPasswordlessLogin, "tok", webauthn.SessionData{})
+	_, ok = s.TakeToken(CeremonyLogin, "tok")
+	assert.False(t, ok)
+	_, ok = s.TakeToken(CeremonyPasswordlessLogin, "other")
+	assert.False(t, ok)
+
+	// PutToken overwrites an in-flight ceremony and sweeps stale entries.
+	s.PutToken(CeremonyPasswordlessLogin, "tok", webauthn.SessionData{Challenge: "b"})
+	sess, ok = s.TakeToken(CeremonyPasswordlessLogin, "tok")
+	require.True(t, ok)
+	assert.Equal(t, "b", sess.Challenge)
+
+	s.PutToken(CeremonyPasswordlessLogin, "old", webauthn.SessionData{})
+	now = now.Add(webAuthnCeremonyTTL + time.Second)
+	_, ok = s.TakeToken(CeremonyPasswordlessLogin, "old")
+	assert.False(t, ok, "expired ceremony must be refused")
+
+	s.PutToken(CeremonyPasswordlessLogin, "old", webauthn.SessionData{})
+	now = now.Add(webAuthnCeremonyTTL + time.Second)
+	s.PutToken(CeremonyPasswordlessLogin, "fresh", webauthn.SessionData{})
+	assert.Len(t, s.entries, 1, "stale entries are swept on PutToken")
+}
+
 func TestRandomCredentialLabel(t *testing.T) {
 	a, b := RandomCredentialLabel(), RandomCredentialLabel()
 	assert.Regexp(t, `^Passkey [0-9a-f]{4}$`, a)

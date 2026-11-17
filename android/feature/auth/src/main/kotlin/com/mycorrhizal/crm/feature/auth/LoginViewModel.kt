@@ -1,9 +1,12 @@
 package com.mycorrhizal.crm.feature.auth
 
+import android.app.Activity
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.data.auth.LocalAuthOutcome
+import com.mycorrhizal.crm.data.auth.LocalAuthPrompt
 import com.mycorrhizal.crm.data.passkey.PasskeyAvailability
 import com.mycorrhizal.crm.data.passkey.PasskeyCredentialClient
 import com.mycorrhizal.crm.data.passkey.PasskeyIssue
@@ -13,6 +16,9 @@ import com.mycorrhizal.crm.data.passkey.offersPasskey
 import com.mycorrhizal.crm.data.passkey.secondFactorPrompt
 import com.mycorrhizal.crm.data.session.SessionManager
 import com.mycorrhizal.crm.domain.repository.AuthRepository
+import com.mycorrhizal.crm.domain.repository.DeviceGrantRepository
+import com.mycorrhizal.crm.domain.repository.LocalAuthCapabilities
+import com.mycorrhizal.crm.domain.repository.PasswordlessPasskeyChallenge
 import com.mycorrhizal.crm.domain.usecase.LoginUseCase
 import com.mycorrhizal.crm.domain.usecase.LoginWithApiTokenUseCase
 import com.mycorrhizal.crm.model.network.includesPasskey
@@ -22,7 +28,9 @@ import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,7 +56,16 @@ data class LoginUiState(
     val twoFactorMethods: List<String>? = null,
     // Issue #1293: set when a passkey attempt dropped the step to the degraded
     // (code-only) state, so the copy can say why. Null = no runtime failure.
-    val passkeyIssue: PasskeyIssue? = null
+    val passkeyIssue: PasskeyIssue? = null,
+    // Discussion #2355: the credentials step offers passwordless passkey sign-in
+    // when the device can run Credential Manager and the server declares Android
+    // passkeys. Kept separate from the 2FA-step gate because the user is not
+    // known yet; the true check still runs when the button is tapped.
+    val passkeyAvailable: Boolean = false,
+    // Issue #722 follow-up: the login screen offers biometric re-auth from the
+    // stored device grant when the active profile has one, the local device can
+    // complete the OS check, and the typed URL still matches that profile.
+    val biometricAvailable: Boolean = false
 )
 
 /**
@@ -85,7 +102,11 @@ class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     // Issue #1293 / ADR 0034: the passkey capability gate and the Credential Manager seam.
     private val passkeyAvailability: PasskeyAvailability,
-    private val passkeyClient: PasskeyCredentialClient
+    private val passkeyClient: PasskeyCredentialClient,
+    // Issue #722 follow-up: login-screen biometric re-auth from a stored device grant.
+    private val deviceGrantRepository: DeviceGrantRepository,
+    private val localAuthCapabilities: LocalAuthCapabilities,
+    private val localAuthPrompt: LocalAuthPrompt
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -93,6 +114,9 @@ class LoginViewModel @Inject constructor(
 
     private val _events = Channel<LoginEvent>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    private var passkeyAvailabilityJob: Job? = null
+    private var biometricAvailabilityJob: Job? = null
 
     init {
         // Issue #723: pre-fill the server URL persisted across logout (a
@@ -116,6 +140,39 @@ class LoginViewModel @Inject constructor(
                     }
                 }
             }
+            refreshPasskeyAvailability()
+            refreshBiometricAvailability()
+        }
+    }
+
+    /**
+     * Discussion #2355: recompute whether the credentials step should offer
+     * passwordless passkey sign-in. Debounced while the user types a server URL
+     * so we do not query `/health` on every keystroke.
+     */
+    private fun refreshPasskeyAvailability(debounce: Boolean = false) {
+        passkeyAvailabilityJob?.cancel()
+        passkeyAvailabilityJob = viewModelScope.launch {
+            if (debounce) delay(PASSKEY_AVAILABILITY_DEBOUNCE_MS)
+            val available = passkeyAvailability.isAvailable()
+            _uiState.update { it.copy(passkeyAvailable = available) }
+        }
+    }
+
+    /**
+     * Issue #722 follow-up: show the biometric login action only when the active
+     * profile still has a stored grant for the typed server and this device can
+     * complete the OS check. Debounced with the server URL for the same reason.
+     */
+    private fun refreshBiometricAvailability(debounce: Boolean = false) {
+        biometricAvailabilityJob?.cancel()
+        biometricAvailabilityJob = viewModelScope.launch {
+            if (debounce) delay(PASSKEY_AVAILABILITY_DEBOUNCE_MS)
+            val url = _uiState.value.serverUrl.trim().trimEnd('/')
+            val available = url.isNotBlank() &&
+                localAuthCapabilities.canEnableLocalAuth() &&
+                deviceGrantRepository.hasStoredGrantFor(url)
+            _uiState.update { it.copy(biometricAvailable = available) }
         }
     }
 
@@ -125,6 +182,8 @@ class LoginViewModel @Inject constructor(
         // forgot-password flows are reached from this screen and read the
         // server URL from the session manager (M26).
         viewModelScope.launch { sessionManager.setServerUrl(value.trim().trimEnd('/')) }
+        refreshPasskeyAvailability(debounce = true)
+        refreshBiometricAvailability(debounce = true)
     }
 
     fun onModeChange(mode: LoginMode) {
@@ -319,6 +378,230 @@ class LoginViewModel @Inject constructor(
                     }
             }
         }
+    }
+
+    /**
+     * Discussion #2355: passwordless passkey sign-in from the credentials step.
+     * No username, password or 2FA challenge is involved. The server gate and
+     * device support are re-checked here so a button shown for a previously-used
+     * server cannot prompt against one that has Android passkeys disabled.
+     *
+     * Outcomes: success emits [LoginEvent.LoggedIn]; a dismissed prompt is
+     * silent; no matching credential, provider/association failure and a
+     * rejected assertion all stay on the credentials form with copy that points
+     * at the password field; a lockout surfaces the server text.
+     */
+    fun onUsePasswordlessPasskey(context: Context) {
+        if (_uiState.value.isLoading) return
+        val trimmedUrl = _uiState.value.serverUrl.trim().trimEnd('/')
+        if (!Validators.isValidServerUrl(trimmedUrl)) {
+            _uiState.update {
+                it.copy(errorRes = R.string.login_error_valid_server_url, error = null)
+            }
+            return
+        }
+        _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
+        viewModelScope.launch {
+            sessionManager.setServerUrl(trimmedUrl)
+            _events.send(LoginEvent.ServerUrlUpdated)
+
+            if (!passkeyAvailability.isAvailable()) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        passkeyAvailable = false,
+                        errorRes = R.string.login_error_passkey_unavailable_password
+                    )
+                }
+                return@launch
+            }
+
+            val challenge = authRepository.beginPasswordlessPasskeyLogin().getOrElse { error ->
+                handlePasswordlessFailure(error, fromBegin = true)
+                return@launch
+            }
+            when (val ceremony = passkeyClient.getPasskey(context, challenge.optionsJson)) {
+                is PasskeyResult.Success -> {
+                    completePasswordlessLogin(challenge, ceremony.json)
+                }
+
+                PasskeyResult.Cancelled -> _uiState.update { it.copy(isLoading = false) }
+
+                PasskeyResult.NoMatchingPasskey ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorRes = R.string.login_error_passkey_no_match_password
+                        )
+                    }
+
+                PasskeyResult.NotAssociated, PasskeyResult.NoProvider ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            passkeyAvailable = false,
+                            errorRes = R.string.login_error_passkey_unavailable_password
+                        )
+                    }
+
+                PasskeyResult.AlreadyRegistered, is PasskeyResult.Failed ->
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorRes = R.string.login_error_passkey_failed_password
+                        )
+                    }
+            }
+        }
+    }
+
+    private suspend fun completePasswordlessLogin(
+        challenge: PasswordlessPasskeyChallenge,
+        assertionJson: String
+    ) {
+        authRepository.completePasswordlessPasskeyLogin(challenge, assertionJson).fold(
+            onSuccess = {
+                _uiState.update { it.copy(isLoading = false) }
+                _events.send(LoginEvent.LoggedIn)
+            },
+            onFailure = { error -> handlePasswordlessFailure(error, fromBegin = false) }
+        )
+    }
+
+    private fun handlePasswordlessFailure(error: Throwable, fromBegin: Boolean) {
+        val apiError = error.toApiError()
+        when {
+            apiError is ApiError.Client && apiError.code == 429 ->
+                _uiState.update { it.copy(isLoading = false, error = apiError) }
+
+            fromBegin && apiError is ApiError.Client && apiError.code in setOf(401, 409) ->
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        passkeyAvailable = false,
+                        errorRes = R.string.login_error_passkey_unavailable_password
+                    )
+                }
+
+            else -> _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    errorRes = R.string.login_error_passkey_failed_password
+                )
+            }
+        }
+    }
+
+    /**
+     * Issue #722 follow-up: use the enrolled device grant as a true login-screen
+     * re-auth. The OS biometric/device-credential prompt runs first; only a
+     * SUCCESS reads the stored grant and exchanges it for a session. A dismissed
+     * prompt is silent; revoked/gone grants hide the action and point at the
+     * password/passkey alternatives.
+     */
+    fun onUseBiometric(context: Context) {
+        if (_uiState.value.isLoading) return
+        val trimmedUrl = _uiState.value.serverUrl.trim().trimEnd('/')
+        if (!Validators.isValidServerUrl(trimmedUrl)) {
+            _uiState.update {
+                it.copy(errorRes = R.string.login_error_valid_server_url, error = null)
+            }
+            return
+        }
+        val activity = context as? Activity ?: return
+        _uiState.update { it.copy(isLoading = true, errorRes = null, error = null) }
+        viewModelScope.launch {
+            sessionManager.setServerUrl(trimmedUrl)
+            _events.send(LoginEvent.ServerUrlUpdated)
+
+            if (!localAuthCapabilities.canEnableLocalAuth() ||
+                !deviceGrantRepository.hasStoredGrantFor(trimmedUrl)
+            ) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        biometricAvailable = false,
+                        errorRes = R.string.login_error_biometric_unavailable
+                    )
+                }
+                return@launch
+            }
+
+            val prompt = localAuthPrompt.requestUnlock(
+                activity = activity,
+                title = context.getString(R.string.login_biometric_prompt_title),
+                subtitle = context.getString(R.string.login_biometric_prompt_subtitle),
+                negativeButtonText = context.getString(R.string.login_biometric_prompt_cancel)
+            )
+            when (prompt) {
+                LocalAuthOutcome.CANCELLED -> _uiState.update { it.copy(isLoading = false) }
+
+                LocalAuthOutcome.NOT_AVAILABLE -> _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        biometricAvailable = false,
+                        errorRes = R.string.login_error_biometric_unavailable
+                    )
+                }
+
+                LocalAuthOutcome.ERROR -> _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorRes = R.string.login_error_biometric_failed
+                    )
+                }
+
+                LocalAuthOutcome.SUCCESS -> completeBiometricLogin(trimmedUrl)
+            }
+        }
+    }
+
+    private suspend fun completeBiometricLogin(serverUrl: String) {
+        val grant = deviceGrantRepository.storedGrantToken()
+        if (grant.isNullOrBlank() || !deviceGrantRepository.hasStoredGrantFor(serverUrl)) {
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    biometricAvailable = false,
+                    errorRes = R.string.login_error_biometric_unavailable
+                )
+            }
+            return
+        }
+        authRepository.loginWithDeviceGrant(grant).fold(
+            onSuccess = {
+                _uiState.update { it.copy(isLoading = false) }
+                _events.send(LoginEvent.LoggedIn)
+            },
+            onFailure = { error ->
+                val apiError = error.toApiError()
+                when {
+                    apiError is ApiError.Client && apiError.code == 429 ->
+                        _uiState.update { it.copy(isLoading = false, error = apiError) }
+
+                    apiError is ApiError.Client && apiError.code in setOf(401, 403) ->
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                biometricAvailable = false,
+                                errorRes = R.string.login_error_biometric_unavailable
+                            )
+                        }
+
+                    else -> _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorRes = R.string.login_error_biometric_failed
+                        )
+                    }
+                }
+            }
+        )
+    }
+
+    private companion object {
+        /** Long enough to swallow a typed URL, short enough to feel immediate. */
+        const val PASSKEY_AVAILABILITY_DEBOUNCE_MS = 500L
     }
 
     /** Drops the step to the code-only prompt (gate closed) and remembers why, for the copy. */

@@ -28,6 +28,11 @@ type virtualAuthenticator struct {
 	credentialID []byte
 	signCount    uint32
 	backupFlags  byte // 0x08 BE, 0x10 BS
+	// userHandle is returned on assertions when set. Discoverable (passwordless)
+	// login requires it; the second-factor ceremony does not.
+	userHandle []byte
+	// omitUV suppresses the user-verified flag on assertions.
+	omitUV bool
 }
 
 func newVirtualAuthenticator(t *testing.T, origin, rpID string) *virtualAuthenticator {
@@ -112,8 +117,12 @@ func (v *virtualAuthenticator) assertion(challenge string) map[string]any {
 
 func (v *virtualAuthenticator) assertionWithCount(challenge string, count uint32) map[string]any {
 	var auth bytes.Buffer
+	flags := 0x01 | v.backupFlags // UP
+	if !v.omitUV {
+		flags |= 0x04
+	}
 	auth.Write(v.rpIDHash())
-	auth.WriteByte(0x01 | 0x04 | v.backupFlags) // UP | UV
+	auth.WriteByte(flags)
 	_ = binary.Write(&auth, binary.BigEndian, count)
 
 	cd := v.clientData("webauthn.get", challenge)
@@ -122,15 +131,20 @@ func (v *virtualAuthenticator) assertionWithCount(challenge string, count uint32
 	sig, err := ecdsa.SignASN1(rand.Reader, v.key, digest[:])
 	require.NoError(v.t, err)
 
+	response := map[string]any{
+		"authenticatorData": b64(auth.Bytes()),
+		"clientDataJSON":    b64(cd),
+		"signature":         b64(sig),
+	}
+	if len(v.userHandle) > 0 {
+		response["userHandle"] = b64(v.userHandle)
+	}
+
 	return map[string]any{
-		"id":    b64(v.credentialID),
-		"rawId": b64(v.credentialID),
-		"type":  "public-key",
-		"response": map[string]any{
-			"authenticatorData": b64(auth.Bytes()),
-			"clientDataJSON":    b64(cd),
-			"signature":         b64(sig),
-		},
+		"id":                     b64(v.credentialID),
+		"rawId":                  b64(v.credentialID),
+		"type":                   "public-key",
+		"response":               response,
 		"clientExtensionResults": map[string]any{},
 	}
 }

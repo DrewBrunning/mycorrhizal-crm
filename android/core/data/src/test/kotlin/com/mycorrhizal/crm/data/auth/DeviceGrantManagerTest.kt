@@ -2,6 +2,8 @@ package com.mycorrhizal.crm.data.auth
 
 import com.mycorrhizal.crm.data.session.DeviceGrantTokenStorage
 import com.mycorrhizal.crm.data.session.SessionManager
+import com.mycorrhizal.crm.domain.profile.ServerProfile
+import com.mycorrhizal.crm.domain.profile.ServerProfileKind
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
 import com.mycorrhizal.crm.domain.repository.DeviceGrantCreated
 import com.mycorrhizal.crm.domain.repository.LocalAuthSettingsRepository
@@ -188,6 +190,40 @@ class DeviceGrantManagerTest {
         val created = h.manager.createDeviceGrant("Tablet").getOrThrow()
 
         assertEquals(DeviceGrantCreated(id = 3, label = "Tablet", token = "tok"), created)
+    }
+
+    @Test
+    fun `hasStoredGrantFor requires the matching profile url and a stored token`() = runTest {
+        val h = Harness()
+        coEvery { h.sessionManager.activeProfile() } returns ServerProfile(
+            id = "profile-1",
+            kind = ServerProfileKind.Remote("https://crm.example.com"),
+            label = "Home"
+        )
+        coEvery { h.storage.loadToken("profile-1") } returns "grant-token"
+
+        assertTrue(h.manager.hasStoredGrantFor("https://crm.example.com/"))
+        assertFalse(h.manager.hasStoredGrantFor("https://other.example.com"))
+    }
+
+    @Test
+    fun `hasStoredGrantFor is false without a token or a remote profile`() = runTest {
+        val h = Harness()
+        coEvery { h.sessionManager.activeProfile() } returns ServerProfile(
+            id = "profile-1",
+            kind = ServerProfileKind.Remote("https://crm.example.com"),
+            label = "Home"
+        )
+        coEvery { h.storage.loadToken("profile-1") } returns null
+
+        assertFalse(h.manager.hasStoredGrantFor("https://crm.example.com"))
+
+        coEvery { h.sessionManager.activeProfile() } returns ServerProfile(
+            id = "local",
+            kind = ServerProfileKind.Local,
+            label = "On this device"
+        )
+        assertFalse(h.manager.hasStoredGrantFor("https://crm.example.com"))
     }
 
     @Test

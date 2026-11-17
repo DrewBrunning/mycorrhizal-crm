@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -344,6 +345,151 @@ func WebAuthnLoginFinish(c *gin.Context, cfg *config.Config) {
 	}
 	accountLimiter.RecordLoginSuccess(username, clientIP)
 	issueLoginSession(c, cfg, db, user)
+}
+
+// generateCeremonyToken is a test seam for the otherwise unreachable
+// crypto/rand failure path in WebAuthnPasswordlessLoginBegin.
+var generateCeremonyToken = services.GenerateStateToken
+
+// WebAuthnPasswordlessLoginBegin starts a client-side discoverable
+// (usernameless) passkey login. Unlike WebAuthnLoginBegin this needs no
+// password and no 2fa_pending cookie: the authenticator chooses a resident
+// credential and returns its user handle, which finish resolves to an account.
+// User verification is required because the passkey is the only factor.
+func WebAuthnPasswordlessLoginBegin(c *gin.Context, cfg *config.Config) {
+	wa, ok := webAuthnRelyingParty(c, cfg)
+	if !ok {
+		return
+	}
+	assertion, session, err := wa.BeginDiscoverableLogin(webauthn.WithUserVerification(protocol.VerificationRequired))
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Could not start passkey sign-in").WithError(err)) // # pragma: no cover — go-webauthn only errors here on an invalid Config, which NewWebAuthn already rejected
+		return
+	}
+	token, err := generateCeremonyToken()
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInternal("Could not start passkey sign-in").WithError(err)) // # pragma: no cover — crypto/rand failure only
+		return
+	}
+	services.DefaultCeremonies.PutToken(services.CeremonyPasswordlessLogin, token, *session)
+	c.JSON(http.StatusOK, gin.H{
+		"ceremony_token": token,
+		"publicKey":      assertion.Response,
+	})
+}
+
+// Err sentinels local to the discoverable-login user handler; the library wraps
+// whatever the handler returns, so the controller records the real cause in
+// captured variables and answers after validation.
+var (
+	errDiscoverableUnknownPasskey = errors.New("unknown passkey")
+	errDiscoverableAccountLocked  = errors.New("account locked")
+)
+
+// WebAuthnPasswordlessLoginFinish verifies a discoverable assertion, resolves
+// its owner (from the credential id the authenticator returned), and mints a
+// session directly. It keeps the second-factor login's protections: one-use
+// ceremony, per-account lockout keyed on (username, client IP), clone detection
+// and the same audit events.
+func WebAuthnPasswordlessLoginFinish(c *gin.Context, cfg *config.Config) {
+	wa, ok := webAuthnRelyingParty(c, cfg)
+	if !ok {
+		return
+	}
+	var input struct {
+		CeremonyToken string          `json:"ceremony_token"`
+		Assertion     json.RawMessage `json:"assertion"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("body", "Invalid JSON").WithReason(apperrors.ReasonValidationInvalidJSON, nil))
+		return
+	}
+	if strings.TrimSpace(input.CeremonyToken) == "" {
+		apperrors.AbortWithError(c, apperrors.ErrMissingField("ceremony_token"))
+		return
+	}
+	if len(input.Assertion) == 0 {
+		apperrors.AbortWithError(c, apperrors.ErrMissingField("assertion"))
+		return
+	}
+	session, found := services.DefaultCeremonies.TakeToken(services.CeremonyPasswordlessLogin, input.CeremonyToken)
+	if !found {
+		apperrors.AbortWithError(c, apperrors.ErrConflict("No passkey sign-in in progress. Start again.").WithReason(apperrors.ReasonAuthPasskeyLoginNotStarted, nil))
+		return
+	}
+	parsed, err := protocol.ParseCredentialRequestResponseBody(bytes.NewReader(input.Assertion))
+	if err != nil {
+		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("assertion", "Passkey response could not be read").WithReason(apperrors.ReasonAuthPasskeyVerificationFailed, nil))
+		return
+	}
+
+	db := c.MustGet("db").(*gorm.DB)
+	clientIP := c.ClientIP()
+	accountLimiter := middleware.GetAccountRateLimiter()
+	var resolved models.User
+	var lookupErr error
+	lockedSecs := 0
+
+	handler := func(rawID, _ []byte) (webauthn.User, error) {
+		// The credential id is the authoritative lookup key: the user handle the
+		// authenticator returns is checked against this user by the library.
+		var row models.WebAuthnCredential
+		if err := db.Where("credential_id = ?", rawID).First(&row).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errDiscoverableUnknownPasskey
+			}
+			lookupErr = err
+			return nil, err
+		}
+		var user models.User
+		if err := db.First(&user, row.UserID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return nil, errDiscoverableUnknownPasskey
+			}
+			lookupErr = err
+			return nil, err
+		}
+		if isLocked, secs := accountLimiter.IsLoginLocked(user.Username, clientIP); isLocked {
+			lockedSecs = secs
+			return nil, errDiscoverableAccountLocked
+		}
+		waUser, _, err := services.LoadWebAuthnUser(db, user)
+		if err != nil {
+			lookupErr = err
+			return nil, err
+		}
+		resolved = user
+		return waUser, nil
+	}
+
+	_, credential, err := wa.ValidatePasskeyLogin(handler, session, parsed)
+	if err == nil && credential.Authenticator.CloneWarning {
+		err = errCloneWarning
+	}
+	if err != nil {
+		if lockedSecs > 0 {
+			abortLoginLocked(c, lockedSecs)
+			return
+		}
+		if lookupErr != nil {
+			apperrors.AbortWithError(c, apperrors.ErrDatabase("query passkey").WithError(lookupErr))
+			return
+		}
+		if resolved.ID != 0 {
+			models.RecordAuditEvent(db, models.AuditEntityAuth, resolved.Username, models.AuditOpLoginFailed, resolved.ID)
+			if _, lockoutSecs := accountLimiter.RecordLoginFailure(resolved.Username, clientIP); lockoutSecs > 0 {
+				abortLoginLocked(c, lockoutSecs)
+				return
+			}
+		}
+		apperrors.AbortWithError(c, apperrors.ErrUnauthorized("Passkey could not be verified").WithReason(apperrors.ReasonAuthPasskeyVerificationFailed, nil))
+		return
+	}
+	if err := services.RecordWebAuthnUse(db, resolved.ID, credential); err != nil {
+		logger.FromContext(c).Error().Err(err).Uint("user_id", resolved.ID).Msg("Failed to record passkey use") // # pragma: no cover — only a failing store trips this; the assertion itself already verified
+	}
+	accountLimiter.RecordLoginSuccess(resolved.Username, clientIP)
+	issueLoginSession(c, cfg, db, resolved)
 }
 
 // pendingChallengeUser resolves the 2fa_pending cookie to its user. Aborts

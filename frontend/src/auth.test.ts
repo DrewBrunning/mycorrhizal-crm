@@ -7,6 +7,7 @@ import {
   login2FA,
   loginUser,
   loginWithPasskey,
+  loginWithPasskeyPasswordless,
   logoutAndRedirect,
 } from './auth';
 import { getTimeFormat, setTimeFormat } from './timeFormat';
@@ -370,6 +371,114 @@ describe('passkey login', () => {
       vi.fn().mockResolvedValueOnce({ ok: true, json: async () => requestOptionsWire }),
     );
     await expect(loginWithPasskey()).rejects.toMatchObject({ name: 'NotAllowedError' });
+  });
+});
+
+// Discussion #2355: a discoverable passkey signs in without a username or
+// password. The server returns a one-use ceremony token with the options.
+describe('passwordless passkey login', () => {
+  const passwordlessOptions = {
+    ...requestOptionsWire,
+    ceremony_token: 'ceremony-token-1',
+  };
+
+  test('runs begin → get() → finish with the ceremony token and caches user info', async () => {
+    localStorage.removeItem(USER_INFO_KEY);
+    const { get } = stubWebAuthn();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => passwordlessOptions })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ language: 'de', date_format: 'eu' }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 5, username: 'alice', is_admin: false }),
+      });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await loginWithPasskeyPasswordless();
+
+    expect(fetchMock.mock.calls[0][0]).toContain('/webauthn/login/passwordless/begin');
+    expect(get).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[1][0]).toContain('/webauthn/login/passwordless/finish');
+    expect(fetchMock.mock.calls[1][1].credentials).toBe('include');
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({
+      ceremony_token: 'ceremony-token-1',
+      assertion: { id: 'cred-id' },
+    });
+    expect(result).toEqual({ language: 'de', date_format: 'eu', time_format: undefined });
+    expect(JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}').user_id).toBe(5);
+  });
+
+  test('a failed begin surfaces the backend message and never prompts the browser', async () => {
+    const { get } = stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({ error: { message: 'Passkeys are not configured' } }),
+      }),
+    );
+    await expect(loginWithPasskeyPasswordless()).rejects.toThrow('Passkeys are not configured');
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  test('a begin response without a ceremony token is refused before prompting', async () => {
+    const { get } = stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({ ok: true, json: async () => requestOptionsWire }),
+    );
+    await expect(loginWithPasskeyPasswordless()).rejects.toThrow(
+      'Unable to start passkey sign-in.',
+    );
+    expect(get).not.toHaveBeenCalled();
+  });
+
+  test('a rejected assertion throws the backend message', async () => {
+    stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => passwordlessOptions })
+        .mockResolvedValueOnce({
+          ok: false,
+          json: async () => ({ error: { message: 'Passkey could not be verified' } }),
+        }),
+    );
+    await expect(loginWithPasskeyPasswordless()).rejects.toThrow('Passkey could not be verified');
+  });
+
+  test('a lockout (429) surfaces its top-level message', async () => {
+    stubWebAuthn();
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => passwordlessOptions })
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 429,
+          json: async () => ({ message: 'Too many failed login attempts.' }),
+        }),
+    );
+    await expect(loginWithPasskeyPasswordless()).rejects.toThrow('Too many failed login attempts.');
+  });
+
+  test('a dismissed browser prompt propagates the DOMException', async () => {
+    stubWebAuthn({
+      get: () => {
+        throw new DOMException('cancelled', 'NotAllowedError');
+      },
+    });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({ ok: true, json: async () => passwordlessOptions }),
+    );
+    await expect(loginWithPasskeyPasswordless()).rejects.toMatchObject({ name: 'NotAllowedError' });
   });
 });
 

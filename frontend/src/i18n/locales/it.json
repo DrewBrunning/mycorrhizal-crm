@@ -244,7 +244,10 @@
     "backToCredentials": "Torna all'accesso",
     "passkeyOption": "Usa invece una passkey",
     "passkeyCancelled": "L'accesso con passkey è stato annullato. Puoi riprovare o inserire un codice.",
-    "passkeyFailed": "Accesso con passkey non riuscito. Riprova o inserisci un codice."
+    "passkeyFailed": "Accesso con passkey non riuscito. Riprova o inserisci un codice.",
+    "passkeyLogin": "Accedi con una passkey",
+    "passkeyLoginCancelled": "L'accesso con passkey è stato annullato. Puoi riprovare o usare la password.",
+    "passkeyLoginFailed": "Accesso con passkey non riuscito. Riprova o usa la password."
   },
   "sessionExpired": {
     "bannerMessage": "La tua sessione è scaduta.",

@@ -1141,6 +1141,103 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AccountLocked"
+  /webauthn/login/passwordless/begin:
+    post:
+      summary: Begin a passwordless passkey login
+      operationId: webauthnPasswordlessLoginBegin
+      tags:
+        - Authentication
+      security: []
+      description: >
+        Starts a client-side discoverable (usernameless) passkey login
+        (discussion #2355). No username, password or 2fa_pending cookie is
+        involved: the browser offers the passkeys resident for this relying
+        party, and /webauthn/login/passwordless/finish resolves the account
+        from the returned credential. User verification (fingerprint, face or
+        PIN) is required because the passkey is the only factor. FRONTEND_URL
+        must be a concrete origin.
+      responses:
+        "200":
+          description: Passkey assertion options plus the one-use ceremony token finish requires.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebAuthnPasswordlessLoginBeginResponse"
+        "409":
+          description: FRONTEND_URL is not a concrete origin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /webauthn/login/passwordless/finish:
+    post:
+      summary: Complete a passwordless passkey login
+      operationId: webauthnPasswordlessLoginFinish
+      tags:
+        - Authentication
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientVersion"
+      description: >
+        Body is the one-use `ceremony_token` from begin plus the JSON-serialized
+        PublicKeyCredential returned by `navigator.credentials.get`. On success
+        sets the real auth_token cookie and mints a session directly; no
+        password step or second-factor step exists on this path. The credential
+        is resolved to its owner server-side, the same per-account lockout,
+        clone detection and audit events apply, and a dismissed or invalid
+        assertion never issues a session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebAuthnPasswordlessLoginInput"
+      responses:
+        "200":
+          description: Logged in; auth_token cookie set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "400":
+          description: Missing ceremony_token/assertion, malformed JSON, or an unparseable assertion.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: The assertion was rejected or its user handle did not match the credential owner.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: The client is below the configured MIN_CLIENT_VERSION floor (CLIENT_NOT_SUPPORTED).
+        "409":
+          description: No passwordless ceremony in progress, or FRONTEND_URL is not a concrete origin.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "429":
+          x-lint-ignore: [error-envelope]
+          description: >
+            The account is temporarily locked after repeated failures. Two body
+            shapes exist. Today (through v1.x) the body is the flat shape
+            `AccountLockedFlat`, which is **deprecated** and removed in v2.0.0
+            (issues #2107, #2108); it is announced by RFC 8594 `Deprecation`,
+            `Sunset` and `Link` response headers. From v2.0.0 the body is the
+            standard `Error` envelope with `error.code` `ACCOUNT_LOCKED`
+            (`AccountLockedEnvelope`). Clients must accept both: read `retry_after`
+            and `retry_after_at` from the top level or from `error.details`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AccountLocked"
   /webauthn/register/begin:
     post:
       summary: Begin passkey enrollment
@@ -16875,6 +16972,28 @@ components:
           type: object
           additionalProperties: true
           description: "JSON-serialized PublicKeyCredential from an assertion begun at /webauthn/assert/begin."
+    WebAuthnPasswordlessLoginBeginResponse:
+      type: object
+      required: [ceremony_token, publicKey]
+      properties:
+        ceremony_token:
+          type: string
+          description: "One-use token to echo to /webauthn/login/passwordless/finish."
+        publicKey:
+          type: object
+          additionalProperties: true
+          description: "WebAuthn PublicKeyCredentialRequestOptions for navigator.credentials.get."
+    WebAuthnPasswordlessLoginInput:
+      type: object
+      required: [ceremony_token, assertion]
+      properties:
+        ceremony_token:
+          type: string
+          description: "The one-use token returned by /webauthn/login/passwordless/begin."
+        assertion:
+          type: object
+          additionalProperties: true
+          description: "JSON-serialized PublicKeyCredential from navigator.credentials.get."
     WebAuthnRegisterResponse:
       type: object
       required: [id, name, created_at, recovery_codes]

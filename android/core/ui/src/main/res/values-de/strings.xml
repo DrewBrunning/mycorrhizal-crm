@@ -102,6 +102,16 @@
     <string name="login_two_factor_passkey_no_provider_only_description">Ihr Konto verwendet einen Passkey, aber auf diesem Gerät ist kein Passkey-Anbieter eingerichtet. Geben Sie zum Anmelden einen Ihrer Wiederherstellungscodes ein.</string>
     <string name="login_error_passkey_failed">Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder geben Sie einen Code ein.</string>
     <string name="login_error_passkey_no_match">Auf diesem Gerät wurde kein passender Passkey gefunden. Versuchen Sie es erneut oder geben Sie einen Code ein.</string>
+    <string name="login_sign_in_with_passkey">Mit einem Passkey anmelden</string>
+    <string name="login_error_passkey_failed_password">Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder verwenden Sie Ihr Passwort.</string>
+    <string name="login_error_passkey_no_match_password">Auf diesem Gerät wurde kein passender Passkey gefunden. Versuchen Sie es erneut oder verwenden Sie Ihr Passwort.</string>
+    <string name="login_error_passkey_unavailable_password">Passkeys sind für diesen Server in dieser App nicht verfügbar. Verwenden Sie Ihr Passwort.</string>
+    <string name="login_sign_in_with_biometrics">Mit Biometrie anmelden</string>
+    <string name="login_biometric_prompt_title">Mit Biometrie anmelden</string>
+    <string name="login_biometric_prompt_subtitle">Entsperren Sie dieses Gerät, um sich anzumelden.</string>
+    <string name="login_biometric_prompt_cancel">Abbrechen</string>
+    <string name="login_error_biometric_failed">Die Anmeldung mit Biometrie ist fehlgeschlagen. Versuchen Sie es erneut oder verwenden Sie Ihr Passwort.</string>
+    <string name="login_error_biometric_unavailable">Die Anmeldung mit Biometrie ist auf diesem Gerät oder für diesen Server nicht verfügbar. Verwenden Sie Ihr Passwort.</string>
 
     <!-- M26: registration + forgot password -->
     <string name="login_no_account">Kein Konto? Eines erstellen</string>
