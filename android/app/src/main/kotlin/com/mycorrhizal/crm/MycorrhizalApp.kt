@@ -1909,7 +1909,10 @@ private fun AppNavGraph(
             )
         }
         composable("shares/by-me") {
-            SharedByMeScreen(onBack = { navController.popBackStack() })
+            SharedByMeScreen(
+                onBack = { navController.popBackStack() },
+                onOpenContact = { id -> navController.navigate("contacts/$id") }
+            )
         }
         composable(
             route = "shares/grants/{grantId}?sections={sections}",

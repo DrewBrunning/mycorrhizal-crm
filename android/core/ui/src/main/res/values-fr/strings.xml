@@ -1513,8 +1513,8 @@
 
     <!-- Contact shares (M15) -->
     <string name="shares_title">Partages de contacts</string>
-    <string name="shares_tab_incoming">Entrants</string>
-    <string name="shares_tab_outgoing">Sortants</string>
+    <string name="shares_tab_incoming">Copies reçues</string>
+    <string name="shares_tab_outgoing">Copies envoyées</string>
     <string name="shares_incoming_empty">Aucun partage entrant pour le moment</string>
     <string name="shares_outgoing_empty">Aucun partage sortant pour le moment</string>
     <string name="shares_from">De %1$s</string>
@@ -1593,7 +1593,7 @@
     <string name="shares_grant_revoke_title">Révoquer ce partage ?</string>
     <string name="shares_grant_revoke_message">%1$s perdra l\'accès au prochain chargement. Ce qu\'il a déjà vu ne peut pas être repris.</string>
     <string name="shares_grant_reconfirm_title">Partager à nouveau ces sections ?</string>
-    <string name="shares_grant_reconfirm_message">Certains éléments de ce partage ont été marqués privés ou secrets, ces sections sont donc retenues pour %1$s : %2$s. Vérifiez leur contenu avant de les partager à nouveau.</string>
+    <string name="shares_grant_reconfirm_message">Certains éléments de ce partage ont été marqués privés ou secrets, ces sections sont donc retenues pour %1$s. Vérifiez leur contenu avant de les partager à nouveau.</string>
     <string name="shares_grant_reconfirm_confirm">Partager à nouveau</string>
     <string name="shares_grant_needs_reconfirm">Certaines sections sont retenues jusqu\'à votre vérification</string>
     <string name="shares_blocked_title">Expéditeurs bloqués</string>
@@ -1656,6 +1656,21 @@
         <item quantity="one">Dans %1$d jour</item>
         <item quantity="many">Dans %1$d jours</item>
         <item quantity="other">Dans %1$d jours</item>
+    </plurals>
+    <string name="shares_review">Examiner</string>
+    <string name="shares_open_contact">Ouvrir le contact</string>
+    <string name="shares_sections_shared">Partagé : %1$s</string>
+    <string name="shares_sections_offers">Propose : %1$s</string>
+    <string name="shares_grant_meta_join">%1$s · %2$s</string>
+    <plurals name="shares_sections_more">
+        <item quantity="one">%1$s et %2$d autre</item>
+        <item quantity="many">%1$s et %2$d autres</item>
+        <item quantity="other">%1$s et %2$d autres</item>
+    </plurals>
+    <plurals name="shares_reconfirm_item_count">
+        <item quantity="one">%1$s · %2$d élément</item>
+        <item quantity="many">%1$s · %2$d éléments</item>
+        <item quantity="other">%1$s · %2$d éléments</item>
     </plurals>
 
     <!-- Cadence (T19 relationship health) -->

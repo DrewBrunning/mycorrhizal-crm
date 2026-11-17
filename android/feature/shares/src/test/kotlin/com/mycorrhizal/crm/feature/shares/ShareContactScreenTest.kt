@@ -7,6 +7,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -161,6 +162,26 @@ class ShareContactScreenTest {
             .performClick()
 
         coVerify(exactly = 1) { repo.create(any()) }
+    }
+
+    // Issue #2609: the field checkboxes and the mode/expiry radios are 48dp touch targets.
+    @Test
+    fun `section, mode and expiry rows are at least 48dp tall`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory() } returns Result.success(
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
+        )
+        val grants = mockk<ShareGrantRepository>()
+        coEvery { grants.previewContact(any(), any()) } returns Result.success(emptyMap())
+        standingScreen(repo, grants)
+        composeTestRule.onNodeWithText(str(R.string.shares_mode_standing)).performClick()
+
+        composeTestRule.assertRowsAtLeast48dp(
+            isToggleable(),
+            expectedCount = ShareFieldSections.ALL.size
+        )
+        // Two modes, "no expiry" and the four presets.
+        composeTestRule.assertRowsAtLeast48dp(isSelectable(), expectedCount = 7)
     }
 
     // --- Issue #2293: the one-time vs standing choice ---

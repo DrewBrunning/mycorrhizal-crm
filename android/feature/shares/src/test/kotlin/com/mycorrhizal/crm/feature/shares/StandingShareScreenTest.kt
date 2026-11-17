@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -114,6 +115,14 @@ class StandingShareScreenTest {
 
     @Test
     fun `a circle shows its title, notice and the pending note`() = assertTypeShown(2)
+
+    // Issue #2609: the expiry rows of the activity/circle/note share are 48dp touch targets.
+    @Test
+    fun `expiry rows are at least 48dp tall for every entity type`() {
+        mount(ShareGrantEntityTypes.CIRCLE)
+        // "no expiry" plus the four presets.
+        composeTestRule.assertRowsAtLeast48dp(isSelectable(), expectedCount = 5)
+    }
 
     @Test
     fun `the share button stays disabled until a recipient is picked`() {
