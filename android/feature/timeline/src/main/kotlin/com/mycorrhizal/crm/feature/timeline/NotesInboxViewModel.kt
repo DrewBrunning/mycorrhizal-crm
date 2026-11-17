@@ -78,7 +78,7 @@ class NotesInboxViewModel @Inject constructor(private val noteRepository: NoteRe
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            notes = page.notes,
+                            notes = page.notes.sortedByNoteDate(),
                             total = page.total,
                             nextCursor = page.nextCursor
                         )
@@ -116,7 +116,7 @@ class NotesInboxViewModel @Inject constructor(private val noteRepository: NoteRe
                     _uiState.update {
                         it.copy(
                             isLoadingMore = false,
-                            notes = it.notes + page.notes,
+                            notes = (it.notes + page.notes).sortedByNoteDate(),
                             total = page.total,
                             nextCursor = page.nextCursor
                         )

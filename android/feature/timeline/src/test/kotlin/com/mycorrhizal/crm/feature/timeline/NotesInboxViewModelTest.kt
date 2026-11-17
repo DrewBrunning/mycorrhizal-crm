@@ -51,6 +51,46 @@ class NotesInboxViewModelTest {
         assertNull(state.error)
     }
 
+    // Issue #2616: the server pages by updated_at, so the loaded list must be re-ordered by the
+    // note's own date (newest first, id breaking ties), across pages too.
+    @Test
+    fun `notes are listed by note date newest first with id breaking ties, across pages`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { noteRepository.listNotes(NotesScope.ALL) } returns Result.success(
+                UnfiledNotesPage(
+                    notes = listOf(
+                        Note(id = 4, date = "2026-11-05T00:00:00Z"),
+                        Note(id = 3, date = "2026-11-08T00:00:00Z"),
+                        Note(id = 2, date = "2026-10-24T00:00:00Z")
+                    ),
+                    nextCursor = "cursor-2",
+                    total = 5
+                )
+            )
+            coEvery {
+                noteRepository.listNotes(NotesScope.ALL, cursor = "cursor-2")
+            } returns Result.success(
+                UnfiledNotesPage(
+                    notes = listOf(
+                        Note(id = 1, date = "2026-11-12T00:00:00Z"),
+                        Note(id = 5, date = "2026-11-05T00:00:00Z")
+                    ),
+                    nextCursor = null,
+                    total = 5
+                )
+            )
+
+            val vm = NotesInboxViewModel(noteRepository)
+            advanceUntilIdle()
+            assertEquals(listOf(3, 4, 2), vm.uiState.value.notes.map { it.id })
+
+            vm.loadMore()
+            advanceUntilIdle()
+
+            // 11-12 (id 1), 11-08 (id 3), the 11-05 tie newest id first (5, 4), then 10-24.
+            assertEquals(listOf(1, 3, 5, 4, 2), vm.uiState.value.notes.map { it.id })
+        }
+
     // Issue #1757: returning from the new-note form must show the note just created.
     @Test
     fun `onResumed reloads once a load has finished but not while the first one is running`() =
@@ -139,8 +179,9 @@ class NotesInboxViewModelTest {
         vm.loadMore()
         advanceUntilIdle()
 
+        // Neither note has a date, so the id tie-break (newest first) orders them (#2616).
         val ids = vm.uiState.value.notes.map { it.id }
-        assertEquals(listOf(1, 2), ids)
+        assertEquals(listOf(2, 1), ids)
         assertNull(vm.uiState.value.nextCursor)
         coVerify(exactly = 1) { noteRepository.listNotes(NotesScope.ALL, cursor = "cursor-2") }
     }
