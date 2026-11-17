@@ -279,3 +279,43 @@ test('a failed search shows an error row that opens the results page (#2710)', a
   expect(screen.getByTestId('where')).toHaveTextContent('/search?q=ali');
   spy.mockRestore();
 });
+
+test('falls back to the formatted name and the description for sparse hits', async () => {
+  vi.mocked(searchAll).mockResolvedValue(
+    result({
+      contacts: [{ id: 4, uid: 'u4', firstname: '', lastname: '', fn: 'Dr Who' }],
+      activities: [{ id: 8, title: '', description: 'Quiet walk', date: '2026-02-01T00:00:00Z' }],
+    }),
+  );
+  renderSearch();
+  await type('wh');
+  expect(screen.getByText('Dr Who')).toBeInTheDocument();
+  expect(screen.getByText('Quiet walk')).toBeInTheDocument();
+});
+
+test('a failure for an abandoned query does not replace the newer results (#960)', async () => {
+  const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let rejectSlow!: (e: Error) => void;
+  vi.mocked(searchAll)
+    .mockReturnValueOnce(new Promise((_, rej) => (rejectSlow = rej)))
+    .mockResolvedValueOnce(
+      result({ contacts: [{ id: 2, uid: 'u2', firstname: 'John', lastname: 'Smith' }] }),
+    );
+  renderSearch();
+  await type('jo');
+  await type('john');
+  await act(async () => {
+    rejectSlow(new Error('late'));
+  });
+  expect(screen.getByText('John Smith')).toBeInTheDocument();
+  expect(screen.queryByText(/Couldn't search right now/)).not.toBeInTheDocument();
+  spy.mockRestore();
+});
+
+test('Enter on a blank box does nothing', async () => {
+  renderSearch();
+  const box = screen.getByRole('combobox', { name: 'Search everything' });
+  fireEvent.change(box, { target: { value: '   ' } });
+  fireEvent.keyDown(box, { key: 'Enter' });
+  expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/);
+});

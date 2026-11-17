@@ -141,10 +141,10 @@
       "branchesTotal": 38
     },
     "src/SearchResultsPage.tsx": {
-      "lines": 98.3,
-      "linesTotal": 59,
-      "branches": 87.83,
-      "branchesTotal": 74
+      "lines": 98.55,
+      "linesTotal": 69,
+      "branches": 89.61,
+      "branchesTotal": 77
     },
     "src/SettingsPage.tsx": {
       "lines": 83.13,
