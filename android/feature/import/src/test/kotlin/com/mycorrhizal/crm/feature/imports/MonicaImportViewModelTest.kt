@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import com.mycorrhizal.crm.domain.backup.BundleBackupStatus
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
@@ -170,6 +172,75 @@ class MonicaImportViewModelTest {
             assertTrue(vm.uiState.value.error is ApiError.Server)
             assertEquals(MonicaImportStep.CONNECT, vm.uiState.value.step)
         }
+
+    // Issue #2620: an unreachable Monica is an inline, sticky message naming the host.
+    private fun unreachable(requestId: String? = "req-9") = ApiError.Server(
+        code = 502,
+        body = "monica service error: The Monica instance could not be reached",
+        reason = ErrorReason(ErrorReasonCode.MONICA_UNREACHABLE, emptyMap()),
+        requestId = requestId
+    )
+
+    @Test
+    fun `an unreachable Monica becomes an inline notice with the host and the ref`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.connectMonica(any()) } returns Result.failure(unreachable())
+            val vm = newVm()
+            vm.fillForm()
+
+            vm.connect()
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(MonicaUnreachable("monica.example", "req-9"), state.unreachable)
+            // Not also a transient snackbar error.
+            assertNull(state.error)
+            assertEquals(MonicaImportStep.CONNECT, state.step)
+            assertTrue(state.canConnect)
+        }
+
+    @Test
+    fun `the unreachable notice stays through the snackbar dismissal and clears on an address edit`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.connectMonica(any()) } returns Result.failure(unreachable())
+            val vm = newVm()
+            vm.fillForm()
+            vm.connect()
+            advanceUntilIdle()
+
+            vm.onErrorShown()
+            vm.onApiTokenChange("other-token")
+            assertTrue(vm.uiState.value.unreachable != null)
+
+            vm.onBaseUrlChange("https://monica.example/new")
+            assertNull(vm.uiState.value.unreachable)
+        }
+
+    @Test
+    fun `a retried connect clears the previous unreachable notice`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.connectMonica(any()) } returnsMany
+                listOf(Result.failure(unreachable()), Result.success(connected()))
+            val vm = newVm()
+            vm.fillForm()
+            vm.connect()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.unreachable != null)
+
+            vm.connect()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.unreachable)
+            assertEquals("s1", vm.uiState.value.connected?.sessionId)
+        }
+
+    @Test
+    fun `the monica host is read from the address with or without a scheme`() {
+        assertEquals("monica.example", monicaHost("https://monica.example/path?x=1"))
+        assertEquals("monica.example:8443", monicaHost("  https://monica.example:8443  "))
+        assertEquals("monica.local", monicaHost("monica.local"))
+        assertEquals("not a url", monicaHost("not a url"))
+    }
 
     @Test
     fun `dismissing the error clears both the typed error and the job text`() =

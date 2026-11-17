@@ -2071,6 +2071,7 @@
     <string name="import_row_fix">Zeile korrigieren</string>
     <string name="import_row_fix_edit">Korrektur bearbeiten</string>
     <string name="import_row_fix_saved">Korrektur gespeichert – wird beim Import erneut geprüft</string>
+    <string name="import_row_unfixable">Dieser Fehler lässt sich hier nicht beheben – überspringe die Zeile oder bearbeite den Kontakt nach dem Import</string>
     <string name="import_row_fix_save">Korrektur speichern</string>
     <string name="import_report_title">Nicht importierte Zeilen</string>
     <string name="import_report_row">Zeile %1$d · %2$s</string>
@@ -2627,6 +2628,7 @@
     </plurals>
     <string name="monica_import_unavailable">Der Import aus Monica benötigt ein Serverprofil. Wechsle dafür zu einem Serverprofil.</string>
     <string name="monica_import_error_failed">Der Import wurde nicht abgeschlossen. Es wurde nichts geändert.</string>
+    <string name="monica_import_unreachable">Monica unter %1$s ist nicht erreichbar</string>
     <string name="dashboard_backup_reminder_title">Sichere deine Daten</string>
     <string name="dashboard_backup_reminder_body">Deine Daten liegen nur auf diesem Gerät. Speichere ein Konto-Bundle, um sie wiederherzustellen, falls das Gerät verloren geht oder zurückgesetzt wird.</string>
     <string name="dashboard_backup_reminder_action">Jetzt sichern</string>
@@ -3133,7 +3135,7 @@
     <string name="error_reason_monica_url_invalid">Die Monica-URL ist ungültig</string>
     <string name="error_reason_monica_url_private">Die Monica-URL führt auf eine private Adresse, die dieser Server blockiert</string>
     <string name="error_reason_monica_not_monica_api">Der Server hat nicht wie eine Monica-API geantwortet – prüfe die URL</string>
-    <string name="error_reason_monica_unreachable">Monica-Dienstfehler: Die Monica-Instanz ist nicht erreichbar</string>
+    <string name="error_reason_monica_unreachable">Die Monica-Instanz ist nicht erreichbar</string>
     <string name="error_reason_monica_too_many_contacts">Dieses Monica-Konto hat %1$s Kontakte; der Import unterstützt höchstens %2$d</string>
     <string name="error_reason_monica_too_many_records">Dieses Monica-Konto hat %1$s Datensätze; der Import unterstützt höchstens %2$d</string>
     <string name="error_reason_monica_fetch_in_progress">Für diese Sitzung läuft bereits ein Abruf</string>

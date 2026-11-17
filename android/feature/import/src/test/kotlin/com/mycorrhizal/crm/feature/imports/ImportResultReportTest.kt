@@ -67,4 +67,19 @@ class ImportResultReportTest {
         composeTestRule.onAllNodesWithText("Rows not imported").assertCountEquals(0)
         composeTestRule.onAllNodesWithText("Share as CSV").assertCountEquals(0)
     }
+
+    // Issue #2621: nothing is pending once the import ran, so the button is "Done", not "Confirm".
+    @Test
+    fun `the closing button says Done with or without a report`() {
+        show(ImportResult(totalProcessed = 2, created = 2))
+        composeTestRule.onNodeWithText("Done").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Confirm").assertCountEquals(0)
+    }
+
+    @Test
+    fun `the closing button says Done beneath a list of issues too`() {
+        show(ImportResult(skipped = 2, issues = issues))
+        composeTestRule.onNodeWithText("Done").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Confirm").assertCountEquals(0)
+    }
 }

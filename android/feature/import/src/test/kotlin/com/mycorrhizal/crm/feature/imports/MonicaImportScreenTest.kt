@@ -291,4 +291,57 @@ class MonicaImportScreenTest {
         composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
+
+    // Issue #2620: the address field carries a sticky, localized unreachable message.
+    @Test
+    fun `an unreachable Monica is explained under the address field with the host and ref`() {
+        setContent(
+            MonicaImportUiState(
+                baseUrl = "https://monica.example",
+                apiToken = "tok",
+                unreachable = MonicaUnreachable("monica.example", "req-9")
+            )
+        )
+        composeTestRule.onNodeWithTag("monica-import-unreachable")
+            .assertTextContains("Couldn't reach Monica at monica.example", substring = true)
+        composeTestRule.onNodeWithText("(ref: req-9)", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("monica service error", substring = true)
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `the unreachable notice omits the ref line when the server sent none`() {
+        setContent(
+            MonicaImportUiState(
+                baseUrl = "https://monica.example",
+                unreachable = MonicaUnreachable("monica.example", null)
+            )
+        )
+        composeTestRule.onNodeWithTag("monica-import-unreachable").assertIsDisplayed()
+        composeTestRule.onNodeWithText("(ref:", substring = true).assertDoesNotExist()
+    }
+
+    @Test
+    fun `no unreachable notice is shown by default`() {
+        setContent(MonicaImportUiState())
+        composeTestRule.onNodeWithTag("monica-import-unreachable").assertDoesNotExist()
+    }
+
+    @Test
+    fun `an unreachable reason code never renders the raw monica service error prefix`() {
+        setContent(
+            MonicaImportUiState(
+                error = ApiError.Server(
+                    502,
+                    "monica service error: The Monica instance could not be reached",
+                    reason = ErrorReason(ErrorReasonCode.MONICA_UNREACHABLE, emptyMap())
+                )
+            )
+        )
+        composeTestRule.onNodeWithText(
+            "The Monica instance could not be reached"
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("monica service error", substring = true)
+            .assertDoesNotExist()
+    }
 }

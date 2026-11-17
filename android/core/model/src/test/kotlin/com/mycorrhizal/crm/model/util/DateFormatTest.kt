@@ -299,6 +299,41 @@ class DateFormatTest {
         assertEquals("", DateFormat.formatTime("nope", false))
     }
 
+    // Issues #2618: trash / import-history timestamps follow the date and time preferences.
+    @Test
+    fun `formatDateTime renders the zone-local date in the chosen format plus the time without seconds`() {
+        val instant = "2026-10-26T19:30:45Z" // 14:30:45 in Chicago (CDT)
+        assertEquals(
+            "26.10.2026 14:30",
+            DateFormat.formatDateTime(instant, "eu", true, chicago, Locale.US)
+        )
+        assertEquals(
+            "2026-10-26 2:30 PM",
+            DateFormat.formatDateTime(instant, "iso", false, chicago, Locale.US)
+                .replace('\u202f', ' ')
+        )
+        // The date shifts with the zone, like the time does (a real instant, not a calendar day).
+        assertEquals(
+            "27.10.2026 08:30",
+            DateFormat.formatDateTime(instant, "eu", true, auckland, Locale.US)
+        )
+    }
+
+    @Test
+    fun `formatDateTime treats an exact UTC midnight as an instant, not a calendar day`() {
+        assertEquals(
+            "09.09.2026 19:00",
+            DateFormat.formatDateTime("2026-09-10T00:00:00Z", "eu", true, chicago, Locale.US)
+        )
+    }
+
+    @Test
+    fun `formatDateTime is empty for a missing or unparseable value`() {
+        assertEquals("", DateFormat.formatDateTime(null, "eu", true))
+        assertEquals("", DateFormat.formatDateTime(" ", "eu", true))
+        assertEquals("", DateFormat.formatDateTime("nope", "eu", true))
+    }
+
     @Test
     fun `TimeFormatPreference auto defers to the device, overrides win`() {
         assertEquals(true, TimeFormatPreference.AUTO.is24Hour(true))

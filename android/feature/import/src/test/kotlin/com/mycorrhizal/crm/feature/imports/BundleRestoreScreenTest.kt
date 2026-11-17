@@ -142,7 +142,7 @@ class BundleRestoreScreenTest {
         composeTestRule.onNodeWithText(
             "Restored: 5 created, 1 updated, 2 skipped"
         ).assertIsDisplayed()
-        composeTestRule.onNodeWithText("Confirm").performClick()
+        composeTestRule.onNodeWithText("Done").performClick()
 
         assertEquals(1, done)
     }

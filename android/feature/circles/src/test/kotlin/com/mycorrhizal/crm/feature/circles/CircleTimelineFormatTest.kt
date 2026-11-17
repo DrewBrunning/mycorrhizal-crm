@@ -3,8 +3,7 @@ package com.mycorrhizal.crm.feature.circles
 import androidx.compose.ui.graphics.Color
 import com.mycorrhizal.crm.model.network.CircleColors
 import com.mycorrhizal.crm.model.network.CircleTimelineItem
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import com.mycorrhizal.crm.model.util.DateFormat
 import java.util.Locale
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -39,29 +38,51 @@ class CircleTimelineFormatTest {
     @Test
     fun `a date is rendered from its calendar day without a timezone shift`() {
         // 23:30 at -05:00 must stay on the 1st (web uses calendarDateOnly).
-        val expected = java.time.LocalDate.of(2026, 9, 1)
-            .format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.US))
-        assertEquals(expected, formatTimelineDate("2026-09-01T23:30:00-05:00", null, Locale.US))
+        assertEquals(
+            "01.09.2026",
+            formatTimelineDate("2026-09-01T23:30:00-05:00", null, DateFormat.EU, Locale.US)
+        )
+    }
+
+    @Test
+    fun `a date follows the user's date format preference`() {
+        val iso = "2026-09-01T10:00:00Z"
+        assertEquals("2026-09-01", formatTimelineDate(iso, null, DateFormat.ISO, Locale.US))
+        assertEquals("09/01/2026", formatTimelineDate(iso, null, DateFormat.US, Locale.US))
+        assertEquals("Sep 1, 2026", formatTimelineDate(iso, null, DateFormat.US_MMM, Locale.US))
     }
 
     @Test
     fun `an activity with a later end date renders a range`() {
-        val start = "Sep 1, 2026"
-        val end = "Sep 3, 2026"
+        val start = "01.09.2026"
+        val end = "03.09.2026"
         assertEquals(
             "$start – $end",
-            formatTimelineDate("2026-09-01T10:00:00Z", "2026-09-03T10:00:00Z", Locale.US)
+            formatTimelineDate(
+                "2026-09-01T10:00:00Z",
+                "2026-09-03T10:00:00Z",
+                DateFormat.EU,
+                Locale.US
+            )
         )
         assertEquals(
             start,
-            formatTimelineDate("2026-09-01T10:00:00Z", "2026-09-01T18:00:00Z", Locale.US)
+            formatTimelineDate(
+                "2026-09-01T10:00:00Z",
+                "2026-09-01T18:00:00Z",
+                DateFormat.EU,
+                Locale.US
+            )
         )
-        assertEquals(start, formatTimelineDate("2026-09-01T10:00:00Z", "", Locale.US))
+        assertEquals(
+            start,
+            formatTimelineDate("2026-09-01T10:00:00Z", "", DateFormat.EU, Locale.US)
+        )
     }
 
     @Test
     fun `an unparseable date falls back to the raw string`() {
-        assertEquals("soon", formatTimelineDate("soon", null, Locale.US))
+        assertEquals("soon", formatTimelineDate("soon", null, DateFormat.EU, Locale.US))
     }
 
     @Test

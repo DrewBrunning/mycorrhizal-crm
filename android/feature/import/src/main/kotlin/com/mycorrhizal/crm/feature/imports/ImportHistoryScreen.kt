@@ -41,11 +41,8 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.formatInstant
 import com.mycorrhizal.crm.ui.isServerFeatureSupported
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Issue #834 (web parity, issue #651): the persisted import-run history —
@@ -111,6 +108,7 @@ fun ImportHistoryScreen(
             report != null -> ImportResultReport(
                 result = report.toImportResult(),
                 onDone = viewModel::closeReport,
+                doneLabel = R.string.action_close,
                 modifier = Modifier.padding(padding).testTag("import-history-report")
             )
 
@@ -167,7 +165,7 @@ private fun ImportRunCard(run: ImportRun, onViewReport: () -> Unit) {
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = formatRunTime(run.createdAt),
+                    text = formatInstant(run.createdAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -220,15 +218,4 @@ private fun formatLabel(format: String): String = when (format) {
     "monica" -> stringResource(R.string.import_history_format_monica)
     "meerkat" -> stringResource(R.string.import_history_format_meerkat)
     else -> format
-}
-
-/** Mirrors web's `new Date(run.created_at).toLocaleString()` (also AuditScreen's formatAuditTime). */
-private fun formatRunTime(iso: String?): String {
-    if (iso.isNullOrBlank()) return ""
-    return runCatching {
-        val instant = Instant.parse(iso)
-        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
-            .withZone(ZoneId.systemDefault())
-            .format(instant)
-    }.getOrDefault(iso)
 }

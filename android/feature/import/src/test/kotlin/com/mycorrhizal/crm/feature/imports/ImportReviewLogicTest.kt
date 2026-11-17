@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.imports
 
 import com.mycorrhizal.crm.model.network.DuplicateMatch
+import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import org.junit.Assert.assertEquals
@@ -80,5 +81,64 @@ class ImportReviewLogicTest {
         assertEquals("Row,Name,Email,Phone,Status,Reason", lines[0])
         assertEquals("3,'=SUM(A1),a@b.c,'+49 1,skipped,\"Invalid email, fix it\"", lines[1])
         assertEquals("5,\"Dana \"\"D\"\" White\",,,failed,Could not save", lines[2])
+    }
+
+    // Issue #2611: a saved fix takes the row out of the error group.
+    @Test
+    fun `a row with a saved fix is no longer an error row`() {
+        val edits = mapOf(
+            broken.rowIndex to ImportRowEdit(rowIndex = broken.rowIndex, email = "a@b.c")
+        )
+        assertFalse(broken.matches(ImportReviewFilter.ERRORS, edits))
+        assertTrue(broken.matches(ImportReviewFilter.NEW, edits))
+        assertTrue(broken.matches(null, edits))
+        // An edit for another row changes nothing.
+        val other = mapOf(99 to ImportRowEdit(rowIndex = 99, email = "a@b.c"))
+        assertTrue(broken.matches(ImportReviewFilter.ERRORS, other))
+        assertFalse(broken.matches(ImportReviewFilter.NEW, other))
+    }
+
+    @Test
+    fun `applying a fix shows the edited values and an empty value removes the entry`() {
+        val row = ImportRowPreview(
+            rowIndex = 1,
+            parsedContact = mapOf(
+                "firstname" to "Beta",
+                "lastname" to "Tester",
+                "email" to "not-an-email",
+                "phone" to "123",
+                "birthday" to "1990-01-01"
+            )
+        )
+        val fixed = row.withEdit(
+            ImportRowEdit(rowIndex = 1, firstname = "Bea", email = "bea@example.com", phone = "")
+        )
+        assertEquals("Bea", fixed.parsedContact["firstname"])
+        assertEquals("Tester", fixed.parsedContact["lastname"])
+        assertEquals("bea@example.com", fixed.parsedContact["email"])
+        assertFalse(fixed.parsedContact.containsKey("phone"))
+        // Fields the fix form cannot touch are carried over.
+        assertEquals("1990-01-01", fixed.parsedContact["birthday"])
+        assertEquals(row, row.withEdit(null))
+    }
+
+    // Issue #2610: only the name/email/phone errors can be fixed in the form.
+    @Test
+    fun `birthday anniversary and parse errors cannot be fixed in the form`() {
+        fun rowWith(vararg errors: String) =
+            ImportRowPreview(rowIndex = 0, validationErrors = errors.toList())
+        assertTrue(
+            rowWith("Invalid birthday format (expected YYYY-MM-DD or --MM-DD)").hasUnfixableError()
+        )
+        assertTrue(
+            rowWith(
+                "Invalid anniversary format (expected YYYY-MM-DD or --MM-DD)"
+            ).hasUnfixableError()
+        )
+        assertTrue(rowWith("Failed to parse vCard: unexpected end of name").hasUnfixableError())
+        assertTrue(rowWith("Invalid email format", "Invalid birthday format").hasUnfixableError())
+        assertFalse(rowWith("First name is required").hasUnfixableError())
+        assertFalse(rowWith("Invalid email format", "Invalid phone format").hasUnfixableError())
+        assertFalse(fresh.hasUnfixableError())
     }
 }

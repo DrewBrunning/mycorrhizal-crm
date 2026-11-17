@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.MonicaConnectRequest
 import com.mycorrhizal.crm.model.network.MonicaConnectResponse
@@ -16,6 +17,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.net.URI
 import javax.inject.Inject
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
@@ -48,12 +50,31 @@ data class MonicaImportUiState(
     val isImporting: Boolean = false,
     @StringRes val errorRes: Int? = null,
     val error: ApiError? = null,
+    /**
+     * Issue #2620: set when Monica could not be reached while connecting. Unlike [error] it is
+     * not a transient snackbar: it stays under the address field until the address is edited
+     * or Connect is tried again.
+     */
+    val unreachable: MonicaUnreachable? = null,
     /** Server-reported job failure text (not an error envelope). */
     val errorText: String? = null
 ) {
     val canConnect: Boolean
         get() = !isConnecting && connected == null && baseUrl.isNotBlank() && apiToken.isNotEmpty()
     val canStart: Boolean get() = connected != null && !isImporting
+}
+
+/** The host Monica could not be reached at, and the server's request reference (if any). */
+data class MonicaUnreachable(val host: String, val requestId: String?)
+
+/** The host (and port) of the address the user typed, which may lack a scheme. */
+internal fun monicaHost(baseUrl: String): String {
+    val trimmed = baseUrl.trim()
+    val uri = runCatching {
+        URI(if ("://" in trimmed) trimmed else "https://$trimmed")
+    }.getOrNull()
+    val host = uri?.host ?: return trimmed
+    return if (uri.port != -1) "$host:${uri.port}" else host
 }
 
 /**
@@ -106,7 +127,7 @@ class MonicaImportViewModel @Inject constructor(
         }
     }
 
-    fun onBaseUrlChange(value: String) = editForm { it.copy(baseUrl = value) }
+    fun onBaseUrlChange(value: String) = editForm { it.copy(baseUrl = value, unreachable = null) }
 
     fun onApiTokenChange(value: String) = editForm { it.copy(apiToken = value) }
 
@@ -127,7 +148,13 @@ class MonicaImportViewModel @Inject constructor(
             apiToken = state.apiToken
         )
         _uiState.update {
-            it.copy(isConnecting = true, errorRes = null, error = null, errorText = null)
+            it.copy(
+                isConnecting = true,
+                errorRes = null,
+                error = null,
+                errorText = null,
+                unreachable = null
+            )
         }
         viewModelScope.launch {
             // NonCancellable: leaving the screen must not abort the request mid-flight
@@ -145,8 +172,21 @@ class MonicaImportViewModel @Inject constructor(
                         it.copy(isConnecting = false, connected = connected, apiToken = "")
                     }
                 },
-                onFailure = { error ->
-                    _uiState.update { it.copy(isConnecting = false, error = error.toApiError()) }
+                onFailure = { failure ->
+                    val error = failure.toApiError()
+                    _uiState.update {
+                        if (error.isMonicaUnreachable()) {
+                            it.copy(
+                                isConnecting = false,
+                                unreachable = MonicaUnreachable(
+                                    host = monicaHost(request.baseUrl),
+                                    requestId = error.requestIdOrNull()
+                                )
+                            )
+                        } else {
+                            it.copy(isConnecting = false, error = error)
+                        }
+                    }
                 }
             )
         }
@@ -351,6 +391,18 @@ class MonicaImportViewModel @Inject constructor(
                 errorText = text?.takeIf { m -> m.isNotBlank() }
             )
         }
+    }
+
+    private fun ApiError.isMonicaUnreachable(): Boolean = when (this) {
+        is ApiError.Server -> reason?.code == ErrorReasonCode.MONICA_UNREACHABLE
+        is ApiError.Client -> reason?.code == ErrorReasonCode.MONICA_UNREACHABLE
+        else -> false
+    }
+
+    private fun ApiError.requestIdOrNull(): String? = when (this) {
+        is ApiError.Server -> requestId
+        is ApiError.Client -> requestId
+        else -> null
     }
 
     @StringRes

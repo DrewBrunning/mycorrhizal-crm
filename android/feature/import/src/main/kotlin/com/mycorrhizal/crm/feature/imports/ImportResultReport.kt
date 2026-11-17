@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.imports
 
 import android.content.Context
 import android.content.Intent
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,7 +33,8 @@ import java.io.File
  * Issue #2187 (Android parity, #2210): the final import result — the created/updated/skipped
  * counts, then every skipped or failed row with its reason (`ImportResult.issues`) and a share
  * button that hands the list over as a CSV. A clean import shows no list. [onShareCsv] defaults
- * to the system share sheet; tests pass their own.
+ * to the system share sheet; tests pass their own. Nothing is pending on this screen, so the
+ * closing button reads "Done" (issue #2621); a past run's report passes [doneLabel] "Close".
  */
 @Composable
 fun ImportResultReport(
@@ -42,7 +44,8 @@ fun ImportResultReport(
     onShareCsv: ((List<ImportRowIssue>) -> Unit)? = null,
     summary: String? = null,
     summaryTag: String? = null,
-    doneTag: String? = null
+    doneTag: String? = null,
+    @StringRes doneLabel: Int = R.string.action_done
 ) {
     val context = LocalContext.current
     val share = onShareCsv ?: { issues -> shareImportIssuesCsv(context, issues) }
@@ -63,7 +66,7 @@ fun ImportResultReport(
         )
         if (result.issues.isEmpty()) {
             Button(onClick = onDone, modifier = Modifier.optionalTestTag(doneTag)) {
-                Text(stringResource(R.string.action_confirm))
+                Text(stringResource(doneLabel))
             }
             return
         }
@@ -88,7 +91,7 @@ fun ImportResultReport(
             onClick = onDone,
             modifier = Modifier.padding(top = 8.dp).optionalTestTag(doneTag)
         ) {
-            Text(stringResource(R.string.action_confirm))
+            Text(stringResource(doneLabel))
         }
     }
 }

@@ -45,6 +45,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Clearer import review on Android** ([#2610](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2610), [#2611](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2611), [#2620](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2620), [#2621](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2621)): a row with a birthday error now says it cannot be fixed there, a fixed row shows its new values, an unreachable Monica is explained under the address, and finished imports end with "Done".
+- **Dates follow your format on Android** ([#2618](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2618)): Trash, import history and circle timelines now use your date and time format, without seconds.
 - **SSO login on the web** ([#2636](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2636)): signing in with your identity provider no longer reloads the login page, and the return to the app completes, when the app and API share one address.
 - **Correct file-size limit in the import message** ([#2595](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2595)): when a contact file is too large to import, the message now states the real limit, 20 MB for CSV and 50 MB for vCard files, instead of always saying 5 MB. It is shown in all five languages.
 - **Custom fields show on the web contact page** ([#2447](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2447)): custom fields defined for contacts now load and display on a contact page; they were not being fetched, so the page showed none.
