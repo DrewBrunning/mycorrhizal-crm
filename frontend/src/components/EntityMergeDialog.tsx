@@ -26,7 +26,9 @@ import {
   mergeEntity,
 } from '../api/entities';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useDateFormat } from '../DateFormatProvider';
 import { fillableMergeFields } from '../utils/entityCore';
+import { nameWithDetail, sameEntityName } from '../utils/entityDisambiguation';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
@@ -65,6 +67,7 @@ export default function EntityMergeDialog({
 }: EntityMergeDialogProps) {
   const { t } = useTranslation();
   const { showSuccess, showWarning } = useSnackbar();
+  const { formatDate } = useDateFormat();
   const [loser, setLoser] = useState<Entity | null>(null);
   const [survivor, setSurvivor] = useState<Entity | null>(null);
   const [options, setOptions] = useState<Entity[]>([]);
@@ -190,7 +193,15 @@ export default function EntityMergeDialog({
             <>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography sx={{ flex: 1 }}>
-                  {t('entities.merge.intro', { loser: loser.name, survivor: survivor.name })}
+                  {t('entities.merge.intro', {
+                    // Identical names: say which is which (created date, linked contacts).
+                    loser: sameEntityName(loser.name, survivor.name)
+                      ? nameWithDetail(t, formatDate, loser)
+                      : loser.name,
+                    survivor: sameEntityName(loser.name, survivor.name)
+                      ? nameWithDetail(t, formatDate, survivor)
+                      : survivor.name,
+                  })}
                 </Typography>
                 {survivorId && (
                   <Tooltip title={t('entities.merge.swap')}>

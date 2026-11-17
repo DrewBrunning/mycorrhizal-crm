@@ -4388,6 +4388,11 @@
       "death": "Morte",
       "dateHint": "AAAA, AAAA-MM o AAAA-MM-GG"
     },
+    "listAdded": "Aggiunta il {{date}}",
+    "nameAdded": "{{name}} (aggiunta il {{date}})",
+    "nameDetail_one": "{{name}} (aggiunta il {{date}}, {{count}} contatto)",
+    "nameDetail_many": "{{name}} (aggiunta il {{date}}, {{count}} contatti)",
+    "nameDetail_other": "{{name}} (aggiunta il {{date}}, {{count}} contatti)",
     "form": {
       "editTitle": "Modifica {{name}}",
       "nameRequired": "Inserisci un nome.",
@@ -4509,6 +4514,7 @@
       "title": "Crea entità dai miei contatti",
       "intro": "Gruppi della stessa organizzazione o indirizzo trovati nei tuoi contatti. Seleziona quelli da creare; puoi ripetere l'operazione quando vuoi, vengono proposti solo i valori non ancora collegati.",
       "none": "Non resta nulla da creare dai tuoi contatti.",
+      "selectSome": "Seleziona un gruppo da creare",
       "groupTitle_one": "{{name}} — {{count}} contatto",
       "groupTitle_many": "{{name}} — {{count}} contatti",
       "groupTitle_other": "{{name}} — {{count}} contatti",

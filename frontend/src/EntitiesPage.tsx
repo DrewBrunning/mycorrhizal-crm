@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   List,
+  ListItem,
   ListItemButton,
   ListItemText,
   Tab,
@@ -20,6 +21,7 @@ import EntitySuggestionsPanel, { pairKey } from './components/EntitySuggestionsP
 import LoadError from './components/LoadError';
 import PageHeader from './components/PageHeader';
 import { useSnackbar } from './context/SnackbarContext';
+import { useDateFormat } from './DateFormatProvider';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useEntityList } from './hooks/useEntityList';
@@ -41,6 +43,7 @@ export default function EntitiesPage() {
   const { t } = useTranslation();
   useDocumentTitle(t('entities.title'));
   const { showSuccess } = useSnackbar();
+  const { formatDate } = useDateFormat();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const kind = kindFromParam(params.get('kind'));
@@ -99,25 +102,26 @@ export default function EntitiesPage() {
       ) : (
         <List disablePadding aria-label={t(ENTITY_KIND_PLURAL_KEYS[kind])}>
           {entities.map((e) => (
-            <ListItemButton
-              key={e.id}
-              component={Link}
-              to={`/entities/${e.id}`}
-              divider
-              sx={{ borderRadius: 1 }}
-            >
-              <ListItemText
-                primary={e.name}
-                secondary={
-                  [
-                    coreSummary(e),
-                    e.sensitivity !== 'normal' ? t(ENTITY_SENSITIVITY_KEYS[e.sensitivity]) : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' · ') || undefined
-                }
-              />
-            </ListItemButton>
+            <ListItem key={e.id} disablePadding divider>
+              <ListItemButton component={Link} to={`/entities/${e.id}`} sx={{ borderRadius: 1 }}>
+                <ListItemText
+                  primary={e.name}
+                  secondary={
+                    [
+                      coreSummary(e),
+                      e.sensitivity !== 'normal' ? t(ENTITY_SENSITIVITY_KEYS[e.sensitivity]) : '',
+                      // The list rows carry no link count, so the created date is what tells
+                      // same-named entities apart (#2701).
+                      e.created_at
+                        ? t('entities.listAdded', { date: formatDate(e.created_at) })
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || undefined
+                  }
+                />
+              </ListItemButton>
+            </ListItem>
           ))}
         </List>
       )}
@@ -135,6 +139,7 @@ export default function EntitiesPage() {
         onClose={() => setCreating(false)}
         onSaved={(saved) => {
           setCreating(false);
+          void refresh();
           showSuccess(t('entities.form.created', { name: saved.name }));
           void navigate(`/entities/${saved.id}`);
         }}

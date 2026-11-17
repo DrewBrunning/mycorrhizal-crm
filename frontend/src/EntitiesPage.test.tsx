@@ -1,8 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { createMemoryRouter, MemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
 import {
+  createEntity,
   dismissEntitySuggestion,
   type Entity,
   type EntityKind,
@@ -12,6 +13,7 @@ import {
   mergeEntity,
 } from './api/entities';
 import { SnackbarProvider } from './context/SnackbarContext';
+import { DateFormatProvider } from './DateFormatProvider';
 import EntitiesPage from './EntitiesPage';
 
 afterEach(() => {
@@ -36,6 +38,7 @@ const suggestMock = vi.mocked(listEntitySuggestions);
 const dismissMock = vi.mocked(dismissEntitySuggestion);
 const getMock = vi.mocked(getEntity);
 const mergeMock = vi.mocked(mergeEntity);
+const createMock = vi.mocked(createEntity);
 
 function ent(id: string, name: string, kind: EntityKind = 'organisation', core = {}): Entity {
   return {
@@ -53,9 +56,11 @@ function ent(id: string, name: string, kind: EntityKind = 'organisation', core =
 function renderPage(path = '/entities') {
   return render(
     <SnackbarProvider>
-      <MemoryRouter initialEntries={[path]}>
-        <EntitiesPage />
-      </MemoryRouter>
+      <DateFormatProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <EntitiesPage />
+        </MemoryRouter>
+      </DateFormatProvider>
     </SnackbarProvider>,
   );
 }
@@ -210,4 +215,71 @@ test('an empty suggestion result says so', async () => {
   await screen.findByText('Acme');
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
   expect(await screen.findByText('No duplicates found.')).toBeInTheDocument();
+});
+
+// #2693: the create dialog arms a discard guard; without allowNavigation() the
+// blocker swallowed the navigate() to the new entity, and the list stayed stale.
+test('saving a new entity opens it and reloads the list (#2693)', async () => {
+  createMock.mockResolvedValue(ent('new1', 'Rex', 'pet'));
+  const router = createMemoryRouter(
+    [
+      { path: '/entities', element: <EntitiesPage /> },
+      { path: '/entities/:id', element: <div>entity detail page</div> },
+    ],
+    { initialEntries: ['/entities?kind=pet'] },
+  );
+  render(
+    <SnackbarProvider>
+      <DateFormatProvider>
+        <RouterProvider router={router} />
+      </DateFormatProvider>
+    </SnackbarProvider>,
+  );
+  await waitFor(() => expect(listMock).toHaveBeenCalledTimes(1));
+  fireEvent.click(await screen.findByRole('button', { name: 'Add pet' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Add pet' });
+  fireEvent.change(within(dialog).getByLabelText('Name *'), { target: { value: 'Rex' } });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+  expect(await screen.findByText('entity detail page')).toBeInTheDocument();
+  expect(router.state.location.pathname).toBe('/entities/new1');
+  expect(screen.queryByText('Discard unsaved changes?')).toBeNull();
+  // The list was reloaded so it is not stale when the user comes back.
+  expect(listMock.mock.calls.length).toBeGreaterThanOrEqual(2);
+});
+
+// #2699: rows must be <ul><li><a>, not <a> directly inside the <ul>.
+test('each entity row is a list item containing its link (#2699)', async () => {
+  listMock.mockResolvedValue({
+    entities: [ent('o1', 'Acme'), ent('o2', 'Globex')],
+    limit: 50,
+    next_cursor: '',
+  });
+  renderPage();
+  const list = await screen.findByRole('list', { name: 'Organisations' });
+  const items = within(list).getAllByRole('listitem');
+  expect(items).toHaveLength(2);
+  for (const li of items) expect(within(li).getByRole('link')).toBeInTheDocument();
+  expect(within(items[0]).getByRole('link', { name: /Acme/ })).toHaveAttribute(
+    'href',
+    '/entities/o1',
+  );
+});
+
+// #2701: same-named entities need a distinguishing detail in the list.
+test('same-named entities show their created date so they can be told apart (#2701)', async () => {
+  listMock.mockResolvedValue({
+    entities: [
+      { ...ent('g1', 'Green Acres Co-op'), created_at: '2026-03-05T10:00:00Z' },
+      { ...ent('g2', 'Green Acres Co-op'), created_at: '2026-04-19T10:00:00Z' },
+    ],
+    limit: 50,
+    next_cursor: '',
+  });
+  renderPage();
+  const links = await screen.findAllByRole('link', { name: /Green Acres Co-op/ });
+  expect(links).toHaveLength(2);
+  expect(links[0].textContent).toMatch(/Added /);
+  expect(links[1].textContent).toMatch(/Added /);
+  expect(links[0].textContent).not.toBe(links[1].textContent);
 });

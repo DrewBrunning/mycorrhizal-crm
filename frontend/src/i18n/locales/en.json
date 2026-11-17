@@ -4281,6 +4281,10 @@
       "death": "Death",
       "dateHint": "YYYY, YYYY-MM or YYYY-MM-DD"
     },
+    "listAdded": "Added {{date}}",
+    "nameAdded": "{{name}} (added {{date}})",
+    "nameDetail_one": "{{name}} (added {{date}}, {{count}} contact)",
+    "nameDetail_other": "{{name}} (added {{date}}, {{count}} contacts)",
     "form": {
       "editTitle": "Edit {{name}}",
       "nameRequired": "Enter a name.",
@@ -4395,6 +4399,7 @@
       "title": "Create entities from my contacts",
       "intro": "Groups of the same organisation or address found on your contacts. Tick the ones to create; run this again any time, only values not yet linked are offered.",
       "none": "Nothing left to create from your contacts.",
+      "selectSome": "Tick a group to create it",
       "groupTitle_one": "{{name}} — {{count}} contact",
       "groupTitle_other": "{{name}} — {{count}} contacts",
       "include": "Include {{name}}",

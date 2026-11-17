@@ -8,7 +8,7 @@ import {
   MenuItem,
   TextField,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createEntity,
@@ -56,7 +56,14 @@ export default function EntityFormDialog({
   const [form, setForm] = useState<EntityForm>(() => coreToForm(kind, {}));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const { markDirty, clearDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
+  const [fieldError, setFieldError] = useState<FieldErrors>({});
+  const nameRef = useRef<HTMLInputElement>(null);
+  const birthRef = useRef<HTMLInputElement>(null);
+  const deathRef = useRef<HTMLInputElement>(null);
+  const { markDirty, clearDirty, allowNavigation, requestClose, guardElement } = useDirtyDialog(
+    open,
+    onClose,
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -64,30 +71,35 @@ export default function EntityFormDialog({
     setSensitivity(entity?.sensitivity ?? 'normal');
     setForm(coreToForm(kind, entity?.core ?? {}));
     setError('');
+    setFieldError({});
   }, [open, entity, kind]);
 
   const set = <T extends EntityForm>(patch: Partial<T>) => {
     markDirty();
     setError('');
+    setFieldError({});
     setForm((f) => ({ ...f, ...patch }) as EntityForm);
   };
 
   const handleSave = async () => {
     const trimmed = name.trim();
+    setError('');
     if (!trimmed) {
-      setError(t('entities.form.nameRequired'));
+      setFieldError({ name: t('entities.form.nameRequired') });
+      nameRef.current?.focus();
       return;
     }
     let core: Record<string, unknown>;
     try {
       core = formToCore(kind, trimmed, form, entity?.core);
     } catch (err) {
-      const field = err instanceof Error ? err.message : 'birth';
-      setError(
-        t('entities.form.invalidDate', {
+      const field = err instanceof Error && err.message === 'death' ? 'death' : 'birth';
+      setFieldError({
+        [field]: t('entities.form.invalidDate', {
           field: field === 'death' ? t('entities.fields.death') : t('entities.fields.birth'),
         }),
-      );
+      });
+      (field === 'death' ? deathRef : birthRef).current?.focus();
       return;
     }
     setSaving(true);
@@ -97,6 +109,9 @@ export default function EntityFormDialog({
         ? await updateEntity(entity.id, input, entity.revision)
         : await createEntity(input);
       clearDirty();
+      // The save is done: let the parent navigate without the armed discard guard
+      // swallowing it (#2693).
+      allowNavigation();
       onSaved(saved);
     } catch (err) {
       setError(getErrorMessage(err) || t('entities.form.saveFailed'));
@@ -126,8 +141,12 @@ export default function EntityFormDialog({
             onChange={(e) => {
               markDirty();
               setError('');
+              setFieldError({});
               setName(e.target.value);
             }}
+            inputRef={nameRef}
+            error={Boolean(fieldError.name)}
+            helperText={fieldError.name}
             slotProps={{ htmlInput: { maxLength: 200 } }}
             required
             fullWidth
@@ -136,7 +155,15 @@ export default function EntityFormDialog({
             <OrganisationFields form={form as OrganisationForm} set={set} />
           )}
           {kind === 'place' && <PlaceFields form={form as PlaceForm} set={set} />}
-          {kind === 'pet' && <PetFields form={form as PetForm} set={set} />}
+          {kind === 'pet' && (
+            <PetFields
+              form={form as PetForm}
+              set={set}
+              errors={fieldError}
+              birthRef={birthRef}
+              deathRef={deathRef}
+            />
+          )}
           <TextField
             select
             label={t('entities.sensitivityLabel')}
@@ -167,6 +194,12 @@ export default function EntityFormDialog({
       {guardElement}
     </AppDialog>
   );
+}
+
+interface FieldErrors {
+  name?: string;
+  birth?: string;
+  death?: string;
 }
 
 type SetFn = <T extends EntityForm>(patch: Partial<T>) => void;
@@ -245,7 +278,19 @@ function PlaceFields({ form, set }: { form: PlaceForm; set: SetFn }) {
   );
 }
 
-function PetFields({ form, set }: { form: PetForm; set: SetFn }) {
+function PetFields({
+  form,
+  set,
+  errors,
+  birthRef,
+  deathRef,
+}: {
+  form: PetForm;
+  set: SetFn;
+  errors: FieldErrors;
+  birthRef: RefObject<HTMLInputElement | null>;
+  deathRef: RefObject<HTMLInputElement | null>;
+}) {
   const { t } = useTranslation();
   return (
     <>
@@ -265,14 +310,18 @@ function PetFields({ form, set }: { form: PetForm; set: SetFn }) {
       />
       <TextField
         label={t('entities.fields.birth')}
-        helperText={t('entities.fields.dateHint')}
+        inputRef={birthRef}
+        error={Boolean(errors.birth)}
+        helperText={errors.birth ?? t('entities.fields.dateHint')}
         value={form.birth}
         onChange={(e) => set<PetForm>({ birth: e.target.value })}
         fullWidth
       />
       <TextField
         label={t('entities.fields.death')}
-        helperText={t('entities.fields.dateHint')}
+        inputRef={deathRef}
+        error={Boolean(errors.death)}
+        helperText={errors.death ?? t('entities.fields.dateHint')}
         value={form.death}
         onChange={(e) => set<PetForm>({ death: e.target.value })}
         fullWidth

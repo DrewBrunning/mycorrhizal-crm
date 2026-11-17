@@ -4388,6 +4388,11 @@
       "death": "Fallecimiento",
       "dateHint": "AAAA, AAAA-MM o AAAA-MM-DD"
     },
+    "listAdded": "Añadida el {{date}}",
+    "nameAdded": "{{name}} (añadida el {{date}})",
+    "nameDetail_one": "{{name}} (añadida el {{date}}, {{count}} contacto)",
+    "nameDetail_many": "{{name}} (añadida el {{date}}, {{count}} contactos)",
+    "nameDetail_other": "{{name}} (añadida el {{date}}, {{count}} contactos)",
     "form": {
       "editTitle": "Editar {{name}}",
       "nameRequired": "Introduce un nombre.",
@@ -4509,6 +4514,7 @@
       "title": "Crear entidades desde mis contactos",
       "intro": "Grupos de la misma organización o dirección encontrados en tus contactos. Marca los que quieras crear; puedes repetirlo cuando quieras, solo se ofrecen los valores aún sin vincular.",
       "none": "No queda nada por crear a partir de tus contactos.",
+      "selectSome": "Marca un grupo para crearlo",
       "groupTitle_one": "{{name}} — {{count}} contacto",
       "groupTitle_many": "{{name}} — {{count}} contactos",
       "groupTitle_other": "{{name}} — {{count}} contactos",

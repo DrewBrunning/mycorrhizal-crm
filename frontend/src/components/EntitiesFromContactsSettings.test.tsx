@@ -129,7 +129,8 @@ test('creating sends only ticked groups, with their edited name, role and primar
   const dialog = await openWizard();
   await within(dialog).findByText('Acme Corp — 2 contacts');
   // Groups start unticked: nothing is created without a deliberate choice.
-  expect(within(dialog).getByRole('button', { name: 'Create 0 organisations' })).toBeDisabled();
+  expect(within(dialog).getByRole('button', { name: 'Tick a group to create it' })).toBeDisabled();
+  expect(within(dialog).queryByRole('button', { name: /^Create 0/ })).toBeNull();
 
   fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Include Acme Corp' }));
   fireEvent.change(within(dialog).getByLabelText('Name of Acme Corp'), {
@@ -194,4 +195,15 @@ test('Load more appends the next page of groups', async () => {
   fireEvent.click(within(dialog).getByRole('button', { name: 'Load more' }));
   expect(await within(dialog).findByText('Globex — 1 contact')).toBeInTheDocument();
   expect(suggestMock).toHaveBeenLastCalledWith(expect.objectContaining({ cursor: 'c2' }));
+});
+
+// #2715: nothing selectable means nothing to create: only Close is offered.
+test('with no groups left only Close is offered, not a disabled create button (#2715)', async () => {
+  suggestMock.mockResolvedValue(page([]));
+  renderCard();
+  const dialog = await openWizard();
+  await within(dialog).findByText('Nothing left to create from your contacts.');
+  expect(within(dialog).getByRole('button', { name: 'Close' })).toBeInTheDocument();
+  expect(within(dialog).queryByRole('button', { name: /^Create/ })).toBeNull();
+  expect(within(dialog).queryByRole('button', { name: 'Tick a group to create it' })).toBeNull();
 });
