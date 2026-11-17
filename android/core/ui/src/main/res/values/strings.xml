@@ -2982,6 +2982,7 @@
     <string name="error_reason_relationship_partial_date_missing">A date must include at least a year, month or day</string>
     <string name="error_reason_relationship_self_edge">The source and target must be different contacts</string>
     <string name="error_reason_validation_activity_ids_range">Must contain between 1 and 100 ids</string>
+    <string name="error_reason_validation_timezone_invalid">tz must be an IANA time zone name such as Europe/Berlin</string>
     <string name="error_reason_validation_required">%1$s is required</string>
     <string name="error_reason_validation_email">%1$s must be a valid email address</string>
     <string name="error_reason_validation_min">%1$s must be at least %2$s characters</string>

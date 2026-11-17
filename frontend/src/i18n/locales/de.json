@@ -3742,6 +3742,7 @@
       "circle_sync_scope_no_default": "Für den CardDAV-Synchronisierungsbereich ist kein Standardkreis konfiguriert",
       "validation_cursor_malformed": "Die Cursor-ID ist ungültig",
       "validation_activity_ids_range": "Muss zwischen 1 und 100 IDs enthalten",
+      "validation_timezone_invalid": "tz muss ein IANA-Zeitzonenname wie Europe/Berlin sein",
       "validation_required": "{{field}} ist erforderlich",
       "validation_email": "{{field}} muss eine gültige E-Mail-Adresse sein",
       "validation_min": "{{field}} muss mindestens {{min}} Zeichen lang sein",

@@ -3848,6 +3848,7 @@
       "circle_sync_scope_no_default": "Aucun cercle par défaut n'est configuré pour la portée de synchronisation CardDAV",
       "validation_cursor_malformed": "L'identifiant du curseur est mal formé",
       "validation_activity_ids_range": "Doit contenir entre 1 et 100 identifiants",
+      "validation_timezone_invalid": "tz doit être un nom de fuseau horaire IANA tel que Europe/Berlin",
       "validation_required": "{{field}} est obligatoire",
       "validation_email": "{{field}} doit être une adresse e-mail valide",
       "validation_min": "{{field}} doit contenir au moins {{min}} caractères",

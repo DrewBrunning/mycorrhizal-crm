@@ -3074,6 +3074,7 @@
     <string name="error_reason_relationship_partial_date_missing">Une date doit comporter au moins une année, un mois ou un jour</string>
     <string name="error_reason_relationship_self_edge">La source et la cible doivent être des contacts différents</string>
     <string name="error_reason_validation_activity_ids_range">Doit contenir entre 1 et 100 identifiants</string>
+    <string name="error_reason_validation_timezone_invalid">tz doit être un nom de fuseau horaire IANA tel que Europe/Berlin</string>
     <string name="error_reason_validation_required">%1$s est obligatoire</string>
     <string name="error_reason_validation_email">%1$s doit être une adresse e-mail valide</string>
     <string name="error_reason_validation_min">%1$s doit contenir au moins %2$s caractères</string>

@@ -2092,8 +2092,18 @@ paths:
         each, keeping the service's own ordering (most overdue / soonest /
         newest first); the matching `*_total` field carries the uncapped
         size so a client can say "showing 25 of N". The request stops
-        working when the client disconnects.
+        working when the client disconnects. "Today" for the day-relative blocks
+        is the viewer's day when `tz` is sent,
+        otherwise the reminder-zone day (ADR 0015 Rule 4).
+      parameters:
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
+        "400":
+          description: Invalid `tz` (reason `validation_timezone_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "200":
           description: The dashboard composite.
           content:
@@ -2634,8 +2644,19 @@ paths:
       operationId: getUpcomingBirthdays
       tags:
         - Contacts
-      description: Up to 5 results, extended to include all birthdays within two weeks.
+      description: >
+        Up to 5 results, extended to include all birthdays within two weeks.
+        "Today" is the viewer's day when `tz` is sent, otherwise the
+        reminder-zone day (ADR 0015 Rule 4).
+      parameters:
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
+        "400":
+          description: Invalid `tz` (reason `validation_timezone_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
           content:
@@ -10888,7 +10909,8 @@ paths:
         The "upcoming occasions" dashboard-widget aggregate (ADR 0024,
         issue #387): every birthday/anniversary/life-event/active-obligation
         occurrence within the next `days`, sorted ascending by days-until.
-        "Today" is the reminder-zone clock (ADR 0015 Rule 4).
+        "Today" is the viewer's day when `tz` is sent, otherwise the
+        reminder-zone clock (ADR 0015 Rule 4).
       parameters:
         - name: days
           in: query
@@ -10898,9 +10920,10 @@ paths:
           in: query
           description: Include occasion obligations above normal sensitivity.
           schema: { type: boolean, default: false }
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
         "400":
-          description: Invalid days value.
+          description: Invalid days or `tz` (reason `occasion_days_invalid` or `validation_timezone_invalid`).
           content:
             application/json:
               schema:
@@ -10987,9 +11010,10 @@ paths:
           in: query
           description: Include occasion obligations above normal sensitivity.
           schema: { type: boolean, default: false }
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
         "400":
-          description: Invalid days value.
+          description: Invalid days or `tz` (reason `occasion_days_invalid` or `validation_timezone_invalid`).
           content:
             application/json:
               schema:
@@ -12019,8 +12043,19 @@ paths:
       operationId: listUpcomingReminders
       tags:
         - Reminders
-      description: Up to 5 incomplete reminders, or the next 5 incomplete overall.
+      description: >
+        Up to 5 incomplete reminders, or the next 5 incomplete overall.
+        "Today" is the viewer's day when `tz` is sent, otherwise the
+        reminder-zone day (ADR 0015 Rule 4).
+      parameters:
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
+        "400":
+          description: Invalid `tz` (reason `validation_timezone_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
           content:
@@ -16665,6 +16700,24 @@ components:
         carddav-scoped token is rejected with 403 (only `full`-scope tokens
         work); API tokens are rejected on every /admin path entirely.
   parameters:
+    ViewerTimezone:
+      name: tz
+      in: query
+      required: false
+      description: >
+        Optional IANA time zone name (for example `Pacific/Auckland`) of the
+        viewer (issue #2762, ADR 0015 Rule 4). Display endpoints that decide
+        "today" use it instead of the server's REMINDER_TIMEZONE so a birthday
+        that is today for the viewer is returned and `days_until` counts from
+        the viewer's date. Omitted or empty keeps the reminder-zone behaviour
+        unchanged. A whitespace-only, over-long (more than 64 characters),
+        unknown, or `Local` value is rejected with 400 INVALID_INPUT, field
+        `tz`, reason `validation_timezone_invalid`. Scheduled reminders,
+        emails and ICS/CalDAV output are not affected.
+      schema:
+        type: string
+        maxLength: 64
+        example: Pacific/Auckland
     IfMatchRevision:
       name: If-Match
       in: header

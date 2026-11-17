@@ -212,6 +212,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
         ErrorReasonCode.VALIDATION_ACTIVITY_IDS_RANGE ->
             stringResource(R.string.error_reason_validation_activity_ids_range)
 
+        ErrorReasonCode.VALIDATION_TIMEZONE_INVALID ->
+            stringResource(R.string.error_reason_validation_timezone_invalid)
+
         ErrorReasonCode.VALIDATION_CURSOR_MALFORMED ->
             stringResource(R.string.error_reason_validation_cursor_malformed)
 

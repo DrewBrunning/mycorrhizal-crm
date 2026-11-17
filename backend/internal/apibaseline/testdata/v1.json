@@ -2402,11 +2402,21 @@
     {
       "method": "GET",
       "path": "/contacts/birthdays",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "tz",
+          "in": "query",
+          "required": false
+        }
+      ],
       "responses": [
         {
           "status": "200",
           "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
         },
         {
           "status": "401",
@@ -4642,11 +4652,21 @@
     {
       "method": "GET",
       "path": "/dashboard",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "tz",
+          "in": "query",
+          "required": false
+        }
+      ],
       "responses": [
         {
           "status": "200",
           "schema": "ref:DashboardResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
         }
       ]
     },
@@ -8324,6 +8344,11 @@
           "name": "include_sensitive",
           "in": "query",
           "required": false
+        },
+        {
+          "name": "tz",
+          "in": "query",
+          "required": false
         }
       ],
       "responses": [
@@ -8420,6 +8445,11 @@
         },
         {
           "name": "include_sensitive",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "tz",
           "in": "query",
           "required": false
         }
@@ -9068,11 +9098,21 @@
     {
       "method": "GET",
       "path": "/reminders/upcoming",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "tz",
+          "in": "query",
+          "required": false
+        }
+      ],
       "responses": [
         {
           "status": "200",
           "schema": "object"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
         },
         {
           "status": "401",
