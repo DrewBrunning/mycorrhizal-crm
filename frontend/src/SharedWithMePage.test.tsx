@@ -244,6 +244,39 @@ describe('SharedWithMePage', () => {
   });
 });
 
+describe('SharedWithMePage failure states', () => {
+  test('a blocked-senders load failure shows a retry that re-reads the list', async () => {
+    mockApi('get', '/share-grants/incoming', page([]));
+    const failing = mockApi('get', '/share-grants/blocks', errorEnvelope(500, 'INTERNAL', 'boom'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(failing.length).toBeGreaterThan(1));
+  });
+
+  test('a failed unblock shows a dismissible error and keeps the sender listed', async () => {
+    setup([], [{ user_id: 7, username: 'bob', created_at: '2026-01-01T00:00:00Z' }]);
+    mockApi('delete', '/share-grants/blocks/7', errorEnvelope(500, 'INTERNAL', 'nope'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Unblock bob' }));
+    const alert = await screen.findByRole('alert');
+    expect(screen.getByRole('button', { name: 'Unblock bob' })).toBeInTheDocument();
+    fireEvent.click(within(alert).getByRole('button', { name: /close/i }));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  });
+
+  test('retrying a failed grant load re-reads the grants', async () => {
+    const failing = mockApi(
+      'get',
+      '/share-grants/incoming',
+      errorEnvelope(500, 'INTERNAL', 'boom'),
+    );
+    mockApi('get', '/share-grants/blocks', { blocks: [] });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(failing.length).toBeGreaterThan(1));
+  });
+});
+
 describe('SharedWithMePage read view', () => {
   async function openView(label: RegExp) {
     fireEvent.click(await screen.findByRole('button', { name: label }));
