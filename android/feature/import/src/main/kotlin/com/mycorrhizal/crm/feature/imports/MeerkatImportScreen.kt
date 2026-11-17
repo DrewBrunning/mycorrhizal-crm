@@ -8,15 +8,18 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -37,6 +40,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -102,6 +108,14 @@ fun MeerkatImportScreenContent(
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
+    val errorMessage = uiState.errorRes?.let {
+        stringResource(
+            it
+        )
+    } ?: uiState.error?.localizedMessage() ?: uiState.errorText
+    // Issue #2652: a connect failure stays on the form until the next attempt instead of
+    // vanishing in a 4 s snackbar; the other steps keep the transient snackbar.
+    val inlineError = uiState.step == MeerkatImportStep.CONNECT
 
     Scaffold(
         modifier = modifier,
@@ -150,7 +164,8 @@ fun MeerkatImportScreenContent(
                     onPasswordChange = onPasswordChange,
                     onConnect = onConnect,
                     onAcceptUntestedChange = onAcceptUntestedChange,
-                    onStart = onStart
+                    onStart = onStart,
+                    errorMessage = errorMessage.takeIf { inlineError }
                 )
 
                 MeerkatImportStep.REVIEW -> uiState.preview?.let { preview ->
@@ -197,17 +212,26 @@ fun MeerkatImportScreenContent(
         }
     }
 
-    val errorMessage = uiState.errorRes?.let {
-        stringResource(
-            it
-        )
-    } ?: uiState.error?.localizedMessage() ?: uiState.errorText
-    if (errorMessage != null) {
+    if (errorMessage != null && !inlineError) {
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(errorMessage)
             currentOnErrorShown.value()
         }
     }
+}
+
+/** The selected-state checkmark the login toggle shows; null when unselected. */
+@Composable
+private fun checkIcon(selected: Boolean, tag: String): (@Composable () -> Unit)? = if (selected) {
+    {
+        Icon(
+            Icons.Filled.Check,
+            contentDescription = null,
+            modifier = Modifier.size(FilterChipDefaults.IconSize).testTag(tag)
+        )
+    }
+} else {
+    null
 }
 
 @Suppress("LongMethod", "LongParameterList") // one linear form: address, credential, summary
@@ -221,7 +245,8 @@ private fun ConnectStep(
     onPasswordChange: (String) -> Unit,
     onConnect: () -> Unit,
     onAcceptUntestedChange: (Boolean) -> Unit,
-    onStart: () -> Unit
+    onStart: () -> Unit,
+    errorMessage: String?
 ) {
     val connected = uiState.connected
     val locked = connected != null
@@ -256,6 +281,10 @@ private fun ConnectStep(
                 selected = uiState.authMode == MeerkatAuthMode.TOKEN,
                 onClick = { onAuthModeChange(MeerkatAuthMode.TOKEN) },
                 enabled = !locked,
+                leadingIcon = checkIcon(
+                    uiState.authMode == MeerkatAuthMode.TOKEN,
+                    "meerkat-import-mode-token-check"
+                ),
                 label = { Text(stringResource(R.string.meerkat_import_mode_token)) },
                 modifier = Modifier.testTag("meerkat-import-mode-token")
             )
@@ -263,6 +292,10 @@ private fun ConnectStep(
                 selected = uiState.authMode == MeerkatAuthMode.PASSWORD,
                 onClick = { onAuthModeChange(MeerkatAuthMode.PASSWORD) },
                 enabled = !locked,
+                leadingIcon = checkIcon(
+                    uiState.authMode == MeerkatAuthMode.PASSWORD,
+                    "meerkat-import-mode-password-check"
+                ),
                 label = { Text(stringResource(R.string.meerkat_import_mode_password)) },
                 modifier = Modifier.testTag("meerkat-import-mode-password")
             )
@@ -307,11 +340,20 @@ private fun ConnectStep(
                 modifier = Modifier.fillMaxWidth().testTag("meerkat-import-password")
             )
         }
+        if (errorMessage != null) {
+            Text(
+                text = errorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+                modifier = Modifier.testTag("meerkat-import-error")
+                    .semantics { liveRegion = LiveRegionMode.Assertive }
+            )
+        }
         if (connected == null) {
             Button(
                 onClick = onConnect,
                 enabled = uiState.canConnect,
-                modifier = Modifier.testTag("meerkat-import-connect")
+                modifier = Modifier.fillMaxWidth().testTag("meerkat-import-connect")
             ) {
                 Text(
                     stringResource(

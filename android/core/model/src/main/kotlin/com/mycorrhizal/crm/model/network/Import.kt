@@ -67,6 +67,19 @@ data class ImportMergeDiff(
     val added: List<ImportAddedValue> = emptyList()
 )
 
+/**
+ * Issue #2641: one adapter event on an import row — mirrors backend
+ * `contactmodel.Diagnostic`. [severity] is `warn` or `info`; [concept] is a
+ * correspondence concept id and is omitted by the server when empty; [message]
+ * is server-side English text (e.g. the name was taken from the email).
+ */
+@JsonClass(generateAdapter = true)
+data class ImportDiagnostic(
+    val severity: String = "",
+    val concept: String = "",
+    val message: String = ""
+)
+
 @JsonClass(generateAdapter = true)
 data class ImportRowPreview(
     @Json(name = "row_index") val rowIndex: Int = 0,
@@ -74,7 +87,7 @@ data class ImportRowPreview(
     @Json(name = "validation_errors") val validationErrors: List<String> = emptyList(),
     @Json(name = "duplicate_match") val duplicateMatch: DuplicateMatch? = null,
     @Json(name = "suggested_action") val suggestedAction: String = "add",
-    val diagnostics: List<String>? = null,
+    val diagnostics: List<ImportDiagnostic>? = null,
     @Json(name = "merge_diff") val mergeDiff: ImportMergeDiff? = null,
     @Json(name = "batch_duplicate_of") val batchDuplicateOf: Int? = null,
     /**

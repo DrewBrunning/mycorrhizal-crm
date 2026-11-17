@@ -1,16 +1,25 @@
 package com.mycorrhizal.crm.feature.imports
 
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.width
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.model.network.MeerkatConnectResponse
@@ -19,6 +28,7 @@ import com.mycorrhizal.crm.model.network.MeerkatVersionInfo
 import com.mycorrhizal.crm.model.network.SourceImportIssue
 import com.mycorrhizal.crm.model.network.SourceImportPreviewResponse
 import com.mycorrhizal.crm.model.network.SourceImportResult
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -77,6 +87,48 @@ class MeerkatImportScreenTest {
         composeTestRule.onNodeWithTag("meerkat-import-url").assertIsDisplayed()
         composeTestRule.onNodeWithTag("meerkat-import-token").assertIsDisplayed()
         composeTestRule.onNodeWithTag("meerkat-import-connect").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a connect failure shows a persistent inline error on the connect form`() {
+        setContent(
+            MeerkatImportUiState(
+                baseUrl = "https://m",
+                apiToken = "t",
+                error = ApiError.Server(
+                    502,
+                    "The Meerkat instance could not be reached \u2014 if it is offline, " +
+                        "use the database upload instead",
+                    reason = ErrorReason(ErrorReasonCode.MEERKAT_UPSTREAM_ERROR, emptyMap())
+                )
+            )
+        )
+        composeTestRule.onNodeWithTag("meerkat-import-error").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "The Meerkat instance could not be reached or sent an unreadable response. " +
+                "Check the address and that it is online."
+        ).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("database upload", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `no inline error shows when there is none`() {
+        setContent(MeerkatImportUiState())
+        composeTestRule.onNodeWithTag("meerkat-import-error").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the selected auth mode chip shows a checkmark and Connect is full width`() {
+        setContent(MeerkatImportUiState(baseUrl = "https://m", apiToken = "t"))
+        composeTestRule.onNodeWithTag("meerkat-import-mode-token").assertIsSelected()
+        composeTestRule.onNodeWithTag("meerkat-import-mode-token-check", useUnmergedTree = true)
+            .assertExists()
+        composeTestRule.onNodeWithTag("meerkat-import-mode-password-check", useUnmergedTree = true)
+            .assertDoesNotExist()
+        val screen = composeTestRule.onRoot().getBoundsInRoot().width
+        val button = composeTestRule.onNodeWithTag("meerkat-import-connect").getBoundsInRoot().width
+        // The form pads 16dp on each side; a full-width action fills the rest.
+        assertEquals(screen - 32.dp, button)
     }
 
     @Test

@@ -3118,7 +3118,7 @@
     <string name="error_reason_meerkat_import_in_progress">Questa importazione è già in preparazione</string>
     <string name="error_reason_meerkat_not_prepared">Il database di Meerkat non è ancora pronto</string>
     <string name="error_reason_meerkat_api_error">%1$s</string>
-    <string name="error_reason_meerkat_upstream_error">%1$s</string>
+    <string name="error_reason_meerkat_upstream_error">L’istanza di Meerkat non è raggiungibile o ha inviato una risposta illeggibile. Controlla l’indirizzo e che l’istanza sia online.</string>
     <string name="error_reason_meerkat_sign_in_input_missing">Inserisci un token API di Meerkat oppure un nome utente e una password</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Contatti su questo account Meerkat: %1$d. L’importazione supporta al massimo %2$d</string>
     <string name="error_reason_meerkat_version_untested">Questa versione di Meerkat non è testata con l’importatore. Conferma per provare comunque; non viene scritto nulla finché non verifichi l’anteprima.</string>

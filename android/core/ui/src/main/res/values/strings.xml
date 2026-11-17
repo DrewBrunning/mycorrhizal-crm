@@ -3028,7 +3028,7 @@
     <string name="error_reason_meerkat_import_in_progress">This import is already being prepared</string>
     <string name="error_reason_meerkat_not_prepared">The Meerkat database is not prepared yet</string>
     <string name="error_reason_meerkat_api_error">%1$s</string>
-    <string name="error_reason_meerkat_upstream_error">%1$s</string>
+    <string name="error_reason_meerkat_upstream_error">The Meerkat instance could not be reached or sent an unreadable response. Check the address and that it is online.</string>
     <string name="error_reason_meerkat_sign_in_input_missing">Enter a Meerkat API token, or a username and password</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Contacts on this Meerkat account: %1$d. The import supports at most %2$d</string>
     <string name="error_reason_meerkat_version_untested">This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview.</string>
