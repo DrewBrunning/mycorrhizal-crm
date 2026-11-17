@@ -50,6 +50,7 @@ import com.mycorrhizal.crm.model.network.SeafileLinkRequest
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.WebDAVItem
 import com.mycorrhizal.crm.model.network.resolveEnabledFields
+import com.mycorrhizal.crm.model.registry.PreferenceCategory
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -193,6 +194,12 @@ data class ContactDetailUiState(
      */
     val lifeEventCount: Int? = null,
     val giftCount: Int? = null,
+    /**
+     * Issue #2607: clothing sizes plus the gift-tab preferences (jewelry, flowers, ...,
+     * gift-avoid). The Preferences screen hides these and the Gifts screen shows them,
+     * so the Gifts row counts them and [preferenceCount] does not.
+     */
+    val giftShoppingNotesCount: Int = 0,
     val preferenceCount: Int? = null,
     val agendaCount: Int? = null,
     val relationshipCount: Int? = null,
@@ -216,6 +223,10 @@ data class ContactDetailUiState(
             ?.mapNotNull { ContactFieldKey.fromWireKey(it) }
             ?.toSet()
             ?: enabledFields
+
+    /** Gifts row count: gifts plus the shopping notes shown on the Gifts screen (#2607); null until gifts load. */
+    val giftRowCount: Int?
+        get() = giftCount?.plus(giftShoppingNotesCount)
 
     /** Whether this contact's detail view suppresses fields with no value. */
     val resolvedHideEmpty: Boolean
@@ -689,9 +700,15 @@ class ContactDetailViewModel @Inject constructor(
             viewModelScope.launch {
                 preferenceRepository.listForContact(uid).foldApiError(
                     onSuccess = { items ->
+                        // Count only what the Preferences screen lists (#2607).
+                        val onGiftsScreen = items.count {
+                            it.category == PreferenceCategory.CLOTHING_SIZE ||
+                                PreferenceCategory.isGiftsTabCategory(it.category)
+                        }
                         _uiState.update {
                             it.copy(
-                                preferenceCount = items.size
+                                preferenceCount = items.size - onGiftsScreen,
+                                giftShoppingNotesCount = onGiftsScreen
                             )
                         }
                     },

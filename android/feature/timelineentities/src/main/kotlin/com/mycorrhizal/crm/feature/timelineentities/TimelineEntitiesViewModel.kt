@@ -1108,7 +1108,6 @@ internal fun preferenceDetail(p: Preference): String {
     return p.notes?.takeIf { it.isNotBlank() }?.let { "$base\n$it" } ?: base
 }
 
-// internal (not private): also used by EntityListScreens.kt's GiftPreferencesPanel.
 internal fun preferenceLabel(p: Preference): String = "${p.category}: ${preferenceDetail(p)}"
 
 private fun agendaLabel(a: ConversationAgenda): String = a.content

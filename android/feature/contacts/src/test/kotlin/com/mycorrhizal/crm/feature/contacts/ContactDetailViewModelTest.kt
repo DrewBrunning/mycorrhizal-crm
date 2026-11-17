@@ -297,6 +297,58 @@ class ContactDetailViewModelTest {
     }
 
     @Test
+    fun `preference count excludes gift-tab preferences and the gifts row counts them`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White"))
+            )
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+            val vm = viewModel(5)
+            coEvery { giftRepository.listForContact("u5") } returns Result.success(listOf(Gift()))
+            coEvery { preferenceRepository.listForContact("u5") } returns Result.success(
+                listOf(
+                    Preference(category = "hobby"),
+                    Preference(category = "food"),
+                    Preference(category = "dislike_activity"),
+                    Preference(category = "jewelry_other"),
+                    Preference(category = "gift_other"),
+                    Preference(category = "dislike"),
+                    Preference(category = "clothing_size")
+                )
+            )
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            // Only what the Preferences screen actually lists.
+            assertEquals(3, state.preferenceCount)
+            // 1 gift + 3 gift-tab preferences + 1 clothing size (the Gifts screen's panel).
+            assertEquals(5, state.giftRowCount)
+        }
+
+    @Test
+    fun `gifts row count stays unknown when the gifts load fails`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val record = ContactRecordResponse(
+                id = 5,
+                uid = "u5",
+                card = Card(name = Name(full = "Dana White"))
+            )
+            coEvery { contactRepository.getContact(5) } returns Result.success(record)
+
+            val vm = viewModel(5)
+            coEvery { giftRepository.listForContact("u5") } returns
+                Result.failure(ApiError.Server(500, "boom"))
+            coEvery { preferenceRepository.listForContact("u5") } returns
+                Result.success(listOf(Preference(category = "gift_other")))
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.giftRowCount)
+        }
+
+    @Test
     fun `a failed count load leaves that count unknown without failing the screen`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
