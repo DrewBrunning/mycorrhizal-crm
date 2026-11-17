@@ -36,7 +36,7 @@ function renderSearch() {
 }
 
 async function type(value: string) {
-  const box = screen.getByPlaceholderText('Search contacts, notes, activities…');
+  const box = screen.getByPlaceholderText('Search contacts, notes, activities, places…');
   fireEvent.focus(box);
   fireEvent.change(box, { target: { value } });
   await act(async () => {
@@ -187,7 +187,7 @@ test('entities get their own group with the kind (and a non-normal sensitivity) 
   vi.mocked(searchAll).mockResolvedValue(full);
   renderSearch();
   await type('ali');
-  expect(screen.getByText('Entities')).toBeInTheDocument();
+  expect(screen.getByText('Organisations, places & pets')).toBeInTheDocument();
   expect(screen.getByText('Alice Holdings')).toBeInTheDocument();
   expect(screen.getByText('Organisation')).toBeInTheDocument();
   expect(screen.getByText('Alice the cat')).toBeInTheDocument();
@@ -207,7 +207,7 @@ test('an entities-only result is a result: no "no results" row, and see-all is o
   vi.mocked(searchAll).mockResolvedValue(result({ entities: full.entities }));
   renderSearch();
   await type('ali');
-  expect(screen.getByText('Entities')).toBeInTheDocument();
+  expect(screen.getByText('Organisations, places & pets')).toBeInTheDocument();
   expect(screen.queryByText(/No results for/)).not.toBeInTheDocument();
   expect(screen.getByText('See all results for "ali"')).toBeInTheDocument();
 });

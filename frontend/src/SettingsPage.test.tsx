@@ -570,6 +570,6 @@ test('non-admins do not see the system-status link', async () => {
 test('Settings offers the create-entities-from-contacts helper without scanning on load', () => {
   renderPage();
   expect(
-    screen.getByRole('button', { name: 'Create entities from my contacts…' }),
+    screen.getByRole('button', { name: 'Create organisations and places from my contacts…' }),
   ).toBeInTheDocument();
 });

@@ -59,8 +59,10 @@ function renderCard() {
 }
 
 async function openWizard() {
-  fireEvent.click(screen.getByRole('button', { name: 'Create entities from my contacts…' }));
-  return screen.findByRole('dialog', { name: 'Create entities from my contacts' });
+  fireEvent.click(
+    screen.getByRole('button', { name: 'Create organisations and places from my contacts…' }),
+  );
+  return screen.findByRole('dialog', { name: 'Create organisations and places from my contacts' });
 }
 
 beforeEach(() => {

@@ -18,6 +18,7 @@ import {
   updateEntity,
 } from './api/entities';
 import { type FieldDefinition, getFieldDefinitions } from './api/fieldDefinitions';
+import { getTrashedEntities } from './api/trash';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import EntityDetailPage from './EntityDetailPage';
@@ -47,6 +48,12 @@ vi.mock('./api/fieldDefinitions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/fieldDefinitions')>();
   return { ...actual, getFieldDefinitions: vi.fn() };
 });
+
+vi.mock('./api/trash', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/trash')>();
+  return { ...actual, getTrashedEntities: vi.fn() };
+});
+const trashMock = vi.mocked(getTrashedEntities);
 
 const getMock = vi.mocked(getEntity);
 const updateMock = vi.mocked(updateEntity);
@@ -122,6 +129,7 @@ beforeEach(() => {
   valuesMock.mockResolvedValue([]);
   defsMock.mockResolvedValue({ field_definitions: [], total: 0, next_cursor: '', limit: 100 });
   listMock.mockResolvedValue({ entities: [], limit: 100, next_cursor: '' });
+  trashMock.mockResolvedValue({ entities: [], total: 0, page: 1, limit: 100, retention_days: 30 });
 });
 
 test('shows the entity, its details and the linked people with role, period and primary', async () => {
@@ -129,7 +137,8 @@ test('shows the entity, its details and the linked people with role, period and 
   expect(await screen.findByRole('heading', { level: 1, name: 'Acme' })).toBeInTheDocument();
   expect(screen.getByText('https://acme.test')).toBeInTheDocument();
   expect(screen.getByText('Big client')).toBeInTheDocument();
-  expect(screen.getByText('Linked to 3 contacts')).toBeInTheDocument();
+  // Two distinct contacts (Alice, Bob) even though the entity has 3 links in its count.
+  expect(screen.getByText('Linked to 2 contacts')).toBeInTheDocument();
 
   const people = screen.getByRole('region', { name: 'People' });
   const alice = within(people).getByRole('link', { name: 'Alice Anderson' });
@@ -143,7 +152,7 @@ test('shows the entity, its details and the linked people with role, period and 
 test('shows a not-found state when the entity is gone', async () => {
   getMock.mockRejectedValueOnce(new ApiError('Entity not found', 'NOT_FOUND', 404));
   renderPage();
-  expect(await screen.findByText("This entity doesn't exist or was deleted.")).toBeInTheDocument();
+  expect(await screen.findByText("This doesn't exist or was deleted.")).toBeInTheDocument();
 });
 
 test('edit saves with the current revision and refreshes the page', async () => {
@@ -297,7 +306,7 @@ test('a restore that finds a live same-name entity warns about it', async () => 
   );
   fireEvent.click(await screen.findByRole('button', { name: 'Restore' }));
   expect(
-    await screen.findByText(/Another entity of this kind with the same name already exists/),
+    await screen.findByText(/Another one of this kind with the same name already exists/),
   ).toBeInTheDocument();
 });
 
@@ -333,4 +342,85 @@ test('merge into another entity navigates to the survivor and offers to restore 
   });
   fireEvent.click(screen.getByRole('button', { name: 'Restore Acme' }));
   await waitFor(() => expect(restoreMock).toHaveBeenCalledWith('e1'));
+});
+
+// #2702: "Linked to N contacts" counts distinct contacts, not links.
+test('three links over two contacts read "Linked to 2 contacts" in the header and the delete dialog (#2702)', async () => {
+  contactsMock.mockResolvedValue([
+    link({ link_id: 'l1', contact_id: 11, role: 'owner' }),
+    link({ link_id: 'l2', contact_id: 11, role: 'resident', is_primary: false }),
+    link({ link_id: 'l3', contact_id: 12, firstname: 'Chen', lastname: 'Li', is_primary: false }),
+  ]);
+  renderPage();
+  expect(await screen.findByText('Linked to 2 contacts')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  const dialog = await screen.findByRole('dialog', { name: 'Delete Acme?' });
+  expect(within(dialog).getByText(/linked to 2 contacts in total/)).toBeInTheDocument();
+});
+
+test('when the people list fails to load the stored link count is still shown (#2702)', async () => {
+  contactsMock.mockRejectedValue(new Error('boom'));
+  renderPage();
+  expect(await screen.findByText('Linked to 3 contacts')).toBeInTheDocument();
+});
+
+// #2708: an entity page whose id is no longer live (merged away or deleted)
+// offers Restore instead of a bare not-found.
+const mergedAway = {
+  entity: { ...acme, id: 'e1', name: 'Acme' },
+  deleted_at: '2026-10-01T00:00:00Z',
+  purge_at: null,
+  merged_into: 'e2',
+  merged_into_name: 'Acme Inc',
+};
+
+test('a merged-away entity page offers Restore (#2708)', async () => {
+  getMock.mockRejectedValue(new ApiError('Entity not found', 'NOT_FOUND', 404));
+  trashMock.mockResolvedValue({
+    entities: [mergedAway],
+    total: 1,
+    page: 1,
+    limit: 100,
+    retention_days: 30,
+  });
+  restoreMock.mockResolvedValue({
+    entity: acme,
+    links_revived: 0,
+    same_name_live: false,
+    skipped: [],
+  });
+  renderPage();
+  expect(await screen.findByText('Acme was merged away')).toBeInTheDocument();
+  expect(screen.queryByText("This doesn't exist or was deleted.")).not.toBeInTheDocument();
+  getMock.mockResolvedValue(acme);
+  fireEvent.click(screen.getByRole('button', { name: 'Restore Acme' }));
+  await waitFor(() => expect(restoreMock).toHaveBeenCalledWith('e1'));
+  expect(await screen.findByRole('heading', { level: 1, name: 'Acme' })).toBeInTheDocument();
+});
+
+test('a deleted (not merged) entity page offers Restore (#2708)', async () => {
+  getMock.mockRejectedValue(new ApiError('Entity not found', 'NOT_FOUND', 404));
+  trashMock.mockResolvedValue({
+    entities: [{ ...mergedAway, merged_into: undefined, merged_into_name: undefined }],
+    total: 1,
+    page: 1,
+    limit: 100,
+    retention_days: 30,
+  });
+  renderPage();
+  expect(await screen.findByText('Acme was deleted')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Restore' })).toBeInTheDocument();
+});
+
+test('an id that is not in the trash either still shows not-found (#2708)', async () => {
+  getMock.mockRejectedValue(new ApiError('Entity not found', 'NOT_FOUND', 404));
+  renderPage();
+  expect(await screen.findByText("This doesn't exist or was deleted.")).toBeInTheDocument();
+});
+
+test('if the trash lookup fails the page falls back to not-found (#2708)', async () => {
+  getMock.mockRejectedValue(new ApiError('Entity not found', 'NOT_FOUND', 404));
+  trashMock.mockRejectedValue(new Error('boom'));
+  renderPage();
+  expect(await screen.findByText("This doesn't exist or was deleted.")).toBeInTheDocument();
 });

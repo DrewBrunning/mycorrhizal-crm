@@ -104,7 +104,7 @@ test('a failed search shows a retryable error', async () => {
 test('entities are the fourth tab: counted, linked to the entity page, with a kind chip', async () => {
   vi.mocked(searchAll).mockResolvedValue(data);
   renderPage('/search?q=ali');
-  fireEvent.click(await screen.findByRole('tab', { name: 'Entities (2)' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'Organisations, places & pets (2)' }));
   const house = screen.getByRole('link', { name: /Alice Springs House/ });
   expect(house).toHaveAttribute('href', '/entities/e-1');
   expect(house).toHaveTextContent('Place');
@@ -116,7 +116,7 @@ test('?tab=entities deep-links to the entities tab', async () => {
   vi.mocked(searchAll).mockResolvedValue(data);
   renderPage('/search?q=ali&tab=entities');
   expect(await screen.findByText('Alice Springs House')).toBeInTheDocument();
-  expect(screen.getByRole('tab', { name: 'Entities (2)' })).toHaveAttribute(
+  expect(screen.getByRole('tab', { name: 'Organisations, places & pets (2)' })).toHaveAttribute(
     'aria-selected',
     'true',
   );

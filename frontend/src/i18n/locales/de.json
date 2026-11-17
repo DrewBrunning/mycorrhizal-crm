@@ -26,11 +26,11 @@
     }
   },
   "globalSearch": {
-    "placeholder": "Kontakte, Notizen, Aktivitäten suchen…",
+    "placeholder": "Kontakte, Notizen, Aktivitäten, Orte suchen…",
     "groupContacts": "Kontakte",
     "groupNotes": "Notizen",
     "groupActivities": "Aktivitäten",
-    "groupEntities": "Entitäten",
+    "groupEntities": "Organisationen, Orte & Haustiere",
     "seeAll": "Alle Ergebnisse für „{{query}}“ anzeigen",
     "noResults": "Keine Ergebnisse für „{{query}}“.",
     "pageTitle": "Suchergebnisse",
@@ -80,7 +80,7 @@
     "systemStatus": "Systemstatus",
     "mainLabel": "Hauptnavigation",
     "skipToContent": "Zum Inhalt springen",
-    "entities": "Einträge",
+    "entities": "Organisationen, Orte & Haustiere",
     "sharedWithMe": "Mit mir geteilt",
     "sharedByMe": "Von mir geteilt",
     "sharedPendingBadge_one": "{{count}} Freigabe wartet auf deine Antwort",
@@ -660,7 +660,7 @@
       "contactUris": "Kontakt-URIs"
     },
     "relatedToMembers": {
-      "title": "Verwandte Entitäten",
+      "title": "Verwandte Organisationen, Orte & Haustiere",
       "relatedTo": "Verwandt mit",
       "members": "Mitglieder"
     },
@@ -2591,8 +2591,8 @@
     "back": "Zurück",
     "apply": "Anwenden",
     "applyTitle": "Anwenden",
-    "applyDescription": "Entitäten erstellen und Mitgliedschaften hinzufügen. Der Vorgang ist idempotent — Sie können ihn gefahrlos mehrfach ausführen.",
-    "createEntities": "Entitäten erstellen",
+    "applyDescription": "Organisationen und Orte erstellen und Mitgliedschaften hinzufügen. Der Vorgang ist idempotent — Sie können ihn gefahrlos mehrfach ausführen.",
+    "createEntities": "Organisationen und Orte erstellen",
     "addMembers": "Mitglieder hinzufügen",
     "noLegacyCircles": "Keine bisherigen Kreise gefunden. Sie benötigen diese Migration möglicherweise nicht.",
     "refresh": "Aktualisieren",
@@ -3201,9 +3201,9 @@
     "title": "Papierkorb",
     "empty": "Papierkorb leeren",
     "emptyState": "Der Papierkorb ist leer.",
-    "retention_one": "Gelöschte Kontakte werden {{count}} Tag aufbewahrt und danach endgültig gelöscht.",
-    "retention_other": "Gelöschte Kontakte werden {{count}} Tage aufbewahrt und danach endgültig gelöscht.",
-    "retentionForever": "Gelöschte Kontakte bleiben erhalten, bis du den Papierkorb leerst.",
+    "retention_one": "Gelöschte Elemente werden {{count}} Tag aufbewahrt und danach endgültig gelöscht.",
+    "retention_other": "Gelöschte Elemente werden {{count}} Tage aufbewahrt und danach endgültig gelöscht.",
+    "retentionForever": "Gelöschte Kontakte bleiben erhalten, bis Sie den Papierkorb leeren. Gelöschte Organisationen, Orte und Haustiere bleiben erhalten, bis Sie sie wiederherstellen.",
     "deletedOn": "Gelöscht am {{date}}",
     "purgeOn": "Endgültig gelöscht am {{date}}",
     "restore": "Wiederherstellen",
@@ -3218,7 +3218,12 @@
     "emptyConfirm_one": "{{count}} Kontakt im Papierkorb endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
     "emptyConfirm_other": "Alle {{count}} Kontakte im Papierkorb endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
     "emptied_one": "{{count}} Kontakt endgültig gelöscht.",
-    "emptied_other": "{{count}} Kontakte endgültig gelöscht."
+    "emptied_other": "{{count}} Kontakte endgültig gelöscht.",
+    "entityRetentionNote_one": "Organisationen, Orte & Haustiere werden nach {{count}} Tag automatisch endgültig gelöscht.",
+    "entityRetentionNote_other": "Organisationen, Orte & Haustiere werden nach {{count}} Tagen automatisch endgültig gelöscht.",
+    "emptyScope": "Organisationen, Orte & Haustiere sind davon nicht betroffen.",
+    "purgeTitle": "Endgültig löschen?",
+    "emptyTitle": "Papierkorb leeren?"
   },
   "notifications": {
     "settings": {
@@ -3705,7 +3710,7 @@
       "import_tags_not_found": "Einer oder mehrere Tags wurden nicht gefunden",
       "trash_uid_in_use": "Ein aktiver Kontakt verwendet bereits die UID dieses Kontakts; führe ihn zuerst zusammen oder lösche ihn",
       "trash_snapshot_unsupported": "Der Löschschnappschuss dieses Kontakts wird von dieser Version nicht unterstützt; er kann weiterhin endgültig gelöscht werden",
-      "entity_not_found": "Eintrag nicht gefunden",
+      "entity_not_found": "Nicht gefunden",
       "entity_kind_required": "kind ist erforderlich und muss organisation, place oder pet sein",
       "entity_kind_immutable": "Die Art eines Eintrags kann nicht geändert werden; lösche ihn und lege einen neuen an",
       "entity_core_invalid": "{{reason}}",
@@ -4234,7 +4239,7 @@
   "entities": {
     "title": "Organisationen, Orte & Haustiere",
     "description": "Organisationen, Orte und Haustiere, die mehrere Kontakte gemeinsam haben. Benenne einen Eintrag einmal um, und alle verknüpften Kontakte folgen.",
-    "tabsLabel": "Art des Eintrags",
+    "tabsLabel": "Art",
     "kind": {
       "organisation": "Organisation",
       "place": "Ort",
@@ -4289,14 +4294,14 @@
       "editTitle": "{{name}} bearbeiten",
       "nameRequired": "Gib einen Namen ein.",
       "invalidDate": "Gib {{field}} als JJJJ, JJJJ-MM oder JJJJ-MM-TT ein.",
-      "saveFailed": "Dieser Eintrag konnte nicht gespeichert werden.",
+      "saveFailed": "Das konnte nicht gespeichert werden.",
       "created": "{{name}} hinzugefügt.",
       "updated": "{{name}} gespeichert."
     },
     "detail": {
-      "back": "Alle Einträge",
-      "loadFailed": "Dieser Eintrag konnte nicht geladen werden.",
-      "notFound": "Dieser Eintrag existiert nicht oder wurde gelöscht.",
+      "back": "Alle Organisationen, Orte & Haustiere",
+      "loadFailed": "Das konnte nicht geladen werden.",
+      "notFound": "Das existiert nicht oder wurde gelöscht.",
       "linkedCount_one": "Mit {{count}} Kontakt verknüpft",
       "linkedCount_other": "Mit {{count}} Kontakten verknüpft",
       "details": "Details",
@@ -4328,14 +4333,14 @@
       "adoptFailed_one": "Das Kopieren zu {{count}} Kontakt ist fehlgeschlagen, daher wurde nichts gelöscht.",
       "adoptFailed_other": "Das Kopieren zu {{count}} Kontakten ist fehlgeschlagen, daher wurde nichts gelöscht.",
       "confirm": "Löschen",
-      "failed": "Dieser Eintrag konnte nicht gelöscht werden."
+      "failed": "Das konnte nicht gelöscht werden."
     },
     "deleted": {
       "title": "{{name}} wurde gelöscht",
       "body": "Es erscheint bei keinem Kontakt mehr. Stelle es wieder her, um den Eintrag und seine Verknüpfungen zurückzubringen.",
       "restore": "Wiederherstellen",
       "restored": "{{name}} wiederhergestellt.",
-      "restoreFailed": "Dieser Eintrag konnte nicht wiederhergestellt werden.",
+      "restoreFailed": "Das konnte nicht wiederhergestellt werden.",
       "sameNameLive": "Es gibt bereits einen anderen Eintrag dieser Art mit demselben Namen; vielleicht möchtest du sie zusammenführen."
     },
     "merge": {
@@ -4394,9 +4399,9 @@
       }
     },
     "fromContacts": {
-      "description": "Mache aus den Organisationen und Adressen, die bereits bei deinen Kontakten stehen, gemeinsame Einträge. Dabei wird nie ein Wert eines Kontakts geändert oder gelöscht. Du wählst jede Gruppe selbst; nichts wird automatisch angelegt.",
-      "open": "Einträge aus meinen Kontakten erstellen…",
-      "title": "Einträge aus meinen Kontakten erstellen",
+      "description": "Machen Sie aus den Organisationen und Adressen, die bereits bei Ihren Kontakten stehen, gemeinsame Organisationen und Orte. Dabei wird nie ein Wert eines Kontakts geändert oder gelöscht. Sie wählen jede Gruppe selbst; nichts wird automatisch angelegt.",
+      "open": "Organisationen und Orte aus meinen Kontakten erstellen…",
+      "title": "Organisationen und Orte aus meinen Kontakten erstellen",
       "intro": "Gruppen derselben Organisation oder Adresse, die bei deinen Kontakten gefunden wurden. Hake die an, die angelegt werden sollen; du kannst das jederzeit erneut ausführen, angeboten werden nur noch nicht verknüpfte Werte.",
       "none": "Aus deinen Kontakten gibt es nichts mehr anzulegen.",
       "selectSome": "Wählen Sie eine Gruppe zum Erstellen aus",

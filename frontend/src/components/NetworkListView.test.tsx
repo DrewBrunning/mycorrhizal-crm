@@ -238,3 +238,23 @@ test('no entity section when the graph has no entity nodes', () => {
     screen.queryByRole('region', { name: 'Organisations, places & pets' }),
   ).not.toBeInTheDocument();
 });
+
+// #2713: two links between the same contact and entity (e.g. Owner and
+// Resident) must not read as the same sentence twice.
+test('identical connection sentences collapse into one entry (#2713)', () => {
+  render(
+    <NetworkListView
+      nodes={[
+        { id: 'c-1', type: 'contact', label: 'Ada' },
+        { id: 'e-1', type: 'entity', label: 'Lakeside Cabin', entity_kind: 'place' },
+      ]}
+      links={[
+        { id: 'ee-1', source: 'c-1', target: 'e-1', type: 'entity', label: '' },
+        { id: 'ee-2', source: 'c-1', target: 'e-1', type: 'entity', label: '' },
+      ]}
+      onContactClick={() => {}}
+    />,
+  );
+  const text = screen.getByText(/Linked to Lakeside Cabin/);
+  expect(text.textContent?.match(/Linked to Lakeside Cabin/g)).toHaveLength(1);
+});

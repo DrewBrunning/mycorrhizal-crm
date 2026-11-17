@@ -166,7 +166,7 @@ test('typing a search query shows the clear button, which resets the query', () 
   setLoggedInUser(false);
   renderApp();
 
-  const searchBox = screen.getByPlaceholderText('Search contacts, notes, activities…');
+  const searchBox = screen.getByPlaceholderText('Search contacts, notes, activities, places…');
   fireEvent.change(searchBox, { target: { value: 'alice' } });
 
   const clearButton = screen.getByRole('button', { name: 'Clear' });
@@ -199,7 +199,7 @@ test('a stale AppBar search response does not clobber a newer query (#960)', asy
       });
 
     renderApp();
-    const searchBox = screen.getByPlaceholderText('Search contacts, notes, activities…');
+    const searchBox = screen.getByPlaceholderText('Search contacts, notes, activities, places…');
 
     fireEvent.focus(searchBox);
     fireEvent.change(searchBox, { target: { value: 'jo' } });
