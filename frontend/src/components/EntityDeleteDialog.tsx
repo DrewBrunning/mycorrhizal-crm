@@ -47,7 +47,12 @@ export default function EntityDeleteDialog({
   const [error, setError] = useState('');
 
   const projection = entity.projection_count ?? 0;
-  const links = entity.link_count ?? 0;
+  // #2702: distinct contacts, not links; fall back to the stored link count when
+  // the contact list is unavailable.
+  const links =
+    contacts.length > 0
+      ? new Set(contacts.map((c) => c.contact_id)).size
+      : (entity.link_count ?? 0);
   const projects = entity.kind === 'organisation' || entity.kind === 'place';
   // The contacts that currently receive the projection: primary links whose
   // period includes today. (The server's projection_count is authoritative for

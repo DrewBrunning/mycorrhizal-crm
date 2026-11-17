@@ -36,6 +36,9 @@ interface NetworkGraphProps {
   circleNamesByUid?: Map<string, string[]>;
 }
 
+// Upper bound for the fit-to-view zoom (#2713).
+const FIT_MAX_ZOOM = 1.5;
+
 interface ForceGraphData {
   nodes: GraphNode[];
   links: GraphEdge[];
@@ -65,6 +68,10 @@ export default function NetworkGraph({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const graphRef = useRef<any>(null);
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
+  // Read by fitToView so a resize does not change its identity and re-run the
+  // initial fit (which would undo the user's pan/zoom).
+  const dimensionsRef = useRef(dimensions);
+  dimensionsRef.current = dimensions;
   const [hoveredEdge, setHoveredEdge] = useState<GraphEdge | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
@@ -293,14 +300,36 @@ export default function NetworkGraph({
     }
   }, []);
 
+  // Fit the graph into the canvas, but never zoom in past FIT_MAX_ZOOM: with a
+  // single node react-force-graph's own fit would scale it to fill the canvas
+  // (#2713). When the natural fit is already below the cap, use zoomToFit.
+  const fitToView = useCallback((durationMs: number, padding: number) => {
+    const fg = graphRef.current;
+    if (!fg) return;
+    const bbox = fg.getGraphBbox?.();
+    const { width, height } = dimensionsRef.current;
+    if (bbox && width > 0 && height > 0) {
+      const k = Math.min(
+        width / (bbox.x[1] - bbox.x[0] + padding * 2),
+        height / (bbox.y[1] - bbox.y[0] + padding * 2),
+      );
+      if (k > FIT_MAX_ZOOM) {
+        fg.centerAt((bbox.x[0] + bbox.x[1]) / 2, (bbox.y[0] + bbox.y[1]) / 2, durationMs);
+        fg.zoom(FIT_MAX_ZOOM, durationMs);
+        return;
+      }
+    }
+    fg.zoomToFit(durationMs, padding);
+  }, []);
+
   // Zoom to fit on initial load
   useEffect(() => {
     if (graphRef.current && graphData.nodes.length > 0) {
       setTimeout(() => {
-        graphRef.current?.zoomToFit(prefersReducedMotion ? 0 : 400, isMobile ? 50 : 80);
+        fitToView(prefersReducedMotion ? 0 : 400, isMobile ? 50 : 80);
       }, 500);
     }
-  }, [graphData.nodes.length, isMobile, prefersReducedMotion]);
+  }, [graphData.nodes.length, isMobile, prefersReducedMotion, fitToView]);
 
   // Non-drag alternatives for pan/zoom (#190, WCAG 2.5.7 Dragging Movements).
   // enableNodeDrag is left drag-only and deliberately has no button
@@ -321,8 +350,8 @@ export default function NetworkGraph({
   }, []);
 
   const handleResetView = useCallback(() => {
-    graphRef.current?.zoomToFit(400, isMobile ? 50 : 80);
-  }, [isMobile]);
+    fitToView(400, isMobile ? 50 : 80);
+  }, [isMobile, fitToView]);
 
   const handlePan = useCallback((dx: number, dy: number) => {
     const fg = graphRef.current;

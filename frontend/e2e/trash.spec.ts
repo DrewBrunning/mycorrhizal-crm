@@ -77,6 +77,8 @@ test.describe('Contact trash', () => {
       const row = page.getByRole('listitem').filter({ hasText: name });
       await expect(row).toBeVisible();
       await row.getByRole('button', { name: 'Delete forever' }).click();
+      // #2717: the confirmation is an in-app dialog, not window.confirm.
+      await page.getByRole('dialog').getByRole('button', { name: 'Delete forever' }).click();
       await expect(row).toHaveCount(0);
 
       const gone = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
@@ -115,6 +117,7 @@ test.describe('Contact trash', () => {
       await expect(page.getByRole('listitem').filter({ hasText: second.firstname })).toBeVisible();
 
       await page.getByRole('button', { name: 'Empty trash' }).click();
+      await page.getByRole('dialog').getByRole('button', { name: 'Empty trash' }).click();
       // Assert the two contacts left the list, not the page-wide "Trash is empty"
       // state: "Empty trash" purges contacts only, so any trashed entity this
       // worker user holds would keep the page non-empty (issue #2484).

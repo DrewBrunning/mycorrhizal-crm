@@ -81,10 +81,10 @@
       "branchesTotal": 22
     },
     "src/EntityDetailPage.tsx": {
-      "lines": 88.88,
-      "linesTotal": 99,
-      "branches": 71.01,
-      "branchesTotal": 69
+      "lines": 90.51,
+      "linesTotal": 116,
+      "branches": 77.64,
+      "branchesTotal": 85
     },
     "src/HouseholdsPage.tsx": {
       "lines": 100,
@@ -1024,9 +1024,9 @@
     },
     "src/components/EntityDeleteDialog.tsx": {
       "lines": 100,
-      "linesTotal": 31,
-      "branches": 75,
-      "branchesTotal": 32
+      "linesTotal": 32,
+      "branches": 76.47,
+      "branchesTotal": 34
     },
     "src/components/EntityFormDialog.tsx": {
       "lines": 86.07,
@@ -1341,10 +1341,10 @@
       "branchesTotal": 16
     },
     "src/components/NetworkGraph.tsx": {
-      "lines": 77.21,
-      "linesTotal": 158,
-      "branches": 55.81,
-      "branchesTotal": 129
+      "lines": 79.19,
+      "linesTotal": 173,
+      "branches": 57.97,
+      "branchesTotal": 138
     },
     "src/components/NetworkLegend.tsx": {
       "lines": 100,

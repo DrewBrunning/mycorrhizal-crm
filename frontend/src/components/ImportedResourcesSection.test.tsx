@@ -31,7 +31,7 @@ test('renders relatedTo and members read-only', () => {
     members: ['uid:member-a', 'uid:member-b'],
   };
   render(<RelatedToMembersSection card={card} />);
-  expect(screen.getByText('Related Entities')).toBeInTheDocument();
+  expect(screen.getByText('Related organisations, places & pets')).toBeInTheDocument();
   expect(screen.getByText('uid:other-contact (friend)')).toBeInTheDocument();
   expect(screen.getByText('uid:member-a')).toBeInTheDocument();
   expect(screen.getByText('uid:member-b')).toBeInTheDocument();

@@ -203,30 +203,60 @@ test('restore 409 explains a live contact already uses the UID and keeps the row
   expect(screen.getByText('Ada Test')).toBeTruthy();
 });
 
-test('delete forever asks for confirmation and only purges when confirmed', async () => {
+// #2717: the destructive confirmations are in-app, translated dialogs, not window.confirm.
+test('delete forever opens an in-app dialog and only purges when confirmed', async () => {
   const confirmSpy = vi.spyOn(window, 'confirm');
   renderPage();
   const ada = (await screen.findByText('Ada Test')).closest('li') as HTMLElement;
 
-  confirmSpy.mockReturnValueOnce(false);
   fireEvent.click(within(ada).getByRole('button', { name: /delete forever/i }));
+  let dialog = await screen.findByRole('dialog', { name: 'Delete forever?' });
+  expect(within(dialog).getByText(/Permanently delete Ada Test\?/)).toBeTruthy();
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
 
-  confirmSpy.mockReturnValueOnce(true);
   fireEvent.click(within(ada).getByRole('button', { name: /delete forever/i }));
+  dialog = await screen.findByRole('dialog', { name: 'Delete forever?' });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete forever' }));
   await waitFor(() => expect(screen.queryByText('Ada Test')).toBeNull());
   expect(calls.some((c) => c.method === 'DELETE' && /trash\/contacts\/1$/.test(c.url))).toBe(true);
+  expect(confirmSpy).not.toHaveBeenCalled();
   confirmSpy.mockRestore();
 });
 
-test('empty trash confirms then purges everything', async () => {
-  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+test('empty trash opens an in-app dialog, then purges everything', async () => {
+  const confirmSpy = vi.spyOn(window, 'confirm');
   renderPage();
   await screen.findByText('Ada Test');
   fireEvent.click(screen.getByRole('button', { name: /empty trash/i }));
+  const dialog = await screen.findByRole('dialog', { name: 'Empty trash?' });
+  expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Empty trash' }));
   expect(await screen.findByText(/Trash is empty/i)).toBeTruthy();
   expect(calls.some((c) => c.method === 'DELETE' && /trash\/contacts$/.test(c.url))).toBe(true);
+  expect(confirmSpy).not.toHaveBeenCalled();
   confirmSpy.mockRestore();
+});
+
+test('cancelling the empty-trash dialog purges nothing', async () => {
+  renderPage();
+  await screen.findByText('Ada Test');
+  fireEvent.click(screen.getByRole('button', { name: /empty trash/i }));
+  const dialog = await screen.findByRole('dialog', { name: 'Empty trash?' });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
+  expect(screen.getByText('Ada Test')).toBeTruthy();
+});
+
+// #2707: the retention line covers every kind of item, not only contacts.
+test('the retention line says items, not contacts (#2707)', async () => {
+  renderPage();
+  await screen.findByText('Ada Test');
+  expect(
+    screen.getByText('Deleted items are kept for 30 days, then deleted forever.'),
+  ).toBeTruthy();
 });
 
 test('a load failure shows a retry control', async () => {
@@ -280,17 +310,43 @@ test('restoring an entity warns when another entity has the same name', async ()
   expect(await screen.findByText(/same name/i)).toBeTruthy();
 });
 
-test('entity rows have no delete-forever action and empty trash counts contacts only', async () => {
+test('entity rows have no delete-forever action; the empty-trash dialog says it leaves them alone (#2717)', async () => {
   seedEntities();
-  const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   renderPage();
   const acme = (await screen.findByText('Acme')).closest('li') as HTMLElement;
   expect(within(acme).queryByRole('button', { name: /delete forever/i })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: /empty trash/i }));
-  expect(confirmSpy).toHaveBeenCalledWith(expect.stringMatching(/all 2 contacts/));
+  const dialog = await screen.findByRole('dialog', { name: 'Empty trash?' });
+  expect(within(dialog).getByText(/all 2 contacts/)).toBeTruthy();
+  expect(within(dialog).getByText(/Organisations, places & pets are not affected/)).toBeTruthy();
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Empty trash' }));
   await waitFor(() => expect(screen.queryByText('Ada Test')).toBeNull());
   expect(screen.getByText('Acme')).toBeTruthy();
-  confirmSpy.mockRestore();
+});
+
+test('a note explains that trashed organisations, places & pets purge automatically (#2717)', async () => {
+  seedEntities();
+  renderPage();
+  await screen.findByText('Acme');
+  expect(
+    screen.getByText(
+      'Organisations, places & pets are deleted forever automatically after 30 days.',
+    ),
+  ).toBeTruthy();
+});
+
+test('no automatic-purge note when retention is off or nothing is trashed (#2717)', async () => {
+  seedEntities();
+  retention = 0;
+  renderPage();
+  await screen.findByText('Acme');
+  expect(screen.queryByText(/deleted forever automatically/)).toBeNull();
+  cleanup();
+  retention = 30;
+  entityRows = [];
+  renderPage();
+  await screen.findByText('Ada Test');
+  expect(screen.queryByText(/deleted forever automatically/)).toBeNull();
 });
 
 test('only entities in the trash is not the empty state', async () => {
