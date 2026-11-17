@@ -136,11 +136,13 @@ export default function ShareContactDialog({
         }}
       >
         <FormControlLabel
+          sx={{ minHeight: 44 }}
           value="oneTime"
           control={<Radio />}
           label={t('standingShares.mode.oneTime')}
         />
         <FormControlLabel
+          sx={{ minHeight: 44 }}
           value="standing"
           control={<Radio />}
           label={t('standingShares.mode.standing')}

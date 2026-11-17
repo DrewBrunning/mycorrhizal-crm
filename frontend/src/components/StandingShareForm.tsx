@@ -221,6 +221,7 @@ export default function StandingShareForm({
                 {EXPORT_FIELD_SECTIONS.map((section) => (
                   <FormControlLabel
                     key={section.token}
+                    sx={{ minHeight: 44 }}
                     control={
                       <Checkbox
                         checked={selected.has(section.token)}

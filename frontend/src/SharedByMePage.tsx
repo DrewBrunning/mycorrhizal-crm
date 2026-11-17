@@ -1,4 +1,8 @@
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -28,6 +32,8 @@ import { useShareGrantList } from './hooks/useShareGrantList';
 import { getErrorMessage } from './utils/errorHandler';
 
 type Confirm = { kind: 'revoke' | 'reconfirm'; grant: ShareGrantOwnerView };
+
+const isLive = (g: ShareGrantOwnerView) => g.status === 'pending' || g.status === 'active';
 
 const sectionLabel = (t: TFunction, s: string) =>
   t(`settings.exportFieldPicker.sections.${s}`, { defaultValue: s });
@@ -77,8 +83,24 @@ export default function SharedByMePage() {
     }
   };
 
+  // A 412 means the grant changed elsewhere. Reload, then re-point the open dialog
+  // at the fresh grant: the dialog is keyed by id, so the owner's edits stay and
+  // its revision (the next If-Match) updates. A grant that is no longer live closes it.
+  const handleStale = async () => {
+    const id = editing?.id;
+    const fresh = await refresh();
+    if (!id || fresh === null) return;
+    const next = fresh.find((g) => g.id === id);
+    if (next && isLive(next)) {
+      setEditing(next);
+    } else {
+      setEditing(null);
+      setActionError(t('standingShares.byMe.editGone'));
+    }
+  };
+
   const renderRow = (g: ShareGrantOwnerView) => {
-    const live = g.status === 'pending' || g.status === 'active';
+    const live = isLive(g);
     const busy = busyId === g.id;
     const p = params(g);
     return (
@@ -104,7 +126,8 @@ export default function SharedByMePage() {
             })}
           </Typography>
         )}
-        {g.entity_type === 'circle' && g.member_count !== null && (
+        {/* The member count is present-tense ("right now"), so only a live grant shows it. */}
+        {live && g.entity_type === 'circle' && g.member_count !== null && (
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {t('standingShares.byMe.members', { count: g.member_count })}
           </Typography>
@@ -163,6 +186,8 @@ export default function SharedByMePage() {
     );
   };
 
+  const liveItems = items.filter(isLive);
+  const endedItems = items.filter((g) => !isLive(g));
   const empty = !loading && !error && items.length === 0;
   const reconfirm = confirm?.kind === 'reconfirm';
 
@@ -184,7 +209,29 @@ export default function SharedByMePage() {
           {t('standingShares.byMe.empty')}
         </Typography>
       )}
-      {items.length > 0 && <List>{items.map(renderRow)}</List>}
+      {liveItems.length > 0 && (
+        <>
+          <Typography variant="h6" component="h2" sx={{ mt: 1 }}>
+            {t('standingShares.byMe.liveHeading')}
+          </Typography>
+          <List>{liveItems.map(renderRow)}</List>
+        </>
+      )}
+      {endedItems.length > 0 && (
+        <Accordion
+          disableGutters
+          variant="outlined"
+          slotProps={{ heading: { component: 'h2' }, transition: { unmountOnExit: true } }}
+          sx={{ mt: 2 }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {t('standingShares.byMe.endedHeading')} ({endedItems.length})
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 0 }}>
+            <List>{endedItems.map(renderRow)}</List>
+          </AccordionDetails>
+        </Accordion>
+      )}
       {nextCursor && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
           <Button variant="outlined" onClick={() => void loadMore()} disabled={loading}>
@@ -223,7 +270,7 @@ export default function SharedByMePage() {
           setEditing(null);
           announce(t('standingShares.byMe.saved', { username: g.to_username }));
         }}
-        onStale={() => void refresh()}
+        onStale={() => void handleStale()}
       />
     </Box>
   );

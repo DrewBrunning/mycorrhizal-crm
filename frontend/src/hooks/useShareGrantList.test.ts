@@ -101,8 +101,8 @@ test('a slow earlier refresh cannot overwrite a newer one (stale-response guard)
   const fetchPage = vi.fn().mockReturnValueOnce(slow.promise).mockReturnValueOnce(fast.promise);
   const { result } = renderHook(() => useShareGrantList<Row>(fetchPage));
 
-  let first: Promise<void> = Promise.resolve();
-  let second: Promise<void> = Promise.resolve();
+  let first: Promise<unknown> = Promise.resolve();
+  let second: Promise<unknown> = Promise.resolve();
   act(() => {
     first = result.current.refresh();
     second = result.current.refresh();
@@ -130,7 +130,7 @@ test('a stale failure is ignored too', async () => {
     .mockResolvedValueOnce(page([{ id: 'ok', label: 'ok' }]));
   const { result } = renderHook(() => useShareGrantList<Row>(fetchPage));
 
-  let first: Promise<void> = Promise.resolve();
+  let first: Promise<unknown> = Promise.resolve();
   act(() => {
     first = result.current.refresh();
   });
@@ -204,4 +204,31 @@ test.each([
   expect(result.current.nextCursor).toBe('');
   expect(result.current.error).toBe('');
   expect(result.current.loading).toBe(false);
+});
+
+test('refresh resolves to the reloaded rows, or null when it failed or was superseded (#2694)', async () => {
+  const slow = deferred<ShareGrantPage<Row>>();
+  const fetchPage = vi
+    .fn()
+    .mockResolvedValueOnce(page([{ id: 'a', label: 'a' }]))
+    .mockRejectedValueOnce(new ApiError('down', 'INTERNAL_ERROR', 500))
+    .mockReturnValueOnce(slow.promise)
+    .mockResolvedValueOnce(page([{ id: 'b', label: 'b' }]));
+  const { result } = renderHook(() => useShareGrantList<Row>(fetchPage));
+
+  await act(async () => {
+    expect(await result.current.refresh()).toEqual([{ id: 'a', label: 'a' }]);
+  });
+  await act(async () => {
+    expect(await result.current.refresh()).toBeNull();
+  });
+  let superseded: Promise<unknown> = Promise.resolve();
+  act(() => {
+    superseded = result.current.refresh();
+  });
+  await act(async () => {
+    expect(await result.current.refresh()).toEqual([{ id: 'b', label: 'b' }]);
+    slow.resolve(page([{ id: 'late', label: 'late' }]));
+    expect(await superseded).toBeNull();
+  });
 });

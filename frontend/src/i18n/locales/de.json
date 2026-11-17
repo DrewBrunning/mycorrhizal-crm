@@ -4492,7 +4492,7 @@
       "declineLabel": "{{label}} von {{username}} ablehnen",
       "viewLabel": "{{label}} von {{username}} ansehen",
       "leaveLabel": "{{label}} von {{username}} nicht mehr erhalten",
-      "blockLabel": "{{username}} blockieren",
+      "blockLabel": "Absender blockieren: {{username}}",
       "leaveTitle": "Diese Freigabe nicht mehr erhalten?",
       "leaveBody": "Du verlierst den Zugriff auf {{label}} von {{username}}. Die Person müsste es erneut mit dir teilen.",
       "blockTitle": "Diesen Absender blockieren?",
@@ -4529,6 +4529,8 @@
     },
     "byMe": {
       "title": "Von mir geteilt",
+      "liveHeading": "Aktive Freigaben",
+      "endedHeading": "Beendete Freigaben",
       "description": "Dauerfreigaben, die du gesendet hast. Ein Widerruf stoppt künftige Zugriffe; er holt nichts zurück, was jemand bereits gesehen oder kopiert hat.",
       "empty": "Du hast nichts per Dauerfreigabe geteilt.",
       "to": "An {{username}}",
@@ -4549,7 +4551,7 @@
       "revoked": "{{label}} für {{username}} widerrufen.",
       "reconfirmNeeded": "Für {{username}} ausgeblendet, bis du bestätigst: {{sections}}. Ein Eintrag in einem Bereich wurde privat oder geheim, daher bleibt der ganze Bereich verborgen, bis du ihn geprüft hast.",
       "reconfirm": "Prüfen und erneut bestätigen",
-      "reconfirmLabel": "{{label}} für {{username}} erneut bestätigen",
+      "reconfirmLabel": "Prüfen und erneut bestätigen: {{label}} für {{username}}",
       "reconfirmTitle": "Diese Bereiche wieder teilen?",
       "reconfirmBody": "Prüfe auf der Kontaktseite, was diese Bereiche jetzt enthalten. Nach deiner Bestätigung sieht {{username}} sie wieder: {{sections}}. Als privat oder geheim markierte Einträge werden weiterhin nie geteilt.",
       "reconfirmConfirm": "Bestätigen",
@@ -4562,6 +4564,7 @@
       "save": "Speichern",
       "saved": "Freigabe für {{username}} aktualisiert.",
       "conflict": "Diese Freigabe wurde an anderer Stelle geändert. Die Liste wurde neu geladen; versuche es erneut.",
+      "editGone": "Diese Freigabe kann nicht mehr bearbeitet werden.",
       "actionFailed": "Das hat nicht geklappt: {{message}}"
     }
   }

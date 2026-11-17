@@ -4613,7 +4613,7 @@
       "declineLabel": "Rechazar {{label}} de {{username}}",
       "viewLabel": "Ver {{label}} de {{username}}",
       "leaveLabel": "Dejar de recibir {{label}} de {{username}}",
-      "blockLabel": "Bloquear a {{username}}",
+      "blockLabel": "Bloquear al remitente {{username}}",
       "leaveTitle": "¿Dejar de recibir este recurso?",
       "leaveBody": "Perderás el acceso a {{label}} de {{username}}. Tendría que volver a compartirlo contigo.",
       "blockTitle": "¿Bloquear a este remitente?",
@@ -4652,6 +4652,8 @@
     },
     "byMe": {
       "title": "Compartido por mí",
+      "liveHeading": "Compartidos activos",
+      "endedHeading": "Compartidos finalizados",
       "description": "Recursos compartidos continuos que has enviado. Revocar detiene las lecturas futuras; no recupera lo que alguien ya haya visto o copiado.",
       "empty": "No has compartido nada de forma continua.",
       "to": "Para {{username}}",
@@ -4673,7 +4675,7 @@
       "revoked": "Revocado {{label}} para {{username}}.",
       "reconfirmNeeded": "Oculto para {{username}} hasta que confirmes: {{sections}}. Un elemento de una sección pasó a ser privado o secreto, así que toda la sección sigue oculta hasta que la revises.",
       "reconfirm": "Revisar y volver a confirmar",
-      "reconfirmLabel": "Volver a confirmar {{label}} para {{username}}",
+      "reconfirmLabel": "Revisar y volver a confirmar {{label}} para {{username}}",
       "reconfirmTitle": "¿Volver a compartir estas secciones?",
       "reconfirmBody": "Comprueba en la página del contacto qué contienen ahora estas secciones. Cuando confirmes, {{username}} las verá de nuevo: {{sections}}. Los elementos marcados como privados o secretos siguen sin compartirse nunca.",
       "reconfirmConfirm": "Confirmar",
@@ -4686,6 +4688,7 @@
       "save": "Guardar",
       "saved": "Recurso compartido de {{username}} actualizado.",
       "conflict": "Este recurso se cambió en otro lugar. Se recargó la lista; inténtalo de nuevo.",
+      "editGone": "Este recurso compartido ya no se puede editar.",
       "actionFailed": "No funcionó: {{message}}"
     }
   }

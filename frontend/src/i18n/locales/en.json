@@ -4492,7 +4492,7 @@
       "declineLabel": "Decline {{label}} from {{username}}",
       "viewLabel": "View {{label}} from {{username}}",
       "leaveLabel": "Stop receiving {{label}} from {{username}}",
-      "blockLabel": "Block {{username}}",
+      "blockLabel": "Block sender {{username}}",
       "leaveTitle": "Stop receiving this share?",
       "leaveBody": "You will lose access to {{label}} from {{username}}. They would have to share it with you again.",
       "blockTitle": "Block this sender?",
@@ -4529,6 +4529,8 @@
     },
     "byMe": {
       "title": "Shared by me",
+      "liveHeading": "Live shares",
+      "endedHeading": "Ended shares",
       "description": "Standing shares you have sent. Revoking stops future reads; it does not recall what someone has already seen or copied.",
       "empty": "You have not shared anything with a standing share.",
       "to": "To {{username}}",
@@ -4549,7 +4551,7 @@
       "revoked": "Revoked {{label}} for {{username}}.",
       "reconfirmNeeded": "Hidden from {{username}} until you confirm: {{sections}}. An item in a section became private or secret, so the whole section stays hidden until you review it.",
       "reconfirm": "Review and re-confirm",
-      "reconfirmLabel": "Re-confirm {{label}} for {{username}}",
+      "reconfirmLabel": "Review and re-confirm {{label}} for {{username}}",
       "reconfirmTitle": "Share these sections again?",
       "reconfirmBody": "Check what these sections contain now on the contact page. Once you confirm, {{username}} sees them again: {{sections}}. Items marked private or secret are still never shared.",
       "reconfirmConfirm": "Confirm",
@@ -4562,6 +4564,7 @@
       "save": "Save",
       "saved": "Updated the share for {{username}}.",
       "conflict": "This share was changed elsewhere. The list has been reloaded; try again.",
+      "editGone": "This share is no longer available to edit.",
       "actionFailed": "That did not work: {{message}}"
     }
   }

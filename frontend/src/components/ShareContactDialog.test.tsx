@@ -197,3 +197,17 @@ test('a failed share shows the error and keeps the dialog open', async () => {
   expect(await screen.findByText(/share refused/)).toBeInTheDocument();
   expect(onClose).not.toHaveBeenCalled();
 });
+
+// #2716: touch targets of at least 44 px. jsdom has no layout, so assert the
+// MUI-computed min-height on the label row that wraps each control.
+test('the mode radios and the one-time section checkboxes are at least 44 px tall (#2716)', async () => {
+  mockFetchByUrl({ '/users/directory': directoryResponse });
+  renderDialog();
+  await screen.findByLabelText('Recipient');
+  const controls = [...screen.getAllByRole('radio'), ...screen.getAllByRole('checkbox')];
+  expect(screen.getAllByRole('radio')).toHaveLength(2);
+  expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(3);
+  for (const control of controls) {
+    expect(getComputedStyle(control.closest('label') as HTMLElement).minHeight).toBe('44px');
+  }
+});

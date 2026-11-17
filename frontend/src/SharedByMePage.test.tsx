@@ -2,10 +2,12 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router';
 import { afterEach, describe, expect, test } from 'vitest';
 import './i18n/config';
+import { HttpResponse, http } from 'msw';
+import { API_BASE_URL } from './api/client';
 import { AnnouncerProvider } from './context/AnnouncerContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import SharedByMePage from './SharedByMePage';
-import { errorEnvelope, mockApi, setupMswServer } from './test/mswServer';
+import { errorEnvelope, mockApi, server, setupMswServer } from './test/mswServer';
 
 setupMswServer();
 afterEach(cleanup);
@@ -85,12 +87,75 @@ describe('SharedByMePage', () => {
     expect(within(circle).getByText('Shares 12 people right now')).toBeInTheDocument();
     expect(within(circle).getByText('No expiry')).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: /Ended shares/ }));
     const revoked = await rowFor('Old');
     expect(within(revoked).getByText('Revoked')).toBeInTheDocument();
     expect(within(revoked).getByText('The shared item was deleted')).toBeInTheDocument();
     expect(within(revoked).queryByRole('button')).toBeNull(); // terminal: no actions
 
     expect(screen.queryByText(/last (read|seen|viewed|accessed)/i)).toBeNull();
+  });
+
+  test('groups live grants first and ended ones in a collapsed section without member counts (#2705)', async () => {
+    mockApi(
+      'get',
+      '/share-grants/outgoing',
+      page([
+        grant({
+          id: 'e1',
+          label: 'Old Club',
+          entity_type: 'circle',
+          sections: [],
+          member_count: 6,
+          status: 'declined',
+        }),
+        grant({
+          id: 'l1',
+          label: 'Book Club',
+          entity_type: 'circle',
+          sections: [],
+          member_count: 12,
+        }),
+        grant({ id: 'e2', label: 'Gone Contact', status: 'expired' }),
+        grant({ id: 'l2', label: 'Pending One', status: 'pending' }),
+      ]),
+    );
+    renderPage();
+    await rowFor('Book Club');
+    const live = screen.getByRole('heading', { level: 2, name: 'Live shares' });
+    expect(live).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /Ended shares/ })).toBeInTheDocument();
+
+    // Live rows come first, and only they are visible before the ended group opens.
+    expect(screen.getByText('Pending One')).toBeInTheDocument();
+    expect(screen.queryByText('Old Club')).toBeNull();
+    expect(screen.queryByText('Gone Contact')).toBeNull();
+    const toggle = screen.getByRole('button', { name: /Ended shares/ });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const ended = await rowFor('Old Club');
+    expect(within(ended).getByText('Declined')).toBeInTheDocument();
+    // Present-tense member counts only on live grants.
+    expect(within(ended).queryByText(/Shares \d+ people right now/)).toBeNull();
+    expect(
+      within(await rowFor('Book Club')).getByText('Shares 12 people right now'),
+    ).toBeInTheDocument();
+    expect(screen.queryAllByText(/people right now/)).toHaveLength(1);
+    expect(live.compareDocumentPosition(ended) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test('shows no Ended section when every grant is live, and no Live heading when none is', async () => {
+    mockApi('get', '/share-grants/outgoing', page([grant()]));
+    renderPage();
+    await rowFor('Alice Anderson');
+    expect(screen.queryByRole('heading', { name: /Ended shares/ })).toBeNull();
+    cleanup();
+    mockApi('get', '/share-grants/outgoing', page([grant({ status: 'revoked' })]));
+    renderPage();
+    expect(await screen.findByRole('button', { name: /Ended shares/ })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Live shares' })).toBeNull();
   });
 
   test('a grant the recipient blocked still reads as pending, exactly as the API returns it', async () => {
@@ -118,6 +183,8 @@ describe('SharedByMePage', () => {
     expect(revoke).toHaveLength(0);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Revoke' }));
     await waitFor(() => expect(revoke).toHaveLength(1));
+    // The revoked grant moves out of the live list into the collapsed Ended section.
+    fireEvent.click(await screen.findByRole('button', { name: /Ended shares/ }));
     const row = await rowFor('Alice Anderson');
     await waitFor(() => expect(within(row).getByText('Revoked')).toBeInTheDocument());
     expect(within(row).getByText('You revoked it')).toBeInTheDocument();
@@ -146,20 +213,35 @@ describe('SharedByMePage', () => {
     expect(
       await screen.findByText(/Hidden from bob until you confirm: Addresses/),
     ).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: /^Re-confirm Alice Anderson for bob/ }));
+    fireEvent.click(
+      screen.getByRole('button', { name: /^Review and re-confirm Alice Anderson for bob/ }),
+    );
     const dialog = await screen.findByRole('dialog', { name: 'Share these sections again?' });
     expect(reconfirm).toHaveLength(0);
     fireEvent.click(within(dialog).getByRole('button', { name: 'Confirm' }));
     await waitFor(() => expect(reconfirm).toHaveLength(1));
     await waitFor(() => expect(screen.queryByText(/Hidden from bob/)).toBeNull());
-    expect(screen.queryByRole('button', { name: /^Re-confirm/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Review and re-confirm/ })).toBeNull();
+  });
+
+  test('every action button name contains its visible text (#2700)', async () => {
+    mockApi('get', '/share-grants/outgoing', page([grant({ reconfirm_sections: ['addresses'] })]));
+    renderPage();
+    await rowFor('Alice Anderson');
+    const buttons = screen.getAllByRole('button').filter((b) => b.hasAttribute('aria-label'));
+    expect(buttons.length).toBe(3); // re-confirm, edit, revoke
+    for (const b of buttons) {
+      const visible = (b.textContent ?? '').trim().toLowerCase();
+      const name = (b.getAttribute('aria-label') ?? '').toLowerCase();
+      expect(name, `aria-label "${name}" must contain "${visible}"`).toContain(visible);
+    }
   });
 
   test('a grant with nothing to re-confirm has no re-confirm action', async () => {
     mockApi('get', '/share-grants/outgoing', page([grant()]));
     renderPage();
     await screen.findByText('Alice Anderson');
-    expect(screen.queryByRole('button', { name: /^Re-confirm/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Review and re-confirm/ })).toBeNull();
   });
 
   test('edit is narrow-only: it lists only current sections, sends only the change, with If-Match', async () => {
@@ -217,6 +299,65 @@ describe('SharedByMePage', () => {
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
     expect(await within(dialog).findByText(/changed elsewhere/)).toBeInTheDocument();
     await waitFor(() => expect(list.length).toBeGreaterThanOrEqual(2));
+  });
+
+  test('Save after a 412 retries with the reloaded revision and closes the dialog (#2694)', async () => {
+    let listCalls = 0;
+    server.use(
+      http.get(`${API_BASE_URL}/share-grants/outgoing`, () => {
+        listCalls += 1;
+        // The grant was changed elsewhere: the reload returns the next revision.
+        return HttpResponse.json(page([grant({ revision: listCalls === 1 ? 3 : 4 })]));
+      }),
+    );
+    const sent: { ifMatch: string | null; body: unknown }[] = [];
+    server.use(
+      http.patch(`${API_BASE_URL}/share-grants/g1`, async ({ request }) => {
+        sent.push({ ifMatch: request.headers.get('If-Match'), body: await request.clone().json() });
+        if (sent.length === 1) {
+          return errorEnvelope(412, 'PRECONDITION_FAILED', 'stale');
+        }
+        return HttpResponse.json({ share_grant: grant({ revision: 5, sections: ['emails'] }) });
+      }),
+    );
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /^Edit / }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit share' });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Phones' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    expect(await within(dialog).findByText(/changed elsewhere/)).toBeInTheDocument();
+    await waitFor(() => expect(listCalls).toBeGreaterThanOrEqual(2));
+
+    // The user's edit (Phones unticked) survived the reload.
+    expect(within(dialog).getByRole('checkbox', { name: 'Phones' })).not.toBeChecked();
+    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Save' })).toBeEnabled());
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[0].ifMatch).toBe('"3"');
+    expect(sent[1].ifMatch).toBe('"4"');
+    expect(sent[1].body).toEqual({ sections: ['emails'] });
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+
+  test('a 412 for a grant that ended meanwhile closes the dialog and says so (#2694)', async () => {
+    let listCalls = 0;
+    server.use(
+      http.get(`${API_BASE_URL}/share-grants/outgoing`, () => {
+        listCalls += 1;
+        return HttpResponse.json(
+          page([listCalls === 1 ? grant() : grant({ status: 'revoked', revision: 4 })]),
+        );
+      }),
+    );
+    mockApi('patch', '/share-grants/g1', errorEnvelope(412, 'PRECONDITION_FAILED', 'stale'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /^Edit / }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit share' });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Phones' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no longer available to edit/);
   });
 
   test('a circle grant edit offers expiry only (no sections)', async () => {
