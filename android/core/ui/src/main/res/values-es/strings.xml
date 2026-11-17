@@ -1146,6 +1146,8 @@
     <string name="reminder_overdue">Vencido</string>
     <string name="reminder_flexible">Flexible</string>
     <string name="date_field_pick_date">Elegir fecha</string>
+    <string name="date_field_type_date">Escribir una fecha</string>
+    <string name="date_field_pick_from_calendar">Elegir en el calendario</string>
     <string name="date_field_clear_date">Borrar fecha</string>
     <string name="date_field_add_time">Añadir hora</string>
     <string name="date_field_remove_time">Quitar hora</string>

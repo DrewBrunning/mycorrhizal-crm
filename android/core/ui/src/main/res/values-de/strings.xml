@@ -1122,6 +1122,8 @@
     <string name="reminder_overdue">Überfällig</string>
     <string name="reminder_flexible">Flexibel</string>
     <string name="date_field_pick_date">Datum auswählen</string>
+    <string name="date_field_type_date">Datum eingeben</string>
+    <string name="date_field_pick_from_calendar">Aus dem Kalender wählen</string>
     <string name="date_field_clear_date">Datum löschen</string>
     <string name="date_field_add_time">Uhrzeit hinzufügen</string>
     <string name="date_field_remove_time">Uhrzeit entfernen</string>

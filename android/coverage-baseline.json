@@ -605,6 +605,7 @@
     "com/mycorrhizal/crm/model/util/DateFieldInput.kt": 99.02,
     "com/mycorrhizal/crm/model/util/DateFieldValue.kt": 90.6,
     "com/mycorrhizal/crm/model/util/DateFormat.kt": 98.35,
+    "com/mycorrhizal/crm/model/util/DatePickerLocale.kt": 100,
     "com/mycorrhizal/crm/model/util/PartialDateEdit.kt": 94.41,
     "com/mycorrhizal/crm/model/util/TimeFormatPreference.kt": 100,
     "com/mycorrhizal/crm/model/util/Validators.kt": 93.98,

@@ -1146,6 +1146,8 @@
     <string name="reminder_overdue">En retard</string>
     <string name="reminder_flexible">Flexible</string>
     <string name="date_field_pick_date">Choisir une date</string>
+    <string name="date_field_type_date">Saisir une date</string>
+    <string name="date_field_pick_from_calendar">Choisir dans le calendrier</string>
     <string name="date_field_clear_date">Effacer la date</string>
     <string name="date_field_add_time">Ajouter une heure</string>
     <string name="date_field_remove_time">Supprimer l\'heure</string>

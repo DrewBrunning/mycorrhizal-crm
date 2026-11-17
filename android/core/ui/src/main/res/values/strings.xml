@@ -1141,6 +1141,8 @@
     <string name="reminder_overdue">Overdue</string>
     <string name="reminder_flexible">Flexible</string>
     <string name="date_field_pick_date">Pick a date</string>
+    <string name="date_field_type_date">Type a date</string>
+    <string name="date_field_pick_from_calendar">Pick from the calendar</string>
     <string name="date_field_clear_date">Clear date</string>
     <string name="date_field_add_time">Add time</string>
     <string name="date_field_remove_time">Remove time</string>
