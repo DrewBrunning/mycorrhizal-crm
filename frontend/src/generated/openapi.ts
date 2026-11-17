@@ -1940,6 +1940,14 @@ export type ImportAddedValue = {
   value?: string;
 };
 
+export type ImportCancelRequest = {
+  session_id: string;
+};
+
+export type ImportCancelResponse = {
+  status: 'cancelled';
+};
+
 export type ImportConfirmRequest = {
   actions: RowImportAction[];
   assign_circle_ids?: string[];

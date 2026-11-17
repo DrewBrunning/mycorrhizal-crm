@@ -301,6 +301,7 @@ func buildCWTable(s seeded) map[string]cwRow {
 		"POST /api/v1/contacts/import/upload":               exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/import/preview":              exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/import/confirm":              exempt(reasonCollectionOp),
+		"POST /api/v1/contacts/import/cancel":               exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/import/records":              exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/import/vcf/upload":           exempt(reasonCollectionOp),
 		"POST /api/v1/contacts/import/vcf/confirm":          exempt(reasonCollectionOp),

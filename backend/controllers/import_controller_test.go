@@ -47,6 +47,7 @@ func registerImportRoutes(router *gin.Engine, cfg *config.Config) {
 	router.POST("/contacts/import/upload", UploadCSVForImport)
 	router.POST("/contacts/import/preview", middleware.ValidateJSONMiddleware(&models.ImportPreviewRequest{}), PreviewImport)
 	router.POST("/contacts/import/confirm", middleware.ValidateJSONMiddleware(&models.ImportConfirmRequest{}), ConfirmImport)
+	router.POST("/contacts/import/cancel", middleware.ValidateJSONMiddleware(&models.ImportCancelRequest{}), CancelImportSession)
 	router.POST("/contacts/import/vcf/upload", func(c *gin.Context) {
 		UploadVCFForImport(c, cfg)
 	})
@@ -323,10 +324,12 @@ func TestUploadCSVForImport_MalformedCSV_Returns400NotPanic(t *testing.T) {
 }
 
 // TestUploadCSVForImport_SessionOverLimit pins issue #415's per-user
-// import-session bound: once a user holds MaxImportSessionsPerUser live
-// sessions, the next upload is rejected with 429 (not processed, not a 500),
-// and another user's quota is independent. registerImportRoutes resets the
-// package-global session manager, so this test starts empty.
+// import-session memory bound as amended by issue #2664: a user never holds
+// more than MaxImportSessionsPerUser live sessions, but reaching the cap no
+// longer rejects the next upload with a 15-minute 429 lockout -- the user's
+// OLDEST unconfirmed session is evicted to make room. Another user's quota is
+// independent. registerImportRoutes resets the package-global session manager,
+// so this test starts empty.
 func TestUploadCSVForImport_SessionOverLimit(t *testing.T) {
 	db, router := setupRouter(t)
 	registerImportRoutes(router, &config.Config{})
@@ -346,11 +349,12 @@ func TestUploadCSVForImport_SessionOverLimit(t *testing.T) {
 		require.Equal(t, http.StatusOK, w.Code, "uploads up to the cap must succeed")
 	}
 
-	// One more for the same user → 429.
+	// One more for the same user succeeds (oldest evicted) and the bound holds.
 	req := newFileUploadRequest(t, "/contacts/import/upload", "contacts.csv", content)
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
-	assert.Equal(t, http.StatusTooManyRequests, w.Code, w.Body.String())
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	assert.Equal(t, services.MaxImportSessionsPerUser, importSessions.CountActive(user.ID), "the per-user bound must still hold after an eviction")
 
 	// Another user, on their own session context, is unaffected.
 	otherRouter := gin.New()

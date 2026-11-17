@@ -108,6 +108,7 @@ var requestBodyBindings = map[string]requestBodyBinding{
 	"POST /contacts/address-suggestions/apply": bindingFor(models.ApplyContactAddressSuggestionInput{}),
 	"POST /contacts/import/preview":            bindingFor(models.ImportPreviewRequest{}),
 	"POST /contacts/import/confirm":            bindingFor(models.ImportConfirmRequest{}),
+	"POST /contacts/import/cancel":             bindingFor(models.ImportCancelRequest{}),
 	"POST /contacts/import/vcf/confirm":        bindingFor(models.ImportConfirmRequest{}),
 	"POST /contacts/import/records":            bindingFor(models.ImportRecordsRequest{}),
 	"POST /contacts/import/monica/connect":     bindingFor(models.MonicaConnectRequest{}),

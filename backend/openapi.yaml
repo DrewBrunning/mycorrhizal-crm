@@ -4161,6 +4161,42 @@ paths:
               schema:
                 $ref: "#/components/schemas/Error"
           description: No prior preview cached, or unknown/expired/foreign session.
+  /contacts/import/cancel:
+    post:
+      summary: Discard an unconfirmed CSV/VCF/JSContact/records import session
+      operationId: cancelImportSession
+      tags:
+        - Imports
+      description: >
+        Issue #2664. Releases the caller's own import session (the one an
+        upload or /contacts/import/records returned) without importing
+        anything. Clients should call it whenever the import dialog is
+        cancelled, closed or dismissed, or the user goes back to the upload
+        step, and a session id exists. Idempotent and quiet: an unknown,
+        expired, already-confirmed or other-user session id answers the same
+        200 as a live one (nothing is revealed about other users' sessions),
+        and a confirmed session's idempotent replay is not affected. Separately,
+        an upload that would exceed the per-user cap of 5 live sessions now
+        evicts the user's oldest unconfirmed session instead of answering 429.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportCancelRequest"
+      responses:
+        "200":
+          description: The session is gone (or never existed).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportCancelResponse"
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+          description: session_id is missing.
   /contacts/import/vcf/confirm:
     post:
       summary: Execute a VCF or JSContact import with the caller's per-row actions
@@ -21528,6 +21564,16 @@ components:
         sample_data:
           type: array
           items: { type: array, items: { type: string } }
+    ImportCancelRequest:
+      type: object
+      required: [session_id]
+      properties:
+        session_id: { type: string }
+    ImportCancelResponse:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [cancelled] }
     ImportPreviewRequest:
       type: object
       required: [session_id, mappings]

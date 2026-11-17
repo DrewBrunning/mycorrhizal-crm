@@ -2511,6 +2511,22 @@
     },
     {
       "method": "POST",
+      "path": "/contacts/import/cancel",
+      "parameters": null,
+      "request_body": "ref:ImportCancelRequest",
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:ImportCancelResponse"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "POST",
       "path": "/contacts/import/confirm",
       "parameters": null,
       "request_body": "ref:ImportConfirmRequest",
@@ -19564,6 +19580,29 @@
           "name": "value",
           "type": "string",
           "required": false
+        }
+      ]
+    },
+    {
+      "name": "ImportCancelRequest",
+      "properties": [
+        {
+          "name": "session_id",
+          "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "ImportCancelResponse",
+      "properties": [
+        {
+          "name": "status",
+          "type": "string",
+          "required": true,
+          "enum": [
+            "cancelled"
+          ]
         }
       ]
     },

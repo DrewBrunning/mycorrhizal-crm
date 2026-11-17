@@ -338,3 +338,10 @@ type EntityCSVRestoreResponse struct {
 	FieldValuesCreated int                     `json:"field_values_created"`
 	Issues             []EntityCSVRestoreIssue `json:"issues"`
 }
+
+// ImportCancelRequest is the body of POST /contacts/import/cancel (issue
+// #2664): discard the caller's own unconfirmed CSV/VCF/JSContact/records
+// import session.
+type ImportCancelRequest struct {
+	SessionID string `json:"session_id" validate:"required"`
+}
