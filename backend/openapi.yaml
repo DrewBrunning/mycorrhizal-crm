@@ -18693,7 +18693,9 @@ components:
         to_username: { type: string }
         entity_type: { type: string, enum: [contact, note, activity, circle] }
         entity_id: { type: string }
-        label: { type: string }
+        label:
+          type: string
+          description: "Computed per request, never stored: contact display name, circle name, activity title, or for a note its first non-blank line (whitespace collapsed, at most 80 characters, a cut ends in an ellipsis); a note with no text is Note (issue #2744)."
         sections:
           type: array
           items: { type: string }
@@ -18715,7 +18717,9 @@ components:
         id: { type: string, format: uuid }
         from_username: { type: string }
         entity_type: { type: string, enum: [contact, note, activity, circle] }
-        label: { type: string, description: "Computed per request; a note is just Note." }
+        label:
+          type: string
+          description: "Computed per request: contact display name, circle name, activity title. A note is just Note until the grant is active, then its first non-blank line (at most 80 characters, a cut ends in an ellipsis), i.e. only text the recipient can already read through the content route (issue #2744)."
         sections:
           type: array
           items: { type: string }

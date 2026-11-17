@@ -42,7 +42,7 @@ in this table must not exist; the route census (section 7.1) makes an addition f
 | R4 | same route, circle | recipient | circle metadata and live member display names | grant resolver, then allowlist view, member query scoped by owner |
 | R5 | `GET /share-grants/incoming` | recipient | pending/active rows: sender username, type, per-request label | `to_user_id` scope in the query |
 | R6 | `GET /share-grants/outgoing` | owner | own rows, status, expiry, section list, live member count | `from_user_id` scope in the query |
-| R7 | pending-grant label (inside R5) | recipient, pre-acceptance | display name / circle name / activity title | resolver + owner-scoped lookup |
+| R7 | pending-grant label (inside R5) | recipient, pre-acceptance | display name / circle name / activity title; a note is the generic "Note" until the grant is active, then its first line (80 runes) | resolver + owner-scoped lookup |
 | R8 | audit events for grant transitions | each party, own trail | grant id and fields, no entity content | recorder, own `user_id` |
 | R9 | notification payload (in-app, then push/email) | recipient | sender username + entity type only | notifier |
 | R10 | trash restore response | owner | ids/types of grants revoked by the delete | owner-scoped |

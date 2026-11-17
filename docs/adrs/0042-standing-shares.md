@@ -127,6 +127,14 @@ What a pending recipient sees: the sender's username, the entity type, and a sho
 row. This is the least that lets a person decide, and is the same disclosure the one-time share's
 `ContactDisplayName` already makes.
 
+**Amended 2026-11-17 (issue #2744):** a note grant's label is the first non-blank line of the note, whitespace
+collapsed and capped at 80 runes (a cut ends in an ellipsis), so rows in the lists are told apart. The sender sees it
+on every outgoing row (their own note). The recipient sees it only while the grant is effectively **active** (the same
+condition as the content endpoint, so it discloses nothing they cannot already read); a pending, expired, declined or
+blocked note grant keeps the generic "Note", preserving this decision's "no content before acceptance". It is derived
+from `Content` alone, in one batched owner-scoped query per list, never stored, and still absent from notifications
+and audit trails.
+
 ### 8. Blocking a sender
 
 A new tiny table `share_blocks (blocker_user_id, blocked_user_id, created_at)` with a composite primary key, hard
