@@ -1,11 +1,16 @@
 package com.mycorrhizal.crm.feature.shares
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -204,5 +209,57 @@ class SharedWithMeScreenTest {
         stub(listOf(pending, active), blocks = listOf(ShareBlock(7, "mallory")))
         screen()
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    // Issue #2643: pending and active rows say which sections are offered.
+    @Test
+    fun `rows list the offered sections, shortened after three`() {
+        stub(
+            listOf(
+                pending.copy(id = "a", label = "A", sections = emptyList()),
+                pending.copy(id = "b", label = "B", sections = listOf("emails")),
+                pending.copy(
+                    id = "c",
+                    label = "C",
+                    sections = listOf("emails", "phones", "addresses")
+                ),
+                active.copy(
+                    id = "d",
+                    label = "D",
+                    entityType = "contact",
+                    sections = listOf("emails", "phones", "addresses", "notes")
+                )
+            )
+        )
+        screen()
+
+        composeTestRule.onNodeWithText("Offers: Emails").assertExists()
+        composeTestRule.onNodeWithText("Offers: Emails, Phones, Addresses").assertExists()
+        // The fourth row is below the fold of the lazy list.
+        composeTestRule.onNode(hasScrollAction())
+            .performScrollToNode(hasText("Offers: Emails, Phones, Addresses and 1 more"))
+        composeTestRule.onNodeWithText(
+            "Offers: Emails, Phones, Addresses and 1 more"
+        ).assertIsDisplayed()
+        // Zero sections: no line.
+        composeTestRule.onAllNodesWithText("Offers:", substring = true).assertCountEquals(3)
+    }
+
+    // Issue #2656: blocking the only sender must not leave a bare "Blocked senders" header.
+    @Test
+    fun `with no grants but a blocked sender the empty state still shows`() {
+        stub(emptyList(), blocks = listOf(ShareBlock(7, "mallory")))
+        screen()
+
+        composeTestRule.onNodeWithText("Nothing shared with you yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Blocked senders").assertIsDisplayed()
+        composeTestRule.onNodeWithText("mallory").assertIsDisplayed()
+    }
+
+    @Test
+    fun `with grants there is no empty-state line`() {
+        stub(listOf(pending), blocks = listOf(ShareBlock(7, "mallory")))
+        screen()
+        composeTestRule.onNodeWithText("Nothing shared with you yet").assertDoesNotExist()
     }
 }

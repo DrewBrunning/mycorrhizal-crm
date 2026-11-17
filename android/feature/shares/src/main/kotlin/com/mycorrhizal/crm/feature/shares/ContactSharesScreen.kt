@@ -21,6 +21,7 @@ import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -101,6 +102,7 @@ fun ContactSharesScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            StandingSharesBanner(onOpenSharedWithMe)
             StandingSharesLinks(onOpenSharedWithMe, onOpenSharedByMe)
             PrimaryTabRow(
                 selectedTabIndex = if (state.selectedTab == SharesTab.INCOMING) 0 else 1
@@ -223,6 +225,41 @@ fun ContactSharesScreen(
             onConfirm = viewModel::confirmAccept,
             onDismiss = viewModel::closeAccept
         )
+    }
+}
+
+/**
+ * Issue #2615: the drawer badge counts pending standing shares, but this screen opens on the
+ * legacy one-time tab, where they never appear. The banner says so and jumps to them.
+ */
+@Composable
+private fun StandingSharesBanner(onOpenSharedWithMe: (() -> Unit)?) {
+    if (onOpenSharedWithMe == null) return
+    if (!isServerFeatureSupported(ServerFeature.SHARE_GRANTS)) return
+    val pending = LocalPendingShareGrantCount.current
+    if (pending <= 0) return
+    Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 16.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = pluralStringResource(R.plurals.shares_pending_count, pending, pending),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(
+                onClick = onOpenSharedWithMe,
+                modifier = Modifier.testTag("review-pending-shares")
+            ) {
+                Text(stringResource(R.string.shares_review))
+            }
+        }
     }
 }
 

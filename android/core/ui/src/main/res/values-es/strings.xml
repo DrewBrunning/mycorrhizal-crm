@@ -1513,8 +1513,8 @@
 
     <!-- Contact shares (M15) -->
     <string name="shares_title">Compartición de contactos</string>
-    <string name="shares_tab_incoming">Entrantes</string>
-    <string name="shares_tab_outgoing">Salientes</string>
+    <string name="shares_tab_incoming">Copias recibidas</string>
+    <string name="shares_tab_outgoing">Copias enviadas</string>
     <string name="shares_incoming_empty">Aún no hay comparticiones entrantes</string>
     <string name="shares_outgoing_empty">Aún no hay comparticiones salientes</string>
     <string name="shares_from">De %1$s</string>
@@ -1593,7 +1593,7 @@
     <string name="shares_grant_revoke_title">¿Revocar lo compartido?</string>
     <string name="shares_grant_revoke_message">%1$s perderá el acceso la próxima vez que lo cargue. Lo que ya haya visto no se puede recuperar.</string>
     <string name="shares_grant_reconfirm_title">¿Volver a compartir estas secciones?</string>
-    <string name="shares_grant_reconfirm_message">Algunos elementos de lo compartido se marcaron como privados o secretos, por eso estas secciones no se muestran a %1$s: %2$s. Revisa su contenido antes de volver a compartirlas.</string>
+    <string name="shares_grant_reconfirm_message">Algunos elementos de lo compartido se marcaron como privados o secretos, por eso estas secciones no se muestran a %1$s. Revisa su contenido antes de volver a compartirlas.</string>
     <string name="shares_grant_reconfirm_confirm">Volver a compartir</string>
     <string name="shares_grant_needs_reconfirm">Algunas secciones no se muestran hasta que las revises</string>
     <string name="shares_blocked_title">Remitentes bloqueados</string>
@@ -1656,6 +1656,21 @@
         <item quantity="one">En %1$d día</item>
         <item quantity="many">En %1$d días</item>
         <item quantity="other">En %1$d días</item>
+    </plurals>
+    <string name="shares_review">Revisar</string>
+    <string name="shares_open_contact">Abrir contacto</string>
+    <string name="shares_sections_shared">Compartido: %1$s</string>
+    <string name="shares_sections_offers">Ofrece: %1$s</string>
+    <string name="shares_grant_meta_join">%1$s · %2$s</string>
+    <plurals name="shares_sections_more">
+        <item quantity="one">%1$s y %2$d más</item>
+        <item quantity="many">%1$s y %2$d más</item>
+        <item quantity="other">%1$s y %2$d más</item>
+    </plurals>
+    <plurals name="shares_reconfirm_item_count">
+        <item quantity="one">%1$s · %2$d elemento</item>
+        <item quantity="many">%1$s · %2$d elementos</item>
+        <item quantity="other">%1$s · %2$d elementos</item>
     </plurals>
 
     <!-- Cadence (T19 relationship health) -->

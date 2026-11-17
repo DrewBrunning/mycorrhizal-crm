@@ -20,6 +20,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -193,7 +194,7 @@ class ContactSharesScreenTest {
 
         screen()
 
-        composeTestRule.onNodeWithText("Outgoing").performClick()
+        composeTestRule.onNodeWithText("Copies sent").performClick()
 
         composeTestRule.onNodeWithText("No outgoing shares yet").assertIsDisplayed()
         composeTestRule.onNodeWithText("No incoming shares yet").assertDoesNotExist()
@@ -302,5 +303,67 @@ class ContactSharesScreenTest {
         composeTestRule.onNodeWithText("Shared with me").performClick()
         composeTestRule.onNodeWithText("Shared by me").performClick()
         assertTrue(withMe == 1 && byMe == 1)
+    }
+
+    // --- Issue #2615: a waiting standing share must not hide behind the empty legacy tab ---
+
+    private fun screenWithPending(count: Int, withMe: () -> Unit = {}) {
+        val vm = ContactSharesViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.mycorrhizal.crm.ui.LocalPendingShareGrantCount provides count
+                ) {
+                    ContactSharesScreen(
+                        onMenuClick = {},
+                        onOpenSharedWithMe = withMe,
+                        onOpenSharedByMe = {},
+                        viewModel = vm
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `a banner announces waiting standing shares and its review action opens them`() {
+        stubEmpty()
+        var withMe = 0
+        screenWithPending(1) { withMe++ }
+
+        composeTestRule.onNodeWithText("1 share waiting for you").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Review").performClick()
+        assertEquals(1, withMe)
+    }
+
+    @Test
+    fun `no banner when nothing is waiting`() {
+        stubEmpty()
+        screenWithPending(0)
+        composeTestRule.onNodeWithText("Review").assertDoesNotExist()
+    }
+
+    @Test
+    fun `no banner when the standing-share links are not wired`() {
+        stubEmpty()
+        val vm = ContactSharesViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.mycorrhizal.crm.ui.LocalPendingShareGrantCount provides 3
+                ) { ContactSharesScreen(onMenuClick = {}, viewModel = vm) }
+            }
+        }
+        composeTestRule.onNodeWithText("Review").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the legacy tabs are named as one-time copies`() {
+        stubEmpty()
+        screen()
+        composeTestRule.onNodeWithText("Copies received").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Copies sent").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Incoming").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Outgoing").assertDoesNotExist()
     }
 }

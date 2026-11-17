@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.IncomingShareGrant
 import com.mycorrhizal.crm.model.network.ShareBlock
+import com.mycorrhizal.crm.model.network.ShareGrantStatuses
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -77,7 +79,7 @@ class SharedWithMeViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        grants = incoming.getOrNull()?.shareGrants.orEmpty(),
+                        grants = incoming.getOrNull()?.shareGrants.orEmpty().inDisplayOrder(),
                         blocks = blocks.getOrNull().orEmpty(),
                         loadError =
                             (incoming.exceptionOrNull() ?: blocks.exceptionOrNull())?.toApiError()
@@ -147,3 +149,17 @@ class SharedWithMeViewModel @Inject constructor(
         }
     }
 }
+
+/**
+ * Issue #2656: one deterministic order whatever order the server returns — pending first (they
+ * need a decision), then newest first, with the id as the final tie-break so two loads of the
+ * same data never reshuffle. An unparseable or missing date sorts as the oldest.
+ */
+internal fun List<IncomingShareGrant>.inDisplayOrder(): List<IncomingShareGrant> = sortedWith(
+    compareBy<IncomingShareGrant> { it.status != ShareGrantStatuses.PENDING }
+        .thenByDescending { grant ->
+            grant.createdAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
+                ?: Instant.EPOCH
+        }
+        .thenBy { it.id }
+)

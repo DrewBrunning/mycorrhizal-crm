@@ -2,13 +2,18 @@ package com.mycorrhizal.crm.feature.shares
 
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextEquals
+import androidx.compose.ui.test.isSelectable
+import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
+import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.OutgoingShareGrant
@@ -20,6 +25,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -36,14 +42,16 @@ class SharedByMeScreenTest {
     val composeTestRule = createComposeRule()
 
     private val repository = mockk<ShareGrantRepository>()
+    private val contacts = mockk<ContactRepository>()
 
     private val contactGrant = OutgoingShareGrant(
         id = "g1",
         toUsername = "casey",
         entityType = "contact",
         label = "Dana White",
+        entityId = "uid-1",
         sections = listOf("emails", "phones"),
-        reconfirmSections = listOf("addresses"),
+        reconfirmSections = listOf("emails", "addresses"),
         status = ShareGrantStatuses.ACTIVE,
         expiresAt = "2027-01-15T00:00:00Z",
         revision = 2
@@ -71,28 +79,93 @@ class SharedByMeScreenTest {
             Result.success(OutgoingShareGrantsPage(shareGrants = grants.toList()))
     }
 
-    private fun screen() {
+    private fun screen(onOpenContact: (Int) -> Unit = {}) {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                SharedByMeScreen(onBack = {}, viewModel = SharedByMeViewModel(repository))
+                SharedByMeScreen(
+                    onBack = {},
+                    onOpenContact = onOpenContact,
+                    viewModel = SharedByMeViewModel(repository, contacts)
+                )
             }
         }
     }
 
     @Test
-    fun `rows show recipient status expiry and the live circle member count`() {
+    fun `rows show a status chip, one recipient-and-expiry line and the live circle member count`() {
         stub(contactGrant, circleGrant, revoked)
         screen()
 
         composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
-        composeTestRule.onAllNodesWithText("To casey").assertCountEquals(3)
-        composeTestRule.onNodeWithText("Active").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Expires 15.01.2027").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Pending").assertIsDisplayed()
+        // Issue #2627: one line per row instead of separate recipient and expiry captions.
+        composeTestRule.onNodeWithText("To casey · Expires 15.01.2027").assertIsDisplayed()
+        composeTestRule.onNodeWithText("To casey · No expiry").assertIsDisplayed()
+        // A finished grant has no expiry to report.
+        composeTestRule.onNodeWithText("To casey").assertIsDisplayed()
         composeTestRule.onNodeWithText("3 members").assertIsDisplayed()
-        composeTestRule.onNodeWithText("No expiry").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Revoked").assertIsDisplayed()
         composeTestRule.onNodeWithText("The shared item was deleted").assertIsDisplayed()
+        // The status is a chip per row, not a plain caption.
+        composeTestRule.onNodeWithTag("grant-status-g1").assertTextEquals("Active")
+        composeTestRule.onNodeWithTag("grant-status-g2").assertTextEquals("Pending")
+        composeTestRule.onNodeWithTag("grant-status-g3").assertTextEquals("Revoked")
+    }
+
+    @Test
+    fun `declined and expired grants get their own status chip`() {
+        stub(
+            contactGrant.copy(id = "d", status = ShareGrantStatuses.DECLINED),
+            contactGrant.copy(id = "x", status = ShareGrantStatuses.EXPIRED)
+        )
+        screen()
+
+        composeTestRule.onNodeWithTag("grant-status-d").assertTextEquals("Declined")
+        composeTestRule.onNodeWithTag("grant-status-x").assertTextEquals("Expired")
+    }
+
+    // Issue #2643: what was shared, for 0, 1, 3 and 4+ sections.
+    @Test
+    fun `a live contact grant lists the shared sections, shortened after three`() {
+        val base = contactGrant.copy(reconfirmSections = emptyList())
+        stub(
+            base.copy(id = "a", label = "A", sections = emptyList()),
+            base.copy(id = "b", label = "B", sections = listOf("emails")),
+            base.copy(id = "c", label = "C", sections = listOf("emails", "phones", "addresses")),
+            base.copy(
+                id = "d",
+                label = "D",
+                sections = listOf("emails", "phones", "addresses", "notes", "links")
+            )
+        )
+        screen()
+
+        composeTestRule.onNodeWithText("Shared: Emails").assertExists()
+        composeTestRule.onNodeWithText("Shared: Emails, Phones, Addresses").assertExists()
+        composeTestRule.onNodeWithText(
+            "Shared: Emails, Phones, Addresses and 2 more"
+        ).assertExists()
+        // Zero sections: no sections line at all.
+        composeTestRule.onAllNodesWithText("Shared:", substring = true).assertCountEquals(3)
+    }
+
+    @Test
+    fun `a finished grant does not list sections`() {
+        stub(contactGrant.copy(status = ShareGrantStatuses.DECLINED))
+        screen()
+        composeTestRule.onAllNodesWithText("Shared:", substring = true).assertCountEquals(0)
+    }
+
+    // Issue #2609: every toggle/option row of the edit dialog is a 48dp touch target.
+    @Test
+    fun `edit dialog section and expiry rows are at least 48dp tall`() {
+        stub(contactGrant)
+        screen()
+
+        composeTestRule.onNodeWithContentDescription("More actions for Dana White").performClick()
+        composeTestRule.onNodeWithText("Edit").performClick()
+
+        // emails + phones sections; Keep, No expiry and the four presets.
+        composeTestRule.assertRowsAtLeast48dp(isToggleable(), expectedCount = 2)
+        composeTestRule.assertRowsAtLeast48dp(isSelectable(), expectedCount = 6)
     }
 
     @Test
@@ -127,6 +200,7 @@ class SharedByMeScreenTest {
         stub(contactGrant)
         coEvery { repository.reconfirm("g1") } returns
             Result.success(contactGrant.copy(reconfirmSections = emptyList()))
+        coEvery { repository.previewContact(any(), any()) } returns Result.success(emptyMap())
         screen()
 
         composeTestRule.onNodeWithText(
@@ -138,6 +212,92 @@ class SharedByMeScreenTest {
         composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
 
         coVerify(exactly = 1) { repository.reconfirm("g1") }
+    }
+
+    private fun card(emails: Int, addresses: Int) = mapOf<String, Any?>(
+        "emails" to (1..emails).associate { "e$it" to mapOf("address" to "a$it@x.org") },
+        "addresses" to (1..addresses).associate { "d$it" to mapOf("full" to "$it Main St") }
+    )
+
+    // Issue #2659: the re-confirm dialog names each withheld section with what it holds today.
+    @Test
+    fun `the reconfirm dialog lists each withheld section with its item count`() {
+        stub(contactGrant)
+        coEvery { repository.previewContact("uid-1", listOf("addresses", "emails")) } returns
+            Result.success(card(emails = 2, addresses = 1))
+        screen()
+
+        composeTestRule.onNodeWithText("Review and re-confirm").performClick()
+
+        composeTestRule.onNodeWithText("Emails · 2 items").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Addresses · 1 item").assertIsDisplayed()
+    }
+
+    @Test
+    fun `the reconfirm dialog still names the sections when the preview fails`() {
+        stub(contactGrant)
+        coEvery { repository.previewContact(any(), any()) } returns
+            Result.failure(ApiError.Server(503, "down"))
+        screen()
+
+        composeTestRule.onNodeWithText("Review and re-confirm").performClick()
+
+        composeTestRule.onNodeWithText("Emails").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Addresses").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Share these sections again?").assertIsDisplayed()
+    }
+
+    @Test
+    fun `open contact from the reconfirm dialog resolves the uid and navigates`() {
+        stub(contactGrant)
+        coEvery { repository.previewContact(any(), any()) } returns Result.success(card(0, 0))
+        coEvery { contacts.resolveByUid(listOf("uid-1")) } returns
+            Result.success(mapOf("uid-1" to ContactSummary(id = 42, uid = "uid-1")))
+        var opened = -1
+        screen(onOpenContact = { opened = it })
+
+        composeTestRule.onNodeWithText("Review and re-confirm").performClick()
+        composeTestRule.onNodeWithTag("grant-prompt-open-contact").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(42, opened)
+    }
+
+    @Test
+    fun `open contact for a contact that no longer resolves is worded from its reason code`() {
+        stub(contactGrant)
+        coEvery { repository.previewContact(any(), any()) } returns Result.success(card(0, 0))
+        coEvery { contacts.resolveByUid(any()) } returns Result.failure(
+            ApiError.Client(
+                404,
+                "RAW SERVER TEXT",
+                reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+            )
+        )
+        var opened = -1
+        screen(onOpenContact = { opened = it })
+
+        composeTestRule.onNodeWithText("Review and re-confirm").performClick()
+        composeTestRule.onNodeWithTag("grant-prompt-open-contact").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+        assertEquals(-1, opened)
+    }
+
+    @Test
+    fun `open contact for a uid with no match shows the not-found message`() {
+        stub(contactGrant)
+        coEvery { repository.previewContact(any(), any()) } returns Result.success(card(0, 0))
+        coEvery { contacts.resolveByUid(any()) } returns Result.success(emptyMap())
+        screen()
+
+        composeTestRule.onNodeWithText("Review and re-confirm").performClick()
+        composeTestRule.onNodeWithTag("grant-prompt-open-contact").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Not found").assertIsDisplayed()
     }
 
     @Test

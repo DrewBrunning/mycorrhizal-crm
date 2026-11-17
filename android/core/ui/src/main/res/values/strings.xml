@@ -1496,8 +1496,8 @@
 
     <!-- Contact shares (M15) -->
     <string name="shares_title">Contact shares</string>
-    <string name="shares_tab_incoming">Incoming</string>
-    <string name="shares_tab_outgoing">Outgoing</string>
+    <string name="shares_tab_incoming">Copies received</string>
+    <string name="shares_tab_outgoing">Copies sent</string>
     <string name="shares_incoming_empty">No incoming shares yet</string>
     <string name="shares_outgoing_empty">No outgoing shares yet</string>
     <string name="shares_from">From %1$s</string>
@@ -1576,7 +1576,7 @@
     <string name="shares_grant_revoke_title">Revoke this share?</string>
     <string name="shares_grant_revoke_message">%1$s will lose access the next time they load it. Anything they have already seen cannot be taken back.</string>
     <string name="shares_grant_reconfirm_title">Share these sections again?</string>
-    <string name="shares_grant_reconfirm_message">Some items in this share were marked private or secret, so these sections are withheld from %1$s: %2$s. Check what they now contain before sharing them again.</string>
+    <string name="shares_grant_reconfirm_message">Some items in this share were marked private or secret, so these sections are withheld from %1$s. Check what they now contain before sharing them again.</string>
     <string name="shares_grant_reconfirm_confirm">Share again</string>
     <string name="shares_grant_needs_reconfirm">Some sections are withheld until you review them</string>
     <string name="shares_blocked_title">Blocked senders</string>
@@ -1636,6 +1636,19 @@
     <plurals name="shares_expiry_days">
         <item quantity="one">In %1$d day</item>
         <item quantity="other">In %1$d days</item>
+    </plurals>
+    <string name="shares_review">Review</string>
+    <string name="shares_open_contact">Open contact</string>
+    <string name="shares_sections_shared">Shared: %1$s</string>
+    <string name="shares_sections_offers">Offers: %1$s</string>
+    <string name="shares_grant_meta_join">%1$s · %2$s</string>
+    <plurals name="shares_sections_more">
+        <item quantity="one">%1$s and %2$d more</item>
+        <item quantity="other">%1$s and %2$d more</item>
+    </plurals>
+    <plurals name="shares_reconfirm_item_count">
+        <item quantity="one">%1$s · %2$d item</item>
+        <item quantity="other">%1$s · %2$d items</item>
     </plurals>
 
     <!-- Cadence (T19 relationship health) -->

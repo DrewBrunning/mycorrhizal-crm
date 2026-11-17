@@ -112,6 +112,18 @@ fun SharedWithMeScreen(
                     EmptyState(title = stringResource(R.string.shares_with_me_empty))
 
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (state.grants.isEmpty()) {
+                        // Issue #2656: only blocked senders are left; say there are no shares
+                        // instead of showing a bare "Blocked senders" header.
+                        item(key = "no-grants") {
+                            Text(
+                                text = stringResource(R.string.shares_with_me_empty),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
+                            )
+                        }
+                    }
                     items(state.grants, key = { it.id }) { grant ->
                         IncomingGrantRow(
                             grant = grant,
@@ -246,6 +258,9 @@ private fun IncomingGrantRow(
             )
             GrantCaption(stringResource(entityTypeLabelRes(grant.entityType)))
             GrantCaption(stringResource(R.string.shares_from, grant.fromUsername))
+            // Issue #2643: say what is on offer so the recipient can decide.
+            sectionsSummary(grant.sections, R.string.shares_sections_offers)
+                ?.let { GrantCaption(it) }
             if (pending) {
                 GrantCaption(stringResource(R.string.shares_with_me_pending_hint))
             } else {

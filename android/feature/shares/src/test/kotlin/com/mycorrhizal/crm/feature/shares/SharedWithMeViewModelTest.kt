@@ -357,4 +357,36 @@ class SharedWithMeViewModelTest {
         assertTrue(vm.uiState.value.blocks.isEmpty())
         assertNotNull(vm.uiState.value.loadError)
     }
+
+    // --- Issue #2656: one deterministic order ---
+
+    @Test
+    fun `grants are ordered pending first, then newest first, regardless of server order`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val activeOld = activeGrant("a-old", "2026-01-01T00:00:00Z")
+            val activeNew = activeGrant("a-new", "2026-03-01T00:00:00Z")
+            val pendingOld = pending.copy(id = "p-old", createdAt = "2026-02-01T00:00:00Z")
+            val pendingNew = pending.copy(id = "p-new", createdAt = "2026-02-15T12:00:00.500Z")
+            val undated = pending.copy(id = "p-undated", createdAt = null)
+            coEvery { repository.listIncoming(any(), any()) } returns Result.success(
+                IncomingShareGrantsPage(
+                    shareGrants = listOf(activeOld, pendingOld, activeNew, undated, pendingNew)
+                )
+            )
+            coEvery { repository.blocks() } returns Result.success(emptyList())
+
+            val vm = SharedWithMeViewModel(repository)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("p-new", "p-old", "p-undated", "a-new", "a-old"),
+                vm.uiState.value.grants.map { it.id }
+            )
+        }
+
+    private fun activeGrant(id: String, createdAt: String?) = pending.copy(
+        id = id,
+        status = "active",
+        createdAt = createdAt
+    )
 }
