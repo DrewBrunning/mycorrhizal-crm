@@ -229,6 +229,20 @@ private fun ImportRowCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        row.diagnostics?.forEach { diagnostic ->
+            // Issue #2641: adapter notes (e.g. "name taken from email"); warn reads as an error,
+            // info as a plain note. Not live: the row's own status line carries the announcement.
+            Text(
+                text = diagnostic.message,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (diagnostic.severity == "warn") {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.testTag("import-row-diagnostic")
+            )
+        }
         if (unfixable) {
             Text(
                 text = stringResource(R.string.import_row_unfixable),

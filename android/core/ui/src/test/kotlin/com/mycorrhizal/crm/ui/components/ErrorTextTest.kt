@@ -425,27 +425,56 @@ class ErrorTextTest {
     }
 
     @Test
-    fun `the Meerkat upstream codes render the reason param and fall back without it`() {
-        val codes = listOf(
-            ErrorReasonCode.MEERKAT_API_ERROR,
-            ErrorReasonCode.MEERKAT_UPSTREAM_ERROR
-        )
+    fun `the Meerkat API code renders the reason param and falls back without it`() {
         val rendered = renderAll(
-            codes.flatMap { code ->
-                listOf(
-                    ApiError.Client(
-                        502,
-                        "Server says no",
-                        ErrorReason(code, mapOf("reason" to "token rejected"))
-                    ),
-                    ApiError.Client(502, "Server says no", ErrorReason(code, emptyMap()))
+            listOf(
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(
+                        ErrorReasonCode.MEERKAT_API_ERROR,
+                        mapOf("reason" to "token rejected")
+                    )
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.MEERKAT_API_ERROR, emptyMap())
                 )
-            }
+            )
         )
-        assertEquals(
-            listOf("token rejected", "Server says no", "token rejected", "Server says no"),
-            rendered
+        assertEquals(listOf("token rejected", "Server says no"), rendered)
+    }
+
+    @Test
+    fun `the Meerkat upstream code renders Android copy, not the server database-upload hint`() {
+        val serverText = "The Meerkat instance could not be reached \u2014 if it is offline, " +
+            "use the database upload instead"
+        val rendered = renderAll(
+            listOf(
+                ApiError.Server(
+                    502,
+                    serverText,
+                    reason = ErrorReason(
+                        ErrorReasonCode.MEERKAT_UPSTREAM_ERROR,
+                        mapOf("reason" to serverText)
+                    )
+                ),
+                ApiError.Server(
+                    502,
+                    serverText,
+                    reason = ErrorReason(ErrorReasonCode.MEERKAT_UPSTREAM_ERROR, emptyMap())
+                )
+            )
         )
+        assertEquals(2, rendered.size)
+        rendered.forEach {
+            assertEquals(
+                "The Meerkat instance could not be reached or sent an unreadable response. " +
+                    "Check the address and that it is online.",
+                it
+            )
+        }
     }
 
     @Test

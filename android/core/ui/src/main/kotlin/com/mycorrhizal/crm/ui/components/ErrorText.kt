@@ -400,10 +400,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
                 "reason"
             )?.let { stringResource(R.string.error_reason_meerkat_api_error, it) }
 
+        // Issue #2652: the server's `reason` param is English text that points at the
+        // web-only "database upload"; Android has no such option, so use fixed copy.
         ErrorReasonCode.MEERKAT_UPSTREAM_ERROR ->
-            reason.str(
-                "reason"
-            )?.let { stringResource(R.string.error_reason_meerkat_upstream_error, it) }
+            stringResource(R.string.error_reason_meerkat_upstream_error)
 
         ErrorReasonCode.MEERKAT_SIGN_IN_INPUT_MISSING ->
             stringResource(R.string.error_reason_meerkat_sign_in_input_missing)

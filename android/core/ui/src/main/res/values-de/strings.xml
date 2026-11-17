@@ -3011,7 +3011,7 @@
     <string name="error_reason_meerkat_import_in_progress">Dieser Import wird bereits vorbereitet</string>
     <string name="error_reason_meerkat_not_prepared">Die Meerkat-Datenbank ist noch nicht vorbereitet</string>
     <string name="error_reason_meerkat_api_error">%1$s</string>
-    <string name="error_reason_meerkat_upstream_error">%1$s</string>
+    <string name="error_reason_meerkat_upstream_error">Die Meerkat-Instanz ist nicht erreichbar oder hat eine unlesbare Antwort gesendet. Prüfen Sie die Adresse und ob die Instanz online ist.</string>
     <string name="error_reason_meerkat_sign_in_input_missing">Gib einen Meerkat-API-Token oder einen Benutzernamen und ein Passwort ein</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Kontakte auf diesem Meerkat-Konto: %1$d. Der Import unterstützt höchstens %2$d</string>
     <string name="error_reason_meerkat_version_untested">Diese Meerkat-Version ist mit dem Importer nicht getestet. Bestätige, um es trotzdem zu versuchen; es wird nichts geschrieben, bis du die Vorschau prüfst.</string>

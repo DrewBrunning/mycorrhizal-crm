@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -14,6 +15,7 @@ import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.DuplicateMatch
+import com.mycorrhizal.crm.model.network.ImportDiagnostic
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.ui.LocalServerVersion
@@ -70,6 +72,25 @@ class ImportReviewStepTest {
                 }
             }
         }
+    }
+
+    @Test
+    fun `a row with diagnostics shows each message and one without shows none`() {
+        val note = "The name was empty; the first email or phone number is used as the name"
+        show(
+            rows = listOf(
+                row(0, "").copy(
+                    diagnostics = listOf(
+                        ImportDiagnostic(severity = "info", concept = "name", message = note),
+                        ImportDiagnostic(severity = "warn", message = "A field was dropped")
+                    )
+                ),
+                row(1, "Plain")
+            )
+        )
+        composeTestRule.onNodeWithText(note).assertIsDisplayed()
+        composeTestRule.onNodeWithText("A field was dropped").assertIsDisplayed()
+        composeTestRule.onAllNodesWithTag("import-row-diagnostic").assertCountEquals(2)
     }
 
     @Test
