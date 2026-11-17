@@ -60,11 +60,8 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.formatInstant
 import com.mycorrhizal.crm.ui.isServerFeatureSupported
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Trash (issue #2002, ADR 0037; mirrors web's TrashPage): restore or permanently delete the
@@ -356,13 +353,13 @@ private fun TrashRow(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = stringResource(R.string.trash_deleted_on, formatTrashTime(item.deletedAt)),
+                text = stringResource(R.string.trash_deleted_on, formatInstant(item.deletedAt)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             item.purgeAt?.let { purgeAt ->
                 Text(
-                    text = stringResource(R.string.trash_purge_on, formatTrashTime(purgeAt)),
+                    text = stringResource(R.string.trash_purge_on, formatInstant(purgeAt)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -448,13 +445,13 @@ private fun TrashEntityRow(item: TrashedEntity, enabled: Boolean, onRestore: () 
                 )
             }
             Text(
-                text = stringResource(R.string.trash_deleted_on, formatTrashTime(item.deletedAt)),
+                text = stringResource(R.string.trash_deleted_on, formatInstant(item.deletedAt)),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             item.purgeAt?.let { purgeAt ->
                 Text(
-                    text = stringResource(R.string.trash_purge_on, formatTrashTime(purgeAt)),
+                    text = stringResource(R.string.trash_purge_on, formatInstant(purgeAt)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -469,13 +466,4 @@ private fun TrashEntityRow(item: TrashedEntity, enabled: Boolean, onRestore: () 
             }
         }
     }
-}
-
-private fun formatTrashTime(iso: String?): String {
-    if (iso.isNullOrBlank()) return ""
-    return runCatching {
-        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
-            .withZone(ZoneId.systemDefault())
-            .format(Instant.parse(iso))
-    }.getOrDefault(iso)
 }

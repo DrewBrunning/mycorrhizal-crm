@@ -2138,6 +2138,7 @@
     <string name="import_row_fix">Correggi questa riga</string>
     <string name="import_row_fix_edit">Modifica correzione</string>
     <string name="import_row_fix_saved">Correzione salvata: verrà ricontrollata all’importazione</string>
+    <string name="import_row_unfixable">Questo errore non si può correggere qui: salta la riga o modifica il contatto dopo l’importazione</string>
     <string name="import_row_fix_save">Salva correzione</string>
     <string name="import_report_title">Righe non importate</string>
     <string name="import_report_row">Riga %1$d · %2$s</string>
@@ -2722,6 +2723,7 @@
     </plurals>
     <string name="monica_import_unavailable">L\'importazione da Monica richiede un profilo server. Passa a un profilo server per usarla.</string>
     <string name="monica_import_error_failed">L\'importazione non è stata completata. Non è stato modificato nulla.</string>
+    <string name="monica_import_unreachable">Impossibile raggiungere Monica all’indirizzo %1$s</string>
     <string name="dashboard_backup_reminder_title">Fai il backup dei tuoi dati</string>
     <string name="dashboard_backup_reminder_body">I tuoi dati esistono solo su questo dispositivo. Salva un pacchetto account per poterli ripristinare se il dispositivo va perso o viene reimpostato.</string>
     <string name="dashboard_backup_reminder_action">Esegui backup</string>
@@ -3238,7 +3240,7 @@
     <string name="error_reason_monica_url_invalid">L’URL di Monica non è valido</string>
     <string name="error_reason_monica_url_private">L’URL di Monica punta a un indirizzo privato, che questo server blocca</string>
     <string name="error_reason_monica_not_monica_api">Il server non ha risposto come un’API di Monica: controlla l’URL</string>
-    <string name="error_reason_monica_unreachable">Errore del servizio Monica: impossibile raggiungere l’istanza di Monica</string>
+    <string name="error_reason_monica_unreachable">Impossibile raggiungere l’istanza di Monica</string>
     <string name="error_reason_monica_too_many_contacts">Questo account Monica ha %1$s contatti; l’importazione ne supporta al massimo %2$d</string>
     <string name="error_reason_monica_too_many_records">Questo account Monica ha %1$s record; l’importazione ne supporta al massimo %2$d</string>
     <string name="error_reason_monica_fetch_in_progress">Per questa sessione è già in corso un recupero</string>

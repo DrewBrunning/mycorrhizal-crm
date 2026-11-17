@@ -17,13 +17,17 @@ import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.TrashedContact
 import com.mycorrhizal.crm.model.network.TrashedEntity
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.util.TimeZone
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -77,6 +81,41 @@ class TrashScreenTest {
         composeTestRule.onNodeWithTag("trash-delete-1").performClick()
         assertEquals(2, restored)
         assertEquals(1, purged)
+    }
+
+    // Issue #2618: deleted-at / purge-at follow the user's date format and hour cycle, no seconds.
+    @Test
+    fun `deleted and purge times follow the date format preference and show no seconds`() {
+        val original = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        try {
+            composeTestRule.setContent {
+                CompositionLocalProvider(
+                    LocalDateFormat provides DateFormat.EU,
+                    LocalIs24Hour provides true
+                ) {
+                    MycorrhizalTheme {
+                        TrashList(
+                            items = listOf(
+                                ada.copy(
+                                    deletedAt = "2026-10-01T18:51:19Z",
+                                    purgeAt = "2026-10-31T18:51:19Z"
+                                )
+                            ),
+                            retentionDays = 30,
+                            enabled = true,
+                            onRestore = {},
+                            onPurge = {}
+                        )
+                    }
+                }
+            }
+
+            composeTestRule.onNodeWithText("Deleted 01.10.2026 18:51").assertIsDisplayed()
+            composeTestRule.onNodeWithText("Deletes forever 31.10.2026 18:51").assertIsDisplayed()
+        } finally {
+            TimeZone.setDefault(original)
+        }
     }
 
     @Test

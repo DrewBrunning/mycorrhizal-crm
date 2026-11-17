@@ -65,7 +65,7 @@ fun ImportReviewStep(
             (rowActions[row.rowIndex] ?: row.suggestedAction) == row.suggestedAction
     }
     val decisions = rows.count { it.validationErrors.isEmpty() || it.rowIndex in rowEdits }
-    val visibleRows = rows.filter { it.matches(filter) }
+    val visibleRows = rows.filter { it.matches(filter, rowEdits) }
     // Issue #2551: a server older than v1.7.0 ignores `row_edits` and imports the original
     // invalid row when its action is "add". Offer no fix form there, so errored rows stay
     // forced to skip.
@@ -91,6 +91,7 @@ fun ImportReviewStep(
         }
         FilterChips(
             rows = rows,
+            rowEdits = rowEdits,
             selected = filter,
             onSelect = { picked -> filter = if (filter == picked) null else picked }
         )
@@ -118,6 +119,7 @@ fun ImportReviewStep(
 @Composable
 private fun FilterChips(
     rows: List<ImportRowPreview>,
+    rowEdits: Map<Int, ImportRowEdit>,
     selected: ImportReviewFilter?,
     onSelect: (ImportReviewFilter) -> Unit
 ) {
@@ -138,7 +140,9 @@ private fun FilterChips(
             FilterChip(
                 selected = selected == filter,
                 onClick = { onSelect(filter) },
-                label = { Text(stringResource(label, rows.count { it.matches(filter) })) },
+                label = {
+                    Text(stringResource(label, rows.count { it.matches(filter, rowEdits) }))
+                },
                 modifier = Modifier.testTag(tag)
             )
         }
@@ -156,15 +160,19 @@ private fun ImportRowCard(
     val hasErrors = row.validationErrors.isNotEmpty()
     // Issue #2186: a saved fix re-enables the decision chips for an errored row.
     val fixed = hasErrors && edit != null
+    // Issue #2610: no form for an error it cannot fix (birthday, unparseable card).
+    val unfixable = hasErrors && !fixed && row.hasUnfixableError()
     // Local copies so the `when` branches can smart-cast (public API property
     // from another module cannot be smart-cast directly).
     val duplicateMatch = row.duplicateMatch
     val batchDuplicateOf = row.batchDuplicateOf
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(row.displayName(), style = MaterialTheme.typography.bodyLarge)
+        // Issue #2611: once a fix is saved the card shows the edited values.
+        val shown = if (fixed) row.withEdit(edit) else row
+        Text(shown.displayName(), style = MaterialTheme.typography.bodyLarge)
         val sub = listOfNotNull(
-            row.parsedContact["email"] as? String,
-            row.parsedContact["phone"] as? String
+            shown.parsedContact["email"] as? String,
+            shown.parsedContact["phone"] as? String
         )
             .filter { it.isNotBlank() }
             .joinToString(" · ")
@@ -176,6 +184,10 @@ private fun ImportRowCard(
             )
         }
         when {
+            // Issue #2611: the stale error is hidden once fixed; "Fix saved" below says it is
+            // checked again on import.
+            fixed -> Unit
+
             hasErrors -> row.validationErrors.forEach { error ->
                 Text(
                     text = error,
@@ -217,7 +229,13 @@ private fun ImportRowCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        if (hasErrors && onEditSave != null) {
+        if (unfixable) {
+            Text(
+                text = stringResource(R.string.import_row_unfixable),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else if (hasErrors && onEditSave != null) {
             RowFixSection(row = row, edit = edit, onSave = onEditSave)
         }
         row.mergeDiff?.let { MergeDiffSummary(it) }

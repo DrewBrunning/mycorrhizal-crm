@@ -12,12 +12,18 @@ import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRun
 import com.mycorrhizal.crm.model.network.ImportRunDetail
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
+import java.util.TimeZone
+import org.junit.After
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -40,9 +46,26 @@ class ImportHistoryScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private fun setScreen(apiClient: ApiClient, serverVersion: AppVersion? = null) {
+    private val originalZone = TimeZone.getDefault()
+
+    @Before
+    fun pinZone() = TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+
+    @After
+    fun restoreZone() = TimeZone.setDefault(originalZone)
+
+    private fun setScreen(
+        apiClient: ApiClient,
+        serverVersion: AppVersion? = null,
+        dateFormat: String = DateFormat.EU,
+        is24Hour: Boolean = true
+    ) {
         composeTestRule.setContent {
-            CompositionLocalProvider(LocalServerVersion provides serverVersion) {
+            CompositionLocalProvider(
+                LocalServerVersion provides serverVersion,
+                LocalDateFormat provides dateFormat,
+                LocalIs24Hour provides is24Hour
+            ) {
                 MycorrhizalTheme {
                     ImportHistoryScreen(onBack = {}, viewModel = ImportHistoryViewModel(apiClient))
                 }
@@ -71,6 +94,31 @@ class ImportHistoryScreenTest {
 
         composeTestRule.onNodeWithTag("import-history-row-1").assertIsDisplayed()
         composeTestRule.onNodeWithText("CSV").assertIsDisplayed()
+    }
+
+    // Issue #2618: the run time follows the user's date format and hour cycle, with no seconds.
+    @Test
+    fun `a run's time follows the date format preference and shows no seconds`() {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getImportHistory() } returns Result.success(
+            listOf(ImportRun(id = 1, format = "csv", createdAt = "2026-09-20T13:05:42Z"))
+        )
+
+        setScreen(apiClient, dateFormat = DateFormat.EU, is24Hour = true)
+
+        composeTestRule.onNodeWithText("20.09.2026 13:05").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a run's time honours the iso date format and the 12-hour clock`() {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getImportHistory() } returns Result.success(
+            listOf(ImportRun(id = 1, format = "csv", createdAt = "2026-09-20T13:05:42Z"))
+        )
+
+        setScreen(apiClient, dateFormat = DateFormat.ISO, is24Hour = false)
+
+        composeTestRule.onNodeWithText("2026-09-20 1:05", substring = true).assertIsDisplayed()
     }
 
     @Test
@@ -165,6 +213,31 @@ class ImportHistoryScreenTest {
         composeTestRule.onNodeWithText("Row 5 · Erin").assertIsDisplayed()
         composeTestRule.onNodeWithText("Skipped: Invalid email").assertIsDisplayed()
         composeTestRule.onNodeWithText("Share as CSV").assertIsDisplayed()
+    }
+
+    // Issue #2621: viewing a past report is not confirming anything; the button closes it.
+    @Test
+    fun `the history report's button says Close and returns to the list`() {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getImportHistory() } returns Result.success(
+            listOf(ImportRun(id = 1, format = "csv", skipped = 1, issueCount = 1))
+        )
+        coEvery { apiClient.getImportRun(1) } returns Result.success(
+            ImportRunDetail(
+                id = 1,
+                format = "csv",
+                skipped = 1,
+                issueCount = 1,
+                issues = listOf(ImportRowIssue(row = 5, name = "Erin", status = "skipped"))
+            )
+        )
+        setScreen(apiClient)
+        composeTestRule.onNodeWithText("View report").performClick()
+
+        composeTestRule.onAllNodesWithText("Confirm").assertCountEquals(0)
+        composeTestRule.onNodeWithText("Close").performClick()
+
+        composeTestRule.onNodeWithTag("import-history-list").assertIsDisplayed()
     }
 
     @Test

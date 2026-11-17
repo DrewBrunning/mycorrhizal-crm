@@ -2138,6 +2138,7 @@
     <string name="import_row_fix">Corregir esta fila</string>
     <string name="import_row_fix_edit">Editar corrección</string>
     <string name="import_row_fix_saved">Corrección guardada: se volverá a comprobar al importar</string>
+    <string name="import_row_unfixable">Este error no se puede corregir aquí: omite la fila o edita el contacto después de importar</string>
     <string name="import_row_fix_save">Guardar corrección</string>
     <string name="import_report_title">Filas no importadas</string>
     <string name="import_report_row">Fila %1$d · %2$s</string>
@@ -2722,6 +2723,7 @@
     </plurals>
     <string name="monica_import_unavailable">Importar desde Monica requiere un perfil de servidor. Cambia a un perfil de servidor para usarlo.</string>
     <string name="monica_import_error_failed">La importación no se completó. No se cambió nada.</string>
+    <string name="monica_import_unreachable">No se pudo acceder a Monica en %1$s</string>
     <string name="dashboard_backup_reminder_title">Haz una copia de tus datos</string>
     <string name="dashboard_backup_reminder_body">Tus datos solo existen en este dispositivo. Guarda un paquete de cuenta para poder restaurarlos si el dispositivo se pierde o se restablece.</string>
     <string name="dashboard_backup_reminder_action">Copiar ahora</string>
@@ -3238,7 +3240,7 @@
     <string name="error_reason_monica_url_invalid">La URL de Monica no es válida</string>
     <string name="error_reason_monica_url_private">La URL de Monica apunta a una dirección privada, que este servidor bloquea</string>
     <string name="error_reason_monica_not_monica_api">El servidor no respondió como una API de Monica: revisa la URL</string>
-    <string name="error_reason_monica_unreachable">Error del servicio Monica: no se pudo acceder a la instancia de Monica</string>
+    <string name="error_reason_monica_unreachable">No se pudo acceder a la instancia de Monica</string>
     <string name="error_reason_monica_too_many_contacts">Esta cuenta de Monica tiene %1$s contactos; la importación admite como máximo %2$d</string>
     <string name="error_reason_monica_too_many_records">Esta cuenta de Monica tiene %1$s registros; la importación admite como máximo %2$d</string>
     <string name="error_reason_monica_fetch_in_progress">Ya hay una descarga en curso para esta sesión</string>

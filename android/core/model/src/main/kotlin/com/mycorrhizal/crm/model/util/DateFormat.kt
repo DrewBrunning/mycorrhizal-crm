@@ -162,6 +162,28 @@ object DateFormat {
     }
 
     /**
+     * A real instant as "date time" in the user's preferences: the zone-local date in
+     * [format] (as [formatTimestamp] renders an instant) and the time without seconds in
+     * the user's hour cycle ([is24Hour], as [formatTime]). Unlike [formatTimestamp] an exact
+     * UTC midnight is still an instant here (a deleted-at / created-at stamp, not a picked
+     * day). "" when [iso] is absent or unparseable; callers pick their own fallback.
+     */
+    fun formatDateTime(
+        iso: String?,
+        format: String,
+        is24Hour: Boolean,
+        zone: ZoneId = ZoneId.systemDefault(),
+        locale: Locale = Locale.getDefault()
+    ): String {
+        if (iso.isNullOrBlank()) return ""
+        return runCatching {
+            val local = Instant.parse(iso).atZone(zone)
+            val date = formatFull(local.year, local.monthValue, local.dayOfMonth, format, locale)
+            "$date ${formatTime(iso, is24Hour, zone, locale)}"
+        }.getOrDefault("")
+    }
+
+    /**
      * The time of day of a real instant in [zone], without seconds. The hour
      * cycle follows the *user's* preference ([is24Hour], see
      * [TimeFormatPreference]), not the locale default: 24-hour is `HH:mm`,

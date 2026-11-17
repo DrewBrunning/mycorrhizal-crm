@@ -45,6 +45,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Dates follow your format on Android** ([#2618](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2618)): Trash, import history and circle timelines now use your date and time format, without seconds.
 - **Merging contacts on Android** ([#2604](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2604), [#2605](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2605)): merging two contacts that have no addresses, links or circles no longer fails with "Unexpected server response", and the bulk action bar on the contact list now sits above the system navigation buttons.
 - **SSO login on the web** ([#2636](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2636)): signing in with your identity provider no longer reloads the login page, and the return to the app completes, when the app and API share one address.
 - **Correct file-size limit in the import message** ([#2595](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2595)): when a contact file is too large to import, the message now states the real limit, 20 MB for CSV and 50 MB for vCard files, instead of always saying 5 MB. It is shown in all five languages.

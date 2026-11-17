@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleColors
 import com.mycorrhizal.crm.model.network.CircleTimelineItem
+import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -187,6 +188,7 @@ internal fun LazyListScope.circleTimelineSection(
 @Composable
 private fun CircleTimelineRow(entry: CircleTimelineItem, onNavigateToContact: (Int) -> Unit) {
     val locale = LocalConfiguration.current.locales[0]
+    val dateFormat = LocalDateFormat.current
     val endDate = if (entry.type == "activity") entry.data?.get("end_date") as? String else null
     val typeLabel = timelineTypeRes(entry.type)?.let { stringResource(it) } ?: entry.type
     Column(
@@ -212,7 +214,7 @@ private fun CircleTimelineRow(entry: CircleTimelineItem, onNavigateToContact: (I
             }
         }
         Text(
-            text = "$typeLabel · ${formatTimelineDate(entry.date, endDate, locale)}",
+            text = "$typeLabel · ${formatTimelineDate(entry.date, endDate, dateFormat, locale)}",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

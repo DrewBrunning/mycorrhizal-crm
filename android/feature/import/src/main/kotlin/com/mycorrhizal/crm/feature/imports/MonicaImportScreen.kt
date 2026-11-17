@@ -35,6 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -237,7 +240,15 @@ private fun ConnectStep(
             onValueChange = onBaseUrlChange,
             label = { Text(stringResource(R.string.monica_import_url_label)) },
             placeholder = { Text("https://app.monicahq.com") },
-            supportingText = { Text(stringResource(R.string.monica_import_url_help)) },
+            supportingText = {
+                val unreachable = uiState.unreachable
+                if (unreachable == null) {
+                    Text(stringResource(R.string.monica_import_url_help))
+                } else {
+                    UnreachableNotice(unreachable)
+                }
+            },
+            isError = uiState.unreachable != null,
             singleLine = true,
             enabled = !locked,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
@@ -289,6 +300,26 @@ private fun ConnectStep(
             }
         } else {
             ConnectedSummary(connected, enabled = uiState.canStart, onStart = onStart)
+        }
+    }
+}
+
+/**
+ * Issue #2620: why Connect failed when Monica could not be reached: a localized sentence naming
+ * the host, with the server's request reference (what support needs) as a quieter second line.
+ */
+@Composable
+private fun UnreachableNotice(unreachable: MonicaUnreachable) {
+    Column(
+        modifier = Modifier.testTag("monica-import-unreachable")
+            .semantics(mergeDescendants = true) { liveRegion = LiveRegionMode.Assertive }
+    ) {
+        Text(stringResource(R.string.monica_import_unreachable, unreachable.host))
+        unreachable.requestId?.let { ref ->
+            Text(
+                text = stringResource(R.string.error_request_ref, ref),
+                style = MaterialTheme.typography.labelSmall
+            )
         }
     }
 }

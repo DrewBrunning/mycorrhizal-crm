@@ -2,9 +2,8 @@ package com.mycorrhizal.crm.feature.circles
 
 import androidx.compose.ui.graphics.Color
 import com.mycorrhizal.crm.model.network.CircleTimelineItem
+import com.mycorrhizal.crm.model.util.DateFormat
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.util.Locale
 
 private val SUMMARY_KEYS = listOf("content", "title", "message", "name", "description", "type")
@@ -25,22 +24,24 @@ private fun calendarDay(iso: String): LocalDate? =
 private const val ISO_DATE_LENGTH = 10
 
 /**
- * Medium localized calendar date of [iso] (its first 10 characters, so an offset never shifts the
- * day — web's `calendarDateOnly`). A later [endIso] day renders "start – end" (activities).
- * An unparseable [iso] falls back to the raw string.
+ * Calendar date of [iso] (its first 10 characters, so an offset never shifts the day — web's
+ * `calendarDateOnly`) in the user's date-format preference [dateFormat] (issue #2618). A later
+ * [endIso] day renders "start – end" (activities). An unparseable [iso] falls back to the raw
+ * string.
  */
 internal fun formatTimelineDate(
     iso: String,
     endIso: String?,
+    dateFormat: String,
     locale: Locale = Locale.getDefault()
 ): String {
     val start = calendarDay(iso) ?: return iso
-    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
+    fun LocalDate.show() = DateFormat.formatFull(year, monthValue, dayOfMonth, dateFormat, locale)
     val end = endIso?.let(::calendarDay)
     return if (end != null && end.isAfter(start)) {
-        "${start.format(formatter)} – ${end.format(formatter)}"
+        "${start.show()} – ${end.show()}"
     } else {
-        start.format(formatter)
+        start.show()
     }
 }
 

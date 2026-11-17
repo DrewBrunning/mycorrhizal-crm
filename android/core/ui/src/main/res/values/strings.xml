@@ -2088,6 +2088,7 @@
     <string name="import_row_fix">Fix this row</string>
     <string name="import_row_fix_edit">Edit fix</string>
     <string name="import_row_fix_saved">Fix saved — checked again on import</string>
+    <string name="import_row_unfixable">This error can\'t be fixed here — skip the row or edit the contact after import</string>
     <string name="import_row_fix_save">Save fix</string>
     <string name="import_report_title">Rows not imported</string>
     <string name="import_report_row">Row %1$d · %2$s</string>
@@ -2644,6 +2645,7 @@
     </plurals>
     <string name="monica_import_unavailable">Importing from Monica needs a server profile. Switch to a server profile to use it.</string>
     <string name="monica_import_error_failed">The import did not complete. Nothing was changed.</string>
+    <string name="monica_import_unreachable">Couldn\'t reach Monica at %1$s</string>
     <string name="dashboard_backup_reminder_title">Back up your data</string>
     <string name="dashboard_backup_reminder_body">Your data lives only on this device. Save an account bundle so you can restore it if this device is lost or reset.</string>
     <string name="dashboard_backup_reminder_action">Back up now</string>
@@ -3150,7 +3152,7 @@
     <string name="error_reason_monica_url_invalid">The Monica URL is invalid</string>
     <string name="error_reason_monica_url_private">The Monica URL resolves to a private address, which this server blocks</string>
     <string name="error_reason_monica_not_monica_api">The server did not respond like a Monica API — check the URL</string>
-    <string name="error_reason_monica_unreachable">monica service error: The Monica instance could not be reached</string>
+    <string name="error_reason_monica_unreachable">The Monica instance could not be reached</string>
     <string name="error_reason_monica_too_many_contacts">This Monica account has %1$s contacts; the import supports at most %2$d</string>
     <string name="error_reason_monica_too_many_records">This Monica account has %1$s records; the import supports at most %2$d</string>
     <string name="error_reason_monica_fetch_in_progress">A fetch is already running for this session</string>

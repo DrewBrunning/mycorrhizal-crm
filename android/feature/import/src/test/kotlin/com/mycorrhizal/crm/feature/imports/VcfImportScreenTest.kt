@@ -233,7 +233,7 @@ class VcfImportScreenTest {
             ),
             onDone = { done = true }
         )
-        composeTestRule.onNodeWithText("Confirm").performClick()
+        composeTestRule.onNodeWithText("Done").performClick()
         assertEquals(true, done)
     }
 

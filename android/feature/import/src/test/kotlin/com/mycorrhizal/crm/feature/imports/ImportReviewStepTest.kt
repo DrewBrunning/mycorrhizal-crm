@@ -201,4 +201,67 @@ class ImportReviewStepTest {
         show(rows = listOf(errRow), onRowEditSave = {}, serverVersion = null)
         composeTestRule.onNodeWithText("Fix this row").assertIsDisplayed()
     }
+
+    // Issue #2610: an error the form cannot fix must not leave a dead end.
+    @Test
+    fun `a birthday error offers no fix form and says what to do instead`() {
+        val birthday = row(
+            3,
+            "Cleo",
+            listOf("Invalid birthday format (expected YYYY-MM-DD or --MM-DD)")
+        )
+        show(rows = listOf(birthday), onRowEditSave = {})
+
+        composeTestRule.onAllNodesWithText("Fix this row").assertCountEquals(0)
+        composeTestRule.onNodeWithText(
+            "This error can't be fixed here — skip the row or edit the contact after import"
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Keep").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a fixable error does not show the can't-fix hint`() {
+        show(rows = listOf(errRow), onRowEditSave = {})
+        composeTestRule.onAllNodesWithText("This error can't be fixed here", substring = true)
+            .assertCountEquals(0)
+    }
+
+    // Issue #2611: after a saved fix the row shows the edited values, not the stale error.
+    @Test
+    fun `a fixed row shows the edited values and the saved-fix note instead of its stale error`() {
+        val bad = ImportRowPreview(
+            rowIndex = 5,
+            parsedContact = mapOf("firstname" to "Beta", "email" to "not-an-email"),
+            validationErrors = listOf("Invalid email format")
+        )
+        show(
+            rows = listOf(bad),
+            rowEdits = mapOf(5 to ImportRowEdit(rowIndex = 5, email = "beta@example.com")),
+            onRowEditSave = {}
+        )
+
+        composeTestRule.onNodeWithText("beta@example.com").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("not-an-email").assertCountEquals(0)
+        composeTestRule.onAllNodesWithText("Invalid email format").assertCountEquals(0)
+        composeTestRule.onNodeWithText("Fix saved — checked again on import").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an unfixed row keeps showing its error and no saved-fix note`() {
+        show(rows = listOf(errRow), onRowEditSave = {})
+        composeTestRule.onNodeWithText("Invalid email").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Fix saved — checked again on import")
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun `the Errors chip count excludes rows with a saved fix`() {
+        show(
+            rows = listOf(newRow, dupRow, errRow),
+            rowEdits = mapOf(2 to ImportRowEdit(rowIndex = 2, email = "e@example.com")),
+            onRowEditSave = {}
+        )
+        composeTestRule.onNodeWithText("Errors (0)").assertIsDisplayed()
+        composeTestRule.onNodeWithText("New (2)").assertIsDisplayed()
+    }
 }
