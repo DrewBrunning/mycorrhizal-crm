@@ -1,12 +1,16 @@
 package com.mycorrhizal.crm.feature.occasions
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -151,7 +155,7 @@ class OccasionsScreenTest {
     @Test
     fun `the edit action opens a prefilled dialog`() {
         render(listOf(event()))
-        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        composeTestRule.onNodeWithContentDescription("Edit Summer BBQ").performClick()
         composeTestRule.onNodeWithText("Edit event").assertIsDisplayed()
         // The row and the prefilled title field both carry the title.
         composeTestRule.onAllNodesWithText("Summer BBQ").assertCountEquals(2)
@@ -167,9 +171,22 @@ class OccasionsScreenTest {
     }
 
     @Test
+    fun `each event row names its event in the edit and delete actions`() {
+        render(listOf(event("e1", "Summer BBQ"), event("e2", "Winter party")))
+        listOf("Summer BBQ", "Winter party").forEach { title ->
+            composeTestRule.onNodeWithContentDescription("Edit $title")
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+            composeTestRule.onNodeWithContentDescription("Delete $title")
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        }
+        composeTestRule.onAllNodesWithContentDescription("Edit").assertCountEquals(0)
+        composeTestRule.onAllNodesWithContentDescription("Delete").assertCountEquals(0)
+    }
+
+    @Test
     fun `the delete action opens a confirmation`() {
         render(listOf(event()))
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Summer BBQ").performClick()
         composeTestRule.onNodeWithText("Delete event").assertIsDisplayed()
         composeTestRule.onNodeWithText(
             "Delete “Summer BBQ”? This cannot be undone."

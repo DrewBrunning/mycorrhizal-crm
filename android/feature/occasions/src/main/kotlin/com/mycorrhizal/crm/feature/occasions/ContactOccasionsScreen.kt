@@ -61,6 +61,7 @@ import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.model.network.OccasionObligationKinds
 import com.mycorrhizal.crm.model.registry.OccasionSensitivity
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -199,7 +200,7 @@ fun ContactOccasionsScreen(
                                 obligation,
                                 modifier = Modifier.weight(1f)
                             )
-                            IconButton(
+                            AccessibleIconButton(
                                 onClick = {
                                     editingId = obligation.id
                                     showForm = true
@@ -207,10 +208,13 @@ fun ContactOccasionsScreen(
                             ) {
                                 Icon(
                                     Icons.Outlined.Edit,
-                                    contentDescription = stringResource(R.string.action_edit)
+                                    contentDescription = stringResource(
+                                        R.string.entities_edit_named,
+                                        obligation.label
+                                    )
                                 )
                             }
-                            IconButton(
+                            AccessibleIconButton(
                                 onClick = { pendingDelete = obligation },
                                 enabled = state.deletingId != obligation.id
                             ) {

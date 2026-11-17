@@ -391,6 +391,7 @@
     <string name="contact_remove_named">Supprimer %1$s %2$d</string>
     <string name="contact_field_row_named">%1$s %2$d</string>
     <string name="contact_remove">Supprimer</string>
+    <string name="contact_chip_remove_named">Supprimer %1$s</string>
     <string name="contact_add">Ajouter</string>
     <!-- M7 : éditeur à valeurs multiples -->
     <string name="contact_field_type">Type</string>
@@ -1732,6 +1733,7 @@
     <string name="entities_error_no_vcard_uid">Le contact n\'a pas d\'UID VCard</string>
     <string name="entities_delete_title">Supprimer l\'élément ?</string>
     <string name="entities_delete_named">Supprimer %1$s</string>
+    <string name="entities_edit_named">Modifier %1$s</string>
     <string name="entities_delete_confirm">Supprimer « %1$s » ? Cette action est irréversible.</string>
     <string name="life_events_title">Événements de vie</string>
     <string name="life_events_new">Nouvel événement</string>
@@ -2476,6 +2478,7 @@
     <string name="occasions_no_attendees">Personne n\'est encore invité</string>
     <string name="occasions_add_attendee">Ajouter un invité</string>
     <string name="occasions_remove_attendee">Retirer l\'invité</string>
+    <string name="occasions_remove_attendee_named">Retirer l\'invité %1$s</string>
     <string name="occasions_remove_confirm">Retirer %1$s de cet événement ?</string>
     <string name="occasions_rsvp_pending">En attente</string>
     <string name="occasions_rsvp_accepted">Accepté</string>
@@ -3526,6 +3529,8 @@
     <string name="contact_field_visibility_hide_empty_off">Afficher les champs vides</string>
     <string name="contact_field_visibility_reset">Rétablir les valeurs par défaut</string>
     <string name="contact_field_not_set">Non défini</string>
+    <string name="contact_gender_not_set">Genre : Non défini</string>
+    <string name="contact_birthday_not_set">Anniversaire : Non défini</string>
     <string name="settings_contact_fields_hide_empty_label">Masquer les champs vides</string>
     <string name="settings_contact_fields_hide_empty_description">Sur la page d’un contact, les champs sans valeur ne sont pas affichés. Vous pouvez toujours en ajouter un depuis le menu Ajouter un champ, et chaque contact peut remplacer ce réglage.</string>
     <string name="note_images_add">Ajouter des photos</string>

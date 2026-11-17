@@ -63,6 +63,7 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
@@ -298,13 +299,19 @@ private fun OccasionEventRow(
                 Icon(Icons.Outlined.Group, contentDescription = null)
                 Text(stringResource(R.string.occasions_attendees))
             }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit))
+            AccessibleIconButton(onClick = onEdit) {
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.entities_edit_named, event.title)
+                )
             }
-            IconButton(onClick = onDelete) {
+            AccessibleIconButton(onClick = onDelete) {
                 Icon(
                     Icons.Outlined.Delete,
-                    contentDescription = stringResource(R.string.action_delete)
+                    contentDescription = stringResource(
+                        R.string.entities_delete_named,
+                        event.title
+                    )
                 )
             }
         }

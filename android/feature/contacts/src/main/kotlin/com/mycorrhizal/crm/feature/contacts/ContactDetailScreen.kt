@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -84,7 +85,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -120,6 +120,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -1614,7 +1615,7 @@ fun ContactDetailContent(
                                 birthday.display(dateFormat ?: DateFormat.EU)
                             )
                         } else {
-                            stringResource(R.string.contact_field_not_set)
+                            stringResource(R.string.contact_birthday_not_set)
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1637,7 +1638,7 @@ fun ContactDetailContent(
                 if (ContactFieldKey.GENDER in enabledFields) {
                     Text(
                         text = gender?.takeIf { it.isNotBlank() }
-                            ?: stringResource(R.string.contact_field_not_set),
+                            ?: stringResource(R.string.contact_gender_not_set),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -3046,7 +3047,7 @@ private fun MobileLinkActions(linkType: MobileLinkType, handle: String) {
  */
 @Composable
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-private fun <T> ChipEditorRow(
+internal fun <T> ChipEditorRow(
     items: List<T>,
     allItems: List<T>,
     label: (T) -> String,
@@ -3070,17 +3071,24 @@ private fun <T> ChipEditorRow(
             modifier = Modifier.fillMaxWidth()
         ) {
             items.forEach { item ->
-                InputChip(
-                    selected = true,
+                // #2624: an applied chip is a "remove" button, not a checked toggle — an
+                // InputChip(selected = true) is announced as a checked checkbox. A plain chip is
+                // a Role.Button; the description names what activating it does, and the 48dp
+                // minimum height makes the whole chip (close glyph included) the touch target.
+                val removeLabel = stringResource(R.string.contact_chip_remove_named, label(item))
+                AssistChip(
                     onClick = { onRemove(item) },
                     label = { Text(label(item)) },
                     trailingIcon = {
                         Icon(
                             Icons.Outlined.Close,
-                            contentDescription = stringResource(R.string.contact_remove),
+                            contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
-                    }
+                    },
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics { contentDescription = removeLabel }
                 )
             }
         }
@@ -3090,6 +3098,7 @@ private fun <T> ChipEditorRow(
             Box(modifier = Modifier.padding(top = 4.dp)) {
                 AssistChip(
                     onClick = { menuExpanded = true },
+                    modifier = Modifier.heightIn(min = 48.dp),
                     label = { Text(addLabel) },
                     leadingIcon = {
                         Icon(
@@ -3097,8 +3106,7 @@ private fun <T> ChipEditorRow(
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
-                    },
-                    modifier = Modifier.height(32.dp)
+                    }
                 )
                 DropdownMenu(
                     expanded = menuExpanded,
@@ -3431,9 +3439,10 @@ private fun ContactFieldToolbar(
 
 /** A muted placeholder for an enabled field with no value (hide-empty off). */
 @Composable
-private fun EmptyFieldRow(onAdd: () -> Unit) {
+internal fun EmptyFieldRow(onAdd: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        // #2625: the same 16dp inset as a filled InfoRow, so "Not set" lines up with values.
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(

@@ -73,7 +73,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -1273,8 +1275,11 @@ private fun UpcomingOccasionRow(occasion: UpcomingOccasion, onClick: () -> Unit)
         occasion.source != UpcomingOccasionSources.ANNIVERSARY
     // Issue #2617: count from the device's day, so the label agrees with the date shown elsewhere.
     val daysUntil = occasion.daysUntilOn(currentToday)
+    // #2623 addendum: the whole card is one tap target, announced as a button (Card(onClick)
+    // alone carries a click action but no role, and a bare Modifier.clickable neither).
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().semantics { role = Role.Button },
         border = if (daysUntil == 0) {
             BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
         } else {

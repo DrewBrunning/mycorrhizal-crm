@@ -1,19 +1,24 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertAny
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -28,6 +33,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Anniversary
@@ -2993,5 +2999,86 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Export vCard 3.0").performClick()
 
         verify { viewModel.exportVcf(version = 3) }
+    }
+
+    // --- #2624: circle/tag chips are buttons, not checked toggles ---
+
+    @Test
+    fun `an applied circle chip is a named 48dp remove button, not a checked toggle`() {
+        var removed: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ChipEditorRow(
+                    items = listOf("Family"),
+                    allItems = listOf("Family", "Work"),
+                    label = { it },
+                    isApplied = { it == "Family" },
+                    onAdd = {},
+                    onRemove = { removed = it },
+                    emptyText = "No circles yet",
+                    addLabel = "Add circle"
+                )
+            }
+        }
+
+        val chip = composeTestRule.onNodeWithContentDescription("Remove Family")
+        chip.assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        val config = chip.fetchSemanticsNode().config
+        assertEquals(Role.Button, config[SemanticsProperties.Role])
+        assertFalse(SemanticsProperties.ToggleableState in config)
+        assertFalse(SemanticsProperties.Selected in config)
+        composeTestRule.onAllNodes(isToggleable()).assertCountEquals(0)
+        composeTestRule.onAllNodes(isSelectable()).assertCountEquals(0)
+
+        chip.performClick()
+        assertEquals("Family", removed)
+    }
+
+    @Test
+    fun `the add chip of the circle editor is at least 48dp tall`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ChipEditorRow(
+                    items = emptyList<String>(),
+                    allItems = listOf("Family"),
+                    label = { it },
+                    isApplied = { false },
+                    onAdd = {},
+                    onRemove = {},
+                    emptyText = "No circles yet",
+                    addLabel = "Add circle"
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Add circle").assertHeightIsAtLeast(48.dp)
+    }
+
+    // --- #2625: labelled placeholders and padded empty rows ---
+
+    @Test
+    fun `an empty gender and birthday are labelled, not a bare Not set`() {
+        setContent(
+            ContactDetailUiState(
+                contact = ContactRecordResponse(
+                    id = 5,
+                    card = Card(name = Name(full = "Dana White"))
+                )
+            ),
+            hideEmpty = false
+        )
+
+        composeTestRule.onNodeWithText("Gender: Not set").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday: Not set").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty field row is inset by the same 16dp as a filled row`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme { Box { EmptyFieldRow(onAdd = {}) } }
+        }
+
+        val left = composeTestRule.onNodeWithText("Not set").getUnclippedBoundsInRoot().left
+        assertEquals(16f, left.value, 0.5f)
     }
 }

@@ -50,6 +50,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
 import com.mycorrhizal.crm.model.registry.OccasionRsvp
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
@@ -318,10 +319,13 @@ private fun AttendeeRow(
                 }
             }
         }
-        IconButton(enabled = enabled, onClick = onRemove) {
+        AccessibleIconButton(enabled = enabled, onClick = onRemove) {
             Icon(
                 Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.occasions_remove_attendee)
+                contentDescription = stringResource(
+                    R.string.occasions_remove_attendee_named,
+                    attendee.contactName
+                )
             )
         }
     }
