@@ -558,3 +558,24 @@ func TestMeerkatFetchFailure_MapsEveryCause(t *testing.T) {
 		assert.Equal(t, tc.params, params, tc.err.Error())
 	}
 }
+
+// Issue #2727: a later plain fail() clears a stale reason code, and a coded
+// failure echoes its params through Status.
+func TestMeerkatSession_FailClearsReasonAndCodedFailureEchoesParams(t *testing.T) {
+	mgr := NewMeerkatImportManager()
+	s := &meerkatImportSession{userID: 7, phase: models.SourceImportPhaseMapping, expiresAt: time.Now().Add(time.Hour), hardExpiry: time.Now().Add(time.Hour)}
+	mgr.sessions = map[string]*meerkatImportSession{"s": s}
+
+	s.failCoded("bad", apperrors.ReasonCode("meerkat_api_error"), map[string]any{"reason": "r"})
+	st, appErr := mgr.Status(7, "s")
+	require.Nil(t, appErr)
+	assert.Equal(t, "meerkat_api_error", st.ErrorReasonCode)
+	assert.Equal(t, map[string]any{"reason": "r"}, st.ErrorReasonParams)
+
+	s.fail("plain")
+	st, appErr = mgr.Status(7, "s")
+	require.Nil(t, appErr)
+	assert.Equal(t, "plain", st.Error)
+	assert.Empty(t, st.ErrorReasonCode)
+	assert.Nil(t, st.ErrorReasonParams)
+}
