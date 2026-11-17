@@ -1,8 +1,11 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import android.view.View
+import android.view.ViewGroup
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsDisplayed
@@ -19,12 +22,16 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
@@ -65,6 +72,8 @@ class ContactListScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private var hostView: View? = null
+
     private fun setContent(
         uiState: ContactListUiState,
         onContactClick: (Int) -> Unit = {},
@@ -85,6 +94,7 @@ class ContactListScreenTest {
         darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
+            hostView = LocalView.current
             MycorrhizalTheme(darkTheme = darkTheme) {
                 ContactListScreenContent(
                     uiState = uiState,
@@ -815,6 +825,50 @@ class ContactListScreenTest {
         assertEquals("archive", ran?.first)
         assertEquals(null, ran?.second)
         assertEquals(null, ran?.third)
+    }
+
+    // --- Issue #2605: bulk bar must clear the system navigation bar ----------
+
+    private fun dispatchNavigationBarInsets(bottomPx: Int) {
+        val insets = WindowInsetsCompat.Builder()
+            .setInsets(WindowInsetsCompat.Type.navigationBars(), Insets.of(0, 0, 0, bottomPx))
+            .setVisible(WindowInsetsCompat.Type.navigationBars(), true)
+            .build()
+        fun dispatch(view: View) {
+            ViewCompat.dispatchApplyWindowInsets(view, insets)
+            if (view is ViewGroup) {
+                for (i in 0 until view.childCount) dispatch(view.getChildAt(i))
+            }
+        }
+        composeTestRule.runOnUiThread { dispatch(hostView!!.rootView) }
+        composeTestRule.waitForIdle()
+    }
+
+    @Test
+    fun `bulk action bar sits above the navigation bar inset`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")
+                ),
+                selected = setOf(1)
+            )
+        )
+        composeTestRule.onNodeWithTag("enter-select-mode").performClick()
+        val navBarPx = 144
+        dispatchNavigationBarInsets(navBarPx)
+
+        val density = composeTestRule.density
+        val navBarDp = with(density) { navBarPx.toDp() }
+        val rootHeight = composeTestRule.onRoot().getUnclippedBoundsInRoot().bottom
+        val archiveBottom = composeTestRule.onNodeWithTag("bulk-archive")
+            .getUnclippedBoundsInRoot().bottom
+
+        assertTrue(
+            "bulk action bottom $archiveBottom must clear the nav bar (root $rootHeight - $navBarDp)",
+            archiveBottom <= rootHeight - navBarDp
+        )
     }
 
     // --- Issue #2212: merge several selected contacts ------------------------
