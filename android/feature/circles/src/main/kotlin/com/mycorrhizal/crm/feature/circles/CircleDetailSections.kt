@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -53,6 +54,7 @@ import com.mycorrhizal.crm.model.network.CircleTimelineItem
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
+import com.mycorrhizal.crm.ui.components.lifeEventTypeLabelRes
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
 internal const val CIRCLE_EDIT_NAME_TAG = "circle_edit_name"
@@ -70,6 +72,18 @@ private fun circleColorLabelRes(token: String): Int? = when (token) {
     "pink" -> R.string.circles_color_pink
     "grey" -> R.string.circles_color_grey
     else -> null
+}
+
+/**
+ * The row's one-line summary. A life event with nothing but its type token (`married`) shows the
+ * localized type label instead of the raw token (#2655); any other summary is the entry's text.
+ */
+@Composable
+private fun timelineSummaryText(entry: CircleTimelineItem): String {
+    val summary = entry.summary()
+    if (entry.type != "life_event") return summary
+    val labelRes = lifeEventTypeLabelRes(summary) ?: return summary
+    return stringResource(labelRes)
 }
 
 @StringRes
@@ -195,22 +209,29 @@ private fun CircleTimelineRow(entry: CircleTimelineItem, onNavigateToContact: (I
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        entry.summary().takeIf { it.isNotEmpty() }?.let {
+        timelineSummaryText(entry).takeIf { it.isNotEmpty() }?.let {
             Text(text = it, style = MaterialTheme.typography.bodyLarge)
         }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             entry.members.forEachIndexed { index, member ->
                 val suffix = if (index < entry.members.lastIndex) "," else ""
-                Text(
-                    text = member.displayName() + suffix,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
+                // #2655: a tappable name is a 48dp button, not a 35dp text run.
+                Box(
+                    contentAlignment = Alignment.CenterStart,
                     modifier = if (member.id != 0) {
-                        Modifier.clickable { onNavigateToContact(member.id) }
+                        Modifier
+                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                            .clickable(role = Role.Button) { onNavigateToContact(member.id) }
                     } else {
                         Modifier
                     }
-                )
+                ) {
+                    Text(
+                        text = member.displayName() + suffix,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
         Text(

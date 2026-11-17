@@ -2,12 +2,14 @@ package com.mycorrhizal.crm.feature.contacts
 
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
@@ -357,6 +359,20 @@ class DashboardScreenTest {
 
         composeTestRule.onNodeWithText("Quin Roe — Xmas card").performClick()
         assertEquals(22, opened)
+    }
+
+    @Test
+    fun `an upcoming occasion card is exposed as a clickable button`() {
+        setContent(
+            populatedState().copy(
+                occasions = listOf(occasion(21, "Pat Doe", "birthday", "Birthday", 3))
+            )
+        )
+
+        scrollTo("Upcoming occasions")
+        val card = composeTestRule.onNode(hasClickAction().and(hasText("Pat Doe")))
+        card.assertIsDisplayed()
+        assertEquals(Role.Button, card.fetchSemanticsNode().config[SemanticsProperties.Role])
     }
 
     @Test

@@ -383,6 +383,7 @@
     <string name="contact_remove_named">%1$s %2$d entfernen</string>
     <string name="contact_field_row_named">%1$s %2$d</string>
     <string name="contact_remove">Entfernen</string>
+    <string name="contact_chip_remove_named">%1$s entfernen</string>
     <string name="contact_add">Hinzufügen</string>
     <!-- M7: generischer Mehrwert-Editor -->
     <string name="contact_field_type">Typ</string>
@@ -1689,6 +1690,7 @@
     <string name="entities_error_no_vcard_uid">Kontakt hat keine VCard-UID</string>
     <string name="entities_delete_title">Eintrag löschen?</string>
     <string name="entities_delete_named">%1$s löschen</string>
+    <string name="entities_edit_named">%1$s bearbeiten</string>
     <string name="entities_delete_confirm">„%1$s“ löschen? Dies kann nicht rückgängig gemacht werden.</string>
     <string name="life_events_title">Lebensereignisse</string>
     <string name="life_events_new">Neues Lebensereignis</string>
@@ -2396,6 +2398,7 @@
     <string name="occasions_no_attendees">Noch niemand eingeladen</string>
     <string name="occasions_add_attendee">Gast hinzufügen</string>
     <string name="occasions_remove_attendee">Gast entfernen</string>
+    <string name="occasions_remove_attendee_named">Gast %1$s entfernen</string>
     <string name="occasions_remove_confirm">%1$s von dieser Veranstaltung entfernen?</string>
     <string name="occasions_rsvp_pending">Ausstehend</string>
     <string name="occasions_rsvp_accepted">Zugesagt</string>
@@ -3417,6 +3420,8 @@
     <string name="contact_field_visibility_hide_empty_off">Leere Felder anzeigen</string>
     <string name="contact_field_visibility_reset">Auf Standard zurücksetzen</string>
     <string name="contact_field_not_set">Nicht gesetzt</string>
+    <string name="contact_gender_not_set">Geschlecht: Nicht gesetzt</string>
+    <string name="contact_birthday_not_set">Geburtstag: Nicht gesetzt</string>
     <string name="settings_contact_fields_hide_empty_label">Leere Felder ausblenden</string>
     <string name="settings_contact_fields_hide_empty_description">Auf der Kontaktseite werden Felder ohne Wert nicht angezeigt. Über das Menü „Feld hinzufügen“ kannst du sie trotzdem ausfüllen, und einzelne Kontakte können diese Einstellung überschreiben.</string>
     <string name="note_images_add">Fotos hinzufügen</string>

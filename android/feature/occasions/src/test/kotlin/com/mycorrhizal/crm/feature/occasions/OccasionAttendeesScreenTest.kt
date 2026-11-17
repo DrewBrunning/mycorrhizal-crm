@@ -1,11 +1,16 @@
 package com.mycorrhizal.crm.feature.occasions
 
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -98,9 +103,24 @@ class OccasionAttendeesScreenTest {
     }
 
     @Test
+    fun `the remove action names the attendee and is a 48dp target`() {
+        render(
+            listOf(
+                attendee(),
+                attendee().copy(id = "a2", entityId = "uid-2", contactName = "Chen Wei")
+            )
+        )
+        listOf("Alice", "Chen Wei").forEach { name ->
+            composeTestRule.onNodeWithContentDescription("Remove attendee $name")
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        }
+        composeTestRule.onAllNodesWithContentDescription("Remove attendee").assertCountEquals(0)
+    }
+
+    @Test
     fun `the remove action opens a confirmation`() {
         render()
-        composeTestRule.onNodeWithContentDescription("Remove attendee").performClick()
+        composeTestRule.onNodeWithContentDescription("Remove attendee Alice").performClick()
         composeTestRule.onNodeWithText("Remove Alice from this event?").assertIsDisplayed()
     }
 

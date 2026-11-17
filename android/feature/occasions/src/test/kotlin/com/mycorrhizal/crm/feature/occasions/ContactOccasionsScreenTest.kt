@@ -5,10 +5,12 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -17,6 +19,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.OccasionObligationRepository
@@ -216,10 +219,20 @@ class ContactOccasionsScreenTest {
     }
 
     @Test
+    fun `the row edit and delete actions name the obligation and are 48dp targets`() {
+        render(listOf(ob()))
+
+        composeTestRule.onNodeWithContentDescription("Edit Christmas card")
+            .assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        composeTestRule.onNodeWithContentDescription("Delete Christmas card")
+            .assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+    }
+
+    @Test
     fun `the edit action opens the form prefilled and saving replaces the row`() {
         render(listOf(ob()))
         coEvery { repository.update("o1", any()) } returns Result.success(ob())
-        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        composeTestRule.onNodeWithContentDescription("Edit Christmas card").performClick()
         composeTestRule.onNodeWithText("Edit occasion").assertIsDisplayed()
         composeTestRule.onNodeWithTag(
             "occasion-ob-label"
@@ -298,7 +311,7 @@ class ContactOccasionsScreenTest {
             }
         }
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        composeTestRule.onNodeWithContentDescription("Edit Christmas card").performClick()
         composeTestRule.onNodeWithText("Edit occasion").assertIsDisplayed()
 
         composeTestRule.runOnUiThread {
@@ -314,7 +327,7 @@ class ContactOccasionsScreenTest {
     @Test
     fun `system back from an edited form still asks before discarding`() {
         render(listOf(ob()))
-        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        composeTestRule.onNodeWithContentDescription("Edit Christmas card").performClick()
         composeTestRule.onNodeWithTag("occasion-ob-label").performTextReplacement("Changed")
         composeTestRule.onNodeWithText("Changed").assertIsDisplayed()
         composeTestRule.waitForIdle()

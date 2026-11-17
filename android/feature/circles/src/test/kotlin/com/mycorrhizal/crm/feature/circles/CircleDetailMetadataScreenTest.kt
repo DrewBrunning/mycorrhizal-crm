@@ -2,11 +2,15 @@ package com.mycorrhizal.crm.feature.circles
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
@@ -15,6 +19,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.CircleDetail
@@ -130,6 +135,57 @@ class CircleDetailMetadataScreenTest {
         composeTestRule.onNodeWithText(str(R.string.circles_timeline_empty)).assertDoesNotExist()
         composeTestRule.onNodeWithText("Dana Lee").performScrollTo().performClick()
         assertEquals(7, opened)
+    }
+
+    @Test
+    fun `a timeline contact link is at least 48dp tall and a button`() {
+        setScreen(
+            timeline = Result.success(
+                CircleTimelinePage(
+                    items = listOf(
+                        CircleTimelineItem(
+                            type = "note",
+                            id = "11",
+                            date = "2026-09-01T10:00:00Z",
+                            data = mapOf("content" to "Loves climbing"),
+                            members = listOf(dana)
+                        )
+                    ),
+                    memberCount = 1
+                )
+            )
+        )
+
+        val link = composeTestRule.onNodeWithText("Dana Lee").performScrollTo()
+        link.assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        assertEquals(
+            Role.Button,
+            link.fetchSemanticsNode().config[SemanticsProperties.Role]
+        )
+    }
+
+    @Test
+    fun `a life event shows its localized type, not the raw token`() {
+        setScreen(
+            timeline = Result.success(
+                CircleTimelinePage(
+                    items = listOf(
+                        CircleTimelineItem(
+                            type = "life_event",
+                            id = "5",
+                            date = "2026-09-01T10:00:00Z",
+                            data = mapOf("type" to "married"),
+                            members = listOf(dana)
+                        )
+                    ),
+                    memberCount = 1
+                )
+            )
+        )
+
+        composeTestRule.onNodeWithText(str(R.string.life_event_type_married))
+            .performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("married").assertDoesNotExist()
     }
 
     @Test
