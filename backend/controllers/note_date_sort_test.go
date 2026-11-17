@@ -157,3 +157,16 @@ func TestGetNotesSortValidation(t *testing.T) {
 	code, _, _ = getNoteDatePage(t, router, "sort=updated_at")
 	assert.Equal(t, http.StatusOK, code)
 }
+
+// A well-formed date cursor whose id is not a numeric note id is a 400, not a
+// silent empty page.
+func TestGetNotesSortDateRejectsMalformedCursorID(t *testing.T) {
+	db, router := setupRouter(t)
+	var user models.User
+	db.First(&user)
+	router.GET("/notes", GetUnassignedNotes)
+
+	code, _, body := getNoteDatePage(t, router, "sort=date&cursor="+EncodeDateCursor(time.Now(), "not-a-number"))
+	assert.Equal(t, http.StatusBadRequest, code, body)
+	assert.Contains(t, body, `"reason_code":"validation_cursor_malformed"`)
+}
