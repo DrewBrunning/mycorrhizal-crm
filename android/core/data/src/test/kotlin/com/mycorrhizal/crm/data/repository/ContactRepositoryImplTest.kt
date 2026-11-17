@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -662,6 +663,17 @@ class ContactRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         assertEquals("Dana White", result.getOrThrow().card?.name?.full)
+        // #2629: the caller can tell this is saved data, not a fresh read.
+        assertTrue(result.getOrThrow().servedFromCache)
+    }
+
+    @Test
+    fun `getContact marks a live read as not served from cache`() = runTest {
+        coEvery { apiClient.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, uid = "u5", card = Card(name = Name(full = "Dana White")))
+        )
+
+        assertFalse(repository.getContact(5).getOrThrow().servedFromCache)
     }
 
     @Test

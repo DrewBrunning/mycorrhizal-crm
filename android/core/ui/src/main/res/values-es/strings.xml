@@ -1323,6 +1323,7 @@
     <string name="action_back">Atrás</string>
     <string name="action_rename">Renombrar</string>
     <string name="action_retry">Reintentar</string>
+    <string name="saved_data_banner_message">Mostrando datos guardados</string>
 
 
     <!-- Tags -->

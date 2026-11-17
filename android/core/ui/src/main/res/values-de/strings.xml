@@ -1290,6 +1290,7 @@
     <string name="action_back">Zurück</string>
     <string name="action_rename">Umbenennen</string>
     <string name="action_retry">Erneut versuchen</string>
+    <string name="saved_data_banner_message">Gespeicherte Daten werden angezeigt</string>
 
 
     <!-- Tags -->

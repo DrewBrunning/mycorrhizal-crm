@@ -1295,4 +1295,46 @@ class ContactListScreenTest {
         setPickerContent(contacts = emptyList())
         composeTestRule.onNodeWithText("Import contacts").assertDoesNotExist()
     }
+
+    // --- Issue #2629: saved-data banner ---
+
+    @Test
+    fun `saved data banner shows with retry wired to refresh when serving cached rows`() {
+        var refreshes = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = listOf(ContactSummary(id = 1, fn = "Alice")),
+                        showingSavedData = true
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {},
+                    onRefresh = { refreshes += 1 }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Showing saved data").assertExists()
+        composeTestRule.onNodeWithText("Retry").performClick()
+
+        assertEquals(1, refreshes)
+    }
+
+    @Test
+    fun `no saved data banner on a live list`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = listOf(ContactSummary(id = 1, fn = "Alice"))
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Showing saved data").assertDoesNotExist()
+    }
 }

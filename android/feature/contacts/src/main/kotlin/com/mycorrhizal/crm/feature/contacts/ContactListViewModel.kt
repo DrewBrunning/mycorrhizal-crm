@@ -71,6 +71,11 @@ data class ContactListUiState(
     val contacts: List<ContactSummary> = emptyList(),
     val isLoading: Boolean = false,
     val error: ApiError? = null,
+    /**
+     * Issue #2629: the rows on screen are the offline mirror, served after the refresh failed
+     * (cleared by the next successful load). Drives the shared "Showing saved data" banner.
+     */
+    val showingSavedData: Boolean = false,
     val searchQuery: String = "",
     val pagination: PaginationState = PaginationState(),
     /**
@@ -262,6 +267,7 @@ class ContactListViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
+                            showingSavedData = false,
                             contacts = result.contacts,
                             pagination = it.pagination.copy(
                                 nextCursor = result.nextCursor,
@@ -295,8 +301,12 @@ class ContactListViewModel @Inject constructor(
                 // load cancels it and a stale fallback can never overwrite a newer result.
                 val cached = contactRepository.searchLocal(request.searchQuery)
                     .filter { it.matchesOfflineFilters(request) }
-                if (cached.isNotEmpty()) {
-                    _uiState.update { it.copy(contacts = cached) }
+                _uiState.update {
+                    if (cached.isNotEmpty()) {
+                        it.copy(contacts = cached, showingSavedData = true)
+                    } else {
+                        it.copy(showingSavedData = false)
+                    }
                 }
             }
         }
