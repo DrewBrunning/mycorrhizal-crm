@@ -234,6 +234,7 @@ func buildIdemTable() map[string]idemRow {
 		"POST /api/v1/contacts/import/upload",
 		"POST /api/v1/contacts/import/preview",
 		"POST /api/v1/contacts/import/confirm",
+		"POST /api/v1/contacts/import/cancel",
 		"POST /api/v1/contacts/import/records",
 		"POST /api/v1/contacts/import/vcf/upload",
 		"POST /api/v1/contacts/import/vcf/confirm",

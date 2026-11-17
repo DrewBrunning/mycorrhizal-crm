@@ -261,6 +261,7 @@ var embeddedRouteRows = []embeddedRouteRow{
 		"POST /api/v1/contacts/address-suggestions/apply",
 		"POST /api/v1/contacts/bulk",
 		"POST /api/v1/contacts/duplicates/dismiss",
+		"POST /api/v1/contacts/import/cancel",
 		"POST /api/v1/contacts/import/confirm",
 		"POST /api/v1/contacts/import/jscontact/upload",
 		"POST /api/v1/contacts/import/meerkat/cancel",

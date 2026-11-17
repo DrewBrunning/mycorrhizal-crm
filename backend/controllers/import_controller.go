@@ -22,27 +22,21 @@ import (
 // HTTP input and delegate to the manager.
 var importSessions = services.NewImportSessionManager()
 
-// rejectImportSessionOverLimit aborts with 429 when the caller already holds
-// MaxImportSessionsPerUser live import sessions (issue #415) and returns
-// true; callers return immediately on true. Sessions are in-memory and can
-// each carry up to 20k rows/contacts, so this is the per-user bound on the
-// largest unauthenticated-by-quota memory surface. 429 (not 400) matches the
-// "too many in-flight operations" semantics: confirming or letting an
-// existing session expire frees the slot, so a retry can legitimately
-// succeed.
+// rejectImportSessionOverLimit makes room for one more import session for the
+// caller (issue #415, amended by #2664) and returns true only when the request
+// was already aborted (no authenticated user); callers return immediately on
+// true. Sessions are in-memory and can each carry up to 20k rows/contacts, so
+// the per-user cap is the bound on this memory surface. Reaching it no longer
+// answers 429 until a session expires: an abandoned dialog or a rejected file
+// leaves a session behind that the user cannot see or confirm, so the user's
+// oldest unconfirmed session is evicted instead (see
+// ImportSessionManager.MakeRoomForSession).
 func rejectImportSessionOverLimit(c *gin.Context) bool {
 	userID, ok := currentUserID(c)
 	if !ok {
 		return true
 	}
-	if importSessions.CountActive(userID) >= services.MaxImportSessionsPerUser {
-		apperrors.AbortWithError(c, apperrors.NewError(
-			apperrors.ErrCodeRateLimitExceeded,
-			fmt.Sprintf("Too many in-progress imports. Maximum is %d concurrent import sessions; confirm or wait for an existing one to expire before starting another.", services.MaxImportSessionsPerUser),
-			http.StatusTooManyRequests,
-		))
-		return true
-	}
+	importSessions.MakeRoomForSession(userID)
 	return false
 }
 
@@ -485,4 +479,24 @@ func GetImportRun(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, run.Detail())
+}
+
+// CancelImportSession handles POST /contacts/import/cancel (issue #2664): it
+// discards the caller's own unconfirmed CSV/VCF/JSContact/records import
+// session. Idempotent and quiet by design: an unknown, expired, consumed or
+// foreign session id answers the same 200 as a live one, so a client can call
+// it on every dialog close (Cancel, Close, Escape, Back-to-upload, unmount)
+// without tracking state, and one user cannot probe another's session ids.
+func CancelImportSession(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	request, err := middleware.GetValidated[models.ImportCancelRequest](c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	importSessions.Cancel(userID, request.SessionID)
+	c.JSON(http.StatusOK, gin.H{"status": "cancelled"})
 }

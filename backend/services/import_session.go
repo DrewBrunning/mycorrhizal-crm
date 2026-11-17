@@ -11,6 +11,7 @@ import (
 	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
 	"mycorrhizal/photostore"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -921,4 +922,70 @@ func logImportedFieldPromotionNotes(log *zerolog.Logger, notes []string) {
 	for _, n := range notes {
 		log.Warn().Msgf("Import custom-field promotion: %s", n)
 	}
+}
+
+// Cancel discards the caller's own CSV/VCF/JSContact/records session without
+// importing anything (issue #2664). Idempotent: it reports whether a live
+// session was removed, and an unknown, expired, already-confirmed or foreign
+// session is simply "nothing to do" (false), never an error, so a client can
+// call it on every dialog close without caring about the session's state and
+// cannot probe another user's session ids. A confirmed session's replay
+// tombstone is deliberately left alone.
+func (m *ImportSessionManager) Cancel(userID uint, sessionID string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sd, ok := m.sessions[sessionID]
+	if !ok || sd.session.UserID != userID {
+		return false
+	}
+	delete(m.sessions, sessionID)
+	return true
+}
+
+// MakeRoomForSession frees capacity for one new session for userID (issue
+// #2664): the user's expired sessions are dropped, then, if they still hold
+// MaxImportSessionsPerUser or more, the OLDEST are evicted until one slot is
+// free. The per-user memory bound of issue #415 is kept (a user never holds
+// more than the cap), but abandoned sessions -- a closed dialog, a rejected
+// file -- no longer lock the user out until they expire. A session whose
+// confirm is running is never evicted. Returns how many live sessions were
+// evicted. Upload handlers call this immediately before creating a session.
+func (m *ImportSessionManager) MakeRoomForSession(userID uint) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := Now()
+	var live []*importSessionData
+	for id, sd := range m.sessions {
+		if sd.session.UserID != userID {
+			continue
+		}
+		if now.After(sd.session.ExpiresAt) {
+			delete(m.sessions, id)
+			continue
+		}
+		live = append(live, sd)
+	}
+	sort.Slice(live, func(i, j int) bool {
+		if !live[i].session.CreatedAt.Equal(live[j].session.CreatedAt) {
+			return live[i].session.CreatedAt.Before(live[j].session.CreatedAt)
+		}
+		return live[i].session.ID < live[j].session.ID
+	})
+
+	evicted := 0
+	remaining := len(live)
+	for _, sd := range live {
+		if remaining < MaxImportSessionsPerUser {
+			break
+		}
+		if !sd.confirmMu.TryLock() {
+			continue // a confirm is committing this session right now
+		}
+		sd.confirmMu.Unlock()
+		delete(m.sessions, sd.session.ID)
+		remaining--
+		evicted++
+	}
+	return evicted
 }

@@ -341,6 +341,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/contacts/import/upload", middleware.BodySizeLimitMiddleware(services.MaxCSVSize), controllers.UploadCSVForImport)
 			protected.POST("/contacts/import/preview", middleware.ValidateJSONMiddleware(&models.ImportPreviewRequest{}), controllers.PreviewImport)
 			protected.POST("/contacts/import/confirm", middleware.ValidateJSONMiddleware(&models.ImportConfirmRequest{}), controllers.ConfirmImport)
+			// Discard an unconfirmed CSV/VCF/JSContact/records session (issue #2664).
+			protected.POST("/contacts/import/cancel", middleware.ValidateJSONMiddleware(&models.ImportCancelRequest{}), controllers.CancelImportSession)
 
 			// Contact import routes (VCF). Same body-size-limit override as
 			// the CSV route above, sized to services.MaxVCFSize instead.
