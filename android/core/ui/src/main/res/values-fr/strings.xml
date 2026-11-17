@@ -3472,7 +3472,9 @@
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>
     <string name="error_reason_integration_save_failed">%1$s</string>
-    <string name="error_reason_occasion_anchor_date_incomplete">Une date d’ancrage d’occasion nécessite à la fois un mois et un jour, ou aucun des deux</string>
+    <string name="error_reason_occasion_anchor_date_incomplete">Une date d’ancrage d’occasion nécessite à la fois un mois et un jour</string>
+    <string name="error_reason_occasion_anchor_date_invalid">Cette combinaison de mois et de jour n’existe pas, par exemple le 30 février</string>
+    <string name="error_reason_occasion_anchor_date_required">Une occasion a besoin d’un mois et d’un jour pour pouvoir vous le rappeler</string>
     <string name="error_reason_occasion_days_invalid">days doit être 30 ou 90</string>
     <string name="error_reason_occasion_event_circles_required">circle_ids est requis</string>
     <string name="error_reason_occasion_event_end_before_start">L’heure de fin de l’événement ne peut pas précéder l’heure de début</string>

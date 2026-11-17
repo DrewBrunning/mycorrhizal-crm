@@ -20303,8 +20303,19 @@ components:
         entity_id: { type: string, format: uuid }
         kind: { type: string, maxLength: 100, example: "card" }
         label: { type: string, maxLength: 200 }
-        anchor_month: { type: integer, minimum: 1, maximum: 12, nullable: true }
-        anchor_day: { type: integer, minimum: 1, maximum: 31, nullable: true }
+        anchor_month:
+          type: integer
+          minimum: 1
+          maximum: 12
+          nullable: true
+          description: >-
+            Required in practice: a request with no month and day is rejected with 400
+            reason `occasion_anchor_date_required`, a lone month or day with
+            `occasion_anchor_date_incomplete`, and an impossible pair (February 30, April 31, ...)
+            with `occasion_anchor_date_invalid`. February 29 is accepted. The one exception is
+            PUT on a stored row that already has no date (saved before the rule existed) with
+            `active: false`, so it can be retired.
+        anchor_day: { type: integer, minimum: 1, maximum: 31, nullable: true, description: "See anchor_month: must pair with it and be a real calendar day of that month." }
         linked_life_event_id: { type: string, format: uuid, nullable: true }
         lead_time_days: { type: integer, minimum: 0, maximum: 365 }
         active: { type: boolean, nullable: true, description: "Omitted defaults to true server-side." }

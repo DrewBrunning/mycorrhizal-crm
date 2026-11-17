@@ -3470,7 +3470,9 @@
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>
     <string name="error_reason_integration_save_failed">%1$s</string>
-    <string name="error_reason_occasion_anchor_date_incomplete">Una fecha ancla de ocasión requiere tanto mes como día, o ninguno de los dos</string>
+    <string name="error_reason_occasion_anchor_date_incomplete">Una fecha ancla de ocasión requiere tanto mes como día</string>
+    <string name="error_reason_occasion_anchor_date_invalid">Esa combinación de mes y día no existe, por ejemplo el 30 de febrero</string>
+    <string name="error_reason_occasion_anchor_date_required">Una ocasión necesita un mes y un día para poder recordártela</string>
     <string name="error_reason_occasion_days_invalid">days debe ser 30 o 90</string>
     <string name="error_reason_occasion_event_circles_required">circle_ids es obligatorio</string>
     <string name="error_reason_occasion_event_end_before_start">La hora de fin del evento no puede ser anterior a la de inicio</string>

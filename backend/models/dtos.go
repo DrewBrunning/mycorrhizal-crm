@@ -922,7 +922,7 @@ type OccasionObligationInput struct {
 // OccasionEventInput is the DTO for creating/updating an OccasionEvent
 // (occasion_event.go, docs/adrs/0026-occasions-events.md). StartsAt/EndsAt are
 // RFC 3339 instants; the controller enforces ends_at >= starts_at (cross-field,
-// same pattern as validateOccasionAnchorPair — this codebase has no cross-field
+// same pattern as validateOccasionAnchor — this codebase has no cross-field
 // struct-tag validator). Sensitivity defaults server-side. No attendee list:
 // attendee lifecycle is nested sub-resources, per CLAUDE.md's join-row
 // convention (POST/PUT/DELETE /occasion-events/:id/attendees).

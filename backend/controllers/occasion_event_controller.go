@@ -21,7 +21,7 @@ import (
 // delivered invitation — this feature sends nothing.
 
 // validateOccasionEventTimes enforces ends_at >= starts_at when an end is
-// given — the same cross-field controller check validateOccasionAnchorPair
+// given — the same cross-field controller check validateOccasionAnchor
 // uses (this codebase has no cross-field struct-tag validator).
 func validateOccasionEventTimes(input *models.OccasionEventInput) *apperrors.AppError {
 	if input.EndsAt != nil && input.EndsAt.Before(*input.StartsAt) {

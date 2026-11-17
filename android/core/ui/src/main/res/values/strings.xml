@@ -3380,7 +3380,9 @@
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>
     <string name="error_reason_integration_save_failed">%1$s</string>
-    <string name="error_reason_occasion_anchor_date_incomplete">An occasion anchor date requires both a month and a day, or neither</string>
+    <string name="error_reason_occasion_anchor_date_incomplete">An occasion anchor date requires both a month and a day</string>
+    <string name="error_reason_occasion_anchor_date_invalid">That month and day do not exist together, for example February 30</string>
+    <string name="error_reason_occasion_anchor_date_required">An occasion needs a month and a day so it can remind you</string>
     <string name="error_reason_occasion_days_invalid">days must be 30 or 90</string>
     <string name="error_reason_occasion_event_circles_required">circle_ids is required</string>
     <string name="error_reason_occasion_event_end_before_start">Event end time cannot be before its start time</string>

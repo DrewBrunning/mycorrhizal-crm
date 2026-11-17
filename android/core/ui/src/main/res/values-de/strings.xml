@@ -3363,7 +3363,9 @@
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>
     <string name="error_reason_integration_save_failed">%1$s</string>
-    <string name="error_reason_occasion_anchor_date_incomplete">Ein Ankerdatum für einen Anlass erfordert sowohl Monat als auch Tag oder keines von beiden</string>
+    <string name="error_reason_occasion_anchor_date_incomplete">Ein Ankerdatum für einen Anlass erfordert sowohl Monat als auch Tag</string>
+    <string name="error_reason_occasion_anchor_date_invalid">Diese Kombination aus Monat und Tag gibt es nicht, zum Beispiel den 30. Februar</string>
+    <string name="error_reason_occasion_anchor_date_required">Ein Anlass braucht einen Monat und einen Tag, damit er Sie erinnern kann</string>
     <string name="error_reason_occasion_days_invalid">days muss 30 oder 90 sein</string>
     <string name="error_reason_occasion_event_circles_required">circle_ids ist erforderlich</string>
     <string name="error_reason_occasion_event_end_before_start">Die Endzeit des Ereignisses darf nicht vor der Startzeit liegen</string>

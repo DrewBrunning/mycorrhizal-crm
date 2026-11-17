@@ -445,6 +445,8 @@ object ErrorReasonCode {
     const val INTEGRATION_REQUEST_BODY_INVALID = "integration_request_body_invalid"
     const val INTEGRATION_SAVE_FAILED = "integration_save_failed"
     const val OCCASION_ANCHOR_DATE_INCOMPLETE = "occasion_anchor_date_incomplete"
+    const val OCCASION_ANCHOR_DATE_INVALID = "occasion_anchor_date_invalid"
+    const val OCCASION_ANCHOR_DATE_REQUIRED = "occasion_anchor_date_required"
     const val OCCASION_DAYS_INVALID = "occasion_days_invalid"
     const val OCCASION_EVENT_CIRCLES_REQUIRED = "occasion_event_circles_required"
     const val OCCASION_EVENT_END_BEFORE_START = "occasion_event_end_before_start"
