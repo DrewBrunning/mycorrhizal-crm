@@ -64,9 +64,9 @@
     },
     "src/DataSettingsPage.tsx": {
       "lines": 100,
-      "linesTotal": 125,
-      "branches": 95.52,
-      "branchesTotal": 67
+      "linesTotal": 143,
+      "branches": 96.2,
+      "branchesTotal": 79
     },
     "src/DateFormatProvider.tsx": {
       "lines": 94.71,
@@ -388,9 +388,9 @@
     },
     "src/api/export.ts": {
       "lines": 100,
-      "linesTotal": 79,
-      "branches": 97.05,
-      "branchesTotal": 34
+      "linesTotal": 84,
+      "branches": 97.22,
+      "branchesTotal": 36
     },
     "src/api/externalLinks.ts": {
       "lines": 100,

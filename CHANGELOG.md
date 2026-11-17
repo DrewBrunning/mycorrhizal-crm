@@ -35,6 +35,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Merge several selected contacts on Android** ([#2212](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2212)): the contacts list's bulk bar has Merge once two or more contacts are selected. Pick the one to keep, then review each other contact's field conflicts in turn as it is folded into it.
 - **Android Activities explains itself** ([#2211](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2211)): the Activities screen now says that activities are things that already happened, matching the web page and the Occasions screen, so it is easier to tell them from occasions and reminders.
 - **Android hides features an older server does not have** ([#2527](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2527)): connected to a server older than v1.7.0, the app no longer shows standing shares, organisations/places/pets or the import report link, and Trash no longer fails. Nothing to do when upgrading; they reappear once the server is updated.
+- **Export account bundle on the web** ([#2678](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2678)): Settings → Data has an Export account bundle button that downloads a complete, re-importable copy of your account, after a reminder that it includes private and secret items. Move it to another server with Import account bundle.
 
 ### Changed
 
