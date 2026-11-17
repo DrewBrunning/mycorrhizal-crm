@@ -201,7 +201,7 @@ class ContactEntityLinksScreenTest {
         }
         composeTestRule.onNodeWithText("from Acme").assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "Shown from the linked entity. Change it on the entity's page, or copy it into this contact to edit it here."
+            "Shown from the linked organisation or place. Change it on its page, or copy it into this contact to edit it here."
         ).assertIsDisplayed()
         composeTestRule.onAllNodesWithTag("organization-edit-x").assertCountEquals(0)
     }
@@ -209,6 +209,6 @@ class ContactEntityLinksScreenTest {
     @Test
     fun `an unknown entity falls back to a generic chip`() {
         composeTestRule.setContent { MycorrhizalTheme { ProjectedFromChip(entityName = null) } }
-        composeTestRule.onNodeWithText("from a linked entity").assertIsDisplayed()
+        composeTestRule.onNodeWithText("from a linked organisation or place").assertIsDisplayed()
     }
 }

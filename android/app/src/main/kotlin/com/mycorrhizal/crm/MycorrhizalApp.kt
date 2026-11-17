@@ -227,9 +227,14 @@ import kotlinx.coroutines.launch
  */
 private fun isDestinationAvailable(
     item: TopLevelDestination,
-    capabilities: ServerCapabilitiesInfo
+    capabilities: ServerCapabilitiesInfo,
+    serverVersion: AppVersion?
 ): Boolean = when (item.route) {
     "shares" -> capabilities.supports(ServerCapability.CONTACT_SHARES)
+
+    // Issue #2649: `/entities` needs a v1.7.0 server (#2527).
+    "entities" -> ServerCapabilities.isSupported(serverVersion, ServerFeature.ENTITIES)
+
     else -> true
 }
 
@@ -927,7 +932,8 @@ private val NavigationRailWidth = 96.dp
  * truncating and the rail scrolling at font scale 1.0: the longest of these
  * labels fits the rail's two-line slot in every shipped locale.
  */
-internal val railDestinations: List<TopLevelDestination> = navDestinationsIn(NavGroup.PEOPLE)
+internal val railDestinations: List<TopLevelDestination> =
+    navDestinationsIn(NavGroup.PEOPLE).filter { it.route != "entities" }
 
 /**
  * Issue #1776: the permanent-width navigation. It shows [railDestinations] plus
@@ -948,7 +954,8 @@ private fun MycorrhizalNavigationRail(
 ) {
     // Issue #1263: hide entries the connected deployment does not offer.
     val capabilities = LocalServerCapabilities.current
-    val items = railDestinations.filter { isDestinationAvailable(it, capabilities) }
+    val serverVersion = LocalServerVersion.current
+    val items = railDestinations.filter { isDestinationAvailable(it, capabilities, serverVersion) }
     // "More" stands in for every destination outside the primary set, so it is
     // selected while the current route lives behind it rather than in the rail.
     val moreSelected = items.none { isSelected(currentRoute, it) }
@@ -1056,6 +1063,7 @@ internal fun DrawerContent(
 ) {
     // Issue #1263: hide entries the connected deployment does not offer.
     val capabilities = LocalServerCapabilities.current
+    val serverVersion = LocalServerVersion.current
     ModalDrawerSheet {
         DrawerHeader(username = username, serverHost = serverHost, onClick = onHeaderClick)
         HorizontalDivider()
@@ -1068,7 +1076,7 @@ internal fun DrawerContent(
             NavGroup.entries.filter { it != NavGroup.FOOTER }.forEachIndexed { index, group ->
                 val items = navDestinationsIn(
                     group
-                ).filter { isDestinationAvailable(it, capabilities) }
+                ).filter { isDestinationAvailable(it, capabilities, serverVersion) }
                 if (items.isEmpty()) return@forEachIndexed
                 if (index > 0) {
                     HorizontalDivider(
@@ -1092,7 +1100,7 @@ internal fun DrawerContent(
         // Settings (and any future footer entry) stays reachable without scrolling.
         val footer = navDestinationsIn(
             NavGroup.FOOTER
-        ).filter { isDestinationAvailable(it, capabilities) }
+        ).filter { isDestinationAvailable(it, capabilities, serverVersion) }
         if (footer.isNotEmpty()) {
             HorizontalDivider()
             footer.forEach { item -> DrawerItem(item, currentRoute, onDestinationClick) }
@@ -2334,7 +2342,8 @@ private fun AppNavGraph(
             NetworkScreen(
                 showMenu = true,
                 onMenuClick = menu,
-                onOpenContact = { id -> navController.navigate("contacts/$id") }
+                onOpenContact = { id -> navController.navigate("contacts/$id") },
+                onOpenEntity = { id -> navController.navigate("entities/$id") }
             )
         }
         composable(
@@ -2344,7 +2353,8 @@ private fun AppNavGraph(
             NetworkScreen(
                 showMenu = false,
                 onBack = { navController.popBackStack() },
-                onOpenContact = { id -> navController.navigate("contacts/$id") }
+                onOpenContact = { id -> navController.navigate("contacts/$id") },
+                onOpenEntity = { id -> navController.navigate("entities/$id") }
             )
         }
         // ADR 0031 / issue #1287: the contact map (drawer entry).

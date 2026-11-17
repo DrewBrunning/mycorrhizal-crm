@@ -9,6 +9,7 @@ import com.mycorrhizal.crm.domain.repository.ContactFieldVisibilityRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
+import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
@@ -28,6 +29,7 @@ import com.mycorrhizal.crm.model.network.CRMEnvelope
 import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Card
+import com.mycorrhizal.crm.model.network.ContactEntityLink
 import com.mycorrhizal.crm.model.network.ContactFieldKey
 import com.mycorrhizal.crm.model.network.ContactFieldValuesInput
 import com.mycorrhizal.crm.model.network.ContactFieldVisibility
@@ -97,6 +99,7 @@ class ContactDetailViewModelTest {
     private val relationshipEdgeRepository = mockk<RelationshipEdgeRepository>()
     private val attachmentRepository = mockk<AttachmentRepository>()
     private val cadencePolicyRepository = mockk<CadencePolicyRepository>()
+    private val entityRepository = mockk<EntityRepository>()
 
     private fun viewModel(
         id: Int,
@@ -150,6 +153,7 @@ class ContactDetailViewModelTest {
             relationshipEdgeRepository,
             attachmentRepository,
             cadencePolicyRepository,
+            entityRepository,
             SavedStateHandle(mapOf("contactId" to id))
         )
     }
@@ -380,6 +384,73 @@ class ContactDetailViewModelTest {
     }
 
     @Test
+    fun `a projected entry resolves the entity names behind it from the contact's links`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { contactRepository.getContact(5) } returns Result.success(
+                ContactRecordResponse(
+                    id = 5,
+                    card = Card(
+                        name = Name(full = "Dana White"),
+                        addresses = listOf(
+                            com.mycorrhizal.crm.model.network.Address(
+                                id = "ent-l2",
+                                full = "1 High"
+                            )
+                        )
+                    )
+                )
+            )
+            coEvery { entityRepository.linksForContact(5) } returns Result.success(
+                listOf(
+                    ContactEntityLink(id = "l1", entityName = "Acme"),
+                    ContactEntityLink(id = "l2", entityName = "Lakeside Cabin")
+                )
+            )
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            assertEquals(
+                mapOf("l1" to "Acme", "l2" to "Lakeside Cabin"),
+                vm.uiState.value.projectedEntityNames
+            )
+        }
+
+    @Test
+    fun `a contact without projected entries never asks for its entity links`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { contactRepository.getContact(5) } returns Result.success(
+                ContactRecordResponse(id = 5, card = Card(name = Name(full = "Dana White")))
+            )
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.projectedEntityNames.isEmpty())
+            io.mockk.coVerify(exactly = 0) { entityRepository.linksForContact(any()) }
+        }
+
+    @Test
+    fun `a failed links load leaves the chip on its generic fallback`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { contactRepository.getContact(5) } returns Result.success(
+                ContactRecordResponse(
+                    id = 5,
+                    card = Card(
+                        organizations = listOf(
+                            com.mycorrhizal.crm.model.network.Organization(id = "ent-l1")
+                        )
+                    )
+                )
+            )
+            coEvery { entityRepository.linksForContact(5) } returns
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            val vm = viewModel(5)
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.projectedEntityNames.isEmpty())
+            assertNull(vm.uiState.value.error)
+        }
+
+    @Test
     fun `missing contact id sets an error`() = runTest(mainDispatcherRule.testDispatcher) {
         val vm = viewModel(0)
         advanceUntilIdle()
@@ -430,6 +501,7 @@ class ContactDetailViewModelTest {
             relationshipEdgeRepository,
             attachmentRepository,
             cadencePolicyRepository,
+            entityRepository,
             SavedStateHandle(mapOf("contactId" to "9"))
         )
         advanceUntilIdle()
@@ -550,7 +622,7 @@ class ContactDetailViewModelTest {
 
         val vm =
             ContactDetailViewModel(
-                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, entityRepository,
                 SavedStateHandle(
                     mapOf("contactId" to 5)
                 )
@@ -597,7 +669,7 @@ class ContactDetailViewModelTest {
 
         val vm =
             ContactDetailViewModel(
-                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, entityRepository,
                 SavedStateHandle(mapOf("contactId" to 5))
             )
         advanceUntilIdle()
@@ -625,7 +697,7 @@ class ContactDetailViewModelTest {
 
         val vm =
             ContactDetailViewModel(
-                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, entityRepository,
                 SavedStateHandle(
                     mapOf("contactId" to 5)
                 )
@@ -662,7 +734,7 @@ class ContactDetailViewModelTest {
 
         val vm =
             ContactDetailViewModel(
-                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, entityRepository,
                 SavedStateHandle(
                     mapOf("contactId" to 5)
                 )
@@ -707,7 +779,7 @@ class ContactDetailViewModelTest {
 
             val vm =
                 ContactDetailViewModel(
-                    contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository,
+                    contactRepository, contactFieldVisibilityRepository, reminderRepository, authRepository, fieldDefinitionRepository, circleRepository, tagRepository, externalIdentityRepository, immichRepository, externalActivityRepository, paperlessRepository, seafileRepository, nextcloudRepository, contactScoreRepository, lifeEventRepository, giftRepository, preferenceRepository, conversationAgendaRepository, relationshipEdgeRepository, attachmentRepository, cadencePolicyRepository, entityRepository,
                     SavedStateHandle(
                         mapOf("contactId" to 5)
                     )

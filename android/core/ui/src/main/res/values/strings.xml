@@ -3581,8 +3581,8 @@
     <string name="contact_entity_links_primary_help">Primary (shown on this contact\'s card)</string>
     <string name="contact_entity_links_year_invalid">Enter years as four digits, with the end not before the start.</string>
     <string name="contact_entity_links_projected_from">from %1$s</string>
-    <string name="contact_entity_links_projected_from_unknown">from a linked entity</string>
-    <string name="contact_entity_links_projected_hint">Shown from the linked entity. Change it on the entity\'s page, or copy it into this contact to edit it here.</string>
+    <string name="contact_entity_links_projected_from_unknown">from a linked organisation or place</string>
+    <string name="contact_entity_links_projected_hint">Shown from the linked organisation or place. Change it on its page, or copy it into this contact to edit it here.</string>
     <string name="contact_entity_links_from_own_title">Link one of my own values</string>
     <string name="contact_entity_links_from_own_intro">Connect one of this contact\'s own organisations or addresses to a shared entity. The value stays on the contact.</string>
     <string name="contact_entity_links_from_own_value">Value</string>
@@ -3619,7 +3619,7 @@
     <string name="network_entities_toggle">Show organisations, places &amp; pets</string>
     <string name="network_entities_empty">No organisations, places or pets are linked to these contacts.</string>
     <string name="network_entities_failed">Couldn\'t load organisations, places and pets.</string>
-    <string name="network_entities_read_only">%1$s, %2$s, read-only</string>
+    <string name="network_entities_description">%1$s, %2$s</string>
     <plurals name="shared_entities_detail_linked_count">
         <item quantity="one">Linked to %1$d contact</item>
         <item quantity="other">Linked to %1$d contacts</item>
@@ -3641,17 +3641,21 @@
         <item quantity="other">Couldn\'t copy it to %1$d contacts, so nothing was deleted.</item>
     </plurals>
     <string name="shared_entities_from_contacts_open">Create from my contacts…</string>
-    <string name="shared_entities_from_contacts_title">Create entities from my contacts</string>
-    <string name="shared_entities_from_contacts_intro">Groups of the same organisation or address found on your contacts. Tick the ones to create and choose which contacts to link. Nothing on a contact is changed or deleted. You can run this again any time: only values not yet linked are offered.</string>
+    <string name="shared_entities_from_contacts_title">Create from my contacts</string>
+    <string name="shared_entities_from_contacts_intro">Groups of the same organisation or address found on your contacts. Tick a group to create it, then choose which contacts to link. Nothing on a contact is changed or deleted. You can run this again any time: only values not yet linked are offered.</string>
     <string name="shared_entities_from_contacts_none">Nothing left to create from your contacts.</string>
     <string name="shared_entities_from_contacts_load_failed">Couldn\'t look through your contacts.</string>
-    <string name="shared_entities_from_contacts_create_failed">Couldn\'t create the entities.</string>
+    <string name="shared_entities_from_contacts_create_failed">Couldn\'t create the organisations or places.</string>
     <string name="shared_entities_from_contacts_include_cd">Include %1$s</string>
     <string name="shared_entities_from_contacts_variants">Also written as: %1$s</string>
     <string name="shared_entities_from_contacts_name">Name of %1$s</string>
     <string name="shared_entities_from_contacts_role">Role for %1$s</string>
     <string name="shared_entities_from_contacts_primary">Set as primary</string>
     <string name="shared_entities_from_contacts_primary_cd">Set as primary for %1$s</string>
+    <string name="shared_entities_from_contacts_name_label">Name</string>
+    <string name="shared_entities_from_contacts_role_label">Role</string>
+    <string name="settings_custom_fields_applies_to_hint">Cannot be changed after creation.</string>
+    <string name="settings_custom_fields_group_hint_entity">Optional. Fields with the same group are shown together on the page.</string>
     <string name="shared_entities_from_contacts_contacts_heading">Contacts to link</string>
     <string name="shared_entities_from_contacts_result_none">Nothing was created.</string>
     <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: skipped. It may already exist or no longer match your contacts.</string>

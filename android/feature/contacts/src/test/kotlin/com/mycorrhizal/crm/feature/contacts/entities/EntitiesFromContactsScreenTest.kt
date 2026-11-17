@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -183,6 +184,48 @@ class EntitiesFromContactsScreenTest {
     }
 
     @Test
+    fun `a ticked group uses short field labels and names the group only for TalkBack`() {
+        val long = acme.copy(
+            name = "Featherstonehaugh Consolidated International Holdings Group"
+        )
+        set(
+            loaded(
+                long,
+                edits = mapOf(
+                    "k-acme" to FromContactsGroupEdit(
+                        selected = true,
+                        name = long.name,
+                        role = "employee"
+                    )
+                )
+            )
+        )
+        composeTestRule.onNodeWithTag("from-contacts-name-k-acme").performScrollTo()
+        // The visible labels are short, so a long name can't wrap into the outline.
+        composeTestRule.onAllNodesWithText("Name", useUnmergedTree = true).assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Role", useUnmergedTree = true).assertCountEquals(1)
+        composeTestRule.onAllNodesWithText("Name of", substring = true, useUnmergedTree = true)
+            .assertCountEquals(0)
+        // The spoken names still say which group the field belongs to.
+        composeTestRule.onNodeWithContentDescription(
+            "Name of ${long.name}",
+            useUnmergedTree = false
+        ).assertExists()
+        composeTestRule.onNodeWithContentDescription("Role for ${long.name}, Employee")
+            .assertExists()
+    }
+
+    @Test
+    fun `the intro tells you to tick a group before choosing contacts`() {
+        set(loaded(acme))
+        composeTestRule.onNodeWithText(
+            "Groups of the same organisation or address found on your contacts. " +
+                "Tick a group to create it, then choose which contacts to link.",
+            substring = true
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun `the create button counts what is chosen and is disabled with nothing chosen`() {
         set(loaded(acme))
         composeTestRule.onNodeWithTag("from-contacts-create").assertIsNotEnabled()
@@ -230,7 +273,9 @@ class EntitiesFromContactsScreenTest {
                 createError = ApiError.Network(java.io.IOException("offline"))
             )
         )
-        composeTestRule.onNodeWithText("Couldn't create the entities.").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Couldn't create the organisations or places."
+        ).assertIsDisplayed()
         composeTestRule.onNodeWithTag("from-contacts-error").assertIsDisplayed()
         composeTestRule.onNodeWithText("Acme — 2 contacts").assertIsDisplayed()
     }

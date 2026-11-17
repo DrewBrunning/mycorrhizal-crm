@@ -5,6 +5,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -16,6 +18,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.GraphRepository
@@ -450,6 +453,34 @@ class NetworkScreenTest {
     }
 
     @Test
+    fun `the picker has exactly one dismiss button and left-aligned results`() {
+        var dismissed = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactPickerDialog(
+                    uiState = NetworkUiState(
+                        pickerOpen = true,
+                        contactSearchResults = listOf(
+                            ContactSummary(id = 2, uid = "uid-2", fn = "Bob")
+                        )
+                    ),
+                    onDismiss = { dismissed++ },
+                    onSearch = {},
+                    onSelect = {}
+                )
+            }
+        }
+        composeTestRule.onAllNodesWithText("Cancel").assertCountEquals(1)
+        val field = composeTestRule.onNodeWithTag("picker-search").fetchSemanticsNode()
+        val row = composeTestRule.onNodeWithText("Bob").fetchSemanticsNode()
+        // Left-aligned with the field above, not centred in the dialog.
+        assertTrue(row.boundsInRoot.left - field.boundsInRoot.left < 24f)
+        composeTestRule.onNodeWithTag("picker-result-2").assertHeightIsAtLeast(48.dp)
+        composeTestRule.onNodeWithText("Cancel").performClick()
+        assertEquals(1, dismissed)
+    }
+
+    @Test
     fun `the picker shows its empty-search state`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
@@ -586,7 +617,8 @@ class NetworkScreenTest {
     }
 
     @Test
-    fun `with the overlay on, entities show read-only with their contacts and never as chains`() {
+    fun `with the overlay on, entities show with their contacts and open on tap and never as chains`() {
+        var opened: String? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
                 NetworkScreenContent(
@@ -611,16 +643,20 @@ class NetworkScreenTest {
                     onClosePicker = {},
                     onSearchContacts = {},
                     onSelectFrom = {},
-                    onErrorShown = {}
+                    onErrorShown = {},
+                    onOpenEntity = { opened = it }
                 )
             }
         }
         composeTestRule.onNodeWithTag("network-entities-toggle").assertIsOn()
         composeTestRule.onNodeWithTag("network-entity-e-o1").assertIsDisplayed()
         composeTestRule.onNodeWithText("Organisation · Alice, Ada").assertIsDisplayed()
-        // No edit affordance: the row has no click action.
+        // Tapping opens the entity page (the graph node id is `e-<entityId>`).
         composeTestRule.onNodeWithTag("network-entity-e-o1")
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+            .assertHasClickAction()
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        assertEquals("o1", opened)
     }
 
     @Test

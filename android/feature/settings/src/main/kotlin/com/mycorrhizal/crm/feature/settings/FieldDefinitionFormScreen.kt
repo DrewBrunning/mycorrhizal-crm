@@ -206,6 +206,11 @@ fun FieldDefinitionFormContent(
                     readOnly = true,
                     enabled = !state.isEdit,
                     label = { Text(stringResource(R.string.settings_custom_fields_applies_to)) },
+                    supportingText = if (state.isEdit) {
+                        { Text(stringResource(R.string.settings_custom_fields_applies_to_hint)) }
+                    } else {
+                        null
+                    },
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = targetExpanded)
                     },
@@ -251,7 +256,14 @@ fun FieldDefinitionFormContent(
             suggestions = state.groupSuggestions,
             expanded = groupExpanded,
             onExpandedChange = { groupExpanded = it },
-            onValueChange = onGroupChange
+            onValueChange = onGroupChange,
+            hint = stringResource(
+                if (state.target == FIELD_TARGET_CONTACT) {
+                    R.string.settings_custom_fields_group_hint
+                } else {
+                    R.string.settings_custom_fields_group_hint_entity
+                }
+            )
         )
 
         ExposedDropdownMenuBox(expanded = typeExpanded, onExpandedChange = { typeExpanded = it }) {
@@ -552,7 +564,8 @@ private fun GroupField(
     suggestions: List<String>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onValueChange: (String) -> Unit
+    onValueChange: (String) -> Unit,
+    hint: String
 ) {
     val matches = suggestions.filter { it != value && it.contains(value.trim(), ignoreCase = true) }
     ExposedDropdownMenuBox(
@@ -566,7 +579,7 @@ private fun GroupField(
                 onExpandedChange(true)
             },
             label = { Text(stringResource(R.string.settings_custom_fields_group)) },
-            supportingText = { Text(stringResource(R.string.settings_custom_fields_group_hint)) },
+            supportingText = { Text(hint) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().menuAnchor(
                 ExposedDropdownMenuAnchorType.PrimaryEditable

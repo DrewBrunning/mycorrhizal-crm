@@ -161,6 +161,7 @@ import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.TargetClosenessTier
 import com.mycorrhizal.crm.model.network.editorToWireValue
+import com.mycorrhizal.crm.model.network.entityLinkIdFromElementId
 import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.network.isEditorValueEmpty
 import com.mycorrhizal.crm.model.network.isMulti
@@ -918,6 +919,7 @@ fun ContactDetailScreen(
                         relationshipCount = state.relationshipCount,
                         attachmentCount = state.attachmentCount,
                         cadenceCount = state.cadenceCount,
+                        projectedEntityNames = state.projectedEntityNames,
                         onAddPaperlessLink = {
                             paperlessPickerOpen = true
                             viewModel.loadPaperlessDocuments()
@@ -1437,7 +1439,9 @@ fun ContactDetailContent(
     agendaCount: Int? = null,
     relationshipCount: Int? = null,
     attachmentCount: Int? = null,
-    cadenceCount: Int? = null
+    cadenceCount: Int? = null,
+    // Issue #2646: link id -> entity name, for the "from <name>" chip on projected rows.
+    projectedEntityNames: Map<String, String> = emptyMap()
 ) {
     val card = contact.card
     // Issue #1997: per-contact overrides and hide-empty are applied here so a
@@ -1453,9 +1457,20 @@ fun ContactDetailContent(
     val reminderCount = contact.reminders.orEmpty().size
     // Issue #1728: the three moved-out groups are also preloaded on the record.
     val personalInfoCount = card?.personalInfo.orEmpty().size
-    val workCount = card?.organizations.orEmpty().size +
-        card?.titles.orEmpty().size +
-        (if (!contact.crm?.workInformation.isNullOrBlank()) 1 else 0)
+    // Issue #2647: count only what the Work screen lists, i.e. the subsections still enabled.
+    val workOrganizations =
+        if (ContactFieldKey.ORGANIZATIONS in
+            enabledFields
+        ) {
+            card?.organizations.orEmpty().size
+        } else {
+            0
+        }
+    val workTitles =
+        if (ContactFieldKey.TITLES in enabledFields) card?.titles.orEmpty().size else 0
+    val hasWorkInformation = ContactFieldKey.WORK_INFORMATION in enabledFields &&
+        !contact.crm?.workInformation.isNullOrBlank()
+    val workCount = workOrganizations + workTitles + (if (hasWorkInformation) 1 else 0)
     // Issue #383: local dialog visibility only — the data itself lives in
     // ContactDetailUiState.score, loaded once by the ViewModel and passed in
     // as [score]. Kept local (rather than hoisted to ContactDetailScreen like
@@ -1698,7 +1713,14 @@ fun ContactDetailContent(
                     if (addresses.isEmpty()) {
                         EmptyFieldRow(onAdd = { onEdit(contact.id) })
                     } else {
-                        addresses.forEach { AddressRow(it) }
+                        addresses.forEach { address ->
+                            AddressRow(
+                                address,
+                                entityLinkIdFromElementId(
+                                    address.id
+                                )?.let { projectedEntityNames[it] }
+                            )
+                        }
                     }
                 }
             }
@@ -2817,7 +2839,7 @@ private fun Phone.isMobile(): Boolean {
 }
 
 @Composable
-private fun AddressRow(address: Address) {
+private fun AddressRow(address: Address, projectedEntityName: String?) {
     val context = LocalContext.current
     val text = address.full
         ?: address.components?.joinToString(", ") { it.value.orEmpty() }
@@ -2830,7 +2852,7 @@ private fun AddressRow(address: Address) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = text, style = MaterialTheme.typography.bodyLarge)
-            if (projected) ProjectedFromChip(entityName = null)
+            if (projected) ProjectedFromChip(entityName = projectedEntityName)
         }
         if (text.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.mapIntent(text)) }) {

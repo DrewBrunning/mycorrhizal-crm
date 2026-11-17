@@ -54,7 +54,10 @@ fun <T> LabelledDropdown(
     options: List<DropdownOption<T>>,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    // What a screen reader says for the field; defaults to the visible [label]. A caller with a
+    // short visible label can name the item here ("Role for Acme").
+    accessibleLabel: String = label
 ) {
     var expanded by remember { mutableStateOf(false) }
     val open = expanded && enabled
@@ -88,7 +91,7 @@ fun <T> LabelledDropdown(
                 .focusable(enabled)
                 .semantics(mergeDescendants = true) {
                     role = Role.DropdownList
-                    contentDescription = "$label, $valueText"
+                    contentDescription = "$accessibleLabel, $valueText"
                     if (!enabled) disabled()
                 },
             // The decoration box sizes to its content; stretch it to the field width
