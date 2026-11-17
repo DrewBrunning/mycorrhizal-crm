@@ -749,6 +749,13 @@ export default function ContactHeader({
                           // overflowWrap anywhere also shrank min-content.
                           overflowWrap: 'break-word',
                           wordBreak: 'normal',
+                          // Issue #2684: a flex item will not shrink below its
+                          // longest word, so a 120-character name (or one long
+                          // unspaced word) ran under the edit pencil. min-width 0
+                          // lets it shrink to the row; break-word then splits
+                          // only the word that still does not fit.
+                          minWidth: 0,
+                          maxWidth: '100%',
                           hyphens: 'auto',
                         }}
                       >
@@ -928,6 +935,13 @@ export default function ContactHeader({
                           // overflowWrap anywhere also shrank min-content.
                           overflowWrap: 'break-word',
                           wordBreak: 'normal',
+                          // Issue #2684: a flex item will not shrink below its
+                          // longest word, so a 120-character name (or one long
+                          // unspaced word) ran under the edit pencil. min-width 0
+                          // lets it shrink to the row; break-word then splits
+                          // only the word that still does not fit.
+                          minWidth: 0,
+                          maxWidth: '100%',
                           hyphens: 'auto',
                         }}
                       >

@@ -1,5 +1,6 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './fixtures';
+import { createTestContact, deleteTestContact, expect, test, uniqueToken } from './fixtures';
+import { API_BASE_URL } from './global-setup';
 
 // T32: Network, Settings and User Management were found broken at phone widths
 // during real-world testing — the same class of fix T28 applied to the contact
@@ -176,3 +177,119 @@ test.describe('Mobile layout: Add Contact (#1780, #1781)', () => {
     });
   }
 });
+
+// ---------------------------------------------------------------------------
+// Issues #2677, #2704, #2684: long names and chip rows must reflow at phone
+// widths without overlapping or scrolling the page sideways.
+// ---------------------------------------------------------------------------
+
+// A 160-character name with a long unbreakable run, plus a non-Latin tail.
+const LONG_NAME = `Bartholomew-Featherstonehaugh-Worthington-Smythe ${'Ab'.repeat(40)} Иванов Петров`;
+
+interface Rect {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+function overlaps(a: Rect, b: Rect): boolean {
+  return (
+    a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1
+  );
+}
+
+for (const width of [320, 375] as const) {
+  test.describe(`Long names and chip rows at ${width}px (#2677 #2704 #2684)`, () => {
+    test.use({ viewport: { width, height: 800 } });
+
+    test('custom field rows keep their actions clear of the chips (#2677)', async ({ page }) => {
+      const label = `Field ${uniqueToken()}`;
+      const create = await page.request.post(`${API_BASE_URL}/field-definitions`, {
+        data: {
+          label,
+          key: `k_${uniqueToken().toLowerCase()}`,
+          target: 'organisation',
+          type: 'string',
+        },
+      });
+      expect(create.ok(), `create field definition: ${create.status()}`).toBeTruthy();
+      const id = (await create.json()).field_definition.id as string;
+      try {
+        await page.goto('/settings/data');
+        const row = page.getByRole('listitem').filter({ hasText: label });
+        await expect(row).toBeVisible();
+        const chips = await row.locator('.MuiChip-root').evaluateAll((els) =>
+          els.map((e) => {
+            const r = e.getBoundingClientRect();
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+          }),
+        );
+        const actions = await row.getByRole('button').evaluateAll((els) =>
+          els.map((e) => {
+            const r = e.getBoundingClientRect();
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+          }),
+        );
+        expect(chips.length).toBeGreaterThan(1);
+        for (const chip of chips) {
+          for (const action of actions) {
+            expect(overlaps(chip, action), 'a row action overlaps a chip').toBe(false);
+          }
+        }
+        expect(await documentOverflowPx(page), 'page overflows horizontally (px)').toBe(0);
+      } finally {
+        await page.request.delete(`${API_BASE_URL}/field-definitions/${id}`).catch(() => {});
+      }
+    });
+
+    test('a long contact name does not widen /notes (#2704) or run under the edit pencil (#2684)', async ({
+      page,
+    }) => {
+      const contact = await createTestContact(page.request, {
+        firstname: LONG_NAME,
+        lastname: 'Smythe',
+      });
+      try {
+        const note = await page.request.post(`${API_BASE_URL}/contacts/${contact.ID}/notes`, {
+          data: { content: 'A note about a person with a very long name', date: '2026-11-01' },
+        });
+        expect(note.ok(), `create note: ${note.status()}`).toBeTruthy();
+
+        await page.goto('/notes');
+        await expect(page.getByText('A note about a person with a very long name')).toBeVisible();
+        expect(await documentOverflowPx(page), '/notes overflows horizontally (px)').toBe(0);
+
+        await page.goto(`/contacts/${contact.ID}`);
+        const heading = page.getByRole('heading', { level: 1 });
+        await expect(heading).toBeVisible();
+        expect(await documentOverflowPx(page), 'contact page overflows horizontally (px)').toBe(0);
+        const textBox = await heading.evaluate((h) => {
+          const range = document.createRange();
+          range.selectNodeContents(h);
+          const rects = Array.from(range.getClientRects());
+          return {
+            left: Math.min(...rects.map((r) => r.left)),
+            right: Math.max(...rects.map((r) => r.right)),
+            top: Math.min(...rects.map((r) => r.top)),
+            bottom: Math.max(...rects.map((r) => r.bottom)),
+          };
+        });
+        const pencil = await page.locator('.edit-icon').first().boundingBox();
+        if (pencil) {
+          expect(
+            overlaps(textBox, {
+              left: pencil.x,
+              right: pencil.x + pencil.width,
+              top: pencil.y,
+              bottom: pencil.y + pencil.height,
+            }),
+            'the edit pencil overlaps the contact name',
+          ).toBe(false);
+        }
+      } finally {
+        await deleteTestContact(page.request, contact.ID);
+      }
+    });
+  });
+}

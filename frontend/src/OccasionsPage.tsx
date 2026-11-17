@@ -30,6 +30,7 @@ import OccasionEventList from './components/OccasionEventList';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useOccasionEvents } from './hooks/useOccasionEvents';
 import { handleError, handleFetchError } from './utils/errorHandler';
+import { localDaysUntil } from './utils/localDate';
 
 // The Occasions surface's two derived views (ADR 0024 parts 4-5, issue
 // #387): the sensitivity-filtered card-list export and the gift shopping
@@ -199,9 +200,9 @@ export default function OccasionsPage() {
                       {item.contact_name} — {item.label}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {item.days_until === 0
+                      {localDaysUntil(item.date) === 0
                         ? t('occasions.widget.today')
-                        : t('occasions.widget.inDays', { count: item.days_until })}
+                        : t('occasions.widget.inDays', { count: localDaysUntil(item.date) })}
                     </Typography>
                   </Box>
                   <Chip

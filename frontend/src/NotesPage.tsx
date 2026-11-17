@@ -364,7 +364,7 @@ const NotesPage: React.FC = () => {
                 </TimelineDot>
                 {index < notes.length - 1 && <TimelineConnector />}
               </TimelineSeparator>
-              <TimelineContent sx={{ flex: 0.8 }}>
+              <TimelineContent sx={{ flex: 0.8, minWidth: 0 }}>
                 <Paper
                   elevation={2}
                   sx={{
@@ -384,7 +384,7 @@ const NotesPage: React.FC = () => {
                         alignItems: 'flex-start',
                       }}
                     >
-                      <Box sx={{ flex: 1 }}>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
                         <MarkdownText text={note.content} />
                         <ImageGallery
                           ownerId={note.ID}
@@ -425,6 +425,16 @@ const NotesPage: React.FC = () => {
                           component={RouterLink}
                           to={`/contacts/${note.contact_id}`}
                           clickable
+                          // Issue #2704: a Chip never wraps, so a long name made the
+                          // card (and the page) wider than a phone. Let it wrap.
+                          sx={{
+                            maxWidth: '100%',
+                            height: 'auto',
+                            '& .MuiChip-label': {
+                              whiteSpace: 'normal',
+                              overflowWrap: 'anywhere',
+                            },
+                          }}
                         />
                       </Box>
                     )}

@@ -14,7 +14,14 @@ import OccasionsPage from './OccasionsPage';
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.useRealTimers();
 });
+
+// Countdown labels follow the viewer's local day (issue #2679), so those tests pin it.
+function pinToday(year: number, monthIndex: number, day: number) {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(year, monthIndex, day, 12, 0));
+}
 
 vi.mock('./api/occasionObligations', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/occasionObligations')>();
@@ -101,6 +108,7 @@ test('fetches and shows the empty gift shopping list on mount', async () => {
 });
 
 test('renders a gift shopping item with its contact, label, and status', async () => {
+  pinToday(2026, 11, 20);
   const items: GiftShoppingItem[] = [
     {
       contact_id: 7,
@@ -120,7 +128,9 @@ test('renders a gift shopping item with its contact, label, and status', async (
   expect(screen.getByText('Needed')).toBeInTheDocument();
 });
 
-test('shows "Today" for an item due today', async () => {
+test('shows "Today" for an item due today, by the viewer day not the server days_until', async () => {
+  pinToday(2026, 8, 24);
+  // The server's days_until may be a day ahead of the viewer's (issue #2679).
   const items: GiftShoppingItem[] = [
     {
       contact_id: 8,
@@ -128,7 +138,7 @@ test('shows "Today" for an item due today', async () => {
       obligation_id: 'ob-2',
       label: 'Birthday gift',
       date: '2026-09-24',
-      days_until: 0,
+      days_until: 1,
       status: 'idea',
     },
   ];
