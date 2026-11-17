@@ -19782,6 +19782,11 @@
           "required": false
         },
         {
+          "name": "file_diagnostics",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "fixed_assignment",
           "type": "ref:ImportFixedAssignment",
           "required": false
@@ -20138,6 +20143,11 @@
     {
       "name": "ImportUploadResponse",
       "properties": [
+        {
+          "name": "file_diagnostics",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
         {
           "name": "headers",
           "type": "array\u003cstring\u003e",
