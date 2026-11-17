@@ -3,6 +3,7 @@
     "title": "Mycorrhizal CRM",
     "logout": "Abmelden",
     "accountMenu": "Konto",
+    "openNavigation": "Navigation öffnen",
     "update": {
       "available": "Eine neue Version von Mycorrhizal CRM ist verfügbar.",
       "reload": "Neu laden"
