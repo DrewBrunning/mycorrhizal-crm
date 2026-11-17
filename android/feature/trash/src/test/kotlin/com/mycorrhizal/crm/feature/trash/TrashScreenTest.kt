@@ -440,14 +440,14 @@ class TrashScreenTest {
     @Test
     fun `a failed first load is worded from its reason code, never the server text`() {
         screenWith(TrashUiState(error = reasonCoded()))
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 
     @Test
     fun `a refresh failure with items listed is worded from its reason code`() {
         screenWith(TrashUiState(items = listOf(ada), retentionDays = 30, error = reasonCoded()))
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 
@@ -457,7 +457,7 @@ class TrashScreenTest {
         screenWith(TrashUiState(), events)
         events.trySend(TrashUiEvent.Failed(reasonCoded()))
         composeTestRule.waitUntil(5_000) {
-            composeTestRule.onAllNodesWithText("Entity not found").fetchSemanticsNodes()
+            composeTestRule.onAllNodesWithText("Organisation, place or pet not found").fetchSemanticsNodes()
                 .isNotEmpty()
         }
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
