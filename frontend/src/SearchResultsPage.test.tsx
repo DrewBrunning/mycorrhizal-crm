@@ -262,3 +262,12 @@ test('the search field is reachable when no query has been typed yet (#2692)', (
   renderPage('/search');
   expect(screen.getByRole('searchbox', { name: 'Search everything' })).toHaveValue('');
 });
+
+// axe `list` (serious): a <ul> may only contain <li>; each result link sits in one.
+test('every result row is a list item wrapping its link', async () => {
+  vi.mocked(searchAll).mockResolvedValue(data);
+  renderPage('/search?q=ali');
+  const link = await screen.findByRole('link', { name: /Alice Smith/ });
+  const list = link.closest('ul') as HTMLElement;
+  for (const child of Array.from(list.children)) expect(child.tagName).toBe('LI');
+});

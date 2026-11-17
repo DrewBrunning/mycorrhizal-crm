@@ -5,6 +5,7 @@ import {
   IconButton,
   InputAdornment,
   List,
+  ListItem,
   ListItemButton,
   ListItemText,
   Paper,
@@ -141,16 +142,20 @@ export default function SearchResultsPage() {
     secondary?: string,
     chip?: string,
   ) => (
-    <ListItemButton key={key} component={RouterLink} to={to}>
-      <ListItemText
-        primary={primary}
-        secondary={secondary}
-        slotProps={{
-          primary: { sx: { overflowWrap: 'anywhere' } },
-        }}
-      />
-      {chip && <Chip size="small" variant="outlined" label={chip} sx={{ ml: 2, flexShrink: 0 }} />}
-    </ListItemButton>
+    <ListItem key={key} disablePadding>
+      <ListItemButton component={RouterLink} to={to}>
+        <ListItemText
+          primary={primary}
+          secondary={secondary}
+          slotProps={{
+            primary: { sx: { overflowWrap: 'anywhere' } },
+          }}
+        />
+        {chip && (
+          <Chip size="small" variant="outlined" label={chip} sx={{ ml: 2, flexShrink: 0 }} />
+        )}
+      </ListItemButton>
+    </ListItem>
   );
 
   const renderTab = () => {
