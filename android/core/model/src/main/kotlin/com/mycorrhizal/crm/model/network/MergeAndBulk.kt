@@ -15,20 +15,30 @@ data class ContactMergeFieldConflict(
     @Json(name = "loser_value") val loserValue: String = ""
 )
 
+/**
+ * Merge preview resolution. Every collection is nullable on the wire: the
+ * backend serialised Go nil slices as `null` for a contact pair without
+ * addresses/urls/impps/circles (issue #2604), and Moshi rejects an explicit
+ * null for a non-null Kotlin `List`. Use `allConflicts` or `.orEmpty()` when reading.
+ */
 @JsonClass(generateAdapter = true)
 data class ContactMergeResolution(
-    val emails: List<ContactMergeValue> = emptyList(),
-    val phones: List<ContactMergeValue> = emptyList(),
-    val addresses: List<ContactMergeAddress> = emptyList(),
-    val urls: List<ContactMergeValue> = emptyList(),
-    val impps: List<ContactMergeValue> = emptyList(),
-    val circles: List<String> = emptyList(),
-    @Json(name = "resolved_scalars") val resolvedScalars: Map<String, String> = emptyMap(),
-    val conflicts: List<ContactMergeFieldConflict> = emptyList(),
+    val emails: List<ContactMergeValue>? = null,
+    val phones: List<ContactMergeValue>? = null,
+    val addresses: List<ContactMergeAddress>? = null,
+    val urls: List<ContactMergeValue>? = null,
+    val impps: List<ContactMergeValue>? = null,
+    val circles: List<String>? = null,
+    @Json(name = "resolved_scalars") val resolvedScalars: Map<String, String>? = null,
+    val conflicts: List<ContactMergeFieldConflict>? = null,
     @Json(
         name = "field_value_conflicts"
-    ) val fieldValueConflicts: List<ContactMergeFieldConflict> = emptyList()
-)
+    ) val fieldValueConflicts: List<ContactMergeFieldConflict>? = null
+) {
+    /** Scalar conflicts followed by custom-field conflicts; empty when the wire sent null. */
+    val allConflicts: List<ContactMergeFieldConflict>
+        get() = conflicts.orEmpty() + fieldValueConflicts.orEmpty()
+}
 
 @JsonClass(generateAdapter = true)
 data class ContactMergeValue(val type: String? = null, val value: String = "")

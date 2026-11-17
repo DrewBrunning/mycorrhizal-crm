@@ -55,6 +55,37 @@ type ContactMergeResolution struct {
 	FieldValueConflicts []ContactMergeFieldConflict `json:"field_value_conflicts"`
 }
 
+// NormalizeNilSlices replaces every nil list with an empty one so the wire form
+// is always `[]`, never `null` (Go nil slices marshal as null; issue #2604 --
+// strict clients such as the Android Moshi adapter reject null for a list).
+// Call it on the response copy only: Apply paths keep their own nil semantics.
+func (r *ContactMergeResolution) NormalizeNilSlices() {
+	if r.Emails == nil {
+		r.Emails = []ContactEmail{}
+	}
+	if r.Phones == nil {
+		r.Phones = []ContactPhone{}
+	}
+	if r.Addresses == nil {
+		r.Addresses = []ContactAddress{}
+	}
+	if r.URLs == nil {
+		r.URLs = []ContactURL{}
+	}
+	if r.IMPPs == nil {
+		r.IMPPs = []ContactIMPP{}
+	}
+	if r.Circles == nil {
+		r.Circles = []string{}
+	}
+	if r.Conflicts == nil {
+		r.Conflicts = []ContactMergeFieldConflict{}
+	}
+	if r.FieldValueConflicts == nil {
+		r.FieldValueConflicts = []ContactMergeFieldConflict{}
+	}
+}
+
 // ContactMergeAssociationCounts is how many rows of each association type the
 // loser contact holds. Used two ways: the preview response ("this will merge
 // N notes, M edges, ...", computed pre-merge) and the commit audit note

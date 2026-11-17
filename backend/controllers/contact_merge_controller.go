@@ -131,6 +131,7 @@ func PreviewContactMerge(c *gin.Context) {
 		return
 	}
 
+	resolution.NormalizeNilSlices()
 	c.JSON(http.StatusOK, models.ContactMergePreviewResponse{
 		KeepID:            keeper.ID,
 		MergeID:           loser.ID,
