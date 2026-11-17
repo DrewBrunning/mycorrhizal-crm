@@ -1,0 +1,12 @@
+-- Issue #2663: the "Import updated this contact" note an import writes when it
+-- merges into an existing contact was saved with the zero time (0001-01-01), so
+-- it sorted last everywhere and rendered as 01.01.0001. The code now dates it
+-- at import time; this repairs the rows already written.
+--
+-- A note's `date` is stored as TEXT; GORM writes time.Time{} as
+-- '0001-01-01 00:00:00+00:00', which sorts before any real date. Rewrite only
+-- those rows (anything dated before year 0002) to the row's own created_at, the
+-- moment the import ran. Soft-deleted rows are included on purpose: restoring a
+-- note from Trash must not bring the bad date back. No other column changes and
+-- no row is added or removed. Idempotent: a repaired row no longer matches.
+UPDATE notes SET date = created_at WHERE date < '0002-01-01';
