@@ -68,6 +68,7 @@ unleash:
         - ^image_sweep_service\.go$
         - ^immich_client\.go$
         - ^immich_service\.go$
+        - ^import_dates\.go$
         - ^import_row_failure\.go$
         - ^import_row_issues\.go$
         - ^import_session\.go$

@@ -339,13 +339,15 @@ func UploadImportRecords(c *gin.Context) {
 
 	for rowIdx := range request.Records {
 		contact := &models.Contact{}
-		models.ApplyRecordToContact(contact, request.Records[rowIdx].ToRecord(), "")
+		record := request.Records[rowIdx].ToRecord()
+		dateDiags := services.DropInvalidRecordDates(record)
+		models.ApplyRecordToContact(contact, record, "")
 		if contact.VCardUID == "" {
 			contact.VCardUID = uuid.New().String()
 		}
 
 		contacts = append(contacts, services.VCFContactData{Contact: contact})
-		preview := services.BuildImportRowPreview(db, userID, contact, rowIdx, batch, nil, &stats)
+		preview := services.BuildImportRowPreview(db, userID, contact, rowIdx, batch, dateDiags, &stats)
 		batch = append(batch, contact)
 		previews = append(previews, preview)
 	}

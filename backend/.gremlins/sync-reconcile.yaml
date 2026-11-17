@@ -68,6 +68,7 @@ unleash:
         - ^immich_client\.go$
         - ^immich_service\.go$
         - ^import_custom_field_mapping\.go$
+        - ^import_dates\.go$
         - ^import_groupings_service\.go$
         - ^import_row_failure\.go$
         - ^import_row_issues\.go$

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -326,4 +327,35 @@ func TestUploadImportRecords_NoAuth_Unauthorized(t *testing.T) {
 
 	assert.Equal(t, http.StatusUnauthorized, w.Code)
 	assert.Equal(t, "UNAUTHORIZED", decodeError(t, w).Error.Code)
+}
+
+// Issues #2631/#2653 (option C): a device contact whose birthday is impossible
+// still imports, without the date, and the row carries the warning.
+func TestUploadImportRecords_InvalidBirthdayIsAWarningNotAnError(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "recbday", Password: "password123!A", Email: "recbday@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	cfg := &config.Config{ProfilePhotoDir: t.TempDir()}
+	gin.SetMode(gin.ReleaseMode)
+	router := routerForUser(db, user.ID)
+	registerImportRoutes(router, cfg)
+
+	card := cardFixture("Ada", "Lovelace", "ada.rec@example.com", "")
+	one, bad := 1991, 2
+	day := 30
+	card.Anniversaries = []contactmodel.Anniversary{{Kind: "birth", Date: contactmodel.AnniversaryDate{Partial: &contactmodel.PartialDate{Year: &one, Month: &bad, Day: &day}}}}
+	req := httptest.NewRequest(http.MethodPost, "/contacts/import/records", bytes.NewReader(recordsFixture(card)))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var resp models.ImportPreviewResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Len(t, resp.Rows, 1)
+	assert.Zero(t, resp.ErrorCount)
+	assert.Empty(t, resp.Rows[0].ValidationErrors)
+	assert.Empty(t, resp.Rows[0].ParsedContact["birthday"])
+	require.Len(t, resp.Rows[0].Diagnostics, 1)
+	assert.Equal(t, contactmodel.Diagnostic{Severity: "warn", Concept: "birthday", Message: "birthday not imported: invalid value"}, resp.Rows[0].Diagnostics[0])
 }
