@@ -257,9 +257,11 @@ Feeds are managed in the web app only; the Android app has no feed management sc
 The **account bundle** is a single JSON file holding a complete, re-importable copy of your data. It
 is served by `GET /api/v1/export/account` (see the [API reference](api-reference.md)) and is what the
 [Android app](android-app.md) writes with **Export account bundle to file** and uses to move a
-local-only profile to a server. The web app has no button that downloads one, but it is where the
-bundle is *imported*: **Settings → Data → Import account bundle** takes a bundle exported from
-another Mycorrhizal instance or from a local-only Android profile.
+local-only profile to a server. In the web app, **Settings → Data → Export account bundle** (in the
+**Export Data** card) downloads one after a confirmation that it includes everything you marked
+private or secret; **Settings → Data → Import account bundle** takes a bundle exported from another
+Mycorrhizal instance or from a local-only Android profile. File attachments are not part of the
+bundle.
 
 ### What it includes
 
@@ -280,7 +282,7 @@ Because the bundle carries everything, keep the file as private as a password-ma
 
 The bundle is built in memory as one document, and the import accepts at most **64 MiB**. If your
 account would produce a larger bundle, the export refuses instead of handing you a file that could not
-be imported: the response is HTTP 507 with a message giving the bundle's size and the 64 MiB limit.
+be imported: the response is HTTP 507 with a message giving the bundle's size and the 64 MiB limit, which the web app shows as the error under the button.
 Remove contacts or profile photos you no longer need and try again, or use the CSV or vCard export.
 Successful exports also report the limit in an `X-Mycorrhizal-Bundle-Max-Bytes` response header.
 
