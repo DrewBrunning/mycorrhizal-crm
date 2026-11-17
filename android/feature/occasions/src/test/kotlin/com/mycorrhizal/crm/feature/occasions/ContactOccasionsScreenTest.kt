@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.occasions
 
+import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -8,7 +9,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
-import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -21,6 +22,8 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.OccasionObligationRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.network.ApiError
@@ -30,6 +33,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import java.util.Locale
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -46,7 +50,7 @@ private const val UID = "11111111-1111-4111-8111-111111111111"
 class ContactOccasionsScreenTest {
 
     @get:Rule
-    val composeTestRule = createComposeRule()
+    val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     private val repository = mockk<OccasionObligationRepository>()
     private val contacts = mockk<ContactRepository>()
@@ -249,5 +253,78 @@ class ContactOccasionsScreenTest {
         composeTestRule.onNodeWithContentDescription("Delete Christmas card").performClick()
         composeTestRule.onNodeWithText("Cancel").performClick()
         coVerify(exactly = 0) { repository.delete(any()) }
+    }
+
+    @Test
+    fun `a failed load is worded from its reason code, never the server text`() {
+        coEvery { contacts.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = UID, name = Name(full = "Dana")))
+        )
+        coEvery { repository.listForContact(UID) } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW SERVER TEXT",
+                reason = ErrorReason(ErrorReasonCode.ENTITY_NOT_FOUND, emptyMap())
+            )
+        )
+        val viewModel = ContactOccasionsViewModel(
+            repository,
+            contacts,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactOccasionsScreen(onBack = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    @Test
+    fun `system back from the form returns to the occasions list, not the contact page`() {
+        var leftScreen = false
+        coEvery { contacts.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = UID, name = Name(full = "Dana")))
+        )
+        coEvery { repository.listForContact(UID) } returns Result.success(listOf(ob()))
+        val viewModel = ContactOccasionsViewModel(
+            repository,
+            contacts,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactOccasionsScreen(onBack = { leftScreen = true }, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        composeTestRule.onNodeWithText("Edit occasion").assertIsDisplayed()
+
+        composeTestRule.runOnUiThread {
+            composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Edit occasion").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Christmas card").assertIsDisplayed()
+        assertEquals(false, leftScreen)
+    }
+
+    @Test
+    fun `system back from an edited form still asks before discarding`() {
+        render(listOf(ob()))
+        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        composeTestRule.onNodeWithTag("occasion-ob-label").performTextReplacement("Changed")
+        composeTestRule.onNodeWithText("Changed").assertIsDisplayed()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.runOnUiThread {
+            composeTestRule.activity.onBackPressedDispatcher.onBackPressed()
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Edit occasion").assertIsDisplayed()
     }
 }

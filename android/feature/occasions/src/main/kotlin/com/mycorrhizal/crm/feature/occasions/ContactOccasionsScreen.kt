@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.occasions
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -107,6 +108,14 @@ fun ContactOccasionsScreen(
             snackbarHostState.showSnackbar(message)
             currentOnErrorShown.value()
         }
+    }
+
+    // Issue #2612: the form is state on this screen, not a nav destination, so system back would
+    // otherwise leave the whole screen. Registered before the form so the form's own
+    // unsaved-changes guard (FormScaffold's BackHandler, enabled only when dirty) takes priority.
+    BackHandler(enabled = showForm) {
+        showForm = false
+        editingId = null
     }
 
     if (showForm) {

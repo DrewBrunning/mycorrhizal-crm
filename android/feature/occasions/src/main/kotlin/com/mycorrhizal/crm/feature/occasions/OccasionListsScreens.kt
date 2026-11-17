@@ -48,11 +48,13 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.GiftShoppingItem
 import com.mycorrhizal.crm.model.network.GiftShoppingStatuses
+import com.mycorrhizal.crm.model.network.daysUntilOn
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.currentToday
 import java.io.File
 
 private const val CARD_LIST_FILE_NAME = "mycorrhizal-card-list.csv"
@@ -280,7 +282,7 @@ private fun GiftShoppingRow(item: GiftShoppingItem, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    occasionCountdown(item.daysUntil),
+                    occasionCountdown(item.daysUntilOn(currentToday)),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

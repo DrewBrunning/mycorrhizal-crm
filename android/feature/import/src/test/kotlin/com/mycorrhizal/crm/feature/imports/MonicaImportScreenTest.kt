@@ -263,10 +263,22 @@ class MonicaImportScreenTest {
 
     @Test
     fun `a typed error is shown through its localized message`() {
+        // Issue #2603: the old case used a reason-less error, which passes even when the screen
+        // renders the raw server text. A reason code with a param proves the translation is used.
         setContent(
-            MonicaImportUiState(error = ApiError.Client(400, "Monica rejected the API token"))
+            MonicaImportUiState(
+                error = ApiError.Client(
+                    400,
+                    "Monica rejected the API token",
+                    reason = ErrorReason(
+                        ErrorReasonCode.CONTACT_BULK_FIELD_NOT_EDITABLE,
+                        mapOf("field" to "email")
+                    )
+                )
+            )
         )
-        composeTestRule.onNodeWithText("Monica rejected the API token").assertIsDisplayed()
+        composeTestRule.onNodeWithText("email is not bulk-editable").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Monica rejected the API token").assertDoesNotExist()
     }
 
     @Test

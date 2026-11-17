@@ -2,6 +2,9 @@ package com.mycorrhizal.crm.model.network
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
+import java.time.LocalDate
+import java.time.format.DateTimeParseException
+import java.time.temporal.ChronoUnit
 
 /**
  * A standing, recurring obligation toward a contact — "this contact is on my holiday card
@@ -154,3 +157,26 @@ object UpcomingOccasionSources {
 
     val ALL = listOf(BIRTHDAY, ANNIVERSARY, LIFE_EVENT, OBLIGATION)
 }
+
+/**
+ * Issue #2617: whole days from the device's [today] to the resolved occurrence [date]
+ * (`YYYY-MM-DD`). The server counts `days_until` from its own reminder zone (UTC by default),
+ * which disagrees with the device's calendar day for part of every day, so the same occasion
+ * could read "Today" in one card and show tomorrow's date in another. The date itself is
+ * authoritative; an unparseable one keeps the server's [serverDaysUntil]. A date already past on
+ * the device (server zone ahead) is clamped to 0 rather than rendering a negative countdown.
+ */
+fun localDaysUntil(date: String, serverDaysUntil: Int, today: LocalDate): Int {
+    val occurrence = try {
+        LocalDate.parse(date)
+    } catch (_: DateTimeParseException) {
+        return serverDaysUntil
+    }
+    return ChronoUnit.DAYS.between(today, occurrence).toInt().coerceAtLeast(0)
+}
+
+/** [UpcomingOccasion.daysUntil] relative to the device's [today] (see [localDaysUntil]). */
+fun UpcomingOccasion.daysUntilOn(today: LocalDate): Int = localDaysUntil(date, daysUntil, today)
+
+/** [GiftShoppingItem.daysUntil] relative to the device's [today] (see [localDaysUntil]). */
+fun GiftShoppingItem.daysUntilOn(today: LocalDate): Int = localDaysUntil(date, daysUntil, today)

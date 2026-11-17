@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -39,7 +40,10 @@ class OccasionAttendeesScreenTest {
     private val circleRepository = mockk<CircleRepository>()
     private val contactRepository = mockk<ContactRepository>()
 
-    private fun render(attendees: List<OccasionEventAttendeeView> = listOf(attendee())) {
+    private fun render(
+        attendees: List<OccasionEventAttendeeView> = listOf(attendee()),
+        circles: List<Circle> = listOf(Circle(id = "c1", name = "Friends"))
+    ) {
         coEvery { occasionRepository.get("e1") } returns Result.success(
             OccasionEventDetail(
                 occasionEvent = OccasionEvent(
@@ -50,9 +54,7 @@ class OccasionAttendeesScreenTest {
                 attendees = attendees
             )
         )
-        coEvery { circleRepository.list(any(), any()) } returns Result.success(
-            listOf(Circle(id = "c1", name = "Friends"))
-        )
+        coEvery { circleRepository.list(any(), any()) } returns Result.success(circles)
         coEvery { occasionRepository.suggestInvitees(listOf("c1"), "e1") } returns Result.success(
             listOf(InviteeSuggestion(contactId = 5, contactName = "Bob", entityId = "uid-5"))
         )
@@ -140,5 +142,16 @@ class OccasionAttendeesScreenTest {
         composeTestRule.onNodeWithText("Suggest").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Add everyone (1)").assertIsDisplayed()
+    }
+
+    @Test
+    fun `every circle chip is reachable when one circle has a very long name`() {
+        val longName = "Long ".repeat(24).trim() // 119 characters
+        val names = listOf(longName, "Book club", "Family", "Work friends")
+        render(circles = names.mapIndexed { i, n -> Circle(id = "c$i", name = n) })
+
+        names.forEach { name ->
+            composeTestRule.onNodeWithText(name).performScrollTo().assertIsDisplayed()
+        }
     }
 }
