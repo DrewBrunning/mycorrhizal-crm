@@ -4864,6 +4864,11 @@
           "name": "sensitivity",
           "in": "query",
           "required": false
+        },
+        {
+          "name": "sort",
+          "in": "query",
+          "required": false
         }
       ],
       "responses": [
