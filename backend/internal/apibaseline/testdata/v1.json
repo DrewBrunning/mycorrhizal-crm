@@ -24125,6 +24125,11 @@
           "required": false
         },
         {
+          "name": "matched_on",
+          "type": "array\u003cstring\u003e",
+          "required": false
+        },
+        {
           "name": "nickname",
           "type": "string",
           "required": false
@@ -24183,6 +24188,11 @@
             "place",
             "pet"
           ]
+        },
+        {
+          "name": "matched_on",
+          "type": "array\u003cstring\u003e",
+          "required": false
         },
         {
           "name": "name",
