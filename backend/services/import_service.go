@@ -292,6 +292,10 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 			continue
 		}
 
+		// Option C (#2631/#2653): an impossible/unparseable birthday or
+		// anniversary is dropped with a row warning, never a row error.
+		diags = append(diags, DropInvalidRecordDates(record)...)
+
 		contact := &models.Contact{}
 		// photoDir is deliberately "" here: this is only a preview, not yet
 		// confirmed by the user (see ApplyRecordToContact's photoDir doc
@@ -372,6 +376,10 @@ func ParseJSContact(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFC
 			stats.ErrorCount++
 			continue
 		}
+
+		// Option C (#2631/#2653): an impossible/unparseable birthday or
+		// anniversary is dropped with a row warning, never a row error.
+		diags = append(diags, DropInvalidRecordDates(record)...)
 
 		contact := &models.Contact{}
 		// photoDir is deliberately "" here: this is only a preview, not yet
@@ -1526,6 +1534,10 @@ func BuildImportRowPreview(
 	// preview is built or validated, so both reflect the cleaned value and
 	// the format validators below never have to reason about hostile bytes.
 	diags = append(diags, SanitizeImportedContact(contact)...)
+
+	// CSV rows carry their dates only as flat strings; an impossible or
+	// unparseable one is cleared and warned about (#2631), not rejected.
+	diags = append(diags, dropInvalidFlatDates(contact)...)
 
 	// Issue #2186: a contact with no name but an email or phone is named
 	// after it instead of being rejected.
