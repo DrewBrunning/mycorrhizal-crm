@@ -89,6 +89,25 @@ describe('SharedWithMePage', () => {
     expect(within(row).queryByRole('button', { name: /^Block/ })).not.toBeInTheDocument();
   });
 
+  // WCAG 2.5.3 (#2700): voice control says the visible text, so every accessible
+  // name must contain it (axe label-content-name-mismatch).
+  test('every action button name contains its visible text', async () => {
+    setup(
+      [pending, active],
+      [{ user_id: 7, username: 'dave', created_at: '2026-01-01T00:00:00Z' }],
+    );
+    renderPage();
+    await rowFor('Alice Anderson');
+    await screen.findByRole('button', { name: 'Unblock dave' });
+    const buttons = screen.getAllByRole('button').filter((b) => b.hasAttribute('aria-label'));
+    expect(buttons.length).toBeGreaterThan(4);
+    for (const b of buttons) {
+      const visible = (b.textContent ?? '').trim().toLowerCase();
+      const name = (b.getAttribute('aria-label') ?? '').toLowerCase();
+      expect(name, `aria-label "${name}" must contain "${visible}"`).toContain(visible);
+    }
+  });
+
   test('accepting posts accept, moves the row to active and announces it', async () => {
     setup([pending]);
     const accept = mockApi('post', '/share-grants/p1/accept', {
@@ -131,7 +150,7 @@ describe('SharedWithMePage', () => {
       share_grant: { ...pending, status: 'declined' },
     });
     renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: 'Block bob' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Block sender bob' }));
     const dialog = await screen.findByRole('dialog', { name: 'Block this sender?' });
     expect(within(dialog).getByText(/not told that you blocked them/i)).toBeInTheDocument();
     expect(decline).toHaveLength(0); // nothing sent until confirmed
@@ -147,7 +166,7 @@ describe('SharedWithMePage', () => {
     setup([pending]);
     const decline = mockApi('post', '/share-grants/p1/decline', {});
     renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: 'Block bob' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Block sender bob' }));
     const dialog = await screen.findByRole('dialog', { name: 'Block this sender?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());

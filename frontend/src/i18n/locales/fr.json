@@ -4613,7 +4613,7 @@
       "declineLabel": "Refuser {{label}} de {{username}}",
       "viewLabel": "Afficher {{label}} de {{username}}",
       "leaveLabel": "Ne plus recevoir {{label}} de {{username}}",
-      "blockLabel": "Bloquer {{username}}",
+      "blockLabel": "Bloquer l'expéditeur {{username}}",
       "leaveTitle": "Ne plus recevoir ce partage ?",
       "leaveBody": "Vous perdrez l'accès à {{label}} de {{username}}. Cette personne devrait le partager à nouveau avec vous.",
       "blockTitle": "Bloquer cet expéditeur ?",
@@ -4652,6 +4652,8 @@
     },
     "byMe": {
       "title": "Partagé par moi",
+      "liveHeading": "Partages en cours",
+      "endedHeading": "Partages terminés",
       "description": "Partages permanents que vous avez envoyés. La révocation arrête les lectures futures ; elle ne rappelle pas ce que quelqu'un a déjà vu ou copié.",
       "empty": "Vous n'avez rien partagé de façon permanente.",
       "to": "À {{username}}",
@@ -4673,7 +4675,7 @@
       "revoked": "{{label}} révoqué pour {{username}}.",
       "reconfirmNeeded": "Masqué pour {{username}} jusqu'à votre confirmation : {{sections}}. Un élément d'une section est devenu privé ou secret ; toute la section reste donc masquée tant que vous ne l'avez pas vérifiée.",
       "reconfirm": "Vérifier et reconfirmer",
-      "reconfirmLabel": "Reconfirmer {{label}} pour {{username}}",
+      "reconfirmLabel": "Vérifier et reconfirmer {{label}} pour {{username}}",
       "reconfirmTitle": "Partager à nouveau ces sections ?",
       "reconfirmBody": "Vérifiez sur la page du contact ce que contiennent ces sections. Une fois confirmé, {{username}} les verra à nouveau : {{sections}}. Les éléments marqués privés ou secrets ne sont toujours jamais partagés.",
       "reconfirmConfirm": "Confirmer",
@@ -4686,6 +4688,7 @@
       "save": "Enregistrer",
       "saved": "Partage de {{username}} mis à jour.",
       "conflict": "Ce partage a été modifié ailleurs. La liste a été rechargée ; réessayez.",
+      "editGone": "Ce partage ne peut plus être modifié.",
       "actionFailed": "Cela n'a pas fonctionné : {{message}}"
     }
   }

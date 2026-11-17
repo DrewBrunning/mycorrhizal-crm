@@ -43,6 +43,16 @@ async function pickRecipient(name: string) {
 }
 
 describe('StandingShareForm', () => {
+  test('section checkbox rows are at least 44 px tall (#2716)', async () => {
+    setup();
+    await screen.findByRole('combobox', { name: 'Recipient' });
+    const boxes = screen.getAllByRole('checkbox');
+    expect(boxes.length).toBeGreaterThan(3);
+    for (const box of boxes) {
+      expect(getComputedStyle(box.closest('label') as HTMLElement).minHeight).toBe('44px');
+    }
+  });
+
   test('a contact grant starts with NO sections selected and cannot be created until one is chosen', async () => {
     setup();
     await pickRecipient('bob');

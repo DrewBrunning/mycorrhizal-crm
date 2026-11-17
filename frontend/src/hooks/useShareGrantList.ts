@@ -17,18 +17,23 @@ export function useShareGrantList<T extends { id: string }>(
   // overwrite a refresh that was started after it.
   const seq = useRef(0);
 
-  const refresh = useCallback(async () => {
+  // Resolves to the reloaded first page, or null when the load failed or a newer
+  // request superseded it (callers that need the fresh rows, e.g. to re-sync an
+  // open edit dialog after a 412, use the return value).
+  const refresh = useCallback(async (): Promise<T[] | null> => {
     const mine = ++seq.current;
     setLoading(true);
     setError('');
     try {
       const page = await fetchPage({});
-      if (mine !== seq.current) return;
+      if (mine !== seq.current) return null;
       setItems(page.share_grants);
       setNextCursor(page.next_cursor);
+      return page.share_grants;
     } catch (err) {
-      if (mine !== seq.current) return;
+      if (mine !== seq.current) return null;
       setError(getErrorMessage(err));
+      return null;
     } finally {
       if (mine === seq.current) setLoading(false);
     }

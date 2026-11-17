@@ -28,11 +28,20 @@ interface EditShareGrantDialogProps {
   grant: ShareGrantOwnerView | null;
   onClose: () => void;
   onSaved: (grant: ShareGrantOwnerView) => void;
-  // Called after a 412 so the page can reload the list.
+  // Called after a 412 so the page can reload the list and hand back the fresh grant
+  // (same id, so this dialog keeps the owner's edits and picks up the new revision).
   onStale: () => void;
 }
 
-const toDateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
+const pad = (n: number) => String(n).padStart(2, '0');
+
+// The expiry is stored as the LOCAL end of the chosen day (endOfDayISO), so it is
+// shown as the local calendar date; slicing the UTC ISO string is a day off west of UTC.
+const toDateInput = (iso: string | null) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
 
 function endOfDayISO(date: string): string {
   const [y, m, d] = date.split('-').map(Number);
@@ -101,6 +110,7 @@ function Inner({
                 {grant.sections.map((s) => (
                   <FormControlLabel
                     key={s}
+                    sx={{ minHeight: 44 }}
                     control={
                       <Checkbox
                         checked={kept.has(s)}

@@ -4613,7 +4613,7 @@
       "declineLabel": "Rifiuta {{label}} da {{username}}",
       "viewLabel": "Visualizza {{label}} da {{username}}",
       "leaveLabel": "Smetti di ricevere {{label}} da {{username}}",
-      "blockLabel": "Blocca {{username}}",
+      "blockLabel": "Blocca il mittente {{username}}",
       "leaveTitle": "Smettere di ricevere questa condivisione?",
       "leaveBody": "Perderai l'accesso a {{label}} da {{username}}. Dovrebbe condividerlo di nuovo con te.",
       "blockTitle": "Bloccare questo mittente?",
@@ -4652,6 +4652,8 @@
     },
     "byMe": {
       "title": "Condiviso da me",
+      "liveHeading": "Condivisioni attive",
+      "endedHeading": "Condivisioni concluse",
       "description": "Condivisioni continue che hai inviato. La revoca ferma le letture future; non richiama ciò che qualcuno ha già visto o copiato.",
       "empty": "Non hai condiviso nulla in modo continuo.",
       "to": "A {{username}}",
@@ -4673,7 +4675,7 @@
       "revoked": "Revocato {{label}} per {{username}}.",
       "reconfirmNeeded": "Nascosto a {{username}} finché non confermi: {{sections}}. Un elemento di una sezione è diventato privato o segreto, quindi l'intera sezione resta nascosta finché non la rivedi.",
       "reconfirm": "Rivedi e riconferma",
-      "reconfirmLabel": "Riconferma {{label}} per {{username}}",
+      "reconfirmLabel": "Rivedi e riconferma {{label}} per {{username}}",
       "reconfirmTitle": "Condividere di nuovo queste sezioni?",
       "reconfirmBody": "Controlla nella pagina del contatto cosa contengono ora queste sezioni. Dopo la conferma, {{username}} le vedrà di nuovo: {{sections}}. Gli elementi contrassegnati come privati o segreti continuano a non essere mai condivisi.",
       "reconfirmConfirm": "Conferma",
@@ -4686,6 +4688,7 @@
       "save": "Salva",
       "saved": "Condivisione per {{username}} aggiornata.",
       "conflict": "Questa condivisione è stata modificata altrove. L'elenco è stato ricaricato; riprova.",
+      "editGone": "Questa condivisione non può più essere modificata.",
       "actionFailed": "Non ha funzionato: {{message}}"
     }
   }
