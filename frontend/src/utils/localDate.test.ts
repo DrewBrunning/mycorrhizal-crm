@@ -131,4 +131,10 @@ describe('localDaysUntil (issue #2679)', () => {
     useTimeZone('America/Chicago');
     expect(localDaysUntil('2026-11-17T00:00:00Z', serverNextDay)).toBe(1);
   });
+
+  test('a value that is not a calendar date counts as Today rather than NaN', () => {
+    useTimeZone('America/Chicago');
+    expect(localDaysUntil('', serverNextDay)).toBe(0);
+    expect(localDaysUntil('soon', serverNextDay)).toBe(0);
+  });
 });
