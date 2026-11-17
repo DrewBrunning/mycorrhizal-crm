@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
+	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
@@ -49,6 +50,11 @@ type importSessionData struct {
 	importType  string           // "csv", "vcf", or "records" — what Confirm/ConfirmVCF dispatch on
 	vcfContacts []VCFContactData // VCF parsed contacts (nil for CSV imports)
 	csvContacts []models.Contact // CSV contacts built during preview (nil for VCF imports)
+
+	// fileDiagnostics are the upload's file-level notices (e.g. the
+	// Windows-1252 fallback warning, issue #2669), echoed on the preview
+	// response of a CSV session.
+	fileDiagnostics []contactmodel.Diagnostic
 
 	// sourceFormat is the true origin of the data for the persisted
 	// import_runs history (issue #651): "csv" | "vcf" | "jscontact" |
@@ -249,6 +255,12 @@ func (m *ImportSessionManager) CountActive(userID uint) int {
 
 // CreateCSVSession stores a freshly parsed CSV upload and returns its session ID.
 func (m *ImportSessionManager) CreateCSVSession(userID uint, headers []string, rows [][]string) string {
+	return m.CreateCSVSessionWithDiagnostics(userID, headers, rows, nil)
+}
+
+// CreateCSVSessionWithDiagnostics is CreateCSVSession carrying the upload's
+// file-level diagnostics so the later preview response can repeat them.
+func (m *ImportSessionManager) CreateCSVSessionWithDiagnostics(userID uint, headers []string, rows [][]string, fileDiags []contactmodel.Diagnostic) string {
 	sessionID := generateSessionID()
 	now := Now()
 
@@ -262,9 +274,10 @@ func (m *ImportSessionManager) CreateCSVSession(userID uint, headers []string, r
 			CreatedAt: now,
 			ExpiresAt: now.Add(sessionExpiry),
 		},
-		rows:         rows,
-		importType:   "csv",
-		sourceFormat: models.ImportFormatCSV,
+		rows:            rows,
+		importType:      "csv",
+		sourceFormat:    models.ImportFormatCSV,
+		fileDiagnostics: fileDiags,
 	}
 	m.mu.Unlock()
 
@@ -400,6 +413,7 @@ func (m *ImportSessionManager) PreviewCSV(db *gorm.DB, userID uint, req models.I
 		DuplicateCount: stats.DuplicateCount,
 		ErrorCount:     stats.ErrorCount,
 
+		FileDiagnostics: models.DiagnosticsOrEmpty(sessionData.fileDiagnostics),
 		FixedAssignment: BuildImportFixedAssignmentPreview(fixed, previews),
 	}, nil
 }

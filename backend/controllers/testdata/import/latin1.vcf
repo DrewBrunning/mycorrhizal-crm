@@ -1,0 +1,6 @@
+BEGIN:VCARD
+VERSION:3.0
+FN:José Müller
+N:Müller;José;;;
+EMAIL:jose.latin1vcf@example.com
+END:VCARD
