@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
 import { searchAll } from './api/search';
@@ -427,6 +427,10 @@ test('no badge when nothing is pending', async () => {
 // #2692: below the sm breakpoint the AppBar has no search box, so it offers a
 // button to the results page (which carries its own search field).
 test('a phone-width AppBar offers a search button that opens the search page (#2692)', async () => {
+  const originalMatchMedia = window.matchMedia;
+  onTestFinished(() => {
+    window.matchMedia = originalMatchMedia;
+  });
   const mm = ((query: string) => ({
     matches: query.includes('max-width'),
     media: query,
