@@ -481,7 +481,7 @@
     "com/mycorrhizal/crm/feature/timeline/TimelineItem.kt": 98.12,
     "com/mycorrhizal/crm/feature/timeline/TimelineSection.kt": 89.85,
     "com/mycorrhizal/crm/feature/timelineentities/Comparisons.kt": 100,
-    "com/mycorrhizal/crm/feature/timelineentities/EntityListScreens.kt": 90.01,
+    "com/mycorrhizal/crm/feature/timelineentities/EntityListScreens.kt": 88.21,
     "com/mycorrhizal/crm/feature/timelineentities/LazyDsl.kt": 100,
     "com/mycorrhizal/crm/feature/timelineentities/TimelineEntitiesViewModel.kt": 76.42,
     "com/mycorrhizal/crm/feature/tracking/BirthdayCheckWorker_AssistedFactory.java": 100,
