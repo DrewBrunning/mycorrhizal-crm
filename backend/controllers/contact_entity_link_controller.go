@@ -30,7 +30,7 @@ import (
 // registered in routes.go.
 
 func abortEntityLinkNotFound(c *gin.Context, id string) {
-	apperrors.AbortWithError(c, apperrors.ErrNotFound("Entity link").WithDetails("id", id))
+	apperrors.AbortWithError(c, apperrors.ErrNotFound("Link to organisation, place or pet").WithDetails("id", id))
 }
 
 // loadLinkContact loads the live contact :id owned by userID or aborts. When
