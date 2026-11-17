@@ -360,6 +360,27 @@ describe('SharedByMePage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/no longer available to edit/);
   });
 
+  test('a 412 whose reload fails keeps the dialog open and shows the load error (#2694)', async () => {
+    let listCalls = 0;
+    server.use(
+      http.get(`${API_BASE_URL}/share-grants/outgoing`, () => {
+        listCalls += 1;
+        return listCalls === 1
+          ? HttpResponse.json(page([grant()]))
+          : errorEnvelope(500, 'INTERNAL', 'boom');
+      }),
+    );
+    mockApi('patch', '/share-grants/g1', errorEnvelope(412, 'PRECONDITION_FAILED', 'stale'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: /^Edit / }));
+    const dialog = await screen.findByRole('dialog', { name: 'Edit share' });
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Phones' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
+    // The page behind the modal dialog is aria-hidden, hence `hidden`.
+    expect(await screen.findByRole('button', { name: 'Retry', hidden: true })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Edit share' })).toBeInTheDocument();
+  });
+
   test('a circle grant edit offers expiry only (no sections)', async () => {
     mockApi(
       'get',
