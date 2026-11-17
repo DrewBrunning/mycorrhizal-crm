@@ -56,6 +56,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 ### Security
 
 - **Source builds now need Go 1.26.10** ([#2635](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2635)): a dependency update raised the minimum Go toolchain from 1.26.0 to 1.26.10 for anyone building the server from source. The published Docker image is unaffected.
+- **Dates on import-merge notes** ([#2663](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2663)): the note added when an import updates an existing contact is now dated when the import ran, instead of 01.01.0001. Existing notes with that date are repaired on upgrade, so timelines sort them correctly.
 
 ## [1.6.0] - 2026-11-06
 

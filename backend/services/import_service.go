@@ -1658,10 +1658,13 @@ func CreateMergeNote(db *gorm.DB, userID uint, contactID uint, original *models.
 
 	content := fmt.Sprintf("%s Import updated this contact.\n\nChanges made:\n%s", importType, strings.Join(changes, "\n"))
 
+	// Dated at import time from the injected clock (issue #2663): a zero Date
+	// saved as 0001-01-01, sorting the note last on every timeline.
 	note := models.Note{
 		UserID:    userID,
 		ContactID: &contactID,
 		Content:   content,
+		Date:      Now().UTC(),
 	}
 
 	return db.Create(&note).Error
