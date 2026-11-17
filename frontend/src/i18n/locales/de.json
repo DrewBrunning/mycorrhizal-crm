@@ -401,6 +401,7 @@
       "title": "Kontakte importieren",
       "upload": {
         "dragDrop": "Datei (CSV oder VCF) hierher ziehen oder klicken zum Auswählen",
+        "chooseFile": "Datei auswählen",
         "maxSize": "Maximale Dateigröße: 50MB (VCF) / 20MB (CSV)",
         "supportedFormats": "Unterstützte Formate: CSV (Tabelle), VCF (vCard)",
         "pickFromDevice": "Aus den Kontakten dieses Geräts wählen",
@@ -411,6 +412,7 @@
         "description": "Ordnen Sie Ihre CSV-Spalten den Kontaktfeldern zu. Als 'Ignorieren' markierte Spalten werden nicht importiert.",
         "csvColumn": "CSV-Spalte",
         "mapsTo": "Zuordnung",
+        "mapsToFor": "Spalte {{column}} zuordnen zu",
         "sampleData": "Beispiel",
         "ignore": "-- Ignorieren --",
         "duplicateWarning": "Diese einwertigen Felder sind mehreren Spalten zugeordnet; nur die letzte Spalte wird verwendet: {{fields}}",
