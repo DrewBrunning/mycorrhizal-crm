@@ -3564,7 +3564,7 @@
     <string name="contact_entity_links_year_invalid">Gib Jahre vierstellig ein; das Ende darf nicht vor dem Beginn liegen.</string>
     <string name="contact_entity_links_projected_from">von %1$s</string>
     <string name="contact_entity_links_projected_from_unknown">von einem verknüpften Eintrag</string>
-    <string name="contact_entity_links_projected_hint">Aus dem verknüpften Eintrag angezeigt. Ändere ihn auf der Seite des Eintrags oder kopiere ihn in diesen Kontakt, um ihn hier zu bearbeiten.</string>
+    <string name="contact_entity_links_projected_hint">Aus der verknüpften Organisation oder dem verknüpften Ort angezeigt. Ändern Sie den Wert auf dessen Seite oder kopieren Sie ihn in diesen Kontakt, um ihn hier zu bearbeiten.</string>
     <string name="contact_entity_links_from_own_title">Einen eigenen Wert verknüpfen</string>
     <string name="contact_entity_links_from_own_intro">Verbinde eine eigene Organisation oder Adresse dieses Kontakts mit einem gemeinsamen Eintrag. Der Wert bleibt beim Kontakt.</string>
     <string name="contact_entity_links_from_own_value">Wert</string>
@@ -3608,7 +3608,7 @@
     <string name="network_entities_toggle">Organisationen, Orte &amp; Haustiere anzeigen</string>
     <string name="network_entities_empty">Mit diesen Kontakten sind keine Organisationen, Orte oder Haustiere verknüpft.</string>
     <string name="network_entities_failed">Organisationen, Orte und Haustiere konnten nicht geladen werden.</string>
-    <string name="network_entities_read_only">%1$s, %2$s, schreibgeschützt</string>
+    <string name="network_entities_description">%1$s, %2$s</string>
     <plurals name="shared_entities_detail_linked_count">
         <item quantity="one">Mit %1$d Kontakt verknüpft</item>
         <item quantity="other">Mit %1$d Kontakten verknüpft</item>
@@ -3631,7 +3631,7 @@
     </plurals>
     <string name="shared_entities_from_contacts_open">Aus meinen Kontakten erstellen…</string>
     <string name="shared_entities_from_contacts_title">Einträge aus meinen Kontakten erstellen</string>
-    <string name="shared_entities_from_contacts_intro">Gruppen derselben Organisation oder Adresse, die bei deinen Kontakten gefunden wurden. Hake an, was angelegt werden soll, und wähle die zu verknüpfenden Kontakte. Bei einem Kontakt wird nichts geändert oder gelöscht. Du kannst das jederzeit erneut ausführen, angeboten werden nur noch nicht verknüpfte Werte.</string>
+    <string name="shared_entities_from_contacts_intro">Gruppen derselben Organisation oder Adresse, die bei Ihren Kontakten gefunden wurden. Haken Sie eine Gruppe an, um sie anzulegen, und wählen Sie dann die zu verknüpfenden Kontakte. Bei einem Kontakt wird nichts geändert oder gelöscht. Sie können das jederzeit erneut ausführen; angeboten werden nur noch nicht verknüpfte Werte.</string>
     <string name="shared_entities_from_contacts_none">Aus deinen Kontakten gibt es nichts mehr anzulegen.</string>
     <string name="shared_entities_from_contacts_load_failed">Deine Kontakte konnten nicht durchsucht werden.</string>
     <string name="shared_entities_from_contacts_create_failed">Die Einträge konnten nicht erstellt werden.</string>
@@ -3641,6 +3641,10 @@
     <string name="shared_entities_from_contacts_role">Rolle für %1$s</string>
     <string name="shared_entities_from_contacts_primary">Als primär festlegen</string>
     <string name="shared_entities_from_contacts_primary_cd">Als primär festlegen für %1$s</string>
+    <string name="shared_entities_from_contacts_name_label">Name</string>
+    <string name="shared_entities_from_contacts_role_label">Rolle</string>
+    <string name="settings_custom_fields_applies_to_hint">Kann nach dem Erstellen nicht mehr geändert werden.</string>
+    <string name="settings_custom_fields_group_hint_entity">Optional. Felder mit derselben Gruppe werden auf der Seite zusammen angezeigt.</string>
     <string name="shared_entities_from_contacts_contacts_heading">Zu verknüpfende Kontakte</string>
     <string name="shared_entities_from_contacts_result_none">Es wurde nichts angelegt.</string>
     <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: übersprungen. Es existiert möglicherweise schon oder passt nicht mehr zu deinen Kontakten.</string>

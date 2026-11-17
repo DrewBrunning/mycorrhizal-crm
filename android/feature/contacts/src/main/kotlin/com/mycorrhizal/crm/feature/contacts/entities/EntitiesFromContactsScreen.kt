@@ -307,18 +307,26 @@ private fun GroupEditor(
     edit: FromContactsGroupEdit,
     actions: EntitiesFromContactsActions
 ) {
+    val nameDescription =
+        stringResource(R.string.shared_entities_from_contacts_name, group.name)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             value = edit.name,
             onValueChange = { actions.onName(group.key, it) },
-            label = {
-                Text(stringResource(R.string.shared_entities_from_contacts_name, group.name))
-            },
+            // A short visible label: a long group name wrapped to two lines and overlapped the
+            // outline. The group is named in the checkbox row above; TalkBack still hears it.
+            label = { Text(stringResource(R.string.shared_entities_from_contacts_name_label)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().testTag("from-contacts-name-${group.key}")
+            modifier = Modifier.fillMaxWidth()
+                .semantics {
+                    contentDescription = nameDescription
+                }
+                .testTag("from-contacts-name-${group.key}")
         )
         LabelledDropdown(
-            label = stringResource(R.string.shared_entities_from_contacts_role, group.name),
+            label = stringResource(R.string.shared_entities_from_contacts_role_label),
+            accessibleLabel =
+                stringResource(R.string.shared_entities_from_contacts_role, group.name),
             valueText = entityRoleText(kind, edit.role, ""),
             options = EntityLinkRoles.forKind(kind).map {
                 DropdownOption(it, entityRoleText(kind, it, ""))

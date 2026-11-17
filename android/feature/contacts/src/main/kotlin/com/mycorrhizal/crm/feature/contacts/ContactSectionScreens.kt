@@ -728,7 +728,13 @@ fun ContactWorkScreen(
     SectionListScaffold(
         title = stringResource(R.string.contact_work),
         addLabel = stringResource(R.string.contact_work_add),
-        onAdd = { editor = WorkEditor.Organization },
+        // Issue #2647: the add button adds an organization or a title, so it is only offered when
+        // one of those subsections is shown; the information section has its own edit button.
+        onAdd = when {
+            showOrganizations -> ({ editor = WorkEditor.Organization })
+            showTitles -> ({ editor = WorkEditor.Title })
+            else -> null
+        },
         onBack = onBack,
         state = state,
         onErrorShown = viewModel::onErrorShown,

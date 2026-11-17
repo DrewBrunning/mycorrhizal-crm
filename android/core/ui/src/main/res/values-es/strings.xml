@@ -3670,8 +3670,8 @@
     <string name="contact_entity_links_primary_help">Principal (se muestra en la ficha de este contacto)</string>
     <string name="contact_entity_links_year_invalid">Introduce los años con cuatro cifras, y el final no puede ser anterior al inicio.</string>
     <string name="contact_entity_links_projected_from">de %1$s</string>
-    <string name="contact_entity_links_projected_from_unknown">de una entidad vinculada</string>
-    <string name="contact_entity_links_projected_hint">Se muestra desde la entidad vinculada. Cámbialo en la página de la entidad, o cópialo en este contacto para editarlo aquí.</string>
+    <string name="contact_entity_links_projected_from_unknown">de una organización o lugar vinculado</string>
+    <string name="contact_entity_links_projected_hint">Se muestra desde la organización o el lugar vinculado. Cámbialo en su página, o cópialo en este contacto para editarlo aquí.</string>
     <string name="contact_entity_links_from_own_title">Vincular un valor propio</string>
     <string name="contact_entity_links_from_own_intro">Conecta una organización o dirección propia de este contacto con una organización o un lugar compartidos. El valor se queda en el contacto.</string>
     <string name="contact_entity_links_from_own_value">Valor</string>
@@ -3716,7 +3716,7 @@
     <string name="network_entities_toggle">Mostrar organizaciones, lugares y mascotas</string>
     <string name="network_entities_empty">Ninguna organización, lugar o mascota está vinculada a estos contactos.</string>
     <string name="network_entities_failed">No se pudieron cargar las organizaciones, los lugares y las mascotas.</string>
-    <string name="network_entities_read_only">%1$s, %2$s, solo lectura</string>
+    <string name="network_entities_description">%1$s, %2$s</string>
     <plurals name="shared_entities_detail_linked_count">
         <item quantity="one">Vinculada a %1$d contacto</item>
         <item quantity="many">Vinculada a %1$d contactos</item>
@@ -3743,17 +3743,21 @@
         <item quantity="other">No se pudo copiar a %1$d contactos, así que no se eliminó nada.</item>
     </plurals>
     <string name="shared_entities_from_contacts_open">Crear desde mis contactos…</string>
-    <string name="shared_entities_from_contacts_title">Crear entidades desde mis contactos</string>
-    <string name="shared_entities_from_contacts_intro">Grupos de la misma organización o dirección encontrados en tus contactos. Marca los que quieras crear y elige qué contactos vincular. No se cambia ni se elimina nada de un contacto. Puedes repetirlo cuando quieras: solo se ofrecen los valores aún sin vincular.</string>
+    <string name="shared_entities_from_contacts_title">Crear desde mis contactos</string>
+    <string name="shared_entities_from_contacts_intro">Grupos de la misma organización o dirección encontrados en tus contactos. Marca un grupo para crearlo y luego elige qué contactos vincular. No se cambia ni se elimina nada de un contacto. Puedes repetirlo cuando quieras: solo se ofrecen los valores aún sin vincular.</string>
     <string name="shared_entities_from_contacts_none">No queda nada por crear a partir de tus contactos.</string>
     <string name="shared_entities_from_contacts_load_failed">No se pudieron revisar tus contactos.</string>
-    <string name="shared_entities_from_contacts_create_failed">No se pudieron crear las entidades.</string>
+    <string name="shared_entities_from_contacts_create_failed">No se pudieron crear las organizaciones o lugares.</string>
     <string name="shared_entities_from_contacts_include_cd">Incluir %1$s</string>
     <string name="shared_entities_from_contacts_variants">También escrito como: %1$s</string>
     <string name="shared_entities_from_contacts_name">Nombre de %1$s</string>
     <string name="shared_entities_from_contacts_role">Rol para %1$s</string>
     <string name="shared_entities_from_contacts_primary">Establecer como principal</string>
     <string name="shared_entities_from_contacts_primary_cd">Establecer como principal para %1$s</string>
+    <string name="shared_entities_from_contacts_name_label">Nombre</string>
+    <string name="shared_entities_from_contacts_role_label">Rol</string>
+    <string name="settings_custom_fields_applies_to_hint">No se puede cambiar después de crearlo.</string>
+    <string name="settings_custom_fields_group_hint_entity">Opcional. Los campos del mismo grupo se muestran juntos en la página.</string>
     <string name="shared_entities_from_contacts_contacts_heading">Contactos a vincular</string>
     <string name="shared_entities_from_contacts_result_none">No se creó nada.</string>
     <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: omitido. Puede que ya exista o que ya no coincida con tus contactos.</string>

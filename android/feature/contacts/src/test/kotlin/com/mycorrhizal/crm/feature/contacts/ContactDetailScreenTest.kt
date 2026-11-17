@@ -1208,6 +1208,57 @@ class ContactDetailScreenTest {
     }
 
     @Test
+    fun `work count only counts what the Work screen can show`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Ada Lovelace"),
+                organizations = listOf(
+                    com.mycorrhizal.crm.model.network.Organization(id = "o1", name = "Analytical"),
+                    com.mycorrhizal.crm.model.network.Organization(id = "o2", name = "Babbage")
+                )
+            ),
+            crm = CRMEnvelope(workInformation = "Engineer")
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                // Organizations are off in the default set, so the Work screen lists none.
+                ContactDetailContent(contact = contact)
+            }
+        }
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-work"))
+        composeTestRule.onNodeWithTag("drill-down-work").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Work · 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Work · 3").assertDoesNotExist()
+    }
+
+    @Test
+    fun `work count includes organizations when they are enabled`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Ada Lovelace"),
+                organizations = listOf(
+                    com.mycorrhizal.crm.model.network.Organization(id = "o1", name = "Analytical")
+                )
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    accountEnabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ORGANIZATIONS
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-work"))
+        composeTestRule.onNodeWithText("Work · 1").assertIsDisplayed()
+    }
+
+    @Test
     fun `entities drill-down opens the contact's links`() {
         var opened = -1
         composeTestRule.setContent {
@@ -1310,6 +1361,61 @@ class ContactDetailScreenTest {
         }
         scrollTo("1 High St").assertIsDisplayed()
         composeTestRule.onAllNodesWithTag("projected-from-chip").assertCountEquals(1)
+    }
+
+    @Test
+    fun `a projected address names the place it comes from`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                addresses = listOf(
+                    com.mycorrhizal.crm.model.network.Address(id = "ent-l2", full = "1 High St")
+                )
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    accountEnabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ADDRESSES,
+                    projectedEntityNames = mapOf("l2" to "Lakeside Cabin")
+                )
+            }
+        }
+        scrollTo("1 High St").assertIsDisplayed()
+        composeTestRule.onNodeWithText("from Lakeside Cabin").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Shown from Lakeside Cabin, read-only")
+            .assertExists()
+        composeTestRule.onAllNodesWithText(
+            "from a linked organisation or place"
+        ).assertCountEquals(0)
+    }
+
+    @Test
+    fun `a projected address with an unresolved link falls back to the generic chip`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                addresses = listOf(
+                    com.mycorrhizal.crm.model.network.Address(id = "ent-l2", full = "1 High St")
+                )
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    accountEnabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ADDRESSES,
+                    projectedEntityNames = mapOf("other" to "Elsewhere")
+                )
+            }
+        }
+        scrollTo("1 High St").assertIsDisplayed()
+        composeTestRule.onNodeWithText("from a linked organisation or place").assertIsDisplayed()
     }
 
     @Test

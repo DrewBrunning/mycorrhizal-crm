@@ -4,6 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.EventNote
 import androidx.compose.material.icons.automirrored.outlined.Label
+import androidx.compose.material.icons.outlined.Business
 import androidx.compose.material.icons.outlined.Celebration
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.Dataset
@@ -56,7 +57,7 @@ private val settingsOwnedRoutes = listOf(
     "servers", "custom-links", "webhooks", "api-tokens", "calendar-sync", "two-factor", "passkeys",
     "notification-channels", "immich-settings", "paperless-settings", "seafile-settings",
     "nextcloud-settings", "geopulse-settings", "circle-tag-triage", "custom-field-definitions",
-    "contact-field-settings", "entities", "admin"
+    "contact-field-settings", "admin"
 )
 
 /**
@@ -82,6 +83,14 @@ internal val navDestinations: List<TopLevelDestination> = listOf(
         "households",
         R.string.households_title,
         Icons.Outlined.HomeWork,
+        NavGroup.PEOPLE
+    ),
+    // Issue #2649: organisations, places and pets (v1.7.0) are a People destination, not only a
+    // Settings row. The title is the entities screen's own top-bar title.
+    TopLevelDestination(
+        "entities",
+        R.string.shared_entities_title,
+        Icons.Outlined.Business,
         NavGroup.PEOPLE
     ),
     TopLevelDestination("network", R.string.nav_network, Icons.Outlined.Share, NavGroup.PEOPLE),

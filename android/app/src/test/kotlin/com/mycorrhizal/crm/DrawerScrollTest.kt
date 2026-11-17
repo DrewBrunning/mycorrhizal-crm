@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -69,7 +70,15 @@ class DrawerScrollTest {
             node.assertHeightIsAtLeast(48.dp)
             node.getUnclippedBoundsInRoot().let { it.bottom - it.top }
         }
-        assertEquals("every drawer entry has the same height: $heights", 1, heights.toSet().size)
+        // No entry is squeezed below the standard row (the #1758 failure mode). A long label such as
+        // "Organisations, places & pets" may wrap to a second line at font scale 2 (#2649), which
+        // makes its row taller, never shorter.
+        val standard = heights.min()
+        assertTrue("an entry is shorter than 56dp: $heights", standard >= 56.dp)
+        assertTrue(
+            "only wrapped labels may be taller: $heights",
+            heights.count { it > standard } <= 1
+        )
     }
 
     @Test
