@@ -75,10 +75,10 @@
       "branchesTotal": 224
     },
     "src/EntitiesPage.tsx": {
-      "lines": 81.25,
-      "linesTotal": 32,
-      "branches": 80,
-      "branchesTotal": 20
+      "lines": 91.17,
+      "linesTotal": 34,
+      "branches": 81.81,
+      "branchesTotal": 22
     },
     "src/EntityDetailPage.tsx": {
       "lines": 88.88,
@@ -1019,8 +1019,8 @@
     "src/components/EntitiesFromContactsSettings.tsx": {
       "lines": 92.68,
       "linesTotal": 82,
-      "branches": 78.18,
-      "branchesTotal": 55
+      "branches": 79.66,
+      "branchesTotal": 59
     },
     "src/components/EntityDeleteDialog.tsx": {
       "lines": 100,
@@ -1029,16 +1029,16 @@
       "branchesTotal": 32
     },
     "src/components/EntityFormDialog.tsx": {
-      "lines": 82.35,
-      "linesTotal": 68,
-      "branches": 87.09,
-      "branchesTotal": 31
+      "lines": 86.07,
+      "linesTotal": 79,
+      "branches": 94.87,
+      "branchesTotal": 39
     },
     "src/components/EntityMergeDialog.tsx": {
-      "lines": 98.5,
-      "linesTotal": 67,
-      "branches": 80.39,
-      "branchesTotal": 51
+      "lines": 98.52,
+      "linesTotal": 68,
+      "branches": 81.81,
+      "branchesTotal": 55
     },
     "src/components/EntityPicker.tsx": {
       "lines": 100,
@@ -1048,9 +1048,9 @@
     },
     "src/components/EntitySuggestionsPanel.tsx": {
       "lines": 100,
-      "linesTotal": 28,
-      "branches": 81.25,
-      "branchesTotal": 16
+      "linesTotal": 49,
+      "branches": 86.95,
+      "branchesTotal": 23
     },
     "src/components/ErrorAggregationPanel.tsx": {
       "lines": 100,
@@ -2473,6 +2473,12 @@
       "linesTotal": 97,
       "branches": 97.91,
       "branchesTotal": 96
+    },
+    "src/utils/entityDisambiguation.ts": {
+      "lines": 100,
+      "linesTotal": 5,
+      "branches": 50,
+      "branchesTotal": 4
     },
     "src/utils/entityLabels.ts": {
       "lines": 100,

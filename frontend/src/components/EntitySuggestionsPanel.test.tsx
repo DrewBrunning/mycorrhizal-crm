@@ -3,18 +3,27 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import {
   dismissEntitySuggestion,
+  type Entity,
   type EntitySuggestionPair,
+  getEntity,
   listEntitySuggestions,
 } from '../api/entities';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import { DateFormatProvider } from '../DateFormatProvider';
 import EntitySuggestionsPanel from './EntitySuggestionsPanel';
 
 vi.mock('../api/entities', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/entities')>();
-  return { ...actual, listEntitySuggestions: vi.fn(), dismissEntitySuggestion: vi.fn() };
+  return {
+    ...actual,
+    listEntitySuggestions: vi.fn(),
+    dismissEntitySuggestion: vi.fn(),
+    getEntity: vi.fn(),
+  };
 });
 const listMock = vi.mocked(listEntitySuggestions);
 const dismissMock = vi.mocked(dismissEntitySuggestion);
+const getMock = vi.mocked(getEntity);
 
 const pair: EntitySuggestionPair = {
   a: { id: 'a1', kind: 'organisation', name: 'Acme' },
@@ -26,7 +35,9 @@ function renderPanel(resolved: ReadonlySet<string> = new Set()) {
   const onMerge = vi.fn();
   render(
     <SnackbarProvider>
-      <EntitySuggestionsPanel kind="organisation" onMerge={onMerge} resolvedPairKeys={resolved} />
+      <DateFormatProvider>
+        <EntitySuggestionsPanel kind="organisation" onMerge={onMerge} resolvedPairKeys={resolved} />
+      </DateFormatProvider>
     </SnackbarProvider>,
   );
   return { onMerge };
@@ -35,6 +46,7 @@ function renderPanel(resolved: ReadonlySet<string> = new Set()) {
 beforeEach(() => {
   listMock.mockReset();
   dismissMock.mockReset();
+  getMock.mockReset();
 });
 afterEach(cleanup);
 
@@ -95,4 +107,51 @@ test('a failed dismiss shows the error and keeps the pair; a successful one remo
   fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate' }));
   await waitFor(() => expect(screen.queryByText('Acme and Acme Ltd')).not.toBeInTheDocument());
   expect(dismissMock).toHaveBeenLastCalledWith('a1', 'b1');
+});
+
+// #2701: "Green Acres Co-op and Green Acres Co-op" cannot be told apart.
+const sameName: EntitySuggestionPair = {
+  a: { id: 'g1', kind: 'organisation', name: 'Green Acres Co-op' },
+  b: { id: 'g2', kind: 'organisation', name: 'green acres co-op' },
+  reason: 'exact_name',
+};
+const detail = (id: string, created: string, links: number): Entity => ({
+  id,
+  kind: 'organisation',
+  name: 'Green Acres Co-op',
+  core: {},
+  sensitivity: 'normal',
+  revision: 1,
+  link_count: links,
+  created_at: created,
+  updated_at: created,
+});
+
+test('a pair with the same name adds each side created date and linked-contact count (#2701)', async () => {
+  listMock.mockResolvedValue({ pairs: [sameName] } as never);
+  getMock.mockImplementation(async (id) =>
+    id === 'g1' ? detail('g1', '2026-03-05T10:00:00Z', 2) : detail('g2', '2026-04-19T10:00:00Z', 1),
+  );
+  renderPanel();
+  fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
+  const pairText = await screen.findByText(/Green Acres Co-op \(added .+, 2 contacts\) and /i);
+  expect(pairText.textContent).toMatch(/green acres co-op \(added .+, 1 contact\)$/i);
+  expect(getMock).toHaveBeenCalledWith('g1');
+  expect(getMock).toHaveBeenCalledWith('g2');
+});
+
+test('a pair with different names makes no extra requests and keeps the plain text (#2701)', async () => {
+  listMock.mockResolvedValue({ pairs: [pair] } as never);
+  renderPanel();
+  fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
+  expect(await screen.findByText('Acme and Acme Ltd')).toBeInTheDocument();
+  expect(getMock).not.toHaveBeenCalled();
+});
+
+test('same-name pair still shows plain names when the detail lookup fails (#2701)', async () => {
+  listMock.mockResolvedValue({ pairs: [sameName] } as never);
+  getMock.mockRejectedValue(new Error('down'));
+  renderPanel();
+  fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
+  expect(await screen.findByText('Green Acres Co-op and green acres co-op')).toBeInTheDocument();
 });

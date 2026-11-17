@@ -314,13 +314,15 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>{t('common.close')}</Button>
-        <Button
-          variant="contained"
-          onClick={() => void handleCreate()}
-          disabled={creating || chosen.length === 0}
-        >
-          {createLabel}
-        </Button>
+        {groups.length > 0 && (
+          <Button
+            variant="contained"
+            onClick={() => void handleCreate()}
+            disabled={creating || chosen.length === 0}
+          >
+            {chosen.length === 0 ? t('entities.fromContacts.selectSome') : createLabel}
+          </Button>
+        )}
       </DialogActions>
     </AppDialog>
   );

@@ -82,11 +82,24 @@ test('edit mode prefills, sends If-Match revision and never changes the kind', a
   );
 });
 
-test('a blank name is rejected before any request', () => {
+// #2703: the error is tied to the field (aria-invalid + described by the helper
+// text) and focus moves to it; the Alert is for server errors only.
+test('a blank name is rejected before any request, on the Name field itself', () => {
   render(<EntityFormDialog open kind="organisation" onClose={vi.fn()} onSaved={vi.fn()} />);
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-  expect(screen.getByRole('alert')).toHaveTextContent('Enter a name.');
+  const name = screen.getByLabelText('Name *');
+  expect(name).toHaveAttribute('aria-invalid', 'true');
+  expect(name).toHaveAccessibleDescription('Enter a name.');
+  expect(name).toHaveFocus();
+  expect(screen.queryByRole('alert')).toBeNull();
   expect(createMock).not.toHaveBeenCalled();
+});
+
+test('typing in the invalid Name field clears its error', () => {
+  render(<EntityFormDialog open kind="organisation" onClose={vi.fn()} onSaved={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'A' } });
+  expect(screen.getByLabelText('Name *')).toHaveAttribute('aria-invalid', 'false');
 });
 
 test('an invalid pet date names the field and sends nothing', () => {
@@ -94,8 +107,25 @@ test('an invalid pet date names the field and sends nothing', () => {
   fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Rex' } });
   fireEvent.change(screen.getByLabelText('Birth'), { target: { value: '2019-13' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-  expect(screen.getByRole('alert')).toHaveTextContent('Birth');
+  const birth = screen.getByLabelText('Birth');
+  expect(birth).toHaveAttribute('aria-invalid', 'true');
+  expect(birth).toHaveAccessibleDescription(/Enter Birth as YYYY/);
+  expect(birth).toHaveFocus();
+  expect(screen.getByLabelText('Name *')).toHaveAttribute('aria-invalid', 'false');
+  expect(screen.queryByRole('alert')).toBeNull();
   expect(createMock).not.toHaveBeenCalled();
+});
+
+test('an invalid death date is attached to the Death field', () => {
+  render(<EntityFormDialog open kind="pet" onClose={vi.fn()} onSaved={vi.fn()} />);
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Rex' } });
+  fireEvent.change(screen.getByLabelText('Death'), { target: { value: 'soon' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  const death = screen.getByLabelText('Death');
+  expect(death).toHaveAttribute('aria-invalid', 'true');
+  expect(death).toHaveAccessibleDescription(/Enter Death as YYYY/);
+  expect(death).toHaveFocus();
+  expect(screen.getByLabelText('Birth')).toHaveAttribute('aria-invalid', 'false');
 });
 
 test('a server error is shown and the dialog stays open', async () => {

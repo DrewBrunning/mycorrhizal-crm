@@ -4281,6 +4281,10 @@
       "death": "Tod",
       "dateHint": "JJJJ, JJJJ-MM oder JJJJ-MM-TT"
     },
+    "listAdded": "Hinzugefügt am {{date}}",
+    "nameAdded": "{{name}} (hinzugefügt am {{date}})",
+    "nameDetail_one": "{{name}} (hinzugefügt am {{date}}, {{count}} Kontakt)",
+    "nameDetail_other": "{{name}} (hinzugefügt am {{date}}, {{count}} Kontakte)",
     "form": {
       "editTitle": "{{name}} bearbeiten",
       "nameRequired": "Gib einen Namen ein.",
@@ -4395,6 +4399,7 @@
       "title": "Einträge aus meinen Kontakten erstellen",
       "intro": "Gruppen derselben Organisation oder Adresse, die bei deinen Kontakten gefunden wurden. Hake die an, die angelegt werden sollen; du kannst das jederzeit erneut ausführen, angeboten werden nur noch nicht verknüpfte Werte.",
       "none": "Aus deinen Kontakten gibt es nichts mehr anzulegen.",
+      "selectSome": "Wählen Sie eine Gruppe zum Erstellen aus",
       "groupTitle_one": "{{name}} — {{count}} Kontakt",
       "groupTitle_other": "{{name}} — {{count}} Kontakte",
       "include": "{{name}} einbeziehen",
