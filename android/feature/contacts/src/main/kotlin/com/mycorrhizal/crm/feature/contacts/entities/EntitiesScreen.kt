@@ -24,8 +24,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -151,8 +153,8 @@ fun EntitiesScreen(
         }
     }
 
-    // The merge is announced once; Restore lives on the merged-away entity's page (it opens the
-    // same banner as a merge started there).
+    // The merge is announced once, with an Undo that restores the merged-away entity (the same
+    // call as the Restore on its page).
     val merged = state.mergeDone
     if (merged != null) {
         val message = stringResource(
@@ -160,9 +162,15 @@ fun EntitiesScreen(
             merged.loser.name,
             merged.survivor.name
         )
+        val undoLabel = stringResource(R.string.shared_entities_merge_undo_action)
         LaunchedEffect(merged) {
-            snackbar.showSnackbar(message)
+            val result = snackbar.showSnackbar(
+                message = message,
+                actionLabel = undoLabel,
+                duration = SnackbarDuration.Long
+            )
             viewModel.onMergeDoneShown()
+            if (result == SnackbarResult.ActionPerformed) viewModel.undoMerge(merged)
         }
     }
 

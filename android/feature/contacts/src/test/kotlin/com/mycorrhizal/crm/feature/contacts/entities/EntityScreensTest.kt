@@ -1,11 +1,14 @@
 package com.mycorrhizal.crm.feature.contacts.entities
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
@@ -16,6 +19,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityContactLink
 import com.mycorrhizal.crm.model.network.EntityInput
@@ -228,6 +232,20 @@ class EntityScreensTest {
     }
 
     @Test
+    fun `the duplicates card avoids the word entity`() {
+        setList(
+            EntitiesUiState(
+                entities = listOf(acme),
+                suggestions = listOf(cabinPair)
+            )
+        )
+        composeTestRule.onNodeWithText(
+            "Names that are the same or very similar. Nothing merges unless you choose to."
+        ).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("ntit", substring = true).assertCountEquals(0)
+    }
+
+    @Test
     fun `a pair has a Merge button that reports the pair`() {
         var merged: EntitySuggestionPair? = null
         setList(
@@ -265,13 +283,12 @@ class EntityScreensTest {
         var confirmed: Pair<Boolean, Set<String>>? = null
         setList(mergeState(), onConfirmMerge = { keep, fill -> confirmed = keep to fill })
         composeTestRule.onNodeWithTag("entity-merge-dialog").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Merge cabin.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Merge cabin. into Cabin").assertIsDisplayed()
         // Nothing to pick: the pair is the choice, so confirm is live straight away.
         composeTestRule.onAllNodesWithTag("entity-merge-search").assertCountEquals(0)
         composeTestRule.onNodeWithTag("entity-merge-confirm").assertIsEnabled()
         composeTestRule.onNodeWithText(
-            "cabin. will be deleted and its contacts move to Cabin. " +
-                "Nothing is merged unless you confirm here."
+            "cabin. will be deleted and its contacts move to Cabin."
         ).assertIsDisplayed()
         composeTestRule.onNodeWithTag("entity-merge-fill-notes").assertIsOff()
         composeTestRule.onNodeWithTag("entity-merge-fill-notes").performScrollTo().performClick()
@@ -280,16 +297,61 @@ class EntityScreensTest {
     }
 
     @Test
-    fun `the swap switch keeps the other side and clears ticked fields`() {
+    fun `the keep radios name both sides, flip the title and clear ticked fields`() {
         var confirmed: Pair<Boolean, Set<String>>? = null
         setList(mergeState(), onConfirmMerge = { keep, fill -> confirmed = keep to fill })
-        composeTestRule.onNodeWithTag("entity-merge-swap").performScrollTo().performClick()
+        composeTestRule.onAllNodesWithTag("entity-merge-swap").assertCountEquals(0)
+        composeTestRule.onNodeWithTag(
+            "entity-merge-keep-other"
+        ).performScrollTo().assertIsSelected()
+        composeTestRule.onNodeWithTag("entity-merge-keep-this").assertIsNotSelected()
+        composeTestRule.onNodeWithText("Keep Cabin and merge cabin. into it").assertExists()
+        composeTestRule.onNodeWithText("Keep cabin. and merge Cabin into it").assertExists()
+        composeTestRule.onNodeWithTag("entity-merge-fill-notes").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("entity-merge-keep-this").performScrollTo().performClick()
+        composeTestRule.onNodeWithTag("entity-merge-keep-this").assertIsSelected()
+        composeTestRule.onNodeWithTag("entity-merge-keep-other").assertIsNotSelected()
+        composeTestRule.onNodeWithText("Merge Cabin into cabin.").assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "Cabin will be deleted and its contacts move to cabin.. " +
-                "Nothing is merged unless you confirm here."
+            "Cabin will be deleted and its contacts move to cabin.."
         ).assertIsDisplayed()
         composeTestRule.onNodeWithTag("entity-merge-confirm").performClick()
         assertEquals(true to emptySet<String>(), confirmed)
+    }
+
+    @Test
+    fun `the merge dialog says nothing merges without confirming exactly once`() {
+        setList(mergeState())
+        composeTestRule.onAllNodesWithText("Nothing is merged unless", substring = true)
+            .assertCountEquals(1)
+    }
+
+    @Test
+    fun `merge dialog options and field rows are at least 48dp tall`() {
+        setList(mergeState())
+        for (tag in listOf(
+            "entity-merge-keep-other",
+            "entity-merge-keep-this",
+            "entity-merge-fill-notes"
+        )) {
+            composeTestRule.onNodeWithTag(tag).performScrollTo().assertHeightIsAtLeast(48.dp)
+        }
+    }
+
+    @Test
+    fun `each side of the merge shows its kind, linked contacts and last update`() {
+        setList(
+            mergeState().copy(
+                mergeA = survivorA.copy(linkCount = 3, updatedAt = "2026-11-12T10:00:00Z"),
+                mergeB = loserB.copy(linkCount = 1, updatedAt = "2026-01-05T10:00:00Z")
+            )
+        )
+        composeTestRule.onNodeWithText(
+            "Place \u00b7 Linked to 3 contacts \u00b7 Updated 12.11.2026"
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Place \u00b7 Linked to 1 contact \u00b7 Updated 05.01.2026"
+        ).performScrollTo().assertIsDisplayed()
     }
 
     @Test
@@ -449,6 +511,32 @@ class EntityScreensTest {
     }
 
     @Test
+    fun `the deleted banner without kept values says it no longer appears on any contact`() {
+        setDetail(EntityDetailUiState(entity = acme, isLoading = false, deleted = true))
+        composeTestRule.onNodeWithText(
+            "It no longer appears on any contact. Restore it to bring it and its links back."
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `the deleted banner after keeping values says they stayed on the contacts`() {
+        setDetail(
+            EntityDetailUiState(
+                entity = acme,
+                isLoading = false,
+                deleted = true,
+                valuesKeptOnContacts = 2
+            )
+        )
+        composeTestRule.onNodeWithText(
+            "Its value was copied onto 2 contacts and stays there. " +
+                "Restore it to bring it and its links back."
+        ).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("no longer appears", substring = true)
+            .assertCountEquals(0)
+    }
+
+    @Test
     fun `a normal page has no Restore`() {
         setDetail(EntityDetailUiState(entity = acme, isLoading = false))
         composeTestRule.onAllNodesWithTag("entity-restore").assertCountEquals(0)
@@ -458,6 +546,9 @@ class EntityScreensTest {
     fun `a missing entity says so`() {
         setDetail(EntityDetailUiState(isLoading = false, notFound = true))
         composeTestRule.onNodeWithTag("entity-not-found").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "This organisation, place or pet doesn't exist or was deleted."
+        ).assertIsDisplayed()
     }
 
     @Test

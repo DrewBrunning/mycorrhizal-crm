@@ -57,6 +57,8 @@ data class EntityDetailUiState(
     // Delete / restore: Restore is offered only right after a delete or a merge, on this page.
     val isDeleting: Boolean = false,
     val deleted: Boolean = false,
+    /** Contacts that got the value copied in before the delete (the keep-values box). */
+    val valuesKeptOnContacts: Int = 0,
     val adoptFailedCount: Int = 0,
     val sameNameLive: Boolean = false,
     // Merge.
@@ -224,6 +226,7 @@ class EntityDetailViewModel @Inject constructor(
         if (_uiState.value.isDeleting) return
         viewModelScope.launch {
             _uiState.update { it.copy(isDeleting = true, error = null, adoptFailedCount = 0) }
+            var kept = 0
             if (adoptAll && EntityKind.projects(entity.kind)) {
                 // The adopt targets come from the people list; deleting on a list that never
                 // loaded would silently drop the value the user asked to keep (#2552).
@@ -236,7 +239,7 @@ class EntityDetailViewModel @Inject constructor(
                 var lastError: ApiError? = null
                 for (person in targets) {
                     repository.adopt(person.contactId, person.linkId).foldApiError(
-                        onSuccess = {},
+                        onSuccess = { kept++ },
                         onError = {
                             failed++
                             lastError = it
@@ -251,7 +254,11 @@ class EntityDetailViewModel @Inject constructor(
                 }
             }
             repository.delete(entity.id, entity.revision).foldApiError(
-                onSuccess = { _uiState.update { it.copy(isDeleting = false, deleted = true) } },
+                onSuccess = {
+                    _uiState.update {
+                        it.copy(isDeleting = false, deleted = true, valuesKeptOnContacts = kept)
+                    }
+                },
                 onError = { error ->
                     _uiState.update {
                         it.copy(
@@ -293,6 +300,7 @@ class EntityDetailViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     deleted = false,
+                    valuesKeptOnContacts = 0,
                     entity = restored.entity?.keepCounts(entity) ?: it.entity,
                     sameNameLive = restored.sameNameLive
                 )

@@ -169,6 +169,7 @@ class EntityDetailViewModelTest {
             vm.delete(adoptAll = false)
             advanceUntilIdle()
             assertTrue(vm.uiState.value.deleted)
+            assertEquals(0, vm.uiState.value.valuesKeptOnContacts)
             coVerify(exactly = 0) { repository.adopt(any(), any()) }
         }
 
@@ -195,6 +196,7 @@ class EntityDetailViewModelTest {
             }
             coVerify(exactly = 1) { repository.adopt(any(), any()) }
             assertTrue(vm.uiState.value.deleted)
+            assertEquals(1, vm.uiState.value.valuesKeptOnContacts)
         }
 
     @Test

@@ -7,6 +7,7 @@ import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
+import com.mycorrhizal.crm.model.network.EntityRestoreResponse
 import com.mycorrhizal.crm.model.network.EntitySuggestionEntity
 import com.mycorrhizal.crm.model.network.EntitySuggestionPair
 import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
@@ -371,6 +372,52 @@ class EntitiesViewModelTest {
             assertEquals("id-ACME", vm.uiState.value.mergeB?.id)
             assertEquals(mapOf("notes" to "n"), vm.uiState.value.mergeB?.core)
             coVerify(exactly = 0) { repository.merge(any(), any()) }
+        }
+
+    private fun outcome() = MergeOutcome(
+        loser = full("ACME"),
+        survivor = full("Acme"),
+        thisWasMergedAway = true,
+        response = EntityMergeResponse(survivor = full("Acme"), loserId = "id-ACME")
+    )
+
+    @Test
+    fun `undoing a merge restores the loser, re-reads the list and rescans duplicates`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val acme = pair("Acme", "ACME")
+            val vm = mergeFixture(acme)
+            coEvery { repository.restore("id-ACME") } returns Result.success(
+                EntityRestoreResponse(entity = full("ACME"), mergedInto = "id-Acme")
+            )
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+
+            vm.undoMerge(outcome())
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { repository.restore("id-ACME") }
+            coVerify(exactly = 2) { repository.list(any(), any(), any(), any()) }
+            coVerify(exactly = 2) { repository.suggestions(any()) }
+            assertNull(vm.uiState.value.mergeError)
+        }
+
+    @Test
+    fun `a failed undo keeps the pair list and reports why`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val acme = pair("Acme", "ACME")
+            val vm = mergeFixture(acme)
+            coEvery { repository.restore("id-ACME") } returns
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            advanceUntilIdle()
+            vm.findDuplicates()
+            advanceUntilIdle()
+
+            vm.undoMerge(outcome())
+            advanceUntilIdle()
+
+            assertNotNull(vm.uiState.value.mergeError)
+            coVerify(exactly = 1) { repository.suggestions(any()) }
         }
 
     @Test

@@ -292,6 +292,25 @@ class EntitiesViewModel @Inject constructor(private val repository: EntityReposi
         }
     }
 
+    /**
+     * Undo from the merge snackbar: the same restore call as the merged-away entity's page
+     * (only the loser comes back; the links stay with the survivor). The list and the duplicate
+     * scan, if one was loaded, are re-read so the restored entity and its pair return; a failure
+     * shows its localized error on the duplicates card.
+     */
+    fun undoMerge(outcome: MergeOutcome) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(mergeError = null) }
+            repository.restore(outcome.loser.id).foldApiError(
+                onSuccess = {
+                    refresh()
+                    if (_uiState.value.suggestions != null) findDuplicates()
+                },
+                onError = { error -> _uiState.update { it.copy(mergeError = error) } }
+            )
+        }
+    }
+
     fun dismissMerge() {
         _uiState.update {
             it.copy(mergePair = null, mergeA = null, mergeB = null, mergeError = null)

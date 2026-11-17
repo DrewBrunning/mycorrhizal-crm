@@ -191,6 +191,7 @@ internal fun ContactEntityLinkDialog(
                 if (EntityKind.projects(kind)) {
                     Row(
                         modifier = Modifier.fillMaxWidth()
+                            .heightIn(min = 48.dp)
                             .toggleable(
                                 value = primary,
                                 role = Role.Switch,
@@ -320,6 +321,7 @@ private fun PickRow(selected: Boolean, text: String, tag: String, onClick: () ->
     Row(
         modifier = Modifier.fillMaxWidth()
             .selectable(selected = selected, role = Role.RadioButton, onClick = onClick)
+            .heightIn(min = 48.dp)
             .padding(vertical = 4.dp)
             .testTag(tag),
         verticalAlignment = Alignment.CenterVertically

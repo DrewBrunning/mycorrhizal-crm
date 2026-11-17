@@ -153,7 +153,15 @@ internal fun EntityDetailContent(
 
                 state.deleted -> BannerCard(
                     title = stringResource(R.string.shared_entities_deleted_title, entity.name),
-                    body = stringResource(R.string.shared_entities_deleted_body),
+                    body = if (state.valuesKeptOnContacts > 0) {
+                        pluralStringResource(
+                            R.plurals.shared_entities_deleted_body_kept,
+                            state.valuesKeptOnContacts,
+                            state.valuesKeptOnContacts
+                        )
+                    } else {
+                        stringResource(R.string.shared_entities_deleted_body)
+                    },
                     actionLabel = stringResource(R.string.shared_entities_deleted_restore),
                     actionTag = "entity-restore",
                     enabled = !state.isRestoring,
