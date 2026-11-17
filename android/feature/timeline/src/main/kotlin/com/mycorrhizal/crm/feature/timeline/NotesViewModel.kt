@@ -109,7 +109,7 @@ class NotesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            notes = page.notes,
+                            notes = page.notes.sortedByNoteDate(),
                             nextCursor = page.nextCursor
                         )
                     }
@@ -139,7 +139,7 @@ class NotesViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoadingMore = false,
-                            notes = it.notes + page.notes,
+                            notes = (it.notes + page.notes).sortedByNoteDate(),
                             nextCursor = page.nextCursor
                         )
                     }

@@ -326,6 +326,25 @@ fun ContactListScreenContent(
                             leadingIcon = {
                                 Icon(Icons.Outlined.Search, contentDescription = null)
                             },
+                            trailingIcon = if (search.isNotEmpty()) {
+                                {
+                                    AccessibleIconButton(
+                                        onClick = {
+                                            search = ""
+                                            onSearchQueryChange("")
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Close,
+                                            contentDescription = stringResource(
+                                                R.string.contacts_clear_search
+                                            )
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("contact-search"),
@@ -336,6 +355,8 @@ fun ContactListScreenContent(
                                 unfocusedLabelColor = MaterialTheme.colorScheme.onPrimary,
                                 focusedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
                                 unfocusedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                focusedTrailingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                unfocusedTrailingIconColor = MaterialTheme.colorScheme.onPrimary,
                                 cursorColor = MaterialTheme.colorScheme.onPrimary,
                                 focusedBorderColor = Color.Transparent,
                                 unfocusedBorderColor = Color.Transparent
@@ -498,6 +519,27 @@ fun ContactListScreenContent(
                     when {
                         uiState.isLoading && uiState.contacts.isEmpty() -> item {
                             LoadingSkeleton(modifier = Modifier.testTag("contact-list-loading"))
+                        }
+
+                        // #2614: a query that matched nothing is not the onboarding state.
+                        uiState.contacts.isEmpty() && uiState.error == null &&
+                            uiState.searchQuery.isNotBlank() -> item {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth().padding(24.dp)
+                            ) {
+                                EmptyState(
+                                    title = stringResource(
+                                        R.string.contacts_no_match,
+                                        uiState.searchQuery.trim()
+                                    ),
+                                    actionLabel = stringResource(R.string.contacts_clear_search),
+                                    onAction = {
+                                        search = ""
+                                        onSearchQueryChange("")
+                                    }
+                                )
+                            }
                         }
 
                         uiState.contacts.isEmpty() && uiState.error == null -> item {

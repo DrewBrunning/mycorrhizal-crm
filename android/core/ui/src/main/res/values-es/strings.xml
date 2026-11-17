@@ -157,6 +157,8 @@
     <string name="contacts_sort_recently_added">Añadidos recientemente</string>
     <string name="contacts_empty">Aún no hay contactos</string>
     <string name="contacts_empty_body">Añade a alguien para empezar o importa tus contactos.</string>
+    <string name="contacts_no_match">Ningún contacto coincide con «%1$s»</string>
+    <string name="contacts_clear_search">Borrar búsqueda</string>
     <string name="contacts_new">Nuevo contacto</string>
     <string name="contacts_photo_description">Foto de %1$s</string>
     <!-- Issue #219: TalkBack action label for tapping the avatar on the detail

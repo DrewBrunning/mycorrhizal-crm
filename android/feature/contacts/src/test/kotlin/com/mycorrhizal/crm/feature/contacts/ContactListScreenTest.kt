@@ -6,14 +6,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -29,6 +32,7 @@ import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
 import androidx.core.graphics.Insets
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
@@ -131,6 +135,61 @@ class ContactListScreenTest {
     fun `shows empty state when no contacts`() {
         setContent(ContactListUiState(isLoading = false, contacts = emptyList()))
         composeTestRule.onNodeWithText("No contacts yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a search with no matches says so instead of the onboarding empty state`() {
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList(), searchQuery = "Zed")
+        )
+
+        composeTestRule.onNodeWithText("No contacts match \u201CZed\u201D").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No contacts yet").assertDoesNotExist()
+        composeTestRule.onNodeWithText("New contact").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Import").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the no-match state has a clear search action that empties the query`() {
+        var query: String? = null
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList(), searchQuery = "Zed"),
+            onSearchQueryChange = { query = it }
+        )
+
+        composeTestRule.onNodeWithTag("contact-search").assertTextContains("Zed")
+        composeTestRule.onNodeWithText("Clear search").performClick()
+
+        assertEquals("", query)
+        composeTestRule.onNodeWithTag("contact-search").assert(!hasText("Zed", substring = true))
+    }
+
+    @Test
+    fun `a blank query keeps the onboarding empty state`() {
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList(), searchQuery = "  ")
+        )
+
+        composeTestRule.onNodeWithText("No contacts yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Clear search").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the search field shows a 48dp clear button only while it has text`() {
+        var query: String? = null
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList()),
+            onSearchQueryChange = { query = it }
+        )
+        composeTestRule.onNodeWithContentDescription("Clear search").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("contact-search").performTextInput("ali")
+        composeTestRule.onNodeWithContentDescription("Clear search")
+            .assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+            .performClick()
+
+        assertEquals("", query)
+        composeTestRule.onNodeWithContentDescription("Clear search").assertDoesNotExist()
     }
 
     @Test
