@@ -514,7 +514,11 @@ function AppContent({
               {pendingShares > 0 ? (
                 <Badge
                   badgeContent={pendingShares}
-                  color="secondary"
+                  // Cream chip with dark text: the theme's secondary colour is
+                  // low-contrast against the dark AppBar.
+                  sx={{
+                    '& .MuiBadge-badge': { bgcolor: 'background.paper', color: 'text.primary' },
+                  }}
                   role="img"
                   aria-label={t('nav.sharedPendingBadge', { count: pendingShares })}
                 >
