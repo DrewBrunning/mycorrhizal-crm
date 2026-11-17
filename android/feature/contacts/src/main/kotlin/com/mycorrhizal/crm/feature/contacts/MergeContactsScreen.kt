@@ -98,9 +98,7 @@ fun MergeContactsScreenContent(
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
-    val conflicts = state.preview
-        ?.let { it.resolution.conflicts + it.resolution.fieldValueConflicts }
-        .orEmpty()
+    val conflicts = state.preview?.resolution?.allConflicts.orEmpty()
 
     Scaffold(
         modifier = modifier,

@@ -226,7 +226,7 @@ class MergeContactsViewModel @Inject constructor(
     }
 
     fun allConflicts(preview: ContactMergePreviewResponse): List<ContactMergeFieldConflict> =
-        preview.resolution.conflicts + preview.resolution.fieldValueConflicts
+        preview.resolution.allConflicts
 
     private var searchJob: Job? = null
 
