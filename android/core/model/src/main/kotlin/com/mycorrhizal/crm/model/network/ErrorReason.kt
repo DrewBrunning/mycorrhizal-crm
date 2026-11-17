@@ -291,6 +291,7 @@ object ErrorReasonCode {
     const val CONTACT_SHARE_ALREADY_RESPONDED = "contact_share_already_responded"
     const val SHARE_GRANT_NOT_FOUND = "share_grant_not_found"
     const val SHARE_GRANT_STATE_CONFLICT = "share_grant_state_conflict"
+    const val SHARE_GRANT_NOT_ENDED = "share_grant_not_ended"
     const val SHARE_GRANT_WIDENING_REFUSED = "share_grant_widening_refused"
     const val SHARE_GRANT_ALREADY_EXISTS = "share_grant_already_exists"
     const val SHARE_GRANT_PENDING_LIMIT = "share_grant_pending_limit"

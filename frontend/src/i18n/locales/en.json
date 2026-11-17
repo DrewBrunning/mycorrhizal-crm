@@ -3971,6 +3971,7 @@
       "contact_share_already_responded": "Share already responded to",
       "share_grant_not_found": "Share grant not found",
       "share_grant_state_conflict": "This share can no longer be changed that way",
+      "share_grant_not_ended": "Only a share that has ended (declined, expired or revoked) can be removed; revoke it first",
       "share_grant_widening_refused": "A share can only be narrowed; create a new share to grant more",
       "share_grant_already_exists": "That is already shared with this person",
       "share_grant_pending_limit": "Too many shares are waiting for a response",

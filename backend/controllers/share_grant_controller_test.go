@@ -74,6 +74,7 @@ func newSGEnv(t *testing.T) *sgEnv {
 	sg.POST("/notifications/read", MarkShareGrantNotificationsRead)
 	sg.GET("/blocks", ListShareBlocks)
 	sg.DELETE("/blocks/:user_id", DeleteShareBlock)
+	sg.DELETE("/:id", DeleteShareGrant)
 	sg.PATCH("/:id", middleware.ValidateJSONMiddleware(&models.ShareGrantPatchInput{}), UpdateShareGrant)
 	sg.POST("/:id/accept", AcceptShareGrant)
 	sg.POST("/:id/decline", DeclineShareGrant)
@@ -291,6 +292,11 @@ func TestShareGrant_IdenticalNotFoundMatrix(t *testing.T) {
 		probes = append(probes, probe{e.A, http.MethodPost, "/share-grants/" + id + "/" + r, nil})
 	}
 	probes = append(probes, probe{e.A, http.MethodGet, "/share-grants/" + id + "/content", nil})
+	// Issue #2742: the owner-only dismiss. Every non-owner (and the recipient,
+	// the wrong role) gets the random-uuid 404, even for a live grant.
+	for _, who := range []models.User{e.B, e.C, e.Admin, {}} {
+		probes = append(probes, probe{who, http.MethodDelete, "/share-grants/" + id, nil})
+	}
 	probes = append(probes, probe{e.B, http.MethodPatch, "/share-grants/" + id, map[string]any{"sections": []string{"emails"}}})
 
 	before := e.status(id)
@@ -1030,6 +1036,7 @@ func TestShareGrant_EveryRouteRequiresAuthentication(t *testing.T) {
 		{http.MethodGet, "/share-grants/incoming"}, {http.MethodGet, "/share-grants/blocks"},
 		{http.MethodDelete, "/share-grants/blocks/1"}, {http.MethodPatch, "/share-grants/" + id},
 		{http.MethodPost, "/share-grants/" + id + "/accept"}, {http.MethodGet, "/share-grants/" + id + "/content"},
+		{http.MethodDelete, "/share-grants/" + id},
 	} {
 		body := any(nil)
 		if r.method == http.MethodPost && r.path == "/share-grants" {
@@ -1145,6 +1152,7 @@ func TestShareGrant_DatabaseFailuresAreServerErrors(t *testing.T) {
 		"leave":            {[]string{"share_grants"}, http.MethodPost, func(id string) string { return "/share-grants/" + id + "/leave" }, nil, func(e *sgEnv) models.User { return e.B }},
 		"revoke":           {[]string{"share_grants"}, http.MethodPost, func(id string) string { return "/share-grants/" + id + "/revoke" }, nil, func(e *sgEnv) models.User { return e.A }},
 		"reconfirm":        {[]string{"share_grants"}, http.MethodPost, func(id string) string { return "/share-grants/" + id + "/reconfirm" }, nil, func(e *sgEnv) models.User { return e.A }},
+		"dismiss":          {[]string{"share_grants"}, http.MethodDelete, func(id string) string { return "/share-grants/" + id }, nil, func(e *sgEnv) models.User { return e.A }},
 		"patch":            {[]string{"share_grants"}, http.MethodPatch, func(id string) string { return "/share-grants/" + id }, map[string]any{"sections": []string{"emails"}}, func(e *sgEnv) models.User { return e.A }},
 		"blocks":           {[]string{"share_blocks"}, http.MethodGet, func(string) string { return "/share-grants/blocks" }, nil, func(e *sgEnv) models.User { return e.B }},
 		"unblock":          {[]string{"share_blocks"}, http.MethodDelete, func(string) string { return "/share-grants/blocks/1" }, nil, func(e *sgEnv) models.User { return e.B }},
