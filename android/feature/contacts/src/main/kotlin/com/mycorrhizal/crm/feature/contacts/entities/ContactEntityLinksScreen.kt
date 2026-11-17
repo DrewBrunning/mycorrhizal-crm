@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -279,7 +281,7 @@ internal fun ContactEntityLinksContent(
                     }
                 ) {
                     Text(
-                        stringResource(R.string.action_delete),
+                        stringResource(R.string.contact_remove),
                         color = MaterialTheme.colorScheme.error
                     )
                 }
@@ -312,11 +314,27 @@ private fun LinkCard(
             .testTag("contact-entity-link-${link.id}")
     ) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(
-                link.entityName,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.clickable(role = Role.Button, onClick = onOpen)
-            )
+            // A link, not a heading: primary colour, a chevron, and a 48dp-tall touch target.
+            Row(
+                modifier = Modifier.fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .clickable(role = Role.Button, onClick = onOpen)
+                    .testTag("contact-entity-link-open-${link.id}"),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    link.entityName,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    Icons.AutoMirrored.Outlined.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.testTag("contact-entity-link-chevron-${link.id}")
+                )
+            }
             val detail = listOfNotNull(
                 stringResource(entityKindOneRes(link.kind)),
                 entityRoleText(link.kind, link.role, link.roleLabel),
@@ -335,6 +353,7 @@ private fun LinkCard(
             if (projects) {
                 Row(
                     modifier = Modifier.fillMaxWidth()
+                        .heightIn(min = 48.dp)
                         .toggleable(
                             value = link.isPrimary,
                             enabled = !busy,
@@ -359,7 +378,7 @@ private fun LinkCard(
                 }
                 TextButton(onClick = onRemove, enabled = !busy) {
                     Text(
-                        stringResource(R.string.action_delete),
+                        stringResource(R.string.contact_remove),
                         color = MaterialTheme.colorScheme.error
                     )
                 }

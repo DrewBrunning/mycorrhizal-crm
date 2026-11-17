@@ -3512,11 +3512,11 @@
     <string name="shared_entities_delete_adopt_place">Die Adresse vorher bei diesen Kontakten behalten (als eigenen Wert in jeden Kontakt kopieren)</string>
     <string name="shared_entities_delete_confirm">Löschen</string>
     <string name="shared_entities_deleted_title">%1$s wurde gelöscht</string>
-    <string name="shared_entities_deleted_body">Es erscheint bei keinem Kontakt mehr. Stelle es wieder her, um den Eintrag und seine Verknüpfungen zurückzubringen.</string>
+    <string name="shared_entities_deleted_body">Es erscheint bei keinem Kontakt mehr. Stellen Sie es wieder her, um den Eintrag und seine Verknüpfungen zurückzubringen.</string>
     <string name="shared_entities_deleted_restore">Wiederherstellen</string>
-    <string name="shared_entities_deleted_same_name_live">Es gibt bereits einen anderen Eintrag dieser Art mit demselben Namen; vielleicht möchtest du sie zusammenführen.</string>
+    <string name="shared_entities_deleted_same_name_live">Es gibt bereits einen anderen Eintrag dieser Art mit demselben Namen; möglicherweise möchten Sie sie zusammenführen.</string>
     <string name="shared_entities_merge_title">%1$s zusammenführen</string>
-    <string name="shared_entities_merge_intro">%1$s wird gelöscht und seine Kontakte wechseln zu %2$s. Nichts wird zusammengeführt, solange du es hier nicht bestätigst.</string>
+    <string name="shared_entities_merge_intro">%1$s wird gelöscht und die zugehörigen Kontakte wechseln zu %2$s.</string>
     <string name="shared_entities_merge_into">Zusammenführen mit</string>
     <string name="shared_entities_merge_no_candidates">Es gibt keinen anderen Eintrag dieser Art zum Zusammenführen.</string>
     <string name="shared_entities_merge_fill">Auch diese Angaben von %1$s übernehmen (beim behaltenen Eintrag sind sie leer):</string>
@@ -3578,8 +3578,15 @@
     <string name="shared_entities_detail_no_custom_fields">Für diese Art gibt es noch keine benutzerdefinierten Felder. Füge in den Einstellungen eines hinzu.</string>
     <string name="shared_entities_loading_failed">Organisationen, Orte und Haustiere konnten nicht geladen werden.</string>
     <string name="shared_entities_merge_search">Suche nach dem Eintrag zum Zusammenführen</string>
-    <string name="shared_entities_merge_keep_this">Diesen behalten und den anderen hineinführen</string>
     <string name="shared_entities_merge_nothing_unless_confirmed">Nichts wird zusammengeführt, solange du unten nicht bestätigst.</string>
+    <string name="shared_entities_merge_title_direction">%1$s in %2$s zusammenführen</string>
+    <string name="shared_entities_merge_keep_option">%1$s behalten und %2$s darin zusammenführen</string>
+    <string name="shared_entities_merge_undo_action">Rückgängig</string>
+    <string name="shared_entities_merge_detail_updated">Aktualisiert am %1$s</string>
+    <plurals name="shared_entities_deleted_body_kept">
+        <item quantity="one">Der Wert wurde auf %1$d Kontakt kopiert und bleibt dort erhalten. Stellen Sie den Eintrag wieder her, um ihn samt Verknüpfungen zurückzubringen.</item>
+        <item quantity="other">Der Wert wurde auf %1$d Kontakte kopiert und bleibt dort erhalten. Stellen Sie den Eintrag wieder her, um ihn samt Verknüpfungen zurückzubringen.</item>
+    </plurals>
     <string name="shared_entities_merge_summary_line">%1$s wurde mit %2$s zusammengeführt.</string>
     <string name="shared_entities_merge_open_survivor">%1$s öffnen</string>
     <string name="shared_entities_restore_failed">Dieser Eintrag konnte nicht wiederhergestellt werden.</string>
