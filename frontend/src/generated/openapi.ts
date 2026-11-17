@@ -2380,6 +2380,8 @@ export type MonicaImportRowPreview = ImportRowPreview & {
 
 export type MonicaImportStatus = {
   error?: string;
+  error_reason_code?: string;
+  error_reason_params?: Record<string, unknown>;
   phase?: 'connecting' | 'fetching_contacts' | 'fetching_activities' | 'fetching_notes' | 'fetching_reminders' | 'fetching_extras' | 'fetching_relationships' | 'building_preview' | 'ready' | 'importing' | 'importing_photos' | 'done' | 'failed' | 'cancelled';
   phase_done?: number;
   phase_total?: number;

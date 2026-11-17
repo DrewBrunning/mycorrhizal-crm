@@ -91,6 +91,8 @@ object ErrorReasonCode {
     const val MEERKAT_SIGN_IN_INPUT_MISSING = "meerkat_sign_in_input_missing"
     const val MEERKAT_REMOTE_TOO_MANY_CONTACTS = "meerkat_remote_too_many_contacts"
     const val MEERKAT_VERSION_UNTESTED = "meerkat_version_untested"
+    const val MEERKAT_FETCH_UNREACHABLE = "meerkat_fetch_unreachable"
+    const val MEERKAT_FETCH_UNREADABLE = "meerkat_fetch_unreadable"
     const val COMMON_DATABASE_ERROR = "common_database_error"
     const val COMMON_DATABASE_BUSY = "common_database_busy"
     const val AUTH_INVALID_CREDENTIALS = "auth_invalid_credentials"

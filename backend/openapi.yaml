@@ -22041,6 +22041,20 @@ components:
         phase_done: { type: integer }
         phase_total: { type: integer }
         error: { type: string }
+        error_reason_code:
+          type: string
+          description: >
+            Issue #2727, ADR 0038. The #2093 reason code of a failed Meerkat
+            fetch (meerkat_fetch_unreachable, meerkat_fetch_unreadable, or
+            meerkat_api_error with a reason param), present only when phase is
+            "failed" and the cause is coded. `error` stays as the English
+            fallback (and still carries the "use the database upload" advice,
+            which the coded templates omit so each client adds that hint only
+            where a database upload exists).
+        error_reason_params:
+          type: object
+          additionalProperties: true
+          description: Flat reason params for error_reason_code (the same shape as the error envelope's reason_params).
         result: { $ref: "#/components/schemas/MonicaImportResult" }
     MonicaPreviewResponse:
       type: object

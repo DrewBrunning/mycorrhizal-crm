@@ -3037,6 +3037,8 @@
     <string name="error_reason_meerkat_sign_in_input_missing">Enter a Meerkat API token, or a username and password</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Contacts on this Meerkat account: %1$d. The import supports at most %2$d</string>
     <string name="error_reason_meerkat_version_untested">This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview.</string>
+    <string name="error_reason_meerkat_fetch_unreachable">The Meerkat instance could not be reached</string>
+    <string name="error_reason_meerkat_fetch_unreadable">The Meerkat server sent a response the importer could not read. Check the URL</string>
     <string name="error_reason_common_database_error">Something went wrong while saving or loading your data</string>
     <string name="error_reason_common_database_busy">The server is busy. Try again in a moment</string>
     <string name="error_reason_auth_invalid_credentials">Invalid email or password</string>

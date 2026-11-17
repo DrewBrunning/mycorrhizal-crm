@@ -34,12 +34,19 @@ const (
 
 // SourceImportStatus is the poll payload for the fetch/import progress bar.
 type SourceImportStatus struct {
-	SessionID  string              `json:"session_id"`
-	Phase      string              `json:"phase"`
-	PhaseDone  int                 `json:"phase_done"`
-	PhaseTotal int                 `json:"phase_total"`
-	Error      string              `json:"error,omitempty"`
-	Result     *SourceImportResult `json:"result,omitempty"` // set from phase "importing"/"importing_photos" onwards
+	SessionID  string `json:"session_id"`
+	Phase      string `json:"phase"`
+	PhaseDone  int    `json:"phase_done"`
+	PhaseTotal int    `json:"phase_total"`
+	Error      string `json:"error,omitempty"`
+	// ErrorReasonCode / ErrorReasonParams (issue #2727, ADR 0038) are the
+	// reason-coded form of Error for a failed fetch: the same code + params
+	// pair an error envelope carries as reason_code / reason_params, so
+	// clients can localize the failure. Error stays as the English fallback.
+	// Both are absent unless the phase is "failed" with a coded cause.
+	ErrorReasonCode   string              `json:"error_reason_code,omitempty"`
+	ErrorReasonParams map[string]any      `json:"error_reason_params,omitempty"`
+	Result            *SourceImportResult `json:"result,omitempty"` // set from phase "importing"/"importing_photos" onwards
 }
 
 // SourceRelatedCounts is the per-contact tally of graph entities the import
