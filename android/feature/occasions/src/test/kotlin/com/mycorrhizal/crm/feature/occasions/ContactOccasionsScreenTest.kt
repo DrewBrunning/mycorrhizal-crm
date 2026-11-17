@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -254,7 +255,7 @@ class ContactOccasionsScreenTest {
     fun `the Kind field shows a known kind as its label and still saves the stored token`() {
         render(listOf(ob(kind = "gift")))
         coEvery { repository.update("o1", any()) } returns Result.success(ob(kind = "gift"))
-        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        composeTestRule.onNodeWithContentDescription("Edit Christmas card").performClick()
         kindField().assertTextContains("Gift")
         composeTestRule.onNodeWithText("Save").performClick()
         composeTestRule.waitForIdle()
