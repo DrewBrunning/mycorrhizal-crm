@@ -61,6 +61,17 @@ class ShareGrantRepositoryImplTest {
     }
 
     @Test
+    fun `delete forwards the id and propagates a failure`() = runTest {
+        coEvery { apiClient.deleteShareGrant("g") } returns Result.success(Unit)
+        coEvery { apiClient.deleteShareGrant("busy") } returns
+            Result.failure(ApiError.Client(409, "x"))
+
+        assertTrue(repository.delete("g").isSuccess)
+        assertTrue(repository.delete("busy").exceptionOrNull() is ApiError.Client)
+        coVerify(exactly = 1) { apiClient.deleteShareGrant("g") }
+    }
+
+    @Test
     fun `recipient actions forward to the client`() = runTest {
         coEvery { apiClient.acceptShareGrant("g") } returns Result.success(IncomingShareGrant("g"))
         coEvery { apiClient.leaveShareGrant("g") } returns Result.success(IncomingShareGrant("g"))

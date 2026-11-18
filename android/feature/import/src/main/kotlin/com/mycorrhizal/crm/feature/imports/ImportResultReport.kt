@@ -75,10 +75,17 @@ fun ImportResultReport(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
+            val notImported = importReportTitleRes(
+                result.issues
+            ) != R.string.import_report_title_warnings
             Text(
-                text = stringResource(R.string.import_report_title),
+                text = stringResource(importReportTitleRes(result.issues)),
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.error
+                color = if (notImported) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
             )
             OutlinedButton(onClick = { share(result.issues) }) {
                 Text(stringResource(R.string.import_report_share))
@@ -111,14 +118,7 @@ private fun IssueRow(issue: ImportRowIssue) {
             style = MaterialTheme.typography.bodyMedium
         )
         Text(
-            text = stringResource(
-                if (issue.status == "failed") {
-                    R.string.import_report_failed
-                } else {
-                    R.string.import_report_skipped
-                },
-                issue.reason
-            ),
+            text = issue.localizedLine(),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

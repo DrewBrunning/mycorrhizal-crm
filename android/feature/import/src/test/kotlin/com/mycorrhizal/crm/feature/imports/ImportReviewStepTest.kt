@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -56,7 +57,8 @@ class ImportReviewStepTest {
         onRowEditSave: ((ImportRowEdit) -> Unit)? = null,
         onRowActionChange: (Int, String) -> Unit = { _, _ -> },
         onResolveAll: () -> Unit = {},
-        serverVersion: AppVersion? = null
+        serverVersion: AppVersion? = null,
+        fileDiagnostics: List<ImportDiagnostic> = emptyList()
     ) {
         composeTestRule.setContent {
             CompositionLocalProvider(LocalServerVersion provides serverVersion) {
@@ -68,7 +70,8 @@ class ImportReviewStepTest {
                         onResolveAll = onResolveAll,
                         onConfirm = {},
                         rowEdits = rowEdits,
-                        onRowEditSave = onRowEditSave
+                        onRowEditSave = onRowEditSave,
+                        fileDiagnostics = fileDiagnostics
                     )
                 }
             }
@@ -305,5 +308,80 @@ class ImportReviewStepTest {
         )
         composeTestRule.onNodeWithText("Errors (0)").assertIsDisplayed()
         composeTestRule.onNodeWithText("New (2)").assertIsDisplayed()
+    }
+
+    // Issues #2653 / #2733: the server's English text is replaced by a string keyed on the concept.
+    private fun warnRow(index: Int, concept: String, message: String) = row(index, "Ada").copy(
+        diagnostics = listOf(ImportDiagnostic("warn", concept, message))
+    )
+
+    @Test
+    fun `a birthday warning is shown localized, not the server's English text`() {
+        show(rows = listOf(warnRow(0, "birthday", "birthday not imported: invalid value")))
+
+        composeTestRule.onNodeWithText(
+            "The birthday is not a valid date, so it will not be imported"
+        )
+            .assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("birthday not imported: invalid value")
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun `an anniversary warning is shown localized`() {
+        show(rows = listOf(warnRow(0, "anniversary", "anniversary not imported: invalid value")))
+
+        composeTestRule.onNodeWithText(
+            "The anniversary is not a valid date, so it will not be imported"
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `a warning for an unknown concept falls back to the server message`() {
+        show(rows = listOf(warnRow(0, "nickname", "nickname was shortened")))
+
+        composeTestRule.onNodeWithText("nickname was shortened").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a warning row is not an error row and can still be kept`() {
+        val warned = warnRow(0, "birthday", "birthday not imported: invalid value")
+        show(rows = listOf(warned, errRow))
+
+        composeTestRule.onNodeWithTag("import-filter-errors").assertTextContains("Errors (1)")
+        composeTestRule.onNodeWithTag("import-filter-new").assertTextContains("New (1)")
+        composeTestRule.onAllNodesWithText("Keep")[0].assertIsSelected()
+        composeTestRule.onNodeWithText("Apply decisions (1)").assertIsDisplayed()
+    }
+
+    // Issue #2731: file-level notices lead the review.
+    @Test
+    fun `an encoding file diagnostic is shown once at the top, localized`() {
+        show(
+            fileDiagnostics = listOf(
+                ImportDiagnostic("warn", "encoding", "file was not UTF-8; read as Windows-1252")
+            )
+        )
+
+        composeTestRule.onNodeWithTag("import-file-diagnostic").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "This file was not UTF-8, so it was read as Windows-1252. Check that accented characters look right."
+        ).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("file was not UTF-8; read as Windows-1252")
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun `an unknown file diagnostic shows the server message and none shows nothing`() {
+        show(
+            fileDiagnostics = listOf(ImportDiagnostic("info", "other", "Something about the file"))
+        )
+        composeTestRule.onNodeWithText("Something about the file").assertIsDisplayed()
+    }
+
+    @Test
+    fun `no file diagnostics shows no notice`() {
+        show()
+        composeTestRule.onAllNodesWithTag("import-file-diagnostic").assertCountEquals(0)
     }
 }

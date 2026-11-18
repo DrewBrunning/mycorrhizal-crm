@@ -644,6 +644,12 @@
       "branches": 100,
       "branchesTotal": 18
     },
+    "src/api/viewerTimezone.ts": {
+      "lines": 100,
+      "linesTotal": 11,
+      "branches": 100,
+      "branchesTotal": 11
+    },
     "src/api/webauthn.ts": {
       "lines": 100,
       "linesTotal": 19,

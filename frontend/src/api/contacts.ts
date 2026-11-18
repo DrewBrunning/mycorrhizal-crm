@@ -8,6 +8,7 @@ import {
 } from './client';
 import { isProjectedElementId } from './entities';
 import type { TargetClosenessTier } from './targetCloseness';
+import { withViewerTimezone } from './viewerTimezone';
 
 export interface ContactValue {
   type: string;
@@ -1399,7 +1400,7 @@ export async function getRandomContacts(): Promise<Contact[]> {
 
 // Get upcoming birthdays (returns up to 10 birthdays for contacts)
 export async function getUpcomingBirthdays(): Promise<Birthday[]> {
-  const response = await apiFetch(`${API_BASE_URL}/contacts/birthdays`, {
+  const response = await apiFetch(withViewerTimezone(`${API_BASE_URL}/contacts/birthdays`), {
     headers: getAuthHeaders(),
   });
 

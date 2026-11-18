@@ -154,6 +154,36 @@ class SharedWithMeScreenTest {
         coVerify(exactly = 1) { repository.leave("g2") }
     }
 
+    // Issue #2626: the server labels an active note grant with the note's first line; the row
+    // shows it, and only an absent label falls back to the generic "Note".
+    @Test
+    fun `an active note row shows the first-line label the server sends`() {
+        stub(listOf(active.copy(label = "Gift ideas for Dana")))
+        screen()
+
+        composeTestRule.onNodeWithText("Gift ideas for Dana").assertIsDisplayed()
+        // The type stays as the caption under the label.
+        composeTestRule.onNodeWithText("Note").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("More actions for Gift ideas for Dana")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `an absent label falls back to the type name in the row, its menu and the dialogs`() {
+        stub(listOf(active.copy(label = "")))
+        coEvery { repository.leave("g2") } returns Result.success(active.copy(status = "declined"))
+        screen()
+
+        // Row title and type caption.
+        composeTestRule.onAllNodesWithText("Note").assertCountEquals(2)
+        composeTestRule.onNodeWithContentDescription("More actions for Note").performClick()
+        composeTestRule.onNodeWithText("Stop receiving").performClick()
+        composeTestRule.onNodeWithText(
+            "Note will no longer be visible to you. To see it again, dana has to share it " +
+                "with you again."
+        ).assertIsDisplayed()
+    }
+
     @Test
     fun `blocked senders are listed and can be unblocked`() {
         stub(listOf(pending), blocks = listOf(ShareBlock(7, "mallory")))

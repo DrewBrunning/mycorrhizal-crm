@@ -350,6 +350,8 @@ const rows: Row[] = [
     call: () => dashboard.getDashboard(),
     method: 'get',
     route: '/dashboard',
+    // Issue #2762: the browser's zone rides along as `tz`.
+    url: `/api/v1/dashboard?tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`,
     ok: { birthdays: [] },
     result: { birthdays: [] },
   },
