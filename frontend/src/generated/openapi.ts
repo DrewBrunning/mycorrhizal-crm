@@ -1992,6 +1992,7 @@ export type ImportPreviewRequest = {
 export type ImportPreviewResponse = {
   duplicate_count?: number;
   error_count?: number;
+  file_diagnostics?: Diagnostic[];
   fixed_assignment?: ImportFixedAssignment;
   rows?: ImportRowPreview[];
   session_id?: string;
@@ -2066,6 +2067,7 @@ export type ImportScalarChange = {
 };
 
 export type ImportUploadResponse = {
+  file_diagnostics?: Diagnostic[];
   headers?: string[];
   row_count?: number;
   sample_data?: string[][];

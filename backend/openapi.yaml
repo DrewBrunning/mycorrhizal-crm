@@ -21564,6 +21564,16 @@ components:
         sample_data:
           type: array
           items: { type: array, items: { type: string } }
+        file_diagnostics:
+          type: array
+          items: { $ref: "#/components/schemas/Diagnostic" }
+          description: >
+            File-level (not per-row) notices from reading the upload. A file
+            that was not valid UTF-8 is read as Windows-1252 and reports
+            {severity: warn, concept: encoding, message: "file was not UTF-8;
+            read as Windows-1252"} (issue #2669); a UTF-8 BOM is stripped
+            silently (issue #2662). Always present, [] when there is nothing to
+            report.
     ImportCancelRequest:
       type: object
       required: [session_id]
@@ -21794,6 +21804,16 @@ components:
         valid_rows: { type: integer }
         duplicate_count: { type: integer }
         error_count: { type: integer }
+        file_diagnostics:
+          type: array
+          items: { $ref: "#/components/schemas/Diagnostic" }
+          description: >
+            File-level (not per-row) notices from reading the upload. A file
+            that was not valid UTF-8 is read as Windows-1252 and reports
+            {severity: warn, concept: encoding, message: "file was not UTF-8;
+            read as Windows-1252"} (issue #2669); a UTF-8 BOM is stripped
+            silently (issue #2662). Always present, [] when there is nothing to
+            report.
         fixed_assignment:
           $ref: "#/components/schemas/ImportFixedAssignment"
     ImportFixedAssignmentItem:
