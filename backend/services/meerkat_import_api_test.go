@@ -510,3 +510,72 @@ func TestMeerkatAPI_PhotoTasksSkipOtherUsersContacts(t *testing.T) {
 	plan := &ImportSourcePlan{Contacts: []MappedContact{{Ref: SourceRef{System: "meerkat", ExternalID: "contact/4"}, PhotoURL: "p"}}}
 	assert.Empty(t, NewMeerkatImportManager().photoTasks(db, s, plan, map[string]uint{"contact/4": other.ID}, meerkatTestLogger()))
 }
+
+// Issue #2727: a failed Meerkat fetch job is reason-coded so clients can
+// localize it and drop the "use the database upload" advice where no upload
+// exists. The English string stays as the fallback.
+func TestMeerkatAPI_FetchFailureCarriesReasonCode(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	srv := fakeWithContacts(t, 2)
+	mgr := NewMeerkatImportManager()
+
+	resp, appErr := mgr.Connect(context.Background(), user.ID, tokenReq(srv), apiCfg(t))
+	require.Nil(t, appErr)
+	srv.Close()
+	require.Nil(t, mgr.StartFetch(db, user.ID, models.MeerkatFetchRequest{SessionID: resp.SessionID}, meerkatTestLogger()))
+	st := waitMeerkatPhase(t, mgr, user.ID, resp.SessionID, models.SourceImportPhaseFailed)
+
+	assert.Equal(t, "meerkat_fetch_unreachable", st.ErrorReasonCode)
+	assert.Contains(t, st.Error, "use the database upload", "the English fallback is unchanged")
+
+	raw, err := json.Marshal(st)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"error_reason_code":"meerkat_fetch_unreachable"`)
+	assert.NotContains(t, string(raw), "error_reason_params", "no params when the code has none")
+}
+
+func TestMeerkatFetchFailure_MapsEveryCause(t *testing.T) {
+	cases := []struct {
+		err    error
+		code   string
+		params map[string]any
+	}{
+		{meerkatapi.ErrInvalidData, "meerkat_fetch_unreadable", nil},
+		{meerkatapi.ErrUnreachable, "meerkat_fetch_unreachable", nil},
+		{context.DeadlineExceeded, "meerkat_fetch_unreachable", nil},
+		{meerkatapi.ErrUnauthorized, "meerkat_api_error", map[string]any{"reason": "Meerkat rejected the credentials"}},
+		{meerkatapi.ErrLocked, "meerkat_api_error", map[string]any{"reason": userSafeMeerkatAPIError(meerkatapi.ErrLocked)}},
+		{meerkatapi.ErrInvalidURL, "meerkat_api_error", map[string]any{"reason": "The Meerkat URL is invalid"}},
+		{meerkatapi.ErrPrivateAddress, "meerkat_api_error", map[string]any{"reason": userSafeMeerkatAPIError(meerkatapi.ErrPrivateAddress)}},
+		{meerkatapi.ErrNotMeerkat, "meerkat_api_error", map[string]any{"reason": userSafeMeerkatAPIError(meerkatapi.ErrNotMeerkat)}},
+		{meerkatapi.ErrTooLarge, "meerkat_api_error", map[string]any{"reason": "This Meerkat account is larger than the import supports"}},
+	}
+	for _, tc := range cases {
+		msg, code, params := meerkatFetchFailure(tc.err)
+		assert.Equal(t, userSafeMeerkatAPIError(tc.err), msg, tc.err.Error())
+		assert.Equal(t, tc.code, string(code), tc.err.Error())
+		assert.Equal(t, tc.params, params, tc.err.Error())
+	}
+}
+
+// Issue #2727: a later plain fail() clears a stale reason code, and a coded
+// failure echoes its params through Status.
+func TestMeerkatSession_FailClearsReasonAndCodedFailureEchoesParams(t *testing.T) {
+	mgr := NewMeerkatImportManager()
+	s := &meerkatImportSession{userID: 7, phase: models.SourceImportPhaseMapping, expiresAt: time.Now().Add(time.Hour), hardExpiry: time.Now().Add(time.Hour)}
+	mgr.sessions = map[string]*meerkatImportSession{"s": s}
+
+	s.failCoded("bad", apperrors.ReasonCode("meerkat_api_error"), map[string]any{"reason": "r"})
+	st, appErr := mgr.Status(7, "s")
+	require.Nil(t, appErr)
+	assert.Equal(t, "meerkat_api_error", st.ErrorReasonCode)
+	assert.Equal(t, map[string]any{"reason": "r"}, st.ErrorReasonParams)
+
+	s.fail("plain")
+	st, appErr = mgr.Status(7, "s")
+	require.Nil(t, appErr)
+	assert.Equal(t, "plain", st.Error)
+	assert.Empty(t, st.ErrorReasonCode)
+	assert.Nil(t, st.ErrorReasonParams)
+}

@@ -3131,6 +3131,8 @@
     <string name="error_reason_meerkat_sign_in_input_missing">Saisissez un jeton d’API Meerkat ou un nom d’utilisateur et un mot de passe</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Contacts sur ce compte Meerkat : %1$d. L’import prend en charge au maximum %2$d</string>
     <string name="error_reason_meerkat_version_untested">Cette version de Meerkat n’est pas testée avec l’importeur. Confirmez pour essayer quand même ; rien n’est écrit tant que vous n’avez pas vérifié l’aperçu.</string>
+    <string name="error_reason_meerkat_fetch_unreachable">L’instance Meerkat est injoignable</string>
+    <string name="error_reason_meerkat_fetch_unreadable">Le serveur Meerkat a envoyé une réponse que l’importateur n’a pas pu lire. Vérifiez l’URL</string>
     <string name="error_reason_common_database_error">Une erreur s\'est produite lors de l\'enregistrement ou du chargement de vos données</string>
     <string name="error_reason_common_database_busy">Le serveur est occupé. Réessayez dans un instant</string>
     <string name="error_reason_auth_invalid_credentials">E-mail ou mot de passe incorrect</string>

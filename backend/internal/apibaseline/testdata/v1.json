@@ -21503,6 +21503,16 @@
           "required": false
         },
         {
+          "name": "error_reason_code",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error_reason_params",
+          "type": "object",
+          "required": false
+        },
+        {
           "name": "phase",
           "type": "string",
           "required": false,

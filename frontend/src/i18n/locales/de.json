@@ -3784,6 +3784,8 @@
       "meerkat_db_too_many_contacts": "Diese Datenbank hat mehr Kontakte, als der Import unterstützt",
       "meerkat_db_too_many_records": "Diese Datenbank hat mehr Einträge, als der Import unterstützt",
       "meerkat_db_unreadable": "Die Datenbank konnte nicht als Meerkat-Datenbank gelesen werden",
+      "meerkat_fetch_unreachable": "Die Meerkat-Instanz ist nicht erreichbar",
+      "meerkat_fetch_unreadable": "Der Meerkat-Server hat eine Antwort gesendet, die der Import nicht lesen konnte. Prüfen Sie die URL",
       "meerkat_file_not_meerkat": "Diese Datei ist keine Meerkat-Datenbank",
       "meerkat_import_in_progress": "Dieser Import wird bereits vorbereitet",
       "meerkat_not_prepared": "Die Meerkat-Datenbank ist noch nicht vorbereitet",

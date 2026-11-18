@@ -3891,6 +3891,8 @@
       "meerkat_db_too_many_contacts": "Cette base de données contient plus de contacts que l’import ne prend en charge",
       "meerkat_db_too_many_records": "Cette base de données contient plus d’enregistrements que l’import ne prend en charge",
       "meerkat_db_unreadable": "La base de données n’a pas pu être lue comme base de données Meerkat",
+      "meerkat_fetch_unreachable": "L’instance Meerkat est injoignable",
+      "meerkat_fetch_unreadable": "Le serveur Meerkat a envoyé une réponse que l’importateur n’a pas pu lire. Vérifiez l’URL",
       "meerkat_file_not_meerkat": "Ce fichier n’est pas une base de données Meerkat",
       "meerkat_import_in_progress": "Cet import est déjà en cours de préparation",
       "meerkat_not_prepared": "La base de données Meerkat n’est pas encore prête",
