@@ -247,7 +247,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `react-dom` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-easy-crop` | `6.2.4` | MIT | https://github.com/ValentinH/react-easy-crop |
 | `react-force-graph-2d` | `1.29.2` | MIT | https://github.com/vasturiano/react-force-graph |
-| `react-i18next` | `17.1.12` | MIT | https://github.com/i18next/react-i18next |
+| `react-i18next` | `17.1.13` | MIT | https://github.com/i18next/react-i18next |
 | `react-is` | `16.13.1` | MIT | https://github.com/facebook/react |
 | `react-is` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-kapsule` | `2.6.0` | MIT | https://github.com/vasturiano/react-kapsule |
