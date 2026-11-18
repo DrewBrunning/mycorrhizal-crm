@@ -281,7 +281,7 @@ class SharedByMeScreenTest {
         composeTestRule.onNodeWithTag("grant-prompt-open-contact").performClick()
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
         assertEquals(-1, opened)
     }
@@ -352,7 +352,7 @@ class SharedByMeScreenTest {
             )
         )
         screen()
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 
@@ -373,7 +373,7 @@ class SharedByMeScreenTest {
         composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 }
