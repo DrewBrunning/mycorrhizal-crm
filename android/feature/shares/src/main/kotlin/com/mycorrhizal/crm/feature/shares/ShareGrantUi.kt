@@ -31,6 +31,15 @@ internal fun entityTypeLabelRes(entityType: String): Int = when (entityType) {
     else -> R.string.shares_title
 }
 
+/**
+ * The name a share row, its overflow menu and its dialogs call a grant. The server computes
+ * `label` per request (a note's is its first line once the grant is active, issue #2626); only an
+ * absent one falls back to the generic type name.
+ */
+@Composable
+internal fun grantTitle(label: String, entityType: String): String =
+    label.ifBlank { stringResource(entityTypeLabelRes(entityType)) }
+
 /** The label of an owner-visible grant status. */
 @StringRes
 internal fun grantStatusLabelRes(status: String): Int = when (status) {

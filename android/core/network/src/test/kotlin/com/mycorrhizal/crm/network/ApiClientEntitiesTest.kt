@@ -175,6 +175,43 @@ class ApiClientEntitiesTest {
         }
 
     @Test
+    fun `suggestion sides carry link_count and updated_at, zero stays zero, absence stays null`() =
+        runBlocking {
+            // Wire shape of backend #2749 (EntitySuggestionEntity).
+            enqueue(
+                """{"mode":"pairs","pairs":[{"reason":"exact_name",
+                "a":{"id":"a1","kind":"organisation","name":"Acme","updated_at":"2026-11-12T10:00:00.123456Z","link_count":2},
+                "b":{"id":"b1","kind":"organisation","name":"Acme","updated_at":"2026-01-05T10:00:00Z","link_count":0}},
+                {"reason":"exact_name","a":{"id":"a2","kind":"pet","name":"Rex"},"b":{"id":"b2","kind":"pet","name":"Rex"}}],
+                "groups":null,"next_cursor":"","limit":50}"""
+            )
+            val pairs = client.listEntitySuggestions(kind = "organisation")
+                .getOrThrow()
+                .pairsOrEmpty
+            assertEquals(2, pairs[0].a.linkCount)
+            assertEquals("2026-11-12T10:00:00.123456Z", pairs[0].a.updatedAt)
+            assertEquals(0, pairs[0].b.linkCount)
+            assertEquals("2026-01-05T10:00:00Z", pairs[0].b.updatedAt)
+            // An older server sends neither field.
+            assertEquals(null, pairs[1].a.linkCount)
+            assertEquals(null, pairs[1].a.updatedAt)
+        }
+
+    @Test
+    fun `listEntities items carry link_count`() = runBlocking {
+        // Wire shape of backend #2749 (GET /entities items).
+        enqueue(
+            """{"entities":[{"id":"e1","kind":"organisation","name":"Acme","sensitivity":"normal","revision":1,
+            "created_at":"2026-01-01T00:00:00Z","updated_at":"2026-11-12T10:00:00Z","link_count":3},
+            {"id":"e2","kind":"organisation","name":"Zed","sensitivity":"normal","revision":1,
+            "updated_at":"2026-11-12T10:00:00Z","link_count":0}],"next_cursor":"","limit":50}"""
+        )
+        val items = client.listEntities().getOrThrow().entitiesOrEmpty
+        assertEquals(3, items[0].linkCount)
+        assertEquals(0, items[1].linkCount)
+    }
+
+    @Test
     fun `listEntityValueGroups asks for contact_values and tolerates null lists`() = runBlocking {
         enqueue(
             """{"mode":"contact_values","pairs":null,"groups":[

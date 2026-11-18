@@ -1589,6 +1589,7 @@
     <string name="shares_grant_block">Bloquear al remitente</string>
     <string name="shares_grant_unblock">Desbloquear</string>
     <string name="shares_grant_revoke">Revocar</string>
+    <string name="shares_grant_remove">Quitar</string>
     <string name="shares_grant_reconfirm">Revisar y volver a confirmar</string>
     <string name="shares_grant_edit">Editar</string>
     <string name="shares_grant_decline_message">¿Rechazar lo compartido (%1$s) de %2$s? Esa persona verá que fue rechazado.</string>
@@ -1598,6 +1599,8 @@
     <string name="shares_grant_leave_message">%1$s dejará de ser visible para ti. Para verlo de nuevo, %2$s tendrá que volver a compartirlo contigo.</string>
     <string name="shares_grant_revoke_title">¿Revocar lo compartido?</string>
     <string name="shares_grant_revoke_message">%1$s perderá el acceso la próxima vez que lo cargue. Lo que ya haya visto no se puede recuperar.</string>
+    <string name="shares_grant_remove_title">¿Quitar lo compartido?</string>
+    <string name="shares_grant_remove_message">Lo compartido con %1$s ha terminado. Al quitarlo, desaparece de esta lista.</string>
     <string name="shares_grant_reconfirm_title">¿Volver a compartir estas secciones?</string>
     <string name="shares_grant_reconfirm_message">Algunos elementos de lo compartido se marcaron como privados o secretos, por eso estas secciones no se muestran a %1$s. Revisa su contenido antes de volver a compartirlas.</string>
     <string name="shares_grant_reconfirm_confirm">Volver a compartir</string>
@@ -2166,6 +2169,15 @@
     <string name="import_report_row">Fila %1$d · %2$s</string>
     <string name="import_report_skipped">Omitida: %1$s</string>
     <string name="import_report_failed">Fallida: %1$s</string>
+    <string name="import_diag_birthday_warn">El cumpleaños no es una fecha válida, así que no se importará</string>
+    <string name="import_diag_anniversary_warn">El aniversario no es una fecha válida, así que no se importará</string>
+    <string name="import_diag_encoding_warn">Este archivo no estaba en UTF-8, por lo que se leyó como Windows-1252. Comprueba que los acentos se vean bien.</string>
+    <string name="import_report_warning_birthday">Importado, pero el cumpleaños no es una fecha válida y se omitió</string>
+    <string name="import_report_warning_anniversary">Importado, pero el aniversario no es una fecha válida y se omitió</string>
+    <string name="import_report_warning">Importado con una advertencia: %1$s</string>
+    <string name="import_report_note">Nota: %1$s</string>
+    <string name="import_report_title_warnings">Importado con advertencias</string>
+    <string name="import_report_title_mixed">Filas no importadas o con advertencias</string>
     <string name="import_report_share">Compartir como CSV</string>
     <string name="import_report_share_title">Compartir informe de importación</string>
     <string name="import_resolve_all">Resolver todo como combinado</string>

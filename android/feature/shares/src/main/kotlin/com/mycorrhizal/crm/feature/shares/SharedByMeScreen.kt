@@ -123,6 +123,7 @@ fun SharedByMeScreen(
                             busy = state.busy,
                             onEdit = { viewModel.openEdit(grant) },
                             onRevoke = { viewModel.requestRevoke(grant) },
+                            onRemove = { viewModel.requestRemove(grant) },
                             onReconfirm = { viewModel.requestReconfirm(grant) }
                         )
                     }
@@ -179,6 +180,12 @@ private fun OwnerPromptDialog(
 ) {
     val grant = prompt.grant
     val (title, message, confirm) = when (prompt) {
+        is SharedByMePrompt.Remove -> Triple(
+            stringResource(R.string.shares_grant_remove_title),
+            stringResource(R.string.shares_grant_remove_message, grant.toUsername),
+            stringResource(R.string.shares_grant_remove)
+        )
+
         is SharedByMePrompt.Revoke -> Triple(
             stringResource(R.string.shares_grant_revoke_title),
             stringResource(R.string.shares_grant_revoke_message, grant.toUsername),
@@ -254,8 +261,10 @@ private fun OutgoingGrantRow(
     busy: Boolean,
     onEdit: () -> Unit,
     onRevoke: () -> Unit,
+    onRemove: () -> Unit,
     onReconfirm: () -> Unit
 ) {
+    val title = grantTitle(grant.label, grant.entityType)
     val needsReconfirm = grant.isLive && grant.reconfirmSections.isNotEmpty()
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -264,7 +273,7 @@ private fun OutgoingGrantRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = grant.label.ifBlank { stringResource(entityTypeLabelRes(grant.entityType)) },
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -311,10 +320,22 @@ private fun OutgoingGrantRow(
             val editLabel = stringResource(R.string.shares_grant_edit)
             val revokeLabel = stringResource(R.string.shares_grant_revoke)
             RowOverflowMenu(
-                rowName = grant.label,
+                rowName = title,
                 actions = listOf(
                     RowAction(editLabel, onEdit),
                     RowAction(revokeLabel, onRevoke, destructive = true)
+                )
+            )
+        } else if (grant.isEnded) {
+            // Issue #2627: an ended grant can only be dismissed from the list.
+            RowOverflowMenu(
+                rowName = title,
+                actions = listOf(
+                    RowAction(
+                        stringResource(R.string.shares_grant_remove),
+                        onRemove,
+                        destructive = true
+                    )
                 )
             )
         }
