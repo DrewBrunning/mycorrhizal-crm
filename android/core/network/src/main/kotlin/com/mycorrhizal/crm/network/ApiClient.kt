@@ -174,6 +174,7 @@ import com.mycorrhizal.crm.model.network.ImmichPeopleResponse
 import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.ImmichSummaryResponse
+import com.mycorrhizal.crm.model.network.ImportCancelRequest
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
@@ -3157,6 +3158,16 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         executePost("$CONTACTS_PATH/import/records", ImportRecordsRequest(records)) { _, body ->
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
+
+    /**
+     * POST /api/v1/contacts/import/cancel (issue #2664) — discards an unconfirmed CSV / VCF /
+     * JSContact / records import session. Idempotent: an unknown, expired, consumed or foreign id
+     * answers the same 200, so callers fire it on every exit without tracking state.
+     */
+    suspend fun cancelImportSession(sessionId: String): Result<Unit> = executePost(
+        "$CONTACTS_PATH/import/cancel",
+        ImportCancelRequest(sessionId)
+    ) { _, _ -> Unit }
 
     // --- Account bundle (issues #1259/#1260/#1264, ADR 0028 Decision 3) ---
 

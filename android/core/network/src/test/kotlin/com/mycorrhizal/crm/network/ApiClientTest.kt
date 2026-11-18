@@ -3207,6 +3207,30 @@ class ApiClientTest {
         assertTrue(body.contains("\"action\":\"update\""))
     }
 
+    // Issue #2664/#2734: POST /contacts/import/cancel {session_id} answers {"status":"cancelled"}.
+    @Test
+    fun `cancelImportSession posts the session id to the cancel path`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"status":"cancelled"}"""))
+
+        val result = client.cancelImportSession("session-9")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/import/cancel", request.path)
+        assertEquals("""{"session_id":"session-9"}""", request.body.readUtf8())
+    }
+
+    @Test
+    fun `cancelImportSession reports a failure as a failed result and does not throw`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(404).setBody("""{"error":{"message":"nf"}}""")
+            )
+
+            assertTrue(client.cancelImportSession("session-9").isFailure)
+        }
+
     // Issues #2186/#2187: confirm carries row_edits; the result carries the per-row issues.
     @Test
     fun `confirmVcfImport sends row_edits and parses the itemized issues`() = runBlocking {

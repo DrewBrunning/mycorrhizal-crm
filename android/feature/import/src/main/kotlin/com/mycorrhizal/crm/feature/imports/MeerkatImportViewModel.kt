@@ -185,7 +185,7 @@ class MeerkatImportViewModel @Inject constructor(
                 ?.let { return@launch failToConnect(it.toApiError()) }
             val status = pollUntil(sessionId, terminal = setOf(PHASE_READY)).terminal
             if (status == null || status.phase != PHASE_READY) {
-                return@launch failToConnect(text = status?.error)
+                return@launch failToConnect(error = status?.failureError(), text = status?.error)
             }
             apiClient.getMeerkatImportPreview(sessionId).fold(
                 onSuccess = { preview ->
@@ -260,7 +260,7 @@ class MeerkatImportViewModel @Inject constructor(
                 // A reported failure means the import is no longer running; with no
                 // status (poll failed or timed out) it may still be, so stay confirmed.
                 if (status != null) importConfirmed = false
-                failToReview(text = status?.error)
+                failToReview(error = status?.failureError(), text = status?.error)
             }
         }
     }
@@ -351,7 +351,7 @@ class MeerkatImportViewModel @Inject constructor(
                     null
                 },
                 error = error,
-                errorText = text?.takeIf { m -> m.isNotBlank() }
+                errorText = text?.takeIf { m -> m.isNotBlank() && error == null }
             )
         }
         abandoned?.let(::cancelSession)
@@ -370,12 +370,25 @@ class MeerkatImportViewModel @Inject constructor(
                     null
                 },
                 error = error,
-                errorText = text?.takeIf { m -> m.isNotBlank() }
+                errorText = text?.takeIf { m -> m.isNotBlank() && error == null }
             )
         }
     }
 
+    /**
+     * Issues #2735 / #2093: a failed fetch that carries a reason code becomes a reason-coded
+     * error, so the screen renders it through `localizedMessage()` in the UI language. The
+     * English `error` stays as the body (the fallback for a code this build does not know). The
+     * poll answered 200, so [FAILED_JOB_CODE] is a synthetic status that is not any HTTP code the
+     * error text maps specially.
+     */
+    private fun SourceImportStatus.failureError(): ApiError? = errorReason?.let {
+        ApiError.Client(code = FAILED_JOB_CODE, body = error.orEmpty(), reason = it)
+    }
+
     companion object {
+        private const val FAILED_JOB_CODE = 422
+
         const val POLL_INTERVAL_MILLIS = 500L
         const val MAX_POLLS = 1200
 

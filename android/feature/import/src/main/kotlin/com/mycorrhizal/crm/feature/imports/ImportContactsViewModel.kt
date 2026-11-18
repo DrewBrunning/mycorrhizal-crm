@@ -83,6 +83,8 @@ class ImportContactsViewModel @Inject constructor(
         { resolver -> DeviceContactsReader(resolver).readAll() }
     internal var ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 
+    private val canceller = ImportSessionCanceller(apiClient)
+
     private val _uiState = MutableStateFlow(ImportUiState())
     val uiState: StateFlow<ImportUiState> = _uiState.asStateFlow()
 
@@ -220,6 +222,7 @@ class ImportContactsViewModel @Inject constructor(
     fun confirmImport() {
         val preview = _uiState.value.preview ?: return
         if (_uiState.value.isImporting) return
+        canceller.confirmStarted()
         viewModelScope.launch {
             _uiState.update { it.copy(isImporting = true, error = null) }
             val actions = _uiState.value.rowActions.map { (rowIndex, action) ->
@@ -245,6 +248,7 @@ class ImportContactsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
+                    if (error is ApiError.Client) canceller.confirmRefused()
                     _uiState.update {
                         it.copy(
                             isImporting = false,
@@ -276,6 +280,20 @@ class ImportContactsViewModel @Inject constructor(
             )
         }
         load()
+    }
+
+    /**
+     * Issues #2664 / #2734: discards the unconfirmed server session of the records preview.
+     * Called from [onCleared], so it runs however the screen is left; also safe to call directly.
+     * Never blocks or surfaces an error.
+     */
+    fun cancel() {
+        canceller.cancel(viewModelScope, _uiState.value.preview?.sessionId)
+    }
+
+    override fun onCleared() {
+        cancel()
+        super.onCleared()
     }
 
     fun onErrorShown() {
