@@ -81,5 +81,13 @@
     },
     "max_count": 110,
     "reason": "e2e/systemEvents.spec.ts registers one webhook pointed at a permanent-404 receiver and fires it once, then tops the admin log up until it holds 101 rows (WINDOW+1), so on a fresh log this warn (and the integration_failed system event it records) is raised up to 101 times; a Playwright retry re-fires only once because the log is already full. Bound 110 = 101 plus a handful for other webhook-failure events recorded earlier in the same stack. Scoped to component=webhook. Observed 98 on run 38410573640 (Run E2E Tests; 0 in the production-defaults leg); not doubled to 196 because the log window caps rows at 101 and a retry re-fires only once, so 110 keeps ~12% headroom (#1664)."
+  },
+  {
+    "message": "alerting: 🔴 Integrations failed",
+    "fields": {
+      "condition": "integrations"
+    },
+    "max_count": 2,
+    "reason": "e2e/systemEvents.spec.ts drives ~100 permanent-404 webhook deliveries (allowlisted above), which is exactly what the scheduled alert evaluator's integrations condition watches, so the evaluator raises the alert once when its tick lands after that spec. Environment-inherent and timing-dependent (the tick interval vs the suite length), so it was absent on earlier runs and present on main run 44196347949 (failure_count 98). Scoped to condition=integrations; bound 2 = one raise x 2 for Playwright's single CI retry (#2764)."
   }
 ]

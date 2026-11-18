@@ -37,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.model.network.ImportDiagnostic
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
 import com.mycorrhizal.crm.ui.R
@@ -180,7 +181,8 @@ fun VcfImportScreenContent(
                         onRowActionChange = onRowActionChange,
                         onResolveAll = onResolveAll,
                         onRowEditSave = onRowEditSave,
-                        onConfirm = onConfirm
+                        onConfirm = onConfirm,
+                        fileDiagnostics = uiState.preview.fileDiagnostics
                     )
 
                 uiState.step == VcfImportStep.RESULT && uiState.result != null ->
@@ -234,7 +236,8 @@ private fun PreviewStep(
     onRowActionChange: (Int, String) -> Unit,
     onResolveAll: () -> Unit,
     onRowEditSave: (ImportRowEdit) -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    fileDiagnostics: List<ImportDiagnostic>
 ) {
     ImportReviewStep(
         rows = rows,
@@ -243,7 +246,8 @@ private fun PreviewStep(
         onResolveAll = onResolveAll,
         onConfirm = onConfirm,
         rowEdits = rowEdits,
-        onRowEditSave = onRowEditSave
+        onRowEditSave = onRowEditSave,
+        fileDiagnostics = fileDiagnostics
     )
 }
 

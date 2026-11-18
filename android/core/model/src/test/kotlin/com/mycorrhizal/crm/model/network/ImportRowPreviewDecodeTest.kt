@@ -76,4 +76,82 @@ class ImportRowPreviewDecodeTest {
         assertEquals(3, preview!!.rows.size)
         assertEquals("name from email", preview.rows[1].diagnostics!!.single().message)
     }
+
+    // Issues #2653 / #2733: an invalid birthday is a warn diagnostic, never a validation error.
+    @Test
+    fun `a birthday warning row decodes with no validation errors`() {
+        val json = """
+            {"row_index":0,"parsed_contact":{"firstname":"Ada"},"validation_errors":[],
+             "suggested_action":"add",
+             "diagnostics":[{"severity":"warn","concept":"birthday","message":"birthday not imported: invalid value"}]}
+        """.trimIndent()
+
+        val row = adapter.fromJson(json)!!
+
+        assertEquals(emptyList<String>(), row.validationErrors)
+        assertEquals(
+            ImportDiagnostic("warn", "birthday", "birthday not imported: invalid value"),
+            row.diagnostics!!.single()
+        )
+    }
+
+    // Issue #2731: file-level notices ride on the upload and preview responses.
+    @Test
+    fun `a preview carries file diagnostics and an old server's omission decodes as empty`() {
+        val adapterP = MoshiProvider.get().adapter(ImportPreviewResponse::class.java)
+        val with = adapterP.fromJson(
+            """{"session_id":"s","rows":[],"file_diagnostics":[{"severity":"warn","concept":"encoding","message":"file was not UTF-8; read as Windows-1252"}]}"""
+        )!!
+        val without = adapterP.fromJson("""{"session_id":"s","rows":[]}""")!!
+        val none = adapterP.fromJson("""{"session_id":"s","rows":[],"file_diagnostics":[]}""")!!
+
+        assertEquals(
+            listOf(
+                ImportDiagnostic(
+                    "warn",
+                    "encoding",
+                    "file was not UTF-8; read as Windows-1252"
+                )
+            ),
+            with.fileDiagnostics
+        )
+        assertEquals(emptyList<ImportDiagnostic>(), without.fileDiagnostics)
+        assertEquals(emptyList<ImportDiagnostic>(), none.fileDiagnostics)
+    }
+
+    @Test
+    fun `a CSV upload response carries file diagnostics`() {
+        val upload = MoshiProvider.get().adapter(ImportUploadResponse::class.java).fromJson(
+            """{"session_id":"s","headers":["a"],"suggested_mappings":[],"row_count":1,"sample_data":[["x"]],"file_diagnostics":[{"severity":"warn","concept":"encoding","message":"m"}]}"""
+        )!!
+
+        assertEquals("encoding", upload.fileDiagnostics.single().concept)
+    }
+
+    // Issue #2746: warning issues, and a status this client does not know must not throw.
+    @Test
+    fun `a result with warning and unknown status issues decodes`() {
+        val result = MoshiProvider.get().adapter(ImportResult::class.java).fromJson(
+            """{"total_processed":3,"created":2,"updated":1,"skipped":0,"errors":[],"issues":[
+              {"row":1,"name":"Ada","email":"a@x.io","phone":"","status":"warning","concept":"birthday","reason":"birthday not imported: invalid value"},
+              {"row":2,"name":"Bo","email":"","phone":"","status":"skipped","reason":"dup"},
+              {"row":3,"name":"Cy","email":"","phone":"","status":"quarantined","concept":"future","reason":"r"}]}"""
+        )!!
+
+        assertEquals(listOf("warning", "skipped", "quarantined"), result.issues.map { it.status })
+        assertEquals("birthday", result.issues[0].concept)
+        assertEquals("", result.issues[1].concept)
+        assertEquals("future", result.issues[2].concept)
+    }
+
+    @Test
+    fun `a history run detail keeps the warning concept in its report`() {
+        val detail = MoshiProvider.get().adapter(ImportRunDetail::class.java).fromJson(
+            """{"id":4,"format":"vcf","total_processed":1,"created":1,"updated":0,"skipped":0,"error_count":0,"issue_count":1,
+              "created_at":"2026-11-10T10:00:00Z",
+              "issues":[{"row":1,"name":"Ada","email":"","phone":"","status":"warning","concept":"anniversary","reason":"anniversary not imported: invalid value"}]}"""
+        )!!
+
+        assertEquals("anniversary", detail.toImportResult().issues.single().concept)
+    }
 }
