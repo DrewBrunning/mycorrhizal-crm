@@ -28,7 +28,17 @@ const DROPDOWN_LIMIT = 3;
 const MIN_QUERY_LENGTH = 2;
 const DEBOUNCE_MS = 300;
 
-type Kind = 'contacts' | 'notes' | 'activities' | 'entities' | 'all' | 'none';
+// Pixel strings, not 1: MUI's sx reads a bare 0..1 number as a fraction.
+const visuallyHidden = {
+  position: 'absolute',
+  width: '1px',
+  height: '1px',
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+} as const;
+
+type Kind = 'contacts' | 'notes' | 'activities' | 'entities' | 'all' | 'none' | 'error';
 
 interface Option {
   key: string;
@@ -110,6 +120,9 @@ export default function GlobalSearch() {
   const [query, setQuery] = useState('');
   const [options, setOptions] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
+  // #2695: the dropdown's count (or failure) for screen readers, in a visually
+  // hidden status region; the listbox itself announces nothing on a new response.
+  const [announcement, setAnnouncement] = useState('');
   const highlighted = useRef<Option | null>(null);
 
   // Stale-response guard (issue #960): a slow response for an abandoned query
@@ -121,6 +134,7 @@ export default function GlobalSearch() {
     const term = query.trim();
     if ([...term].length < MIN_QUERY_LENGTH) {
       setOptions([]);
+      setAnnouncement('');
       return;
     }
     const timer = setTimeout(() => {
@@ -130,10 +144,29 @@ export default function GlobalSearch() {
           const result = await searchAll(term, DROPDOWN_LIMIT);
           if (requestRef.current !== requestId) return;
           setOptions(toOptions(result, term, t));
+          const hits =
+            result.contacts.length +
+            result.notes.length +
+            result.activities.length +
+            result.entities.length;
+          setAnnouncement(
+            hits > 0
+              ? t('globalSearch.resultCount', { count: hits })
+              : t('globalSearch.noResults', { query: term }),
+          );
         } catch (err) {
           if (requestRef.current !== requestId) return;
           console.error('Search error:', err);
-          setOptions([]);
+          // #2710: say so instead of showing an empty, silent popup.
+          setOptions([
+            {
+              key: 'error',
+              kind: 'error',
+              primary: t('globalSearch.failed'),
+              to: searchResultsHref(term),
+            },
+          ]);
+          setAnnouncement(t('globalSearch.failed'));
         } finally {
           if (requestRef.current === requestId) setLoading(false);
         }
@@ -149,6 +182,8 @@ export default function GlobalSearch() {
   const reset = () => {
     setQuery('');
     setOptions([]);
+    setAnnouncement('');
+    highlighted.current = null;
   };
 
   const submit = () => {
@@ -174,133 +209,168 @@ export default function GlobalSearch() {
   };
 
   return (
-    <Autocomplete<Option, false, false, true>
-      freeSolo
-      size="small"
-      options={options}
-      // The server already ranked and limited the hits; MUI's own text filter
-      // would drop FTS matches whose label does not contain the typed text
-      // (a stemmed or address match) and the synthetic rows.
-      filterOptions={(o) => o}
-      groupBy={(o) => o.kind}
-      getOptionLabel={(o) => (typeof o === 'string' ? o : '')}
-      isOptionEqualToValue={(a, b) => typeof b !== 'string' && a.key === b.key}
-      loading={loading}
-      inputValue={query}
-      onInputChange={(_, value, reason) => {
-        if (reason === 'reset') return; // selecting an option must not rewrite the box
-        setQuery(value);
-      }}
-      onHighlightChange={(_, option) => {
-        highlighted.current = option;
-      }}
-      onChange={(_, value) => {
-        if (value && typeof value !== 'string') {
-          void navigate(value.to);
-          reset();
-        }
-      }}
-      onKeyDown={(event) => {
-        // With a highlighted row MUI selects it; otherwise Enter submits the
-        // typed text to the results page.
-        if (event.key === 'Enter' && !highlighted.current) submit();
-      }}
-      renderGroup={(params) => (
-        <li key={params.key}>
-          {groupLabel(params.group) && (
-            <Typography
-              variant="overline"
-              component="div"
-              sx={{ px: 2, pt: 1, color: 'text.secondary', lineHeight: 2 }}
-            >
-              {groupLabel(params.group)}
-            </Typography>
-          )}
-          <ul style={{ padding: 0 }}>{params.children}</ul>
-        </li>
-      )}
-      renderOption={(props, option) => {
-        const { key: _k, ...liProps } = props as typeof props & { key?: string };
-        return (
-          <li {...liProps} key={option.key}>
-            <Box sx={{ minWidth: 0, width: '100%' }}>
+    <>
+      <Box role="status" sx={visuallyHidden}>
+        {announcement}
+      </Box>
+      <Autocomplete<Option, false, false, true>
+        freeSolo
+        size="small"
+        options={options}
+        // The server already ranked and limited the hits; MUI's own text filter
+        // would drop FTS matches whose label does not contain the typed text
+        // (a stemmed or address match) and the synthetic rows.
+        filterOptions={(o) => o}
+        groupBy={(o) => o.kind}
+        getOptionLabel={(o) => (typeof o === 'string' ? o : '')}
+        isOptionEqualToValue={(a, b) => typeof b !== 'string' && a.key === b.key}
+        loading={loading}
+        inputValue={query}
+        onInputChange={(_, value, reason) => {
+          if (reason === 'reset') return; // selecting an option must not rewrite the box
+          // #2697: typing, clearing or Escape ends any highlight; a stale one made
+          // Enter skip submit().
+          highlighted.current = null;
+          setQuery(value);
+        }}
+        onClose={() => {
+          highlighted.current = null;
+        }}
+        slotProps={{
+          // MUI points the listbox's aria-labelledby at a label element that does
+          // not exist here (#2695); name it directly instead.
+          listbox: { 'aria-labelledby': undefined, 'aria-label': t('globalSearch.label') },
+        }}
+        onHighlightChange={(_, option) => {
+          highlighted.current = option;
+        }}
+        onChange={(_, value) => {
+          if (typeof value === 'string') {
+            submit(); // freeSolo: Enter on typed text
+          } else if (value) {
+            void navigate(value.to);
+            reset();
+          }
+        }}
+        onKeyDown={(event) => {
+          // With a highlighted row MUI selects it; otherwise Enter submits the
+          // typed text to the results page.
+          if (event.key === 'Enter' && !highlighted.current) {
+            submit();
+            // Stop MUI also reporting the typed string through onChange.
+            (event as typeof event & { defaultMuiPrevented?: boolean }).defaultMuiPrevented = true;
+          }
+        }}
+        renderGroup={(params) => (
+          // #2695: a listbox may only own options and groups, so the wrapper is
+          // presentational and the options sit in a named role="group".
+          <li key={params.key} role="presentation">
+            {groupLabel(params.group) && (
               <Typography
-                variant="body2"
-                noWrap
-                sx={{
-                  color:
-                    option.kind === 'all' || option.kind === 'none' ? 'text.secondary' : undefined,
-                }}
+                id={`gs-group-${params.group}`}
+                variant="overline"
+                component="div"
+                sx={{ px: 2, pt: 1, color: 'text.secondary', lineHeight: 2 }}
               >
-                {option.primary}
+                {groupLabel(params.group)}
               </Typography>
-              {option.secondary && (
-                <Typography
-                  variant="caption"
-                  noWrap
-                  sx={{ color: 'text.secondary', display: 'block' }}
-                >
-                  {option.secondary}
-                </Typography>
-              )}
-            </Box>
+            )}
+            {/* biome-ignore lint/a11y/useSemanticElements: <fieldset> is not valid inside role="listbox"; axe wants options in a role="group" list (#2695) */}
+            <ul
+              role="group"
+              aria-labelledby={groupLabel(params.group) ? `gs-group-${params.group}` : undefined}
+              style={{ padding: 0 }}
+            >
+              {params.children}
+            </ul>
           </li>
-        );
-      }}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          placeholder={t('globalSearch.placeholder')}
-          variant="outlined"
-          sx={{
-            width: { xs: 150, sm: 200, md: 300 },
-            mr: 2,
-            '& .MuiOutlinedInput-root': {
-              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.25)' },
-              '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
-              '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)' },
-              // #186: rgba(255,255,255,0.7) on the AppBar computes to 5.04:1.
-              '&.Mui-focused fieldset': { borderColor: 'rgba(255, 255, 255, 0.7)' },
-            },
-            '& .MuiInputBase-input': { color: 'white' },
-            '& .MuiInputBase-input::placeholder': {
-              color: 'rgba(255, 255, 255, 0.7)',
-              opacity: 1,
-            },
-          }}
-          slotProps={{
-            ...params.slotProps,
-            input: {
-              ...params.slotProps.input,
-              startAdornment: (
-                <InputAdornment position="start">
-                  <IconButton
-                    size="small"
-                    onClick={submit}
-                    aria-label={t('app.submitSearch')}
-                    sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
+        )}
+        renderOption={(props, option) => {
+          const { key: _k, ...liProps } = props as typeof props & { key?: string };
+          return (
+            <li {...liProps} key={option.key}>
+              <Box sx={{ minWidth: 0, width: '100%' }}>
+                <Typography
+                  variant="body2"
+                  noWrap
+                  sx={{
+                    color:
+                      option.kind === 'all' || option.kind === 'none' || option.kind === 'error'
+                        ? 'text.secondary'
+                        : undefined,
+                  }}
+                >
+                  {option.primary}
+                </Typography>
+                {option.secondary && (
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{ color: 'text.secondary', display: 'block' }}
                   >
-                    <SearchIcon />
-                  </IconButton>
-                </InputAdornment>
-              ),
-              endAdornment: query ? (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    onClick={reset}
-                    aria-label={t('contacts.searchClear')}
-                    sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
-                  >
-                    <ClearIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ) : null,
-            },
-          }}
-        />
-      )}
-    />
+                    {option.secondary}
+                  </Typography>
+                )}
+              </Box>
+            </li>
+          );
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            placeholder={t('globalSearch.placeholder')}
+            variant="outlined"
+            sx={{
+              width: { xs: 150, sm: 200, md: 300 },
+              mr: 2,
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.25)' },
+                '& fieldset': { borderColor: 'rgba(255, 255, 255, 0.3)' },
+                '&:hover fieldset': { borderColor: 'rgba(255, 255, 255, 0.5)' },
+                // #186: rgba(255,255,255,0.7) on the AppBar computes to 5.04:1.
+                '&.Mui-focused fieldset': { borderColor: 'rgba(255, 255, 255, 0.7)' },
+              },
+              '& .MuiInputBase-input': { color: 'white' },
+              '& .MuiInputBase-input::placeholder': {
+                color: 'rgba(255, 255, 255, 0.7)',
+                opacity: 1,
+              },
+            }}
+            slotProps={{
+              ...params.slotProps,
+              htmlInput: { ...params.slotProps.htmlInput, 'aria-label': t('globalSearch.label') },
+              input: {
+                ...params.slotProps.input,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <IconButton
+                      size="small"
+                      onClick={submit}
+                      aria-label={t('app.submitSearch')}
+                      sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
+                    >
+                      <SearchIcon />
+                    </IconButton>
+                  </InputAdornment>
+                ),
+                endAdornment: query ? (
+                  <InputAdornment position="end">
+                    <IconButton
+                      size="small"
+                      onClick={reset}
+                      aria-label={t('contacts.searchClear')}
+                      sx={{ color: 'rgba(255, 255, 255, 0.7)', p: 0.5 }}
+                    >
+                      <ClearIcon fontSize="small" />
+                    </IconButton>
+                  </InputAdornment>
+                ) : null,
+              },
+            }}
+          />
+        )}
+      />
+    </>
   );
 }

@@ -35,7 +35,7 @@ test.describe('Mobile navigation (T33)', () => {
     page,
   }) => {
     await page.goto('/network');
-    await page.getByRole('button', { name: 'menu' }).click();
+    await page.getByRole('button', { name: 'Open navigation' }).click();
     for (const name of [/dashboard/i, /households/i, /activities/i, /network/i]) {
       await expect(page.getByRole('link', { name })).toBeVisible();
     }

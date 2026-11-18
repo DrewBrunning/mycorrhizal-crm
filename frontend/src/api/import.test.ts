@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   CONTACT_FIELD_LABELS,
   type ColumnMapping,
+  cancelImportSession,
   confirmImport,
   confirmVCFImport,
   getImportHistory,
@@ -335,5 +336,26 @@ describe('import constants', () => {
     expect(CONTACT_FIELD_LABELS.firstname).toBe('First Name');
     expect(CONTACT_FIELD_LABELS.lastname).toBe('Last Name');
     expect(CONTACT_FIELD_LABELS.circles).toBe('Circles');
+  });
+});
+
+describe('cancelImportSession', () => {
+  test('POSTs the session id to the cancel route', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(okResponse({ status: 'cancelled' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await cancelImportSession('sess-9');
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/contacts\/import\/cancel$/);
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body)).toEqual({ session_id: 'sess-9' });
+  });
+
+  test('never throws: a failed cancel is swallowed (the session just expires)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(errorResponse()));
+    await expect(cancelImportSession('sess-9')).resolves.toBeUndefined();
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')));
+    await expect(cancelImportSession('sess-9')).resolves.toBeUndefined();
   });
 });

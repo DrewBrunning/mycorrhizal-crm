@@ -252,7 +252,7 @@ func TestAbortLinkWrite_MapsErrors(t *testing.T) {
 	w := run(errors.New("constraint failed: UNIQUE constraint failed: contact_entity_links.user_id"))
 	assert.Equal(t, http.StatusConflict, w.Code)
 	assert.Contains(t, w.Body.String(), "entity_link_primary_conflict")
-	w = run(apperrors.ErrNotFound("Entity link"))
+	w = run(apperrors.ErrNotFound("Link to organisation, place or pet"))
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	w = run(&models.ErrRevisionConflict{})
 	assert.Equal(t, http.StatusPreconditionFailed, w.Code)

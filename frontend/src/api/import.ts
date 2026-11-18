@@ -309,6 +309,23 @@ export async function uploadCSVForImport(file: File): Promise<ImportUploadRespon
   return response.json();
 }
 
+// Issue #2664: release an unconfirmed upload session when the user cancels,
+// closes or backs out of the import dialog, so abandoned sessions do not count
+// toward the per-user cap. Fire-and-forget by design: the server answers 200
+// for any session id (live, expired or someone else's), and a failure here is
+// harmless because the session expires on its own -- so this never throws.
+export async function cancelImportSession(sessionId: string): Promise<void> {
+  try {
+    await apiFetch(`${API_BASE_URL}/contacts/import/cancel`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+  } catch {
+    // Best effort; see above.
+  }
+}
+
 // Get import preview with applied mappings
 export async function getImportPreview(
   sessionId: string,
