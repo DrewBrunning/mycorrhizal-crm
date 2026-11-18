@@ -42,7 +42,11 @@ export interface Entity {
   core: Record<string, unknown>;
   sensitivity: EntitySensitivity;
   revision: number;
-  // Only on GET /entities/{id}.
+  // Two definitions, never mixed in one view (issue #2743): on GET /entities list
+  // items it is the number of DISTINCT live contacts linked to the entity (the
+  // "Linked to N contacts" definition); on GET /entities/{id} it is the number of
+  // live link rows (a contact with two roles counts twice; the delete confirmation
+  // uses it). Absent from create/update/restore/merge responses.
   link_count?: number;
   projection_count?: number;
   created_at: string;
@@ -124,6 +128,11 @@ export interface EntitySuggestionEntity {
   id: string;
   kind: EntityKind;
   name: string;
+  // Issue #2743: lets same-named candidates be told apart without a detail call.
+  updated_at: string;
+  // Distinct live contacts linked to the entity (the list definition, not the
+  // detail endpoint's link-row count).
+  link_count: number;
 }
 
 export interface EntitySuggestionPair {

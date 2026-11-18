@@ -4306,10 +4306,11 @@
       "death": "Tod",
       "dateHint": "JJJJ, JJJJ-MM oder JJJJ-MM-TT"
     },
-    "listAdded": "Hinzugefügt am {{date}}",
-    "nameAdded": "{{name}} (hinzugefügt am {{date}})",
-    "nameDetail_one": "{{name}} (hinzugefügt am {{date}}, {{count}} Kontakt)",
-    "nameDetail_other": "{{name}} (hinzugefügt am {{date}}, {{count}} Kontakte)",
+    "listDetail_one": "{{count}} Kontakt · aktualisiert am {{date}}",
+    "listDetail_other": "{{count}} Kontakte · aktualisiert am {{date}}",
+    "nameUpdated": "{{name}} (aktualisiert am {{date}})",
+    "nameDetail_one": "{{name}} (aktualisiert am {{date}}, {{count}} Kontakt)",
+    "nameDetail_other": "{{name}} (aktualisiert am {{date}}, {{count}} Kontakte)",
     "form": {
       "editTitle": "{{name}} bearbeiten",
       "nameRequired": "Gib einen Namen ein.",
