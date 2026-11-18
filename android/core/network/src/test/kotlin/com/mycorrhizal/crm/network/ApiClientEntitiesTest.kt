@@ -185,7 +185,9 @@ class ApiClientEntitiesTest {
                 {"reason":"exact_name","a":{"id":"a2","kind":"pet","name":"Rex"},"b":{"id":"b2","kind":"pet","name":"Rex"}}],
                 "groups":null,"next_cursor":"","limit":50}"""
             )
-            val pairs = client.listEntitySuggestions(kind = "organisation").getOrThrow().pairsOrEmpty
+            val pairs = client.listEntitySuggestions(kind = "organisation")
+                .getOrThrow()
+                .pairsOrEmpty
             assertEquals(2, pairs[0].a.linkCount)
             assertEquals("2026-11-12T10:00:00.123456Z", pairs[0].a.updatedAt)
             assertEquals(0, pairs[0].b.linkCount)

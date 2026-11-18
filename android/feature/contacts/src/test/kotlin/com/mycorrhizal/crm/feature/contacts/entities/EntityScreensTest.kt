@@ -304,10 +304,14 @@ class EntityScreensTest {
         setList(EntitiesUiState(entities = listOf(acme), suggestions = listOf(twinPair)))
         composeTestRule.onNodeWithTag("suggestion-open-a-t1")
             .assertTextContains("Open Dupe Test Corp")
-            .assertTextContains("Organisation \u00b7 Linked to 2 contacts \u00b7 Updated 12.11.2026")
+            .assertTextContains(
+                "Organisation \u00b7 Linked to 2 contacts \u00b7 Updated 12.11.2026"
+            )
         // A side with no links still says so: zero is a fact, not an absent field.
         composeTestRule.onNodeWithTag("suggestion-open-b-t2")
-            .assertTextContains("Organisation \u00b7 Linked to 0 contacts \u00b7 Updated 05.01.2026")
+            .assertTextContains(
+                "Organisation \u00b7 Linked to 0 contacts \u00b7 Updated 05.01.2026"
+            )
     }
 
     @Test
@@ -337,9 +341,13 @@ class EntityScreensTest {
         )
         composeTestRule.onNodeWithTag("entity-merge").performClick()
         composeTestRule.onNodeWithTag("entity-merge-candidate-e2")
-            .assertTextContains("Organisation \u00b7 Linked to 4 contacts \u00b7 Updated 12.11.2026")
+            .assertTextContains(
+                "Organisation \u00b7 Linked to 4 contacts \u00b7 Updated 12.11.2026"
+            )
         composeTestRule.onNodeWithTag("entity-merge-candidate-e3")
-            .assertTextContains("Organisation \u00b7 Linked to 1 contact \u00b7 Updated 05.01.2026")
+            .assertTextContains(
+                "Organisation \u00b7 Linked to 1 contact \u00b7 Updated 05.01.2026"
+            )
     }
 
     private val survivorA = Entity(id = "p1", kind = EntityKind.PLACE, name = "Cabin")
