@@ -9,10 +9,10 @@
       "branchesTotal": 88
     },
     "src/App.tsx": {
-      "lines": 88.54,
-      "linesTotal": 96,
-      "branches": 88,
-      "branchesTotal": 50
+      "lines": 92,
+      "linesTotal": 100,
+      "branches": 94.73,
+      "branchesTotal": 57
     },
     "src/AppThemeProvider.tsx": {
       "lines": 87.5,
@@ -51,10 +51,10 @@
       "branchesTotal": 37
     },
     "src/ContactsPage.tsx": {
-      "lines": 92.51,
-      "linesTotal": 254,
-      "branches": 87.71,
-      "branchesTotal": 171
+      "lines": 92.6,
+      "linesTotal": 257,
+      "branches": 87.86,
+      "branchesTotal": 173
     },
     "src/DashboardPage.tsx": {
       "lines": 77.71,
@@ -771,10 +771,10 @@
       "branchesTotal": 37
     },
     "src/components/BulkMergeDialog.tsx": {
-      "lines": 97.05,
-      "linesTotal": 34,
-      "branches": 82.6,
-      "branchesTotal": 23
+      "lines": 97.29,
+      "linesTotal": 37,
+      "branches": 85.18,
+      "branchesTotal": 27
     },
     "src/components/CadenceDialog.tsx": {
       "lines": 94.87,
@@ -1161,10 +1161,10 @@
       "branchesTotal": 54
     },
     "src/components/GlobalSearch.tsx": {
-      "lines": 98.64,
-      "linesTotal": 74,
-      "branches": 86.27,
-      "branchesTotal": 51
+      "lines": 98.86,
+      "linesTotal": 88,
+      "branches": 89.28,
+      "branchesTotal": 56
     },
     "src/components/HouseholdDialog.tsx": {
       "lines": 96.77,
@@ -1209,10 +1209,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 93.68,
-      "linesTotal": 364,
-      "branches": 85.76,
-      "branchesTotal": 302
+      "lines": 94.05,
+      "linesTotal": 387,
+      "branches": 86.05,
+      "branchesTotal": 337
     },
     "src/components/ImportFixedAssignmentPicker.tsx": {
       "lines": 84.21,
@@ -1756,9 +1756,9 @@
     },
     "src/components/sourceImport/SourceImportWizard.tsx": {
       "lines": 100,
-      "linesTotal": 27,
+      "linesTotal": 30,
       "branches": 100,
-      "branchesTotal": 26
+      "branchesTotal": 37
     },
     "src/components/timelineLayout.ts": {
       "lines": 100,
