@@ -16,7 +16,9 @@ data class ImportUploadResponse(
     val headers: List<String> = emptyList(),
     @Json(name = "suggested_mappings") val suggestedMappings: List<ColumnMapping> = emptyList(),
     @Json(name = "row_count") val rowCount: Int = 0,
-    @Json(name = "sample_data") val sampleData: List<List<String>> = emptyList()
+    @Json(name = "sample_data") val sampleData: List<List<String>> = emptyList(),
+    /** Issue #2731: file-level notices (e.g. read as Windows-1252); `[]` or absent when none. */
+    @Json(name = "file_diagnostics") val fileDiagnostics: List<ImportDiagnostic> = emptyList()
 )
 
 /**
@@ -155,7 +157,9 @@ data class ImportPreviewResponse(
     @Json(name = "valid_rows") val validRows: Int = 0,
     @Json(name = "duplicate_count") val duplicateCount: Int = 0,
     @Json(name = "error_count") val errorCount: Int = 0,
-    @Json(name = "fixed_assignment") val fixedAssignment: ImportFixedAssignment? = null
+    @Json(name = "fixed_assignment") val fixedAssignment: ImportFixedAssignment? = null,
+    /** Issue #2731: the upload's file-level notices, echoed on the preview; `[]` when none. */
+    @Json(name = "file_diagnostics") val fileDiagnostics: List<ImportDiagnostic> = emptyList()
 )
 
 @JsonClass(generateAdapter = true)
@@ -203,7 +207,10 @@ data class ImportResult(
 
 /**
  * Issue #2187: one row that was not (fully) imported. Mirrors backend `models.ImportRowIssue`;
- * [row] is 1-based and [status] is `"skipped"` or `"failed"`.
+ * [row] is 1-based. [status] is `"skipped"`, `"failed"` or (issue #2746) `"warning"`: a row that
+ * DID import but lost a value, with [concept] (`birthday` | `anniversary`) naming what. It is a
+ * plain string so a status a newer server adds decodes instead of throwing; see
+ * [ImportIssueStatus].
  */
 @JsonClass(generateAdapter = true)
 data class ImportRowIssue(
@@ -212,8 +219,17 @@ data class ImportRowIssue(
     val email: String = "",
     val phone: String = "",
     val status: String = "skipped",
-    val reason: String = ""
+    val reason: String = "",
+    /** Issue #2746: the stable key to localize a `warning` by; omitted by the server otherwise. */
+    val concept: String = ""
 )
+
+/** [ImportRowIssue.status] tokens this client knows; anything else is shown as a neutral note. */
+object ImportIssueStatus {
+    const val SKIPPED = "skipped"
+    const val FAILED = "failed"
+    const val WARNING = "warning"
+}
 
 /**
  * One persisted import outcome (issue #651), returned newest-first by

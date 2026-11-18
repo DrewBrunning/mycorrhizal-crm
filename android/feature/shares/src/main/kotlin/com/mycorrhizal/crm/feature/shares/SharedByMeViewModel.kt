@@ -23,10 +23,20 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val NOT_FOUND = "Contact not found"
+private const val HTTP_NOT_FOUND = 404
 
 /** True while the grant can still be revoked or edited (pending or active). */
 val OutgoingShareGrant.isLive: Boolean
     get() = status == ShareGrantStatuses.PENDING || status == ShareGrantStatuses.ACTIVE
+
+/**
+ * True once the grant has ended (declined, expired or revoked) and can be dismissed from the
+ * list (issue #2627). A pending or active grant whose time ran out already reads `expired`.
+ */
+val OutgoingShareGrant.isEnded: Boolean
+    get() = status == ShareGrantStatuses.DECLINED ||
+        status == ShareGrantStatuses.EXPIRED ||
+        status == ShareGrantStatuses.REVOKED
 
 /** What to do with a grant's expiry when editing. */
 sealed interface ExpiryChoice {
@@ -49,6 +59,9 @@ sealed interface SharedByMePrompt {
 
     /** Release sections withheld after a sensitivity change, once the owner has reviewed them. */
     data class Reconfirm(override val grant: OutgoingShareGrant) : SharedByMePrompt
+
+    /** Dismiss an ended grant from the list (issue #2627); the recipient is unaffected. */
+    data class Remove(override val grant: OutgoingShareGrant) : SharedByMePrompt
 }
 
 /** The narrow-only editor: sections can only be removed, the expiry changed. */
@@ -126,6 +139,10 @@ class SharedByMeViewModel @Inject constructor(
 
     fun requestRevoke(grant: OutgoingShareGrant) {
         if (grant.isLive) openPrompt(SharedByMePrompt.Revoke(grant))
+    }
+
+    fun requestRemove(grant: OutgoingShareGrant) {
+        if (grant.isEnded) openPrompt(SharedByMePrompt.Remove(grant))
     }
 
     fun requestReconfirm(grant: OutgoingShareGrant) {
@@ -217,11 +234,41 @@ class SharedByMeViewModel @Inject constructor(
 
     fun confirmPrompt() {
         val prompt = _uiState.value.prompt ?: return
-        runAction {
-            when (prompt) {
-                is SharedByMePrompt.Revoke -> repository.revoke(prompt.grant.id)
-                is SharedByMePrompt.Reconfirm -> repository.reconfirm(prompt.grant.id)
-            }
+        when (prompt) {
+            is SharedByMePrompt.Revoke -> runAction { repository.revoke(prompt.grant.id) }
+            is SharedByMePrompt.Reconfirm -> runAction { repository.reconfirm(prompt.grant.id) }
+            is SharedByMePrompt.Remove -> remove(prompt.grant)
+        }
+    }
+
+    /**
+     * Issue #2627 (backend #2742): the row leaves the list at once. A 404 means it is already
+     * gone (unknown or removed elsewhere), which is the outcome the owner asked for, so it is
+     * not an error. Anything else, a 409 `share_grant_not_ended` included, keeps the row and
+     * reports the reason; the reload then shows the server's truth.
+     */
+    private fun remove(grant: OutgoingShareGrant) {
+        if (_uiState.value.busy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, actionError = null) }
+            repository.delete(grant.id).foldApiError(
+                onSuccess = { dropRow(grant.id) },
+                onError = { error ->
+                    if (error is ApiError.Client && error.code == HTTP_NOT_FOUND) {
+                        dropRow(grant.id)
+                    } else {
+                        _uiState.update { it.copy(busy = false, actionError = error) }
+                    }
+                }
+            )
+            closePrompt()
+            reloadAfterChange()
+        }
+    }
+
+    private fun dropRow(id: String) {
+        _uiState.update { state ->
+            state.copy(busy = false, grants = state.grants.filterNot { it.id == id })
         }
     }
 

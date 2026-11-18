@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.domain.compat.ServerFeature
+import com.mycorrhizal.crm.model.network.ImportDiagnostic
 import com.mycorrhizal.crm.model.network.ImportMergeDiff
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
@@ -56,7 +57,8 @@ fun ImportReviewStep(
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
     rowEdits: Map<Int, ImportRowEdit> = emptyMap(),
-    onRowEditSave: ((ImportRowEdit) -> Unit)? = null
+    onRowEditSave: ((ImportRowEdit) -> Unit)? = null,
+    fileDiagnostics: List<ImportDiagnostic> = emptyList()
 ) {
     var filter by rememberSaveable { mutableStateOf<ImportReviewFilter?>(null) }
     val conflictsRemaining = rows.count { row ->
@@ -86,6 +88,7 @@ fun ImportReviewStep(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
+        FileDiagnosticsNotice(fileDiagnostics)
         // Nothing to resolve without a duplicate row (issue #2630).
         if (rows.any { it.duplicateMatch != null || it.batchDuplicateOf != null }) {
             TextButton(onClick = onResolveAll, modifier = Modifier.padding(horizontal = 8.dp)) {
@@ -114,6 +117,29 @@ fun ImportReviewStep(
             modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Text(stringResource(R.string.import_apply_decisions, decisions))
+        }
+    }
+}
+
+/** Issue #2731: file-level notices (such as "read as Windows-1252") above the row list. */
+@Composable
+private fun FileDiagnosticsNotice(diagnostics: List<ImportDiagnostic>) {
+    if (diagnostics.isEmpty()) return
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            .testTag("import-file-diagnostic")
+    ) {
+        diagnostics.forEach { diagnostic ->
+            Text(
+                text = diagnostic.localizedText(),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (diagnostic.severity == DIAGNOSTIC_WARN) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
         }
     }
 }
@@ -233,13 +259,15 @@ private fun ImportRowCard(
             )
         }
         row.diagnostics?.forEach { diagnostic ->
-            // Issue #2641: adapter notes (e.g. "name taken from email"); warn reads as an error,
-            // info as a plain note. Not live: the row's own status line carries the announcement.
+            // Issue #2641: adapter notes (e.g. "name taken from email"). A warning (issue #2653:
+            // an invalid birthday was dropped, the row still imports) is localized by concept and
+            // is not an error, so it gets the tertiary colour; info is a plain note. Not live:
+            // the row's own status line carries the announcement.
             Text(
-                text = diagnostic.message,
+                text = diagnostic.localizedText(),
                 style = MaterialTheme.typography.labelMedium,
-                color = if (diagnostic.severity == "warn") {
-                    MaterialTheme.colorScheme.error
+                color = if (diagnostic.severity == DIAGNOSTIC_WARN) {
+                    MaterialTheme.colorScheme.tertiary
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },

@@ -46,7 +46,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Clearer Android messages** ([#2629](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2629), [#2630](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2630)): when your server cannot be reached the app now says so instead of "Something went wrong", and the circle and household "Text everyone" button explains why it cannot send.
+- **Clearer Android messages** ([#2629](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2629), [#2630](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2630)): an unreachable server is now named as such, the contact list and contact pages say "Showing saved data" with a Retry when they come from your saved copy, and "Text everyone" explains why it cannot send.
 - **Dates follow your format on Android** ([#2618](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2618)): Trash, import history and circle timelines now use your date and time format, without seconds.
 - **CSV imports with a byte-order mark or old encodings** ([#2662](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2662), [#2669](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2669)): a CSV saved with a byte-order mark now maps its first column, and a file that is not UTF-8 (such as Windows-1252 or Latin-1) is read in that encoding, with a warning, instead of importing garbled characters.
 - **Merging contacts on Android** ([#2604](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2604), [#2605](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2605)): merging two contacts that have no addresses, links or circles no longer fails with "Unexpected server response", and the bulk action bar on the contact list now sits above the system navigation buttons.
@@ -61,6 +61,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Number keyboard for dotted and hyphenated dates on Android** ([#2378](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2378)): date fields now open the number keyboard when your date format uses dots or hyphens, such as 10.08.2026. Formats with slashes keep the text keyboard.
 - **Clearer Trash on the web** ([#2707](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2707), [#2717](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2717)): the retention note now says deleted items, not contacts. Deleting forever and emptying the trash ask in a translated dialog that says organisations, places and pets are left alone.
 - **Dark-mode scrollbars** ([#2363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2363)): in dark mode the navigation sidebar and page scrollbars no longer show a bright white track. Light mode is unchanged.
+- **"Today" follows your time zone** ([#2679](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2679), [#2762](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2762)): the dashboard and upcoming birthdays, occasions, gift shopping list and reminders now count from the day it is where you are, so a birthday that is today for you no longer disappears in the evening.
 
 ### Security
 

@@ -23,6 +23,13 @@ ignore:
   # untrusted input — so the prototype-poisoning sink is not attacker-reachable.
   # Tracked for a real fix in docs/security/dependency-exceptions.ignore.
   - vulnerability: GHSA-gcqx-w48m-w2h4
+  # GHSA-fc5q-39xc-vjpf (picomatch 4.0.7): ReDoS through repeated extglobs. No
+  # patched release exists yet (4.0.7 is latest, no first_patched_version). It is
+  # a dev/build-time dependency (vitest, vite, tinyglobby, workbox) that matches
+  # this repo's own constant glob patterns, never attacker-supplied ones, and is
+  # not part of the shipped bundle. Tracked for a real fix in
+  # docs/security/dependency-exceptions.ignore; bump once a fixed release ships.
+  - vulnerability: GHSA-fc5q-39xc-vjpf
   # GO-2026-5932 (golang.org/x/crypto/openpgp): the advisory is against the
   # unmaintained openpgp subpackage, which this repo never imports. The backend
   # uses only x/crypto/bcrypt (password hashing) and x/crypto/hkdf (at-rest key

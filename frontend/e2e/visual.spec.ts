@@ -392,7 +392,10 @@ test.describe('Visual regression (desktop)', () => {
   test('dashboard', async ({ page }) => {
     await pinVisualEnvironment(page);
     await interceptCircles(page);
-    await page.route('**/api/v1/dashboard', (route) => route.fulfill({ json: FIXED_DASHBOARD }));
+    await page.route(
+      (url) => url.pathname === '/api/v1/dashboard',
+      (route) => route.fulfill({ json: FIXED_DASHBOARD }),
+    );
 
     await page.goto('/');
     await awaitPinFonts(page);
@@ -472,7 +475,10 @@ test.describe('Visual regression (mobile)', () => {
   test('dashboard', async ({ page }) => {
     await pinVisualEnvironment(page);
     await interceptCircles(page);
-    await page.route('**/api/v1/dashboard', (route) => route.fulfill({ json: FIXED_DASHBOARD }));
+    await page.route(
+      (url) => url.pathname === '/api/v1/dashboard',
+      (route) => route.fulfill({ json: FIXED_DASHBOARD }),
+    );
 
     await page.goto('/');
     await awaitPinFonts(page);

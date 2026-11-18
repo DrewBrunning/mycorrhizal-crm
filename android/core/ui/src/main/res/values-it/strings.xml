@@ -1323,6 +1323,7 @@
     <string name="action_back">Indietro</string>
     <string name="action_rename">Rinomina</string>
     <string name="action_retry">Riprova</string>
+    <string name="saved_data_banner_message">Visualizzazione dei dati salvati</string>
 
 
     <!-- Tags -->
@@ -1588,6 +1589,7 @@
     <string name="shares_grant_block">Blocca il mittente</string>
     <string name="shares_grant_unblock">Sblocca</string>
     <string name="shares_grant_revoke">Revoca</string>
+    <string name="shares_grant_remove">Rimuovi</string>
     <string name="shares_grant_reconfirm">Rivedi e riconferma</string>
     <string name="shares_grant_edit">Modifica</string>
     <string name="shares_grant_decline_message">Rifiutare la condivisione di %1$s da %2$s? La persona vedrà che è stata rifiutata.</string>
@@ -1597,6 +1599,8 @@
     <string name="shares_grant_leave_message">%1$s non sarà più visibile per te. Per rivederlo, %2$s dovrà condividerlo di nuovo con te.</string>
     <string name="shares_grant_revoke_title">Revocare questa condivisione?</string>
     <string name="shares_grant_revoke_message">%1$s perderà l\'accesso al prossimo caricamento. Ciò che ha già visto non può essere ritirato.</string>
+    <string name="shares_grant_remove_title">Rimuovere questa condivisione?</string>
+    <string name="shares_grant_remove_message">La condivisione con %1$s è terminata. Rimuovendola scompare da questo elenco.</string>
     <string name="shares_grant_reconfirm_title">Condividere di nuovo queste sezioni?</string>
     <string name="shares_grant_reconfirm_message">Alcuni elementi di questa condivisione sono stati contrassegnati come privati o segreti, quindi queste sezioni sono trattenute per %1$s. Controlla il loro contenuto prima di condividerle di nuovo.</string>
     <string name="shares_grant_reconfirm_confirm">Condividi di nuovo</string>
@@ -2165,6 +2169,15 @@
     <string name="import_report_row">Riga %1$d · %2$s</string>
     <string name="import_report_skipped">Saltata: %1$s</string>
     <string name="import_report_failed">Non riuscita: %1$s</string>
+    <string name="import_diag_birthday_warn">Il compleanno non è una data valida, quindi non verrà importato</string>
+    <string name="import_diag_anniversary_warn">L’anniversario non è una data valida, quindi non verrà importato</string>
+    <string name="import_diag_encoding_warn">Questo file non era in UTF-8, quindi è stato letto come Windows-1252. Controlla che gli accenti siano corretti.</string>
+    <string name="import_report_warning_birthday">Importato, ma il compleanno non è una data valida ed è stato omesso</string>
+    <string name="import_report_warning_anniversary">Importato, ma l’anniversario non è una data valida ed è stato omesso</string>
+    <string name="import_report_warning">Importato con un avviso: %1$s</string>
+    <string name="import_report_note">Nota: %1$s</string>
+    <string name="import_report_title_warnings">Importato con avvisi</string>
+    <string name="import_report_title_mixed">Righe non importate o con avvisi</string>
     <string name="import_report_share">Condividi come CSV</string>
     <string name="import_report_share_title">Condividi il rapporto di importazione</string>
     <string name="import_resolve_all">Risolvi tutto come unito</string>
