@@ -609,6 +609,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"DELETE /api/v1/occasion-obligations/:id":             {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
 		"GET /api/v1/occasions/upcoming":                      {class: classProtected},
 		"GET /api/v1/occasion-obligations/card-list":          {class: classProtected},
+		"GET /api/v1/occasion-obligations/card-list/summary":  {class: classProtected},
 		"GET /api/v1/occasion-obligations/gift-shopping-list": {class: classProtected},
 
 		// --- occasion events (docs/adrs/0026-occasions-events.md, issue #1228) --

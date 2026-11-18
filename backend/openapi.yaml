@@ -11050,6 +11050,57 @@ paths:
             text/csv:
               schema: { type: string }
 
+  /occasion-obligations/card-list/summary:
+    get:
+      summary: Card-list summary (recipient and skipped counts)
+      operationId: getOccasionCardListSummary
+      tags:
+        - Occasions
+      description: >
+        Counts-only companion to the card-list CSV (issue #2786): how many
+        recipients `GET /occasion-obligations/card-list` holds for the same
+        query and how many it skips, and why. Shares the CSV's selection logic,
+        so `included` always equals the CSV's data-row count. `total` counts
+        active obligations (one CSV row each), not distinct contacts. Same
+        sensitivity rule as the CSV: private/secret addresses are never counted
+        as present unless `include_sensitive=true`. Returns no names or
+        addresses.
+      parameters:
+        - name: kind
+          in: query
+          description: >
+            OccasionObligation.Kind to filter on (default "card"); same as the
+            CSV endpoint. Values containing control characters are rejected.
+          schema: { type: string, default: "card" }
+        - name: include_sensitive
+          in: query
+          description: Include obligations and postal addresses above normal sensitivity.
+          schema: { type: boolean, default: false }
+      responses:
+        "400":
+          description: Invalid kind value (contains control characters; reason `occasion_kind_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "200":
+          description: The summary counts.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OccasionCardListSummary"
+              example:
+                total: 12
+                included: 9
+                skipped: 3
+                skipped_reasons: { no_address: 2, private_address_only: 1 }
+
   /occasion-obligations/gift-shopping-list:
     get:
       summary: Gift shopping list ("who still needs a gift")
@@ -20466,6 +20517,24 @@ components:
         days_until: { type: integer }
         status: { type: string, enum: [needed, idea, purchased, given, received] }
         linked_gift_id: { type: string, format: uuid }
+
+    OccasionCardListSummary:
+      type: object
+      description: >
+        Counts for GET /occasion-obligations/card-list/summary (issue #2786).
+        `total` = `included` + `skipped`; `skipped` = the sum of
+        `skipped_reasons`. No names or addresses.
+      required: [total, included, skipped, skipped_reasons]
+      properties:
+        total: { type: integer, minimum: 0, description: "Active obligations selected (one CSV row each when included)." }
+        included: { type: integer, minimum: 0, description: "Obligations that produce a CSV row (equals the CSV data-row count)." }
+        skipped: { type: integer, minimum: 0 }
+        skipped_reasons:
+          type: object
+          required: [no_address, private_address_only]
+          properties:
+            no_address: { type: integer, minimum: 0, description: "Contact has no postal address (or is missing/not owned)." }
+            private_address_only: { type: integer, minimum: 0, description: "Every address is private/secret and include_sensitive is not set." }
 
     # --- OccasionEvents (docs/adrs/0026-occasions-events.md, issue #1228) ---
     OccasionEvent:
