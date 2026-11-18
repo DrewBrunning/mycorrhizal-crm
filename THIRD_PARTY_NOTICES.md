@@ -39,7 +39,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `github.com/fxamacker/cbor/v2` | `v2.10.0` | MIT | https://pkg.go.dev/github.com/fxamacker/cbor/v2@v2.10.0 |
 | `github.com/gabriel-vasile/mimetype` | `v1.4.16` | MIT | https://pkg.go.dev/github.com/gabriel-vasile/mimetype@v1.4.16 |
 | `github.com/gen2brain/heic` | `v0.7.2` | MIT | https://pkg.go.dev/github.com/gen2brain/heic@v0.7.2 |
-| `github.com/gin-contrib/cors` | `v1.7.10` | MIT | https://pkg.go.dev/github.com/gin-contrib/cors@v1.7.10 |
+| `github.com/gin-contrib/cors` | `v1.7.11` | MIT | https://pkg.go.dev/github.com/gin-contrib/cors@v1.7.11 |
 | `github.com/gin-contrib/sse` | `v1.1.1` | MIT | https://pkg.go.dev/github.com/gin-contrib/sse@v1.1.1 |
 | `github.com/gin-gonic/gin` | `v1.12.0` | MIT | https://pkg.go.dev/github.com/gin-gonic/gin@v1.12.0 |
 | `github.com/glebarez/go-sqlite` | `v1.23.0` | BSD-3-Clause | https://pkg.go.dev/github.com/glebarez/go-sqlite@v1.23.0 |
@@ -85,20 +85,20 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `github.com/yosida95/uritemplate/v3` | `v3.0.2` | BSD-3-Clause | https://pkg.go.dev/github.com/yosida95/uritemplate/v3@v3.0.2 |
 | `go.mongodb.org/mongo-driver/v2` | `v2.8.0` | Apache-2.0 | https://pkg.go.dev/go.mongodb.org/mongo-driver/v2@v2.8.0 |
 | `go.uber.org/atomic` | `v1.11.0` | MIT | https://pkg.go.dev/go.uber.org/atomic@v1.11.0 |
-| `golang.org/x/crypto` | `v0.58.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/crypto@v0.58.0 |
-| `golang.org/x/mod` | `v0.42.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/mod@v0.42.0 |
+| `golang.org/x/crypto` | `v0.59.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/crypto@v0.59.0 |
+| `golang.org/x/mod` | `v0.43.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/mod@v0.43.0 |
 | `golang.org/x/net` | `v0.62.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/net@v0.62.0 |
-| `golang.org/x/oauth2` | `v0.37.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/oauth2@v0.37.0 |
-| `golang.org/x/sync` | `v0.24.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/sync@v0.24.0 |
-| `golang.org/x/sys` | `v0.49.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/sys@v0.49.0 |
-| `golang.org/x/text` | `v0.43.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/text@v0.43.0 |
+| `golang.org/x/oauth2` | `v0.38.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/oauth2@v0.38.0 |
+| `golang.org/x/sync` | `v0.25.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/sync@v0.25.0 |
+| `golang.org/x/sys` | `v0.50.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/sys@v0.50.0 |
+| `golang.org/x/text` | `v0.44.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/text@v0.44.0 |
 | `golang.org/x/time` | `v0.16.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/time@v0.16.0 |
 | `google.golang.org/protobuf` | `v1.36.11` | BSD-3-Clause | https://pkg.go.dev/google.golang.org/protobuf@v1.36.11 |
 | `gorm.io/gorm` | `v1.31.2` | MIT | https://pkg.go.dev/gorm.io/gorm@v1.31.2 |
-| `modernc.org/libc` | `v1.79.0` | MIT, BSD-3-Clause | https://pkg.go.dev/modernc.org/libc@v1.79.0 |
+| `modernc.org/libc` | `v1.80.1` | MIT, BSD-3-Clause | https://pkg.go.dev/modernc.org/libc@v1.80.1 |
 | `modernc.org/mathutil` | `v1.7.1` | BSD-2-Clause | https://pkg.go.dev/modernc.org/mathutil@v1.7.1 |
 | `modernc.org/memory` | `v1.12.1` | BSD-3-Clause | https://pkg.go.dev/modernc.org/memory@v1.12.1 |
-| `modernc.org/sqlite` | `v1.61.1` | Apache-2.0, MIT, BSD-3-Clause, GPL-2.0-or-later, GPL-3.0-or-later | https://pkg.go.dev/modernc.org/sqlite@v1.61.1 |
+| `modernc.org/sqlite` | `v1.62.0` | Apache-2.0, MIT, BSD-3-Clause, GPL-2.0-or-later, GPL-3.0-or-later | https://pkg.go.dev/modernc.org/sqlite@v1.62.0 |
 
 ## npm packages
 
@@ -6100,7 +6100,7 @@ and license texts it points at are the ones you have to carry with you.
 | [Go](https://github.com/golang/go) | -- | BSD-3-Clause | modernc.org/libc | [N1](#N1) |
 | [go-netdb](https://github.com/dominikh/go-netdb) | -- | MIT | modernc.org/libc | [N1](#N1) |
 | [golang.org/x/sys](https://pkg.go.dev/golang.org/x/sys) | v0.49.0 | BSD-3-Clause | github.com/google/pprof, github.com/mattn/go-isatty, modernc.org/libc, modernc.org/memory, `go.mod` | [L3](#L3) |
-| [modernc.org/libc](https://pkg.go.dev/modernc.org/libc) | v1.79.0 | BSD-3-Clause | `go.mod` | [L4](#L4) |
+| [modernc.org/libc](https://pkg.go.dev/modernc.org/libc) | v1.80.1 | BSD-3-Clause | `go.mod` | [L4](#L4) |
 | [modernc.org/mathutil](https://pkg.go.dev/modernc.org/mathutil) | v1.7.1 | BSD-3-Clause | modernc.org/fileutil, modernc.org/libc, modernc.org/memory, `go.mod` | [L4](#L4) |
 | [modernc.org/memory](https://pkg.go.dev/modernc.org/memory) | v1.12.1 | BSD-3-Clause, attribution reference | modernc.org/libc, `go.mod` | [L4](#L4), [L2](#L2), [L5](#L5), [L6](#L6) |
 | [musl libc](https://musl.libc.org/) | -- | MIT | modernc.org/libc | [N1](#N1) |
@@ -6145,8 +6145,8 @@ this one.
 | [golang.org/x/mod](https://pkg.go.dev/golang.org/x/mod) | v0.42.0 | BSD-3-Clause | modernc.org/libc | [L3](#L3) |
 | [golang.org/x/sync](https://pkg.go.dev/golang.org/x/sync) | v0.24.0 | BSD-3-Clause | modernc.org/libc | [L3](#L3) |
 | [golang.org/x/tools](https://pkg.go.dev/golang.org/x/tools) | v0.52.0 | BSD-3-Clause | modernc.org/libc | [L3](#L3) |
-| [modernc.org/cc/v4](https://pkg.go.dev/modernc.org/cc/v4) | v4.30.3 | BSD-3-Clause | modernc.org/libc | [L4](#L4) |
-| [modernc.org/ccgo/v4](https://pkg.go.dev/modernc.org/ccgo/v4) | v4.37.0 | BSD-3-Clause | modernc.org/libc | [L4](#L4) |
+| [modernc.org/cc/v4](https://pkg.go.dev/modernc.org/cc/v4) | v4.30.6-0.20261101114202-1b9d1a076f6b | BSD-3-Clause | modernc.org/libc | [L4](#L4) |
+| [modernc.org/ccgo/v4](https://pkg.go.dev/modernc.org/ccgo/v4) | v4.38.1 | BSD-3-Clause | modernc.org/libc | [L4](#L4) |
 | [modernc.org/gc/v2](https://pkg.go.dev/modernc.org/gc/v2) | v2.6.5 | BSD-3-Clause | modernc.org/libc | [L16](#L16) |
 | [modernc.org/gc/v3](https://pkg.go.dev/modernc.org/gc/v3) | v3.2.0 | BSD-3-Clause | modernc.org/libc | [L16](#L16) |
 | [modernc.org/goabi0](https://pkg.go.dev/modernc.org/goabi0) | v0.2.0 | BSD-3-Clause | modernc.org/libc | [L17](#L17) |
