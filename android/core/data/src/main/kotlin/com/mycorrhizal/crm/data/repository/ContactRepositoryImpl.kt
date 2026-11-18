@@ -241,7 +241,8 @@ class ContactRepositoryImpl @Inject constructor(
                 val cached = dao.getById(id)
                 val fromCache = cached?.let { it.toRecord() }
                 if (fromCache != null) {
-                    Result.success(fromCache)
+                    // #2629: tell the screen this is saved data, not a fresh read.
+                    Result.success(fromCache.copy(servedFromCache = true))
                 } else {
                     Result.failure(error)
                 }
