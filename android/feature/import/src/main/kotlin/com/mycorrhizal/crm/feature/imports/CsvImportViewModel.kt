@@ -64,6 +64,8 @@ data class CsvImportUiState(
 @HiltViewModel
 class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) : ViewModel() {
 
+    private val canceller = ImportSessionCanceller(apiClient)
+
     private val _uiState = MutableStateFlow(CsvImportUiState())
     val uiState: StateFlow<CsvImportUiState> = _uiState.asStateFlow()
 
@@ -291,6 +293,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
     fun confirm() {
         val preview = _uiState.value.preview ?: return
         if (_uiState.value.isLoading) return
+        canceller.confirmStarted()
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val actions = _uiState.value.rowActions.map { (rowIndex, action) ->
@@ -318,6 +321,7 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                     }
                 },
                 onError = { error ->
+                    if (error is ApiError.Client) canceller.confirmRefused()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -332,6 +336,21 @@ class CsvImportViewModel @Inject constructor(private val apiClient: ApiClient) :
     /** Only the fixes for rows still being imported; null (omitted) when there are none. */
     private fun activeRowEdits(): List<ImportRowEdit>? = _uiState.value.let { state ->
         state.rowEdits.values.filter { state.rowActions[it.rowIndex] != "skip" }.ifEmpty { null }
+    }
+
+    /**
+     * Issues #2664 / #2734: discards the unconfirmed server session (the upload's, which the
+     * preview echoes). Called from [onCleared], so it runs however the screen is left; also safe to
+     * call directly. Never blocks or surfaces an error.
+     */
+    fun cancel() {
+        val state = _uiState.value
+        canceller.cancel(viewModelScope, state.preview?.sessionId ?: state.upload?.sessionId)
+    }
+
+    override fun onCleared() {
+        cancel()
+        super.onCleared()
     }
 
     fun onErrorShown() {
