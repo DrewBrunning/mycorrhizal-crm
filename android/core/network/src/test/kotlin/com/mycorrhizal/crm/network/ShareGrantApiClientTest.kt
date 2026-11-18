@@ -217,6 +217,41 @@ class ShareGrantApiClientTest {
     }
 
     @Test
+    fun `deleting an ended grant sends DELETE and accepts the 204`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(204))
+        client.deleteShareGrant("g1").getOrThrow()
+        val request = server.takeRequest()
+        assertEquals("DELETE", request.method)
+        assertEquals("/api/v1/share-grants/g1", request.path)
+    }
+
+    @Test
+    fun `deleting a grant that has not ended is a 409 with the not-ended reason`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(409).setBody(
+                """{"error":{"code":"CONFLICT","message":"Only a share that has ended ...",
+                "reason_code":"share_grant_not_ended"}}"""
+            )
+        )
+        val error = client.deleteShareGrant("g1").exceptionOrNull() as ApiError.Client
+        assertEquals(409, error.code)
+        assertEquals("share_grant_not_ended", error.reason?.code)
+    }
+
+    @Test
+    fun `deleting an unknown or already removed grant is the identical 404`() = runBlocking {
+        server.enqueue(
+            MockResponse().setResponseCode(404).setBody(
+                """{"error":{"code":"NOT_FOUND","message":"Share grant not found",
+                "reason_code":"share_grant_not_found"}}"""
+            )
+        )
+        val error = client.deleteShareGrant("gone").exceptionOrNull() as ApiError.Client
+        assertEquals(404, error.code)
+        assertEquals("share_grant_not_found", error.reason?.code)
+    }
+
+    @Test
     fun `blocks list and unblock`() = runBlocking {
         server.enqueue(MockResponse().setBody("""{"blocks":[{"user_id":7,"username":"dana"}]}"""))
         server.enqueue(MockResponse().setResponseCode(204))
