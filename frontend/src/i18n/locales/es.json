@@ -543,12 +543,32 @@
         "colStatus": "Resultado",
         "colReason": "Motivo",
         "statusFailed": "Error",
-        "statusSkipped": "Omitida"
+        "statusSkipped": "Omitida",
+        "statusWarning": "Aviso",
+        "warningsTitle": "Importado con avisos",
+        "mixedTitle": "Filas por revisar",
+        "filterLabel": "Mostrar",
+        "filterNotImported_one": "No importada ({{count}})",
+        "filterNotImported_other": "No importadas ({{count}})",
+        "filterNotImported_many": "No importadas ({{count}})",
+        "filterAll_one": "Todas ({{count}})",
+        "filterAll_other": "Todas ({{count}})",
+        "filterAll_many": "Todas ({{count}})",
+        "filterWarnings_one": "Aviso ({{count}})",
+        "filterWarnings_other": "Avisos ({{count}})",
+        "filterWarnings_many": "Avisos ({{count}})"
       },
       "errors": {
         "invalidFile": "Selecciona un archivo CSV válido",
         "fileTooLarge": "El archivo es demasiado grande. El tamaño máximo es {{size}}MB",
         "noMappings": "Mapea al menos una columna"
+      },
+      "warning": {
+        "anniversary": "Aniversario no importado: valor no válido",
+        "birthday": "Cumpleaños no importado: valor no válido"
+      },
+      "fileDiagnostic": {
+        "encoding": "Este archivo no está en UTF-8, así que se leyó como Windows-1252. Compruebe que los acentos se vean bien antes de importar."
       }
     },
     "urls": "Sitios Web",
@@ -1875,8 +1895,8 @@
           "colFormat": "Formato",
           "colCreated": "Creados",
           "colUpdated": "Actualizados",
-          "colSkipped": "Omitidos",
-          "colErrors": "Errores",
+          "colSkipped": "Omitidas en la revisión",
+          "colErrors": "Fallidas al importar",
           "colReport": "Informe",
           "viewReport": "Ver informe",
           "reportTitle": "Informe de importación",
@@ -2118,7 +2138,8 @@
         "foundNotes_other": "{{count}} notas",
         "foundNotes_many": "{{count}} notas",
         "estimate": "Descargarlo todo tarda unos {{minutes}} min.",
-        "start": "Iniciar importación"
+        "start": "Iniciar importación",
+        "unreachable": "No se pudo acceder a Monica en {{host}}"
       }
     },
     "meerkatImport": {
@@ -2142,7 +2163,8 @@
         "userOption_one": "{{name}} — {{count}} contacto",
         "userOption_other": "{{name}} — {{count}} contactos",
         "userOption_many": "{{name}} — {{count}} contactos",
-        "start": "Iniciar importación"
+        "start": "Iniciar importación",
+        "fetchFailedHint": "Si Meerkat sigue sin estar disponible, elija «Subir un archivo» e importe en su lugar una copia de su base de datos."
       },
       "mode": {
         "label": "Cómo importar desde Meerkat",

@@ -523,12 +523,29 @@
         "colStatus": "Ergebnis",
         "colReason": "Grund",
         "statusFailed": "Fehlgeschlagen",
-        "statusSkipped": "Übersprungen"
+        "statusSkipped": "Übersprungen",
+        "statusWarning": "Warnung",
+        "warningsTitle": "Mit Warnungen importiert",
+        "mixedTitle": "Zeilen zur Überprüfung",
+        "filterLabel": "Anzeigen",
+        "filterNotImported_one": "Nicht importiert ({{count}})",
+        "filterNotImported_other": "Nicht importiert ({{count}})",
+        "filterAll_one": "Alle ({{count}})",
+        "filterAll_other": "Alle ({{count}})",
+        "filterWarnings_one": "Warnung ({{count}})",
+        "filterWarnings_other": "Warnungen ({{count}})"
       },
       "errors": {
         "invalidFile": "Bitte wählen Sie eine gültige CSV-Datei",
         "fileTooLarge": "Datei ist zu groß. Maximale Größe ist {{size}}MB",
         "noMappings": "Bitte ordnen Sie mindestens eine Spalte zu"
+      },
+      "warning": {
+        "anniversary": "Jahrestag nicht importiert: ungültiger Wert",
+        "birthday": "Geburtstag nicht importiert: ungültiger Wert"
+      },
+      "fileDiagnostic": {
+        "encoding": "Diese Datei ist nicht UTF-8-codiert und wurde als Windows-1252 gelesen. Prüfen Sie vor dem Import, ob Umlaute und Akzente richtig angezeigt werden."
       }
     },
     "urls": "Webseiten",
@@ -1841,8 +1858,8 @@
           "colFormat": "Format",
           "colCreated": "Erstellt",
           "colUpdated": "Aktualisiert",
-          "colSkipped": "Übersprungen",
-          "colErrors": "Fehler",
+          "colSkipped": "Bei der Prüfung übersprungen",
+          "colErrors": "Beim Import fehlgeschlagen",
           "colReport": "Bericht",
           "viewReport": "Bericht ansehen",
           "reportTitle": "Importbericht",
@@ -2069,7 +2086,8 @@
         "foundNotes_one": "{{count}} Notiz",
         "foundNotes_other": "{{count}} Notizen",
         "estimate": "Das vollständige Abrufen dauert etwa {{minutes}} Min.",
-        "start": "Import starten"
+        "start": "Import starten",
+        "unreachable": "Monica unter {{host}} ist nicht erreichbar"
       }
     },
     "meerkatImport": {
@@ -2089,7 +2107,8 @@
         "pickUser": "Diese Datenbank hat mehrere Benutzer — wähle, wessen Kontakte importiert werden:",
         "userOption_one": "{{name}} — {{count}} Kontakt",
         "userOption_other": "{{name}} — {{count}} Kontakte",
-        "start": "Import starten"
+        "start": "Import starten",
+        "fetchFailedHint": "Wenn Meerkat weiterhin nicht erreichbar ist, wählen Sie „Datei hochladen“ und importieren Sie stattdessen eine Kopie der Datenbank."
       },
       "mode": {
         "label": "So importieren Sie aus Meerkat",
