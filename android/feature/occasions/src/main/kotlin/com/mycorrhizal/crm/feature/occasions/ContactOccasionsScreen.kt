@@ -337,6 +337,10 @@ private fun obligationKindText(kind: String): String = when (kind) {
     else -> kind
 }
 
+/** The token for [input] when it is a known kind's [labels] entry; otherwise [input] verbatim. */
+internal fun kindFromInput(input: String, labels: Map<String, String>): String =
+    labels.entries.firstOrNull { it.value == input }?.key ?: input
+
 @androidx.annotation.StringRes
 private fun sensitivityLabelRes(sensitivity: String): Int = when (sensitivity) {
     OccasionSensitivity.PRIVATE -> R.string.occasions_sensitivity_private
@@ -419,9 +423,12 @@ private fun OccasionObligationForm(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            // The stored token ("gift") is shown as its label; typing a label maps back to the
+            // token, and any other text is a custom kind kept verbatim (issue #2626).
+            val kindLabels = OccasionObligationKinds.ALL.associateWith { obligationKindText(it) }
             OutlinedTextField(
-                value = kind,
-                onValueChange = { kind = it },
+                value = kindLabels[kind] ?: kind,
+                onValueChange = { kind = kindFromInput(it, kindLabels) },
                 label = { Text(stringResource(R.string.occasion_ob_kind)) },
                 supportingText = { Text(stringResource(R.string.occasion_ob_kind_hint)) },
                 singleLine = true,

@@ -86,8 +86,11 @@ fun ImportReviewStep(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
-        TextButton(onClick = onResolveAll, modifier = Modifier.padding(horizontal = 8.dp)) {
-            Text(stringResource(R.string.import_resolve_all))
+        // Nothing to resolve without a duplicate row (issue #2630).
+        if (rows.any { it.duplicateMatch != null || it.batchDuplicateOf != null }) {
+            TextButton(onClick = onResolveAll, modifier = Modifier.padding(horizontal = 8.dp)) {
+                Text(stringResource(R.string.import_resolve_all))
+            }
         }
         FilterChips(
             rows = rows,

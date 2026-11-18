@@ -190,7 +190,7 @@
     <string name="contacts_search_results_hint">Notizen und Interaktionen werden ebenfalls durchsucht — Kreis- und Archiv-Filter gelten für sie nicht.</string>
     <string name="contacts_search_notes_group">Notizen</string>
     <string name="contacts_search_activities_group">Interaktionen</string>
-    <string name="contacts_search_entities_group">Organisationen, Orte und Haustiere</string>
+    <string name="contacts_search_entities_group">Organisationen, Orte &amp; Haustiere</string>
     <string name="contacts_search_unfiled">Nicht zugeordnet</string>
     <string name="contacts_search_resolved_relation">Übereinstimmende Beziehung: %1$s</string>
 
@@ -1285,6 +1285,7 @@
     <string name="action_edit">Bearbeiten</string>
     <string name="action_delete">Löschen</string>
     <string name="action_cancel">Abbrechen</string>
+    <string name="action_remove">Entfernen</string>
     <string name="action_add">Hinzufügen</string>
     <string name="action_back">Zurück</string>
     <string name="action_rename">Umbenennen</string>
@@ -1400,6 +1401,7 @@
     <string name="households_suggest_relationships">Beziehungen vorschlagen</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Allen schreiben</string>
+    <string name="group_text_everyone_unavailable">Um allen zu schreiben, müssen mindestens zwei Mitglieder eine Telefonnummer haben.</string>
     <plurals name="households_suggestions_generated">
         <item quantity="one">%1$d neue vorgeschlagene Beziehung erstellt. Prüfe sie auf den Kontaktseiten der Mitglieder.</item>
         <item quantity="other">%1$d neue vorgeschlagene Beziehungen erstellt. Prüfe sie auf den Kontaktseiten der Mitglieder.</item>
@@ -1568,7 +1570,7 @@
     <string name="shares_revoked_reason_owner">Du hast diese Freigabe widerrufen</string>
     <string name="shares_revoked_reason_entity_deleted">Der geteilte Eintrag wurde gelöscht</string>
     <string name="shares_revoked_reason_recipient_deleted">Das Konto des Empfängers wurde gelöscht</string>
-    <string name="shares_content_title">Mit dir geteilt</string>
+    <string name="shares_content_title">Mit mir geteilt</string>
     <string name="shares_content_from">Geteilt von %1$s</string>
     <string name="shares_content_unavailable">Diese Freigabe ist nicht mehr verfügbar</string>
     <string name="shares_content_offline_hint">Geteilte Inhalte werden nie auf diesem Gerät gespeichert und sind daher offline nicht verfügbar.</string>
@@ -2223,10 +2225,10 @@
     <string name="trash_title">Papierkorb</string>
     <string name="trash_empty_action">Papierkorb leeren</string>
     <string name="trash_empty_state">Der Papierkorb ist leer</string>
-    <string name="trash_retention_forever">Gelöschte Kontakte bleiben erhalten, bis du den Papierkorb leerst.</string>
+    <string name="trash_retention_forever">Gelöschte Elemente bleiben erhalten, bis Sie den Papierkorb leeren.</string>
     <plurals name="trash_retention">
-        <item quantity="one">Gelöschte Kontakte werden %1$d Tag aufbewahrt und danach endgültig gelöscht.</item>
-        <item quantity="other">Gelöschte Kontakte werden %1$d Tage aufbewahrt und danach endgültig gelöscht.</item>
+        <item quantity="one">Gelöschte Elemente werden %1$d Tag aufbewahrt und danach endgültig gelöscht.</item>
+        <item quantity="other">Gelöschte Elemente werden %1$d Tage aufbewahrt und danach endgültig gelöscht.</item>
     </plurals>
     <string name="trash_deleted_on">Gelöscht am %1$s</string>
     <string name="trash_purge_on">Endgültig gelöscht am %1$s</string>
@@ -2929,7 +2931,7 @@
     <string name="error_request_ref">(Referenz: %1$s)</string>
     <string name="login_error_invalid_credentials">Ungültige Zugangsdaten</string>
     <string name="register_error_disabled">Die Registrierung ist auf diesem Server deaktiviert</string>
-    <string name="error_client_network">Keine Verbindung</string>
+    <string name="error_client_network">Ihr Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.</string>
     <string name="error_client_timeout">Zeitüberschreitung bei der Anfrage</string>
     <string name="error_client_server">Serverfehler (%1$d)</string>
     <string name="error_client_session_expired">Sitzung abgelaufen – bitte erneut anmelden</string>
@@ -3478,6 +3480,7 @@
     <string name="shared_entities_new_pet">Haustier hinzufügen</string>
     <string name="shared_entities_empty_pet">Noch keine Haustiere.</string>
     <string name="shared_entities_search">Nach Name suchen</string>
+    <string name="shared_entities_search_clear">Suche löschen</string>
     <string name="shared_entities_no_results">Keine Treffer für deine Suche.</string>
     <string name="shared_entities_sensitivity_label">Vertraulichkeit</string>
     <string name="shared_entities_sensitivity_normal">Normal</string>

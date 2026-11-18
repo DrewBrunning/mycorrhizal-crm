@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.semantics
@@ -18,6 +19,7 @@ import com.mycorrhizal.crm.model.network.ShareGrantStatuses
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.typeOptionLabelText
 
 /** The human name of a grant's entity type. An unknown type (a newer server) reads as a generic share. */
 @StringRes
@@ -137,6 +139,13 @@ internal fun rememberGrantDateFormatter(): (Int?, Int?, Int?) -> String {
             }
         }
     }
+}
+
+/** Localized label for an anniversary or personal-info kind token (read view and preview). */
+@Composable
+internal fun rememberGrantKindLabel(): (String) -> String {
+    val context = LocalContext.current
+    return remember(context) { { token -> typeOptionLabelText(context, token) } }
 }
 
 /** A titled block of lines; used by the read view. */

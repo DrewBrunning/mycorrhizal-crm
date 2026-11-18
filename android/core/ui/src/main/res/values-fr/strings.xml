@@ -1318,6 +1318,7 @@
     <string name="action_edit">Modifier</string>
     <string name="action_delete">Supprimer</string>
     <string name="action_cancel">Annuler</string>
+    <string name="action_remove">Retirer</string>
     <string name="action_add">Ajouter</string>
     <string name="action_back">Retour</string>
     <string name="action_rename">Renommer</string>
@@ -1433,6 +1434,7 @@
     <string name="households_suggest_relationships">Suggérer des relations</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Écrire à tous</string>
+    <string name="group_text_everyone_unavailable">Pour écrire à tout le monde, au moins deux membres doivent avoir un numéro de téléphone.</string>
     <plurals name="households_suggestions_generated">
         <item quantity="one">%1$d nouvelle relation suggérée générée. Consultez-la sur les pages de contact des membres.</item>
         <item quantity="many">%1$d nouvelles relations suggérées générées. Consultez-les sur les pages de contact des membres.</item>
@@ -1603,7 +1605,7 @@
     <string name="shares_revoked_reason_owner">Vous avez révoqué ce partage</string>
     <string name="shares_revoked_reason_entity_deleted">L\'élément partagé a été supprimé</string>
     <string name="shares_revoked_reason_recipient_deleted">Le compte du destinataire a été supprimé</string>
-    <string name="shares_content_title">Partagé avec vous</string>
+    <string name="shares_content_title">Partagé avec moi</string>
     <string name="shares_content_from">Partagé par %1$s</string>
     <string name="shares_content_unavailable">Ce partage n\'est plus disponible</string>
     <string name="shares_content_offline_hint">Le contenu partagé n\'est jamais stocké sur cet appareil et ne peut donc pas être affiché hors ligne.</string>
@@ -2295,11 +2297,11 @@
     <string name="trash_title">Corbeille</string>
     <string name="trash_empty_action">Vider la corbeille</string>
     <string name="trash_empty_state">La corbeille est vide</string>
-    <string name="trash_retention_forever">Les contacts supprimés sont conservés jusqu’à ce que vous vidiez la corbeille.</string>
+    <string name="trash_retention_forever">Les éléments supprimés sont conservés jusqu’à ce que vous vidiez la corbeille.</string>
     <plurals name="trash_retention">
-        <item quantity="one">Les contacts supprimés sont conservés %1$d jour, puis supprimés définitivement.</item>
-        <item quantity="many">Les contacts supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
-        <item quantity="other">Les contacts supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
+        <item quantity="one">Les éléments supprimés sont conservés %1$d jour, puis supprimés définitivement.</item>
+        <item quantity="many">Les éléments supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
+        <item quantity="other">Les éléments supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
     </plurals>
     <string name="trash_deleted_on">Supprimé le %1$s</string>
     <string name="trash_purge_on">Suppression définitive le %1$s</string>
@@ -3038,7 +3040,7 @@
     <string name="error_request_ref">(réf. %1$s)</string>
     <string name="login_error_invalid_credentials">Identifiants invalides</string>
     <string name="register_error_disabled">L’inscription est désactivée sur ce serveur</string>
-    <string name="error_client_network">Pas de connexion</string>
+    <string name="error_client_network">Impossible de joindre votre serveur. Vérifiez votre connexion et réessayez.</string>
     <string name="error_client_timeout">Délai de la requête dépassé</string>
     <string name="error_client_server">Erreur du serveur (%1$d)</string>
     <string name="error_client_session_expired">Session expirée : reconnecte-toi</string>
@@ -3587,6 +3589,7 @@
     <string name="shared_entities_new_pet">Ajouter un animal</string>
     <string name="shared_entities_empty_pet">Aucun animal pour l\'instant.</string>
     <string name="shared_entities_search">Rechercher par nom</string>
+    <string name="shared_entities_search_clear">Effacer la recherche</string>
     <string name="shared_entities_no_results">Aucun résultat pour votre recherche.</string>
     <string name="shared_entities_sensitivity_label">Sensibilité</string>
     <string name="shared_entities_sensitivity_normal">Normale</string>

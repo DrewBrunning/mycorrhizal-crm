@@ -273,7 +273,7 @@ fun OccasionAttendeesScreen(
                         viewModel.removeAttendee(attendee.entityId)
                         pendingRemove = null
                     }
-                ) { Text(stringResource(R.string.action_delete)) }
+                ) { Text(stringResource(R.string.action_remove)) }
             },
             dismissButton = {
                 TextButton(
