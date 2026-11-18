@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
+import com.mycorrhizal.crm.model.network.anyServedFromCache
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,6 +22,11 @@ data class CirclesUiState(
     val circles: List<Circle> = emptyList(),
     val isLoading: Boolean = false,
     val error: ApiError? = null,
+    /**
+     * Issue #2629: the rows are the offline mirror, served after the refresh failed (cleared by
+     * the next successful load). Drives the shared "Showing saved data" banner.
+     */
+    val showingSavedData: Boolean = false,
     /** Create/rename hit `circle_already_exists`; shown inline in the name dialog, not as a snackbar. */
     val nameTaken: Boolean = false,
     val isSaving: Boolean = false,
@@ -57,7 +63,13 @@ class CirclesViewModel @Inject constructor(private val circleRepository: CircleR
             circleRepository.list().foldApiError(
                 onSuccess = { circles ->
                     val sorted = circles.sortedWith(circleNameComparator())
-                    _uiState.update { it.copy(isLoading = false, circles = sorted) }
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            circles = sorted,
+                            showingSavedData = sorted.anyServedFromCache()
+                        )
+                    }
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }

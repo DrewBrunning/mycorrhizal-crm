@@ -141,6 +141,102 @@ class CircleRepositoryImplTest {
         assertEquals("Friends", db.cachedCircleDao().getById("c1")?.name)
     }
 
+    // ---- Issue #2629: serve the mirror when the list read fails ----
+
+    @Test
+    fun `list failure serves flagged saved circles with colour and description`() = runTest {
+        db.cachedCircleDao().upsertAll(
+            listOf(
+                CachedCircle(id = "c1", name = "Friends", description = "Close", color = "teal"),
+                CachedCircle(id = "c2", name = "Family")
+            )
+        )
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+        val result = repository.list()
+
+        assertTrue(result.isSuccess)
+        val circles = result.getOrThrow()
+        assertEquals(listOf("Family", "Friends"), circles.map { it.name })
+        assertTrue(circles.all { it.servedFromCache })
+        val friends = circles.first { it.id == "c1" }
+        assertEquals("Close", friends.description)
+        assertEquals("teal", friends.color)
+    }
+
+    @Test
+    fun `list failure with nothing saved still fails`() = runTest {
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+        assertTrue(repository.list().isFailure)
+    }
+
+    @Test
+    fun `list failure that is not connectivity is not papered over with saved circles`() = runTest {
+        db.cachedCircleDao().upsert(CachedCircle(id = "c1", name = "Friends"))
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns
+            Result.failure(ApiError.Client(403, "forbidden"))
+
+        assertTrue(repository.list().isFailure)
+    }
+
+    @Test
+    fun `list failure on a later page does not serve the saved first page`() = runTest {
+        db.cachedCircleDao().upsert(CachedCircle(id = "c1", name = "Friends"))
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+        assertTrue(repository.list(cursor = "next").isFailure)
+    }
+
+    @Test
+    fun `list success is not flagged and keeps colour and description in the mirror`() = runTest {
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns Result.success(
+            CirclesPage(
+                circles = listOf(
+                    Circle(id = "c1", name = "Friends", description = "Close", color = "teal")
+                )
+            )
+        )
+
+        val circles = repository.list().getOrThrow()
+
+        assertTrue(circles.none { it.servedFromCache })
+        val cached = db.cachedCircleDao().getById("c1")
+        assertEquals("Close", cached?.description)
+        assertEquals("teal", cached?.color)
+    }
+
+    @Test
+    fun `a complete first page replaces the mirror so deleted circles drop out`() = runTest {
+        db.cachedCircleDao().upsert(CachedCircle(id = "gone", name = "Deleted elsewhere"))
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns Result.success(
+            CirclesPage(circles = listOf(Circle(id = "c1", name = "Friends")))
+        )
+
+        repository.list()
+
+        assertNull(db.cachedCircleDao().getById("gone"))
+        assertEquals("Friends", db.cachedCircleDao().getById("c1")?.name)
+    }
+
+    @Test
+    fun `a partial first page keeps the rest of the mirror`() = runTest {
+        db.cachedCircleDao().upsert(CachedCircle(id = "c9", name = "On page two"))
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns Result.success(
+            CirclesPage(
+                circles = listOf(Circle(id = "c1", name = "Friends")),
+                nextCursor = "more"
+            )
+        )
+
+        repository.list()
+
+        assertEquals("On page two", db.cachedCircleDao().getById("c9")?.name)
+    }
+
     @Test
     fun `create mirrors the created circle into the cache`() = runTest {
         coEvery { apiClient.createCircle(CircleInput(name = "Friends")) } returns Result.success(
