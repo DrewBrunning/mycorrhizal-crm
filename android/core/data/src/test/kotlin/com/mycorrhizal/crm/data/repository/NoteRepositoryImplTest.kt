@@ -158,7 +158,7 @@ class NoteRepositoryImplTest {
     // M9: the Notes drawer inbox — GET /notes, the N4 unfiled-notes queue.
     @Test
     fun `listNotes UNFILED caches notes and carries the queue depth`() = runTest {
-        coEvery { apiClient.listNotes(null, null, "unfiled", false) } returns Result.success(
+        coEvery { apiClient.listNotes(null, null, "unfiled", false, "date") } returns Result.success(
             NotesPage(
                 notesRaw = listOf(Note(id = 3, content = "Buy milk")),
                 nextCursor = "cursor-2",
@@ -181,7 +181,7 @@ class NoteRepositoryImplTest {
     // doesn't crash Moshi — this is the repository-level proof (ApiClientTest covers the parse).
     @Test
     fun `listNotes tolerates a null notes list`() = runTest {
-        coEvery { apiClient.listNotes(null, null, "unfiled", false) } returns Result.success(
+        coEvery { apiClient.listNotes(null, null, "unfiled", false, "date") } returns Result.success(
             NotesPage(notesRaw = null, total = 0)
         )
 
@@ -194,8 +194,8 @@ class NoteRepositoryImplTest {
 
     // Issue #2224: the default Notes view is every note, with the contact filled in.
     @Test
-    fun `listNotes ALL asks for scope all with contacts and pages by cursor`() = runTest {
-        coEvery { apiClient.listNotes("c1", 25, "all", true) } returns Result.success(
+    fun `listNotes ALL asks for scope all with contacts and date order and pages by cursor`() = runTest {
+        coEvery { apiClient.listNotes("c1", 25, "all", true, "date") } returns Result.success(
             NotesPage(
                 notesRaw = listOf(
                     Note(
