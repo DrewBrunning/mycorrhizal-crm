@@ -1589,6 +1589,7 @@
     <string name="shares_grant_block">Bloquer l\'expéditeur</string>
     <string name="shares_grant_unblock">Débloquer</string>
     <string name="shares_grant_revoke">Révoquer</string>
+    <string name="shares_grant_remove">Supprimer</string>
     <string name="shares_grant_reconfirm">Vérifier et reconfirmer</string>
     <string name="shares_grant_edit">Modifier</string>
     <string name="shares_grant_decline_message">Refuser le partage de %1$s par %2$s ? Cette personne verra qu\'il a été refusé.</string>
@@ -1598,6 +1599,8 @@
     <string name="shares_grant_leave_message">%1$s ne sera plus visible pour vous. Pour le revoir, %2$s devra le partager à nouveau avec vous.</string>
     <string name="shares_grant_revoke_title">Révoquer ce partage ?</string>
     <string name="shares_grant_revoke_message">%1$s perdra l\'accès au prochain chargement. Ce qu\'il a déjà vu ne peut pas être repris.</string>
+    <string name="shares_grant_remove_title">Supprimer ce partage ?</string>
+    <string name="shares_grant_remove_message">Le partage avec %1$s est terminé. Le supprimer l\'efface de cette liste.</string>
     <string name="shares_grant_reconfirm_title">Partager à nouveau ces sections ?</string>
     <string name="shares_grant_reconfirm_message">Certains éléments de ce partage ont été marqués privés ou secrets, ces sections sont donc retenues pour %1$s. Vérifiez leur contenu avant de les partager à nouveau.</string>
     <string name="shares_grant_reconfirm_confirm">Partager à nouveau</string>

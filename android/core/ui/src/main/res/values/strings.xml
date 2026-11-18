@@ -1572,6 +1572,7 @@
     <string name="shares_grant_block">Block sender</string>
     <string name="shares_grant_unblock">Unblock</string>
     <string name="shares_grant_revoke">Revoke</string>
+    <string name="shares_grant_remove">Remove</string>
     <string name="shares_grant_reconfirm">Review and re-confirm</string>
     <string name="shares_grant_edit">Edit</string>
     <string name="shares_grant_decline_message">Decline the share of %1$s from %2$s? They can see that it was declined.</string>
@@ -1581,6 +1582,8 @@
     <string name="shares_grant_leave_message">%1$s will no longer be visible to you. To see it again, %2$s has to share it with you again.</string>
     <string name="shares_grant_revoke_title">Revoke this share?</string>
     <string name="shares_grant_revoke_message">%1$s will lose access the next time they load it. Anything they have already seen cannot be taken back.</string>
+    <string name="shares_grant_remove_title">Remove this share?</string>
+    <string name="shares_grant_remove_message">This share with %1$s has ended. Removing it clears it from this list.</string>
     <string name="shares_grant_reconfirm_title">Share these sections again?</string>
     <string name="shares_grant_reconfirm_message">Some items in this share were marked private or secret, so these sections are withheld from %1$s. Check what they now contain before sharing them again.</string>
     <string name="shares_grant_reconfirm_confirm">Share again</string>

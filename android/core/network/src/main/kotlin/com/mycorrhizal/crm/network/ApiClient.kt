@@ -3540,6 +3540,15 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         moshi.adapter(OutgoingShareGrantResponse::class.java).fromJson(body)?.shareGrant
     }
 
+    /**
+     * DELETE /api/v1/share-grants/{id} — owner-only dismiss of an ended (declined, expired or
+     * revoked) grant from Shared by me (issue #2742). 204 on success; 409 `share_grant_not_ended`
+     * for a live grant; the identical 404 for an unknown, someone else's or already removed id
+     * (a caller treats that 404 after Remove as already done).
+     */
+    suspend fun deleteShareGrant(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$id")
+
     /** GET /api/v1/share-grants/{id}/content — the one recipient read route, resolved per request. */
     suspend fun getShareGrantContent(id: String): Result<ShareGrantContent> =
         executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$id/content") { _, body ->
