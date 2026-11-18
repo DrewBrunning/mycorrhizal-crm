@@ -2096,6 +2096,15 @@
     <string name="import_report_row">Zeile %1$d · %2$s</string>
     <string name="import_report_skipped">Übersprungen: %1$s</string>
     <string name="import_report_failed">Fehlgeschlagen: %1$s</string>
+    <string name="import_diag_birthday_warn">Der Geburtstag ist kein gültiges Datum und wird daher nicht importiert</string>
+    <string name="import_diag_anniversary_warn">Der Jahrestag ist kein gültiges Datum und wird daher nicht importiert</string>
+    <string name="import_diag_encoding_warn">Diese Datei war nicht UTF-8 und wurde als Windows-1252 gelesen. Prüfen Sie, ob Umlaute und Akzente richtig aussehen.</string>
+    <string name="import_report_warning_birthday">Importiert, aber der Geburtstag ist kein gültiges Datum und wurde weggelassen</string>
+    <string name="import_report_warning_anniversary">Importiert, aber der Jahrestag ist kein gültiges Datum und wurde weggelassen</string>
+    <string name="import_report_warning">Mit Warnung importiert: %1$s</string>
+    <string name="import_report_note">Hinweis: %1$s</string>
+    <string name="import_report_title_warnings">Mit Warnungen importiert</string>
+    <string name="import_report_title_mixed">Nicht importierte Zeilen oder Zeilen mit Warnungen</string>
     <string name="import_report_share">Als CSV teilen</string>
     <string name="import_report_share_title">Importbericht teilen</string>
     <string name="import_resolve_all">Alle wie vorgeschlagen zusammenführen</string>

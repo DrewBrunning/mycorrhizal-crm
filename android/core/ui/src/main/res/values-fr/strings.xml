@@ -2165,6 +2165,15 @@
     <string name="import_report_row">Ligne %1$d · %2$s</string>
     <string name="import_report_skipped">Ignorée : %1$s</string>
     <string name="import_report_failed">Échec : %1$s</string>
+    <string name="import_diag_birthday_warn">La date de naissance n’est pas valide, elle ne sera donc pas importée</string>
+    <string name="import_diag_anniversary_warn">L’anniversaire de mariage n’est pas une date valide, il ne sera donc pas importé</string>
+    <string name="import_diag_encoding_warn">Ce fichier n’était pas en UTF-8 ; il a été lu en Windows-1252. Vérifiez que les accents s’affichent correctement.</string>
+    <string name="import_report_warning_birthday">Importé, mais la date de naissance n’est pas valide et a été omise</string>
+    <string name="import_report_warning_anniversary">Importé, mais l’anniversaire de mariage n’est pas une date valide et a été omis</string>
+    <string name="import_report_warning">Importé avec un avertissement : %1$s</string>
+    <string name="import_report_note">Remarque : %1$s</string>
+    <string name="import_report_title_warnings">Importé avec des avertissements</string>
+    <string name="import_report_title_mixed">Lignes non importées ou avec avertissements</string>
     <string name="import_report_share">Partager en CSV</string>
     <string name="import_report_share_title">Partager le rapport d’import</string>
     <string name="import_resolve_all">Tout résoudre en tant que fusion</string>
