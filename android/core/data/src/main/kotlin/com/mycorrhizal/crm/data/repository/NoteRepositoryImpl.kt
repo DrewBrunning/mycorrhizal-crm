@@ -55,7 +55,14 @@ class NoteRepositoryImpl @Inject constructor(
     ): Result<UnfiledNotesPage> {
         val result = when (scope) {
             NotesScope.ALL -> apiClient.listNotes(cursor, limit, "all", true, NOTES_SORT_DATE)
-            NotesScope.UNFILED -> apiClient.listNotes(cursor, limit, "unfiled", false, NOTES_SORT_DATE)
+
+            NotesScope.UNFILED -> apiClient.listNotes(
+                cursor,
+                limit,
+                "unfiled",
+                false,
+                NOTES_SORT_DATE
+            )
         }
         result.getOrNull()?.let { page -> dao.upsertAll(page.notes.map { it.toCached() }) }
         return result.map { page ->

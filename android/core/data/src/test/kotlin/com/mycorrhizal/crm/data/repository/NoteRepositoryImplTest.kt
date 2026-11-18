@@ -155,10 +155,19 @@ class NoteRepositoryImplTest {
         assertEquals(1, db.cachedNoteDao().getAll().size)
     }
 
+    /** The unfiled inbox request: first page, ordered by note date (issue #2616). */
+    private suspend fun listUnfiledByDate() = apiClient.listNotes(
+        cursor = null,
+        limit = null,
+        scope = "unfiled",
+        includeContacts = false,
+        sort = "date"
+    )
+
     // M9: the Notes drawer inbox — GET /notes, the N4 unfiled-notes queue.
     @Test
     fun `listNotes UNFILED caches notes and carries the queue depth`() = runTest {
-        coEvery { apiClient.listNotes(null, null, "unfiled", false, "date") } returns Result.success(
+        coEvery { listUnfiledByDate() } returns Result.success(
             NotesPage(
                 notesRaw = listOf(Note(id = 3, content = "Buy milk")),
                 nextCursor = "cursor-2",
@@ -181,7 +190,7 @@ class NoteRepositoryImplTest {
     // doesn't crash Moshi — this is the repository-level proof (ApiClientTest covers the parse).
     @Test
     fun `listNotes tolerates a null notes list`() = runTest {
-        coEvery { apiClient.listNotes(null, null, "unfiled", false, "date") } returns Result.success(
+        coEvery { listUnfiledByDate() } returns Result.success(
             NotesPage(notesRaw = null, total = 0)
         )
 
@@ -194,28 +203,29 @@ class NoteRepositoryImplTest {
 
     // Issue #2224: the default Notes view is every note, with the contact filled in.
     @Test
-    fun `listNotes ALL asks for scope all with contacts and date order and pages by cursor`() = runTest {
-        coEvery { apiClient.listNotes("c1", 25, "all", true, "date") } returns Result.success(
-            NotesPage(
-                notesRaw = listOf(
-                    Note(
-                        id = 8,
-                        content = "Met at the fair",
-                        contactId = 5,
-                        contact = ContactFlat(id = 5, firstname = "Ada", lastname = "Lovelace")
-                    )
-                ),
-                nextCursor = null,
-                total = 40
+    fun `listNotes ALL asks for scope all with contacts and date order and pages by cursor`() =
+        runTest {
+            coEvery { apiClient.listNotes("c1", 25, "all", true, "date") } returns Result.success(
+                NotesPage(
+                    notesRaw = listOf(
+                        Note(
+                            id = 8,
+                            content = "Met at the fair",
+                            contactId = 5,
+                            contact = ContactFlat(id = 5, firstname = "Ada", lastname = "Lovelace")
+                        )
+                    ),
+                    nextCursor = null,
+                    total = 40
+                )
             )
-        )
 
-        val result = repository.listNotes(NotesScope.ALL, cursor = "c1", limit = 25)
+            val result = repository.listNotes(NotesScope.ALL, cursor = "c1", limit = 25)
 
-        val page = result.getOrThrow()
-        assertEquals("Ada Lovelace", page.notes.single().contact?.displayName)
-        assertEquals(40, page.total)
-    }
+            val page = result.getOrThrow()
+            assertEquals("Ada Lovelace", page.notes.single().contact?.displayName)
+            assertEquals(40, page.total)
+        }
 
     @Test
     fun `create caches the created note`() = runTest {
