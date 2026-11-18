@@ -207,3 +207,67 @@ test('a stale failure for an abandoned query does not replace the newer results 
   expect(screen.queryByText(/slow boom/)).not.toBeInTheDocument();
   expect(screen.getByRole('tab', { name: 'Contacts (1)' })).toBeInTheDocument();
 });
+
+// #2698: the default tab must not be an empty one when another has hits.
+test('with no tab parameter the first non-empty tab is selected (#2698)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({ ...data, contacts: [], notes: [], activities: [] });
+  renderPage('/search?q=lakeside');
+  expect(await screen.findByText('Alice Springs House')).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Organisations, places & pets (2)' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(screen.queryByText('No contacts match "lakeside".')).not.toBeInTheDocument();
+});
+
+test('an explicit tab parameter is honoured even when that tab is empty (#2698)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({ ...data, contacts: [], notes: [], activities: [] });
+  renderPage('/search?q=lakeside&tab=contacts');
+  expect(await screen.findByText('No contacts match "lakeside".')).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Contacts (0)' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
+
+test('the user can pick the empty Contacts tab over a non-empty default (#2698)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({ ...data, contacts: [], notes: [], activities: [] });
+  renderPage('/search?q=lakeside');
+  fireEvent.click(await screen.findByRole('tab', { name: 'Contacts (0)' }));
+  expect(await screen.findByText('No contacts match "lakeside".')).toBeInTheDocument();
+});
+
+test('when every category is empty the Contacts tab stays selected (#2698)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({ ...data, contacts: [], notes: [], entities: [] });
+  renderPage('/search?q=zzzz');
+  expect(await screen.findByRole('tab', { name: 'Contacts (0)' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
+
+// #2692: a phone has no AppBar search, so the page carries its own field.
+test('the results page has a search field prefilled with the query; submitting replaces it (#2692)', async () => {
+  vi.mocked(searchAll).mockResolvedValue(data);
+  renderPage('/search?q=ali&tab=notes');
+  const field = await screen.findByRole('searchbox', { name: 'Search everything' });
+  expect(field).toHaveValue('ali');
+  fireEvent.change(field, { target: { value: 'bob' } });
+  fireEvent.submit(field.closest('form') as HTMLFormElement);
+  await waitFor(() => expect(searchAll).toHaveBeenLastCalledWith('bob', 50));
+  expect(screen.getByRole('searchbox', { name: 'Search everything' })).toHaveValue('bob');
+});
+
+test('the search field is reachable when no query has been typed yet (#2692)', () => {
+  renderPage('/search');
+  expect(screen.getByRole('searchbox', { name: 'Search everything' })).toHaveValue('');
+});
+
+// axe `list` (serious): a <ul> may only contain <li>; each result link sits in one.
+test('every result row is a list item wrapping its link', async () => {
+  vi.mocked(searchAll).mockResolvedValue(data);
+  renderPage('/search?q=ali');
+  const link = await screen.findByRole('link', { name: /Alice Smith/ });
+  const list = link.closest('ul') as HTMLElement;
+  for (const child of Array.from(list.children)) expect(child.tagName).toBe('LI');
+});

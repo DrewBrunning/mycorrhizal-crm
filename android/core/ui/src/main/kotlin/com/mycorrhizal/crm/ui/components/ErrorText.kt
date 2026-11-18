@@ -402,8 +402,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         // Issue #2652: the server's `reason` param is English text that points at the
         // web-only "database upload"; Android has no such option, so use fixed copy.
+        // The string still declares the registry's `reason` positional argument (the
+        // compatci parity test requires it) and is deliberately given an empty value.
         ErrorReasonCode.MEERKAT_UPSTREAM_ERROR ->
-            stringResource(R.string.error_reason_meerkat_upstream_error)
+            stringResource(R.string.error_reason_meerkat_upstream_error, "")
 
         ErrorReasonCode.MEERKAT_SIGN_IN_INPUT_MISSING ->
             stringResource(R.string.error_reason_meerkat_sign_in_input_missing)
