@@ -1006,6 +1006,9 @@ test('selecting exactly two contacts and merging opens the pair-mode dialog, the
   await waitFor(() => expect(selectedText('2 selected')).toBeUndefined());
   expect(getContacts).toHaveBeenCalledTimes(2);
   expect(within(dialog).queryByText('Keep Alice')).not.toBeInTheDocument();
+  // #2688: the merge ends with a status message naming the survivor.
+  const note = await screen.findByText('Merged 2 contacts into Alice');
+  expect(note.closest('[role="status"]')).not.toBeNull();
 });
 
 // #2197: three or more selected contacts fold into one primary, one pair at a

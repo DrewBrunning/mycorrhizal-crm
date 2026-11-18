@@ -469,7 +469,7 @@ test('resolving every conflict zeroes the remaining count', async () => {
         existing_email: 'bob@example.com',
       }),
       suggested_action: 'update',
-      merge_diff: { updated: [], added: [] },
+      merge_diff: { updated: [{ field: 'job', label: 'Job', old: 'A', new: 'B' }], added: [] },
     }),
   ]);
   expect(screen.getByText('Resolve Conflict (1 remaining)')).toBeInTheDocument();
@@ -1436,4 +1436,182 @@ test('Escape inside the fix-row form closes only the form, not the import dialog
   expect(screen.getByRole('button', { name: /fix this row/i })).toBeInTheDocument();
   expect(onClose).not.toHaveBeenCalled();
   expect(screen.queryByRole('heading', { name: /unsaved changes/i })).not.toBeInTheDocument();
+});
+
+// --- W7a: import review behaviour (#2667 #2668 #2688) ------------------------
+
+const BIRTHDAY_ERROR = 'Invalid birthday format (expected YYYY-MM-DD or --MM-DD)';
+
+// #2667 (option B): the fix form edits name, email and phone only. An error it
+// cannot repair says so and the row stays skip-only.
+test('an error the fix form cannot repair says so and offers no form', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Ada', lastname: 'Lovelace' },
+      validation_errors: [BIRTHDAY_ERROR],
+      suggested_action: 'skip',
+    }),
+    row({
+      row_index: 1,
+      parsed_contact: { firstname: '' },
+      validation_errors: ['Failed to parse vCard: unexpected end'],
+      suggested_action: 'skip',
+    }),
+  ]);
+
+  expect(screen.queryByRole('button', { name: 'Fix this row' })).not.toBeInTheDocument();
+  expect(
+    screen.getAllByText(
+      "This error can't be fixed here — skip the row or edit the contact after import",
+    ),
+  ).toHaveLength(2);
+  for (const button of screen.getAllByRole('button', { name: 'Keep' })) {
+    expect(button).toBeDisabled();
+  }
+  for (const button of screen.getAllByRole('button', { name: 'Skip' })) {
+    expect(button).toBeDisabled();
+  }
+});
+
+test('a name, email or phone error still offers the fix form', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Ada', email: 'nope' },
+      validation_errors: ['Invalid email format'],
+      suggested_action: 'skip',
+    }),
+  ]);
+  expect(screen.getByRole('button', { name: 'Fix this row' })).toBeInTheDocument();
+  expect(screen.queryByText(/can't be fixed here/)).not.toBeInTheDocument();
+});
+
+// #2668: after a saved fix the card shows the edited values, replaces the stale
+// error with a neutral note, and the Errors chip no longer counts the row.
+test('a saved fix shows the edited value, hides the stale error and leaves the Errors count', async () => {
+  await loadPreview([
+    row({
+      row_index: 0,
+      parsed_contact: { firstname: 'Imp', lastname: 'Beta', email: 'not-an-email' },
+      validation_errors: ['Invalid email format'],
+      suggested_action: 'skip',
+    }),
+    row({
+      row_index: 1,
+      parsed_contact: { firstname: 'Imp', lastname: 'Gamma', email: 'also-bad' },
+      validation_errors: ['Invalid email format'],
+      suggested_action: 'skip',
+    }),
+  ]);
+  expect(screen.getByText('2 with errors')).toBeInTheDocument();
+
+  fireEvent.click(screen.getAllByRole('button', { name: 'Fix this row' })[0]);
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'beta@example.com' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save fix' }));
+
+  const card = screen.getByRole('group', { name: 'Imp Beta' });
+  expect(within(card).getByText('beta@example.com')).toBeInTheDocument();
+  expect(within(card).queryByText('not-an-email')).not.toBeInTheDocument();
+  expect(within(card).queryByText('Invalid email format')).not.toBeInTheDocument();
+  expect(within(card).getByText('Will be re-checked on import')).toBeInTheDocument();
+  // The other row keeps its error.
+  const other = screen.getByRole('group', { name: 'Imp Gamma' });
+  expect(within(other).getByText('Invalid email format')).toBeInTheDocument();
+
+  expect(screen.getByText('1 with an error')).toBeInTheDocument();
+  expect(screen.queryByText('2 with errors')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText('1 with an error'));
+  expect(screen.queryByRole('group', { name: 'Imp Beta' })).not.toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'Imp Gamma' })).toBeInTheDocument();
+});
+
+test('the Errors chip disappears once the only error row is fixed', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Imp', lastname: 'Beta', email: 'not-an-email' },
+      validation_errors: ['Invalid email format'],
+      suggested_action: 'skip',
+    }),
+  ]);
+  fireEvent.click(screen.getByRole('button', { name: 'Fix this row' }));
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'beta@example.com' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save fix' }));
+  expect(screen.queryByText(/with an? errors?/)).not.toBeInTheDocument();
+});
+
+// #2688: a match whose merge_diff is empty is not an update and not a conflict
+// that still needs resolving.
+test('a no-op match is not counted as an update or a remaining conflict', async () => {
+  await loadPreview([
+    row({
+      row_index: 0,
+      parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith' }),
+      suggested_action: 'update',
+      merge_diff: { updated: [], added: [] },
+    }),
+    row({
+      row_index: 1,
+      parsed_contact: { firstname: 'Cy', lastname: 'Jones', email: 'cy@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Cy', existing_lastname: 'Jones' }),
+      suggested_action: 'update',
+      merge_diff: { updated: [{ field: 'job', label: 'Job', old: 'A', new: 'B' }], added: [] },
+    }),
+  ]);
+
+  expect(screen.getByText('1 to update')).toBeInTheDocument();
+  expect(screen.getByText('1 to skip')).toBeInTheDocument();
+  expect(screen.getByText('Resolve Conflict (1 remaining)')).toBeInTheDocument();
+  // The update filter agrees with its chip.
+  fireEvent.click(screen.getByText('1 to update'));
+  expect(screen.getByRole('group', { name: 'Cy Jones' })).toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'Bob Smith' })).not.toBeInTheDocument();
+});
+
+test('a lone no-op match leaves nothing to resolve', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith' }),
+      suggested_action: 'update',
+      merge_diff: { updated: [], added: [] },
+    }),
+  ]);
+  expect(screen.getByText('0 to update')).toBeInTheDocument();
+  expect(screen.queryByText(/Resolve Conflict/)).not.toBeInTheDocument();
+  expect(screen.getByText(/all conflicts resolved/i)).toBeInTheDocument();
+});
+
+// #2688: below `sm` the dialog is full screen and the stepper wraps its labels
+// under the icons so "Done" is not clipped.
+test('the dialog is full screen on a phone viewport', async () => {
+  window.matchMedia = ((query: string) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+  try {
+    renderDialog();
+    expect(screen.getByRole('dialog')).toHaveClass('MuiDialog-paperFullScreen');
+    expect(document.querySelector('.MuiStepper-alternativeLabel')).not.toBeNull();
+  } finally {
+    // @ts-expect-error -- restore jsdom's "no matchMedia" default
+    delete window.matchMedia;
+  }
+});
+
+// #2688: unselected Keep/Skip labels used text.secondary (4.37:1 on the review
+// card); they use the primary text colour, like the rest of the card body.
+test('an unselected decision button uses the primary text colour', async () => {
+  await loadPreview([row({ parsed_contact: { firstname: 'Ada', lastname: 'Lovelace' } })]);
+  const skip = screen.getByRole('button', { name: 'Skip' });
+  expect(skip).toHaveAttribute('aria-pressed', 'false');
+  const unselected = getComputedStyle(skip).color;
+  const body = getComputedStyle(screen.getByText('Ada Lovelace')).color;
+  expect(unselected).not.toBe('');
+  expect(unselected).toBe(body);
 });

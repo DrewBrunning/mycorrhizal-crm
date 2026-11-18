@@ -499,12 +499,13 @@
         "allResolved": "All conflicts resolved — review the decisions below.",
         "fixRow": "Fix this row",
         "editFix": "Edit fix",
-        "fixSaved": "Fix saved — checked again on import",
         "fixFirstName": "First name",
         "fixLastName": "Last name",
         "fixEmail": "Email",
         "fixPhone": "Phone",
-        "saveFix": "Save fix"
+        "saveFix": "Save fix",
+        "willRecheck": "Will be re-checked on import",
+        "cannotFixHere": "This error can't be fixed here — skip the row or edit the contact after import"
       },
       "result": {
         "title": "Import Complete",
@@ -1204,7 +1205,9 @@
     "deleteConfirm_other": "Move {{count}} contacts to the Trash? You can restore them until they are permanently deleted.",
     "selectContact": "Select {{name}}",
     "resultFailure": "{{succeeded}} of {{total}} succeeded. {{failed}} failed.",
-    "resultError": "The bulk operation failed. Please try again."
+    "resultError": "The bulk operation failed. Please try again.",
+    "mergeDone_one": "Merged {{count}} contact into {{name}}",
+    "mergeDone_other": "Merged {{count}} contacts into {{name}}"
   },
   "common": {
     "save": "Save",

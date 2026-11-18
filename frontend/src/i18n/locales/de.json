@@ -499,12 +499,13 @@
         "allResolved": "Alle Konflikte gelöst – überprüfen Sie die Entscheidungen unten.",
         "fixRow": "Diese Zeile korrigieren",
         "editFix": "Korrektur bearbeiten",
-        "fixSaved": "Korrektur gespeichert – wird beim Import erneut geprüft",
         "fixFirstName": "Vorname",
         "fixLastName": "Nachname",
         "fixEmail": "E-Mail",
         "fixPhone": "Telefon",
-        "saveFix": "Korrektur speichern"
+        "saveFix": "Korrektur speichern",
+        "willRecheck": "Wird beim Import erneut geprüft",
+        "cannotFixHere": "Dieser Fehler lässt sich hier nicht beheben – überspringen Sie die Zeile oder bearbeiten Sie den Kontakt nach dem Import"
       },
       "result": {
         "title": "Import abgeschlossen",
@@ -1164,7 +1165,9 @@
     "deleteConfirm_other": "{{count}} Kontakte in den Papierkorb verschieben? Sie können wiederhergestellt werden, bis sie endgültig gelöscht werden.",
     "selectContact": "{{name}} auswählen",
     "resultFailure": "{{succeeded}} von {{total}} erfolgreich. {{failed}} fehlgeschlagen.",
-    "resultError": "Die Sammelaktion ist fehlgeschlagen. Bitte versuche es erneut."
+    "resultError": "Die Sammelaktion ist fehlgeschlagen. Bitte versuche es erneut.",
+    "mergeDone_one": "{{count}} Kontakt mit {{name}} zusammengeführt",
+    "mergeDone_other": "{{count}} Kontakte mit {{name}} zusammengeführt"
   },
   "common": {
     "save": "Speichern",

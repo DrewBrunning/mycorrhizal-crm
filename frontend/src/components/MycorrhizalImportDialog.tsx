@@ -145,6 +145,7 @@ export default function MycorrhizalImportDialog({ open, onClose, onImportComplet
       wizard={wizard}
       connectStep={connectStep}
       onComplete={handleComplete}
+      fileUpload
     />
   );
 }

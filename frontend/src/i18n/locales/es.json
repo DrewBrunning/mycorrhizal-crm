@@ -516,12 +516,13 @@
         "allResolved": "Todos los conflictos resueltos: revisa las decisiones a continuación.",
         "fixRow": "Corregir esta fila",
         "editFix": "Editar corrección",
-        "fixSaved": "Corrección guardada: se comprobará de nuevo al importar",
         "fixFirstName": "Nombre",
         "fixLastName": "Apellido",
         "fixEmail": "Correo electrónico",
         "fixPhone": "Teléfono",
-        "saveFix": "Guardar corrección"
+        "saveFix": "Guardar corrección",
+        "willRecheck": "Se comprobará de nuevo al importar",
+        "cannotFixHere": "Este error no se puede corregir aquí: omita la fila o edite el contacto después de importar"
       },
       "result": {
         "title": "Importación Completa",
@@ -1187,7 +1188,10 @@
     "deleteConfirm_many": "¿Mover {{count}} contactos a la Papelera? Puedes restaurarlos hasta que se eliminen permanentemente.",
     "selectContact": "Seleccionar {{name}}",
     "resultFailure": "{{succeeded}} de {{total}} correctos. {{failed}} fallidos.",
-    "resultError": "La operación masiva falló. Inténtalo de nuevo."
+    "resultError": "La operación masiva falló. Inténtalo de nuevo.",
+    "mergeDone_one": "Se fusionó {{count}} contacto con {{name}}",
+    "mergeDone_other": "Se fusionaron {{count}} contactos con {{name}}",
+    "mergeDone_many": "Se fusionaron {{count}} contactos con {{name}}"
   },
   "common": {
     "save": "Guardar",
