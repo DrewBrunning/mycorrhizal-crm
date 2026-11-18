@@ -84,9 +84,12 @@ test.describe('Session expiry', () => {
   test('a 401 on a background load shows a passive banner, not a blocking prompt', async ({
     page,
   }) => {
-    await page.route('**/api/v1/dashboard', async (route) => {
-      await route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
-    });
+    await page.route(
+      (url) => url.pathname === '/api/v1/dashboard',
+      async (route) => {
+        await route.fulfill({ status: 401, contentType: 'application/json', body: '{}' });
+      },
+    );
 
     await page.goto('/');
 
