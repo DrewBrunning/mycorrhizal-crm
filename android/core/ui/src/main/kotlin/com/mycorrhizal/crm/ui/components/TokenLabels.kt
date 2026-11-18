@@ -199,10 +199,6 @@ fun giftStatusLabel(token: String): String =
 fun lifeEventTypeLabelText(context: Context, token: String): String =
     lifeEventTypeLabelRes(token)?.let { context.getString(it) } ?: humanizeToken(token)
 
-/** Non-composable variant of [activityTypeLabel] (issue #2626). */
-fun activityTypeLabelText(context: Context, token: String): String =
-    activityTypeLabelRes(token)?.let { context.getString(it) } ?: humanizeToken(token)
-
 /** Non-composable label for a card sub-kind token (anniversary `birth`, personal-info `hobby`). */
 fun typeOptionLabelText(context: Context, token: String): String =
     typeOptionLabelRes(token)?.let { context.getString(it) } ?: humanizeToken(token)
