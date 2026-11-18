@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -278,6 +279,67 @@ class EntityScreensTest {
         )
         composeTestRule.onNodeWithTag("suggestion-merge-p1").performClick()
         assertEquals(cabinPair, merged)
+    }
+
+    private val twinPair = EntitySuggestionPair(
+        reason = "exact_name",
+        a = EntitySuggestionEntity(
+            id = "t1",
+            kind = EntityKind.ORGANISATION,
+            name = "Dupe Test Corp",
+            linkCount = 2,
+            updatedAt = "2026-11-12T10:00:00Z"
+        ),
+        b = EntitySuggestionEntity(
+            id = "t2",
+            kind = EntityKind.ORGANISATION,
+            name = "Dupe Test Corp",
+            linkCount = 0,
+            updatedAt = "2026-01-05T10:00:00Z"
+        )
+    )
+
+    @Test
+    fun `same-named pair sides are told apart by linked contacts and last update`() {
+        setList(EntitiesUiState(entities = listOf(acme), suggestions = listOf(twinPair)))
+        composeTestRule.onNodeWithTag("suggestion-open-a-t1")
+            .assertTextContains("Open Dupe Test Corp")
+            .assertTextContains("Organisation \u00b7 Linked to 2 contacts \u00b7 Updated 12.11.2026")
+        // A side with no links still says so: zero is a fact, not an absent field.
+        composeTestRule.onNodeWithTag("suggestion-open-b-t2")
+            .assertTextContains("Organisation \u00b7 Linked to 0 contacts \u00b7 Updated 05.01.2026")
+    }
+
+    @Test
+    fun `a pair from an older server shows only the kind for each side`() {
+        setList(EntitiesUiState(entities = listOf(acme), suggestions = listOf(cabinPair)))
+        composeTestRule.onNodeWithTag("suggestion-open-a-p1").assertTextContains("Place")
+        composeTestRule.onAllNodesWithText("Linked to", substring = true).assertCountEquals(0)
+        composeTestRule.onAllNodesWithText("Updated", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `merge candidates are told apart by linked contacts and last update`() {
+        val one = Entity(
+            id = "e2",
+            kind = EntityKind.ORGANISATION,
+            name = "Acme Inc",
+            linkCount = 4,
+            updatedAt = "2026-11-12T10:00:00Z"
+        )
+        val two = one.copy(id = "e3", linkCount = 1, updatedAt = "2026-01-05T10:00:00Z")
+        setDetail(
+            EntityDetailUiState(
+                entity = acme,
+                isLoading = false,
+                mergeCandidates = listOf(one, two)
+            )
+        )
+        composeTestRule.onNodeWithTag("entity-merge").performClick()
+        composeTestRule.onNodeWithTag("entity-merge-candidate-e2")
+            .assertTextContains("Organisation \u00b7 Linked to 4 contacts \u00b7 Updated 12.11.2026")
+        composeTestRule.onNodeWithTag("entity-merge-candidate-e3")
+            .assertTextContains("Organisation \u00b7 Linked to 1 contact \u00b7 Updated 05.01.2026")
     }
 
     private val survivorA = Entity(id = "p1", kind = EntityKind.PLACE, name = "Cabin")
