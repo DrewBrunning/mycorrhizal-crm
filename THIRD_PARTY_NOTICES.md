@@ -207,7 +207,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `hasown` | `2.0.4` | MIT | https://github.com/inspect-js/hasOwn |
 | `hoist-non-react-statics` | `3.3.2` | BSD-3-Clause | https://github.com/mridgway/hoist-non-react-statics |
 | `html-parse-stringify` | `4.0.1` | MIT | https://github.com/i18next/html-parse-stringify |
-| `i18next` | `26.7.1` | MIT | https://github.com/i18next/i18next |
+| `i18next` | `27.1.1` | MIT | https://github.com/i18next/i18next |
 | `i18next-browser-languagedetector` | `8.3.0` | MIT | https://github.com/i18next/i18next-browser-languageDetector |
 | `idb` | `7.1.1` | ISC | https://github.com/jakearchibald/idb |
 | `import-fresh` | `3.3.1` | MIT | https://github.com/sindresorhus/import-fresh |

@@ -19,6 +19,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -328,11 +329,7 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
-function skipText(
-  t: (key: string, opts?: Record<string, unknown>) => string,
-  s: EntityFromContactsSkip,
-  name: string,
-): string {
+function skipText(t: TFunction, s: EntityFromContactsSkip, name: string): string {
   switch (s.reason) {
     case 'group_not_found':
       return t('entities.fromContacts.skip.group_not_found', { name });
