@@ -57,6 +57,7 @@ import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityCore
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntitySensitivity
+import com.mycorrhizal.crm.model.network.EntitySuggestionEntity
 import com.mycorrhizal.crm.model.network.EntitySuggestionPair
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
@@ -461,21 +462,13 @@ private fun SuggestionRow(
                 onClick = { onOpen(pair.a.id) },
                 modifier = Modifier.testTag("suggestion-open-a-${pair.a.id}")
             ) {
-                Text(
-                    stringResource(R.string.shared_entities_suggestions_open, pair.a.name),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                SuggestionSideLabel(pair.a)
             }
             TextButton(
                 onClick = { onOpen(pair.b.id) },
                 modifier = Modifier.testTag("suggestion-open-b-${pair.b.id}")
             ) {
-                Text(
-                    stringResource(R.string.shared_entities_suggestions_open, pair.b.name),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                SuggestionSideLabel(pair.b)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -489,6 +482,28 @@ private fun SuggestionRow(
                 Text(stringResource(R.string.shared_entities_suggestions_dismiss))
             }
         }
+    }
+}
+
+/**
+ * The Open button's label for one side of a pair: the name plus the kind, linked-contact count
+ * and last update, so two same-named records are told apart on screen and, since the button's
+ * text is its accessibility label, by TalkBack too.
+ */
+@Composable
+private fun SuggestionSideLabel(side: EntitySuggestionEntity) {
+    Column(horizontalAlignment = Alignment.Start) {
+        Text(
+            stringResource(R.string.shared_entities_suggestions_open, side.name),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            entityDetailLine(side.kind, side.linkCount, side.updatedAt),
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
