@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import type { Activity } from '../api/activities';
 import { GIFT_STATUSES, type Gift, type GiftStatus } from '../api/gifts';
 import { type LifeEvent, partialDateDisplay } from '../api/lifeEvents';
-import { useDateFormat } from '../DateFormatProvider';
+import { useDateFormat, useOptionalDateFormat } from '../DateFormatProvider';
 import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { isHttpUrlString, looksLikeAbsoluteUri } from '../utils/linkResolution';
 import { calendarDateOnly } from '../utils/localDate';
@@ -81,6 +81,7 @@ export default function GiftDialog({
   activities,
 }: GiftDialogProps) {
   const { t } = useTranslation();
+  const dateFormat = useOptionalDateFormat();
   const { formatDate } = useDateFormat();
   const [status, setStatus] = useState<GiftStatus | ''>('');
   const [description, setDescription] = useState('');
@@ -314,7 +315,9 @@ export default function GiftDialog({
               {lifeEvents.map((ev) => (
                 <MenuItem key={ev.id} value={ev.id}>
                   {t(`lifeEvent.types.${ev.type}`, ev.type)}
-                  {partialDateDisplay(ev.date) ? ` — ${partialDateDisplay(ev.date)}` : ''}
+                  {partialDateDisplay(ev.date, dateFormat?.formatBirthday)
+                    ? ` — ${partialDateDisplay(ev.date, dateFormat?.formatBirthday)}`
+                    : ''}
                 </MenuItem>
               ))}
             </TextField>

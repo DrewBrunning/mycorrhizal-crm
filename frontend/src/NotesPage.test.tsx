@@ -894,3 +894,35 @@ test('the search query parameter prefills the search box and filters the list', 
   expect(await screen.findByDisplayValue('fair idea')).toBeDefined();
   await waitFor(() => expect(listUrl).toContain('search=fair+idea'));
 });
+
+// Issue #2704: a MUI Chip never wraps, so a long contact name made the note
+// card -- and the page -- wider than a phone (reflow, WCAG 1.4.10). jsdom has no
+// layout, so this pins the styles that let the chip shrink and wrap; the
+// 320px overflow itself is asserted in e2e/mobileLayout.spec.ts.
+test('a long contact name chip is allowed to wrap inside the note card', async () => {
+  const longName = `Bartholomew ${'Featherstonehaugh-Worthington-Smythe '.repeat(3)}`.trim();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url.includes('/images')
+        ? { ok: true, json: async () => ({ images: [], total: 0 }) }
+        : {
+            ok: true,
+            json: async () => ({
+              notes: [{ ...filedNote, contact: { ID: 5, firstname: longName, lastname: '' } }],
+              next_cursor: '',
+              limit: 25,
+              total: 1,
+            }),
+          },
+    ),
+  );
+  renderPage();
+
+  const link = await screen.findByRole('link', { name: longName });
+  expect(getComputedStyle(link).maxWidth).toBe('100%');
+  expect(getComputedStyle(link).height).toBe('auto');
+  const label = link.querySelector('.MuiChip-label') as HTMLElement;
+  expect(getComputedStyle(label).whiteSpace).toBe('normal');
+  expect(getComputedStyle(label).overflowWrap).toBe('anywhere');
+});

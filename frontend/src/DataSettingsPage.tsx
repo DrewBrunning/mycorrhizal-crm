@@ -402,7 +402,12 @@ export default function DataSettingsPage() {
                 {t('settings.data.import.history.empty')}
               </Typography>
             ) : (
-              <Box sx={{ overflowX: 'auto' }}>
+              <Box
+                sx={{ overflowX: 'auto' }}
+                tabIndex={0}
+                role="region"
+                aria-label={t('settings.data.import.history.title')}
+              >
                 <Table size="small">
                   <TableHead>
                     <TableRow>

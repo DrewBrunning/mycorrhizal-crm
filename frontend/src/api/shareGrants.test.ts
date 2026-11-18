@@ -1,3 +1,4 @@
+import { HttpResponse } from 'msw';
 import { describe, expect, test } from 'vitest';
 import { errorEnvelope, mockApi, setupMswServer } from '../test/mswServer';
 import {
@@ -5,6 +6,7 @@ import {
   createShareGrant,
   declineShareGrant,
   deleteShareBlock,
+  deleteShareGrant,
   getShareGrantContent,
   getShareGrantNotifications,
   getShareJSContactPreview,
@@ -156,5 +158,32 @@ describe('shareGrants api', () => {
     const calls = mockApi('get', '/export/jscontact', [{ name: { full: 'Alice' } }]);
     await expect(getShareJSContactPreview('uid-1', [])).rejects.toThrow();
     expect(calls).toHaveLength(0);
+  });
+
+  test('deleteShareGrant sends DELETE /share-grants/{id} and resolves on 204', async () => {
+    const calls = mockApi('delete', '/share-grants/g1', new Response(null, { status: 204 }));
+    await expect(deleteShareGrant('g1')).resolves.toBeUndefined();
+    expect(calls[0].method).toBe('DELETE');
+    expect(calls[0].pathname).toBe('/api/v1/share-grants/g1');
+  });
+
+  test('deleteShareGrant surfaces 409 share_grant_not_ended and the identical 404', async () => {
+    mockApi(
+      'delete',
+      '/share-grants/g1',
+      HttpResponse.json(
+        {
+          error: { code: 'CONFLICT', message: 'm', reason_code: 'share_grant_not_ended' },
+          request_id: 'r',
+        },
+        { status: 409 },
+      ),
+    );
+    await expect(deleteShareGrant('g1')).rejects.toMatchObject({
+      status: 409,
+      reasonCode: 'share_grant_not_ended',
+    });
+    mockApi('delete', '/share-grants/g2', errorEnvelope(404, 'NOT_FOUND', 'gone'));
+    await expect(deleteShareGrant('g2')).rejects.toMatchObject({ status: 404 });
   });
 });

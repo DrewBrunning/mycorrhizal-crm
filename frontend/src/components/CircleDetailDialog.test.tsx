@@ -83,6 +83,19 @@ describe('CircleDetailDialog timeline dates', () => {
 
 describe('CircleDetailDialog timeline members', () => {
   // Issue #2361: each entry names the member(s) it is about, linking to them.
+  // Issue #2681: a life event showed its raw token ("married") as its title.
+  test('a life event is titled by its label, not its raw type token', async () => {
+    getCircleTimeline.mockResolvedValue({
+      items: [{ id: 'l1', type: 'life_event', date: '2026-11-01', data: { type: 'married' } }],
+      next_cursor: '',
+      limit: 25,
+      member_count: 1,
+    });
+    renderDialog();
+    expect(await screen.findByText('Married')).toBeTruthy();
+    expect(screen.queryByText('married')).toBeNull();
+  });
+
   test('each entry names its member(s) as links to the contact', async () => {
     getCircleTimeline.mockResolvedValue({
       items: [

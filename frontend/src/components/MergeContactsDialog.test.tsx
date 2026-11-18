@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import { DateFormatProvider, setDateFormatPreference } from '../DateFormatProvider';
 import MergeContactsDialog from './MergeContactsDialog';
 
 afterEach(cleanup);
@@ -23,9 +24,11 @@ function renderDialog(props: Partial<React.ComponentProps<typeof MergeContactsDi
     ...props,
   } as React.ComponentProps<typeof MergeContactsDialog>;
   return render(
-    <SnackbarProvider>
-      <MergeContactsDialog {...merged} />
-    </SnackbarProvider>,
+    <DateFormatProvider>
+      <SnackbarProvider>
+        <MergeContactsDialog {...merged} />
+      </SnackbarProvider>
+    </DateFormatProvider>,
   );
 }
 
@@ -398,4 +401,92 @@ test('pair mode swap reloads the preview with the swapped keeper and merges it',
   await waitFor(() => expect(onMerged).toHaveBeenCalledWith(2));
   expect(onClose).toHaveBeenCalled();
   await waitFor(() => expect(mergeBodies).toEqual([{ keep_id: 2, merge_id: 1, resolutions: {} }]));
+});
+
+// Issue #2666: `counts && (a || b || ...)` evaluated to the NUMBER 0 when every
+// association count was zero, and JSX rendered that as a bare "0" above the
+// buttons. The real server sends every count (all zero for contacts with
+// nothing attached), so the fixture lists them all.
+test('a merge with no associations renders no stray "0" and no summary', async () => {
+  mockFetchByUrl({
+    '/contacts?': bobContactsResponse,
+    '/contacts/merge/preview': () => ({
+      keep_id: 2,
+      merge_id: 1,
+      resolution: { emails: [], phones: [], addresses: [], urls: [], impps: [], circles: [] },
+      association_counts: {
+        ...emptyAssociationCounts,
+        attachments: 0,
+        preferences: 0,
+        external_identities: 0,
+        external_activities: 0,
+        cadence_policies: 0,
+      },
+    }),
+  });
+
+  renderDialog();
+  await selectBob();
+  await screen.findByText('No conflicts to resolve. Ready to merge.');
+
+  const dialog = screen.getByRole('dialog');
+  const walker = document.createTreeWalker(dialog, NodeFilter.SHOW_TEXT);
+  const texts: string[] = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode())
+    texts.push((n.textContent ?? '').trim());
+  expect(texts).not.toContain('0');
+  expect(screen.queryByText(/This will move/)).not.toBeInTheDocument();
+});
+
+test('a merge that moves something still shows the association summary', async () => {
+  mockFetchByUrl({
+    '/contacts?': bobContactsResponse,
+    '/contacts/merge/preview': () => ({
+      keep_id: 2,
+      merge_id: 1,
+      resolution: { emails: [], phones: [], addresses: [], urls: [], impps: [], circles: [] },
+      association_counts: { ...emptyAssociationCounts, notes: 2 },
+    }),
+  });
+
+  renderDialog();
+  await selectBob();
+  await screen.findByText('No conflicts to resolve. Ready to merge.');
+  expect(screen.getByText(/This will move 2 notes/)).toBeInTheDocument();
+});
+
+// Issue #2681: a conflicting birthday was offered as the stored ISO string.
+test('a date conflict shows each value in the user date format', async () => {
+  setDateFormatPreference('eu');
+  mockFetchByUrl({
+    '/contacts?': bobContactsResponse,
+    '/contacts/merge/preview': () => ({
+      keep_id: 2,
+      merge_id: 1,
+      resolution: {
+        emails: [],
+        phones: [],
+        addresses: [],
+        urls: [],
+        impps: [],
+        circles: [],
+        conflicts: [
+          {
+            field: 'birthday',
+            label: 'Birthday',
+            keeper_value: '1990-04-02',
+            loser_value: '--04-03',
+          },
+        ],
+        field_value_conflicts: [],
+      },
+      association_counts: emptyAssociationCounts,
+    }),
+  });
+
+  renderDialog();
+  await selectBob();
+  expect(await screen.findByLabelText(/02\.04\.1990/)).toBeInTheDocument();
+  expect(screen.getByLabelText(/03\.04\./)).toBeInTheDocument();
+  expect(screen.queryByLabelText(/1990-04-02/)).not.toBeInTheDocument();
 });

@@ -239,23 +239,33 @@ export async function resolveLifeEventSuggestion(
   if (!response.ok) throw await parseErrorResponse(response);
 }
 
-export function partialDateDisplay(date?: PartialDate): string {
+// `fmt` renders a calendar day in the user's date format (the date-format
+// provider's formatBirthday: it takes "YYYY-MM-DD" or the year-less "--MM-DD").
+// Without it the stored ISO-like form is shown (issue #2681 -- the web showed
+// "2026-11-01" to a user who chose the EU format).
+export type PartialDateFormatter = (isoOrYearless: string) => string;
+
+export function partialDateDisplay(date?: PartialDate, fmt?: PartialDateFormatter): string {
   if (!date) return '';
   const y = date.year != null ? String(date.year) : '';
   const m = date.month != null ? String(date.month).padStart(2, '0') : '';
   const d = date.day != null ? String(date.day).padStart(2, '0') : '';
-  if (y && m && d) return `${y}-${m}-${d}`;
+  if (y && m && d) return fmt ? fmt(`${y.padStart(4, '0')}-${m}-${d}`) : `${y}-${m}-${d}`;
   if (y) return y;
-  if (m && d) return `${m}/${d}`;
+  if (m && d) return fmt ? fmt(`--${m}-${d}`) : `${m}/${d}`;
   if (m) return `${m}/??`;
   return '';
 }
 
 // ADR 0025: render an optional start/end span ("2019 – 2024"). An open end is
 // "2019 –"; an end with no start is "– 2024"; no end is just the start.
-export function partialDateRangeDisplay(date?: PartialDate, endDate?: PartialDate): string {
-  const start = partialDateDisplay(date);
-  const end = partialDateDisplay(endDate);
+export function partialDateRangeDisplay(
+  date?: PartialDate,
+  endDate?: PartialDate,
+  fmt?: PartialDateFormatter,
+): string {
+  const start = partialDateDisplay(date, fmt);
+  const end = partialDateDisplay(endDate, fmt);
   if (!end) return start;
   if (!start) return `– ${end}`;
   return `${start} – ${end}`;

@@ -434,6 +434,9 @@ export default function EntityDetailPage() {
         <EntityMergeDialog
           open
           loserId={entity.id}
+          // Distinct contacts, the same definition the survivor picker's list rows use;
+          // the detail entity's own link_count counts link rows and must not be mixed in.
+          loserLinkCount={peopleLoaded ? linkedContacts : undefined}
           onClose={() => setMerging(false)}
           onMerged={(result, loser) => {
             setMerging(false);

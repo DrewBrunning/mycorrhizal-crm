@@ -345,7 +345,25 @@ const NotesPage: React.FC = () => {
           </Typography>
         </Paper>
       ) : (
-        <Timeline position="right">
+        <Timeline
+          position="right"
+          sx={{
+            // #2704: side by side, the date column left the note card only
+            // ~84px at 320px, so its text had nowhere to go. On phones stack
+            // the date above the card and drop the marker rail instead.
+            '@media (max-width:599.95px)': {
+              '& .MuiTimelineItem-root': { flexDirection: 'column', minHeight: 0 },
+              '& .MuiTimelineOppositeContent-root': {
+                flex: 'none',
+                marginRight: 0,
+                paddingBottom: 0,
+                textAlign: 'left',
+              },
+              '& .MuiTimelineSeparator-root': { display: 'none' },
+              '& .MuiTimelineContent-root': { flex: 'none', width: '100%' },
+            },
+          }}
+        >
           {notes.map((note, index) => (
             <TimelineItem key={note.ID}>
               <TimelineOppositeContent
@@ -364,7 +382,7 @@ const NotesPage: React.FC = () => {
                 </TimelineDot>
                 {index < notes.length - 1 && <TimelineConnector />}
               </TimelineSeparator>
-              <TimelineContent sx={{ flex: 0.8 }}>
+              <TimelineContent sx={{ flex: 0.8, minWidth: 0 }}>
                 <Paper
                   elevation={2}
                   sx={{
@@ -384,7 +402,7 @@ const NotesPage: React.FC = () => {
                         alignItems: 'flex-start',
                       }}
                     >
-                      <Box sx={{ flex: 1 }}>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
                         <MarkdownText text={note.content} />
                         <ImageGallery
                           ownerId={note.ID}
@@ -425,6 +443,16 @@ const NotesPage: React.FC = () => {
                           component={RouterLink}
                           to={`/contacts/${note.contact_id}`}
                           clickable
+                          // Issue #2704: a Chip never wraps, so a long name made the
+                          // card (and the page) wider than a phone. Let it wrap.
+                          sx={{
+                            maxWidth: '100%',
+                            height: 'auto',
+                            '& .MuiChip-label': {
+                              whiteSpace: 'normal',
+                              overflowWrap: 'anywhere',
+                            },
+                          }}
                         />
                       </Box>
                     )}

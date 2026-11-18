@@ -754,3 +754,15 @@ test('a projected address shows its source chip and stays out of the address edi
   const [patch] = onUpdateCard.mock.calls[0] as unknown as [Partial<Card>];
   expect(patch.addresses?.map((a) => a.id)).toEqual(['own-1']);
 });
+
+// Issue #2681: a context token rendered as a raw English word ("(private)").
+test('an online service context is shown as its label, not the raw token', () => {
+  renderInformation(
+    { socialProfiles: [{ service: 'SomeUnknownService', user: 'alice', contexts: ['private'] }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) },
+  );
+  const row = fieldRow('Social Profiles');
+  expect(within(row).getByText(/\(Private\)/)).toBeInTheDocument();
+  expect(within(row).queryByText(/\(private\)/)).toBeNull();
+});

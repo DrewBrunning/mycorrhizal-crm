@@ -3,7 +3,6 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import {
   dismissEntitySuggestion,
-  type Entity,
   type EntitySuggestionPair,
   getEntity,
   listEntitySuggestions,
@@ -26,8 +25,20 @@ const dismissMock = vi.mocked(dismissEntitySuggestion);
 const getMock = vi.mocked(getEntity);
 
 const pair: EntitySuggestionPair = {
-  a: { id: 'a1', kind: 'organisation', name: 'Acme' },
-  b: { id: 'b1', kind: 'organisation', name: 'Acme Ltd' },
+  a: {
+    id: 'a1',
+    kind: 'organisation',
+    name: 'Acme',
+    updated_at: '2026-01-01T10:00:00Z',
+    link_count: 0,
+  },
+  b: {
+    id: 'b1',
+    kind: 'organisation',
+    name: 'Acme Ltd',
+    updated_at: '2026-01-02T10:00:00Z',
+    link_count: 4,
+  },
   reason: 'normalized_name',
 };
 
@@ -109,38 +120,36 @@ test('a failed dismiss shows the error and keeps the pair; a successful one remo
   expect(dismissMock).toHaveBeenLastCalledWith('a1', 'b1');
 });
 
-// #2701: "Green Acres Co-op and Green Acres Co-op" cannot be told apart.
+// #2701/#2743: "Green Acres Co-op and Green Acres Co-op" cannot be told apart. Each
+// side of a pair now carries updated_at and link_count, so no detail call is needed.
 const sameName: EntitySuggestionPair = {
-  a: { id: 'g1', kind: 'organisation', name: 'Green Acres Co-op' },
-  b: { id: 'g2', kind: 'organisation', name: 'green acres co-op' },
+  a: {
+    id: 'g1',
+    kind: 'organisation',
+    name: 'Green Acres Co-op',
+    updated_at: '2026-03-05T10:00:00Z',
+    link_count: 2,
+  },
+  b: {
+    id: 'g2',
+    kind: 'organisation',
+    name: 'green acres co-op',
+    updated_at: '2026-04-19T10:00:00Z',
+    link_count: 1,
+  },
   reason: 'exact_name',
 };
-const detail = (id: string, created: string, links: number): Entity => ({
-  id,
-  kind: 'organisation',
-  name: 'Green Acres Co-op',
-  core: {},
-  sensitivity: 'normal',
-  revision: 1,
-  link_count: links,
-  created_at: created,
-  updated_at: created,
-});
 
-test('a pair with the same name adds each side created date and linked-contact count (#2701)', async () => {
+test('a pair with the same name adds each side updated date and linked-contact count from the pair itself (#2743)', async () => {
   listMock.mockResolvedValue({ pairs: [sameName] } as never);
-  getMock.mockImplementation(async (id) =>
-    id === 'g1' ? detail('g1', '2026-03-05T10:00:00Z', 2) : detail('g2', '2026-04-19T10:00:00Z', 1),
-  );
   renderPanel();
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
-  const pairText = await screen.findByText(/Green Acres Co-op \(added .+, 2 contacts\) and /i);
-  expect(pairText.textContent).toMatch(/green acres co-op \(added .+, 1 contact\)$/i);
-  expect(getMock).toHaveBeenCalledWith('g1');
-  expect(getMock).toHaveBeenCalledWith('g2');
+  const pairText = await screen.findByText(/Green Acres Co-op \(updated .+, 2 contacts\) and /i);
+  expect(pairText.textContent).toMatch(/green acres co-op \(updated .+, 1 contact\)$/i);
+  expect(getMock).not.toHaveBeenCalled();
 });
 
-test('a pair with different names makes no extra requests and keeps the plain text (#2701)', async () => {
+test('a pair with different names keeps the plain text and makes no detail requests (#2743)', async () => {
   listMock.mockResolvedValue({ pairs: [pair] } as never);
   renderPanel();
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
@@ -148,10 +157,18 @@ test('a pair with different names makes no extra requests and keeps the plain te
   expect(getMock).not.toHaveBeenCalled();
 });
 
-test('same-name pair still shows plain names when the detail lookup fails (#2701)', async () => {
+test('merge is offered the pair with both counts so the dialog need not re-fetch them (#2743)', async () => {
   listMock.mockResolvedValue({ pairs: [sameName] } as never);
-  getMock.mockRejectedValue(new Error('down'));
+  const { onMerge } = renderPanel();
+  fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Merge…' }));
+  expect(onMerge).toHaveBeenCalledWith(sameName);
+});
+
+test('a scan that fails without a message falls back to the generic failure text (#2743)', async () => {
+  listMock.mockRejectedValue(new Error(''));
   renderPanel();
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
-  expect(await screen.findByText('Green Acres Co-op and green acres co-op')).toBeInTheDocument();
+  expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't look for duplicates.");
+  expect(screen.queryByText('No duplicates found.')).not.toBeInTheDocument();
 });

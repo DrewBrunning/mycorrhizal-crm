@@ -112,6 +112,24 @@ class MeerkatImportScreenTest {
     }
 
     @Test
+    fun `a coded fetch failure is shown translated, not as the English status text`() {
+        setContent(
+            MeerkatImportUiState(
+                baseUrl = "https://m",
+                apiToken = "t",
+                error = ApiError.Client(
+                    422,
+                    "The Meerkat instance could not be reached \u2014 use the database upload",
+                    reason = ErrorReason(ErrorReasonCode.MEERKAT_FETCH_UNREACHABLE, emptyMap())
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("The Meerkat instance could not be reached")
+            .assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("database upload", substring = true).assertCountEquals(0)
+    }
+
+    @Test
     fun `no inline error shows when there is none`() {
         setContent(MeerkatImportUiState())
         composeTestRule.onNodeWithTag("meerkat-import-error").assertDoesNotExist()
