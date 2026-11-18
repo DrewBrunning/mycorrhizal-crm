@@ -220,3 +220,21 @@ test('other connect failures still use the banner', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Monica rejected the API token');
   expect(screen.getByLabelText('Monica address')).toHaveAttribute('aria-invalid', 'false');
 });
+
+test('an unreachable Monica with an address that is not a URL names it as typed, without a ref', async () => {
+  connectMock.mockImplementationOnce(() =>
+    Promise.reject(
+      new ApiError('x', 'EXTERNAL_SERVICE_ERROR', 502, undefined, undefined, 'monica_unreachable'),
+    ),
+  );
+  renderOpen();
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'monica.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent("Couldn't reach Monica at monica.example");
+  expect(alert).not.toHaveTextContent('ref:');
+});

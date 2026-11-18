@@ -1567,9 +1567,33 @@ test('a CSV preview shows the encoding banner from the upload response', async (
     valid_rows: 1,
     duplicate_count: 0,
     error_count: 0,
+    // The same notice on both responses is shown once.
+    file_diagnostics: [
+      {
+        severity: 'warn',
+        concept: 'encoding',
+        message: 'file was not UTF-8; read as Windows-1252',
+      },
+    ],
   });
   renderDialog();
   selectFile(new File(['First\nZoë'], 'c.csv', { type: 'text/csv' }));
   fireEvent.click(await screen.findByRole('button', { name: /continue/i }));
   expect(await screen.findByText(/read as Windows-1252/)).toBeInTheDocument();
+  expect(screen.getAllByText(/read as Windows-1252/)).toHaveLength(1);
+});
+
+test('a file diagnostic with no known concept shows its own message', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-info',
+    rows: [row({ parsed_contact: { firstname: 'Zoe' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    file_diagnostics: [{ severity: 'info', message: 'Header row skipped' }],
+  });
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  expect(await screen.findByText('Header row skipped')).toBeInTheDocument();
 });

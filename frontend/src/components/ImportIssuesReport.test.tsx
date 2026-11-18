@@ -120,3 +120,18 @@ test('the CSV download carries the warning status and concept', async () => {
   expect(text).toContain('Status,Reason,Concept');
   expect(text).toContain(',warning,birthday not imported: invalid value,birthday');
 });
+
+test('pressing the selected filter again keeps it selected', () => {
+  render(
+    <ImportIssuesReport
+      issues={[
+        { row: 2, name: 'Ann', email: '', phone: '', status: 'skipped', reason: 'duplicate' },
+        warningIssue,
+      ]}
+    />,
+  );
+  const all = screen.getByRole('button', { name: 'All (2)' });
+  fireEvent.click(all);
+  expect(all).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByText('Ann')).toBeInTheDocument();
+});
