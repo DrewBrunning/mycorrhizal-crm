@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/base64"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -1675,4 +1676,25 @@ func TestValidate_StorageCriticalFloorMustNotExceedWarnFloor(t *testing.T) {
 	cfg.StorageWarnMinFreeGB = 0
 	cfg.StorageCriticalMinFreeGB = 2
 	assert.False(t, hasFieldError(cfg.Validate(), "STORAGE_CRITICAL_MIN_FREE_GB"))
+}
+
+func TestValidate_ShareDirectoryModeEnum(t *testing.T) {
+	for _, mode := range []string{"", "all", "search"} {
+		cfg := validConfig()
+		cfg.ShareDirectoryMode = mode
+		assert.False(t, hasFieldError(cfg.Validate(), "SHARE_DIRECTORY_MODE"), "%q should be valid", mode)
+	}
+	for _, mode := range []string{"ALL", "none", "prefix", " search"} {
+		cfg := validConfig()
+		cfg.ShareDirectoryMode = mode
+		assert.True(t, hasFieldError(cfg.Validate(), "SHARE_DIRECTORY_MODE"), "%q must fail closed at startup", mode)
+	}
+}
+
+func TestLoadConfig_ShareDirectoryMode(t *testing.T) {
+	t.Setenv("SHARE_DIRECTORY_MODE", "search") // registers cleanup
+	require.NoError(t, os.Unsetenv("SHARE_DIRECTORY_MODE"))
+	assert.Equal(t, "all", LoadConfig().ShareDirectoryMode, "default keeps today's behaviour")
+	t.Setenv("SHARE_DIRECTORY_MODE", "search")
+	assert.Equal(t, "search", LoadConfig().ShareDirectoryMode)
 }

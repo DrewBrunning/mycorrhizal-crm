@@ -2055,9 +2055,24 @@ paths:
         Unlike admin-only GET /admin/users, any authenticated user can call
         this — it exists to populate the recipient picker for P1 contact
         sharing and deliberately returns nothing beyond id/username.
+
+        Behaviour depends on the operator setting `SHARE_DIRECTORY_MODE`
+        (issue #2787). `all` (the default) returns every user except the
+        caller and ignores `q`. `search` returns an empty list unless `q`
+        (trimmed) has at least 3 characters, and then only users whose
+        username starts with `q` (case-insensitive; email is never matched),
+        ordered by username and capped at 10. The response shape is the same
+        in both modes and the status is always 200 for an authenticated caller.
+        `search` becomes the default in v2.0.0.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Username prefix, at least 3 characters. Ignored when `SHARE_DIRECTORY_MODE=all`.
+          schema: { type: string }
       responses:
         "200":
-          description: Every user except the caller.
+          description: Every user except the caller (`all`), or up to 10 username-prefix matches (`search`).
           content:
             application/json:
               schema:

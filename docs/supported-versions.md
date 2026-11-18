@@ -188,6 +188,7 @@ an account on someone else's instance:
 | **First account** | Automatically an admin (set when the user table is empty). |
 | **Every later account** | A normal user. `is_admin` in the request body is ignored — the input DTO excludes it (no mass assignment). |
 | **Protections** | Auth rate-limited; minimum-client-version enforced; optional [HIBP](https://haveibeenpwned.com/) breached-password check when `HIBP_CHECK_ENABLED=true`. |
+| **Share-recipient directory** | By default (`SHARE_DIRECTORY_MODE=all`) any signed-in user can list every other account's username when choosing a share recipient. `SHARE_DIRECTORY_MODE=search` returns nothing until a query of at least 3 characters is sent, then only case-insensitive username-prefix matches (max 10; never email), so accounts cannot be enumerated. An unknown value refuses to boot. `search` becomes the default in v2.0.0. |
 | **SSO** | With OIDC configured, `OIDC_AUTO_PROVISION=true` creates an account on first SSO login; otherwise an unmatched SSO user must be registered first. |
 
 Admins can also create accounts directly from the admin panel
