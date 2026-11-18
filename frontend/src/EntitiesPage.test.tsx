@@ -50,7 +50,12 @@ function ent(id: string, name: string, kind: EntityKind = 'organisation', core =
     revision: 1,
     created_at: '',
     updated_at: '',
+    link_count: 0,
   };
+}
+
+function side(id: string, name: string, link_count = 0, updated_at = '2026-01-01T10:00:00Z') {
+  return { id, kind: 'organisation' as const, name, updated_at, link_count };
 }
 
 function renderPage(path = '/entities') {
@@ -154,8 +159,8 @@ test('duplicate suggestions: find, then merge via the dialog', async () => {
     mode: 'pairs',
     pairs: [
       {
-        a: { id: 'o1', kind: 'organisation', name: 'Acme' },
-        b: { id: 'o2', kind: 'organisation', name: 'Acme, Inc' },
+        a: side('o1', 'Acme'),
+        b: side('o2', 'Acme, Inc'),
         reason: 'normalized_name',
       },
     ],
@@ -187,13 +192,44 @@ test('duplicate suggestions: find, then merge via the dialog', async () => {
   await waitFor(() => expect(screen.queryByText('Very similar name')).not.toBeInTheDocument());
 });
 
+// #2743: the merge dialog opened from a same-named pair describes each side with the pair's
+// distinct-contact count, not the detail endpoint's link-row count (decoy 99).
+test('merging a same-named pair describes each side with the pair counts (#2743)', async () => {
+  suggestMock.mockResolvedValueOnce({
+    mode: 'pairs',
+    pairs: [
+      {
+        a: side('g1', 'Green Acres Co-op', 2, '2026-03-05T10:00:00Z'),
+        b: side('g2', 'Green Acres Co-op', 1, '2026-04-19T10:00:00Z'),
+        reason: 'exact_name',
+      },
+    ],
+    groups: [],
+    limit: 25,
+    next_cursor: '',
+  });
+  getMock.mockImplementation(async (id) => ({
+    ...ent(id, 'Green Acres Co-op'),
+    link_count: 99,
+    updated_at: id === 'g1' ? '2026-03-05T10:00:00Z' : '2026-04-19T10:00:00Z',
+  }));
+  renderPage();
+  fireEvent.click(await screen.findByRole('button', { name: 'Find duplicates' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Merge…' }));
+  const intro = await screen.findByText(/will be deleted and its contacts move to/);
+  expect(intro.textContent).toMatch(
+    /\(updated .+, 1 contact\) will be deleted.*\(updated .+, 2 contacts\)\./,
+  );
+  expect(intro.textContent).not.toMatch(/99/);
+});
+
 test('"Not a duplicate" dismisses the pair for good', async () => {
   suggestMock.mockResolvedValueOnce({
     mode: 'pairs',
     pairs: [
       {
-        a: { id: 'o1', kind: 'organisation', name: 'Acme' },
-        b: { id: 'o2', kind: 'organisation', name: 'Acme, Inc' },
+        a: side('o1', 'Acme'),
+        b: side('o2', 'Acme, Inc'),
         reason: 'exact_name',
       },
     ],
@@ -266,12 +302,13 @@ test('each entity row is a list item containing its link (#2699)', async () => {
   );
 });
 
-// #2701: same-named entities need a distinguishing detail in the list.
-test('same-named entities show their created date so they can be told apart (#2701)', async () => {
+// #2701/#2743: same-named entities need a distinguishing detail in the list; the list
+// rows carry link_count (distinct contacts) and updated_at, so there is no created-date fallback.
+test('same-named entities show linked-contact count and updated date so they can be told apart (#2743)', async () => {
   listMock.mockResolvedValue({
     entities: [
-      { ...ent('g1', 'Green Acres Co-op'), created_at: '2026-03-05T10:00:00Z' },
-      { ...ent('g2', 'Green Acres Co-op'), created_at: '2026-04-19T10:00:00Z' },
+      { ...ent('g1', 'Green Acres Co-op'), updated_at: '2026-03-05T10:00:00Z', link_count: 3 },
+      { ...ent('g2', 'Green Acres Co-op'), updated_at: '2026-04-19T10:00:00Z', link_count: 1 },
     ],
     limit: 50,
     next_cursor: '',
@@ -279,7 +316,19 @@ test('same-named entities show their created date so they can be told apart (#27
   renderPage();
   const links = await screen.findAllByRole('link', { name: /Green Acres Co-op/ });
   expect(links).toHaveLength(2);
-  expect(links[0].textContent).toMatch(/Added /);
-  expect(links[1].textContent).toMatch(/Added /);
-  expect(links[0].textContent).not.toBe(links[1].textContent);
+  expect(links[0].textContent).toMatch(/3 contacts · updated /i);
+  expect(links[1].textContent).toMatch(/1 contact · updated /i);
+  expect(links[0].textContent).not.toMatch(/Added /);
+  expect(getMock).not.toHaveBeenCalled();
+});
+
+test('a zero link count is shown, not hidden (#2743)', async () => {
+  listMock.mockResolvedValue({
+    entities: [{ ...ent('z1', 'Lonely Org'), updated_at: '2026-03-05T10:00:00Z', link_count: 0 }],
+    limit: 50,
+    next_cursor: '',
+  });
+  renderPage();
+  const link = await screen.findByRole('link', { name: /Lonely Org/ });
+  expect(link.textContent).toMatch(/0 contacts · updated /i);
 });

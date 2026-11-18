@@ -176,15 +176,44 @@ test('the merge outcome is reported: links moved and any primary that had to be 
   ).toBeInTheDocument();
 });
 
-// #2701: with identical names the intro must say which one survives.
-test('with the same name on both sides the intro adds created date and linked contacts (#2701)', async () => {
-  const mk = (id: string, created: string, links: number): Entity => ({
-    ...ent(id, 'Green Acres Co-op'),
-    created_at: created,
-    link_count: links,
-  });
+// #2701/#2743: with identical names the intro must say which one survives, using the
+// distinct-contact counts the list/suggestions supply -- never the detail endpoint's
+// link-row count (decoy 99 below), so the two definitions are not mixed in one view.
+const mkSame = (id: string, updated: string): Entity => ({
+  ...ent(id, 'Green Acres Co-op'),
+  updated_at: updated,
+  link_count: 99,
+});
+
+test('with the same name on both sides the intro adds updated date and the supplied contact counts (#2743)', async () => {
   getMock.mockImplementation(async (id) =>
-    id === 'a' ? mk('a', '2026-03-05T10:00:00Z', 2) : mk('b', '2026-04-19T10:00:00Z', 1),
+    id === 'a' ? mkSame('a', '2026-03-05T10:00:00Z') : mkSame('b', '2026-04-19T10:00:00Z'),
+  );
+  render(
+    <SnackbarProvider>
+      <DateFormatProvider>
+        <EntityMergeDialog
+          open
+          loserId="b"
+          survivorId="a"
+          loserLinkCount={1}
+          survivorLinkCount={2}
+          onClose={vi.fn()}
+          onMerged={vi.fn()}
+        />
+      </DateFormatProvider>
+    </SnackbarProvider>,
+  );
+  const intro = await screen.findByText(/will be deleted and its contacts move to/);
+  expect(intro.textContent).toMatch(
+    /^Green Acres Co-op \(updated .+, 1 contact\) will be deleted and its contacts move to Green Acres Co-op \(updated .+, 2 contacts\)\./,
+  );
+  expect(intro.textContent).not.toMatch(/99/);
+});
+
+test('without supplied counts the intro shows only the updated date, never the detail link-row count (#2743)', async () => {
+  getMock.mockImplementation(async (id) =>
+    id === 'a' ? mkSame('a', '2026-03-05T10:00:00Z') : mkSame('b', '2026-04-19T10:00:00Z'),
   );
   render(
     <SnackbarProvider>
@@ -194,7 +223,33 @@ test('with the same name on both sides the intro adds created date and linked co
     </SnackbarProvider>,
   );
   const intro = await screen.findByText(/will be deleted and its contacts move to/);
+  expect(intro.textContent).toMatch(/\(updated [^,)]+\) will be deleted/);
+  expect(intro.textContent).not.toMatch(/99|contacts\)/);
+});
+
+test('a survivor picked from the list is described with the list link_count (#2743)', async () => {
+  const sameA = { ...mkSame('a', '2026-03-05T10:00:00Z'), link_count: 5 };
+  listMock.mockResolvedValue({ entities: [sameA], limit: 25, next_cursor: '' });
+  getMock.mockImplementation(async (id) =>
+    id === 'a' ? mkSame('a', '2026-03-05T10:00:00Z') : mkSame('b', '2026-04-19T10:00:00Z'),
+  );
+  render(
+    <SnackbarProvider>
+      <DateFormatProvider>
+        <EntityMergeDialog
+          open
+          loserId="b"
+          loserLinkCount={2}
+          onClose={vi.fn()}
+          onMerged={vi.fn()}
+        />
+      </DateFormatProvider>
+    </SnackbarProvider>,
+  );
+  fireEvent.mouseDown(await screen.findByLabelText('Merge into'));
+  fireEvent.click(within(await screen.findByRole('listbox')).getByText('Green Acres Co-op'));
+  const intro = await screen.findByText(/will be deleted and its contacts move to/);
   expect(intro.textContent).toMatch(
-    /^Green Acres Co-op \(added .+, 1 contact\) will be deleted and its contacts move to Green Acres Co-op \(added .+, 2 contacts\)\./,
+    /\(updated .+, 2 contacts\) will be deleted.*\(updated .+, 5 contacts\)\./,
   );
 });

@@ -109,7 +109,19 @@ data class ContactListUiState(
     val bulkResult: BulkOperationResult? = null,
     /** Issue #1762: name (default), recently contacted, or recently added. */
     val sort: ContactSort = ContactSort.NAME
-)
+) {
+    /**
+     * #2630: why each row matched the search (contact id -> reported fields), from the same
+     * `GET /search` response as [searchResult]. Empty unless that response answers the query now
+     * in the box: while a new query is debouncing the previous result is still held, and its
+     * reasons would be wrong for the rows the new query returns.
+     */
+    fun matchedOnByContact(): Map<Int, List<String>> {
+        val result = searchResult ?: return emptyMap()
+        if (result.query?.trim() != searchQuery.trim()) return emptyMap()
+        return result.matchedOnByContactId()
+    }
+}
 
 sealed interface ContactListEvent {
     data class NavigateToContact(val contactId: Int) : ContactListEvent

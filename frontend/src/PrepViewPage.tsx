@@ -35,6 +35,7 @@ import { useSnackbar } from './context/SnackbarContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleFetchError } from './utils/errorHandler';
+import { humanizeToken } from './utils/humanizeToken';
 import { calendarDateOnly } from './utils/localDate';
 
 // N2 prep view: the "person
@@ -293,8 +294,12 @@ export default function PrepViewPage() {
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {preferences.map((preference) => (
                 <Typography key={preference.id} variant="body2" sx={{ overflowWrap: 'anywhere' }}>
-                  • {t(`preference.categories.${preference.category}`, preference.category)}:{' '}
-                  {preference.value}
+                  •{' '}
+                  {t(
+                    `preference.categories.${preference.category}`,
+                    humanizeToken(preference.category),
+                  )}
+                  : {preference.value}
                   {preference.notes ? ` (${preference.notes})` : ''}
                 </Typography>
               ))}

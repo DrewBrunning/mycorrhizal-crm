@@ -680,6 +680,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/occasion-obligations/:id", controllers.DeleteOccasionObligation)
 			protected.GET("/occasions/upcoming", controllers.GetUpcomingOccasions)
 			protected.GET("/occasion-obligations/card-list", controllers.GetOccasionCardListCSV)
+			protected.GET("/occasion-obligations/card-list/summary", controllers.GetOccasionCardListSummary)
 			protected.GET("/occasion-obligations/gift-shopping-list", controllers.GetGiftShoppingList)
 
 			// OccasionEvent routes (docs/adrs/0026-occasions-events.md, issue

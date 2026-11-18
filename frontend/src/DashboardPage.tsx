@@ -51,6 +51,7 @@ import UpcomingOccasionsWidget from './components/UpcomingOccasionsWidget';
 import { useDateFormat } from './DateFormatProvider';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { upcomingBirthdayAge } from './utils/birthdayAge';
 import { dashboardGridSx } from './utils/dashboardGrid';
 import { handleError, handleFetchError } from './utils/errorHandler';
 import { calendarDateOnly, isBeforeLocalToday } from './utils/localDate';
@@ -320,11 +321,14 @@ function DashboardPage() {
       if (parts.length === 3 && parts[0].length === 4) {
         const birthYear = parseInt(parts[0], 10);
         if (!Number.isNaN(birthYear)) {
-          const currentYear = new Date().getFullYear();
-          const age = currentYear - birthYear;
+          // Issue #2681: this card lists the NEXT occurrence, so a birthday
+          // still ahead is the age they will turn ("turns 41"), not the age
+          // they are now, and one that wrapped into next year counts from that
+          // year. Only a birthday that is today reads "(41 years old)".
+          const { age, isToday } = upcomingBirthdayAge(birthYear, parts[1], parts[2]);
           // Remove the year from the formatted date for dashboard display (just show DD.MM. or MM/DD)
           const dateWithoutYear = formatBirthdayDate(`--${parts[1]}-${parts[2]}`);
-          return `${dateWithoutYear} ${t('dashboard.yearsOld', { age })}`;
+          return `${dateWithoutYear} ${t(isToday ? 'dashboard.yearsOld' : 'dashboard.turnsAge', { age })}`;
         }
       }
     }
@@ -632,9 +636,11 @@ function DashboardPage() {
                         >
                           {birthday.name.charAt(0)}
                         </Avatar>
-                        <Box sx={{ flexGrow: 1 }}>
+                        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                           <Typography
                             variant="body2"
+                            noWrap
+                            title={birthday.name}
                             sx={{
                               fontWeight: 500,
                             }}

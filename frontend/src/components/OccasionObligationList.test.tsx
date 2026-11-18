@@ -78,3 +78,30 @@ test('does not call onDelete when the confirm is dismissed', () => {
   expect(onDelete).not.toHaveBeenCalled();
   confirmSpy.mockRestore();
 });
+
+// Issue #2681: the date and the lead time ran together as "December 25 14 days
+// lead time".
+test('separates the anchor date from the lead time', () => {
+  render(
+    <OccasionObligationList
+      obligations={[{ ...baseObligation, lead_time_days: 14 }]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  const leadTime = screen.getByText(/14 days lead time/);
+  expect(leadTime.textContent).toMatch(/^·\s+14 days lead time$/);
+});
+
+test('shows the lead time without a separator when there is no anchor date', () => {
+  render(
+    <OccasionObligationList
+      obligations={[
+        { ...baseObligation, anchor_month: undefined, anchor_day: undefined, lead_time_days: 14 },
+      ]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('14 days lead time').textContent).not.toContain('·');
+});

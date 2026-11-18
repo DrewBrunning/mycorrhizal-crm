@@ -92,6 +92,47 @@ test('renders empty inbox when no notes exist', async () => {
   expect(screen.getByText('No notes yet')).toBeDefined();
 });
 
+// #2744: every note shows its own date, so the list is ordered by that date
+// (GET /notes?sort=date), not by last edit; "Load more" keeps the same sort.
+test('requests notes ordered by their date, on the first page and on Load more (#2744)', async () => {
+  const urls: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      urls.push(url);
+      if (url.includes('/notes?')) {
+        const more = url.includes('cursor=');
+        return {
+          ok: true,
+          json: async () => ({
+            notes: [
+              {
+                ID: more ? 2 : 1,
+                content: more ? 'Older note' : 'Newest note',
+                date: '2026-01-01T00:00:00Z',
+                contact_id: null,
+                CreatedAt: '2026-01-01T00:00:00Z',
+                UpdatedAt: '2026-01-01T00:00:00Z',
+              },
+            ],
+            next_cursor: more ? '' : 'date:abc',
+            limit: 25,
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ images: [], total: 0 }) };
+    }),
+  );
+  renderPage();
+  expect(await screen.findByText('Newest note')).toBeDefined();
+  fireEvent.click(await screen.findByRole('button', { name: 'Load more' }));
+  expect(await screen.findByText('Older note')).toBeDefined();
+  const noteCalls = urls.filter((u) => u.includes('/notes?'));
+  expect(noteCalls).toHaveLength(2);
+  for (const u of noteCalls) expect(new URL(u, 'http://x').searchParams.get('sort')).toBe('date');
+  expect(new URL(noteCalls[1], 'http://x').searchParams.get('cursor')).toBe('date:abc');
+});
+
 test('renders notes list and shows unfiled count', async () => {
   mockFetchByUrl({ '/notes?': twoUnfiledNotesResponse });
   renderPage();
@@ -893,4 +934,36 @@ test('the search query parameter prefills the search box and filters the list', 
 
   expect(await screen.findByDisplayValue('fair idea')).toBeDefined();
   await waitFor(() => expect(listUrl).toContain('search=fair+idea'));
+});
+
+// Issue #2704: a MUI Chip never wraps, so a long contact name made the note
+// card -- and the page -- wider than a phone (reflow, WCAG 1.4.10). jsdom has no
+// layout, so this pins the styles that let the chip shrink and wrap; the
+// 320px overflow itself is asserted in e2e/mobileLayout.spec.ts.
+test('a long contact name chip is allowed to wrap inside the note card', async () => {
+  const longName = `Bartholomew ${'Featherstonehaugh-Worthington-Smythe '.repeat(3)}`.trim();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url.includes('/images')
+        ? { ok: true, json: async () => ({ images: [], total: 0 }) }
+        : {
+            ok: true,
+            json: async () => ({
+              notes: [{ ...filedNote, contact: { ID: 5, firstname: longName, lastname: '' } }],
+              next_cursor: '',
+              limit: 25,
+              total: 1,
+            }),
+          },
+    ),
+  );
+  renderPage();
+
+  const link = await screen.findByRole('link', { name: longName });
+  expect(getComputedStyle(link).maxWidth).toBe('100%');
+  expect(getComputedStyle(link).height).toBe('auto');
+  const label = link.querySelector('.MuiChip-label') as HTMLElement;
+  expect(getComputedStyle(label).whiteSpace).toBe('normal');
+  expect(getComputedStyle(label).overflowWrap).toBe('anywhere');
 });

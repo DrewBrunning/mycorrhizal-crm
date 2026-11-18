@@ -27,6 +27,14 @@
     }
   },
   "globalSearch": {
+    "matchedOn": "Correspond à : {{fields}}",
+    "matchedField": {
+      "name": "nom",
+      "organization": "organisation",
+      "email": "e-mail",
+      "phone": "téléphone",
+      "address": "adresse"
+    },
     "placeholder": "Rechercher contacts, notes, activités, lieux…",
     "label": "Tout rechercher",
     "open": "Rechercher",
@@ -218,6 +226,7 @@
     "noContacts": "Aucun contact disponible",
     "noReminders": "Aucun rappel à venir",
     "yearsOld": "({{age}} ans)",
+    "turnsAge": "(aura {{age}} ans)",
     "birthdaysInfo": "Affiche les anniversaires pour au moins les deux prochaines semaines.",
     "remindersInfo": "Affiche tous les rappels échéants jusqu'à aujourd'hui inclus. Les rappels restent visibles jusqu'à ce qu'ils soient marqués comme terminés.",
     "stayInTouchInfo": "Affiche cinq contacts au hasard pour vous aider à rester en contact. La liste est actualisée à chaque rechargement de page.",
@@ -543,12 +552,32 @@
         "colStatus": "Résultat",
         "colReason": "Motif",
         "statusFailed": "Échec",
-        "statusSkipped": "Ignorée"
+        "statusSkipped": "Ignorée",
+        "statusWarning": "Avertissement",
+        "warningsTitle": "Importé avec avertissements",
+        "mixedTitle": "Lignes à vérifier",
+        "filterLabel": "Afficher",
+        "filterNotImported_one": "Non importée ({{count}})",
+        "filterNotImported_other": "Non importées ({{count}})",
+        "filterNotImported_many": "Non importées ({{count}})",
+        "filterAll_one": "Toutes ({{count}})",
+        "filterAll_other": "Toutes ({{count}})",
+        "filterAll_many": "Toutes ({{count}})",
+        "filterWarnings_one": "Avertissement ({{count}})",
+        "filterWarnings_other": "Avertissements ({{count}})",
+        "filterWarnings_many": "Avertissements ({{count}})"
       },
       "errors": {
         "invalidFile": "Veuillez sélectionner un fichier CSV valide",
         "fileTooLarge": "Le fichier est trop volumineux. La taille maximale est de {{size}} Mo",
         "noMappings": "Veuillez mapper au moins une colonne"
+      },
+      "warning": {
+        "anniversary": "Anniversaire de mariage non importé : valeur non valide",
+        "birthday": "Anniversaire non importé : valeur non valide"
+      },
+      "fileDiagnostic": {
+        "encoding": "Ce fichier n’est pas en UTF-8 ; il a été lu en Windows-1252. Vérifiez que les caractères accentués s’affichent correctement avant d’importer."
       }
     },
     "urls": "Sites web",
@@ -1875,8 +1904,8 @@
           "colFormat": "Format",
           "colCreated": "Créés",
           "colUpdated": "Mis à jour",
-          "colSkipped": "Ignorés",
-          "colErrors": "Erreurs",
+          "colSkipped": "Ignorées à la vérification",
+          "colErrors": "Échecs à l’import",
           "colReport": "Rapport",
           "viewReport": "Voir le rapport",
           "reportTitle": "Rapport d'importation",
@@ -2118,7 +2147,8 @@
         "foundNotes_other": "{{count}} notes",
         "foundNotes_many": "{{count}} notes",
         "estimate": "Tout récupérer prend environ {{minutes}} min.",
-        "start": "Démarrer l'import"
+        "start": "Démarrer l'import",
+        "unreachable": "Impossible de joindre Monica à l’adresse {{host}}"
       }
     },
     "meerkatImport": {
@@ -2142,7 +2172,8 @@
         "userOption_one": "{{name}} — {{count}} contact",
         "userOption_other": "{{name}} — {{count}} contacts",
         "userOption_many": "{{name}} — {{count}} contacts",
-        "start": "Démarrer l'import"
+        "start": "Démarrer l'import",
+        "fetchFailedHint": "Si Meerkat reste injoignable, choisissez « Téléverser un fichier » et importez plutôt une copie de sa base de données."
       },
       "mode": {
         "label": "Comment importer depuis Meerkat",
@@ -3909,7 +3940,7 @@
       "meerkat_version_untested": "Cette version de Meerkat n’est pas testée avec l’importeur. Confirmez pour essayer quand même ; rien n’est écrit tant que vous n’avez pas vérifié l’aperçu.",
       "common_database_error": "Une erreur s'est produite lors de l'enregistrement ou du chargement de vos données",
       "common_database_busy": "Le serveur est occupé. Réessayez dans un instant",
-      "auth_invalid_credentials": "E-mail ou mot de passe incorrect",
+      "auth_invalid_credentials": "Nom d’utilisateur, e-mail ou mot de passe incorrect",
       "auth_token_expired": "Votre session a expiré. Reconnectez-vous",
       "auth_token_invalid": "Votre session n'est plus valide. Reconnectez-vous",
       "common_client_not_supported": "Cette version de l'application n'est plus prise en charge. Passez à la version {{required_version}} ou ultérieure",
@@ -4253,7 +4284,9 @@
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
       "integration_save_failed": "{{reason}}",
-      "occasion_anchor_date_incomplete": "Une date d’ancrage d’occasion nécessite à la fois un mois et un jour, ou aucun des deux",
+      "occasion_anchor_date_incomplete": "Une date d’ancrage d’occasion nécessite à la fois un mois et un jour",
+      "occasion_anchor_date_invalid": "Cette combinaison de mois et de jour n’existe pas, par exemple le 30 février",
+      "occasion_anchor_date_required": "Une occasion a besoin d’un mois et d’un jour pour pouvoir vous le rappeler",
       "occasion_days_invalid": "days doit être 30 ou 90",
       "occasion_event_circles_required": "circle_ids est requis",
       "occasion_event_end_before_start": "L’heure de fin de l’événement ne peut pas précéder l’heure de début",
@@ -4415,11 +4448,13 @@
       "death": "Décès",
       "dateHint": "AAAA, AAAA-MM ou AAAA-MM-JJ"
     },
-    "listAdded": "Ajoutée le {{date}}",
-    "nameAdded": "{{name}} (ajoutée le {{date}})",
-    "nameDetail_one": "{{name}} (ajoutée le {{date}}, {{count}} contact)",
-    "nameDetail_many": "{{name}} (ajoutée le {{date}}, {{count}} contacts)",
-    "nameDetail_other": "{{name}} (ajoutée le {{date}}, {{count}} contacts)",
+    "listDetail_one": "{{count}} contact · mise à jour le {{date}}",
+    "listDetail_many": "{{count}} contacts · mise à jour le {{date}}",
+    "listDetail_other": "{{count}} contacts · mise à jour le {{date}}",
+    "nameUpdated": "{{name}} (mise à jour le {{date}})",
+    "nameDetail_one": "{{name}} (mise à jour le {{date}}, {{count}} contact)",
+    "nameDetail_many": "{{name}} (mise à jour le {{date}}, {{count}} contacts)",
+    "nameDetail_other": "{{name}} (mise à jour le {{date}}, {{count}} contacts)",
     "form": {
       "editTitle": "Modifier {{name}}",
       "nameRequired": "Saisissez un nom.",
@@ -4706,6 +4741,11 @@
       "revokeTitle": "Révoquer ce partage ?",
       "revokeBody": "{{username}} perd l'accès à sa prochaine requête. Cela ne rappelle rien de ce que la personne a déjà vu ou copié. Pour partager à nouveau, vous devrez créer un nouveau partage.",
       "revoked": "{{label}} révoqué pour {{username}}.",
+      "remove": "Retirer",
+      "removeLabel": "Retirer le partage de {{label}} avec {{username}}",
+      "removeTitle": "Retirer ce partage ?",
+      "removeBody": "Ce partage est terminé. Le retirer le supprime définitivement de votre liste « Partagé par moi ». {{username}} n'est pas concerné.",
+      "removed": "Le partage de {{label}} avec {{username}} a été retiré.",
       "reconfirmNeeded": "Masqué pour {{username}} jusqu'à votre confirmation : {{sections}}. Un élément d'une section est devenu privé ou secret ; toute la section reste donc masquée tant que vous ne l'avez pas vérifiée.",
       "reconfirm": "Vérifier et reconfirmer",
       "reconfirmLabel": "Vérifier et reconfirmer {{label}} pour {{username}}",

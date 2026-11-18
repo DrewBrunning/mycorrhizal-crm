@@ -14,6 +14,7 @@ import com.mycorrhizal.crm.model.network.EntityFromContactsGroup
 import com.mycorrhizal.crm.model.network.EntityFromContactsInput
 import com.mycorrhizal.crm.model.network.EntityFromContactsResponse
 import com.mycorrhizal.crm.model.network.EntityInput
+import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeInput
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
 import com.mycorrhizal.crm.model.network.EntityRestoreResponse
@@ -239,5 +240,32 @@ class EntityRepositoryImplTest {
         coVerify(
             exactly = EntityRepositoryImpl.MAX_REFRESHED_CONTACTS
         ) { contacts.getContact(any()) }
+    }
+
+    @Test
+    fun `list asks for the alphabetical order and forwards the filters and cursor`() = runTest {
+        coEvery {
+            api.listEntities(
+                kind = "place",
+                q = "cab",
+                sensitivity = any(),
+                cursor = "c1",
+                limit = 25,
+                sortByName = true
+            )
+        } returns Result.success(EntityListResponse())
+
+        assertTrue(repository.list("place", "cab", "c1", 25).isSuccess)
+
+        coVerify(exactly = 1) {
+            api.listEntities(
+                kind = "place",
+                q = "cab",
+                sensitivity = any(),
+                cursor = "c1",
+                limit = 25,
+                sortByName = true
+            )
+        }
     }
 }

@@ -112,10 +112,10 @@ func faultCRUDScenarios() []faultScenario {
 			return faultReq{method: http.MethodDelete, path: v1 + "/preferences/" + r.preference}
 		}),
 		sc("POST /occasion-obligations", func(r seeded) faultReq {
-			return faultReq{http.MethodPost, v1 + "/occasion-obligations", map[string]any{"entity_id": r.contactUID, "kind": "card", "label": "xmas"}}
+			return faultReq{http.MethodPost, v1 + "/occasion-obligations", map[string]any{"entity_id": r.contactUID, "kind": "card", "label": "xmas", "anchor_month": 12, "anchor_day": 25}}
 		}),
 		sc("PUT /occasion-obligations/:id", func(r seeded) faultReq {
-			return faultReq{http.MethodPut, v1 + "/occasion-obligations/" + r.occasionObligation, map[string]any{"entity_id": r.contactUID, "kind": "card", "label": "edited"}}
+			return faultReq{http.MethodPut, v1 + "/occasion-obligations/" + r.occasionObligation, map[string]any{"entity_id": r.contactUID, "kind": "card", "label": "edited", "anchor_month": 12, "anchor_day": 25}}
 		}),
 		sc("DELETE /occasion-obligations/:id", func(r seeded) faultReq {
 			return faultReq{method: http.MethodDelete, path: v1 + "/occasion-obligations/" + r.occasionObligation}

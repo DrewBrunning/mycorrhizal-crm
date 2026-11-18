@@ -191,6 +191,12 @@
     <string name="contacts_search_notes_group">Notizen</string>
     <string name="contacts_search_activities_group">Interaktionen</string>
     <string name="contacts_search_entities_group">Organisationen, Orte &amp; Haustiere</string>
+    <string name="contacts_search_matched_on">Gefunden in: %1$s</string>
+    <string name="contacts_search_matched_field_name">Name</string>
+    <string name="contacts_search_matched_field_organization">Organisation</string>
+    <string name="contacts_search_matched_field_email">E-Mail</string>
+    <string name="contacts_search_matched_field_phone">Telefon</string>
+    <string name="contacts_search_matched_field_address">Adresse</string>
     <string name="contacts_search_unfiled">Nicht zugeordnet</string>
     <string name="contacts_search_resolved_relation">Übereinstimmende Beziehung: %1$s</string>
 
@@ -1122,6 +1128,8 @@
     <string name="reminder_overdue">Überfällig</string>
     <string name="reminder_flexible">Flexibel</string>
     <string name="date_field_pick_date">Datum auswählen</string>
+    <string name="date_field_type_date">Datum eingeben</string>
+    <string name="date_field_pick_from_calendar">Aus dem Kalender wählen</string>
     <string name="date_field_clear_date">Datum löschen</string>
     <string name="date_field_add_time">Uhrzeit hinzufügen</string>
     <string name="date_field_remove_time">Uhrzeit entfernen</string>
@@ -1554,6 +1562,7 @@
     <string name="shares_grant_block">Absender blockieren</string>
     <string name="shares_grant_unblock">Blockierung aufheben</string>
     <string name="shares_grant_revoke">Widerrufen</string>
+    <string name="shares_grant_remove">Entfernen</string>
     <string name="shares_grant_reconfirm">Prüfen und erneut bestätigen</string>
     <string name="shares_grant_edit">Bearbeiten</string>
     <string name="shares_grant_decline_message">%1$s von %2$s ablehnen? Die Person sieht, dass abgelehnt wurde.</string>
@@ -1563,6 +1572,8 @@
     <string name="shares_grant_leave_message">%1$s ist für dich nicht mehr sichtbar. Damit du es wieder siehst, muss %2$s es erneut mit dir teilen.</string>
     <string name="shares_grant_revoke_title">Diese Freigabe widerrufen?</string>
     <string name="shares_grant_revoke_message">%1$s verliert den Zugriff beim nächsten Laden. Was die Person bereits gesehen hat, lässt sich nicht zurückholen.</string>
+    <string name="shares_grant_remove_title">Diese Freigabe entfernen?</string>
+    <string name="shares_grant_remove_message">Die Freigabe für %1$s ist beendet. Wenn Sie sie entfernen, verschwindet sie aus dieser Liste.</string>
     <string name="shares_grant_reconfirm_title">Diese Bereiche erneut teilen?</string>
     <string name="shares_grant_reconfirm_message">Einige Einträge dieser Freigabe wurden als privat oder geheim markiert, daher werden diese Bereiche %1$s vorenthalten. Prüfen Sie ihren Inhalt, bevor Sie sie erneut teilen.</string>
     <string name="shares_grant_reconfirm_confirm">Erneut teilen</string>
@@ -2184,13 +2195,25 @@
     <!-- Import-Verlauf (Web-Parität, issue #651 / #834) -->
     <string name="import_history_entry">Importverlauf</string>
     <string name="import_history_title">Importverlauf</string>
+    <plurals name="import_history_created_count">
+        <item quantity="one">%1$d erstellt</item>
+        <item quantity="other">%1$d erstellt</item>
+    </plurals>
+    <plurals name="import_history_updated_count">
+        <item quantity="one">%1$d aktualisiert</item>
+        <item quantity="other">%1$d aktualisiert</item>
+    </plurals>
+    <plurals name="import_history_skipped_count">
+        <item quantity="one">%1$d übersprungen</item>
+        <item quantity="other">%1$d übersprungen</item>
+    </plurals>
+    <plurals name="import_history_error_count">
+        <item quantity="one">%1$d Fehler</item>
+        <item quantity="other">%1$d Fehler</item>
+    </plurals>
     <string name="import_history_view_report">Bericht ansehen</string>
     <string name="import_history_report_title">Importbericht</string>
     <string name="import_history_empty">Noch keine Importe</string>
-    <string name="import_history_col_created">Erstellt</string>
-    <string name="import_history_col_updated">Aktualisiert</string>
-    <string name="import_history_col_skipped">Übersprungen</string>
-    <string name="import_history_col_errors">Fehler</string>
     <string name="import_history_format_csv">CSV</string>
     <string name="import_history_format_vcf">VCF</string>
     <string name="import_history_format_jscontact">JSContact</string>
@@ -3379,7 +3402,9 @@
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>
     <string name="error_reason_integration_save_failed">%1$s</string>
-    <string name="error_reason_occasion_anchor_date_incomplete">Ein Ankerdatum für einen Anlass erfordert sowohl Monat als auch Tag oder keines von beiden</string>
+    <string name="error_reason_occasion_anchor_date_incomplete">Ein Ankerdatum für einen Anlass erfordert sowohl Monat als auch Tag</string>
+    <string name="error_reason_occasion_anchor_date_invalid">Diese Kombination aus Monat und Tag gibt es nicht, zum Beispiel den 30. Februar</string>
+    <string name="error_reason_occasion_anchor_date_required">Ein Anlass braucht einen Monat und einen Tag, damit er Sie erinnern kann</string>
     <string name="error_reason_occasion_days_invalid">days muss 30 oder 90 sein</string>
     <string name="error_reason_occasion_event_circles_required">circle_ids ist erforderlich</string>
     <string name="error_reason_occasion_event_end_before_start">Die Endzeit des Ereignisses darf nicht vor der Startzeit liegen</string>

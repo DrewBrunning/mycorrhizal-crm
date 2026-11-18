@@ -112,10 +112,13 @@ export default function EntitiesPage() {
                     [
                       coreSummary(e),
                       e.sensitivity !== 'normal' ? t(ENTITY_SENSITIVITY_KEYS[e.sensitivity]) : '',
-                      // The list rows carry no link count, so the created date is what tells
-                      // same-named entities apart (#2701).
-                      e.created_at
-                        ? t('entities.listAdded', { date: formatDate(e.created_at) })
+                      // The list rows carry link_count (distinct contacts) and updated_at
+                      // (#2743), which is what tells same-named entities apart (#2701).
+                      e.link_count !== undefined && e.updated_at
+                        ? t('entities.listDetail', {
+                            count: e.link_count,
+                            date: formatDate(e.updated_at),
+                          })
                         : '',
                     ]
                       .filter(Boolean)
@@ -151,6 +154,8 @@ export default function EntitiesPage() {
           open
           loserId={merging.b.id}
           survivorId={merging.a.id}
+          loserLinkCount={merging.b.link_count}
+          survivorLinkCount={merging.a.link_count}
           onClose={() => setMerging(null)}
           onMerged={() => {
             setResolved((prev) => new Set(prev).add(pairKey(merging)));

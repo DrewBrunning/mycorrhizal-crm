@@ -894,3 +894,63 @@ test('reset clears an error left by a failed fetch', async () => {
   act(() => result.current.reset());
   expect(result.current.error).toBeNull();
 });
+
+// #2727: a failed fetch can carry a reason code; the hook renders it through the
+// reason resolver and keeps the server's English only as the fallback.
+test('a failed phase with a reason code shows the translated message, not the English', async () => {
+  vi.useFakeTimers();
+  statusMock.mockResolvedValue(
+    st('failed', {
+      error: 'SERVER ENGLISH ... use the database upload',
+      error_reason_code: 'meerkat_fetch_unreachable',
+    }),
+  );
+  const { result } = mount();
+  await act(async () => {
+    await result.current.beginFetch('s1');
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(result.current.error).toBe('The Meerkat instance could not be reached');
+});
+
+test('reason params fill the translated message', async () => {
+  vi.useFakeTimers();
+  statusMock.mockResolvedValue(
+    st('failed', {
+      error: 'x',
+      error_reason_code: 'meerkat_remote_too_many_contacts',
+      error_reason_params: { total: 9000, max: 5000 },
+    }),
+  );
+  const { result } = mount();
+  await act(async () => {
+    await result.current.beginFetch('s1');
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(result.current.error).toBe(
+    'Contacts on this Meerkat account: 9000. The import supports at most 5000',
+  );
+});
+
+test('an unknown reason code or missing params fall back to the server message', async () => {
+  vi.useFakeTimers();
+  statusMock.mockResolvedValue(
+    st('failed', { error: 'plain failure', error_reason_code: 'some_future_code' }),
+  );
+  const first = mount();
+  await act(async () => {
+    await first.result.current.beginFetch('s1');
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(first.result.current.error).toBe('plain failure');
+
+  statusMock.mockResolvedValue(
+    st('failed', { error: 'needs params', error_reason_code: 'meerkat_remote_too_many_contacts' }),
+  );
+  const second = mount();
+  await act(async () => {
+    await second.result.current.beginFetch('s1');
+    await vi.advanceTimersByTimeAsync(0);
+  });
+  expect(second.result.current.error).toBe('needs params');
+});

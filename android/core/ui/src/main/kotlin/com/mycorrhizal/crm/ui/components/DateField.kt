@@ -3,25 +3,28 @@ package com.mycorrhizal.crm.ui.components
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -31,16 +34,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.util.DateFieldInput
 import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFieldState
 import com.mycorrhizal.crm.model.util.DateFieldValue
+import com.mycorrhizal.crm.model.util.DateFormat
+import com.mycorrhizal.crm.model.util.DatePickerLocale
 import com.mycorrhizal.crm.model.util.TypedDate
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.LocalIs24Hour
@@ -64,7 +71,9 @@ private enum class DateTypingError { INVALID, OUT_OF_RANGE }
  * is reported as soon as it is typed; an invalid or out-of-range entry shows an
  * inline error on Done / focus loss, keeps its text and leaves the value
  * untouched. The Material3 [DatePickerDialog] is an add-on, opened from the
- * trailing calendar icon; a picker choice replaces any half-typed text.
+ * trailing calendar icon; a picker choice replaces any half-typed text. The dialog's header
+ * shows the chosen day in the same format, it has its own typed-entry toggle (same format and
+ * parsing), and its week starts per [DatePickerLocale] (device setting, else the format).
  *
  * [mode] decides the wire shape and whether the flow offers a time:
  *  - [DateFieldMode.DATE_ONLY] / [DateFieldMode.DATE_UTC_MIDNIGHT]:
@@ -239,6 +248,7 @@ fun DateField(
     if (showPicker) {
         DateFieldPickerDialog(
             value = value,
+            label = label,
             mode = mode,
             selectableFrom = selectableFrom,
             onConfirm = {
@@ -317,6 +327,7 @@ private fun DateFieldActions(
 @Composable
 private fun DateFieldPickerDialog(
     value: String?,
+    label: String,
     mode: DateFieldMode,
     selectableFrom: LocalDate?,
     onConfirm: (String) -> Unit,
@@ -329,23 +340,50 @@ private fun DateFieldPickerDialog(
     val today = LocalDate.now()
     val initialDate = initial.date ?: selectableFrom?.let { maxOf(today, it) } ?: today
     val initialMillis = initialDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-    val dateState = rememberDatePickerState(
-        initialSelectedDateMillis = initialMillis,
-        selectableDates = if (selectableFrom == null) {
-            object : SelectableDates {}
-        } else {
-            // The loaded date stays selectable (an overdue reminder being
-            // edited), but a newly picked day must not be before the floor.
-            object : SelectableDates {
-                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
-                    if (utcTimeMillis == initialMillis) return true
-                    return Instant.ofEpochMilli(
-                        utcTimeMillis
-                    ).atZone(ZoneOffset.UTC).toLocalDate() >= selectableFrom
-                }
+    val dateFormat = LocalDateFormat.current
+    val deviceLocale = LocalConfiguration.current.locales[0]
+    // Issue #2654: the week starts where the device (else the user's date format) says.
+    val pickerLocale = remember(deviceLocale, dateFormat) {
+        DatePickerLocale.resolve(deviceLocale, dateFormat)
+    }
+    val selectableDates = if (selectableFrom == null) {
+        object : SelectableDates {}
+    } else {
+        // The loaded date stays selectable (an overdue reminder being
+        // edited), but a newly picked day must not be before the floor.
+        object : SelectableDates {
+            override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                if (utcTimeMillis == initialMillis) return true
+                return Instant.ofEpochMilli(
+                    utcTimeMillis
+                ).atZone(ZoneOffset.UTC).toLocalDate() >= selectableFrom
             }
         }
-    )
+    }
+    val dateState = remember {
+        DatePickerState(
+            locale = pickerLocale,
+            initialSelectedDateMillis = initialMillis,
+            selectableDates = selectableDates
+        )
+    }
+    // Typed entry (issue #2654): the same user-format text parsing as the field itself; the
+    // calendar stays the default view.
+    var typing by remember { mutableStateOf(false) }
+    var typedText by remember { mutableStateOf("") }
+    val selectedDate = dateState.selectedDateMillis?.let {
+        Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate()
+    }
+    val typed = if (typing) {
+        DateFieldInput.parse(
+            text = typedText,
+            dateFormat = dateFormat,
+            notBefore = selectableFrom,
+            alwaysAllowed = initial.date.takeIf { !initial.yearUnknown }
+        )
+    } else {
+        null
+    }
     val is24Hour = LocalIs24Hour.current
     var time by remember { mutableStateOf(initial.time) }
     var yearUnknown by remember { mutableStateOf(initial.yearUnknown) }
@@ -356,6 +394,7 @@ private fun DateFieldPickerDialog(
         confirmButton = {
             TextButton(
                 modifier = Modifier.testTag("date-picker-confirm"),
+                enabled = typed == null || typed is TypedDate.Day,
                 onClick = {
                     val millis = dateState.selectedDateMillis ?: initialMillis
                     // An untouched year-only legacy value stays year-only rather
@@ -405,9 +444,54 @@ private fun DateFieldPickerDialog(
         }
     ) {
         Column {
-            // Typed entry lives in the field itself (in the user's date format);
-            // Material3's own input mode would use the system-locale pattern.
-            DatePicker(state = dateState, showModeToggle = false)
+            DatePickerHeader(
+                headline = selectedDate?.let {
+                    DateFormat.formatFull(it.year, it.monthValue, it.dayOfMonth, dateFormat)
+                } ?: DateFieldInput.pattern(dateFormat),
+                typing = typing,
+                onToggle = {
+                    if (!typing) {
+                        typedText = selectedDate?.let {
+                            DateFieldInput.editText(
+                                it,
+                                yearUnknown = false,
+                                dateFormat = dateFormat
+                            )
+                        }.orEmpty()
+                    }
+                    typing = !typing
+                }
+            )
+            if (typing) {
+                DatePickerTypedInput(
+                    text = typedText,
+                    label = label,
+                    dateFormat = dateFormat,
+                    typed = typed,
+                    onTextChange = { text ->
+                        typedText = text
+                        val day = DateFieldInput.parse(
+                            text = text,
+                            dateFormat = dateFormat,
+                            notBefore = selectableFrom,
+                            alwaysAllowed = initial.date.takeIf { !initial.yearUnknown }
+                        )
+                        if (day is TypedDate.Day) {
+                            val millis = day.date.atStartOfDay(ZoneOffset.UTC).toInstant()
+                                .toEpochMilli()
+                            dateState.selectedDateMillis = millis
+                            dateState.displayedMonthMillis = millis
+                        }
+                    }
+                )
+            } else {
+                DatePicker(
+                    state = dateState,
+                    title = null,
+                    headline = null,
+                    showModeToggle = false
+                )
+            }
             if (mode == DateFieldMode.PARTIAL) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -442,6 +526,67 @@ private fun DateFieldPickerDialog(
             onDismiss = { showTimePicker = false }
         )
     }
+}
+
+/** The dialog's header: the selected day in the user's date format and the typed/calendar toggle. */
+@Composable
+private fun DatePickerHeader(headline: String, typing: Boolean, onToggle: () -> Unit) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 12.dp, top = 16.dp)
+    ) {
+        Text(
+            text = headline,
+            style = MaterialTheme.typography.headlineMedium,
+            modifier = Modifier.weight(1f)
+        )
+        IconButton(onClick = onToggle, modifier = Modifier.testTag("date-picker-mode-toggle")) {
+            Icon(
+                imageVector = if (typing) Icons.Outlined.CalendarToday else Icons.Outlined.Edit,
+                contentDescription = stringResource(
+                    if (typing) {
+                        R.string.date_field_pick_from_calendar
+                    } else {
+                        R.string.date_field_type_date
+                    }
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun DatePickerTypedInput(
+    text: String,
+    label: String,
+    dateFormat: String,
+    typed: TypedDate?,
+    onTextChange: (String) -> Unit
+) {
+    val problem = when (typed) {
+        TypedDate.Invalid -> stringResource(
+            R.string.date_field_error_invalid,
+            DateFieldInput.pattern(dateFormat)
+        )
+
+        TypedDate.OutOfRange -> stringResource(R.string.date_field_error_range)
+
+        else -> null
+    }
+    OutlinedTextField(
+        value = text,
+        onValueChange = onTextChange,
+        label = { Text(label) },
+        placeholder = { Text(DateFieldInput.pattern(dateFormat)) },
+        isError = problem != null,
+        supportingText = problem?.let { message -> { Text(message) } },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = dateKeyboardType(dateFormat)),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp, vertical = 16.dp)
+            .testTag("date-picker-typed-input")
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -3,10 +3,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   dismissEntitySuggestion,
-  type Entity,
   type EntityKind,
   type EntitySuggestionPair,
-  getEntity,
   listEntitySuggestions,
 } from '../api/entities';
 import { useSnackbar } from '../context/SnackbarContext';
@@ -39,40 +37,15 @@ export default function EntitySuggestionsPanel({
   const [scannedKind, setScannedKind] = useState<EntityKind | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  // Created date + link count of entities in same-named pairs (#2701), by id.
-  const [details, setDetails] = useState<Record<string, Entity>>({});
-
-  // A same-named pair reads "X and X"; fetch each side's detail so the text can
-  // say which is which. A failed lookup just leaves the plain names.
-  const loadDetails = async (found: EntitySuggestionPair[]) => {
-    const ids = found
-      .filter((p) => sameEntityName(p.a.name, p.b.name))
-      .flatMap((p) => [p.a.id, p.b.id]);
-    const entries = await Promise.all(
-      [...new Set(ids)].map(async (id) => {
-        try {
-          return await getEntity(id);
-        } catch {
-          return null;
-        }
-      }),
-    );
-    setDetails((prev) => {
-      const next = { ...prev };
-      for (const e of entries) if (e) next[e.id] = e;
-      return next;
-    });
-  };
-
+  // A same-named pair reads "X and X"; each side's updated date and distinct
+  // linked-contact count come with the pair (#2743), so the text can say which is which.
   const pairText = (p: EntitySuggestionPair) => {
-    const a = details[p.a.id];
-    const b = details[p.b.id];
-    if (!sameEntityName(p.a.name, p.b.name) || !a || !b) {
+    if (!sameEntityName(p.a.name, p.b.name)) {
       return t('entities.suggestions.pair', { a: p.a.name, b: p.b.name });
     }
     return t('entities.suggestions.pair', {
-      a: nameWithDetail(t, formatDate, a),
-      b: nameWithDetail(t, formatDate, b),
+      a: nameWithDetail(t, formatDate, p.a),
+      b: nameWithDetail(t, formatDate, p.b),
     });
   };
 
@@ -83,7 +56,6 @@ export default function EntitySuggestionsPanel({
       const res = await listEntitySuggestions({ kind, mode: 'pairs' });
       setPairs(res.pairs);
       setScannedKind(kind);
-      void loadDetails(res.pairs);
     } catch (err) {
       setError(getErrorMessage(err) || t('entities.suggestions.failed'));
     } finally {

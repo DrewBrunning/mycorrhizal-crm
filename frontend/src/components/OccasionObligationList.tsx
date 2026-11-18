@@ -69,6 +69,9 @@ export default function OccasionObligationList({
                 )}
                 {o.lead_time_days > 0 && (
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                    {/* Issue #2681: "December 25 14 days lead time" ran together;
+                        the dot separates the date from the lead time. */}
+                    {anchorLabel(o) && <span aria-hidden="true">{'· '}</span>}
                     {t('occasions.obligation.leadTimeDisplay', { count: o.lead_time_days })}
                   </Typography>
                 )}

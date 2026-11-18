@@ -27,6 +27,14 @@
     }
   },
   "globalSearch": {
+    "matchedOn": "Treffer in: {{fields}}",
+    "matchedField": {
+      "name": "Name",
+      "organization": "Organisation",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "address": "Adresse"
+    },
     "placeholder": "Kontakte, Notizen, Aktivitäten, Orte suchen…",
     "label": "Alles durchsuchen",
     "open": "Suchen",
@@ -212,6 +220,7 @@
     "noContacts": "Keine Kontakte verfügbar",
     "noReminders": "Keine anstehenden Erinnerungen",
     "yearsOld": "({{age}} Jahre alt)",
+    "turnsAge": "(wird {{age}})",
     "birthdaysInfo": "Zeigt Geburtstage für mindestens die nächsten zwei Wochen.",
     "remindersInfo": "Zeigt mindestens alle Erinnerungen, die bis einschließlich heute fällig sind. Erinnerungen bleiben sichtbar, bis sie als erledigt markiert werden.",
     "stayInTouchInfo": "Zeigt fünf zufällige Kontakte, um in Verbindung zu bleiben. Die Liste wird bei jedem Neuladen der Seite aktualisiert.",
@@ -523,12 +532,29 @@
         "colStatus": "Ergebnis",
         "colReason": "Grund",
         "statusFailed": "Fehlgeschlagen",
-        "statusSkipped": "Übersprungen"
+        "statusSkipped": "Übersprungen",
+        "statusWarning": "Warnung",
+        "warningsTitle": "Mit Warnungen importiert",
+        "mixedTitle": "Zeilen zur Überprüfung",
+        "filterLabel": "Anzeigen",
+        "filterNotImported_one": "Nicht importiert ({{count}})",
+        "filterNotImported_other": "Nicht importiert ({{count}})",
+        "filterAll_one": "Alle ({{count}})",
+        "filterAll_other": "Alle ({{count}})",
+        "filterWarnings_one": "Warnung ({{count}})",
+        "filterWarnings_other": "Warnungen ({{count}})"
       },
       "errors": {
         "invalidFile": "Bitte wählen Sie eine gültige CSV-Datei",
         "fileTooLarge": "Datei ist zu groß. Maximale Größe ist {{size}}MB",
         "noMappings": "Bitte ordnen Sie mindestens eine Spalte zu"
+      },
+      "warning": {
+        "anniversary": "Jahrestag nicht importiert: ungültiger Wert",
+        "birthday": "Geburtstag nicht importiert: ungültiger Wert"
+      },
+      "fileDiagnostic": {
+        "encoding": "Diese Datei ist nicht UTF-8-codiert und wurde als Windows-1252 gelesen. Prüfen Sie vor dem Import, ob Umlaute und Akzente richtig angezeigt werden."
       }
     },
     "urls": "Webseiten",
@@ -1841,8 +1867,8 @@
           "colFormat": "Format",
           "colCreated": "Erstellt",
           "colUpdated": "Aktualisiert",
-          "colSkipped": "Übersprungen",
-          "colErrors": "Fehler",
+          "colSkipped": "Bei der Prüfung übersprungen",
+          "colErrors": "Beim Import fehlgeschlagen",
           "colReport": "Bericht",
           "viewReport": "Bericht ansehen",
           "reportTitle": "Importbericht",
@@ -2069,7 +2095,8 @@
         "foundNotes_one": "{{count}} Notiz",
         "foundNotes_other": "{{count}} Notizen",
         "estimate": "Das vollständige Abrufen dauert etwa {{minutes}} Min.",
-        "start": "Import starten"
+        "start": "Import starten",
+        "unreachable": "Monica unter {{host}} ist nicht erreichbar"
       }
     },
     "meerkatImport": {
@@ -2089,7 +2116,8 @@
         "pickUser": "Diese Datenbank hat mehrere Benutzer — wähle, wessen Kontakte importiert werden:",
         "userOption_one": "{{name}} — {{count}} Kontakt",
         "userOption_other": "{{name}} — {{count}} Kontakte",
-        "start": "Import starten"
+        "start": "Import starten",
+        "fetchFailedHint": "Wenn Meerkat weiterhin nicht erreichbar ist, wählen Sie „Datei hochladen“ und importieren Sie stattdessen eine Kopie der Datenbank."
       },
       "mode": {
         "label": "So importieren Sie aus Meerkat",
@@ -3802,7 +3830,7 @@
       "meerkat_version_untested": "Diese Meerkat-Version ist mit dem Importer nicht getestet. Bestätige, um es trotzdem zu versuchen; es wird nichts geschrieben, bis du die Vorschau prüfst.",
       "common_database_error": "Beim Speichern oder Laden Ihrer Daten ist ein Fehler aufgetreten",
       "common_database_busy": "Der Server ist ausgelastet. Versuchen Sie es gleich noch einmal",
-      "auth_invalid_credentials": "Ungültige E-Mail-Adresse oder ungültiges Passwort",
+      "auth_invalid_credentials": "Ungültiger Benutzername, ungültige E-Mail-Adresse oder ungültiges Passwort",
       "auth_token_expired": "Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an",
       "auth_token_invalid": "Ihre Sitzung ist nicht mehr gültig. Melden Sie sich erneut an",
       "common_client_not_supported": "Diese App-Version wird nicht mehr unterstützt. Aktualisieren Sie auf {{required_version}} oder neuer",
@@ -4146,7 +4174,9 @@
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
       "integration_save_failed": "{{reason}}",
-      "occasion_anchor_date_incomplete": "Ein Ankerdatum für einen Anlass erfordert sowohl Monat als auch Tag oder keines von beiden",
+      "occasion_anchor_date_incomplete": "Ein Ankerdatum für einen Anlass erfordert sowohl Monat als auch Tag",
+      "occasion_anchor_date_invalid": "Diese Kombination aus Monat und Tag gibt es nicht, zum Beispiel den 30. Februar",
+      "occasion_anchor_date_required": "Ein Anlass braucht einen Monat und einen Tag, damit er Sie erinnern kann",
       "occasion_days_invalid": "days muss 30 oder 90 sein",
       "occasion_event_circles_required": "circle_ids ist erforderlich",
       "occasion_event_end_before_start": "Die Endzeit des Ereignisses darf nicht vor der Startzeit liegen",
@@ -4306,10 +4336,11 @@
       "death": "Tod",
       "dateHint": "JJJJ, JJJJ-MM oder JJJJ-MM-TT"
     },
-    "listAdded": "Hinzugefügt am {{date}}",
-    "nameAdded": "{{name}} (hinzugefügt am {{date}})",
-    "nameDetail_one": "{{name}} (hinzugefügt am {{date}}, {{count}} Kontakt)",
-    "nameDetail_other": "{{name}} (hinzugefügt am {{date}}, {{count}} Kontakte)",
+    "listDetail_one": "{{count}} Kontakt · aktualisiert am {{date}}",
+    "listDetail_other": "{{count}} Kontakte · aktualisiert am {{date}}",
+    "nameUpdated": "{{name}} (aktualisiert am {{date}})",
+    "nameDetail_one": "{{name}} (aktualisiert am {{date}}, {{count}} Kontakt)",
+    "nameDetail_other": "{{name}} (aktualisiert am {{date}}, {{count}} Kontakte)",
     "form": {
       "editTitle": "{{name}} bearbeiten",
       "nameRequired": "Gib einen Namen ein.",
@@ -4579,6 +4610,11 @@
       "revokeTitle": "Diese Freigabe widerrufen?",
       "revokeBody": "{{username}} verliert den Zugriff bei der nächsten Anfrage. Dies holt nichts zurück, was die Person bereits gesehen oder kopiert hat. Um erneut zu teilen, musst du eine neue Freigabe erstellen.",
       "revoked": "{{label}} für {{username}} widerrufen.",
+      "remove": "Entfernen",
+      "removeLabel": "Freigabe von {{label}} an {{username}} entfernen",
+      "removeTitle": "Diese Freigabe entfernen?",
+      "removeBody": "Diese Freigabe ist beendet. Wenn Sie sie entfernen, verschwindet sie dauerhaft aus Ihrer Liste „Von mir geteilt“. {{username}} ist davon nicht betroffen.",
+      "removed": "Die Freigabe von {{label}} an {{username}} wurde entfernt.",
       "reconfirmNeeded": "Für {{username}} ausgeblendet, bis du bestätigst: {{sections}}. Ein Eintrag in einem Bereich wurde privat oder geheim, daher bleibt der ganze Bereich verborgen, bis du ihn geprüft hast.",
       "reconfirm": "Prüfen und erneut bestätigen",
       "reconfirmLabel": "Prüfen und erneut bestätigen: {{label}} für {{username}}",

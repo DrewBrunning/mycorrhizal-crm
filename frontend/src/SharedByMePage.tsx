@@ -15,7 +15,9 @@ import {
 import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ApiError } from './api/client';
 import {
+  deleteShareGrant,
   listOutgoingShareGrants,
   reconfirmShareGrant,
   revokeShareGrant,
@@ -26,12 +28,13 @@ import LoadError from './components/LoadError';
 import PageHeader from './components/PageHeader';
 import ShareConfirmDialog from './components/ShareConfirmDialog';
 import { useAnnouncer } from './context/AnnouncerContext';
+import { usePendingShares } from './context/PendingSharesContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useShareGrantList } from './hooks/useShareGrantList';
 import { getErrorMessage } from './utils/errorHandler';
 
-type Confirm = { kind: 'revoke' | 'reconfirm'; grant: ShareGrantOwnerView };
+type Confirm = { kind: 'revoke' | 'reconfirm' | 'remove'; grant: ShareGrantOwnerView };
 
 const isLive = (g: ShareGrantOwnerView) => g.status === 'pending' || g.status === 'active';
 
@@ -49,7 +52,8 @@ export default function SharedByMePage() {
   useDocumentTitle(t('standingShares.byMe.title'));
   const { announce } = useAnnouncer();
   const { formatDate } = useDateFormat();
-  const { items, nextCursor, loading, error, refresh, loadMore, replace } =
+  const { refreshPendingShares } = usePendingShares();
+  const { items, nextCursor, loading, error, refresh, loadMore, replace, remove } =
     useShareGrantList<ShareGrantOwnerView>(listOutgoingShareGrants);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
@@ -62,6 +66,21 @@ export default function SharedByMePage() {
 
   const params = (g: ShareGrantOwnerView) => ({ label: g.label, username: g.to_username });
 
+  // Remove (#2742): a 404 means the grant is already gone (removed elsewhere), so it
+  // counts as done. Either way the row leaves the list and the list and the
+  // pending badge are re-read.
+  const dismissGrant = async (grant: ShareGrantOwnerView) => {
+    try {
+      await deleteShareGrant(grant.id);
+    } catch (err) {
+      if (!(err instanceof ApiError && err.status === 404)) throw err;
+    }
+    remove(grant.id);
+    announce(t('standingShares.byMe.removed', params(grant)));
+    refreshPendingShares();
+    void refresh();
+  };
+
   const handleConfirm = async () => {
     if (!confirm) return;
     const { kind, grant } = confirm;
@@ -72,6 +91,8 @@ export default function SharedByMePage() {
       if (kind === 'revoke') {
         replace(await revokeShareGrant(grant.id));
         announce(t('standingShares.byMe.revoked', params(grant)));
+      } else if (kind === 'remove') {
+        await dismissGrant(grant);
       } else {
         replace(await reconfirmShareGrant(grant.id));
         announce(t('standingShares.byMe.reconfirmed', params(grant)));
@@ -150,6 +171,19 @@ export default function SharedByMePage() {
             })}
           </Alert>
         )}
+        {!live && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+            <Button
+              size="small"
+              color="error"
+              disabled={busy}
+              aria-label={t('standingShares.byMe.removeLabel', p)}
+              onClick={() => setConfirm({ kind: 'remove', grant: g })}
+            >
+              {t('standingShares.byMe.remove')}
+            </Button>
+          </Box>
+        )}
         {live && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
             {g.reconfirm_sections.length > 0 && (
@@ -190,6 +224,7 @@ export default function SharedByMePage() {
   const endedItems = items.filter((g) => !isLive(g));
   const empty = !loading && !error && items.length === 0;
   const reconfirm = confirm?.kind === 'reconfirm';
+  const removing = confirm?.kind === 'remove';
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: 2, pb: 2 }}>
@@ -242,22 +277,32 @@ export default function SharedByMePage() {
       <ShareConfirmDialog
         open={confirm !== null}
         title={
-          reconfirm ? t('standingShares.byMe.reconfirmTitle') : t('standingShares.byMe.revokeTitle')
+          removing
+            ? t('standingShares.byMe.removeTitle')
+            : reconfirm
+              ? t('standingShares.byMe.reconfirmTitle')
+              : t('standingShares.byMe.revokeTitle')
         }
         body={
           confirm
-            ? reconfirm
-              ? t('standingShares.byMe.reconfirmBody', {
-                  username: confirm.grant.to_username,
-                  sections: confirm.grant.reconfirm_sections
-                    .map((s) => sectionLabel(t, s))
-                    .join(', '),
-                })
-              : t('standingShares.byMe.revokeBody', { username: confirm.grant.to_username })
+            ? removing
+              ? t('standingShares.byMe.removeBody', params(confirm.grant))
+              : reconfirm
+                ? t('standingShares.byMe.reconfirmBody', {
+                    username: confirm.grant.to_username,
+                    sections: confirm.grant.reconfirm_sections
+                      .map((s) => sectionLabel(t, s))
+                      .join(', '),
+                  })
+                : t('standingShares.byMe.revokeBody', { username: confirm.grant.to_username })
             : ''
         }
         confirmLabel={
-          reconfirm ? t('standingShares.byMe.reconfirmConfirm') : t('standingShares.byMe.revoke')
+          removing
+            ? t('standingShares.byMe.remove')
+            : reconfirm
+              ? t('standingShares.byMe.reconfirmConfirm')
+              : t('standingShares.byMe.revoke')
         }
         onConfirm={() => void handleConfirm()}
         onCancel={() => setConfirm(null)}

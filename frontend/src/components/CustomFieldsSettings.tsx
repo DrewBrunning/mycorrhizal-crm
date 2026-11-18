@@ -143,44 +143,20 @@ export default function CustomFieldsSettings() {
                     {definitions.map((def, index) => (
                       <ListItem
                         key={def.id}
-                        sx={{ px: 0 }}
-                        secondaryAction={
-                          <>
-                            <IconButton
-                              size="small"
-                              onClick={() => void handleMove(def.id, -1)}
-                              disabled={index === 0}
-                              aria-label={t('settings.customFields.moveUp', { name: def.label })}
-                            >
-                              <ArrowUpwardIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => void handleMove(def.id, 1)}
-                              disabled={index === definitions.length - 1}
-                              aria-label={t('settings.customFields.moveDown', { name: def.label })}
-                            >
-                              <ArrowDownwardIcon fontSize="small" />
-                            </IconButton>
-                            <Button
-                              size="small"
-                              startIcon={<EditIcon fontSize="small" />}
-                              onClick={() => openEdit(def)}
-                            >
-                              {t('common.edit')}
-                            </Button>
-                            <Button
-                              size="small"
-                              color="error"
-                              startIcon={<DeleteIcon fontSize="small" />}
-                              onClick={() => setDeleteTarget(def)}
-                            >
-                              {t('common.delete')}
-                            </Button>
-                          </>
-                        }
+                        // Issue #2677: a flex row, not MUI's absolutely
+                        // positioned secondaryAction, which drew the actions on
+                        // top of the chips when the row was narrow. Below `sm`
+                        // the actions drop to their own right-aligned line.
+                        sx={{
+                          px: 0,
+                          display: 'flex',
+                          flexDirection: { xs: 'column', sm: 'row' },
+                          alignItems: { xs: 'stretch', sm: 'center' },
+                          gap: 0.5,
+                        }}
                       >
                         <ListItemText
+                          sx={{ flex: 1, minWidth: 0, m: 0 }}
                           primary={def.label}
                           secondary={
                             <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mt: 0.5 }}>
@@ -221,6 +197,46 @@ export default function CustomFieldsSettings() {
                             </Box>
                           }
                         />
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            justifyContent: 'flex-end',
+                            flexShrink: 0,
+                          }}
+                        >
+                          <IconButton
+                            size="small"
+                            onClick={() => void handleMove(def.id, -1)}
+                            disabled={index === 0}
+                            aria-label={t('settings.customFields.moveUp', { name: def.label })}
+                          >
+                            <ArrowUpwardIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            size="small"
+                            onClick={() => void handleMove(def.id, 1)}
+                            disabled={index === definitions.length - 1}
+                            aria-label={t('settings.customFields.moveDown', { name: def.label })}
+                          >
+                            <ArrowDownwardIcon fontSize="small" />
+                          </IconButton>
+                          <Button
+                            size="small"
+                            startIcon={<EditIcon fontSize="small" />}
+                            onClick={() => openEdit(def)}
+                          >
+                            {t('common.edit')}
+                          </Button>
+                          <Button
+                            size="small"
+                            color="error"
+                            startIcon={<DeleteIcon fontSize="small" />}
+                            onClick={() => setDeleteTarget(def)}
+                          >
+                            {t('common.delete')}
+                          </Button>
+                        </Box>
                       </ListItem>
                     ))}
                   </List>

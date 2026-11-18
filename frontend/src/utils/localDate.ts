@@ -80,3 +80,23 @@ export function isBeforeLocalToday(value: string, now: Date = new Date()): boole
   midnight.setHours(0, 0, 0, 0);
   return new Date(value) < midnight;
 }
+
+/**
+ * Whole calendar days from the viewer's local today to a calendar-day value,
+ * never negative. The server's "days until" counts from the operator's
+ * REMINDER_TIMEZONE (ADR 0015 Rule 4), so near midnight it can disagree with
+ * the date shown beside it for a viewer in another zone (issue #2679); label
+ * "Today" / "in N days" from this instead, as the Android client does. A date
+ * already past on this device clamps to 0. Compares calendar digits through
+ * UTC arithmetic, so a 23- or 25-hour daylight-saving day cannot shift it.
+ */
+export function localDaysUntil(value: string, now: Date = new Date()): number {
+  const day = calendarDateOnly(value).slice(0, 10);
+  if (!DATE_PREFIX.test(day)) return 0;
+  const parse = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  const diff = Math.round((parse(day) - parse(todayLocalISODate(now))) / 86_400_000);
+  return Math.max(0, diff);
+}

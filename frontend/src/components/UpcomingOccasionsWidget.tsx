@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import type { UpcomingOccasion } from '../api/occasionObligations';
+import { localDaysUntil } from '../utils/localDate';
 
 interface UpcomingOccasionsWidgetProps {
   occasions: UpcomingOccasion[];
@@ -91,13 +92,13 @@ export default function UpcomingOccasionsWidget({
               sx={{
                 textDecoration: 'none',
                 border: '1px solid',
-                borderColor: o.days_until === 0 ? 'success.main' : 'divider',
+                borderColor: localDaysUntil(o.date) === 0 ? 'success.main' : 'divider',
                 '&:hover': { boxShadow: 2, transform: 'translateY(-1px)', transition: 'all 0.2s' },
               }}
             >
               <CardContent sx={{ py: 1.5 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                  <Box sx={{ flexGrow: 1 }}>
+                  <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
                       <Chip
                         size="small"
@@ -112,14 +113,19 @@ export default function UpcomingOccasionsWidget({
                         />
                       )}
                     </Box>
-                    <Typography variant="body2" sx={{ fontWeight: 500, mt: 0.25 }}>
+                    <Typography
+                      variant="body2"
+                      noWrap
+                      title={`${o.contact_name}${o.source !== 'birthday' && o.source !== 'anniversary' ? ` — ${o.label}` : ''}`}
+                      sx={{ fontWeight: 500, mt: 0.25 }}
+                    >
                       {o.contact_name}
                       {o.source !== 'birthday' && o.source !== 'anniversary' ? ` — ${o.label}` : ''}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {o.days_until === 0
+                      {localDaysUntil(o.date) === 0
                         ? t('occasions.widget.today')
-                        : t('occasions.widget.inDays', { count: o.days_until })}
+                        : t('occasions.widget.inDays', { count: localDaysUntil(o.date) })}
                     </Typography>
                   </Box>
                 </Box>

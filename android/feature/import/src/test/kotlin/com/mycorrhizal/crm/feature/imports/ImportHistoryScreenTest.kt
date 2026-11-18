@@ -139,10 +139,34 @@ class ImportHistoryScreenTest {
 
         setScreen(apiClient)
 
-        composeTestRule.onNodeWithText("Created: 3").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Updated: 1").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Skipped: 2").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Errors: 1").assertIsDisplayed()
+        // #2626: counts read as a sentence with real plurals, not "Skipped: 2 · Errors: 0" labels.
+        composeTestRule.onNodeWithText("3 created, 1 updated, 2 skipped, 1 error")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `zero errors and several errors use the plural form`() {
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.getImportHistory() } returns Result.success(
+            listOf(
+                ImportRun(id = 1, format = "vcf", created = 1, updated = 0, skipped = 2),
+                ImportRun(
+                    id = 2,
+                    format = "csv",
+                    created = 0,
+                    updated = 0,
+                    skipped = 0,
+                    errorCount = 5
+                )
+            )
+        )
+
+        setScreen(apiClient)
+
+        composeTestRule.onNodeWithText("1 created, 0 updated, 2 skipped, 0 errors")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("0 created, 0 updated, 0 skipped, 5 errors")
+            .assertIsDisplayed()
     }
 
     @Test
