@@ -9,10 +9,10 @@
       "branchesTotal": 88
     },
     "src/App.tsx": {
-      "lines": 88.54,
-      "linesTotal": 96,
-      "branches": 88,
-      "branchesTotal": 50
+      "lines": 92,
+      "linesTotal": 100,
+      "branches": 94.73,
+      "branchesTotal": 57
     },
     "src/AppThemeProvider.tsx": {
       "lines": 87.5,
@@ -159,10 +159,10 @@
       "branchesTotal": 10
     },
     "src/SharedByMePage.tsx": {
-      "lines": 95.31,
-      "linesTotal": 64,
-      "branches": 98.33,
-      "branchesTotal": 60
+      "lines": 96.1,
+      "linesTotal": 77,
+      "branches": 98.64,
+      "branchesTotal": 74
     },
     "src/SharedWithMePage.tsx": {
       "lines": 98.83,
@@ -586,9 +586,9 @@
     },
     "src/api/shareGrants.ts": {
       "lines": 100,
-      "linesTotal": 42,
-      "branches": 85.71,
-      "branchesTotal": 35
+      "linesTotal": 44,
+      "branches": 86.48,
+      "branchesTotal": 37
     },
     "src/api/sourceImport.ts": {
       "lines": 100,
@@ -1161,10 +1161,10 @@
       "branchesTotal": 54
     },
     "src/components/GlobalSearch.tsx": {
-      "lines": 98.64,
-      "linesTotal": 74,
-      "branches": 86.27,
-      "branchesTotal": 51
+      "lines": 98.86,
+      "linesTotal": 88,
+      "branches": 89.28,
+      "branchesTotal": 56
     },
     "src/components/HouseholdDialog.tsx": {
       "lines": 96.77,
