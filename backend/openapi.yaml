@@ -8701,7 +8701,7 @@ paths:
       tags:
         - Entities
       description: |
-        The caller's live entities, newest-updated first, cursor-paginated. This is the owner's own
+        The caller's live entities, newest-updated first (or by name with `sort=name`), cursor-paginated. This is the owner's own
         surface, so every sensitivity is returned; `sensitivity` is a plain filter, not an access gate.
         Each item carries `updated_at` and (issue #2743) `link_count`, the number of distinct live
         contacts linked to it, computed with one grouped query for the whole page.
@@ -8716,6 +8716,19 @@ paths:
         - name: sensitivity
           in: query
           schema: { type: string, enum: [normal, private, secret] }
+        - name: sort
+          in: query
+          description: >
+            Cursor order for the list (issue #2744). updated_at (default) is
+            last-modified first under order=desc. name orders by the entity's
+            case-folded name (the normalized name key, ADR 0043 decision 9; no
+            diacritic folding) with an id tiebreak, resume cursors taking
+            their own shape and not interchangeable with updated_at cursors
+            (a cursor from the other sort is a 400). order keeps its default
+            (desc) under either sort, so a client wanting A to Z sends
+            order=asc. An unrecognized value is a 400 (reason
+            validation_sort_invalid).
+          schema: { type: string, enum: [updated_at, name], default: updated_at }
         - name: cursor
           in: query
           description: Opaque resume token from the previous page's next_cursor.

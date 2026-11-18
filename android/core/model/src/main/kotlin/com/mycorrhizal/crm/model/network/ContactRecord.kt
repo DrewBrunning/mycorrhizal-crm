@@ -30,7 +30,12 @@ data class ContactRecordResponse(
     @Json(name = "is_favorite") val isFavorite: Boolean = false,
     val notes: List<Note>? = null,
     val activities: List<Activity>? = null,
-    val reminders: List<Reminder>? = null
+    val reminders: List<Reminder>? = null,
+    /**
+     * Issue #2629: set client-side (never on the wire) when the repository answered from the
+     * offline mirror after the network read failed, so the screen can say it shows saved data.
+     */
+    @Transient val servedFromCache: Boolean = false
 ) {
     /**
      * The contact's authoritative identity (VCardUID) — the value the graph

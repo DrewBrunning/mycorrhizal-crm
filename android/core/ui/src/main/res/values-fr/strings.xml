@@ -1325,6 +1325,7 @@
     <string name="action_back">Retour</string>
     <string name="action_rename">Renommer</string>
     <string name="action_retry">Réessayer</string>
+    <string name="saved_data_banner_message">Affichage des données enregistrées</string>
 
 
     <!-- Tags -->

@@ -176,6 +176,12 @@ func escapeLike(s string) string {
 	return r.Replace(s)
 }
 
+// entityNameCursorPrefix tags the name key inside a sort=name cursor. A name
+// key can be empty (a name of only punctuation) or look like a timestamp, and
+// the shared name-cursor codec rejects both shapes; the prefix keeps every key
+// a valid, unambiguous cursor component.
+const entityNameCursorPrefix = "n:"
+
 // ListEntities handles GET /entities?kind=&q=&sensitivity=&cursor=.
 func ListEntities(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
@@ -183,7 +189,23 @@ func ListEntities(c *gin.Context) {
 	if !ok {
 		return
 	}
-	params, perr := GetCursorParams(c)
+	// Issue #2744: ?sort=name is the human list order — (name_key, id), where
+	// name_key is the case-folded name (ADR 0043 decision 9) — with its own
+	// name cursor. The default stays last-modified first (MAINT-02); like
+	// GET /contacts?sort=name, `order` keeps its default (desc), so a client
+	// wanting A-Z sends order=asc.
+	sort, perr := parseEntitySort(c)
+	if perr != nil {
+		apperrors.AbortWithError(c, perr)
+		return
+	}
+	nameSorted := sort == "name"
+	var params CursorParams
+	if nameSorted {
+		params, perr = GetCursorParamsForSort(c, "name")
+	} else {
+		params, perr = GetCursorParams(c)
+	}
 	if perr != nil {
 		apperrors.AbortWithError(c, perr)
 		return
@@ -212,19 +234,45 @@ func ListEntities(c *gin.Context) {
 		q = q.Where(`entities.name_key LIKE ? ESCAPE '\'`, "%"+escapeLike(term)+"%")
 	}
 	desc := params.Order == "desc"
-	if params.Cursor != nil {
+	if params.NameCursor != nil {
+		op := ">"
+		if desc {
+			op = "<"
+		}
+		key, kok := strings.CutPrefix(params.NameCursor.SortName, entityNameCursorPrefix)
+		if !kok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
+			return
+		}
+		// Entity ids are UUID strings, so the cursor id is compared as-is.
+		q = q.Where("(entities.name_key, entities.id) "+op+" (?, ?)", key, params.NameCursor.ID)
+	} else if params.Cursor != nil {
 		pred, t, idv := cursorPredicate("entities", params.Cursor, params.Cursor.ID, desc)
 		q = q.Where(pred, t, idv)
 	}
+	if nameSorted {
+		dir := "ASC"
+		if desc {
+			dir = "DESC"
+		}
+		q = q.Order("entities.name_key " + dir).Order("entities.id " + dir)
+	} else {
+		q = cursorOrderBy(q, "entities", desc)
+	}
 	var rows []models.Entity
-	if err := cursorOrderBy(q, "entities", desc).Limit(params.Limit + 1).Find(&rows).Error; err != nil {
+	if err := q.Limit(params.Limit + 1).Find(&rows).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve entities").WithError(err))
 		return
 	}
 	next := ""
 	if len(rows) > params.Limit {
 		rows = rows[:params.Limit]
-		next = EncodeCursor(rows[len(rows)-1].UpdatedAt, rows[len(rows)-1].ID)
+		last := rows[len(rows)-1]
+		if nameSorted {
+			next = EncodeNameCursor(entityNameCursorPrefix+last.NameKey, last.ID)
+		} else {
+			next = EncodeCursor(last.UpdatedAt, last.ID)
+		}
 	}
 	// Issue #2743: link_count on every item from one grouped query.
 	ids := make([]string, 0, len(rows))

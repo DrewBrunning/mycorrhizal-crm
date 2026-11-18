@@ -206,6 +206,21 @@ func parseActivitySort(c *gin.Context) (string, *apperrors.AppError) {
 	}
 }
 
+// parseEntitySort normalizes GET /entities' ?sort= query param (issue #2744):
+// "updated_at" (default) is the last-modified order existing clients rely on;
+// "name" is the human list order over the derived, case-folded name key. An
+// unrecognized value is a 400 rather than a silent fallback, the same policy
+// as parseContactSort and parseActivitySort.
+func parseEntitySort(c *gin.Context) (string, *apperrors.AppError) {
+	sort := c.DefaultQuery("sort", "updated_at")
+	switch sort {
+	case "updated_at", "name":
+		return sort, nil
+	default:
+		return "", apperrors.ErrInvalidInput("sort", "must be one of: updated_at, name").WithReason(apperrors.ReasonValidationSortInvalid, map[string]any{"supported": "updated_at, name"})
+	}
+}
+
 // parseNoteSort normalizes GET /notes' ?sort= query param (issue #2744):
 // "updated_at" (default) is the sync order every existing client relies on;
 // "date" is the human list order, by the note's own date. The accepted set,

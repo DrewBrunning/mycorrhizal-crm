@@ -104,6 +104,7 @@ import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.SavedDataBanner
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -463,6 +464,7 @@ fun ContactListScreenContent(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            if (uiState.showingSavedData) SavedDataBanner(onRetry = onRefresh)
             // T87: the notes/activities section trails every state (loading/empty/error/
             // populated) as the LazyColumn's last item, so it's reachable regardless of
             // whether the contact list itself has rows — the two result sets are independent.

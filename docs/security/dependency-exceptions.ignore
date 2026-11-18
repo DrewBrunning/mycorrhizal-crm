@@ -58,3 +58,4 @@
 # be fixed right now.
 
 GHSA-gcqx-w48m-w2h4 | npm | deepmerge | 2026-10-27 | 2026-10-27 | 2027-01-25 | 0 | DrewBrunning | no upstream patched release (4.3.1 is latest and the advisory has no first_patched_version); dev-only transitive build dependency via @rollup/plugin-node-resolve that merges constant defaults, not untrusted input
+GHSA-fc5q-39xc-vjpf | npm | picomatch | 2026-11-18 | 2026-11-18 | 2027-02-16 | 0 | DrewBrunning | ReDoS through single-branch repeated extglobs; no patched release yet (4.0.7 is latest, advisory has no first_patched_version; a fix PR was approved upstream but is unreleased); dev/build-time glob matching only (vitest, vite, tinyglobby, workbox), fed this repo's own constant patterns, never untrusted input and never in the shipped bundle; bump to the first fixed 4.0.x as soon as it is published

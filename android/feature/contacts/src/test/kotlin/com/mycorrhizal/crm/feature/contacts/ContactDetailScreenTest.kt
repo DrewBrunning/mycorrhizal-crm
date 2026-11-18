@@ -3081,4 +3081,50 @@ class ContactDetailScreenTest {
         val left = composeTestRule.onNodeWithText("Not set").getUnclippedBoundsInRoot().left
         assertEquals(16f, left.value, 0.5f)
     }
+
+    // --- Issue #2629: saved-data banner ---
+
+    private fun detailScreenFor(contact: ContactRecordResponse): ContactDetailViewModel {
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact)
+        )
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel)
+            }
+        }
+        return viewModel
+    }
+
+    @Test
+    fun `a contact served from the cache shows the saved data banner and retry reloads`() {
+        val viewModel = detailScreenFor(
+            ContactRecordResponse(
+                id = 5,
+                uid = "uid-5",
+                card = Card(name = Name(full = "Dana White")),
+                servedFromCache = true
+            )
+        )
+
+        composeTestRule.onNodeWithText("Showing saved data").assertExists()
+        composeTestRule.onNodeWithText("Retry").performClick()
+
+        verify { viewModel.load() }
+    }
+
+    @Test
+    fun `a live contact shows no saved data banner`() {
+        detailScreenFor(
+            ContactRecordResponse(
+                id = 5,
+                uid = "uid-5",
+                card = Card(name = Name(full = "Dana White"))
+            )
+        )
+
+        composeTestRule.onNodeWithText("Showing saved data").assertDoesNotExist()
+    }
 }
