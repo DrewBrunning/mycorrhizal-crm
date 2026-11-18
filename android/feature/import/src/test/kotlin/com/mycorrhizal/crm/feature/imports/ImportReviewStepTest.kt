@@ -55,6 +55,7 @@ class ImportReviewStepTest {
         rowEdits: Map<Int, ImportRowEdit> = emptyMap(),
         onRowEditSave: ((ImportRowEdit) -> Unit)? = null,
         onRowActionChange: (Int, String) -> Unit = { _, _ -> },
+        onResolveAll: () -> Unit = {},
         serverVersion: AppVersion? = null
     ) {
         composeTestRule.setContent {
@@ -64,7 +65,7 @@ class ImportReviewStepTest {
                         rows = rows,
                         rowActions = rows.associate { it.rowIndex to it.suggestedAction },
                         onRowActionChange = onRowActionChange,
-                        onResolveAll = {},
+                        onResolveAll = onResolveAll,
                         onConfirm = {},
                         rowEdits = rowEdits,
                         onRowEditSave = onRowEditSave
@@ -91,6 +92,26 @@ class ImportReviewStepTest {
         composeTestRule.onNodeWithText(note).assertIsDisplayed()
         composeTestRule.onNodeWithText("A field was dropped").assertIsDisplayed()
         composeTestRule.onAllNodesWithTag("import-row-diagnostic").assertCountEquals(2)
+    }
+
+    @Test
+    fun `resolve all is offered only when a row is a duplicate`() {
+        var resolved = 0
+        show(onResolveAll = { resolved++ })
+        composeTestRule.onNodeWithText("Resolve all as merged").assertIsDisplayed().performClick()
+        assertEquals(1, resolved)
+    }
+
+    @Test
+    fun `resolve all is hidden when there are no duplicates`() {
+        show(rows = listOf(newRow, errRow))
+        composeTestRule.onAllNodesWithText("Resolve all as merged").assertCountEquals(0)
+    }
+
+    @Test
+    fun `a duplicate within the file also offers resolve all`() {
+        show(rows = listOf(newRow, row(3, "Nia2").copy(batchDuplicateOf = 0)))
+        composeTestRule.onNodeWithText("Resolve all as merged").assertIsDisplayed()
     }
 
     @Test

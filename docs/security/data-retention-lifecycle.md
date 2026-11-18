@@ -140,7 +140,8 @@ decision 13): `status` is its lifecycle and tombstone. `ShareBlock` is an edge r
   hourly `share_grant_lifecycle` job (issue #2291; it also moves grants past `expires_at`, and pending
   grants unanswered for 30 days, to `expired`, writing the audit event). The window anchors on the
   row's last update, i.e. the moment it became terminal. `SHARE_GRANT_RETENTION_DAYS=0` disables the
-  purge. Read-path expiry never depends on the job. The job also purges `share_grant_notifications`
+  purge. The owner can also dismiss an ended grant early with `DELETE /share-grants/{id}` (issue #2742, ADR 0042
+  amendment), a hard delete of the same row the purge would remove. Read-path expiry never depends on the job. The job also purges `share_grant_notifications`
   rows older than the same window.
 - **Deletion / propagation**: deleting a contact, note, activity or circle revokes the owner's live
   grants on it with reason `entity_deleted` (`services.RevokeShareGrantsForEntity`; for contacts a

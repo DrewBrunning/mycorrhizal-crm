@@ -54,6 +54,7 @@ const (
 	ReasonImportTagsNotFound         ReasonCode = "import_tags_not_found"
 	ReasonValidationCursorMalformed  ReasonCode = "validation_cursor_malformed"
 	ReasonValidationActivityIDsRange ReasonCode = "validation_activity_ids_range"
+	ReasonValidationTimezoneInvalid  ReasonCode = "validation_timezone_invalid"
 
 	// Struct-tag validation (issue #2105): one code per middleware validator
 	// tag, plus validation_invalid for the default branch.
@@ -115,6 +116,8 @@ const (
 	ReasonMeerkatSignInInputMissing    ReasonCode = "meerkat_sign_in_input_missing"
 	ReasonMeerkatRemoteTooManyContacts ReasonCode = "meerkat_remote_too_many_contacts"
 	ReasonMeerkatVersionUntested       ReasonCode = "meerkat_version_untested"
+	ReasonMeerkatFetchUnreachable      ReasonCode = "meerkat_fetch_unreachable"
+	ReasonMeerkatFetchUnreadable       ReasonCode = "meerkat_fetch_unreadable"
 	// Constructor defaults (issue #2099).
 	ReasonCommonDatabaseError            ReasonCode = "common_database_error"
 	ReasonCommonDatabaseBusy             ReasonCode = "common_database_busy"
@@ -182,6 +185,7 @@ const (
 	// case so the response is identical.
 	ReasonShareGrantNotFound                        ReasonCode = "share_grant_not_found"
 	ReasonShareGrantStateConflict                   ReasonCode = "share_grant_state_conflict"
+	ReasonShareGrantNotEnded                        ReasonCode = "share_grant_not_ended"
 	ReasonShareGrantWideningRefused                 ReasonCode = "share_grant_widening_refused"
 	ReasonShareGrantAlreadyExists                   ReasonCode = "share_grant_already_exists"
 	ReasonShareGrantPendingLimit                    ReasonCode = "share_grant_pending_limit"
@@ -547,6 +551,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonImportTagsNotFound:         {Template: "One or more tags were not found"},
 	ReasonValidationCursorMalformed:  {Template: "The cursor id is malformed"},
 	ReasonValidationActivityIDsRange: {Template: "Must contain between 1 and 100 ids"},
+	ReasonValidationTimezoneInvalid:  {Template: "tz must be an IANA time zone name such as Europe/Berlin"},
 
 	// Struct-tag validation (issue #2105). The template is the English that
 	// middleware.formatValidationError produced, with the field name (and
@@ -607,6 +612,8 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonMeerkatSignInInputMissing:    {Template: "Enter a Meerkat API token, or a username and password"},
 	ReasonMeerkatRemoteTooManyContacts: {Template: "Contacts on this Meerkat account: {total}. The import supports at most {max}", Params: []string{"total", "max"}},
 	ReasonMeerkatVersionUntested:       {Template: "This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview."},
+	ReasonMeerkatFetchUnreachable:      {Template: "The Meerkat instance could not be reached"},
+	ReasonMeerkatFetchUnreadable:       {Template: "The Meerkat server sent a response the importer could not read. Check the URL"},
 	// Constructor defaults (issue #2099).
 	ReasonCommonDatabaseError:                           {Template: "Something went wrong while saving or loading your data"},
 	ReasonCommonDatabaseBusy:                            {Template: "The server is busy. Try again in a moment"},
@@ -662,6 +669,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonCircleAlreadyExists:                       {Template: "A circle with this name already exists"},
 	ReasonShareGrantNotFound:                        {Template: "Share grant not found"},
 	ReasonShareGrantStateConflict:                   {Template: "This share can no longer be changed that way"},
+	ReasonShareGrantNotEnded:                        {Template: "Only a share that has ended (declined, expired or revoked) can be removed; revoke it first"},
 	ReasonShareGrantWideningRefused:                 {Template: "A share can only be narrowed; create a new share to grant more"},
 	ReasonShareGrantAlreadyExists:                   {Template: "That is already shared with this person"},
 	ReasonShareGrantPendingLimit:                    {Template: "Too many shares are waiting for a response"},

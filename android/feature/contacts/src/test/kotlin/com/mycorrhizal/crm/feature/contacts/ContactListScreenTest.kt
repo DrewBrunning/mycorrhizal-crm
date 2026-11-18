@@ -456,7 +456,7 @@ class ContactListScreenTest {
 
         composeTestRule.onNodeWithTag("contact-list")
             .performScrollToNode(hasText("Acme Corp"))
-        composeTestRule.onNodeWithText("Organisations, places and pets").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisations, places & pets").assertIsDisplayed()
         composeTestRule.onNodeWithText("Organisation").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Pet").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Acme Rex").performScrollTo().performClick()

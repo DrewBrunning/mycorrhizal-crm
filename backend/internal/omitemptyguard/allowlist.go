@@ -24,6 +24,8 @@ package omitemptyguard
 //     and the frontend TypeScript type already mirrors that with an
 //     optional (`field?:`) declaration.
 var Allowlist = map[string]string{
+	// Deliberate absent-vs-empty: the reason params only exist for a failed Meerkat fetch with a coded cause (issue #2727, ADR 0038); absent means no coded failure, and the web/Android types declare it optional.
+	"SourceImportStatus.ErrorReasonParams": "deliberate absent-vs-empty: present only when phase is failed with a coded cause (issue #2727, ADR 0038); clients type it as optional",
 	// Contact is the flat GORM model reused for persistence and several
 	// distinct historical response shapes with no single owning
 	// constructor. Preload("Notes")/Preload("Activities")/Preload("Reminders")

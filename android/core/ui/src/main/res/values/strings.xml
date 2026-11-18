@@ -192,7 +192,7 @@
     <string name="contacts_search_results_hint">Notes and activities are searched too — circle and archived filters don\'t apply to them.</string>
     <string name="contacts_search_notes_group">Notes</string>
     <string name="contacts_search_activities_group">Interactions</string>
-    <string name="contacts_search_entities_group">Organisations, places and pets</string>
+    <string name="contacts_search_entities_group">Organisations, places &amp; pets</string>
     <string name="contacts_search_unfiled">Unfiled</string>
     <string name="contacts_search_resolved_relation">Matched relationship: %1$s</string>
 
@@ -220,7 +220,7 @@
     <string name="contact_phone">Phone</string>
     <string name="contact_address">Address</string>
     <string name="contact_links">Links</string>
-    <string name="contact_organization">Organization</string>
+    <string name="contact_organization">Organisation</string>
     <string name="contact_personal_info">Personal information</string>
     <string name="contact_online_services">Online services</string>
     <!-- Issue #832: fields with no prior Android UI -->
@@ -427,7 +427,7 @@
     <string name="contact_card_kind_label">Kind</string>
     <string name="contact_card_kind_individual">Individual</string>
     <string name="contact_card_kind_group">Group</string>
-    <string name="contact_card_kind_org">Organization</string>
+    <string name="contact_card_kind_org">Organisation</string>
     <string name="contact_card_kind_location">Location</string>
     <string name="contact_card_kind_application">Application</string>
     <string name="contact_card_kind_device">Device</string>
@@ -1204,7 +1204,7 @@
     <string name="circles_edit">Edit circle</string>
     <string name="circles_description_label">Description</string>
     <string name="circles_description_counter">%1$d/%2$d</string>
-    <string name="circles_color_label">Color</string>
+    <string name="circles_color_label">Colour</string>
     <string name="circles_color_none">None</string>
     <string name="circles_color_red">Red</string>
     <string name="circles_color_orange">Orange</string>
@@ -1305,6 +1305,7 @@
     <string name="action_edit">Edit</string>
     <string name="action_delete">Delete</string>
     <string name="action_cancel">Cancel</string>
+    <string name="action_remove">Remove</string>
     <string name="action_add">Add</string>
     <string name="action_back">Back</string>
     <string name="action_rename">Rename</string>
@@ -1419,6 +1420,7 @@
     <string name="households_suggest_relationships">Suggest relationships</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Text everyone</string>
+    <string name="group_text_everyone_unavailable">To text everyone, at least two members need a phone number.</string>
     <plurals name="households_suggestions_generated">
         <item quantity="one">Generated %1$d new suggested relationship. Review it on the members\' contact pages.</item>
         <item quantity="other">Generated %1$d new suggested relationships. Review them on the members\' contact pages.</item>
@@ -1534,7 +1536,7 @@
     <string name="shares_section_emails">Emails</string>
     <string name="shares_section_phones">Phones</string>
     <string name="shares_section_addresses">Addresses</string>
-    <string name="shares_section_organizations">Organizations</string>
+    <string name="shares_section_organizations">Organisations</string>
     <string name="shares_section_anniversaries">Anniversaries</string>
     <string name="shares_section_media">Photos</string>
     <string name="shares_section_online_services">Online services</string>
@@ -1586,7 +1588,7 @@
     <string name="shares_revoked_reason_owner">You revoked this share</string>
     <string name="shares_revoked_reason_entity_deleted">The shared item was deleted</string>
     <string name="shares_revoked_reason_recipient_deleted">The recipient\'s account was deleted</string>
-    <string name="shares_content_title">Shared with you</string>
+    <string name="shares_content_title">Shared with me</string>
     <string name="shares_content_from">Shared by %1$s</string>
     <string name="shares_content_unavailable">This share is no longer available</string>
     <string name="shares_content_offline_hint">Shared content is never stored on this device, so it cannot be shown offline.</string>
@@ -1800,7 +1802,7 @@
     <string name="preferences_category_jewelry_type">Jewelry — type</string>
     <string name="preferences_category_jewelry_other">Jewelry — other</string>
     <string name="preferences_category_flowers">Flowers</string>
-    <string name="preferences_category_color">Color</string>
+    <string name="preferences_category_color">Colour</string>
     <string name="preferences_category_hobby">Activity/hobby</string>
     <string name="preferences_category_dislike_activity">Activity dislike</string>
     <string name="preferences_category_fragrance">Fragrance</string>
@@ -1954,7 +1956,7 @@
     <string name="bulk_edit_fields_hint">Only fields you fill in or mark Clear are changed. Everything else is left as it is.</string>
     <string name="bulk_edit_fields_clear">Clear</string>
     <string name="bulk_edit_fields_apply">Apply</string>
-    <string name="bulk_field_organization">Organization</string>
+    <string name="bulk_field_organization">Organisation</string>
     <string name="bulk_field_department">Department</string>
     <string name="bulk_field_job_title">Job title</string>
     <string name="bulk_field_role">Role</string>
@@ -2176,7 +2178,7 @@
     <string name="import_field_url_label">Website – type</string>
     <string name="import_field_impp">IM / social</string>
     <string name="import_field_impp_label">IM / social – type</string>
-    <string name="import_field_organization">Organization</string>
+    <string name="import_field_organization">Organisation</string>
     <string name="import_field_department">Department</string>
     <string name="import_field_job_title">Job title</string>
     <string name="import_field_role">Role</string>
@@ -2240,10 +2242,10 @@
     <string name="trash_title">Trash</string>
     <string name="trash_empty_action">Empty trash</string>
     <string name="trash_empty_state">Trash is empty</string>
-    <string name="trash_retention_forever">Deleted contacts are kept until you empty the trash.</string>
+    <string name="trash_retention_forever">Deleted items are kept until you empty the trash.</string>
     <plurals name="trash_retention">
-        <item quantity="one">Deleted contacts are kept for %1$d day, then deleted forever.</item>
-        <item quantity="other">Deleted contacts are kept for %1$d days, then deleted forever.</item>
+        <item quantity="one">Deleted items are kept for %1$d day, then deleted forever.</item>
+        <item quantity="other">Deleted items are kept for %1$d days, then deleted forever.</item>
     </plurals>
     <string name="trash_deleted_on">Deleted %1$s</string>
     <string name="trash_purge_on">Deletes forever %1$s</string>
@@ -2859,11 +2861,11 @@
     <string name="contact_section_delete_confirm">Delete “%1$s”? This cannot be undone.</string>
     <string name="contact_section_value_required">Enter a value</string>
     <string name="contact_section_date_required">Choose a date</string>
-    <string name="contact_work_add_organization">Add organization</string>
-    <string name="contact_work_edit_organization">Edit organization</string>
+    <string name="contact_work_add_organization">Add organisation</string>
+    <string name="contact_work_edit_organization">Edit organisation</string>
     <string name="contact_work_add_title">Add title or role</string>
     <string name="contact_work_edit_title">Edit title or role</string>
-    <string name="contact_work_organization_name">Organization name</string>
+    <string name="contact_work_organization_name">Organisation name</string>
     <string name="contact_work_department_optional">Department (optional)</string>
     <string name="contact_work_title_name">Title or role</string>
     <string name="contact_work_title_kind">Kind</string>
@@ -2871,7 +2873,7 @@
     <string name="contact_work_kind_role">Role</string>
     <string name="contact_work_empty">No work details yet</string>
     <string name="contact_work_empty_body">Add employers, roles, or work information.</string>
-    <string name="contact_work_section_organizations">Organizations</string>
+    <string name="contact_work_section_organizations">Organisations</string>
     <string name="contact_work_section_titles">Titles &amp; roles</string>
     <string name="contact_work_section_information">Work information</string>
     <string name="contact_work_edit_information">Edit work information</string>
@@ -2946,7 +2948,7 @@
     <string name="error_request_ref">(ref: %1$s)</string>
     <string name="login_error_invalid_credentials">Invalid credentials</string>
     <string name="register_error_disabled">Registration is disabled on this server</string>
-    <string name="error_client_network">No connection</string>
+    <string name="error_client_network">Can\'t reach your server. Check your connection and try again.</string>
     <string name="error_client_timeout">Request timed out</string>
     <string name="error_client_server">Server error (%1$d)</string>
     <string name="error_client_session_expired">Session expired — please log in again</string>
@@ -2982,6 +2984,7 @@
     <string name="error_reason_relationship_partial_date_missing">A date must include at least a year, month or day</string>
     <string name="error_reason_relationship_self_edge">The source and target must be different contacts</string>
     <string name="error_reason_validation_activity_ids_range">Must contain between 1 and 100 ids</string>
+    <string name="error_reason_validation_timezone_invalid">tz must be an IANA time zone name such as Europe/Berlin</string>
     <string name="error_reason_validation_required">%1$s is required</string>
     <string name="error_reason_validation_email">%1$s must be a valid email address</string>
     <string name="error_reason_validation_min">%1$s must be at least %2$s characters</string>
@@ -3037,6 +3040,8 @@
     <string name="error_reason_meerkat_sign_in_input_missing">Enter a Meerkat API token, or a username and password</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Contacts on this Meerkat account: %1$d. The import supports at most %2$d</string>
     <string name="error_reason_meerkat_version_untested">This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview.</string>
+    <string name="error_reason_meerkat_fetch_unreachable">The Meerkat instance could not be reached</string>
+    <string name="error_reason_meerkat_fetch_unreadable">The Meerkat server sent a response the importer could not read. Check the URL</string>
     <string name="error_reason_common_database_error">Something went wrong while saving or loading your data</string>
     <string name="error_reason_common_database_busy">The server is busy. Try again in a moment</string>
     <string name="error_reason_auth_invalid_credentials">Invalid email or password</string>
@@ -3227,6 +3232,7 @@
     <string name="error_reason_contact_share_already_responded">Share already responded to</string>
     <string name="error_reason_share_grant_not_found">Share grant not found</string>
     <string name="error_reason_share_grant_state_conflict">This share can no longer be changed that way</string>
+    <string name="error_reason_share_grant_not_ended">Only a share that has ended (declined, expired or revoked) can be removed; revoke it first</string>
     <string name="error_reason_share_grant_widening_refused">A share can only be narrowed; create a new share to grant more</string>
     <string name="error_reason_share_grant_already_exists">That is already shared with this person</string>
     <string name="error_reason_share_grant_pending_limit">Too many shares are waiting for a response</string>
@@ -3496,6 +3502,7 @@
     <string name="shared_entities_new_pet">Add pet</string>
     <string name="shared_entities_empty_pet">No pets yet.</string>
     <string name="shared_entities_search">Search by name</string>
+    <string name="shared_entities_search_clear">Clear search</string>
     <string name="shared_entities_no_results">Nothing matches your search.</string>
     <string name="shared_entities_sensitivity_label">Sensitivity</string>
     <string name="shared_entities_sensitivity_normal">Normal</string>

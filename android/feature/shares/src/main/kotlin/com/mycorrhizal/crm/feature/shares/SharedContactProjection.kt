@@ -27,11 +27,14 @@ data class SharedContactView(
 fun projectSharedContact(
     card: Map<String, Any?>,
     grantedSections: Set<String>?,
-    formatDate: (year: Int?, month: Int?, day: Int?) -> String = ::isoDate
+    formatDate: (year: Int?, month: Int?, day: Int?) -> String = ::isoDate,
+    // Anniversary and personal-info kinds are stored tokens (`birth`); the screen supplies the
+    // localized label so the recipient never reads a raw token (issue #2626).
+    kindLabel: (String) -> String = { it }
 ): SharedContactView {
     val sections = SECTION_ORDER.mapNotNull { token ->
         if (grantedSections != null && token !in grantedSections) return@mapNotNull null
-        val lines = sectionLines(card, token, formatDate)
+        val lines = sectionLines(card, token, formatDate, kindLabel)
         if (lines.isEmpty()) null else SharedContactSection(token, lines)
     }
     return SharedContactView(
@@ -51,7 +54,8 @@ private val SECTION_ORDER = listOf(
 private fun sectionLines(
     card: Map<String, Any?>,
     token: String,
-    formatDate: (Int?, Int?, Int?) -> String
+    formatDate: (Int?, Int?, Int?) -> String,
+    kindLabel: (String) -> String
 ): List<String> = when (token) {
     "emails" -> entries(card["emails"]).mapNotNull { e ->
         text(e["address"])?.let { addr -> text(e["label"])?.let { "$addr ($it)" } ?: addr }
@@ -70,7 +74,7 @@ private fun sectionLines(
 
     "anniversaries" -> entries(card["anniversaries"]).mapNotNull { a ->
         partialDate(a["date"])?.let { (y, m, d) ->
-            "${text(a["kind"]) ?: "date"}: ${formatDate(y, m, d)}"
+            "${text(a["kind"])?.let(kindLabel) ?: "date"}: ${formatDate(y, m, d)}"
         }
     }
 
@@ -96,7 +100,7 @@ private fun sectionLines(
     "related_to" -> entries(card["relatedTo"]).flatMap { keys(it["relation"]) }
 
     "personal_info" -> entries(card["personalInfo"]).mapNotNull { p ->
-        text(p["value"])?.let { "${text(p["kind"]) ?: "info"}: $it" }
+        text(p["value"])?.let { "${text(p["kind"])?.let(kindLabel) ?: "info"}: $it" }
     }
 
     "speak_to_as" -> (card["speakToAs"] as? Map<*, *>)

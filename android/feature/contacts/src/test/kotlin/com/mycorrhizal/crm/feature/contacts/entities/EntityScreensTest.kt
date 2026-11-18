@@ -11,8 +11,10 @@ import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -74,14 +76,15 @@ class EntityScreensTest {
         onConfirmMerge: (Boolean, Set<String>) -> Unit = { _, _ -> },
         onDismissMerge: () -> Unit = {},
         onLoadMore: () -> Unit = {},
-        onRetry: () -> Unit = {}
+        onRetry: () -> Unit = {},
+        onQueryChange: (String) -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 EntitiesContent(
                     state = state,
                     onSelectKind = onKind,
-                    onQueryChange = {},
+                    onQueryChange = onQueryChange,
                     onOpenEntity = onOpen,
                     onLoadMore = onLoadMore,
                     onRetry = onRetry,
@@ -109,6 +112,23 @@ class EntityScreensTest {
         composeTestRule.onAllNodesWithText("https://acme.example").assertCountEquals(2)
         composeTestRule.onNodeWithTag("entity-row-e2").performClick()
         assertEquals("e2", opened)
+    }
+
+    @Test
+    fun `a typed search offers a clear button that empties it, an empty search offers none`() {
+        var query: String? = null
+        setList(
+            EntitiesUiState(entities = listOf(acme), query = "ac"),
+            onQueryChange = { query = it }
+        )
+        composeTestRule.onNodeWithContentDescription("Clear search").performClick()
+        assertEquals("", query)
+    }
+
+    @Test
+    fun `an empty search has no clear button`() {
+        setList(EntitiesUiState(entities = listOf(acme)))
+        composeTestRule.onAllNodesWithContentDescription("Clear search").assertCountEquals(0)
     }
 
     @Test

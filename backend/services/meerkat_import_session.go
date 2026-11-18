@@ -76,11 +76,15 @@ type meerkatImportSession struct {
 	phaseDone  int
 	phaseTotal int
 	errMsg     string
-	plan       *ImportSourcePlan
-	previews   []models.SourceImportRowPreview
-	result     *models.SourceImportResult
-	expiresAt  time.Time
-	hardExpiry time.Time
+	// errReason/errReasonParams are the reason-coded form of errMsg (issue
+	// #2727); empty when the failure has no code.
+	errReason       string
+	errReasonParams map[string]any
+	plan            *ImportSourcePlan
+	previews        []models.SourceImportRowPreview
+	result          *models.SourceImportResult
+	expiresAt       time.Time
+	hardExpiry      time.Time
 }
 
 func (s *meerkatImportSession) setPhase(phase string, done, total int) {
@@ -99,6 +103,17 @@ func (s *meerkatImportSession) fail(msg string) {
 	s.mu.Lock()
 	s.phase = models.SourceImportPhaseFailed
 	s.errMsg = msg
+	s.errReason, s.errReasonParams = "", nil
+	s.mu.Unlock()
+}
+
+// failCoded is fail with the reason code and params the status poll echoes as
+// error_reason_code / error_reason_params (issue #2727, ADR 0038).
+func (s *meerkatImportSession) failCoded(msg string, code apperrors.ReasonCode, params map[string]any) {
+	s.mu.Lock()
+	s.phase = models.SourceImportPhaseFailed
+	s.errMsg = msg
+	s.errReason, s.errReasonParams = string(code), params
 	s.mu.Unlock()
 }
 
@@ -380,6 +395,7 @@ func (m *MeerkatImportManager) StartFetch(db *gorm.DB, userID uint, req models.M
 	sourceUserID := s.sourceUserID
 	s.phase = models.SourceImportPhaseMapping
 	s.phaseDone, s.phaseTotal, s.errMsg = 0, 0, ""
+	s.errReason, s.errReasonParams = "", nil
 	s.plan, s.previews = nil, nil
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
@@ -426,11 +442,13 @@ func (m *MeerkatImportManager) Status(userID uint, sessionID string) (*models.So
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	status := &models.SourceImportStatus{
-		SessionID:  sessionID,
-		Phase:      s.phase,
-		PhaseDone:  s.phaseDone,
-		PhaseTotal: s.phaseTotal,
-		Error:      s.errMsg,
+		SessionID:         sessionID,
+		Phase:             s.phase,
+		PhaseDone:         s.phaseDone,
+		PhaseTotal:        s.phaseTotal,
+		Error:             s.errMsg,
+		ErrorReasonCode:   s.errReason,
+		ErrorReasonParams: s.errReasonParams,
 	}
 	if s.result != nil {
 		rc := *s.result
@@ -481,6 +499,7 @@ func (m *MeerkatImportManager) Confirm(db *gorm.DB, userID uint, req models.Sour
 	s.phase = models.SourceImportPhaseImporting
 	s.phaseDone, s.phaseTotal = 0, len(previews)+importGraphKinds
 	s.errMsg = ""
+	s.errReason, s.errReasonParams = "", nil
 	s.cancel = cancel
 	s.mu.Unlock()
 

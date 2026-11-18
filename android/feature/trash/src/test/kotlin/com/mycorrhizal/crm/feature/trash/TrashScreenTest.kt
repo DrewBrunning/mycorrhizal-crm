@@ -119,7 +119,7 @@ class TrashScreenTest {
     }
 
     @Test
-    fun `retention zero says the contacts are kept until the trash is emptied`() {
+    fun `retention zero says the items are kept until the trash is emptied`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 TrashList(
@@ -133,7 +133,7 @@ class TrashScreenTest {
         }
 
         composeTestRule.onNodeWithTag("trash-retention").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Deleted contacts are kept until you empty the trash.")
+        composeTestRule.onNodeWithText("Deleted items are kept until you empty the trash.")
             .assertIsDisplayed()
     }
 
@@ -198,7 +198,7 @@ class TrashScreenTest {
         screenWith(TrashUiState(retentionDays = 30))
         composeTestRule.onNodeWithText("Trash is empty").assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "Deleted contacts are kept for 30 days, then deleted forever."
+            "Deleted items are kept for 30 days, then deleted forever."
         )
             .assertIsDisplayed()
     }

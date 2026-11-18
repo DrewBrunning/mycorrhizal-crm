@@ -469,8 +469,8 @@ class ShareContactScreenTest {
         previewScreen(grants)
         chooseStanding()
 
-        composeTestRule.onNodeWithText("birthday: 17.05.1990").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("wedding: 01.06.").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("other: 1985").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday: 17.05.1990").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Wedding: 01.06.").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Other: 1985").performScrollTo().assertIsDisplayed()
     }
 }

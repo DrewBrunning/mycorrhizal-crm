@@ -1446,7 +1446,9 @@ export type EntityRestoreSkip = {
 export type EntitySuggestionEntity = {
   id: string;
   kind: 'organisation' | 'place' | 'pet';
+  link_count: number;
   name: string;
+  updated_at: string;
 };
 
 export type EntitySuggestionPair = {
@@ -2022,12 +2024,13 @@ export type ImportRowEdit = {
 };
 
 export type ImportRowIssue = {
+  concept?: 'birthday' | 'anniversary';
   email: string;
   name: string;
   phone: string;
   reason: string;
   row: number;
-  status: 'skipped' | 'failed';
+  status: 'skipped' | 'failed' | 'warning';
 };
 
 export type ImportRowPreview = {
@@ -2382,6 +2385,8 @@ export type MonicaImportRowPreview = ImportRowPreview & {
 
 export type MonicaImportStatus = {
   error?: string;
+  error_reason_code?: string;
+  error_reason_params?: Record<string, unknown>;
   phase?: 'connecting' | 'fetching_contacts' | 'fetching_activities' | 'fetching_notes' | 'fetching_reminders' | 'fetching_extras' | 'fetching_relationships' | 'building_preview' | 'ready' | 'importing' | 'importing_photos' | 'done' | 'failed' | 'cancelled';
   phase_done?: number;
   phase_total?: number;
@@ -3000,6 +3005,7 @@ export type SearchContactHit = {
   fn?: string;
   id?: number;
   lastname?: string;
+  matched_on?: ('name' | 'organization' | 'email' | 'phone' | 'address')[];
   nickname?: string;
   org?: string;
   photo?: string;
@@ -3013,6 +3019,7 @@ export type SearchContactHit = {
 export type SearchEntityHit = {
   id?: string;
   kind?: 'organisation' | 'place' | 'pet';
+  matched_on?: 'name'[];
   name?: string;
   sensitivity?: 'normal' | 'private' | 'secret';
 };

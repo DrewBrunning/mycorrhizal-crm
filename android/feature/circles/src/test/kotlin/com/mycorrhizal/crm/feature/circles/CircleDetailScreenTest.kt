@@ -114,6 +114,18 @@ class CircleDetailScreenTest {
     }
 
     @Test
+    fun `text everyone with fewer than two phone numbers stays tappable and says why`() {
+        setScreen(resolve = mapOf("uid-alice" to alice))
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.circles_text_everyone))
+            .assertIsEnabled().performClick()
+
+        composeTestRule.onNodeWithText(
+            "To text everyone, at least two members need a phone number."
+        ).assertIsDisplayed()
+    }
+
+    @Test
     fun `a member missing from the cache shows Unknown contact never its UID`() {
         setScreen()
 

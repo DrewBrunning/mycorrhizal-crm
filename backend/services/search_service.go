@@ -73,13 +73,31 @@ type SearchEntityHit struct {
 	Kind        string `json:"kind"`
 	Name        string `json:"name"`
 	Sensitivity string `json:"sensitivity"`
+	// MatchedOn is always ["name"]: the name is the only indexed entity text.
+	MatchedOn []string `json:"matched_on,omitempty"`
 }
+
+// The matched_on vocabulary of a contact hit (issue #2744): which of the
+// contact's own fields the query matched. A closed set; "entity" is not in it
+// because search does not see an organisation-only contact's entity link
+// (ADR 0043).
+const (
+	SearchMatchName         = "name"         // firstname, lastname or nickname
+	SearchMatchOrganization = "organization" // the contact's own organisation
+	SearchMatchEmail        = "email"
+	SearchMatchPhone        = "phone"
+	SearchMatchAddress      = "address"
+)
 
 // SearchContactHit is a matched contact (the slim ContactSummary shape) plus
 // a snippet of the matched field.
 type SearchContactHit struct {
 	models.ContactSummary
 	Snippet string `json:"snippet,omitempty"`
+	// MatchedOn lists the contact fields the query matched (the SearchMatch*
+	// values), in a fixed order. Omitted when unknown, and always omitted on
+	// the scoped path that serves copies leaving the owner's view.
+	MatchedOn []string `json:"matched_on,omitempty"`
 }
 
 // SearchNoteHit is a matched note with its owning contact's name when one is
@@ -215,6 +233,35 @@ func ContactFTSMatch(term string) (expr string, ok bool) {
 	return expr, expr != ""
 }
 
+// contactMatchFields maps each SearchMatch* value to the contacts_fts
+// columns it covers, in the order matched_on reports them.
+var contactMatchFields = []struct {
+	value   string
+	columns string
+}{
+	{SearchMatchName, "firstname lastname nickname"},
+	{SearchMatchOrganization, "org"},
+	{SearchMatchEmail, "email"},
+	{SearchMatchPhone, "phone phones_normalized"},
+	{SearchMatchAddress, "addresses_flat"},
+}
+
+// contactAnyTokenMatch is the matched_on probe expression: unlike the hit's own
+// AND-of-tokens MATCH, a field counts when ANY query token prefix-matches in
+// it, so a two-word query spread over two fields reports both. A phone-shaped
+// term already is an OR (phoneFTSMatch) and is used as is.
+func contactAnyTokenMatch(term string) string {
+	if digits, key, ok := PhoneQueryTokens(term); ok {
+		return phoneFTSMatch(digits, key)
+	}
+	tokens := strings.Fields(term)
+	quoted := make([]string, 0, len(tokens))
+	for _, tok := range tokens {
+		quoted = append(quoted, `"`+strings.ReplaceAll(tok, `"`, `""`)+`"*`)
+	}
+	return strings.Join(quoted, " OR ")
+}
+
 // Search runs a full-text query across the user's contacts, notes, and
 // interactions. Empty/whitespace queries return an empty result. A query
 // shorter than two characters also returns empty (avoiding a noisy index
@@ -279,6 +326,9 @@ func searchEntityHits(db *gorm.DB, userID uint, match string, limit, offset int)
 	).Scan(&hits).Error
 	if err != nil {
 		return nil, fmt.Errorf("search entities: %w", err)
+	}
+	for i := range hits {
+		hits[i].MatchedOn = []string{SearchMatchName}
 	}
 	return hits, nil
 }
@@ -369,9 +419,35 @@ func SearchPageScoped(db *gorm.DB, userID uint, term string, limit, offset int, 
 	var contactHits []struct {
 		models.Contact
 		Snippet string
+		MName   int `gorm:"column:m_name"`
+		MOrg    int `gorm:"column:m_org"`
+		MEmail  int `gorm:"column:m_email"`
+		MPhone  int `gorm:"column:m_phone"`
+		MAddr   int `gorm:"column:m_addr"`
+	}
+	// matched_on (issue #2744) is read from the same contacts_fts index, one
+	// rowid-correlated probe per field per returned row (at most 5 x limit,
+	// limit <= 50), so it can never disagree with the tokenizer that produced
+	// the hit and adds no query per hit. Only the owner's own view gets it
+	// (includeSensitive): the scoped path serves copies that leave the
+	// instance, where naming "address" as the reason would confirm text it
+	// hides, so there the probes are constant 0 and the field is omitted.
+	var matchSelect string
+	var matchArgs []interface{}
+	if includeSensitive {
+		anyExpr := contactAnyTokenMatch(term)
+		probes := make([]string, 0, len(contactMatchFields))
+		for i, f := range contactMatchFields {
+			alias := [...]string{"m_name", "m_org", "m_email", "m_phone", "m_addr"}[i]
+			probes = append(probes, `EXISTS (SELECT 1 FROM contacts_fts WHERE contacts_fts MATCH ? AND rowid = c.id) AS `+alias)
+			matchArgs = append(matchArgs, "{"+f.columns+"} : ("+anyExpr+")")
+		}
+		matchSelect = strings.Join(probes, ", ")
+	} else {
+		matchSelect = "0 AS m_name, 0 AS m_org, 0 AS m_email, 0 AS m_phone, 0 AS m_addr"
 	}
 	sensitiveClause := ""
-	contactArgs := []interface{}{contactMatch, userID, userID}
+	contactArgs := append(matchArgs, contactMatch, userID, userID)
 	if !includeSensitive {
 		sensitiveClause = ` AND (NOT ` + contactHasSensitiveAddressSQL + `
 		  OR c.id IN (SELECT rowid FROM contacts_fts WHERE contacts_fts MATCH ? AND user_id = ?))`
@@ -380,7 +456,7 @@ func SearchPageScoped(db *gorm.DB, userID uint, term string, limit, offset int, 
 	contactArgs = append(contactArgs, householdArgs...)
 	contactArgs = append(contactArgs, limit, offset)
 	err := db.Raw(`
-		SELECT c.*, snippet(contacts_fts, 0, '…', '…', '…', 20) AS snippet
+		SELECT c.*, snippet(contacts_fts, 0, '…', '…', '…', 20) AS snippet, `+matchSelect+`
 		FROM contacts_fts
 		JOIN contacts c ON c.id = contacts_fts.rowid
 		WHERE contacts_fts MATCH ?
@@ -395,9 +471,15 @@ func SearchPageScoped(db *gorm.DB, userID uint, term string, limit, offset int, 
 		return nil, fmt.Errorf("search contacts: %w", err)
 	}
 	for i := range contactHits {
+		h := &contactHits[i]
 		hit := SearchContactHit{
-			ContactSummary: models.NewContactSummary(&contactHits[i].Contact),
-			Snippet:        contactHits[i].Snippet,
+			ContactSummary: models.NewContactSummary(&h.Contact),
+			Snippet:        h.Snippet,
+		}
+		for j, on := range [...]int{h.MName, h.MOrg, h.MEmail, h.MPhone, h.MAddr} {
+			if on != 0 {
+				hit.MatchedOn = append(hit.MatchedOn, contactMatchFields[j].value)
+			}
 		}
 		result.Contacts = append(result.Contacts, hit)
 	}
