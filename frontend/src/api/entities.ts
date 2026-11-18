@@ -265,6 +265,11 @@ export async function listEntities(params: {
   sensitivity?: EntitySensitivity;
   cursor?: string;
   limit?: number;
+  // Issue #2744: 'name' orders by case-folded name (id tiebreak). `order` defaults to desc
+  // server-side under either sort, so A to Z needs order: 'asc'. The cursor is sort-specific:
+  // keep the same sort and order for every page of a list.
+  sort?: 'updated_at' | 'name';
+  order?: 'asc' | 'desc';
 }): Promise<EntityListResponse> {
   const res = await request<EntityListResponse>(`/entities${query(params)}`, {
     headers: getAuthHeaders(),
