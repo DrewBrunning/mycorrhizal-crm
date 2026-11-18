@@ -1318,6 +1318,7 @@
     <string name="action_edit">Modifier</string>
     <string name="action_delete">Supprimer</string>
     <string name="action_cancel">Annuler</string>
+    <string name="action_remove">Retirer</string>
     <string name="action_add">Ajouter</string>
     <string name="action_back">Retour</string>
     <string name="action_rename">Renommer</string>
@@ -1433,6 +1434,7 @@
     <string name="households_suggest_relationships">Suggérer des relations</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Écrire à tous</string>
+    <string name="group_text_everyone_unavailable">Pour écrire à tout le monde, au moins deux membres doivent avoir un numéro de téléphone.</string>
     <plurals name="households_suggestions_generated">
         <item quantity="one">%1$d nouvelle relation suggérée générée. Consultez-la sur les pages de contact des membres.</item>
         <item quantity="many">%1$d nouvelles relations suggérées générées. Consultez-les sur les pages de contact des membres.</item>
@@ -1603,7 +1605,7 @@
     <string name="shares_revoked_reason_owner">Vous avez révoqué ce partage</string>
     <string name="shares_revoked_reason_entity_deleted">L\'élément partagé a été supprimé</string>
     <string name="shares_revoked_reason_recipient_deleted">Le compte du destinataire a été supprimé</string>
-    <string name="shares_content_title">Partagé avec vous</string>
+    <string name="shares_content_title">Partagé avec moi</string>
     <string name="shares_content_from">Partagé par %1$s</string>
     <string name="shares_content_unavailable">Ce partage n\'est plus disponible</string>
     <string name="shares_content_offline_hint">Le contenu partagé n\'est jamais stocké sur cet appareil et ne peut donc pas être affiché hors ligne.</string>
@@ -2295,11 +2297,11 @@
     <string name="trash_title">Corbeille</string>
     <string name="trash_empty_action">Vider la corbeille</string>
     <string name="trash_empty_state">La corbeille est vide</string>
-    <string name="trash_retention_forever">Les contacts supprimés sont conservés jusqu’à ce que vous vidiez la corbeille.</string>
+    <string name="trash_retention_forever">Les éléments supprimés sont conservés jusqu’à ce que vous vidiez la corbeille.</string>
     <plurals name="trash_retention">
-        <item quantity="one">Les contacts supprimés sont conservés %1$d jour, puis supprimés définitivement.</item>
-        <item quantity="many">Les contacts supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
-        <item quantity="other">Les contacts supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
+        <item quantity="one">Les éléments supprimés sont conservés %1$d jour, puis supprimés définitivement.</item>
+        <item quantity="many">Les éléments supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
+        <item quantity="other">Les éléments supprimés sont conservés %1$d jours, puis supprimés définitivement.</item>
     </plurals>
     <string name="trash_deleted_on">Supprimé le %1$s</string>
     <string name="trash_purge_on">Suppression définitive le %1$s</string>
@@ -3038,7 +3040,7 @@
     <string name="error_request_ref">(réf. %1$s)</string>
     <string name="login_error_invalid_credentials">Identifiants invalides</string>
     <string name="register_error_disabled">L’inscription est désactivée sur ce serveur</string>
-    <string name="error_client_network">Pas de connexion</string>
+    <string name="error_client_network">Impossible de joindre votre serveur. Vérifiez votre connexion et réessayez.</string>
     <string name="error_client_timeout">Délai de la requête dépassé</string>
     <string name="error_client_server">Erreur du serveur (%1$d)</string>
     <string name="error_client_session_expired">Session expirée : reconnecte-toi</string>
@@ -3074,6 +3076,7 @@
     <string name="error_reason_relationship_partial_date_missing">Une date doit comporter au moins une année, un mois ou un jour</string>
     <string name="error_reason_relationship_self_edge">La source et la cible doivent être des contacts différents</string>
     <string name="error_reason_validation_activity_ids_range">Doit contenir entre 1 et 100 identifiants</string>
+    <string name="error_reason_validation_timezone_invalid">tz doit être un nom de fuseau horaire IANA tel que Europe/Berlin</string>
     <string name="error_reason_validation_required">%1$s est obligatoire</string>
     <string name="error_reason_validation_email">%1$s doit être une adresse e-mail valide</string>
     <string name="error_reason_validation_min">%1$s doit contenir au moins %2$s caractères</string>
@@ -3129,6 +3132,8 @@
     <string name="error_reason_meerkat_sign_in_input_missing">Saisissez un jeton d’API Meerkat ou un nom d’utilisateur et un mot de passe</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Contacts sur ce compte Meerkat : %1$d. L’import prend en charge au maximum %2$d</string>
     <string name="error_reason_meerkat_version_untested">Cette version de Meerkat n’est pas testée avec l’importeur. Confirmez pour essayer quand même ; rien n’est écrit tant que vous n’avez pas vérifié l’aperçu.</string>
+    <string name="error_reason_meerkat_fetch_unreachable">L’instance Meerkat est injoignable</string>
+    <string name="error_reason_meerkat_fetch_unreadable">Le serveur Meerkat a envoyé une réponse que l’importateur n’a pas pu lire. Vérifiez l’URL</string>
     <string name="error_reason_common_database_error">Une erreur s\'est produite lors de l\'enregistrement ou du chargement de vos données</string>
     <string name="error_reason_common_database_busy">Le serveur est occupé. Réessayez dans un instant</string>
     <string name="error_reason_auth_invalid_credentials">E-mail ou mot de passe incorrect</string>
@@ -3319,6 +3324,7 @@
     <string name="error_reason_contact_share_already_responded">Le partage a déjà reçu une réponse</string>
     <string name="error_reason_share_grant_not_found">Partage introuvable</string>
     <string name="error_reason_share_grant_state_conflict">Ce partage ne peut plus être modifié ainsi</string>
+    <string name="error_reason_share_grant_not_ended">Seul un partage terminé (refusé, expiré ou révoqué) peut être retiré ; révoquez-le d’abord</string>
     <string name="error_reason_share_grant_widening_refused">Un partage ne peut qu’être restreint ; créez un nouveau partage pour partager davantage</string>
     <string name="error_reason_share_grant_already_exists">Déjà partagé avec cette personne</string>
     <string name="error_reason_share_grant_pending_limit">Trop de partages sont en attente de réponse</string>
@@ -3589,6 +3595,7 @@
     <string name="shared_entities_new_pet">Ajouter un animal</string>
     <string name="shared_entities_empty_pet">Aucun animal pour l\'instant.</string>
     <string name="shared_entities_search">Rechercher par nom</string>
+    <string name="shared_entities_search_clear">Effacer la recherche</string>
     <string name="shared_entities_no_results">Aucun résultat pour votre recherche.</string>
     <string name="shared_entities_sensitivity_label">Sensibilité</string>
     <string name="shared_entities_sensitivity_normal">Normale</string>

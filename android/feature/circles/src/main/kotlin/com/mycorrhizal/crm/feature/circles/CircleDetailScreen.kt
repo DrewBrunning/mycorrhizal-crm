@@ -66,6 +66,7 @@ fun CircleDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by rememberSaveable { mutableStateOf(false) }
+    var showTextHint by remember { mutableStateOf(false) }
     val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
     val context = LocalContext.current
 
@@ -122,13 +123,18 @@ fun CircleDetailScreen(
                             contentDescription = stringResource(R.string.circles_edit)
                         )
                     }
+                    // Issue #2630: never a silently disabled action; tapping it with too few
+                    // phone numbers says why.
                     AccessibleIconButton(
                         onClick = {
-                            context.startActivity(
-                                FieldActions.groupSmsIntent(textablePhones, context)
-                            )
-                        },
-                        enabled = textablePhones.size >= 2
+                            if (textablePhones.size >= 2) {
+                                context.startActivity(
+                                    FieldActions.groupSmsIntent(textablePhones, context)
+                                )
+                            } else {
+                                showTextHint = true
+                            }
+                        }
                     ) {
                         Icon(
                             Icons.AutoMirrored.Outlined.Message,
@@ -245,6 +251,14 @@ fun CircleDetailScreen(
                 showEditDialog = false
             }
         )
+    }
+
+    if (showTextHint) {
+        val hint = stringResource(R.string.group_text_everyone_unavailable)
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            snackbarHostState.showSnackbar(hint)
+            showTextHint = false
+        }
     }
 
     errorMessage?.let { message ->

@@ -226,9 +226,22 @@ func ListEntities(c *gin.Context) {
 		rows = rows[:params.Limit]
 		next = EncodeCursor(rows[len(rows)-1].UpdatedAt, rows[len(rows)-1].ID)
 	}
+	// Issue #2743: link_count on every item from one grouped query.
+	ids := make([]string, 0, len(rows))
+	for i := range rows {
+		ids = append(ids, rows[i].ID)
+	}
+	counts, cerr := services.EntityLinkCounts(db, userID, ids)
+	if cerr != nil {
+		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to count entity links").WithError(cerr))
+		return
+	}
 	out := make([]models.EntityResponse, 0, len(rows))
 	for i := range rows {
-		out = append(out, models.NewEntityResponse(&rows[i]))
+		item := models.NewEntityResponse(&rows[i])
+		n := counts[rows[i].ID]
+		item.LinkCount = &n
+		out = append(out, item)
 	}
 	c.JSON(http.StatusOK, models.EntityListResponse{Entities: out, NextCursor: next, Limit: params.Limit})
 }

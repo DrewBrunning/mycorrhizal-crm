@@ -17,7 +17,26 @@ import (
 const (
 	importIssueSkipped = "skipped"
 	importIssueFailed  = "failed"
+	// importIssueWarning (issue #2741) marks a row that imported but lost a
+	// value (an invalid birthday/anniversary was dropped). It is never counted
+	// in Skipped or Errors.
+	importIssueWarning = "warning"
 )
+
+// reportImportWarnings records one "warning" issue per date-warning
+// diagnostic (concept birthday|anniversary) on a row that has just been
+// imported, so the final report and the persisted import run show what the
+// preview warned about. Call it only after the row's create/update succeeded.
+func reportImportWarnings(result *models.ImportResult, p models.ImportRowPreview) {
+	for _, d := range p.Diagnostics {
+		if d.Severity != "warn" || (d.Concept != importDateConceptBirthday && d.Concept != importDateConceptAnniversary) {
+			continue
+		}
+		iss := importIssueFor(p, importIssueWarning, d.Message)
+		iss.Concept = d.Concept
+		result.Issues = append(result.Issues, iss)
+	}
+}
 
 // applyImportNameFallback gives a row with no name at all (no first or last
 // name) its first email, else its first phone, as the first name, so a

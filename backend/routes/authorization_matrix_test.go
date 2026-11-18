@@ -450,6 +450,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/share-grants/notifications":       {class: classProtected},
 		"POST /api/v1/share-grants/notifications/read": {class: classProtected},
 		"DELETE /api/v1/share-grants/blocks/:user_id":  {class: classProtected},
+		"DELETE /api/v1/share-grants/:id":              {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID},
 		"PATCH /api/v1/share-grants/:id":               {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID},
 		"POST /api/v1/share-grants/:id/accept":         {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/accept"},
 		"POST /api/v1/share-grants/:id/decline":        {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/decline"},

@@ -24,8 +24,9 @@ import (
 // active-obligation occurrence within the next `days` (30 or 90, default 30),
 // sorted ascending by days-until.
 //
-// "Today" is decided via reminderNow(c) — the single reminder-zone clock
-// (ADR 0015 Rule 4), not the server's own local zone.
+// "Today" is decided via viewerNow(c): the viewer's zone when ?tz is sent,
+// otherwise the single reminder-zone clock (ADR 0015 Rule 4) — never the
+// server's own local zone.
 func GetUpcomingOccasions(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)
@@ -44,7 +45,10 @@ func GetUpcomingOccasions(c *gin.Context) {
 	}
 	includeSensitive := c.Query("include_sensitive") == "true"
 
-	now := reminderNow(c)
+	now, ok := viewerNow(c)
+	if !ok {
+		return
+	}
 	occasions, err := services.GetUpcomingOccasions(db, userID, now, days, includeSensitive)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve upcoming occasions").WithError(err))
@@ -244,7 +248,10 @@ func GetGiftShoppingList(c *gin.Context) {
 	}
 	includeSensitive := c.Query("include_sensitive") == "true"
 
-	now := reminderNow(c)
+	now, ok := viewerNow(c)
+	if !ok {
+		return
+	}
 	items, err := services.GetGiftShoppingList(db, userID, now, days, includeSensitive)
 	if err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve gift shopping list").WithError(err))

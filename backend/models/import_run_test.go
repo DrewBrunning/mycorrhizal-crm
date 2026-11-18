@@ -22,3 +22,17 @@ func TestImportRunDetail_AlwaysAnArray(t *testing.T) {
 	got := ImportRun{IssuesJSON: `[{"row":3,"name":"A","email":"","phone":"","status":"failed","reason":"r"}]`}.Detail()
 	assert.Equal(t, []ImportRowIssue{{Row: 3, Name: "A", Status: "failed", Reason: "r"}}, got.Issues)
 }
+
+// Issue #2741: warning issues share the cap with skipped/failed ones but never
+// crowd them out, and keep their concept.
+func TestStoredImportIssues_WarningsNeverCrowdOutSkippedAndFailed(t *testing.T) {
+	var in []ImportRowIssue
+	for i := 0; i < MaxImportRunIssues; i++ {
+		in = append(in, ImportRowIssue{Row: i + 1, Status: "warning", Concept: "birthday"})
+	}
+	in = append(in, ImportRowIssue{Row: 5000, Status: "failed", Reason: "x"})
+	out := storedImportIssues(in)
+	assert.Len(t, out, MaxImportRunIssues)
+	assert.Equal(t, "failed", out[0].Status)
+	assert.Equal(t, "birthday", out[1].Concept)
+}

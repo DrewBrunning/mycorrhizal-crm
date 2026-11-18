@@ -98,10 +98,14 @@ func syncOccasionObligationReminder(tx *gorm.DB, userID uint, obligation *models
 
 	remindAt := nextRemindAt(*obligation.AnchorMonth, *obligation.AnchorDay, now, loc).AddDate(0, 0, -obligation.LeadTimeDays)
 
-	contactName := obligation.EntityID // fallback: show VCardUID in message if name lookup fails
+	contactName := obligation.EntityID // fallback: show VCardUID in message if the contact row is gone
 	var contact models.Contact
-	if tx.Where("vcard_uid = ? AND user_id = ?", obligation.EntityID, userID).First(&contact).Error == nil {
+	if err := tx.Where("vcard_uid = ? AND user_id = ?", obligation.EntityID, userID).First(&contact).Error; err == nil {
 		contactName = contact.Firstname + " " + contact.Lastname
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		// A real DB failure must roll the transaction back, not silently ship a
+		// reminder named after the raw UID.
+		return err
 	}
 
 	reminder := models.Reminder{

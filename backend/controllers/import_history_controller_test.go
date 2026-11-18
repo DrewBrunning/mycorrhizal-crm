@@ -251,3 +251,35 @@ func TestGetImportRun_DBFailureIs500(t *testing.T) {
 	}
 	inj.Disarm()
 }
+
+// Issue #2741: a warning issue round-trips through the history detail with its
+// concept, and skipped issues carry no concept key.
+func TestGetImportRun_ReturnsWarningIssueWithConcept(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "gw", Email: "gw@example.com", Password: "x"}
+	require.NoError(t, db.Create(&user).Error)
+	models.RecordImportRun(t.Context(), db, models.ImportRun{
+		UserID: user.ID, Format: models.ImportFormatCSV, TotalProcessed: 2, Created: 2, Skipped: 0,
+		Issues: []models.ImportRowIssue{
+			{Row: 1, Name: "Ada", Email: "a@x.io", Status: "warning", Concept: "birthday", Reason: "birthday not imported: invalid value"},
+			{Row: 2, Name: "B", Status: "skipped", Reason: "r"},
+		},
+	})
+	var run models.ImportRun
+	require.NoError(t, db.Where("user_id = ?", user.ID).First(&run).Error)
+
+	w := httptest.NewRecorder()
+	importHistoryRouter(db, user.ID).ServeHTTP(w,
+		httptest.NewRequest(http.MethodGet, "/contacts/import/history/"+strconv.Itoa(int(run.ID)), nil))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var raw struct {
+		Issues []map[string]any `json:"issues"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
+	require.Len(t, raw.Issues, 2)
+	assert.Equal(t, "warning", raw.Issues[0]["status"])
+	assert.Equal(t, "birthday", raw.Issues[0]["concept"])
+	assert.Equal(t, "", raw.Issues[0]["email"])
+	assert.NotContains(t, raw.Issues[1], "concept")
+}

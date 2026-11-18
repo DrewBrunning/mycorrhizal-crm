@@ -440,3 +440,32 @@ func TestSearchAll_EntitiesSection(t *testing.T) {
 	require.Equal(t, http.StatusOK, w.Code)
 	assert.Contains(t, w.Body.String(), `"entities":[]`)
 }
+
+// Issue #2744: GET /search names the matched contact fields (and entity name)
+// on the wire; note and activity hits carry no such key.
+func TestSearchAll_MatchedOnOnTheWire(t *testing.T) {
+	db, router := searchRealRouter(t)
+	user := models.User{Username: "search-matched", Password: "password123!A", Email: "search-matched@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+	require.NoError(t, db.Create(&models.Contact{UserID: user.ID, Firstname: "Beatrix", Lastname: "Marlow", Organization: "Zebracorp Holdings"}).Error)
+	require.NoError(t, db.Create(&models.Entity{UserID: user.ID, Kind: models.EntityKindOrganisation, Name: "Zebracorp Holdings"}).Error)
+	require.NoError(t, db.Create(&models.Note{UserID: user.ID, Content: "zebracorp quarterly note", Date: time.Now()}).Error)
+
+	req, _ := http.NewRequest("GET", "/search?q=zebracorp", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var raw struct {
+		Contacts []map[string]json.RawMessage `json:"contacts"`
+		Notes    []map[string]json.RawMessage `json:"notes"`
+		Entities []map[string]json.RawMessage `json:"entities"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
+	require.Len(t, raw.Contacts, 1)
+	assert.JSONEq(t, `["organization"]`, string(raw.Contacts[0]["matched_on"]))
+	require.Len(t, raw.Entities, 1)
+	assert.JSONEq(t, `["name"]`, string(raw.Entities[0]["matched_on"]))
+	require.Len(t, raw.Notes, 1)
+	assert.NotContains(t, raw.Notes[0], "matched_on")
+}

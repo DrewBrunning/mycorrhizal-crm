@@ -207,6 +207,22 @@ future feature, not current behaviour. Concretely:
   (`timeline_controller.go`) all compute the day boundary in `REMINDER_TIMEZONE`, never the server's own
   local zone. The endpoint-vs-digest disagreement this paragraph warned about is pinned closed by
   `controllers/date_02_reminder_zone_test.go` (fixed injected instant, several server `Local` zones).
+- **Amended (issue #2762): a viewer-relative "today" for display, an operator zone for everything
+  scheduled.** A user's browser or device can sit in a different zone from `REMINDER_TIMEZONE`, so a
+  birthday that is today for the viewer could fall outside the server's day and never be returned.
+  The display endpoints that decide "today" therefore accept an optional `tz` query parameter (an IANA
+  zone name, additive under MAINT-02): `GET /dashboard`, `GET /occasions/upcoming`,
+  `GET /occasion-obligations/gift-shopping-list`, `GET /contacts/birthdays` and
+  `GET /reminders/upcoming`. When `tz` is present they answer "which calendar day is today" and count
+  `days_until` in that zone via `viewerNow(c)` (`backend/controllers/reminder_clock.go`); without it
+  (or with an empty value) they use `reminderNow(c)` exactly as before. A whitespace-only, over-long,
+  unknown or `Local` value is rejected with 400 `INVALID_INPUT`, field `tz`, reason
+  `validation_timezone_invalid`; the name passes a character/length allowlist before
+  `time.LoadLocation`. The parameter changes only the day boundary of a read, never a stored value, and
+  nothing that leaves the instance or runs unattended consults it: the digest job, life-event reminder
+  times, emails, and ICS/CalDAV generation stay on `REMINDER_TIMEZONE`, and the briefing, timeline,
+  score, cadence and data-decay endpoints keep `reminderNow(c)` (no `tz`) until a client needs them.
+  There is still no stored per-user zone; clients pass the device or browser zone per request.
 
 ### Rule 5 — DST and the wall clock: one run per local label, never skipped, never doubled
 

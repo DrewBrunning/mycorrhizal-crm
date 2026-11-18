@@ -67,10 +67,7 @@ func ListOutgoingShareGrants(c *gin.Context) {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}
-	views := make([]services.ShareGrantOwnerView, 0, len(rows))
-	for i := range rows {
-		views = append(views, services.OwnerView(db, &rows[i], now))
-	}
+	views := services.OwnerViews(db, rows, now)
 	c.JSON(http.StatusOK, gin.H{"share_grants": views, "next_cursor": next, "limit": limit})
 }
 
@@ -88,10 +85,7 @@ func ListIncomingShareGrants(c *gin.Context) {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}
-	views := make([]services.ShareGrantRecipientView, 0, len(rows))
-	for i := range rows {
-		views = append(views, services.RecipientView(db, &rows[i], now))
-	}
+	views := services.RecipientViews(db, rows, now)
 	c.JSON(http.StatusOK, gin.H{"share_grants": views, "next_cursor": next, "limit": limit})
 }
 
@@ -197,6 +191,21 @@ func DeclineShareGrant(c *gin.Context) {
 
 // RevokeShareGrant — POST /share-grants/{id}/revoke (owner).
 func RevokeShareGrant(c *gin.Context) { ownerAction(c, services.RevokeShareGrant) }
+
+// DeleteShareGrant — DELETE /share-grants/{id} (owner): dismiss an ended
+// (declined, expired or revoked) grant from "Shared by me". Issue #2742.
+func DeleteShareGrant(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	if appErr := services.DeleteShareGrant(db, userID, c.Param("id"), shareGrantNow(c)); appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
 
 // ReconfirmShareGrant — POST /share-grants/{id}/reconfirm (owner).
 func ReconfirmShareGrant(c *gin.Context) {

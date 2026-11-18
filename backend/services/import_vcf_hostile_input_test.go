@@ -33,9 +33,11 @@ func TestConfirmVCF_RealDB_ControlCharactersAndInvalidUTF8_StaySanitizedOnSave(t
 	require.NoError(t, db.Create(&user).Error)
 
 	// 0x01/0x02 are C0 control characters (dropped); 0xff is not valid
-	// standalone UTF-8 (replaced with U+FFFD) -- same two hostilities
-	// services/import_sanitize_test.go's CSV-path test pins, now exercised
-	// through the VCF adapter instead of BuildContactFromRow.
+	// standalone UTF-8. Since issue #2669 the upload decoder reads a non-UTF-8
+	// file as Windows-1252 (0xff -> U+00FF, a warning is reported) instead of
+	// letting U+FFFD reach the stored data; the sanitizer's own invalid-UTF-8
+	// replacement stays pinned by import_sanitize_test.go. What this test still
+	// guards is save-time reversion of the cleaned values via BeforeSave.
 	raw := "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:vcf-hostile-uid\r\nFN:Ada\x01Lovelace\r\nN:Lovelace\xff;Ada\x02;;;\r\nEND:VCARD\r\n"
 
 	contacts, previews, _, err := ParseVCF(strings.NewReader(raw), db, user.ID)
@@ -47,7 +49,7 @@ func TestConfirmVCF_RealDB_ControlCharactersAndInvalidUTF8_StaySanitizedOnSave(t
 	// already reflects clean data before this fix; the bug was save-time
 	// reversion, not the preview.
 	assert.Equal(t, "Ada", contacts[0].Contact.Firstname)
-	assert.Equal(t, "Lovelace�", contacts[0].Contact.Lastname)
+	assert.Equal(t, "Lovelace\u00ff", contacts[0].Contact.Lastname)
 
 	// Mirrors ConfirmVCF's "add" branch exactly (services/import_session.go):
 	// a value copy of the previewed contact, UserID set, then tx.Create.
@@ -58,7 +60,7 @@ func TestConfirmVCF_RealDB_ControlCharactersAndInvalidUTF8_StaySanitizedOnSave(t
 	var persisted models.Contact
 	require.NoError(t, db.First(&persisted, contact.ID).Error)
 	assert.Equal(t, "Ada", persisted.Firstname, "BeforeSave's cardSetDirectly re-derivation must not resurrect the control character from contact.Card.Name")
-	assert.Equal(t, "Lovelace�", persisted.Lastname, "BeforeSave's cardSetDirectly re-derivation must not resurrect the invalid UTF-8 byte from contact.Card.Name")
+	assert.Equal(t, "Lovelace\u00ff", persisted.Lastname, "BeforeSave's cardSetDirectly re-derivation must not resurrect the raw invalid byte from contact.Card.Name")
 	assert.False(t, strings.ContainsRune(persisted.Firstname, 0x01))
-	assert.False(t, strings.ContainsRune(persisted.Lastname, 0xff))
+	assert.False(t, strings.ContainsRune(persisted.Lastname, '\uFFFD'))
 }

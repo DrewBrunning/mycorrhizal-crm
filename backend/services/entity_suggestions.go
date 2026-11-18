@@ -22,13 +22,23 @@ import (
 //
 // Normalization is exactly ADR 0043 decision 8: name_key (NFC, Unicode
 // lower-casing, whitespace collapsed, edge punctuation trimmed) for the exact
-// tier; a closed list of legal suffixes dropped for comparison only (never
-// written back) for the normalized tier; no diacritic folding (ADR 0016).
+// tier; for the normalized tier (organisations) OrganisationComparisonKey:
+// full stops removed, a closed list of legal suffixes dropped for comparison
+// only (never written back) and the word breaks ignored (issue #2631); no
+// diacritic folding (ADR 0016).
 
-// entityLegalSuffixes is the closed legal-suffix list of the suggestion tier.
+// entityLegalSuffixes is the closed legal-suffix list of the suggestion tier:
+// the short forms and the spelled-out forms of the same suffix (ltd/limited,
+// inc/incorporated, co/company, corp/corporation). It is dropped for comparison
+// only, never written back.
 var entityLegalSuffixes = map[string]bool{
-	"inc": true, "llc": true, "ltd": true, "gmbh": true, "ag": true,
-	"corp": true, "co": true, "sa": true, "bv": true,
+	"inc": true, "incorporated": true,
+	"llc": true,
+	"ltd": true, "limited": true,
+	"gmbh": true, "ag": true,
+	"corp": true, "corporation": true,
+	"co": true, "company": true,
+	"sa": true, "bv": true,
 }
 
 // comparisonTokens lower-cases (NFC), turns every non-letter/non-digit into a
@@ -40,14 +50,24 @@ func comparisonTokens(s string) []string {
 }
 
 // OrganisationComparisonKey is the normalized-tier key of an organisation
-// name: tokens joined by single spaces with trailing legal suffixes dropped
-// ("Acme, Inc." and "ACME Corp" both give "acme"). At least one token is kept.
+// name (ADR 0043 decision 8, amended for issue #2631): full stops are removed
+// ("L.L.C." is "LLC", "Co.op" is "Coop"), every other non-letter/digit is a
+// separator, trailing legal suffixes (entityLegalSuffixes, spelled out or not)
+// are dropped, and the remaining tokens are joined with NO separator, so
+// "Co-op", "Co op" and "Coop" (and "Coca-Cola" / "Cocacola") share a key, as do
+// "Acme, Inc.", "Acme Incorporated" and "ACME Ltd". At least one token is kept.
+//
+// Limits, deliberately: a suffix word is dropped only at the end ("Limited
+// Brands" keeps "Limited"); the suffix list is English/European and closed;
+// joining ignores where the spaces were, so names that differ only in word
+// breaks pair (the intended "Ace Hardware"/"AceHardware" case); no diacritic
+// folding (ADR 0016).
 func OrganisationComparisonKey(name string) string {
-	toks := comparisonTokens(name)
+	toks := comparisonTokens(strings.ReplaceAll(name, ".", ""))
 	for len(toks) > 1 && entityLegalSuffixes[toks[len(toks)-1]] {
 		toks = toks[:len(toks)-1]
 	}
-	return strings.Join(toks, " ")
+	return strings.Join(toks, "")
 }
 
 // addressKeyOrder is the component order of the place key (ADR 0043 decision 8).
@@ -224,8 +244,8 @@ func SuggestEntityPairs(db *gorm.DB, userID uint, kind, cursor string, limit int
 			key: fmt.Sprintf("%s\x00%s\x00%s", a.NameKey, pair[0], pair[1]),
 			pair: models.EntitySuggestionPair{
 				Reason: reason,
-				A:      models.EntitySuggestionEntity{ID: a.ID, Kind: a.Kind, Name: a.Name},
-				B:      models.EntitySuggestionEntity{ID: b.ID, Kind: b.Kind, Name: b.Name},
+				A:      models.EntitySuggestionEntity{ID: a.ID, Kind: a.Kind, Name: a.Name, UpdatedAt: a.UpdatedAt},
+				B:      models.EntitySuggestionEntity{ID: b.ID, Kind: b.Kind, Name: b.Name, UpdatedAt: b.UpdatedAt},
 			},
 		})
 	}
@@ -243,6 +263,19 @@ func SuggestEntityPairs(db *gorm.DB, userID uint, kind, cursor string, limit int
 		}
 		out = append(out, k.pair)
 		lastKey = k.key
+	}
+	// Issue #2743: one grouped query for the sides of this page only.
+	ids := make([]string, 0, 2*len(out))
+	for _, p := range out {
+		ids = append(ids, p.A.ID, p.B.ID)
+	}
+	counts, err := EntityLinkCounts(db, userID, ids)
+	if err != nil {
+		return nil, "", err
+	}
+	for i := range out {
+		out[i].A.LinkCount = counts[out[i].A.ID]
+		out[i].B.LinkCount = counts[out[i].B.ID]
 	}
 	return out, next, nil
 }
