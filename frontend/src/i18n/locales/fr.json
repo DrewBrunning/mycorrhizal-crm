@@ -4415,11 +4415,13 @@
       "death": "Décès",
       "dateHint": "AAAA, AAAA-MM ou AAAA-MM-JJ"
     },
-    "listAdded": "Ajoutée le {{date}}",
-    "nameAdded": "{{name}} (ajoutée le {{date}})",
-    "nameDetail_one": "{{name}} (ajoutée le {{date}}, {{count}} contact)",
-    "nameDetail_many": "{{name}} (ajoutée le {{date}}, {{count}} contacts)",
-    "nameDetail_other": "{{name}} (ajoutée le {{date}}, {{count}} contacts)",
+    "listDetail_one": "{{count}} contact · mise à jour le {{date}}",
+    "listDetail_many": "{{count}} contacts · mise à jour le {{date}}",
+    "listDetail_other": "{{count}} contacts · mise à jour le {{date}}",
+    "nameUpdated": "{{name}} (mise à jour le {{date}})",
+    "nameDetail_one": "{{name}} (mise à jour le {{date}}, {{count}} contact)",
+    "nameDetail_many": "{{name}} (mise à jour le {{date}}, {{count}} contacts)",
+    "nameDetail_other": "{{name}} (mise à jour le {{date}}, {{count}} contacts)",
     "form": {
       "editTitle": "Modifier {{name}}",
       "nameRequired": "Saisissez un nom.",
