@@ -552,3 +552,23 @@ test('a loadMore failure settling after a refetch does not set an error', async 
   expect(result.current.error).toBeNull();
   expect(result.current.notes.map((n) => n.ID)).toEqual([3]);
 });
+
+// #2744: the cursor is sort-specific (a date cursor is a 400 for the default order), so the
+// page's sort must ride on the first request and on every Load more.
+test('passes sort on the first page and on loadMore so the cursor stays valid', async () => {
+  localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
+  vi.mocked(getUnassignedNotes)
+    .mockResolvedValueOnce(unassignedResponse({ next_cursor: 'date:abc' }))
+    .mockResolvedValueOnce(unassignedResponse({ next_cursor: '' }));
+
+  const { result } = renderHook(() => useNotes(undefined, { sort: 'date' }));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(getUnassignedNotes).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'date' }));
+
+  await act(async () => {
+    await result.current.loadMore();
+  });
+  expect(getUnassignedNotes).toHaveBeenLastCalledWith(
+    expect.objectContaining({ cursor: 'date:abc', sort: 'date' }),
+  );
+});

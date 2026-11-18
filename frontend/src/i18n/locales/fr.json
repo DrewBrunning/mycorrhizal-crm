@@ -27,6 +27,14 @@
     }
   },
   "globalSearch": {
+    "matchedOn": "Correspond à : {{fields}}",
+    "matchedField": {
+      "name": "nom",
+      "organization": "organisation",
+      "email": "e-mail",
+      "phone": "téléphone",
+      "address": "adresse"
+    },
     "placeholder": "Rechercher contacts, notes, activités, lieux…",
     "label": "Tout rechercher",
     "open": "Rechercher",
@@ -544,12 +552,32 @@
         "colStatus": "Résultat",
         "colReason": "Motif",
         "statusFailed": "Échec",
-        "statusSkipped": "Ignorée"
+        "statusSkipped": "Ignorée",
+        "statusWarning": "Avertissement",
+        "warningsTitle": "Importé avec avertissements",
+        "mixedTitle": "Lignes à vérifier",
+        "filterLabel": "Afficher",
+        "filterNotImported_one": "Non importée ({{count}})",
+        "filterNotImported_other": "Non importées ({{count}})",
+        "filterNotImported_many": "Non importées ({{count}})",
+        "filterAll_one": "Toutes ({{count}})",
+        "filterAll_other": "Toutes ({{count}})",
+        "filterAll_many": "Toutes ({{count}})",
+        "filterWarnings_one": "Avertissement ({{count}})",
+        "filterWarnings_other": "Avertissements ({{count}})",
+        "filterWarnings_many": "Avertissements ({{count}})"
       },
       "errors": {
         "invalidFile": "Veuillez sélectionner un fichier CSV valide",
         "fileTooLarge": "Le fichier est trop volumineux. La taille maximale est de {{size}} Mo",
         "noMappings": "Veuillez mapper au moins une colonne"
+      },
+      "warning": {
+        "anniversary": "Anniversaire de mariage non importé : valeur non valide",
+        "birthday": "Anniversaire non importé : valeur non valide"
+      },
+      "fileDiagnostic": {
+        "encoding": "Ce fichier n’est pas en UTF-8 ; il a été lu en Windows-1252. Vérifiez que les caractères accentués s’affichent correctement avant d’importer."
       }
     },
     "urls": "Sites web",
@@ -1876,8 +1904,8 @@
           "colFormat": "Format",
           "colCreated": "Créés",
           "colUpdated": "Mis à jour",
-          "colSkipped": "Ignorés",
-          "colErrors": "Erreurs",
+          "colSkipped": "Ignorées à la vérification",
+          "colErrors": "Échecs à l’import",
           "colReport": "Rapport",
           "viewReport": "Voir le rapport",
           "reportTitle": "Rapport d'importation",
@@ -2119,7 +2147,8 @@
         "foundNotes_other": "{{count}} notes",
         "foundNotes_many": "{{count}} notes",
         "estimate": "Tout récupérer prend environ {{minutes}} min.",
-        "start": "Démarrer l'import"
+        "start": "Démarrer l'import",
+        "unreachable": "Impossible de joindre Monica à l’adresse {{host}}"
       }
     },
     "meerkatImport": {
@@ -2143,7 +2172,8 @@
         "userOption_one": "{{name}} — {{count}} contact",
         "userOption_other": "{{name}} — {{count}} contacts",
         "userOption_many": "{{name}} — {{count}} contacts",
-        "start": "Démarrer l'import"
+        "start": "Démarrer l'import",
+        "fetchFailedHint": "Si Meerkat reste injoignable, choisissez « Téléverser un fichier » et importez plutôt une copie de sa base de données."
       },
       "mode": {
         "label": "Comment importer depuis Meerkat",
@@ -4254,7 +4284,9 @@
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
       "integration_save_failed": "{{reason}}",
-      "occasion_anchor_date_incomplete": "Une date d’ancrage d’occasion nécessite à la fois un mois et un jour, ou aucun des deux",
+      "occasion_anchor_date_incomplete": "Une date d’ancrage d’occasion nécessite à la fois un mois et un jour",
+      "occasion_anchor_date_invalid": "Cette combinaison de mois et de jour n’existe pas, par exemple le 30 février",
+      "occasion_anchor_date_required": "Une occasion a besoin d’un mois et d’un jour pour pouvoir vous le rappeler",
       "occasion_days_invalid": "days doit être 30 ou 90",
       "occasion_event_circles_required": "circle_ids est requis",
       "occasion_event_end_before_start": "L’heure de fin de l’événement ne peut pas précéder l’heure de début",

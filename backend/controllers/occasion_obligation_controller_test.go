@@ -131,7 +131,7 @@ func TestCreateOccasionObligationRejectsPartialAnchor(t *testing.T) {
 	assert.EqualValues(t, 0, count, "neither partial-anchor request should have persisted a row")
 }
 
-func TestCreateOccasionObligationAllowsNilAnchor(t *testing.T) {
+func TestCreateOccasionObligationRejectsMissingAnchor(t *testing.T) {
 	db, router := setupRouter(t)
 	registerOccasionObligationRoutes(t, router)
 
@@ -139,33 +139,132 @@ func TestCreateOccasionObligationAllowsNilAnchor(t *testing.T) {
 	db.First(&user)
 	contact := seedOccasionObligationContact(t, db, user.ID)
 
-	// Neither month nor day — a valid "date TBD" obligation (ADR 0024).
-	w := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
-		EntityID: contact.VCardUID,
-		Kind:     models.OccasionObligationKindInvite,
-		Label:    "Annual summer BBQ",
-	})
-	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	// Neither month nor day is a 400 with its own reason code (maintainer
+	// decision on #2670): a dateless obligation never reminds, so it is refused
+	// rather than saved silently inert. Active on or off makes no difference.
+	inactive := false
+	for name, active := range map[string]*bool{"active default": nil, "inactive": &inactive} {
+		w := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
+			EntityID: contact.VCardUID,
+			Kind:     models.OccasionObligationKindGift,
+			Label:    "Birthday gift",
+			Active:   active,
+		})
+		require.Equal(t, http.StatusBadRequest, w.Code, name+": "+w.Body.String())
+		assert.Contains(t, w.Body.String(), `"reason_code":"occasion_anchor_date_required"`, name)
+	}
 
-	var createdResp struct {
+	var count int64
+	db.Model(&models.OccasionObligation{}).Count(&count)
+	assert.EqualValues(t, 0, count, "a rejected request must not persist a row")
+}
+
+func TestOccasionObligationRejectsImpossibleMonthDay(t *testing.T) {
+	db, router := setupRouter(t)
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+
+	cases := []struct {
+		month, day int
+		ok         bool
+	}{
+		{2, 29, true}, // leap-day anchor is a real annual date
+		{2, 30, false},
+		{2, 31, false},
+		{4, 30, true},
+		{4, 31, false},
+		{6, 31, false},
+		{9, 31, false},
+		{11, 31, false},
+		{1, 31, true},
+		{12, 31, true},
+	}
+	for _, tc := range cases {
+		w := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
+			EntityID:    contact.VCardUID,
+			Kind:        models.OccasionObligationKindCard,
+			Label:       "Card",
+			AnchorMonth: intPtr(tc.month),
+			AnchorDay:   intPtr(tc.day),
+		})
+		if tc.ok {
+			assert.Equal(t, http.StatusCreated, w.Code, "%d/%d: %s", tc.month, tc.day, w.Body.String())
+			continue
+		}
+		assert.Equal(t, http.StatusBadRequest, w.Code, "%d/%d: %s", tc.month, tc.day, w.Body.String())
+		assert.Contains(t, w.Body.String(), `"reason_code":"occasion_anchor_date_invalid"`, "%d/%d", tc.month, tc.day)
+	}
+
+	// The same rule applies on update (full replace).
+	create := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
+		EntityID: contact.VCardUID, Kind: models.OccasionObligationKindCard, Label: "Xmas",
+		AnchorMonth: intPtr(12), AnchorDay: intPtr(25),
+	})
+	require.Equal(t, http.StatusCreated, create.Code, create.Body.String())
+	var created struct {
 		OccasionObligation models.OccasionObligation `json:"occasion_obligation"`
 	}
-	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &createdResp))
-	created := createdResp.OccasionObligation
-	require.NotEmpty(t, created.ID)
-	assert.Equal(t, "Annual summer BBQ", created.Label)
-	assert.Nil(t, created.AnchorMonth)
-	assert.Nil(t, created.AnchorDay)
+	require.NoError(t, json.Unmarshal(create.Body.Bytes(), &created))
+	w := doOccasionJSON(router, "PUT", "/occasion-obligations/"+created.OccasionObligation.ID, models.OccasionObligationInput{
+		EntityID: contact.VCardUID, Kind: models.OccasionObligationKindCard, Label: "Xmas",
+		AnchorMonth: intPtr(2), AnchorDay: intPtr(31),
+	})
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), `"reason_code":"occasion_anchor_date_invalid"`)
+}
 
-	// The persisted row (not just the echoed response) has a NULL anchor.
-	var anchorMonthNull, anchorDayNull int64
-	require.NoError(t, db.Model(&models.OccasionObligation{}).
-		Where("id = ? AND user_id = ? AND entity_id = ? AND anchor_month IS NULL", created.ID, user.ID, contact.VCardUID).
-		Count(&anchorMonthNull).Error)
-	require.NoError(t, db.Model(&models.OccasionObligation{}).
-		Where("id = ? AND anchor_day IS NULL", created.ID).Count(&anchorDayNull).Error)
-	assert.EqualValues(t, 1, anchorMonthNull, "anchor_month must be NULL in the database")
-	assert.EqualValues(t, 1, anchorDayNull, "anchor_day must be NULL in the database")
+// A row saved before the date became mandatory (ADR 0024 originally allowed
+// "neither") stays readable, and can still be retired or given a date; it just
+// cannot be re-saved active and dateless.
+func TestUpdateOccasionObligationLegacyDatelessRow(t *testing.T) {
+	db, router := setupRouter(t)
+	registerOccasionObligationRoutes(t, router)
+
+	var user models.User
+	db.First(&user)
+	contact := seedOccasionObligationContact(t, db, user.ID)
+
+	legacy := models.OccasionObligation{
+		UserID: user.ID, EntityID: contact.VCardUID, Kind: models.OccasionObligationKindInvite,
+		Label: "Annual summer BBQ", Active: true, Sensitivity: models.RelationshipSensitivityNormal,
+	}
+	require.NoError(t, db.Create(&legacy).Error)
+
+	get := doOccasionJSON(router, "GET", "/occasion-obligations/"+legacy.ID, nil)
+	require.Equal(t, http.StatusOK, get.Code, get.Body.String())
+
+	// Re-saving it active and still dateless is refused.
+	w := doOccasionJSON(router, "PUT", "/occasion-obligations/"+legacy.ID, models.OccasionObligationInput{
+		EntityID: contact.VCardUID, Kind: models.OccasionObligationKindInvite, Label: "Annual summer BBQ (edited)",
+	})
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), `"reason_code":"occasion_anchor_date_required"`)
+
+	// Retiring it (inactive, still dateless) is allowed.
+	inactive := false
+	w = doOccasionJSON(router, "PUT", "/occasion-obligations/"+legacy.ID, models.OccasionObligationInput{
+		EntityID: contact.VCardUID, Kind: models.OccasionObligationKindInvite, Label: "Annual summer BBQ", Active: &inactive,
+	})
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	// Giving it a date is allowed and materializes the reminder.
+	w = doOccasionJSON(router, "PUT", "/occasion-obligations/"+legacy.ID, models.OccasionObligationInput{
+		EntityID: contact.VCardUID, Kind: models.OccasionObligationKindInvite, Label: "Annual summer BBQ",
+		AnchorMonth: intPtr(7), AnchorDay: intPtr(4),
+	})
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var reminders int64
+	db.Model(&models.Reminder{}).Where("occasion_obligation_id = ?", legacy.ID).Count(&reminders)
+	assert.EqualValues(t, 1, reminders)
+
+	// A row that HAS a date cannot be saved dateless, even inactive.
+	w = doOccasionJSON(router, "PUT", "/occasion-obligations/"+legacy.ID, models.OccasionObligationInput{
+		EntityID: contact.VCardUID, Kind: models.OccasionObligationKindInvite, Label: "Annual summer BBQ", Active: &inactive,
+	})
+	assert.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
 }
 
 func TestCreateOccasionObligationRejectsLinkedLifeEventFromAnotherUser(t *testing.T) {
@@ -185,6 +284,8 @@ func TestCreateOccasionObligationRejectsLinkedLifeEventFromAnotherUser(t *testin
 		EntityID:          contact.VCardUID,
 		Kind:              models.OccasionObligationKindGift,
 		Label:             "Grad gift",
+		AnchorMonth:       intPtr(6),
+		AnchorDay:         intPtr(1),
 		LinkedLifeEventID: othersEvent.ID,
 	})
 	assert.Equal(t, http.StatusNotFound, w.Code, w.Body.String())
@@ -361,9 +462,11 @@ func TestDeleteOccasionObligationSoftDeletesAndAllowsRecreate(t *testing.T) {
 	// No natural-key unique constraint: recreating for the same contact/kind
 	// must succeed even though the old row still exists, soft-deleted.
 	w = doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
-		EntityID: contact.VCardUID,
-		Kind:     "card",
-		Label:    "Christmas card",
+		EntityID:    contact.VCardUID,
+		Kind:        "card",
+		Label:       "Christmas card",
+		AnchorMonth: intPtr(12),
+		AnchorDay:   intPtr(25),
 	})
 	assert.Equal(t, http.StatusCreated, w.Code, w.Body.String())
 }
@@ -417,26 +520,6 @@ func TestCreateOccasionObligationMaterializesReminder(t *testing.T) {
 	wantAnchor := nextRemindAt(12, 25, time.Now().In(loc), loc)
 	wantRemindAt := wantAnchor.AddDate(0, 0, -14)
 	assert.WithinDuration(t, wantRemindAt, reminders[0].RemindAt, time.Second, "reminder must fire lead_time_days before the anchor date")
-}
-
-func TestCreateOccasionObligationNoAnchorNoReminder(t *testing.T) {
-	db, router := setupRouter(t)
-	registerOccasionObligationRoutes(t, router)
-
-	var user models.User
-	db.First(&user)
-	contact := seedOccasionObligationContact(t, db, user.ID)
-
-	w := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
-		EntityID: contact.VCardUID,
-		Kind:     models.OccasionObligationKindInvite,
-		Label:    "Annual summer BBQ",
-	})
-	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
-
-	var count int64
-	db.Model(&models.Reminder{}).Count(&count)
-	assert.EqualValues(t, 0, count, "an obligation with no anchor date must not materialize a reminder")
 }
 
 func TestUpdateOccasionObligationDeactivateRemovesReminder(t *testing.T) {
