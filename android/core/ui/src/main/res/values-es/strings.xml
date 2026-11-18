@@ -198,6 +198,12 @@
     <string name="contacts_search_notes_group">Notas</string>
     <string name="contacts_search_activities_group">Interacciones</string>
     <string name="contacts_search_entities_group">Organizaciones, lugares y mascotas</string>
+    <string name="contacts_search_matched_on">Coincide en: %1$s</string>
+    <string name="contacts_search_matched_field_name">nombre</string>
+    <string name="contacts_search_matched_field_organization">organización</string>
+    <string name="contacts_search_matched_field_email">correo electrónico</string>
+    <string name="contacts_search_matched_field_phone">teléfono</string>
+    <string name="contacts_search_matched_field_address">dirección</string>
     <string name="contacts_search_unfiled">Sin asignar</string>
     <string name="contacts_search_resolved_relation">Relación coincidente: %1$s</string>
 
@@ -3507,7 +3513,9 @@
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>
     <string name="error_reason_integration_save_failed">%1$s</string>
-    <string name="error_reason_occasion_anchor_date_incomplete">Una fecha ancla de ocasión requiere tanto mes como día, o ninguno de los dos</string>
+    <string name="error_reason_occasion_anchor_date_incomplete">Una fecha ancla de ocasión requiere tanto mes como día</string>
+    <string name="error_reason_occasion_anchor_date_invalid">Esa combinación de mes y día no existe, por ejemplo el 30 de febrero</string>
+    <string name="error_reason_occasion_anchor_date_required">Una ocasión necesita un mes y un día para poder recordártela</string>
     <string name="error_reason_occasion_days_invalid">days debe ser 30 o 90</string>
     <string name="error_reason_occasion_event_circles_required">circle_ids es obligatorio</string>
     <string name="error_reason_occasion_event_end_before_start">La hora de fin del evento no puede ser anterior a la de inicio</string>

@@ -90,3 +90,22 @@ test('a failed load exposes the error message and retry reloads', async () => {
   expect(result.current.error).toBeNull();
   expect(result.current.entities).toHaveLength(1);
 });
+
+// #2744: A-Z. The server's order defaults to desc, so asc must be explicit; the name cursor
+// is sort-specific, so Load more repeats the same sort and order.
+test('requests the list alphabetically (sort=name, order=asc), also on loadMore', async () => {
+  listMock
+    .mockResolvedValueOnce({ entities: [ent('a')], limit: 25, next_cursor: 'name:c1' })
+    .mockResolvedValueOnce({ entities: [ent('b')], limit: 25, next_cursor: '' });
+  const { result } = renderHook(() => useEntityList('organisation', ''));
+  await waitFor(() => expect(result.current.loading).toBe(false));
+  expect(listMock).toHaveBeenLastCalledWith(
+    expect.objectContaining({ sort: 'name', order: 'asc' }),
+  );
+  await act(async () => {
+    await result.current.loadMore();
+  });
+  expect(listMock).toHaveBeenLastCalledWith(
+    expect.objectContaining({ cursor: 'name:c1', sort: 'name', order: 'asc' }),
+  );
+});

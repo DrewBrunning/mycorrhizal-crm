@@ -180,6 +180,11 @@ export default function ContactInformation({
   entityLinks,
 }: ContactInformationProps) {
   const { t } = useTranslation();
+  // A value's type token: the flat home/work/cell vocabulary first, then the
+  // neutral contexts (private, school, ...) a vCard import stores, and only
+  // then the token as typed (#2681: "private" used to show raw).
+  const typeLabel = (type: string) =>
+    t(`contacts.types.${type}`, t(`contacts.contexts.${type}`, type));
   // Issue #2681: a context token ("private") reads in the user's language, like
   // the editors' own context pickers, instead of as a raw English word.
   const contextLabels = (contexts: string[]) =>
@@ -306,12 +311,12 @@ export default function ContactInformation({
                       sx={{ color: 'inherit' }}
                     >
                       {r.value}
-                      {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                      {r.type ? ` (${typeLabel(r.type)})` : ''}
                     </Typography>
                   ) : (
                     <Typography variant="body2">
                       {r.value}
-                      {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                      {r.type ? ` (${typeLabel(r.type)})` : ''}
                     </Typography>
                   )}
                 </Box>
@@ -384,7 +389,7 @@ export default function ContactInformation({
                   sx={{ color: 'inherit' }}
                 >
                   {r.value}
-                  {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                  {r.type ? ` (${typeLabel(r.type)})` : ''}
                 </Typography>
               </Box>
               {!looksLikeEmail(r.value) && (
@@ -448,12 +453,12 @@ export default function ContactInformation({
                       sx={{ color: 'inherit', wordBreak: 'break-all' }}
                     >
                       {r.value}
-                      {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                      {r.type ? ` (${typeLabel(r.type)})` : ''}
                     </Typography>
                   ) : (
                     <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
                       {r.value}
-                      {r.type ? ` (${t(`contacts.types.${r.type}`, r.type)})` : ''}
+                      {r.type ? ` (${typeLabel(r.type)})` : ''}
                     </Typography>
                   )}
                 </Box>

@@ -27,6 +27,14 @@
     }
   },
   "globalSearch": {
+    "matchedOn": "Matches: {{fields}}",
+    "matchedField": {
+      "name": "name",
+      "organization": "organisation",
+      "email": "email",
+      "phone": "phone",
+      "address": "address"
+    },
     "placeholder": "Search contacts, notes, activities, places…",
     "label": "Search everything",
     "open": "Search",
@@ -524,12 +532,29 @@
         "colStatus": "Result",
         "colReason": "Reason",
         "statusFailed": "Failed",
-        "statusSkipped": "Skipped"
+        "statusSkipped": "Skipped",
+        "statusWarning": "Warning",
+        "warningsTitle": "Imported with warnings",
+        "mixedTitle": "Rows to review",
+        "filterLabel": "Show",
+        "filterNotImported_one": "Not imported ({{count}})",
+        "filterNotImported_other": "Not imported ({{count}})",
+        "filterAll_one": "All ({{count}})",
+        "filterAll_other": "All ({{count}})",
+        "filterWarnings_one": "Warning ({{count}})",
+        "filterWarnings_other": "Warnings ({{count}})"
       },
       "errors": {
         "invalidFile": "Please select a valid CSV file",
         "fileTooLarge": "File is too large. Maximum size is {{size}}MB",
         "noMappings": "Please map at least one column"
+      },
+      "warning": {
+        "anniversary": "Anniversary not imported: invalid value",
+        "birthday": "Birthday not imported: invalid value"
+      },
+      "fileDiagnostic": {
+        "encoding": "This file isn't UTF-8, so it was read as Windows-1252. Check that accented characters look right before you import."
       }
     },
     "urls": "Websites",
@@ -1882,8 +1907,8 @@
           "colFormat": "Format",
           "colCreated": "Created",
           "colUpdated": "Updated",
-          "colSkipped": "Skipped",
-          "colErrors": "Errors",
+          "colSkipped": "Skipped in review",
+          "colErrors": "Failed on import",
           "colReport": "Report",
           "viewReport": "View report",
           "reportTitle": "Import report",
@@ -2110,7 +2135,8 @@
         "foundNotes_one": "{{count}} note",
         "foundNotes_other": "{{count}} notes",
         "estimate": "Fetching everything takes about {{minutes}} min.",
-        "start": "Start import"
+        "start": "Start import",
+        "unreachable": "Couldn't reach Monica at {{host}}"
       }
     },
     "meerkatImport": {
@@ -2130,7 +2156,8 @@
         "pickUser": "This database has more than one user — choose whose contacts to import:",
         "userOption_one": "{{name}} — {{count}} contact",
         "userOption_other": "{{name}} — {{count}} contacts",
-        "start": "Start import"
+        "start": "Start import",
+        "fetchFailedHint": "If Meerkat stays unreachable, choose \"Upload a file\" and import a copy of its database instead."
       },
       "mode": {
         "label": "How to import from Meerkat",
@@ -4147,7 +4174,9 @@
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
       "integration_save_failed": "{{reason}}",
-      "occasion_anchor_date_incomplete": "An occasion anchor date requires both a month and a day, or neither",
+      "occasion_anchor_date_incomplete": "An occasion anchor date requires both a month and a day",
+      "occasion_anchor_date_invalid": "That month and day do not exist together, for example February 30",
+      "occasion_anchor_date_required": "An occasion needs a month and a day so it can remind you",
       "occasion_days_invalid": "days must be 30 or 90",
       "occasion_event_circles_required": "circle_ids is required",
       "occasion_event_end_before_start": "Event end time cannot be before its start time",

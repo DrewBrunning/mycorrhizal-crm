@@ -8343,6 +8343,36 @@
     },
     {
       "method": "GET",
+      "path": "/occasion-obligations/card-list/summary",
+      "parameters": [
+        {
+          "name": "include_sensitive",
+          "in": "query",
+          "required": false
+        },
+        {
+          "name": "kind",
+          "in": "query",
+          "required": false
+        }
+      ],
+      "responses": [
+        {
+          "status": "200",
+          "schema": "ref:OccasionCardListSummary"
+        },
+        {
+          "status": "400",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "401",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "GET",
       "path": "/occasion-obligations/gift-shopping-list",
       "parameters": [
         {
@@ -22367,6 +22397,31 @@
         {
           "name": "token",
           "type": "string",
+          "required": true
+        }
+      ]
+    },
+    {
+      "name": "OccasionCardListSummary",
+      "properties": [
+        {
+          "name": "included",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "skipped",
+          "type": "integer",
+          "required": true
+        },
+        {
+          "name": "skipped_reasons",
+          "type": "object",
+          "required": true
+        },
+        {
+          "name": "total",
+          "type": "integer",
           "required": true
         }
       ]

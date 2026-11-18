@@ -664,3 +664,44 @@ test('Escape dismisses the account bundle confirmation without downloading', asy
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   expect(exportBundleMock).not.toHaveBeenCalled();
 });
+
+// #2681 (maintainer decision): the history counts keep their meaning, but the
+// labels say which stage they count: rows skipped in the review step vs rows
+// that failed while importing.
+test('the history columns say Skipped in review and Failed on import', async () => {
+  historyMock.mockResolvedValue([runWithIssues]);
+  renderPage();
+
+  await screen.findByText('CSV');
+  expect(screen.getByRole('columnheader', { name: 'Skipped in review' })).toBeInTheDocument();
+  expect(screen.getByRole('columnheader', { name: 'Failed on import' })).toBeInTheDocument();
+  expect(screen.queryByRole('columnheader', { name: 'Skipped' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('columnheader', { name: 'Errors' })).not.toBeInTheDocument();
+});
+
+// #2741: a stored warning row shows in the history report, labelled and
+// explained by its concept.
+test('View report lists a warning row as Warning with its explanation', async () => {
+  historyMock.mockResolvedValue([runWithIssues]);
+  runMock.mockResolvedValue({
+    ...runWithIssues,
+    issues: [
+      {
+        row: 4,
+        name: 'Ada',
+        email: '',
+        phone: '',
+        status: 'warning',
+        concept: 'birthday',
+        reason: 'birthday not imported: invalid value',
+      },
+    ],
+  });
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(await within(dialog).findByText('Warning')).toBeInTheDocument();
+  expect(within(dialog).getByText('Birthday not imported: invalid value')).toBeInTheDocument();
+  expect(within(dialog).queryByText('Skipped')).not.toBeInTheDocument();
+});

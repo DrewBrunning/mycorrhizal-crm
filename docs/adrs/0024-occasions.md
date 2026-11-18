@@ -87,9 +87,15 @@ and a general RRULE engine is a lot of surface for a feature this ADR is trying 
 genuine multi-year or non-annual use case shows up later, it's a new `RecurrenceUnit` field on this same
 table, not a redesign.
 
-An obligation with no `AnchorMonth`/`AnchorDay` (both null) is valid and simply never surfaces on the
-upcoming-occasions widget — for a `Kind: invite` obligation whose date isn't fixed yet (e.g., "annual
-summer BBQ, date TBD"), which is a real state, not an error.
+**Amended 2026-11-17 (issue #2670, #2671, #2648): the date is now mandatory and must be real.** This ADR
+originally allowed both anchors null ("date TBD"). In use that state was a trap: the row never produced a
+reminder or a gift-list entry, so a label like "Birthday gift" with no date looked configured but was inert.
+`POST`/`PUT /occasion-obligations` now return 400 `occasion_anchor_date_required` when both are null,
+`occasion_anchor_date_incomplete` when only one is set, and `occasion_anchor_date_invalid` when the pair is
+not a calendar date (February 29 is allowed; February 30/31 and the 31st of a 30-day month are not). Rows
+saved before this change with no date stay readable and listable; `PUT` of such a row is accepted only when
+it is re-saved inactive (`active: false`, still dateless) or given a date, and no migration rewrites them.
+Anchoring a dateless obligation to the contact's birthday remains out of scope.
 
 ### 3. Reminder integration: same materialize-a-yearly-`Reminder` pattern `LifeEvent.Remind` already uses
 

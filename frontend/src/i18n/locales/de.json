@@ -27,6 +27,14 @@
     }
   },
   "globalSearch": {
+    "matchedOn": "Treffer in: {{fields}}",
+    "matchedField": {
+      "name": "Name",
+      "organization": "Organisation",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "address": "Adresse"
+    },
     "placeholder": "Kontakte, Notizen, Aktivitäten, Orte suchen…",
     "label": "Alles durchsuchen",
     "open": "Suchen",
@@ -524,12 +532,29 @@
         "colStatus": "Ergebnis",
         "colReason": "Grund",
         "statusFailed": "Fehlgeschlagen",
-        "statusSkipped": "Übersprungen"
+        "statusSkipped": "Übersprungen",
+        "statusWarning": "Warnung",
+        "warningsTitle": "Mit Warnungen importiert",
+        "mixedTitle": "Zeilen zur Überprüfung",
+        "filterLabel": "Anzeigen",
+        "filterNotImported_one": "Nicht importiert ({{count}})",
+        "filterNotImported_other": "Nicht importiert ({{count}})",
+        "filterAll_one": "Alle ({{count}})",
+        "filterAll_other": "Alle ({{count}})",
+        "filterWarnings_one": "Warnung ({{count}})",
+        "filterWarnings_other": "Warnungen ({{count}})"
       },
       "errors": {
         "invalidFile": "Bitte wählen Sie eine gültige CSV-Datei",
         "fileTooLarge": "Datei ist zu groß. Maximale Größe ist {{size}}MB",
         "noMappings": "Bitte ordnen Sie mindestens eine Spalte zu"
+      },
+      "warning": {
+        "anniversary": "Jahrestag nicht importiert: ungültiger Wert",
+        "birthday": "Geburtstag nicht importiert: ungültiger Wert"
+      },
+      "fileDiagnostic": {
+        "encoding": "Diese Datei ist nicht UTF-8-codiert und wurde als Windows-1252 gelesen. Prüfen Sie vor dem Import, ob Umlaute und Akzente richtig angezeigt werden."
       }
     },
     "urls": "Webseiten",
@@ -1842,8 +1867,8 @@
           "colFormat": "Format",
           "colCreated": "Erstellt",
           "colUpdated": "Aktualisiert",
-          "colSkipped": "Übersprungen",
-          "colErrors": "Fehler",
+          "colSkipped": "Bei der Prüfung übersprungen",
+          "colErrors": "Beim Import fehlgeschlagen",
           "colReport": "Bericht",
           "viewReport": "Bericht ansehen",
           "reportTitle": "Importbericht",
@@ -2070,7 +2095,8 @@
         "foundNotes_one": "{{count}} Notiz",
         "foundNotes_other": "{{count}} Notizen",
         "estimate": "Das vollständige Abrufen dauert etwa {{minutes}} Min.",
-        "start": "Import starten"
+        "start": "Import starten",
+        "unreachable": "Monica unter {{host}} ist nicht erreichbar"
       }
     },
     "meerkatImport": {
@@ -2090,7 +2116,8 @@
         "pickUser": "Diese Datenbank hat mehrere Benutzer — wähle, wessen Kontakte importiert werden:",
         "userOption_one": "{{name}} — {{count}} Kontakt",
         "userOption_other": "{{name}} — {{count}} Kontakte",
-        "start": "Import starten"
+        "start": "Import starten",
+        "fetchFailedHint": "Wenn Meerkat weiterhin nicht erreichbar ist, wählen Sie „Datei hochladen“ und importieren Sie stattdessen eine Kopie der Datenbank."
       },
       "mode": {
         "label": "So importieren Sie aus Meerkat",
@@ -4147,7 +4174,9 @@
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
       "integration_save_failed": "{{reason}}",
-      "occasion_anchor_date_incomplete": "Ein Ankerdatum für einen Anlass erfordert sowohl Monat als auch Tag oder keines von beiden",
+      "occasion_anchor_date_incomplete": "Ein Ankerdatum für einen Anlass erfordert sowohl Monat als auch Tag",
+      "occasion_anchor_date_invalid": "Diese Kombination aus Monat und Tag gibt es nicht, zum Beispiel den 30. Februar",
+      "occasion_anchor_date_required": "Ein Anlass braucht einen Monat und einen Tag, damit er Sie erinnern kann",
       "occasion_days_invalid": "days muss 30 oder 90 sein",
       "occasion_event_circles_required": "circle_ids ist erforderlich",
       "occasion_event_end_before_start": "Die Endzeit des Ereignisses darf nicht vor der Startzeit liegen",

@@ -477,7 +477,7 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 		"OccasionObligationInput.EntityID": dto(func(t *testing.T, h *ownHarness) {
 			h.assertMasked(http.MethodPost, "/api/v1/occasion-obligations",
 				func(uid string) string {
-					return fmt.Sprintf(`{"entity_id":%s,"kind":"card","label":"x"}`, jstr(uid))
+					return fmt.Sprintf(`{"entity_id":%s,"kind":"card","label":"x","anchor_month":12,"anchor_day":25}`, jstr(uid))
 				},
 				h.fx.ownerC1UID, h.fx.victimC1UID, ownNonexistentUID, http.StatusNotFound, false)
 		}),
@@ -487,7 +487,7 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 			// as GiftInput.LifeEventID).
 			h.assertMasked(http.MethodPost, "/api/v1/occasion-obligations",
 				func(uid string) string {
-					return fmt.Sprintf(`{"entity_id":%s,"kind":"card","label":"x","linked_life_event_id":%s}`, jstr(h.fx.ownerC1UID), jstr(uid))
+					return fmt.Sprintf(`{"entity_id":%s,"kind":"card","label":"x","anchor_month":12,"anchor_day":25,"linked_life_event_id":%s}`, jstr(h.fx.ownerC1UID), jstr(uid))
 				},
 				h.fx.ownerLifeEventID, h.fx.victimLifeEventID, ownNonexistentUID, http.StatusNotFound, false)
 		}),

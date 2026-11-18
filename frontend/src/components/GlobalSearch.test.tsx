@@ -319,3 +319,40 @@ test('Enter on a blank box does nothing', async () => {
   fireEvent.keyDown(box, { key: 'Enter' });
   expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/);
 });
+
+// #2744: a contact hit that matched somewhere other than its name says where.
+test('a contact hit shows why it matched; name-only and absent show nothing (#2744)', async () => {
+  vi.mocked(searchAll).mockResolvedValue(
+    result({
+      contacts: [
+        {
+          id: 1,
+          uid: 'u1',
+          firstname: 'Beatrix',
+          lastname: 'Zebra',
+          org: 'Zebracorp',
+          matched_on: ['name', 'organization', 'phone'],
+        },
+        { id: 2, uid: 'u2', firstname: 'Bob', lastname: 'Name', matched_on: ['name'] },
+        { id: 3, uid: 'u3', firstname: 'Cy', lastname: 'Plain' },
+      ],
+      entities: [
+        {
+          id: 'e-1',
+          kind: 'organisation',
+          name: 'Zebra Holdings',
+          sensitivity: 'normal',
+          matched_on: ['name'],
+        },
+      ],
+    }),
+  );
+  renderSearch();
+  await type('zebra');
+  expect(screen.getAllByText(/^Matches: /)).toHaveLength(1);
+  expect(screen.getByText('Matches: name, organisation, phone')).toBeInTheDocument();
+  // The reason lives inside its option, so the #2695 listbox structure is unchanged.
+  const option = screen.getByText('Matches: name, organisation, phone').closest('[role="option"]');
+  expect(option).toHaveTextContent('Beatrix Zebra');
+  expect(option?.parentElement?.getAttribute('role')).toBe('group');
+});

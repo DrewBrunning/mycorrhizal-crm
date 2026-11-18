@@ -92,6 +92,47 @@ test('renders empty inbox when no notes exist', async () => {
   expect(screen.getByText('No notes yet')).toBeDefined();
 });
 
+// #2744: every note shows its own date, so the list is ordered by that date
+// (GET /notes?sort=date), not by last edit; "Load more" keeps the same sort.
+test('requests notes ordered by their date, on the first page and on Load more (#2744)', async () => {
+  const urls: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      urls.push(url);
+      if (url.includes('/notes?')) {
+        const more = url.includes('cursor=');
+        return {
+          ok: true,
+          json: async () => ({
+            notes: [
+              {
+                ID: more ? 2 : 1,
+                content: more ? 'Older note' : 'Newest note',
+                date: '2026-01-01T00:00:00Z',
+                contact_id: null,
+                CreatedAt: '2026-01-01T00:00:00Z',
+                UpdatedAt: '2026-01-01T00:00:00Z',
+              },
+            ],
+            next_cursor: more ? '' : 'date:abc',
+            limit: 25,
+          }),
+        };
+      }
+      return { ok: true, json: async () => ({ images: [], total: 0 }) };
+    }),
+  );
+  renderPage();
+  expect(await screen.findByText('Newest note')).toBeDefined();
+  fireEvent.click(await screen.findByRole('button', { name: 'Load more' }));
+  expect(await screen.findByText('Older note')).toBeDefined();
+  const noteCalls = urls.filter((u) => u.includes('/notes?'));
+  expect(noteCalls).toHaveLength(2);
+  for (const u of noteCalls) expect(new URL(u, 'http://x').searchParams.get('sort')).toBe('date');
+  expect(new URL(noteCalls[1], 'http://x').searchParams.get('cursor')).toBe('date:abc');
+});
+
 test('renders notes list and shows unfiled count', async () => {
   mockFetchByUrl({ '/notes?': twoUnfiledNotesResponse });
   renderPage();

@@ -9,8 +9,10 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ApiError } from '../api/client';
 import {
   connectMonica,
   MONICA_IMPORT_BASE,
@@ -27,6 +29,43 @@ interface Props {
   onImportComplete: () => void;
 }
 
+// A failed Connect, ready to show. `field: 'url'` attaches it to the address
+// field (#2680); otherwise it is a banner, with the request ref on its own
+// secondary line when the server sent one.
+interface ConnectError {
+  message: string;
+  field?: 'url';
+  ref?: string;
+}
+
+// The reason codes that are about the address the user typed.
+const URL_REASONS = new Set(['monica_url_invalid', 'monica_url_private', 'monica_not_monica_api']);
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host || url;
+  } catch {
+    return url;
+  }
+}
+
+function describeConnectError(err: unknown, baseUrl: string, t: TFunction): ConnectError {
+  if (err instanceof ApiError) {
+    if (err.reasonCode === 'monica_unreachable') {
+      // The registry text is the raw "monica service error: ..." sentence;
+      // say which address could not be reached instead (#2680).
+      return {
+        message: t('settings.monicaImport.connect.unreachable', { host: hostOf(baseUrl) }),
+        ref: err.requestId ? t('errors.requestRef', { id: err.requestId }) : undefined,
+      };
+    }
+    if (err.reasonCode && URL_REASONS.has(err.reasonCode)) {
+      return { message: getErrorMessage(err), field: 'url' };
+    }
+  }
+  return { message: getErrorMessage(err) };
+}
+
 // The Monica import assistant (issue #549). Everything after "connect" is the
 // shared SourceImportWizard; this component only owns the Monica-specific
 // step 0 — instance URL + API token + fetch options — and hands the wizard a
@@ -40,7 +79,7 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
   const [includeRelationships, setIncludeRelationships] = useState(true);
   const [includeExtras, setIncludeExtras] = useState(true);
   const [connecting, setConnecting] = useState(false);
-  const [connectError, setConnectError] = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<ConnectError | null>(null);
   const [connectResp, setConnectResp] = useState<MonicaConnectResponse | null>(null);
 
   // beginFetch runs after connect, so the wizard's startFetch reads the
@@ -88,7 +127,7 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
       // The token has done its job client-side; the server holds it now.
       setApiToken('');
     } catch (err) {
-      setConnectError(getErrorMessage(err));
+      setConnectError(describeConnectError(err, baseUrl.trim(), t));
     } finally {
       setConnecting(false);
     }
@@ -103,16 +142,34 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
         {t('settings.monicaImport.connect.description')}
       </Typography>
-      {connectError && <Alert severity="error">{connectError}</Alert>}
+      {connectError?.field === undefined && connectError && (
+        <Alert severity="error">
+          {connectError.message}
+          {connectError.ref && (
+            <Typography variant="caption" sx={{ display: 'block' }}>
+              {connectError.ref}
+            </Typography>
+          )}
+        </Alert>
+      )}
 
       <TextField
         label={t('settings.monicaImport.connect.urlLabel')}
         placeholder="https://app.monicahq.com"
         value={baseUrl}
-        onChange={(e) => setBaseUrl(e.target.value)}
+        onChange={(e) => {
+          setBaseUrl(e.target.value);
+          // The address problem is about what was typed; editing it clears it.
+          if (connectError?.field === 'url') setConnectError(null);
+        }}
         fullWidth
         disabled={!!connectResp}
-        helperText={t('settings.monicaImport.connect.urlHelp')}
+        error={connectError?.field === 'url'}
+        helperText={
+          connectError?.field === 'url'
+            ? connectError.message
+            : t('settings.monicaImport.connect.urlHelp')
+        }
       />
       <TextField
         label={t('settings.monicaImport.connect.tokenLabel')}
