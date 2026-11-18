@@ -384,9 +384,17 @@ the ADR 0016 normalization and nothing weaker:
 
 - `name_key` = NFC (already stored), Unicode lower-casing, runs of whitespace collapsed, leading/trailing
   punctuation trimmed; `EqualFold` on this key, the same fold sort names use. The suggestion tier additionally drops
-  a short closed list of legal suffixes (`inc`, `llc`, `ltd`, `gmbh`, `ag`, `corp`, `co`, `sa`, `bv`) *for
-  comparison only* — it is never written back and never used for the exact tier. Diacritic folding is **not** added:
-  ADR 0016 explicitly leaves it to the search tokenizer, not the data layer.
+  a short closed list of legal suffixes (`inc`, `llc`, `ltd`, `gmbh`, `ag`, `corp`, `co`, `sa`, `bv`, plus the
+  spelled-out `incorporated`, `limited`, `corporation`, `company`) *for comparison only* — it is never written back
+  and never used for the exact tier. Diacritic folding is **not** added: ADR 0016 explicitly leaves it to the search
+  tokenizer, not the data layer.
+  **Amended 2026-11-17 (issue #2631):** the organisation comparison key also removes full stops ("L.L.C." is `llc`,
+  "Co.op" is `coop`) and joins the remaining tokens without separators, so "Coop", "Co-op" and "Co op", or "Acme
+  Ltd" and "Acme Limited", share a key. Limits: a suffix word is dropped only when it is trailing ("Limited Brands"
+  keeps "Limited"), the list stays closed and English/European, any trailing suffix is dropped whichever it is
+  (so "Acme Ltd" also pairs with "Acme Inc", as before), and because word breaks are ignored two names that differ
+  only in where the spaces fall pair. Different words (Coop / Cooper) and different names sharing a suffix (Acme Ltd /
+  Globex Ltd) do not. Places and pets are unchanged.
 - for places the key is the normalized joined components in `Address` order (`number`, `name`, `locality`,
   `postcode`, `country`), punctuation and whitespace collapsed, so "12 High St." and "12 High St" match.
 - pets match on `name_key` plus `species` only.
