@@ -3747,6 +3747,7 @@
       "circle_sync_scope_no_default": "No default circle is configured for the CardDAV sync scope",
       "validation_cursor_malformed": "The cursor id is malformed",
       "validation_activity_ids_range": "Must contain between 1 and 100 ids",
+      "validation_timezone_invalid": "tz must be an IANA time zone name such as Europe/Berlin",
       "validation_required": "{{field}} is required",
       "validation_email": "{{field}} must be a valid email address",
       "validation_min": "{{field}} must be at least {{min}} characters",

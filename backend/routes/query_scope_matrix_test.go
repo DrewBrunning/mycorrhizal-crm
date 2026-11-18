@@ -792,6 +792,7 @@ var qsNonScope = map[string]string{
 	"component": "admin filter", "severity": "admin filter", "event_type": "admin filter", "job_name": "admin filter",
 	"mode":   "suggestions mode switch (pairs of the caller's entities, or groups of the caller's own contact values; both user_id-scoped)",
 	"result": "admin filter", "sensitivity": "sensitivity filter value on the caller's own rows", "date": "geopulse day", "timezone": "geopulse zone",
+	"tz": "viewer IANA zone for the display day boundary (#2762, ADR 0015 Rule 4); never selects rows",
 }
 
 // ── AST scan of handler query reads ───────────────────────────────────────

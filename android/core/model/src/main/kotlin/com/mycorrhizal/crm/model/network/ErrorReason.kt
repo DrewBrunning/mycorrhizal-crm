@@ -36,6 +36,7 @@ object ErrorReasonCode {
     const val RELATIONSHIP_PARTIAL_DATE_MISSING = "relationship_partial_date_missing"
     const val RELATIONSHIP_SELF_EDGE = "relationship_self_edge"
     const val VALIDATION_ACTIVITY_IDS_RANGE = "validation_activity_ids_range"
+    const val VALIDATION_TIMEZONE_INVALID = "validation_timezone_invalid"
     const val VALIDATION_CURSOR_MALFORMED = "validation_cursor_malformed"
     const val VALIDATION_REQUIRED = "validation_required"
     const val VALIDATION_EMAIL = "validation_email"

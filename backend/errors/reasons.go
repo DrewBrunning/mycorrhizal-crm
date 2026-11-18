@@ -54,6 +54,7 @@ const (
 	ReasonImportTagsNotFound         ReasonCode = "import_tags_not_found"
 	ReasonValidationCursorMalformed  ReasonCode = "validation_cursor_malformed"
 	ReasonValidationActivityIDsRange ReasonCode = "validation_activity_ids_range"
+	ReasonValidationTimezoneInvalid  ReasonCode = "validation_timezone_invalid"
 
 	// Struct-tag validation (issue #2105): one code per middleware validator
 	// tag, plus validation_invalid for the default branch.
@@ -550,6 +551,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonImportTagsNotFound:         {Template: "One or more tags were not found"},
 	ReasonValidationCursorMalformed:  {Template: "The cursor id is malformed"},
 	ReasonValidationActivityIDsRange: {Template: "Must contain between 1 and 100 ids"},
+	ReasonValidationTimezoneInvalid:  {Template: "tz must be an IANA time zone name such as Europe/Berlin"},
 
 	// Struct-tag validation (issue #2105). The template is the English that
 	// middleware.formatValidationError produced, with the field name (and
