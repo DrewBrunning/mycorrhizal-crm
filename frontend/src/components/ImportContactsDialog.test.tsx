@@ -1615,3 +1615,23 @@ test('an unselected decision button uses the primary text colour', async () => {
   expect(unselected).not.toBe('');
   expect(unselected).toBe(body);
 });
+
+// #2668: an emptied field in a saved fix removes the value from the card, the
+// way the server removes the offending entry.
+test('a saved fix that empties the phone drops it from the card', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Imp', lastname: 'Delta', phone: 'abc' },
+      validation_errors: ['Invalid phone format'],
+      suggested_action: 'skip',
+    }),
+  ]);
+  const card = screen.getByRole('group', { name: 'Imp Delta' });
+  expect(within(card).getByText('abc')).toBeInTheDocument();
+  fireEvent.click(within(card).getByRole('button', { name: 'Fix this row' }));
+  fireEvent.change(within(card).getByLabelText('Phone'), { target: { value: '' } });
+  fireEvent.click(within(card).getByRole('button', { name: 'Save fix' }));
+  expect(within(card).queryByText('abc')).not.toBeInTheDocument();
+  expect(within(card).getByText('Will be re-checked on import')).toBeInTheDocument();
+  expect(within(card).getByRole('button', { name: 'Edit fix' })).toBeInTheDocument();
+});
