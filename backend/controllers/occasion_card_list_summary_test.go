@@ -3,6 +3,8 @@ package controllers
 import (
 	"encoding/csv"
 	"encoding/json"
+	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 	"net/http"
 	"strings"
@@ -209,4 +211,14 @@ func TestGetOccasionCardListSummary_QueryCountIsBounded(t *testing.T) {
 	assert.Equal(t, n, body.Total)
 	assert.Equal(t, n, body.Included)
 	assert.EqualValues(t, 4, counter.Count(), "1 obligation query + 3 contact batches, independent of row count")
+}
+
+func TestGetOccasionCardListSummaryReportsDatabaseFailure(t *testing.T) {
+	db, router := setupRouter(t)
+	registerCardListSummaryRoutes(router)
+	logtest.AllowWarnings(t, "the path under test legitimately logs a database error")
+	dbtest.HideTable(t, db, "occasion_obligations")
+
+	w := doCardListGET(router, cardListSummaryPath)
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
 }
