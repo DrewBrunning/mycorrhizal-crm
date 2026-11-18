@@ -5375,6 +5375,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    delete:
+      summary: Dismiss an ended grant from "Shared by me" (owner)
+      operationId: deleteShareGrant
+      tags:
+        - Share Grants
+      description: >
+        Issue #2742 (ADR 0042). Hard-deletes the sender's row of a grant the
+        owner sees as `declined`, `expired` or `revoked` (a pending or active
+        grant whose time has run out already reads as `expired`). Recipient
+        views are unaffected: they never list ended grants. A `pending`,
+        `active` or blocked-and-unexpired grant is `409` with reason code
+        `share_grant_not_ended`; revoke it first. Repeating the call on a
+        dismissed id is the `404` an unknown id gets, so a client treats a
+        `404` after Remove as already done. Writes an owner-trail `delete`
+        audit event.
+      responses:
+        "204":
+          description: The grant was removed.
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant (including as its recipient), an unknown id, or one already dismissed."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The grant has not ended (`pending`, `active`); reason code `share_grant_not_ended`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /share-grants/{id}/accept:
     parameters:
       - name: id

@@ -9630,6 +9630,31 @@
       ]
     },
     {
+      "method": "DELETE",
+      "path": "/share-grants/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "204",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
       "method": "POST",
       "path": "/share-grants/{id}/accept",
       "parameters": [

@@ -505,6 +505,41 @@ func RevokeShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*mode
 	return out, nil
 }
 
+// DeleteShareGrant (owner) dismisses an ended grant from "Shared by me" by
+// hard-deleting the sender's row (ADR 0042 decision 10 amendment, issue #2742).
+// Only a grant the owner sees as declined, expired or revoked can go: the same
+// effective-status rule as the owner's list, so a pending/active grant whose
+// time has run out (the job has not moved the row yet) is dismissable too. A
+// pending, active or blocked-and-unexpired grant is a 409 share_grant_not_ended.
+// The lookup is scoped by from_user_id in the same WHERE as the id, so every
+// other caller and an unknown or already-dismissed id are the one 404. The
+// delete re-checks the status it authorized on (CAS), so a concurrent
+// transition cannot be dismissed from under its own audit trail. The row holds
+// no content and nothing references it; recipients never see ended grants.
+func DeleteShareGrant(db *gorm.DB, userID uint, id string, now time.Time) *apperrors.AppError {
+	now = now.UTC()
+	g, appErr := loadForRole(db, "from_user_id", userID, id)
+	if appErr != nil {
+		return appErr
+	}
+	switch EffectiveStatus(g, now, true) {
+	case models.ShareGrantStatusDeclined, models.ShareGrantStatusExpired, models.ShareGrantStatusRevoked:
+	default:
+		return apperrors.ErrConflict("").WithReason(apperrors.ReasonShareGrantNotEnded, nil)
+	}
+	res := db.Where("id = ? AND from_user_id = ? AND status = ?", g.ID, userID, g.Status).Delete(&models.ShareGrant{})
+	if res.Error != nil {
+		return dbErr("Failed to remove the share", res.Error)
+	}
+	if res.RowsAffected == 0 {
+		// Moved or removed between the read and the delete: the row is no
+		// longer what was authorized.
+		return ErrShareGrantNotFound()
+	}
+	models.RecordShareGrantAudit(db, g, userID, models.AuditOpDelete)
+	return nil
+}
+
 // ReconfirmShareGrant (owner) clears the re-confirmation markers so the
 // withheld sections are served again (ADR 0042 decision 5).
 func ReconfirmShareGrant(db *gorm.DB, userID uint, id string, now time.Time) (*models.ShareGrant, *apperrors.AppError) {

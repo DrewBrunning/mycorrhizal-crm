@@ -184,6 +184,7 @@ const (
 	// case so the response is identical.
 	ReasonShareGrantNotFound                        ReasonCode = "share_grant_not_found"
 	ReasonShareGrantStateConflict                   ReasonCode = "share_grant_state_conflict"
+	ReasonShareGrantNotEnded                        ReasonCode = "share_grant_not_ended"
 	ReasonShareGrantWideningRefused                 ReasonCode = "share_grant_widening_refused"
 	ReasonShareGrantAlreadyExists                   ReasonCode = "share_grant_already_exists"
 	ReasonShareGrantPendingLimit                    ReasonCode = "share_grant_pending_limit"
@@ -666,6 +667,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonCircleAlreadyExists:                       {Template: "A circle with this name already exists"},
 	ReasonShareGrantNotFound:                        {Template: "Share grant not found"},
 	ReasonShareGrantStateConflict:                   {Template: "This share can no longer be changed that way"},
+	ReasonShareGrantNotEnded:                        {Template: "Only a share that has ended (declined, expired or revoked) can be removed; revoke it first"},
 	ReasonShareGrantWideningRefused:                 {Template: "A share can only be narrowed; create a new share to grant more"},
 	ReasonShareGrantAlreadyExists:                   {Template: "That is already shared with this person"},
 	ReasonShareGrantPendingLimit:                    {Template: "Too many shares are waiting for a response"},

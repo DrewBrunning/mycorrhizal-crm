@@ -198,6 +198,21 @@ func DeclineShareGrant(c *gin.Context) {
 // RevokeShareGrant — POST /share-grants/{id}/revoke (owner).
 func RevokeShareGrant(c *gin.Context) { ownerAction(c, services.RevokeShareGrant) }
 
+// DeleteShareGrant — DELETE /share-grants/{id} (owner): dismiss an ended
+// (declined, expired or revoked) grant from "Shared by me". Issue #2742.
+func DeleteShareGrant(c *gin.Context) {
+	db := c.MustGet("db").(*gorm.DB)
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	if appErr := services.DeleteShareGrant(db, userID, c.Param("id"), shareGrantNow(c)); appErr != nil {
+		apperrors.AbortWithError(c, appErr)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
 // ReconfirmShareGrant — POST /share-grants/{id}/reconfirm (owner).
 func ReconfirmShareGrant(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)

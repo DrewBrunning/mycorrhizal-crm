@@ -1228,6 +1228,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_share_grant_state_conflict
         )
 
+        ErrorReasonCode.SHARE_GRANT_NOT_ENDED -> stringResource(
+            R.string.error_reason_share_grant_not_ended
+        )
+
         ErrorReasonCode.SHARE_GRANT_WIDENING_REFUSED -> stringResource(
             R.string.error_reason_share_grant_widening_refused
         )

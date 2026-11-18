@@ -3321,6 +3321,7 @@
     <string name="error_reason_contact_share_already_responded">Hai già risposto a questa condivisione</string>
     <string name="error_reason_share_grant_not_found">Condivisione non trovata</string>
     <string name="error_reason_share_grant_state_conflict">Questa condivisione non può più essere modificata così</string>
+    <string name="error_reason_share_grant_not_ended">Si può rimuovere solo una condivisione terminata (rifiutata, scaduta o revocata); revocala prima</string>
     <string name="error_reason_share_grant_widening_refused">Una condivisione può solo essere ristretta; crea una nuova condivisione per condividere di più</string>
     <string name="error_reason_share_grant_already_exists">Già condiviso con questa persona</string>
     <string name="error_reason_share_grant_pending_limit">Troppe condivisioni sono in attesa di risposta</string>

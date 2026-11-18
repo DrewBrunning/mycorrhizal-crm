@@ -460,6 +460,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				shareGrants.POST("/notifications/read", controllers.MarkShareGrantNotificationsRead)
 				shareGrants.GET("/blocks", controllers.ListShareBlocks)
 				shareGrants.DELETE("/blocks/:user_id", controllers.DeleteShareBlock)
+				shareGrants.DELETE("/:id", controllers.DeleteShareGrant)
 				shareGrants.PATCH("/:id", middleware.ValidateJSONMiddleware(&models.ShareGrantPatchInput{}), controllers.UpdateShareGrant)
 				shareGrants.POST("/:id/accept", controllers.AcceptShareGrant)
 				shareGrants.POST("/:id/decline", controllers.DeclineShareGrant)
