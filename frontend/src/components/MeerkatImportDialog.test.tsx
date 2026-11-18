@@ -487,3 +487,48 @@ test('a failed connect re-enables the mode tabs', async () => {
   await screen.findByText('nope');
   expect(screen.getByRole('tab', { name: 'Upload a file' })).toBeEnabled();
 });
+
+// #2727: a failed live fetch shows the reason-coded sentence and, because the
+// web has a database upload, a separate hint pointing at it.
+async function failLiveFetch(status: Record<string, unknown>) {
+  connectMock.mockResolvedValue(connected());
+  statusMock.mockReset().mockResolvedValue({
+    session_id: 'live1',
+    phase: 'failed',
+    phase_done: 0,
+    phase_total: 0,
+    ...status,
+  } as never);
+  renderOpen();
+  fillUrl();
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 't' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Start import' }));
+}
+
+test('a coded fetch failure shows the translated message and the upload hint', async () => {
+  await failLiveFetch({
+    error:
+      'The Meerkat instance could not be reached — if it is offline, use the database upload instead',
+    error_reason_code: 'meerkat_fetch_unreachable',
+  });
+  expect(await screen.findByText('The Meerkat instance could not be reached')).toBeInTheDocument();
+  expect(screen.getByText(/choose "Upload a file"/)).toBeInTheDocument();
+  expect(screen.queryByText(/use the database upload instead/)).not.toBeInTheDocument();
+});
+
+test('a failure that is not about reaching Meerkat gets no upload hint', async () => {
+  await failLiveFetch({
+    error: 'too many',
+    error_reason_code: 'meerkat_remote_too_many_contacts',
+    error_reason_params: { total: 9000, max: 5000 },
+  });
+  expect(await screen.findByText(/Contacts on this Meerkat account: 9000/)).toBeInTheDocument();
+  expect(screen.queryByText(/choose "Upload a file"/)).not.toBeInTheDocument();
+});
+
+test('an older server without a reason code still shows its plain message', async () => {
+  await failLiveFetch({ error: 'Plain old failure' });
+  expect(await screen.findByText('Plain old failure')).toBeInTheDocument();
+  expect(screen.queryByText(/choose "Upload a file"/)).not.toBeInTheDocument();
+});

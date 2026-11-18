@@ -169,3 +169,28 @@ test('shows the empty state', () => {
   render(<PreferenceList preferences={[]} onEdit={vi.fn()} onDelete={vi.fn()} />);
   expect(screen.getByText('No preferences yet')).toBeInTheDocument();
 });
+
+// Issue #2681: a legacy/unknown category rendered its raw token ("gift") as the
+// chip label.
+test('an unknown category chip is humanized, not shown as the raw token', () => {
+  render(
+    <PreferenceList
+      preferences={[preference({ category: 'gift', value: 'Scarf' })]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('Gift')).toBeInTheDocument();
+  expect(screen.queryByText('gift')).not.toBeInTheDocument();
+});
+
+test('a custom snake_case category reads as words', () => {
+  render(
+    <PreferenceList
+      preferences={[preference({ category: 'board_games', value: 'Catan' })]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('Board games')).toBeInTheDocument();
+});

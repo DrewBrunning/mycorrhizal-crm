@@ -273,3 +273,28 @@ test('a field that applies to an organisation, place or pet is labelled with its
   // A contact field has no extra target chip: it is the default.
   expect(screen.queryByText('Contact')).not.toBeInTheDocument();
 });
+
+// Issue #2677: MUI's secondaryAction is absolutely positioned, so at narrow
+// widths the row's buttons were drawn on top of the type/sensitivity chips. The
+// actions are in the row's normal flow now (stacked under the chips below `sm`),
+// and every one stays reachable.
+test('row actions sit in the row flow, not absolutely positioned over the chips', async () => {
+  vi.mocked(getFieldDefinitions).mockResolvedValue(
+    response([definition({ label: 'Pronouns', sensitivity: 'private' })]),
+  );
+  renderSettings();
+
+  const row = (await screen.findByText('Pronouns')).closest('li') as HTMLElement;
+  expect(row.querySelector('.MuiListItemSecondaryAction-root')).toBeNull();
+  for (const name of ['Move Pronouns up', 'Move Pronouns down', 'Edit', 'Delete']) {
+    const button = screen.getByRole('button', { name });
+    expect(row.contains(button)).toBe(true);
+    let node: HTMLElement | null = button;
+    while (node && node !== row) {
+      expect(getComputedStyle(node).position, `${name} is absolutely positioned`).not.toBe(
+        'absolute',
+      );
+      node = node.parentElement;
+    }
+  }
+});

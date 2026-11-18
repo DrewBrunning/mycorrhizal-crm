@@ -190,6 +190,14 @@ data class ImportRowEdit(
     val phone: String? = null
 )
 
+/**
+ * Issue #2664 / #2734: body of `POST /contacts/import/cancel`, which discards the caller's own
+ * unconfirmed CSV / VCF / JSContact / records import session. The server always answers 200
+ * `{"status":"cancelled"}`, so the response is not modelled.
+ */
+@JsonClass(generateAdapter = true)
+data class ImportCancelRequest(@Json(name = "session_id") val sessionId: String)
+
 /** T96: request body for the records-import endpoint (device-contacts path). */
 @JsonClass(generateAdapter = true)
 data class ImportRecordsRequest(val records: List<ContactRecordInput>)
@@ -345,8 +353,20 @@ data class SourceImportStatus(
     @Json(name = "phase_done") val phaseDone: Int = 0,
     @Json(name = "phase_total") val phaseTotal: Int = 0,
     val error: String? = null,
+    /**
+     * Issue #2735 / #2727, ADR 0038: the #2093 reason code of a failed Meerkat fetch
+     * (`meerkat_fetch_unreachable`, `meerkat_fetch_unreadable`, `meerkat_api_error`); present
+     * only when [phase] is `failed` and the cause is coded. [error] stays the English fallback.
+     */
+    @Json(name = "error_reason_code") val errorReasonCode: String? = null,
+    @Json(name = "error_reason_params") val errorReasonParams: Map<String, Any?>? = null,
     val result: SourceImportResult? = null
 ) {
+    /** The coded failure, or null when the server sent none (or a blank code). */
+    val errorReason: ErrorReason?
+        get() = errorReasonCode?.takeIf { it.isNotBlank() }
+            ?.let { ErrorReason(it, errorReasonParams.orEmpty()) }
+
     val isReady: Boolean get() = phase == "ready"
     val isDone: Boolean get() = phase == "done"
     val isFailed: Boolean get() = phase == "failed" || phase == "cancelled"

@@ -154,4 +154,29 @@ class ImportRowPreviewDecodeTest {
 
         assertEquals("anniversary", detail.toImportResult().issues.single().concept)
     }
+
+    // Issue #2735 / #2727: a failed Meerkat fetch reports a reason code beside the English text.
+    @Test
+    fun `a failed source status carries the coded reason and its params`() {
+        val adapterS = MoshiProvider.get().adapter(SourceImportStatus::class.java)
+        val coded = adapterS.fromJson(
+            """{"session_id":"s","phase":"failed","error":"Could not reach Meerkat","error_reason_code":"meerkat_api_error","error_reason_params":{"reason":"Meerkat rejected the credentials"}}"""
+        )!!
+        val plain = adapterS.fromJson("""{"session_id":"s","phase":"failed","error":"boom"}""")!!
+
+        assertEquals(
+            ErrorReason("meerkat_api_error", mapOf("reason" to "Meerkat rejected the credentials")),
+            coded.errorReason
+        )
+        assertNull(plain.errorReason)
+    }
+
+    @Test
+    fun `a coded failure without params has empty params`() {
+        val status = MoshiProvider.get().adapter(SourceImportStatus::class.java).fromJson(
+            """{"phase":"failed","error":"x","error_reason_code":"meerkat_fetch_unreachable"}"""
+        )!!
+
+        assertEquals(ErrorReason("meerkat_fetch_unreachable", emptyMap()), status.errorReason)
+    }
 }

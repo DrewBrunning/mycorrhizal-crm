@@ -19,6 +19,9 @@ export interface SearchContactHit {
   photo_thumbnail?: string;
   archived?: boolean;
   snippet?: string;
+  // Issue #2744: which of the contact's own fields the query matched, in the server's
+  // fixed order. Omitted when the server reports nothing. Mirror of the openapi enum.
+  matched_on?: ('name' | 'organization' | 'email' | 'phone' | 'address')[];
 }
 
 export interface SearchNoteHit {
@@ -47,6 +50,8 @@ export interface SearchEntityHit {
   kind: EntityKind;
   name: string;
   sensitivity: EntitySensitivity;
+  // Issue #2744: always ["name"] when present (the only indexed entity text).
+  matched_on?: 'name'[];
 }
 
 export interface SearchResult {

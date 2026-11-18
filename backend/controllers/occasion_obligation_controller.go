@@ -14,14 +14,39 @@ import (
 	"gorm.io/gorm"
 )
 
-// validateOccasionAnchorPair enforces ADR 0024's "both or neither" rule for
-// AnchorMonth/AnchorDay — a partial anchor (only a month, or only a day) has
-// no meaningful annual occurrence, mirroring validateGiftValueCurrency's
-// cross-field pattern (this codebase has no cross-field struct-tag
-// validator).
-func validateOccasionAnchorPair(input *models.OccasionObligationInput) *apperrors.AppError {
+// occasionMaxDay is the longest each month gets in an annual recurrence.
+// February is 29 so a leap-day anchor stays expressible (it recurs on Feb 29
+// in leap years, ADR 0015 Rule 3); 30/31 for February or a 30-day month never
+// occur and would silently never remind.
+var occasionMaxDay = [13]int{0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
+
+// validateOccasionAnchor enforces ADR 0024's anchor rules for create and
+// update. Both month and day are required (a dateless obligation never
+// reminds or appears in the gift list, so it is refused rather than saved
+// inert — maintainer decision on #2670, superseding the original "both or
+// neither"), a lone month or day is incomplete, and the pair must be a real
+// calendar date (#2671, #2648). Month/day range (1-12 / 1-31) is the struct
+// tag's job; this adds the cross-field checks, mirroring
+// validateGiftValueCurrency (this codebase has no cross-field tag validator).
+//
+// existing is the stored row on update, or nil on create. A row that predates
+// the rule and has no date can still be retired (re-saved inactive, still
+// dateless) or given a date; it just cannot be re-saved active without one.
+func validateOccasionAnchor(input *models.OccasionObligationInput, existing *models.OccasionObligation) *apperrors.AppError {
 	if (input.AnchorMonth == nil) != (input.AnchorDay == nil) {
-		return apperrors.ErrValidation("An occasion anchor date requires both a month and a day, or neither").WithReason(apperrors.ReasonOccasionAnchorDateIncomplete, nil)
+		return apperrors.ErrValidation("An occasion anchor date requires both a month and a day").WithReason(apperrors.ReasonOccasionAnchorDateIncomplete, nil)
+	}
+	if input.AnchorMonth == nil {
+		legacyRetire := existing != nil && existing.AnchorMonth == nil && existing.AnchorDay == nil &&
+			input.Active != nil && !*input.Active
+		if legacyRetire {
+			return nil
+		}
+		return apperrors.ErrValidation("An occasion needs a month and a day so it can remind you").WithReason(apperrors.ReasonOccasionAnchorDateRequired, nil)
+	}
+	month, day := *input.AnchorMonth, *input.AnchorDay
+	if month < 1 || month > 12 || day < 1 || day > occasionMaxDay[month] {
+		return apperrors.ErrValidation("That month and day do not exist together, for example February 30").WithReason(apperrors.ReasonOccasionAnchorDateInvalid, nil)
 	}
 	return nil
 }
@@ -73,10 +98,14 @@ func syncOccasionObligationReminder(tx *gorm.DB, userID uint, obligation *models
 
 	remindAt := nextRemindAt(*obligation.AnchorMonth, *obligation.AnchorDay, now, loc).AddDate(0, 0, -obligation.LeadTimeDays)
 
-	contactName := obligation.EntityID // fallback: show VCardUID in message if name lookup fails
+	contactName := obligation.EntityID // fallback: show VCardUID in message if the contact row is gone
 	var contact models.Contact
-	if tx.Where("vcard_uid = ? AND user_id = ?", obligation.EntityID, userID).First(&contact).Error == nil {
+	if err := tx.Where("vcard_uid = ? AND user_id = ?", obligation.EntityID, userID).First(&contact).Error; err == nil {
 		contactName = contact.Firstname + " " + contact.Lastname
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		// A real DB failure must roll the transaction back, not silently ship a
+		// reminder named after the raw UID.
+		return err
 	}
 
 	reminder := models.Reminder{
@@ -110,7 +139,7 @@ func CreateOccasionObligation(c *gin.Context) {
 	if !verifyOwnedContact(c, db, userID, input.EntityID) {
 		return
 	}
-	if vErr := validateOccasionAnchorPair(input); vErr != nil {
+	if vErr := validateOccasionAnchor(input, nil); vErr != nil {
 		apperrors.AbortWithError(c, vErr)
 		return
 	}
@@ -303,7 +332,7 @@ func UpdateOccasionObligation(c *gin.Context) {
 	if !verifyOwnedContact(c, db, userID, input.EntityID) {
 		return
 	}
-	if vErr := validateOccasionAnchorPair(input); vErr != nil {
+	if vErr := validateOccasionAnchor(input, &obligation); vErr != nil {
 		apperrors.AbortWithError(c, vErr)
 		return
 	}

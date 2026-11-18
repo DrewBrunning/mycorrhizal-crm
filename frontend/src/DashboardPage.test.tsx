@@ -16,6 +16,7 @@ import i18n from './i18n/config';
 // no auto-cleanup (CLAUDE.md frontend trap #1).
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.clearAllMocks();
 });
@@ -548,4 +549,25 @@ test('an offline dashboard load shows the offline message, not the raw fetch err
   } finally {
     if (original) Object.defineProperty(window.navigator, 'onLine', original);
   }
+});
+
+// Issue #2681: an upcoming birthday said "(41 years old)" for the age they have
+// not reached yet. It is the age they will turn; only today's reads as "years old".
+test('an upcoming birthday says it turns the new age, not "years old"', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2026, 10, 17, 12, 0));
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    birthdays: [
+      { type: 'contact', name: 'Ahead Person', birthday: '1985-11-21', contact_id: 1 },
+      { type: 'contact', name: 'Today Person', birthday: '1985-11-17', contact_id: 2 },
+    ],
+    birthdays_total: 2,
+  });
+
+  renderPage();
+
+  await screen.findByText('Ahead Person');
+  expect(screen.getByText(/\(turns 41\)/)).toBeInTheDocument();
+  expect(screen.getByText(/\(41 years old\)/)).toBeInTheDocument();
 });

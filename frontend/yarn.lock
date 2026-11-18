@@ -4782,10 +4782,10 @@ i18next-browser-languagedetector@^8.3.0:
   dependencies:
     "@babel/runtime" "^7.29.2"
 
-i18next@^26.7.1:
-  version "26.7.1"
-  resolved "https://registry.yarnpkg.com/i18next/-/i18next-26.7.1.tgz#33bc0c45e6be754f0141cbb9289187db27aac485"
-  integrity sha512-cX+3RRVczel/V2kCMTACckSGSpqgtWYEA6beXNYVms7dOQiHojdPYHD26lT4IKimNeoGWrLvtPgjftbRvmZJVw==
+i18next@^27.1.1:
+  version "27.1.1"
+  resolved "https://registry.yarnpkg.com/i18next/-/i18next-27.1.1.tgz#3137a7a6d82914e370ccab7e926958d20faa5d32"
+  integrity sha512-Qq3aJizS3RXQ30crhx9BKQLrHoa6GKpgrOJjVZ9vgj3EBxAddrmVfDNUrAMxSUimw5Jc+ld4SSZUAzf1q4nGyQ==
 
 iconv-lite@^0.7.2:
   version "0.7.3"
@@ -6358,10 +6358,10 @@ react-force-graph-2d@^1.29.2:
     prop-types "15"
     react-kapsule "^2.6"
 
-react-i18next@^17.1.12:
-  version "17.1.12"
-  resolved "https://registry.yarnpkg.com/react-i18next/-/react-i18next-17.1.12.tgz#babaed504eca720381c16b4f50cf58358c51c13f"
-  integrity sha512-Gf8riCKF/EmqQ8I1g0N5pJOLvJCkAXGAEkzOuRNHc/sBGL3dfE3WZ7+sDLrUo/kw/xdug3g48jo7M+s/SKf0HQ==
+react-i18next@^17.1.13:
+  version "17.1.13"
+  resolved "https://registry.yarnpkg.com/react-i18next/-/react-i18next-17.1.13.tgz#00cb81fe874fd0b272c229c4c7ff93087fb705d6"
+  integrity sha512-ZxhOSlyKSKPtbUNPLwYMmE3w3bhoc0jaZJZ6bc7wGOT6cLbrbs//6m01HxCLtFdSjHvFpwFwoPhxxzIlHSs9cw==
   dependencies:
     "@babel/runtime" "^7.29.7"
     html-parse-stringify "^4.0.1"

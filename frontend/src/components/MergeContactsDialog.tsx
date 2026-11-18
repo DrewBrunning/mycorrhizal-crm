@@ -22,6 +22,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type Contact, getContacts } from '../api/contacts';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useOptionalDateFormat } from '../DateFormatProvider';
 import { useContactMerge } from '../hooks/useContactMerge';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
@@ -92,6 +93,13 @@ const contactFilterOptions = createFilterOptions<Contact>({
 // the keeper.
 export default function MergeContactsDialog(props: MergeContactsDialogProps) {
   const { t } = useTranslation();
+  // Issue #2681: a conflicting birthday/anniversary arrives as the stored ISO
+  // string; show it in the user's date format like every other date.
+  const dateFormat = useOptionalDateFormat();
+  const displayValue = (value: string) =>
+    dateFormat && /^(\d{4}-\d{2}-\d{2}|--\d{2}-\d{2})$/.test(value)
+      ? dateFormat.formatBirthday(value)
+      : value;
   const { showError } = useSnackbar();
   const { open, onClose, onMerged, pair } = props;
   // The single-mode props are guaranteed by the union at call sites; the
@@ -241,9 +249,12 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
   };
 
   const counts = preview?.association_counts;
+  // Boolean(): `counts && (0 || 0)` is the number 0, which JSX renders as a
+  // literal "0" (issue #2666).
   const hasAssociations =
-    counts &&
-    (counts.notes ||
+    !!counts &&
+    !!(
+      counts.notes ||
       counts.activities ||
       counts.reminders ||
       counts.reminder_completions ||
@@ -261,7 +272,8 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
       counts.preferences ||
       counts.external_identities ||
       counts.external_activities ||
-      counts.cadence_policies);
+      counts.cadence_policies
+    );
 
   return (
     <AppDialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
@@ -433,7 +445,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                         control={<Radio size="small" />}
                         label={t('contactMerge.keepValue', {
                           name: keeperLabelName,
-                          value: conflict.keeper_value,
+                          value: displayValue(conflict.keeper_value),
                         })}
                       />
                       <FormControlLabel
@@ -441,7 +453,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                         control={<Radio size="small" />}
                         label={t('contactMerge.keepValue', {
                           name: loserName,
-                          value: conflict.loser_value,
+                          value: displayValue(conflict.loser_value),
                         })}
                       />
                     </RadioGroup>
@@ -466,7 +478,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                             control={<Radio size="small" />}
                             label={t('contactMerge.keepValue', {
                               name: keeperLabelName,
-                              value: conflict.keeper_value,
+                              value: displayValue(conflict.keeper_value),
                             })}
                           />
                           <FormControlLabel
@@ -474,7 +486,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
                             control={<Radio size="small" />}
                             label={t('contactMerge.keepValue', {
                               name: loserName,
-                              value: conflict.loser_value,
+                              value: displayValue(conflict.loser_value),
                             })}
                           />
                         </RadioGroup>

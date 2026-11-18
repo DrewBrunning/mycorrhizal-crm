@@ -83,6 +83,8 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
     ViewModel(),
     CustomFieldActions {
 
+    private val canceller = ImportSessionCanceller(apiClient)
+
     private val _uiState = MutableStateFlow(VcfImportUiState())
     val uiState: StateFlow<VcfImportUiState> = _uiState.asStateFlow()
 
@@ -305,6 +307,7 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
     fun confirm() {
         val preview = _uiState.value.preview ?: return
         if (_uiState.value.isLoading) return
+        canceller.confirmStarted()
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
             val actions = _uiState.value.rowActions.map { (rowIndex, action) ->
@@ -331,6 +334,7 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                     }
                 },
                 onError = { error ->
+                    if (error is ApiError.Client) canceller.confirmRefused()
                     _uiState.update {
                         it.copy(
                             isLoading = false,
@@ -368,6 +372,20 @@ class VcfImportViewModel @Inject constructor(private val apiClient: ApiClient) :
                 else -> ImportFieldMapping(m.propertyName, IMPORT_FIELD_ACTION_IGNORE)
             }
         }.ifEmpty { null }
+    }
+
+    /**
+     * Issues #2664 / #2734: discards the unconfirmed server session. Called from [onCleared], so it
+     * runs however the screen is left (back icon, system back, any pop of the destination); also
+     * safe to call directly. Never blocks or surfaces an error.
+     */
+    fun cancel() {
+        canceller.cancel(viewModelScope, _uiState.value.preview?.sessionId)
+    }
+
+    override fun onCleared() {
+        cancel()
+        super.onCleared()
     }
 
     fun onErrorShown() {

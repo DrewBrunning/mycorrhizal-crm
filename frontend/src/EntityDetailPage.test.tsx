@@ -310,6 +310,51 @@ test('a restore that finds a live same-name entity warns about it', async () => 
   ).toBeInTheDocument();
 });
 
+// #2743: the merge dialog describes the loser with the page's distinct linked contacts (2
+// here; the detail entity's own link_count of 3 counts link rows) and the same-named
+// survivor with its list link_count, so the two definitions are not mixed.
+test('merge intro uses distinct contact counts for both same-named sides (#2743)', async () => {
+  const dated = { ...acme, updated_at: '2026-03-05T10:00:00Z' };
+  const twin: Entity = {
+    ...dated,
+    id: 'e2',
+    link_count: 4,
+    updated_at: '2026-04-19T10:00:00Z',
+  };
+  listMock.mockResolvedValue({ entities: [dated, twin], limit: 100, next_cursor: '' });
+  getMock.mockImplementation(async (id) => (id === 'e2' ? { ...twin, link_count: 99 } : dated));
+  renderPage();
+  await screen.findByRole('heading', { name: 'Acme' });
+  await screen.findByText('Linked to 2 contacts');
+  fireEvent.click(screen.getByRole('button', { name: 'Merge into another…' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.mouseDown(within(dialog).getByLabelText('Merge into'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Acme' }));
+  const intro = await within(dialog).findByText(/will be deleted and its contacts move to/);
+  expect(intro.textContent).toMatch(
+    /Acme \(updated .+, 2 contacts\) will be deleted and its contacts move to Acme \(updated .+, 4 contacts\)\./,
+  );
+});
+
+test('merge intro omits the loser contact count when the linked contacts failed to load (#2743)', async () => {
+  const dated = { ...acme, updated_at: '2026-03-05T10:00:00Z' };
+  const twin: Entity = { ...dated, id: 'e2', link_count: 4, updated_at: '2026-04-19T10:00:00Z' };
+  contactsMock.mockRejectedValue(new Error('contacts down'));
+  listMock.mockResolvedValue({ entities: [dated, twin], limit: 100, next_cursor: '' });
+  getMock.mockImplementation(async (id) => (id === 'e2' ? twin : dated));
+  renderPage();
+  await screen.findByRole('heading', { name: 'Acme' });
+  fireEvent.click(screen.getByRole('button', { name: 'Merge into another…' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.mouseDown(within(dialog).getByLabelText('Merge into'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Acme' }));
+  const intro = await within(dialog).findByText(/will be deleted and its contacts move to/);
+  // The detail entity's own link_count (3 link rows) is a different definition: not shown.
+  expect(intro.textContent).toMatch(
+    /^Acme \(updated [^,)]+\) will be deleted .* \(updated .+, 4 contacts\)\./,
+  );
+});
+
 test('merge into another entity navigates to the survivor and offers to restore the loser', async () => {
   const other: Entity = { ...acme, id: 'e2', name: 'Acme Inc', core: {} };
   listMock.mockResolvedValue({ entities: [acme, other], limit: 100, next_cursor: '' });

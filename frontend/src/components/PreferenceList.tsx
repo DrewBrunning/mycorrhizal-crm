@@ -8,6 +8,7 @@ import {
   type Preference,
   type PreferenceSection,
 } from '../api/preferences';
+import { humanizeToken } from '../utils/humanizeToken';
 
 interface PreferenceListProps {
   preferences: Preference[];
@@ -81,7 +82,10 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box sx={{ flex: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-            <Chip label={t(`preference.categories.${pref.category}`, pref.category)} size="small" />
+            <Chip
+              label={t(`preference.categories.${pref.category}`, humanizeToken(pref.category))}
+              size="small"
+            />
             {pref.key && <Chip label={t(`preference.keys.${pref.key}`, pref.key)} size="small" />}
             {pref.level && (
               <Chip label={t(`preference.levels.${pref.level}`, pref.level)} size="small" />

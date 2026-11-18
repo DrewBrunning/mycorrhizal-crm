@@ -20,7 +20,16 @@ export function useEntityList(kind: EntityKind, query: string) {
       setLoading(true);
       setError(null);
       try {
-        const page = await listEntities({ kind, q: q || undefined, cursor, limit: 50 });
+        // Alphabetical (#2744): sort=name defaults to desc, so asc is explicit. The same
+        // sort and order ride on every page so the name cursor stays valid.
+        const page = await listEntities({
+          kind,
+          q: q || undefined,
+          cursor,
+          limit: 50,
+          sort: 'name',
+          order: 'asc',
+        });
         if (requestRef.current !== requestId) return;
         setEntities((prev) => (cursor ? [...prev, ...page.entities] : page.entities));
         setNextCursor(page.next_cursor);

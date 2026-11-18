@@ -24,6 +24,7 @@ import {
   type PreferenceSensitivity,
 } from '../api/preferences';
 import { useDirtyDialog } from '../hooks/useDirtyDialog';
+import { humanizeToken } from '../utils/humanizeToken';
 import AppDialog from './AppDialog';
 
 export interface PreferenceFormData {
@@ -164,7 +165,7 @@ export default function PreferenceDialog({
                 </ListSubheader>,
                 ...categories.map((c) => (
                   <MenuItem key={c.category} value={c.category}>
-                    {t(`preference.categories.${c.category}`, c.category)}
+                    {t(`preference.categories.${c.category}`, humanizeToken(c.category))}
                   </MenuItem>
                 )),
               ];

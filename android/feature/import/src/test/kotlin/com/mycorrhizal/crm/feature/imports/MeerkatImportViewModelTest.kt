@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import com.mycorrhizal.crm.domain.backup.BundleBackupStatus
 import com.mycorrhizal.crm.domain.repository.BundleBackupRepository
+import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
@@ -59,8 +60,20 @@ class MeerkatImportViewModelTest {
             insecureTransport = insecure
         )
 
-    private fun status(phase: String, error: String? = null, result: SourceImportResult? = null) =
-        SourceImportStatus(sessionId = "s1", phase = phase, error = error, result = result)
+    private fun status(
+        phase: String,
+        error: String? = null,
+        result: SourceImportResult? = null,
+        reasonCode: String? = null,
+        reasonParams: Map<String, Any?>? = null
+    ) = SourceImportStatus(
+        sessionId = "s1",
+        phase = phase,
+        error = error,
+        result = result,
+        errorReasonCode = reasonCode,
+        errorReasonParams = reasonParams
+    )
 
     private fun row(index: Int, action: String = "add", errors: List<String> = emptyList()) =
         ImportRowPreview(rowIndex = index, suggestedAction = action, validationErrors = errors)
@@ -281,6 +294,67 @@ class MeerkatImportViewModelTest {
             coVerify(exactly = 1) { apiClient.cancelMeerkatImport("s1") }
         }
 
+    // Issues #2735 / #2093: a coded fetch failure is localized, not shown as the English text.
+    @Test
+    fun `a failed fetch with a reason code becomes a reason-coded error, not plain text`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.connectMeerkat(any()) } returns Result.success(connected())
+            coEvery { apiClient.startMeerkatFetch("s1", false) } returns Result.success(Unit)
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returns Result.success(
+                status(
+                    "failed",
+                    error = "The Meerkat instance could not be reached \u2014 use the database upload",
+                    reasonCode = "meerkat_fetch_unreachable"
+                )
+            )
+            coEvery { apiClient.cancelMeerkatImport("s1") } returns Result.success(Unit)
+            val vm = newVm()
+            vm.fillToken()
+            vm.connect()
+            advanceUntilIdle()
+
+            vm.startImport()
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(MeerkatImportStep.CONNECT, state.step)
+            val error = state.error as ApiError.Client
+            assertEquals(ErrorReason("meerkat_fetch_unreachable", emptyMap()), error.reason)
+            assertNull(state.errorText)
+            assertNull(state.errorRes)
+        }
+
+    @Test
+    fun `a coded failure keeps its params for the template`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.connectMeerkat(any()) } returns Result.success(connected())
+            coEvery { apiClient.startMeerkatFetch("s1", false) } returns Result.success(Unit)
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returns Result.success(
+                status(
+                    "failed",
+                    error = "Meerkat rejected the credentials",
+                    reasonCode = "meerkat_api_error",
+                    reasonParams = mapOf("reason" to "Meerkat rejected the credentials")
+                )
+            )
+            coEvery { apiClient.cancelMeerkatImport("s1") } returns Result.success(Unit)
+            val vm = newVm()
+            vm.fillToken()
+            vm.connect()
+            advanceUntilIdle()
+
+            vm.startImport()
+            advanceUntilIdle()
+
+            val error = vm.uiState.value.error as ApiError.Client
+            assertEquals(
+                mapOf("reason" to "Meerkat rejected the credentials"),
+                error.reason!!.params
+            )
+            // The English text stays the body, so a build that lacks the code still shows it.
+            assertEquals("Meerkat rejected the credentials", error.body)
+        }
+
     @Test
     fun `a failed fetch with no message falls back to the generic string`() =
         runTest(mainDispatcherRule.testDispatcher) {
@@ -413,6 +487,31 @@ class MeerkatImportViewModelTest {
 
             assertEquals(MeerkatImportStep.REVIEW, vm.uiState.value.step)
             assertNull(vm.uiState.value.result)
+        }
+
+    @Test
+    fun `an import that fails with a reason code returns to review with a reason-coded error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = reviewVm()
+            coEvery { apiClient.confirmMeerkatImport(any()) } returns Result.success(Unit)
+            coEvery { apiClient.getMeerkatImportStatus("s1") } returns Result.success(
+                status(
+                    "failed",
+                    error = "The Meerkat server sent a response the importer could not read",
+                    reasonCode = "meerkat_fetch_unreadable"
+                )
+            )
+
+            vm.confirm()
+            advanceUntilIdle()
+
+            val state = vm.uiState.value
+            assertEquals(MeerkatImportStep.REVIEW, state.step)
+            assertEquals(
+                ErrorReason("meerkat_fetch_unreadable", emptyMap()),
+                (state.error as ApiError.Client).reason
+            )
+            assertNull(state.errorText)
         }
 
     @Test

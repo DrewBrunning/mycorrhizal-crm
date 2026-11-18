@@ -42,7 +42,10 @@ class EntityRepositoryImpl @Inject constructor(
         kind = kind,
         q = query,
         cursor = cursor,
-        limit = limit
+        limit = limit,
+        // Every entity list (screen, pickers, match search) is alphabetical (issue #2630); all
+        // callers use the same sort, so a cursor is never replayed under another one.
+        sortByName = true
     )
 
     override suspend fun get(id: String): Result<Entity> = apiClient.getEntity(id)

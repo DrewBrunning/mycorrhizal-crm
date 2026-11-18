@@ -27,6 +27,14 @@
     }
   },
   "globalSearch": {
+    "matchedOn": "Matches: {{fields}}",
+    "matchedField": {
+      "name": "name",
+      "organization": "organisation",
+      "email": "email",
+      "phone": "phone",
+      "address": "address"
+    },
     "placeholder": "Search contacts, notes, activities, places…",
     "label": "Search everything",
     "open": "Search",
@@ -212,6 +220,7 @@
     "noContacts": "No contacts available",
     "noReminders": "No upcoming reminders",
     "yearsOld": "({{age}} years old)",
+    "turnsAge": "(turns {{age}})",
     "birthdaysInfo": "Shows birthdays for at least the next two weeks.",
     "remindersInfo": "Shows at least all reminders due up to and including today. Reminders will stay visible until they are marked as completed.",
     "stayInTouchInfo": "Shows five random contacts to help you stay connected. The list is refreshed on every page reload.",
@@ -523,12 +532,29 @@
         "colStatus": "Result",
         "colReason": "Reason",
         "statusFailed": "Failed",
-        "statusSkipped": "Skipped"
+        "statusSkipped": "Skipped",
+        "statusWarning": "Warning",
+        "warningsTitle": "Imported with warnings",
+        "mixedTitle": "Rows to review",
+        "filterLabel": "Show",
+        "filterNotImported_one": "Not imported ({{count}})",
+        "filterNotImported_other": "Not imported ({{count}})",
+        "filterAll_one": "All ({{count}})",
+        "filterAll_other": "All ({{count}})",
+        "filterWarnings_one": "Warning ({{count}})",
+        "filterWarnings_other": "Warnings ({{count}})"
       },
       "errors": {
         "invalidFile": "Please select a valid CSV file",
         "fileTooLarge": "File is too large. Maximum size is {{size}}MB",
         "noMappings": "Please map at least one column"
+      },
+      "warning": {
+        "anniversary": "Anniversary not imported: invalid value",
+        "birthday": "Birthday not imported: invalid value"
+      },
+      "fileDiagnostic": {
+        "encoding": "This file isn't UTF-8, so it was read as Windows-1252. Check that accented characters look right before you import."
       }
     },
     "urls": "Websites",
@@ -1881,8 +1907,8 @@
           "colFormat": "Format",
           "colCreated": "Created",
           "colUpdated": "Updated",
-          "colSkipped": "Skipped",
-          "colErrors": "Errors",
+          "colSkipped": "Skipped in review",
+          "colErrors": "Failed on import",
           "colReport": "Report",
           "viewReport": "View report",
           "reportTitle": "Import report",
@@ -2109,7 +2135,8 @@
         "foundNotes_one": "{{count}} note",
         "foundNotes_other": "{{count}} notes",
         "estimate": "Fetching everything takes about {{minutes}} min.",
-        "start": "Start import"
+        "start": "Start import",
+        "unreachable": "Couldn't reach Monica at {{host}}"
       }
     },
     "meerkatImport": {
@@ -2129,7 +2156,8 @@
         "pickUser": "This database has more than one user — choose whose contacts to import:",
         "userOption_one": "{{name}} — {{count}} contact",
         "userOption_other": "{{name}} — {{count}} contacts",
-        "start": "Start import"
+        "start": "Start import",
+        "fetchFailedHint": "If Meerkat stays unreachable, choose \"Upload a file\" and import a copy of its database instead."
       },
       "mode": {
         "label": "How to import from Meerkat",
@@ -3802,7 +3830,7 @@
       "meerkat_version_untested": "This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview.",
       "common_database_error": "Something went wrong while saving or loading your data",
       "common_database_busy": "The server is busy. Try again in a moment",
-      "auth_invalid_credentials": "Invalid email or password",
+      "auth_invalid_credentials": "Invalid username, email or password",
       "auth_token_expired": "Your session has expired. Sign in again",
       "auth_token_invalid": "Your session is no longer valid. Sign in again",
       "common_client_not_supported": "This app version is no longer supported. Update to {{required_version}} or later",
@@ -4146,7 +4174,9 @@
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
       "integration_save_failed": "{{reason}}",
-      "occasion_anchor_date_incomplete": "An occasion anchor date requires both a month and a day, or neither",
+      "occasion_anchor_date_incomplete": "An occasion anchor date requires both a month and a day",
+      "occasion_anchor_date_invalid": "That month and day do not exist together, for example February 30",
+      "occasion_anchor_date_required": "An occasion needs a month and a day so it can remind you",
       "occasion_days_invalid": "days must be 30 or 90",
       "occasion_event_circles_required": "circle_ids is required",
       "occasion_event_end_before_start": "Event end time cannot be before its start time",
@@ -4306,10 +4336,11 @@
       "death": "Death",
       "dateHint": "YYYY, YYYY-MM or YYYY-MM-DD"
     },
-    "listAdded": "Added {{date}}",
-    "nameAdded": "{{name}} (added {{date}})",
-    "nameDetail_one": "{{name}} (added {{date}}, {{count}} contact)",
-    "nameDetail_other": "{{name}} (added {{date}}, {{count}} contacts)",
+    "listDetail_one": "{{count}} contact · updated {{date}}",
+    "listDetail_other": "{{count}} contacts · updated {{date}}",
+    "nameUpdated": "{{name}} (updated {{date}})",
+    "nameDetail_one": "{{name}} (updated {{date}}, {{count}} contact)",
+    "nameDetail_other": "{{name}} (updated {{date}}, {{count}} contacts)",
     "form": {
       "editTitle": "Edit {{name}}",
       "nameRequired": "Enter a name.",
@@ -4579,6 +4610,11 @@
       "revokeTitle": "Revoke this share?",
       "revokeBody": "{{username}} loses access on their next request. This does not recall anything they have already seen or copied. To share again you will need to create a new share.",
       "revoked": "Revoked {{label}} for {{username}}.",
+      "remove": "Remove",
+      "removeLabel": "Remove share of {{label}} to {{username}}",
+      "removeTitle": "Remove this share?",
+      "removeBody": "This share has ended. Removing it takes it off your Shared by me list for good. {{username}} is not affected.",
+      "removed": "Removed the share of {{label}} to {{username}}.",
       "reconfirmNeeded": "Hidden from {{username}} until you confirm: {{sections}}. An item in a section became private or secret, so the whole section stays hidden until you review it.",
       "reconfirm": "Review and re-confirm",
       "reconfirmLabel": "Review and re-confirm {{label}} for {{username}}",

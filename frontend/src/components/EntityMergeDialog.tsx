@@ -51,6 +51,13 @@ interface EntityMergeDialogProps {
   loserId: string;
   /** The entity that is kept. Omit to let the user pick one of the same kind. */
   survivorId?: string;
+  /**
+   * Distinct linked contacts per side (issue #2743), from the suggestion pair or the
+   * entity page. Never read from the detail entity: GET /entities/{id} counts link rows,
+   * a different definition, and the intro must not mix the two.
+   */
+  loserLinkCount?: number;
+  survivorLinkCount?: number;
   onClose: () => void;
   onMerged: (result: EntityMergeResponse, loser: Entity) => void;
 }
@@ -62,6 +69,8 @@ export default function EntityMergeDialog({
   open,
   loserId,
   survivorId,
+  loserLinkCount,
+  survivorLinkCount,
   onClose,
   onMerged,
 }: EntityMergeDialogProps) {
@@ -107,6 +116,20 @@ export default function EntityMergeDialog({
       cancelled = true;
     };
   }, [open, loserId, survivorId]);
+
+  // Distinct-contact counts by id: the caller's, plus the survivor picker's list rows.
+  const linkCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const o of options) if (o.link_count !== undefined) m.set(o.id, o.link_count);
+    if (loserLinkCount !== undefined) m.set(loserId, loserLinkCount);
+    if (survivorId && survivorLinkCount !== undefined) m.set(survivorId, survivorLinkCount);
+    return m;
+  }, [options, loserId, loserLinkCount, survivorId, survivorLinkCount]);
+  const detailOf = (e: Entity) => ({
+    name: e.name,
+    updated_at: e.updated_at,
+    link_count: linkCounts.get(e.id),
+  });
 
   const fillable = useMemo(
     () => (loser && survivor ? fillableMergeFields(survivor, loser) : []),
@@ -194,12 +217,12 @@ export default function EntityMergeDialog({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <Typography sx={{ flex: 1 }}>
                   {t('entities.merge.intro', {
-                    // Identical names: say which is which (created date, linked contacts).
+                    // Identical names: say which is which (updated date, linked contacts).
                     loser: sameEntityName(loser.name, survivor.name)
-                      ? nameWithDetail(t, formatDate, loser)
+                      ? nameWithDetail(t, formatDate, detailOf(loser))
                       : loser.name,
                     survivor: sameEntityName(loser.name, survivor.name)
-                      ? nameWithDetail(t, formatDate, survivor)
+                      ? nameWithDetail(t, formatDate, detailOf(survivor))
                       : survivor.name,
                   })}
                 </Typography>
