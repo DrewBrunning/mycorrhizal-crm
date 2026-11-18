@@ -33,10 +33,14 @@ class CircleRepositoryImpl @Inject constructor(
         val result = apiClient.listCircles(cursor = cursor, limit = limit)
         val page = result.getOrNull()
         if (page != null) {
-            // A complete first page is the whole set: replace the mirror so a circle deleted
-            // elsewhere is not served from it later. A partial page only adds to it.
-            if (cursor == null && page.nextCursor == null) circleDao.deleteAll()
             circleDao.upsertAll(page.circles.map { it.toCached() })
+            // A complete first page is the whole set: drop the rows it does not contain so a
+            // circle deleted elsewhere is not served from the mirror later. A partial page only
+            // adds to it. Upsert first, prune second: a failure part-way never leaves the
+            // mirror emptier than it was.
+            if (cursor == null && page.nextCursor == null) {
+                circleDao.deleteAllExcept(page.circles.map { it.id })
+            }
             return Result.success(page.circles)
         }
         val error = result.exceptionOrNull().toApiErrorOrUnknown()

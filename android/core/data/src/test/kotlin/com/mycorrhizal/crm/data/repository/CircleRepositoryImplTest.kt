@@ -19,6 +19,7 @@ import com.mycorrhizal.crm.network.ApiError
 import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.slot
+import io.mockk.spyk
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -235,6 +236,47 @@ class CircleRepositoryImplTest {
         repository.list()
 
         assertEquals("On page two", db.cachedCircleDao().getById("c9")?.name)
+    }
+
+    @Test
+    fun `a failed write of a complete first page does not wipe the saved circles`() = runTest {
+        db.cachedCircleDao().upsert(CachedCircle(id = "c1", name = "Friends", color = "teal"))
+        val failingDao = spyk(db.cachedCircleDao())
+        coEvery { failingDao.upsertAll(any()) } throws IllegalStateException("disk full")
+        val repo = CircleRepositoryImpl(apiClient, failingDao, db.cachedCircleMemberDao())
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns Result.success(
+            CirclesPage(circles = listOf(Circle(id = "c2", name = "Family")))
+        )
+
+        runCatching { repo.list() }
+
+        assertEquals("teal", db.cachedCircleDao().getById("c1")?.color)
+    }
+
+    @Test
+    fun `a complete empty first page clears the saved circles`() = runTest {
+        db.cachedCircleDao().upsert(CachedCircle(id = "c1", name = "Friends"))
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns
+            Result.success(CirclesPage(circles = emptyList()))
+
+        assertTrue(repository.list().getOrThrow().isEmpty())
+
+        assertTrue(db.cachedCircleDao().getAll().isEmpty())
+    }
+
+    @Test
+    fun `a complete first page keeps rows it contains and refreshes their fields`() = runTest {
+        db.cachedCircleDao().upsert(CachedCircle(id = "c1", name = "Old", color = "red"))
+        coEvery { apiClient.listCircles(any(), any(), any()) } returns Result.success(
+            CirclesPage(circles = listOf(Circle(id = "c1", name = "New", color = "teal")))
+        )
+
+        repository.list()
+
+        assertEquals(
+            listOf(CachedCircle(id = "c1", name = "New", color = "teal")),
+            db.cachedCircleDao().getAll()
+        )
     }
 
     @Test

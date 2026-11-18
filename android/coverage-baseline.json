@@ -126,7 +126,7 @@
     "com/mycorrhizal/crm/data/repository/AuthRepositoryImpl.kt": 89.21,
     "com/mycorrhizal/crm/data/repository/BundleBackupRepositoryImpl.kt": 98.95,
     "com/mycorrhizal/crm/data/repository/CadencePolicyRepositoryImpl.kt": 91.07,
-    "com/mycorrhizal/crm/data/repository/CircleRepositoryImpl.kt": 84.57,
+    "com/mycorrhizal/crm/data/repository/CircleRepositoryImpl.kt": 84.71,
     "com/mycorrhizal/crm/data/repository/ContactFieldVisibilityRepositoryImpl.kt": 100,
     "com/mycorrhizal/crm/data/repository/ContactImageRepositoryImpl.kt": 96.88,
     "com/mycorrhizal/crm/data/repository/ContactRepositoryImpl.kt": 91.05,
