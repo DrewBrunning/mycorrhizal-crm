@@ -186,10 +186,11 @@ private fun RecipientPromptDialog(
     onConfirm: () -> Unit
 ) {
     val grant = prompt.grant
+    val label = grantTitle(grant.label, grant.entityType)
     val (title, message, confirm) = when (prompt) {
         is SharedWithMePrompt.Decline -> Triple(
             stringResource(R.string.shares_decline_confirm_title),
-            stringResource(R.string.shares_grant_decline_message, grant.label, grant.fromUsername),
+            stringResource(R.string.shares_grant_decline_message, label, grant.fromUsername),
             stringResource(R.string.shares_decline)
         )
 
@@ -201,7 +202,7 @@ private fun RecipientPromptDialog(
 
         is SharedWithMePrompt.Leave -> Triple(
             stringResource(R.string.shares_grant_leave_title),
-            stringResource(R.string.shares_grant_leave_message, grant.label, grant.fromUsername),
+            stringResource(R.string.shares_grant_leave_message, label, grant.fromUsername),
             stringResource(R.string.shares_grant_leave)
         )
     }
@@ -237,6 +238,7 @@ private fun IncomingGrantRow(
     onOpen: () -> Unit
 ) {
     val pending = grant.status == ShareGrantStatuses.PENDING
+    val title = grantTitle(grant.label, grant.entityType)
     val leaveLabel = stringResource(R.string.shares_grant_leave)
     val blockLabel = stringResource(R.string.shares_grant_block)
     val actions = if (pending) {
@@ -251,7 +253,7 @@ private fun IncomingGrantRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = grant.label.ifBlank { stringResource(entityTypeLabelRes(grant.entityType)) },
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -284,7 +286,7 @@ private fun IncomingGrantRow(
                 }
             }
         }
-        RowOverflowMenu(rowName = grant.label, actions = actions)
+        RowOverflowMenu(rowName = title, actions = actions)
     }
 }
 
