@@ -24,7 +24,7 @@
     "@mui/system": "^9.5.0",
     "@types/d3-force": "^3.0.10",
     "d3-force": "^3.0.1",
-    "i18next": "^26.7.1",
+    "i18next": "^27.1.1",
     "i18next-browser-languagedetector": "^8.3.0",
     "maplibre-gl": "^6.16.0",
     "qrcode.react": "^4.2.0",
