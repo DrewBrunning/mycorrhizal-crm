@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -232,6 +233,9 @@ fun ContactListScreenContent(
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     val currentOnLoadMore = rememberUpdatedState(onLoadMore)
     var search by rememberSaveable { mutableStateOf(uiState.searchQuery) }
+    val matchedOnByContact = remember(uiState.searchResult, uiState.searchQuery) {
+        uiState.matchedOnByContact()
+    }
     // M23: inline bulk-selection mode (web parity). The selection *set* lives in the
     // ViewModel so filter changes can clear it; this flag is pure screen chrome.
     var selectMode by rememberSaveable { mutableStateOf(false) }
@@ -500,6 +504,7 @@ fun ContactListScreenContent(
                             selectMode = selectMode,
                             isMe = uiState.selfContactVCardUid != null &&
                                 contact.uid == uiState.selfContactVCardUid,
+                            matchedOn = matchedOnByContact[contact.id].orEmpty(),
                             onToggleFavorite = { onToggleFavorite(contact) },
                             onClick = {
                                 if (selectMode) {
@@ -1088,6 +1093,9 @@ fun ContactListItem(
     // T90 / issue #831: whether this row is the caller's self-contact
     // pointer — drives the "You" badge (web parity).
     isMe: Boolean = false,
+    // #2630: the fields the active search matched on this contact (backend `matched_on`);
+    // empty when not searching or the server did not say.
+    matchedOn: List<String> = emptyList(),
     // Issue #212: the per-row favorite toggle (web #173). Tapping the star
     // must never navigate into the detail page — the nested clickable's own
     // handler consumes the tap before the row's combinedClickable sees it
@@ -1207,6 +1215,15 @@ fun ContactListItem(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            searchMatchedOnLabel(matchedOn)?.let { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1361,7 +1378,12 @@ private fun SearchEntitiesSection(entities: List<SearchEntityHit>, onOpenEntity:
             entities.forEach { hit ->
                 ListItem(
                     headlineContent = { Text(hit.name) },
-                    supportingContent = { Text(stringResource(entityKindOneRes(hit.kind))) },
+                    supportingContent = {
+                        Column {
+                            Text(stringResource(entityKindOneRes(hit.kind)))
+                            searchMatchedOnLabel(hit.matchedOn)?.let { Text(it) }
+                        }
+                    },
                     modifier = Modifier.clickable { onOpenEntity(hit.id) }
                 )
             }
@@ -1444,4 +1466,26 @@ private fun SearchActivityRow(activity: SearchActivityHit, onContactClick: (Int)
             )
         }
     }
+}
+
+@StringRes
+internal fun searchMatchFieldRes(token: String): Int? = when (token) {
+    "name" -> R.string.contacts_search_matched_field_name
+    "organization" -> R.string.contacts_search_matched_field_organization
+    "email" -> R.string.contacts_search_matched_field_email
+    "phone" -> R.string.contacts_search_matched_field_phone
+    "address" -> R.string.contacts_search_matched_field_address
+    else -> null
+}
+
+/**
+ * "Matched on name, email" (#2630): why a search hit matched. Tokens this app does not know (a
+ * newer server) are dropped; null when nothing is left, so no line shows.
+ */
+@Composable
+internal fun searchMatchedOnLabel(matchedOn: List<String>?): String? {
+    val fields = matchedOn.orEmpty().mapNotNull { searchMatchFieldRes(it) }
+        .map { stringResource(it) }
+    if (fields.isEmpty()) return null
+    return stringResource(R.string.contacts_search_matched_on, fields.joinToString(", "))
 }

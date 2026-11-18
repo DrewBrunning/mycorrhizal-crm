@@ -860,6 +860,33 @@ class ApiClientTest {
     }
 
     @Test
+    fun `search parses matched_on on contact and entity hits and tolerates its absence`() =
+        runBlocking {
+            // Wire shape of backend #2757: contact hits list the fields they matched in a fixed
+            // order, entity hits are always ["name"], and the key is omitted when unknown.
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"query":"zebracorp","contacts":[
+                    {"id":7,"fn":"Beatrix Marlow","org":"Zebracorp Holdings","matched_on":["organization"]},
+                    {"id":8,"fn":"Fenn Zebracorp","matched_on":["name","organization"]},
+                    {"id":9,"fn":"Older Server"}],
+                    "notes":[],"activities":[],"entities":[
+                    {"id":"e1","kind":"organisation","name":"Zebracorp Holdings","sensitivity":"normal","matched_on":["name"]},
+                    {"id":"e2","kind":"place","name":"Zebracorp Yard","sensitivity":"normal"}]}"""
+                )
+            )
+
+            val result = client.search("zebracorp").getOrThrow()
+
+            assertEquals(
+                mapOf(7 to listOf("organization"), 8 to listOf("name", "organization")),
+                result.matchedOnByContactId()
+            )
+            assertEquals(listOf("name"), result.entities[0].matchedOn)
+            assertEquals(null, result.entities[1].matchedOn)
+        }
+
+    @Test
     fun `search tolerates a server that omits entities`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody("""{"query":"acme","notes":[]}""")
@@ -2612,9 +2639,9 @@ class ApiClientTest {
     }
 
     @Test
-    fun `search response's contacts group never reaches the parsed model`() = runBlocking {
-        // T87: the contact list is the sole authority for contact results; SearchResult has no
-        // `contacts` property to leak them into, regardless of what the server sends.
+    fun `search response's contacts group is reduced to id and matched_on`() = runBlocking {
+        // T87: the contact list is the sole authority for contact results; SearchResult keeps
+        // only each hit's id and matched_on (#2630), never a renderable contact.
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
