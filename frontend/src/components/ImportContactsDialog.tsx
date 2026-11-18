@@ -2,6 +2,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ErrorIcon from '@mui/icons-material/Error';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import WarningIcon from '@mui/icons-material/Warning';
 import {
   Alert,
@@ -35,12 +36,13 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FIELD_TYPES } from '../api/fieldDefinitions';
 import {
   CONTACT_FIELD_LABELS,
   type ColumnMapping,
+  cancelImportSession,
   confirmImport,
   confirmVCFImport,
   type DiscoveredCustomProperty,
@@ -59,12 +61,14 @@ import {
   uploadVCFForImport,
 } from '../api/import';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useDiscardGuard } from '../hooks/useDiscardGuard';
 import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
 import { isContactPickerSupported, pickContactsAsVCardFile } from '../utils/contactPicker';
 import { EMPTY_VALUE } from '../utils/emptyValue';
 import { getErrorMessage } from '../utils/errorHandler';
 import { MAX_CSV_IMPORT_MB, MAX_VCF_IMPORT_MB } from '../utils/importLimits';
 import AppDialog from './AppDialog';
+import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 import ImportFixedAssignmentPicker from './ImportFixedAssignmentPicker';
 import ImportIssuesReport from './ImportIssuesReport';
 
@@ -167,10 +171,46 @@ export default function ImportContactsDialog({
     setDragOver(false);
   }, []);
 
+  // Issue #2664: the live server-side upload session, if any. Mirrored into a
+  // ref so the unmount cleanup and every exit path release the same id exactly
+  // once; a confirmed import (result step) has consumed its session.
+  const sessionIdRef = useRef<string | null>(null);
+  sessionIdRef.current = importResult
+    ? null
+    : (previewResponse?.session_id ?? uploadResponse?.session_id ?? null);
+  const releaseSession = useCallback(() => {
+    const id = sessionIdRef.current;
+    sessionIdRef.current = null;
+    if (id) void cancelImportSession(id);
+  }, []);
+  // Closing the dialog by any route (including the host unmounting it) must
+  // not leave the session counting toward the server's per-user cap.
+  useEffect(() => releaseSession, [releaseSession]);
+
   // Handle dialog close
   const handleClose = () => {
+    releaseSession();
     resetDialog();
     onClose();
+  };
+
+  // Issue #2665: from the review step on (or once a row fix is saved) the
+  // user's Keep/Skip/Merge decisions would be lost, so Escape, the X and Cancel
+  // confirm first. The result step is finished work, not unsaved work.
+  const dirty = step === 'customFields' || step === 'preview' || rowEdits.size > 0;
+  const { guardedClose, confirmDialogProps, navigationGuardElement } = useDiscardGuard(
+    dirty && step !== 'result',
+    { onNavigationDiscard: handleClose },
+  );
+  const requestClose = () => guardedClose(handleClose);
+
+  // Back to the upload step abandons the uploaded file, so its session goes too.
+  const backToUpload = () => {
+    releaseSession();
+    setUploadResponse(null);
+    setPreviewResponse(null);
+    setStep('upload');
+    setActiveStep(0);
   };
 
   // Handle file upload
@@ -449,6 +489,11 @@ export default function ImportContactsDialog({
     }
   };
 
+  // Opens the native file picker. The input stays out of the tab order and the
+  // accessibility tree (display:none); the visible "Choose file" button is the
+  // keyboard- and screen-reader-reachable control (issue #2661).
+  const openFilePicker = () => document.getElementById('import-file-input')?.click();
+
   // Render upload step
   const renderUploadStep = () => (
     <Box sx={{ py: 4 }}>
@@ -466,7 +511,7 @@ export default function ImportContactsDialog({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => document.getElementById('import-file-input')?.click()}
+        onClick={openFilePicker}
       >
         <input
           id="import-file-input"
@@ -475,15 +520,32 @@ export default function ImportContactsDialog({
           style={{ display: 'none' }}
           aria-label={t('contacts.import.upload.dragDrop')}
           onChange={handleFileInputChange}
+          // The programmatic click would otherwise bubble to the drop zone.
+          onClick={(e) => e.stopPropagation()}
         />
-        <CloudUploadIcon sx={{ fontSize: 48, color: 'grey.500', mb: 2 }} />
+        <CloudUploadIcon aria-hidden sx={{ fontSize: 48, color: 'grey.500', mb: 2 }} />
         <Typography variant="h6" gutterBottom>
           {t(
             'contacts.import.upload.dragDrop',
             'Drag and drop a CSV or VCF file here, or click to select',
           )}
         </Typography>
+        <Button
+          variant="contained"
+          startIcon={<FolderOpenIcon aria-hidden />}
+          aria-describedby="import-file-formats"
+          onClick={(e) => {
+            // The drop zone's own click opens the picker for mouse users;
+            // stop here so one press does not open it twice.
+            e.stopPropagation();
+            openFilePicker();
+          }}
+          sx={{ mb: 2 }}
+        >
+          {t('contacts.import.upload.chooseFile')}
+        </Button>
         <Typography
+          id="import-file-formats"
           variant="body2"
           sx={{
             color: 'text.secondary',
@@ -617,6 +679,11 @@ export default function ImportContactsDialog({
                           value={mapping.contact_field}
                           onChange={(e) => handleMappingChange(index, e.target.value)}
                           displayEmpty
+                          inputProps={{
+                            'aria-label': t('contacts.import.mapping.mapsToFor', {
+                              column: mapping.csv_column,
+                            }),
+                          }}
                         >
                           <MenuItem value="">
                             <em>{t('contacts.import.mapping.ignore', '-- Ignore --')}</em>
@@ -1076,18 +1143,11 @@ export default function ImportContactsDialog({
   const renderActions = () => {
     switch (step) {
       case 'upload':
-        return <Button onClick={handleClose}>{t('common.cancel', 'Cancel')}</Button>;
+        return <Button onClick={requestClose}>{t('common.cancel', 'Cancel')}</Button>;
       case 'mapping':
         return (
           <>
-            <Button
-              onClick={() => {
-                setStep('upload');
-                setActiveStep(0);
-              }}
-            >
-              {t('common.back', 'Back')}
-            </Button>
+            <Button onClick={backToUpload}>{t('common.back', 'Back')}</Button>
             <Button
               variant="contained"
               onClick={() => void handleGeneratePreview()}
@@ -1102,9 +1162,7 @@ export default function ImportContactsDialog({
           <>
             <Button
               onClick={() => {
-                setStep('upload');
-                setActiveStep(0);
-                setPreviewResponse(null);
+                backToUpload();
                 setRowActions(new Map());
                 setPreviewPage(0);
                 setPreviewFilter(null);
@@ -1137,8 +1195,7 @@ export default function ImportContactsDialog({
                     setActiveStep(1);
                   } else {
                     // VCF without candidates goes back to upload.
-                    setStep('upload');
-                    setActiveStep(0);
+                    backToUpload();
                   }
                 } else {
                   // CSV goes back to mapping
@@ -1150,7 +1207,7 @@ export default function ImportContactsDialog({
             >
               {t('common.back', 'Back')}
             </Button>
-            <Button onClick={handleClose} disabled={loading}>
+            <Button onClick={requestClose} disabled={loading}>
               {t('common.cancel', 'Cancel')}
             </Button>
             <Button
@@ -1182,11 +1239,13 @@ export default function ImportContactsDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="md" fullWidth>
+      {navigationGuardElement}
+      <ConfirmDiscardDialog {...confirmDialogProps} />
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {t('contacts.import.title', 'Import Contacts')}
-          <IconButton onClick={handleClose} size="small" aria-label={t('common.close')}>
+          <IconButton onClick={requestClose} size="small" aria-label={t('common.close')}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -1530,7 +1589,17 @@ function ImportRowCard({
             </Box>
           )}
           {hasErrors && fixing && (
-            <Box sx={{ mt: 1, display: 'grid', gap: 1, gridTemplateColumns: { sm: '1fr 1fr' } }}>
+            <Box
+              sx={{ mt: 1, display: 'grid', gap: 1, gridTemplateColumns: { sm: '1fr 1fr' } }}
+              // Issue #2665: Escape abandons just this form; it must not reach
+              // the dialog, whose Escape handler would close the whole import.
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  setFixing(false);
+                }
+              }}
+            >
               {(
                 [
                   ['firstname', t('contacts.import.preview.fixFirstName', 'First name')],
