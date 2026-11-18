@@ -3,6 +3,8 @@ package com.mycorrhizal.crm.feature.shares
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.OutgoingShareGrant
 import com.mycorrhizal.crm.model.network.OutgoingShareGrantsPage
 import com.mycorrhizal.crm.model.network.ShareGrantPatch
@@ -340,6 +342,146 @@ class SharedByMeViewModelTest {
         assertFalse(revoked.isLive)
         assertTrue(contactGrant.isLive)
         assertTrue(circleGrant.isLive)
+    }
+
+    // --- Issue #2627: remove an ended grant ---
+
+    private val declined = contactGrant.copy(id = "g4", status = ShareGrantStatuses.DECLINED)
+    private val expired = contactGrant.copy(id = "g5", status = ShareGrantStatuses.EXPIRED)
+
+    @Test
+    fun `only an ended grant can be removed`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubLoad(contactGrant, circleGrant, revoked, declined, expired)
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(contactGrant)
+        assertNull(vm.uiState.value.prompt)
+        vm.requestRemove(circleGrant)
+        assertNull(vm.uiState.value.prompt)
+
+        listOf(revoked, declined, expired).forEach { grant ->
+            vm.requestRemove(grant)
+            assertEquals(SharedByMePrompt.Remove(grant), vm.uiState.value.prompt)
+            vm.dismissPrompt()
+        }
+        assertTrue(revoked.isEnded && declined.isEnded && expired.isEnded)
+        assertFalse(contactGrant.isEnded || circleGrant.isEnded)
+        coVerify(exactly = 0) { repository.delete(any()) }
+    }
+
+    @Test
+    fun `remove is confirmation gated, deletes the row and reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(contactGrant, declined)
+        coEvery { repository.delete("g4") } returns Result.success(Unit)
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(declined)
+        coVerify(exactly = 0) { repository.delete(any()) }
+        stubLoad(contactGrant)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.delete("g4") }
+        coVerify(exactly = 0) { repository.revoke(any()) }
+        assertNull(vm.uiState.value.prompt)
+        assertNull(vm.uiState.value.actionError)
+        assertEquals(listOf("g1"), vm.uiState.value.grants.map { it.id })
+        coVerify(exactly = 2) { repository.listOutgoing(any(), any()) }
+    }
+
+    @Test
+    fun `a removed row leaves the list before the reload answers`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val reload = CompletableDeferred<Unit>()
+        var calls = 0
+        coEvery { repository.listOutgoing(any(), any()) } coAnswers {
+            if (++calls > 1) reload.await()
+            Result.success(OutgoingShareGrantsPage(shareGrants = listOf(contactGrant, declined)))
+        }
+        coEvery { repository.delete("g4") } returns Result.success(Unit)
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(declined)
+        vm.confirmPrompt()
+        runCurrent()
+
+        assertTrue(vm.uiState.value.isLoading)
+        assertEquals(listOf("g1"), vm.uiState.value.grants.map { it.id })
+        reload.complete(Unit)
+        advanceUntilIdle()
+    }
+
+    @Test
+    fun `a 404 after remove means it is already gone, not an error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(declined)
+        coEvery { repository.delete("g4") } returns Result.failure(
+            ApiError.Client(
+                404,
+                "Share grant not found",
+                reason = ErrorReason(ErrorReasonCode.SHARE_GRANT_NOT_FOUND, emptyMap())
+            )
+        )
+        val vm = newVm()
+        advanceUntilIdle()
+
+        stubLoad()
+        vm.requestRemove(declined)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.actionError)
+        assertTrue(vm.uiState.value.grants.isEmpty())
+        assertNull(vm.uiState.value.prompt)
+    }
+
+    @Test
+    fun `a 409 not-ended keeps the row, reports the reason and reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(declined)
+        coEvery { repository.delete("g4") } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW",
+                reason = ErrorReason(ErrorReasonCode.SHARE_GRANT_NOT_ENDED, emptyMap())
+            )
+        )
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(declined)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+
+        val error = vm.uiState.value.actionError as ApiError.Client
+        assertEquals(ErrorReasonCode.SHARE_GRANT_NOT_ENDED, error.reason?.code)
+        assertEquals(listOf("g4"), vm.uiState.value.grants.map { it.id })
+        coVerify(exactly = 2) { repository.listOutgoing(any(), any()) }
+    }
+
+    @Test
+    fun `a failed remove for another reason keeps the row`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(declined)
+        coEvery { repository.delete("g4") } returns Result.failure(ApiError.Server(500, "x"))
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(declined)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+
+        assertNotNull(vm.uiState.value.actionError)
+        assertEquals(listOf("g4"), vm.uiState.value.grants.map { it.id })
     }
 
     // --- Issue #2659: re-confirm review ---

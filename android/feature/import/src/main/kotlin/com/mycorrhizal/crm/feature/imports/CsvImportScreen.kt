@@ -206,7 +206,8 @@ fun CsvImportScreenContent(
                             onConfirm = onConfirm,
                             modifier = Modifier.weight(1f),
                             rowEdits = uiState.rowEdits,
-                            onRowEditSave = onRowEditSave
+                            onRowEditSave = onRowEditSave,
+                            fileDiagnostics = uiState.preview.fileDiagnostics
                         )
                     }
 
