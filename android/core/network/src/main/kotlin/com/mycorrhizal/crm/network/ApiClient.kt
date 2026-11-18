@@ -329,9 +329,11 @@ import com.mycorrhizal.crm.model.network.stripProjectedEntries
 import com.squareup.moshi.JsonReader
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -350,8 +352,32 @@ import okio.Buffer
  * deliberately small and endpoint-focused so the swap stays local to
  * :core:network.
  */
-class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi) {
+class ApiClient(
+    private val okHttpClient: OkHttpClient,
+    private val moshi: Moshi,
+    /**
+     * The device's IANA zone id, read on every request (the user can cross zones). Injected so
+     * tests can pin it; the default is the JVM's current default zone.
+     */
+    private val timeZoneId: () -> String = { ZoneId.systemDefault().id }
+) {
     private val jsonMediaType = "application/json".toMediaType()
+
+    /**
+     * Adds the optional `tz` query parameter (backend #2762, ADR 0015 Rule 4) to a read that
+     * decides which calendar day is "today", so the server counts from the device's day rather
+     * than its own reminder zone (issues #2617, #2679). Skipped when the device zone is not one
+     * the server accepts, because a bad value is a 400 `validation_timezone_invalid` that would
+     * fail the whole read; an older server ignores the parameter.
+     */
+    private fun HttpUrl.Builder.addViewerTimeZone(): HttpUrl.Builder {
+        viewerTimeZoneOrNull(timeZoneId())?.let { addQueryParameter("tz", it) }
+        return this
+    }
+
+    /** A `tz`-carrying URL for a fixed [path] that has no other query parameters. */
+    private fun withViewerTimeZone(path: String): String =
+        path.toHttpUrl().newBuilder().addViewerTimeZone().build().toString()
 
     /**
      * POST /api/v1/login. For a 2FA account the response carries
@@ -1284,7 +1310,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
      * normalized to `[]` server-side; see [DashboardResponse]'s doc comment.
      */
     suspend fun getDashboard(): Result<DashboardResponse> =
-        executeGet("$PLACEHOLDER_ORIGIN$DASHBOARD_PATH") { _, body ->
+        executeGet(withViewerTimeZone("$PLACEHOLDER_ORIGIN$DASHBOARD_PATH")) { _, body ->
             moshi.adapter(DashboardResponse::class.java).fromJson(body)
         }
 
@@ -2073,9 +2099,9 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             moshi.adapter(ContactRemindersResponse::class.java).fromJson(body)
         }
 
-    /** GET /api/v1/reminders/upcoming — reminders due within ~7 days. */
+    /** GET /api/v1/reminders/upcoming?tz= — reminders due within ~7 days from the device's today. */
     suspend fun listUpcomingReminders(): Result<ContactRemindersResponse> =
-        executeGet("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/upcoming") { _, body ->
+        executeGet(withViewerTimeZone("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/upcoming")) { _, body ->
             moshi.adapter(ContactRemindersResponse::class.java).fromJson(body)
         }
 
@@ -2160,9 +2186,9 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     suspend fun deleteReminderCompletion(id: Int): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$REMINDER_COMPLETIONS_PATH/$id")
 
-    /** GET /api/v1/contacts/birthdays — upcoming birthdays. */
+    /** GET /api/v1/contacts/birthdays?tz= — upcoming birthdays from the device's today. */
     suspend fun listUpcomingBirthdays(): Result<BirthdaysResponse> =
-        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/birthdays") { _, body ->
+        executeGet(withViewerTimeZone("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/birthdays")) { _, body ->
             moshi.adapter(BirthdaysResponse::class.java).fromJson(body)
         }
 
@@ -2270,7 +2296,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         executeDelete("$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/$id")
 
     /**
-     * GET /api/v1/occasion-obligations/gift-shopping-list?days=30|90 — upcoming gift obligations
+     * GET /api/v1/occasion-obligations/gift-shopping-list?days=30|90&tz= — upcoming gift obligations
      * joined to this cycle's gift (ADR 0024 part 5). Above-normal obligations are never requested
      * (no `include_sensitive`), matching the web surface.
      */
@@ -2278,6 +2304,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         val urlBuilder = "$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/gift-shopping-list"
             .toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("days", days.toString())
+        urlBuilder.addViewerTimeZone()
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(GiftShoppingListResponse::class.java).fromJson(body)
         }
@@ -2296,12 +2323,13 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     }
 
     /**
-     * GET /api/v1/occasions/upcoming?days=30|90 — birthdays, anniversaries, life events and active
+     * GET /api/v1/occasions/upcoming?days=30|90&tz= — birthdays, anniversaries, life events and active
      * obligations in the window (ADR 0024 part 3). `include_sensitive` is never sent.
      */
     suspend fun getUpcomingOccasions(days: Int): Result<UpcomingOccasionsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$API_V1/occasions/upcoming".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("days", days.toString())
+        urlBuilder.addViewerTimeZone()
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(UpcomingOccasionsResponse::class.java).fromJson(body)
         }

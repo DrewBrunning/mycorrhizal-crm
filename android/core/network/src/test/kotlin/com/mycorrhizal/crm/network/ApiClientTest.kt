@@ -2235,7 +2235,7 @@ class ApiClientTest {
 
         val request = server.takeRequest()
         assertEquals("GET", request.method)
-        assertEquals("/api/v1/dashboard", request.path)
+        assertEquals("/api/v1/dashboard", request.requestUrl?.encodedPath)
     }
 
     @Test
