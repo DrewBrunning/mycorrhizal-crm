@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // Entity merge, suggestions and the create-from-contacts helper (issue #2299,
 // ADR 0043 decisions 8, 9 and 10). Request structs are explicit allowlists.
 
@@ -66,6 +68,12 @@ type EntitySuggestionEntity struct {
 	ID   string `json:"id"`
 	Kind string `json:"kind"`
 	Name string `json:"name"`
+	// UpdatedAt and LinkCount (issue #2743) let a client tell same-named
+	// candidates apart without a per-entity detail call. LinkCount is the
+	// number of distinct live contacts linked to the entity (the "Linked to N
+	// contacts" definition), 0 when none.
+	UpdatedAt time.Time `json:"updated_at"`
+	LinkCount int       `json:"link_count"`
 }
 
 // EntitySuggestionPair is a candidate duplicate pair; A.ID < B.ID.

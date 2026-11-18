@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"context"
 	"encoding/csv"
 	"encoding/json"
@@ -102,7 +103,13 @@ func unneutralizeCSVJSON(s string) string {
 // Unknown sections and the CONTACTS section are skipped; malformed rows are
 // returned as issues rather than failing the whole parse.
 func ParseEntityCSVSections(r io.Reader) (*EntityCSVSections, []ImportIssue, error) {
-	cr := csv.NewReader(r)
+	raw, readErr := io.ReadAll(r)
+	if readErr != nil {
+		return nil, nil, &EntityCSVRejection{msg: fmt.Sprintf("invalid CSV format: %v", readErr)}
+	}
+	// A BOM in front of the first section marker would hide it from
+	// csvMarkerRE (issue #2662); the export itself is always UTF-8.
+	cr := csv.NewReader(bytes.NewReader(stripUTF8BOM(raw)))
 	cr.FieldsPerRecord = -1
 	cr.LazyQuotes = true
 	out := &EntityCSVSections{Kinds: map[string]string{}, ValueKeys: map[string][2]string{}}

@@ -190,7 +190,7 @@
     <string name="contacts_search_results_hint">Notizen und Interaktionen werden ebenfalls durchsucht — Kreis- und Archiv-Filter gelten für sie nicht.</string>
     <string name="contacts_search_notes_group">Notizen</string>
     <string name="contacts_search_activities_group">Interaktionen</string>
-    <string name="contacts_search_entities_group">Organisationen, Orte und Haustiere</string>
+    <string name="contacts_search_entities_group">Organisationen, Orte &amp; Haustiere</string>
     <string name="contacts_search_unfiled">Nicht zugeordnet</string>
     <string name="contacts_search_resolved_relation">Übereinstimmende Beziehung: %1$s</string>
 
@@ -1285,6 +1285,7 @@
     <string name="action_edit">Bearbeiten</string>
     <string name="action_delete">Löschen</string>
     <string name="action_cancel">Abbrechen</string>
+    <string name="action_remove">Entfernen</string>
     <string name="action_add">Hinzufügen</string>
     <string name="action_back">Zurück</string>
     <string name="action_rename">Umbenennen</string>
@@ -1400,6 +1401,7 @@
     <string name="households_suggest_relationships">Beziehungen vorschlagen</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Allen schreiben</string>
+    <string name="group_text_everyone_unavailable">Um allen zu schreiben, müssen mindestens zwei Mitglieder eine Telefonnummer haben.</string>
     <plurals name="households_suggestions_generated">
         <item quantity="one">%1$d neue vorgeschlagene Beziehung erstellt. Prüfe sie auf den Kontaktseiten der Mitglieder.</item>
         <item quantity="other">%1$d neue vorgeschlagene Beziehungen erstellt. Prüfe sie auf den Kontaktseiten der Mitglieder.</item>
@@ -1568,7 +1570,7 @@
     <string name="shares_revoked_reason_owner">Du hast diese Freigabe widerrufen</string>
     <string name="shares_revoked_reason_entity_deleted">Der geteilte Eintrag wurde gelöscht</string>
     <string name="shares_revoked_reason_recipient_deleted">Das Konto des Empfängers wurde gelöscht</string>
-    <string name="shares_content_title">Mit dir geteilt</string>
+    <string name="shares_content_title">Mit mir geteilt</string>
     <string name="shares_content_from">Geteilt von %1$s</string>
     <string name="shares_content_unavailable">Diese Freigabe ist nicht mehr verfügbar</string>
     <string name="shares_content_offline_hint">Geteilte Inhalte werden nie auf diesem Gerät gespeichert und sind daher offline nicht verfügbar.</string>
@@ -2223,10 +2225,10 @@
     <string name="trash_title">Papierkorb</string>
     <string name="trash_empty_action">Papierkorb leeren</string>
     <string name="trash_empty_state">Der Papierkorb ist leer</string>
-    <string name="trash_retention_forever">Gelöschte Kontakte bleiben erhalten, bis du den Papierkorb leerst.</string>
+    <string name="trash_retention_forever">Gelöschte Elemente bleiben erhalten, bis Sie den Papierkorb leeren.</string>
     <plurals name="trash_retention">
-        <item quantity="one">Gelöschte Kontakte werden %1$d Tag aufbewahrt und danach endgültig gelöscht.</item>
-        <item quantity="other">Gelöschte Kontakte werden %1$d Tage aufbewahrt und danach endgültig gelöscht.</item>
+        <item quantity="one">Gelöschte Elemente werden %1$d Tag aufbewahrt und danach endgültig gelöscht.</item>
+        <item quantity="other">Gelöschte Elemente werden %1$d Tage aufbewahrt und danach endgültig gelöscht.</item>
     </plurals>
     <string name="trash_deleted_on">Gelöscht am %1$s</string>
     <string name="trash_purge_on">Endgültig gelöscht am %1$s</string>
@@ -2929,7 +2931,7 @@
     <string name="error_request_ref">(Referenz: %1$s)</string>
     <string name="login_error_invalid_credentials">Ungültige Zugangsdaten</string>
     <string name="register_error_disabled">Die Registrierung ist auf diesem Server deaktiviert</string>
-    <string name="error_client_network">Keine Verbindung</string>
+    <string name="error_client_network">Ihr Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.</string>
     <string name="error_client_timeout">Zeitüberschreitung bei der Anfrage</string>
     <string name="error_client_server">Serverfehler (%1$d)</string>
     <string name="error_client_session_expired">Sitzung abgelaufen – bitte erneut anmelden</string>
@@ -2965,6 +2967,7 @@
     <string name="error_reason_relationship_partial_date_missing">Ein Datum muss mindestens ein Jahr, einen Monat oder einen Tag enthalten</string>
     <string name="error_reason_relationship_self_edge">Quelle und Ziel müssen verschiedene Kontakte sein</string>
     <string name="error_reason_validation_activity_ids_range">Muss zwischen 1 und 100 IDs enthalten</string>
+    <string name="error_reason_validation_timezone_invalid">tz muss ein IANA-Zeitzonenname wie Europe/Berlin sein</string>
     <string name="error_reason_validation_required">%1$s ist erforderlich</string>
     <string name="error_reason_validation_email">%1$s muss eine gültige E-Mail-Adresse sein</string>
     <string name="error_reason_validation_min">%1$s muss mindestens %2$s Zeichen lang sein</string>
@@ -3020,6 +3023,8 @@
     <string name="error_reason_meerkat_sign_in_input_missing">Gib einen Meerkat-API-Token oder einen Benutzernamen und ein Passwort ein</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Kontakte auf diesem Meerkat-Konto: %1$d. Der Import unterstützt höchstens %2$d</string>
     <string name="error_reason_meerkat_version_untested">Diese Meerkat-Version ist mit dem Importer nicht getestet. Bestätige, um es trotzdem zu versuchen; es wird nichts geschrieben, bis du die Vorschau prüfst.</string>
+    <string name="error_reason_meerkat_fetch_unreachable">Die Meerkat-Instanz ist nicht erreichbar</string>
+    <string name="error_reason_meerkat_fetch_unreadable">Der Meerkat-Server hat eine Antwort gesendet, die der Import nicht lesen konnte. Prüfen Sie die URL</string>
     <string name="error_reason_common_database_error">Beim Speichern oder Laden Ihrer Daten ist ein Fehler aufgetreten</string>
     <string name="error_reason_common_database_busy">Der Server ist ausgelastet. Versuchen Sie es gleich noch einmal</string>
     <string name="error_reason_auth_invalid_credentials">Ungültige E-Mail-Adresse oder ungültiges Passwort</string>
@@ -3210,6 +3215,7 @@
     <string name="error_reason_contact_share_already_responded">Auf die Freigabe wurde bereits geantwortet</string>
     <string name="error_reason_share_grant_not_found">Freigabe nicht gefunden</string>
     <string name="error_reason_share_grant_state_conflict">Diese Freigabe kann so nicht mehr geändert werden</string>
+    <string name="error_reason_share_grant_not_ended">Nur eine beendete Freigabe (abgelehnt, abgelaufen oder widerrufen) kann entfernt werden; widerrufen Sie sie zuerst</string>
     <string name="error_reason_share_grant_widening_refused">Eine Freigabe kann nur eingeschränkt werden; erstelle eine neue Freigabe, um mehr freizugeben</string>
     <string name="error_reason_share_grant_already_exists">Das ist bereits mit dieser Person geteilt</string>
     <string name="error_reason_share_grant_pending_limit">Zu viele Freigaben warten auf eine Antwort</string>
@@ -3478,6 +3484,7 @@
     <string name="shared_entities_new_pet">Haustier hinzufügen</string>
     <string name="shared_entities_empty_pet">Noch keine Haustiere.</string>
     <string name="shared_entities_search">Nach Name suchen</string>
+    <string name="shared_entities_search_clear">Suche löschen</string>
     <string name="shared_entities_no_results">Keine Treffer für deine Suche.</string>
     <string name="shared_entities_sensitivity_label">Vertraulichkeit</string>
     <string name="shared_entities_sensitivity_normal">Normal</string>

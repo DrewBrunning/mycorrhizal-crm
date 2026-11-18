@@ -20,7 +20,7 @@ All enabled channels deliver in the same daily run, at `REMINDER_TIME` in `REMIN
 Two consequences are worth knowing up front:
 
 - **DST** — the daily run fires once per local wall-clock time in `REMINDER_TIMEZONE`. If `REMINDER_TIME` lands in a spring-forward skipped hour it still runs once (normalized to the first valid time after the transition); if it lands in a fall-back repeated hour it runs once, on the earlier pass. It is never skipped and never doubled; a run the server was down for is recovered at next start (see ADR 0011). These rules are pinned in [ADR 0015](adrs/0015-temporal-semantics.md).
-- **"Today" follows that same zone.** A birthday or a due reminder is "today" when the calendar day in `REMINDER_TIMEZONE` says so — including a 29-Feb birthday, which is celebrated on **1 March** in a non-leap year (a real decision, not a bug: see [ADR 0015](adrs/0015-temporal-semantics.md)).
+- **"Today" follows that same zone.** A birthday or a due reminder is "today" when the calendar day in `REMINDER_TIMEZONE` says so — including a 29-Feb birthday, which is celebrated on **1 March** in a non-leap year (a real decision, not a bug: see [ADR 0015](adrs/0015-temporal-semantics.md)). The one exception is on-screen lists: the dashboard, upcoming occasions, birthdays, and upcoming reminders accept an optional `tz` (the viewer's IANA zone) so "today" there follows the viewer; reminders, emails, and calendar feeds never do.
 
 ## Email
 

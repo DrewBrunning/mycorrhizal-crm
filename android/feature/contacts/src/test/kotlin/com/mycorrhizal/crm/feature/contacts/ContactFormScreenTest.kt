@@ -190,7 +190,7 @@ class ContactFormScreenTest {
         composeTestRule.onNodeWithText("No tags yet").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Create contact").assertIsDisplayed()
         // Issue #1728: these groups moved to their own contact-page drill-downs.
-        composeTestRule.onNodeWithText("Organization").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Organisation").assertDoesNotExist()
         composeTestRule.onNodeWithText("Job titles").assertDoesNotExist()
         composeTestRule.onNodeWithText("Personal information").assertDoesNotExist()
         composeTestRule.onNodeWithText("Work information").assertDoesNotExist()
@@ -438,7 +438,7 @@ class ContactFormScreenTest {
             onCardKindChange = { cardKind = it }
         )
         composeTestRule.onNodeWithTag("card-kind-field").performScrollTo().performClick()
-        composeTestRule.onNodeWithText("Organization").performClick()
+        composeTestRule.onNodeWithText("Organisation").performClick()
         assertEquals("org", cardKind)
     }
 

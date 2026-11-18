@@ -59,6 +59,12 @@ class ErrorTextTest {
     }
 
     @Test
+    fun `an unreachable server reads as such, never as something went wrong`() {
+        val text = render(ApiError.Network(java.net.ConnectException("refused")))
+        assertEquals("Can't reach your server. Check your connection and try again.", text)
+    }
+
+    @Test
     fun `the account lockout code renders retry_after as seconds`() {
         val error = ApiError.Client(
             429,

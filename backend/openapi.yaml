@@ -2092,8 +2092,18 @@ paths:
         each, keeping the service's own ordering (most overdue / soonest /
         newest first); the matching `*_total` field carries the uncapped
         size so a client can say "showing 25 of N". The request stops
-        working when the client disconnects.
+        working when the client disconnects. "Today" for the day-relative blocks
+        is the viewer's day when `tz` is sent,
+        otherwise the reminder-zone day (ADR 0015 Rule 4).
+      parameters:
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
+        "400":
+          description: Invalid `tz` (reason `validation_timezone_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "200":
           description: The dashboard composite.
           content:
@@ -2634,8 +2644,19 @@ paths:
       operationId: getUpcomingBirthdays
       tags:
         - Contacts
-      description: Up to 5 results, extended to include all birthdays within two weeks.
+      description: >
+        Up to 5 results, extended to include all birthdays within two weeks.
+        "Today" is the viewer's day when `tz` is sent, otherwise the
+        reminder-zone day (ADR 0015 Rule 4).
+      parameters:
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
+        "400":
+          description: Invalid `tz` (reason `validation_timezone_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
           content:
@@ -5375,6 +5396,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    delete:
+      summary: Dismiss an ended grant from "Shared by me" (owner)
+      operationId: deleteShareGrant
+      tags:
+        - Share Grants
+      description: >
+        Issue #2742 (ADR 0042). Hard-deletes the sender's row of a grant the
+        owner sees as `declined`, `expired` or `revoked` (a pending or active
+        grant whose time has run out already reads as `expired`). Recipient
+        views are unaffected: they never list ended grants. A `pending`,
+        `active` or blocked-and-unexpired grant is `409` with reason code
+        `share_grant_not_ended`; revoke it first. Repeating the call on a
+        dismissed id is the `404` an unknown id gets, so a client treats a
+        `404` after Remove as already done. Writes an owner-trail `delete`
+        audit event.
+      responses:
+        "204":
+          description: The grant was removed.
+        "404":
+          description: "The identical 404 share_grant_not_found for: not your grant (including as its recipient), an unknown id, or one already dismissed."
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The grant has not ended (`pending`, `active`); reason code `share_grant_not_ended`.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /share-grants/{id}/accept:
     parameters:
       - name: id
@@ -6222,9 +6273,22 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: sort
+          in: query
+          description: >
+            Cursor order for the list (issue #2744). updated_at (default) is
+            the sync order — (updated_at, id), last-modified first under
+            order=desc — that existing clients rely on. date orders by the
+            note's own date (newest first under order=desc) with an id
+            tiebreak, so editing an old note does not move it; resume cursors
+            take their own (date, id) shape and are not interchangeable with
+            updated_at cursors. sort=date cannot be combined with ?since=
+            (400, sync state is updated_at-ordered), and an unrecognized value
+            is a 400 (reason validation_sort_invalid).
+          schema: { type: string, enum: [updated_at, date], default: updated_at }
         - name: order
           in: query
-          description: Direction for the (updated_at, id) cursor order. since forces asc.
+          description: Direction for the cursor order (updated_at or date, per sort). since forces asc.
           schema: { type: string, enum: [asc, desc], default: desc }
         - name: search
           in: query
@@ -8639,6 +8703,8 @@ paths:
       description: |
         The caller's live entities, newest-updated first, cursor-paginated. This is the owner's own
         surface, so every sensitivity is returned; `sensitivity` is a plain filter, not an access gate.
+        Each item carries `updated_at` and (issue #2743) `link_count`, the number of distinct live
+        contacts linked to it, computed with one grouped query for the whole page.
       parameters:
         - name: kind
           in: query
@@ -8996,8 +9062,9 @@ paths:
         Read-only and idempotent; nothing is created, linked or merged by calling it. `mode=pairs` (default)
         lists candidate duplicate pairs of the caller's live entities, minus dismissed pairs, with a `reason`:
         `exact_name` (equal normalized name key: NFC, case-folded, whitespace collapsed, edge punctuation
-        trimmed), `normalized_name` (organisations only: the same after dropping trailing legal suffixes such as
-        Inc, LLC, Ltd, GmbH, AG, Corp, Co, SA, BV, for comparison only) or `address_components` (places: the
+        trimmed), `normalized_name` (organisations only: the same after removing full stops, dropping trailing
+        legal suffixes such as Inc/Incorporated, LLC, Ltd/Limited, GmbH, AG, Corp/Corporation, Co/Company, SA, BV,
+        for comparison only, and ignoring word breaks, so Coop and Co-op match) or `address_components` (places: the
         normalized number, name, locality, postcode and country). Pets match on name key and species. No
         diacritic folding. `mode=contact_values` (needs `kind` organisation or place) lists groups of the
         contacts' own ORG or ADR values that compare equal, excluding values already matched by a live link, for
@@ -10888,7 +10955,8 @@ paths:
         The "upcoming occasions" dashboard-widget aggregate (ADR 0024,
         issue #387): every birthday/anniversary/life-event/active-obligation
         occurrence within the next `days`, sorted ascending by days-until.
-        "Today" is the reminder-zone clock (ADR 0015 Rule 4).
+        "Today" is the viewer's day when `tz` is sent, otherwise the
+        reminder-zone clock (ADR 0015 Rule 4).
       parameters:
         - name: days
           in: query
@@ -10898,9 +10966,10 @@ paths:
           in: query
           description: Include occasion obligations above normal sensitivity.
           schema: { type: boolean, default: false }
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
         "400":
-          description: Invalid days value.
+          description: Invalid days or `tz` (reason `occasion_days_invalid` or `validation_timezone_invalid`).
           content:
             application/json:
               schema:
@@ -10987,9 +11056,10 @@ paths:
           in: query
           description: Include occasion obligations above normal sensitivity.
           schema: { type: boolean, default: false }
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
         "400":
-          description: Invalid days value.
+          description: Invalid days or `tz` (reason `occasion_days_invalid` or `validation_timezone_invalid`).
           content:
             application/json:
               schema:
@@ -12019,8 +12089,19 @@ paths:
       operationId: listUpcomingReminders
       tags:
         - Reminders
-      description: Up to 5 incomplete reminders, or the next 5 incomplete overall.
+      description: >
+        Up to 5 incomplete reminders, or the next 5 incomplete overall.
+        "Today" is the viewer's day when `tz` is sent, otherwise the
+        reminder-zone day (ADR 0015 Rule 4).
+      parameters:
+        - $ref: "#/components/parameters/ViewerTimezone"
       responses:
+        "400":
+          description: Invalid `tz` (reason `validation_timezone_invalid`).
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
           content:
@@ -16665,6 +16746,24 @@ components:
         carddav-scoped token is rejected with 403 (only `full`-scope tokens
         work); API tokens are rejected on every /admin path entirely.
   parameters:
+    ViewerTimezone:
+      name: tz
+      in: query
+      required: false
+      description: >
+        Optional IANA time zone name (for example `Pacific/Auckland`) of the
+        viewer (issue #2762, ADR 0015 Rule 4). Display endpoints that decide
+        "today" use it instead of the server's REMINDER_TIMEZONE so a birthday
+        that is today for the viewer is returned and `days_until` counts from
+        the viewer's date. Omitted or empty keeps the reminder-zone behaviour
+        unchanged. A whitespace-only, over-long (more than 64 characters),
+        unknown, or `Local` value is rejected with 400 INVALID_INPUT, field
+        `tz`, reason `validation_timezone_invalid`. Scheduled reminders,
+        emails and ICS/CalDAV output are not affected.
+      schema:
+        type: string
+        maxLength: 64
+        example: Pacific/Auckland
     IfMatchRevision:
       name: If-Match
       in: header
@@ -18693,7 +18792,9 @@ components:
         to_username: { type: string }
         entity_type: { type: string, enum: [contact, note, activity, circle] }
         entity_id: { type: string }
-        label: { type: string }
+        label:
+          type: string
+          description: "Computed per request, never stored: contact display name, circle name, activity title, or for a note its first non-blank line (whitespace collapsed, at most 80 characters, a cut ends in an ellipsis); a note with no text is Note (issue #2744)."
         sections:
           type: array
           items: { type: string }
@@ -18715,7 +18816,9 @@ components:
         id: { type: string, format: uuid }
         from_username: { type: string }
         entity_type: { type: string, enum: [contact, note, activity, circle] }
-        label: { type: string, description: "Computed per request; a note is just Note." }
+        label:
+          type: string
+          description: "Computed per request: contact display name, circle name, activity title. A note is just Note until the grant is active, then its first non-blank line (at most 80 characters, a cut ends in an ellipsis), i.e. only text the recipient can already read through the content route (issue #2744)."
         sections:
           type: array
           items: { type: string }
@@ -20656,7 +20759,14 @@ components:
         revision: { type: integer, format: int64, description: "Revision token for If-Match (ADR 0006)." }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
-        link_count: { type: integer, description: "Live contact links. Present on GET /entities/{id} only." }
+        link_count:
+          type: integer
+          description: >
+            On GET /entities/{id} (and the delete response): the number of live link rows.
+            On GET /entities list items (issue #2743): the number of DISTINCT live contacts
+            linked to the entity (a contact holding several roles counts once; deleted
+            contacts do not count), the "Linked to N contacts" definition; 0 when none.
+            Absent from create, update, restore and merge responses.
         projection_count: { type: integer, description: "Contacts currently receiving a projected ORG/ADR from this entity. Present on GET /entities/{id} only." }
     EntityInput:
       type: object
@@ -20746,11 +20856,13 @@ components:
         restore_scope: { type: string, enum: [entity_only], description: "Restoring the loser revives only the entity; the re-pointed links stay with the survivor." }
     EntitySuggestionEntity:
       type: object
-      required: [id, kind, name]
+      required: [id, kind, name, updated_at, link_count]
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, enum: [organisation, place, pet] }
         name: { type: string }
+        updated_at: { type: string, format: date-time, description: "Issue #2743 — the entity's last update, so same-named candidates can be told apart without a detail call." }
+        link_count: { type: integer, description: "Issue #2743 — distinct live contacts linked to the entity (a contact holding several roles counts once; deleted contacts do not count). 0 when none." }
     EntitySuggestionPair:
       type: object
       required: [reason, a, b]
@@ -21481,6 +21593,10 @@ components:
         kind: { type: string, enum: [organisation, place, pet] }
         name: { type: string }
         sensitivity: { type: string, enum: [normal, private, secret] }
+        matched_on:
+          type: array
+          description: "Always [name] (the only indexed entity text). Issue #2744."
+          items: { type: string, enum: [name] }
     SearchContactHit:
       type: object
       description: A matched contact (the slim ContactSummary shape) plus a snippet.
@@ -21499,6 +21615,15 @@ components:
         photo_thumbnail: { type: string }
         archived: { type: boolean }
         snippet: { type: string }
+        matched_on:
+          type: array
+          description: >
+            Which of the contact's own fields the query matched (issue #2744), in the fixed order
+            name (first, last or nickname), organization, email, phone, address; a field counts when
+            any query word prefix-matches in it. Read from the same full-text index as the hit.
+            Omitted when unknown. An entity the contact is linked to is not a reason: search does
+            not see entity links (ADR 0043).
+          items: { type: string, enum: [name, organization, email, phone, address] }
     SearchNoteHit:
       type: object
       description: A matched note with its owning contact's name and a snippet.
@@ -21564,6 +21689,16 @@ components:
         sample_data:
           type: array
           items: { type: array, items: { type: string } }
+        file_diagnostics:
+          type: array
+          items: { $ref: "#/components/schemas/Diagnostic" }
+          description: >
+            File-level (not per-row) notices from reading the upload. A file
+            that was not valid UTF-8 is read as Windows-1252 and reports
+            {severity: warn, concept: encoding, message: "file was not UTF-8;
+            read as Windows-1252"} (issue #2669); a UTF-8 BOM is stripped
+            silently (issue #2662). Always present, [] when there is nothing to
+            report.
     ImportCancelRequest:
       type: object
       required: [session_id]
@@ -21794,6 +21929,16 @@ components:
         valid_rows: { type: integer }
         duplicate_count: { type: integer }
         error_count: { type: integer }
+        file_diagnostics:
+          type: array
+          items: { $ref: "#/components/schemas/Diagnostic" }
+          description: >
+            File-level (not per-row) notices from reading the upload. A file
+            that was not valid UTF-8 is read as Windows-1252 and reports
+            {severity: warn, concept: encoding, message: "file was not UTF-8;
+            read as Windows-1252"} (issue #2669); a UTF-8 BOM is stripped
+            silently (issue #2662). Always present, [] when there is nothing to
+            report.
         fixed_assignment:
           $ref: "#/components/schemas/ImportFixedAssignment"
     ImportFixedAssignmentItem:
@@ -21914,20 +22059,36 @@ components:
           type: array
           description: >
             Issue #2187 — every skipped or failed row with the reason ([] when
-            there is nothing to report).
+            there is nothing to report). Issue #2741 widens it additively with
+            `warning` issues: rows that DID import but lost a value (an
+            invalid birthday/anniversary dropped; `concept` says which). A
+            warning row is counted in created/updated like any imported row and
+            never in skipped or errors, so the counters are unchanged.
           items: { $ref: "#/components/schemas/ImportRowIssue" }
 
     ImportRowIssue:
       type: object
       required: [row, name, email, phone, status, reason]
-      description: One row that was not (fully) imported.
+      description: One row that was not (fully) imported, or imported with a warning.
       properties:
         row: { type: integer, description: "1-based row number, as in the 'Row N:' prefix of ImportResult.errors." }
         name: { type: string, description: "Display name; falls back to the email, then the phone, then empty." }
         email: { type: string }
         phone: { type: string }
-        status: { type: string, enum: [skipped, failed] }
+        status:
+          type: string
+          enum: [skipped, failed, warning]
+          description: >
+            `warning` (issue #2741) is a row that imported but lost a value; clients
+            that do not know it should render it as a generic notice.
         reason: { type: string }
+        concept:
+          type: string
+          enum: [birthday, anniversary]
+          description: >
+            Issue #2741 — present on `warning` issues only: the stable key
+            clients localize the warning by (the same token as the preview
+            diagnostic's `concept`). Omitted for skipped/failed issues.
 
     ImportRun:
       type: object
@@ -22041,6 +22202,20 @@ components:
         phase_done: { type: integer }
         phase_total: { type: integer }
         error: { type: string }
+        error_reason_code:
+          type: string
+          description: >
+            Issue #2727, ADR 0038. The #2093 reason code of a failed Meerkat
+            fetch (meerkat_fetch_unreachable, meerkat_fetch_unreadable, or
+            meerkat_api_error with a reason param), present only when phase is
+            "failed" and the cause is coded. `error` stays as the English
+            fallback (and still carries the "use the database upload" advice,
+            which the coded templates omit so each client adds that hint only
+            where a database upload exists).
+        error_reason_params:
+          type: object
+          additionalProperties: true
+          description: Flat reason params for error_reason_code (the same shape as the error envelope's reason_params).
         result: { $ref: "#/components/schemas/MonicaImportResult" }
     MonicaPreviewResponse:
       type: object

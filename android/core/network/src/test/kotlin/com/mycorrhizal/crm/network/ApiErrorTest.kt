@@ -1,9 +1,15 @@
 package com.mycorrhizal.crm.network
 
 import com.squareup.moshi.JsonDataException
+import java.io.EOFException
+import java.io.IOException
+import java.io.InterruptedIOException
 import java.net.ConnectException
+import java.net.NoRouteToHostException
+import java.net.SocketException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import javax.net.ssl.SSLHandshakeException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -20,6 +26,32 @@ class ApiErrorTest {
     fun `connect exception maps to Network error`() {
         val error = ConnectException("refused").toApiError()
         assertTrue(error is ApiError.Network)
+    }
+
+    @Test
+    fun `any other IO failure reaching the server maps to Network, not Unknown (issue 2629)`() {
+        // An unreachable server surfaces as a mix of IOException subclasses (no route, aborted
+        // connection, call timeout, truncated stream); none may fall through to "Something
+        // went wrong".
+        listOf(
+            NoRouteToHostException("no route"),
+            SocketException("Software caused connection abort"),
+            InterruptedIOException("timeout"),
+            EOFException("unexpected end of stream"),
+            IOException("generic")
+        ).forEach { failure ->
+            assertTrue("$failure", failure.toApiError() is ApiError.Network)
+        }
+    }
+
+    @Test
+    fun `a TLS failure is not reported as an unreachable server`() {
+        assertTrue(SSLHandshakeException("bad cert").toApiError() is ApiError.Unknown)
+    }
+
+    @Test
+    fun `a blocked write to a read-only archive stays an ArchivedProfile error`() {
+        assertTrue(ArchivedProfileWriteException("POST").toApiError() is ApiError.ArchivedProfile)
     }
 
     @Test
@@ -100,7 +132,10 @@ class ApiErrorTest {
 
     @Test
     fun `network display message is generic`() {
-        assertEquals("No connection", ApiError.Network(ConnectException("x")).displayMessage)
+        assertEquals(
+            "Can't reach your server",
+            ApiError.Network(ConnectException("x")).displayMessage
+        )
     }
 
     @Test
