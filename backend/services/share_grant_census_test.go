@@ -7,7 +7,9 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
+	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/models"
 
 	"github.com/stretchr/testify/assert"
@@ -106,6 +108,33 @@ func TestShareGrantViews_FieldCensus(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestShareGrantViews_NoteLabelUsesOnlyExposedFields is the label half of the
+// census (issue #2744). A note grant's label is derived in the list views, not
+// carried as a view field, so the census above cannot see it; this pins that it
+// is computed from Content alone (the one note field the recipient view
+// already exposes) and from nothing the census withholds: the contact link,
+// date, ids and timestamps never reach it, and the first line is the most that
+// leaves the note.
+func TestShareGrantViews_NoteLabelUsesOnlyExposedFields(t *testing.T) {
+	db := dbtest.New(t)
+	owner := models.User{Username: "lbl-owner", Password: "password123!A", Email: "lbl-owner@example.com"}
+	require.NoError(t, db.Create(&owner).Error)
+	contact := models.Contact{UserID: owner.ID, Firstname: "WithheldFirst", Lastname: "WithheldLast"}
+	require.NoError(t, db.Create(&contact).Error)
+	n := models.Note{UserID: owner.ID, Content: "Visible first line\nBODY-NOT-IN-LABEL", Date: time.Now(), ContactID: &contact.ID}
+	require.NoError(t, db.Create(&n).Error)
+
+	g := models.ShareGrant{FromUserID: owner.ID, EntityType: models.ShareGrantEntityNote, EntityID: n.UUID}
+	labels := noteLabels(db, []models.ShareGrant{g})
+	got := labels[noteLabelKey(n.UUID, owner.ID)]
+	assert.Equal(t, "Visible first line", got)
+	for _, withheld := range []string{"WithheldFirst", "WithheldLast", "BODY-NOT-IN-LABEL", n.UUID} {
+		assert.NotContains(t, got, withheld)
+	}
+	// Non-note grants never ask the notes table for a label.
+	assert.Empty(t, noteLabels(db, []models.ShareGrant{{FromUserID: owner.ID, EntityType: models.ShareGrantEntityCircle, EntityID: n.UUID}}))
 }
 
 // TestShareGrantViews_RecipientViewsCarryNoEntityID: the recipient list view

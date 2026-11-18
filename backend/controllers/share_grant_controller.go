@@ -67,10 +67,7 @@ func ListOutgoingShareGrants(c *gin.Context) {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}
-	views := make([]services.ShareGrantOwnerView, 0, len(rows))
-	for i := range rows {
-		views = append(views, services.OwnerView(db, &rows[i], now))
-	}
+	views := services.OwnerViews(db, rows, now)
 	c.JSON(http.StatusOK, gin.H{"share_grants": views, "next_cursor": next, "limit": limit})
 }
 
@@ -88,10 +85,7 @@ func ListIncomingShareGrants(c *gin.Context) {
 		apperrors.AbortWithError(c, appErr)
 		return
 	}
-	views := make([]services.ShareGrantRecipientView, 0, len(rows))
-	for i := range rows {
-		views = append(views, services.RecipientView(db, &rows[i], now))
-	}
+	views := services.RecipientViews(db, rows, now)
 	c.JSON(http.StatusOK, gin.H{"share_grants": views, "next_cursor": next, "limit": limit})
 }
 

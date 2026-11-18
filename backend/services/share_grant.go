@@ -3,8 +3,10 @@ package services
 import (
 	"encoding/json"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/jscontact"
@@ -743,10 +745,80 @@ func usernameOf(db *gorm.DB, id uint) string {
 	return n
 }
 
+// ShareNoteLabelMaxRunes caps a note grant's label (issue #2744).
+const ShareNoteLabelMaxRunes = 80
+
+// noteLabelFromContent is the label of a note grant: the first non-blank line
+// of the note, whitespace collapsed, control characters dropped, capped at
+// ShareNoteLabelMaxRunes runes (a cut ends in an ellipsis). A note with no text
+// is just "Note".
+func noteLabelFromContent(content string) string {
+	for _, line := range strings.Split(content, "\n") {
+		line = strings.Join(strings.Fields(strings.Map(func(r rune) rune {
+			if unicode.IsControl(r) && !unicode.IsSpace(r) {
+				return -1
+			}
+			return r
+		}, line)), " ")
+		if line == "" {
+			continue
+		}
+		if r := []rune(line); len(r) > ShareNoteLabelMaxRunes {
+			return strings.TrimSpace(string(r[:ShareNoteLabelMaxRunes-1])) + "\u2026"
+		}
+		return line
+	}
+	return "Note"
+}
+
+func noteLabelKey(entityID string, fromUserID uint) string {
+	return entityID + "|" + strconv.FormatUint(uint64(fromUserID), 10)
+}
+
+// noteLabels reads the first-line label of every note in grants with ONE
+// query, so a list of note grants is not an N+1. Each row is matched on both
+// the note uuid and the grant's owner (from_user_id), so a note of someone else
+// that happens to share the uuid never supplies a label. Only the single
+// Content column of the owner's own live note is read, the same field a
+// recipient's content read exposes (ADR 0042 decision 4); the caller decides
+// which grants may carry it (the recipient only once the grant is active).
+func noteLabels(db *gorm.DB, grants []models.ShareGrant) map[string]string {
+	out := map[string]string{}
+	var ids []string
+	var owners []uint
+	seenID, seenOwner := map[string]bool{}, map[uint]bool{}
+	for i := range grants {
+		g := &grants[i]
+		if g.EntityType != models.ShareGrantEntityNote {
+			continue
+		}
+		if !seenID[g.EntityID] {
+			seenID[g.EntityID] = true
+			ids = append(ids, g.EntityID)
+		}
+		if !seenOwner[g.FromUserID] {
+			seenOwner[g.FromUserID] = true
+			owners = append(owners, g.FromUserID)
+		}
+	}
+	if len(ids) == 0 {
+		return out
+	}
+	var rows []models.Note
+	if err := db.Select("uuid", "user_id", "content").Where("uuid IN ? AND user_id IN ?", ids, owners).Find(&rows).Error; err != nil {
+		return out // fail soft to the generic label
+	}
+	for i := range rows {
+		out[noteLabelKey(rows[i].UUID, rows[i].UserID)] = noteLabelFromContent(rows[i].Content)
+	}
+	return out
+}
+
 // entityLabel computes the short per-request label for a grant (never
 // snapshotted): contact display name, circle name, activity title; a note is
+// the first line of its text when the caller supplied noteLabels for it, else
 // just "Note". It reads the owner's own rows, scoped by grant.FromUserID.
-func entityLabel(db *gorm.DB, g *models.ShareGrant) string {
+func entityLabel(db *gorm.DB, g *models.ShareGrant, noteLabels map[string]string) string {
 	var s string
 	switch g.EntityType {
 	case models.ShareGrantEntityContact:
@@ -755,6 +827,9 @@ func entityLabel(db *gorm.DB, g *models.ShareGrant) string {
 			s = strings.TrimSpace(c.Firstname + " " + c.Lastname)
 		}
 	case models.ShareGrantEntityNote:
+		if l, ok := noteLabels[noteLabelKey(g.EntityID, g.FromUserID)]; ok {
+			return l
+		}
 		return "Note"
 	case models.ShareGrantEntityActivity:
 		_ = db.Model(&models.Activity{}).Select("title").Where("uuid = ? AND user_id = ?", g.EntityID, g.FromUserID).Limit(1).Scan(&s).Error
@@ -778,11 +853,27 @@ func nz(s []string) []string {
 	return s
 }
 
-// OwnerView renders g for its sender.
+// OwnerView renders g for its sender. A note's label is its first line: the
+// sender owns the note, so nothing is disclosed.
 func OwnerView(db *gorm.DB, g *models.ShareGrant, now time.Time) ShareGrantOwnerView {
+	return ownerView(db, g, now, noteLabels(db, []models.ShareGrant{*g}))
+}
+
+// OwnerViews renders a list of grants for their sender with one batched note
+// label query (no N+1 for note rows).
+func OwnerViews(db *gorm.DB, grants []models.ShareGrant, now time.Time) []ShareGrantOwnerView {
+	labels := noteLabels(db, grants)
+	out := make([]ShareGrantOwnerView, 0, len(grants))
+	for i := range grants {
+		out = append(out, ownerView(db, &grants[i], now, labels))
+	}
+	return out
+}
+
+func ownerView(db *gorm.DB, g *models.ShareGrant, now time.Time, noteLabels map[string]string) ShareGrantOwnerView {
 	v := ShareGrantOwnerView{
 		ID: g.ID, ToUserID: g.ToUserID, ToUsername: usernameOf(db, g.ToUserID),
-		EntityType: g.EntityType, EntityID: g.EntityID, Label: entityLabel(db, g),
+		EntityType: g.EntityType, EntityID: g.EntityID, Label: entityLabel(db, g, noteLabels),
 		Sections: nz(g.Sections), ReconfirmSections: nz(g.ReconfirmSections),
 		Status: EffectiveStatus(g, now, true), ExpiresAt: g.ExpiresAt,
 		RevokedAt: g.RevokedAt, RevokedReason: g.RevokedReason,
@@ -803,9 +894,39 @@ func OwnerView(db *gorm.DB, g *models.ShareGrant, now time.Time) ShareGrantOwner
 
 // RecipientView renders g for its recipient.
 func RecipientView(db *gorm.DB, g *models.ShareGrant, now time.Time) ShareGrantRecipientView {
+	return recipientView(db, g, now, recipientNoteLabels(db, []models.ShareGrant{*g}, now))
+}
+
+// RecipientViews renders a list of grants for their recipient with one batched
+// note label query.
+func RecipientViews(db *gorm.DB, grants []models.ShareGrant, now time.Time) []ShareGrantRecipientView {
+	labels := recipientNoteLabels(db, grants, now)
+	out := make([]ShareGrantRecipientView, 0, len(grants))
+	for i := range grants {
+		out = append(out, recipientView(db, &grants[i], now, labels))
+	}
+	return out
+}
+
+// recipientNoteLabels reads note text for the grants whose recipient may
+// already read it: only an effectively ACTIVE grant, the same condition
+// ResolveActiveShareGrant applies to the content endpoint. A pending (or
+// expired, declined, blocked) note grant keeps the generic "Note" label, so no
+// note text reaches a recipient before they accept (ADR 0042 decisions 4 and 7).
+func recipientNoteLabels(db *gorm.DB, grants []models.ShareGrant, now time.Time) map[string]string {
+	readable := make([]models.ShareGrant, 0, len(grants))
+	for i := range grants {
+		if grants[i].EntityType == models.ShareGrantEntityNote && EffectiveStatus(&grants[i], now, false) == models.ShareGrantStatusActive {
+			readable = append(readable, grants[i])
+		}
+	}
+	return noteLabels(db, readable)
+}
+
+func recipientView(db *gorm.DB, g *models.ShareGrant, now time.Time, noteLabels map[string]string) ShareGrantRecipientView {
 	return ShareGrantRecipientView{
 		ID: g.ID, FromUsername: usernameOf(db, g.FromUserID), EntityType: g.EntityType,
-		Label: entityLabel(db, g), Sections: nz(g.Sections),
+		Label: entityLabel(db, g, noteLabels), Sections: nz(g.Sections),
 		Status: EffectiveStatus(g, now, false), ExpiresAt: g.ExpiresAt,
 		RespondedAt: g.RespondedAt, CreatedAt: g.CreatedAt,
 	}
