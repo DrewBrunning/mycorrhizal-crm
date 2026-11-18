@@ -3005,6 +3005,7 @@ export type SearchContactHit = {
   fn?: string;
   id?: number;
   lastname?: string;
+  matched_on?: ('name' | 'organization' | 'email' | 'phone' | 'address')[];
   nickname?: string;
   org?: string;
   photo?: string;
@@ -3018,6 +3019,7 @@ export type SearchContactHit = {
 export type SearchEntityHit = {
   id?: string;
   kind?: 'organisation' | 'place' | 'pet';
+  matched_on?: 'name'[];
   name?: string;
   sensitivity?: 'normal' | 'private' | 'secret';
 };

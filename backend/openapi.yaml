@@ -21536,6 +21536,10 @@ components:
         kind: { type: string, enum: [organisation, place, pet] }
         name: { type: string }
         sensitivity: { type: string, enum: [normal, private, secret] }
+        matched_on:
+          type: array
+          description: "Always [name] (the only indexed entity text). Issue #2744."
+          items: { type: string, enum: [name] }
     SearchContactHit:
       type: object
       description: A matched contact (the slim ContactSummary shape) plus a snippet.
@@ -21554,6 +21558,15 @@ components:
         photo_thumbnail: { type: string }
         archived: { type: boolean }
         snippet: { type: string }
+        matched_on:
+          type: array
+          description: >
+            Which of the contact's own fields the query matched (issue #2744), in the fixed order
+            name (first, last or nickname), organization, email, phone, address; a field counts when
+            any query word prefix-matches in it. Read from the same full-text index as the hit.
+            Omitted when unknown. An entity the contact is linked to is not a reason: search does
+            not see entity links (ADR 0043).
+          items: { type: string, enum: [name, organization, email, phone, address] }
     SearchNoteHit:
       type: object
       description: A matched note with its owning contact's name and a snippet.
