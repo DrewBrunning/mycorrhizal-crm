@@ -198,6 +198,24 @@ test.describe('accessibility dialog scans', {
       await assertNoBlockingViolations(page, '[role="dialog"]');
     });
 
+    // Issue #2661/#2674: the upload step must be keyboard-startable and every
+    // "Maps To" select must carry an accessible name.
+    test(`import mapping step (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
+      await gotoWithTheme(page, '/contacts', theme);
+      await page.getByRole('button', { name: /import/i }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByRole('button', { name: /choose file/i })).toBeVisible();
+      await dialog.locator('#import-file-input').setInputFiles({
+        name: 'a11y.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from('First Name,Last Name,Email\nAda,Lovelace,ada@example.com\n'),
+      });
+      await expect(dialog.getByRole('combobox', { name: 'Map column Email to' })).toBeVisible();
+      await assertNoBlockingViolations(page, '[role="dialog"]');
+    });
+
     test(`review duplicates dialog (${theme}) has no critical or serious a11y violations`, async ({
       page,
     }) => {
@@ -494,6 +512,30 @@ test.describe('audit log at narrow widths (#1788, #1792)', {
         ),
       ).toBe(true);
       await assertNoBlockingViolations(page);
+    });
+  }
+});
+
+// #2695: the open top-bar search dropdown had invalid listbox/group ARIA
+// (aria-required-children / aria-required-parent) and an unnamed input.
+test.describe('global search dropdown (#2695)', {
+  annotation: { type: SKIP_A11Y_SCAN, description: 'scans the open dropdown explicitly' },
+}, () => {
+  for (const theme of THEMES) {
+    test(`open dropdown (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
+      await gotoWithTheme(page, '/', theme);
+      const box = page.getByRole('combobox', { name: 'Search everything' });
+      await box.fill('Alice');
+      await expect(page.getByRole('listbox')).toBeVisible();
+      await assertNoBlockingViolations(page);
+      await assertNoAxeRuleViolations(page, [
+        'aria-required-children',
+        'aria-required-parent',
+        'list',
+        'aria-input-field-name',
+      ]);
     });
   }
 });

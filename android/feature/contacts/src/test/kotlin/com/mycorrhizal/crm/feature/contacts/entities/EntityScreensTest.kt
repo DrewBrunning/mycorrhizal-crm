@@ -168,7 +168,7 @@ class EntityScreensTest {
         composeTestRule.onNodeWithTag("entities-list")
             .performScrollToNode(hasTestTag("entities-list-error"))
         composeTestRule.onNodeWithTag("entities-list-error").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
         // The error replaces the skeleton row, whose effect would fire load-more by itself.
         assertEquals(0, loadMore)
@@ -188,7 +188,7 @@ class EntityScreensTest {
         )
         composeTestRule.onNodeWithTag("entities-list")
             .performScrollToNode(hasTestTag("entities-list-error"))
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithTag("entities-list-retry").performClick()
         assertEquals(1, refresh)
         assertEquals(0, loadMore)
@@ -708,7 +708,7 @@ class EntityScreensTest {
     @Test
     fun `a failed first load with no rows words the error from its reason code`() {
         setList(EntitiesUiState(error = reasonCoded()))
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 }

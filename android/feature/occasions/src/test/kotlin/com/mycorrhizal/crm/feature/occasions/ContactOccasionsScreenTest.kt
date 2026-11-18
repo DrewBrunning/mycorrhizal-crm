@@ -332,7 +332,7 @@ class ContactOccasionsScreenTest {
             MycorrhizalTheme { ContactOccasionsScreen(onBack = {}, viewModel = viewModel) }
         }
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 
