@@ -165,4 +165,71 @@ class PluralResourcesTest {
     private fun assertPlural(context: Context, id: Int, quantity: Int, expected: String) {
         assertEquals(expected, plural(context, id, quantity))
     }
+
+    /** Issue #2626: import history reads "2 skipped, 0 errors", with the noun agreeing in each locale. */
+    @Test
+    fun `import history counts read as plural-aware phrases in all five locales`() {
+        // created, updated, skipped (1 then 2) and errors (1 then 2).
+        val expected = mapOf(
+            "en" to listOf(
+                "1 created",
+                "2 created",
+                "1 skipped",
+                "2 skipped",
+                "1 error",
+                "2 errors"
+            ),
+            "de" to listOf(
+                "1 erstellt",
+                "2 erstellt",
+                "1 übersprungen",
+                "2 übersprungen",
+                "1 Fehler",
+                "2 Fehler"
+            ),
+            "es" to listOf(
+                "1 creado",
+                "2 creados",
+                "1 omitido",
+                "2 omitidos",
+                "1 error",
+                "2 errores"
+            ),
+            "fr" to listOf("1 créé", "2 créés", "1 ignoré", "2 ignorés", "1 erreur", "2 erreurs"),
+            "it" to listOf("1 creato", "2 creati", "1 saltato", "2 saltati", "1 errore", "2 errori")
+        )
+        for ((tag, forms) in expected) {
+            val ctx = contextFor(tag)
+            val actual = listOf(
+                plural(ctx, R.plurals.import_history_created_count, 1),
+                plural(ctx, R.plurals.import_history_created_count, 2),
+                plural(ctx, R.plurals.import_history_skipped_count, 1),
+                plural(ctx, R.plurals.import_history_skipped_count, 2),
+                plural(ctx, R.plurals.import_history_error_count, 1),
+                plural(ctx, R.plurals.import_history_error_count, 2)
+            )
+            assertEquals(tag, forms, actual)
+        }
+        assertEquals(
+            "3 updated",
+            plural(contextFor("en"), R.plurals.import_history_updated_count, 3)
+        )
+        assertEquals(
+            "3 aktualisiert",
+            plural(contextFor("de"), R.plurals.import_history_updated_count, 3)
+        )
+        assertEquals(
+            "3 actualizados",
+            plural(contextFor("es"), R.plurals.import_history_updated_count, 3)
+        )
+        // French "updated" is invariant in number: the one and many forms agree.
+        assertEquals(
+            plural(contextFor("fr"), R.plurals.import_history_updated_count, 3).replace("3", "1"),
+            plural(contextFor("fr"), R.plurals.import_history_updated_count, 1)
+        )
+        assertEquals(
+            "3 aggiornati",
+            plural(contextFor("it"), R.plurals.import_history_updated_count, 3)
+        )
+    }
 }
