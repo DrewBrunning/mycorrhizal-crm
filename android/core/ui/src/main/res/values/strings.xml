@@ -1310,6 +1310,7 @@
     <string name="action_back">Back</string>
     <string name="action_rename">Rename</string>
     <string name="action_retry">Retry</string>
+    <string name="saved_data_banner_message">Showing saved data</string>
 
     <!-- Tags -->
     <string name="tags_title">Tags</string>

@@ -181,6 +181,7 @@ import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.HealthScoreBadge
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.SavedDataBanner
 import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.contactFieldLabel
@@ -840,100 +841,107 @@ fun ContactDetailScreen(
 
                 else -> {
                     val contact = state.contact!!
-                    ContactDetailContent(
-                        contact = contact,
-                        listState = listState,
-                        headerContentAlpha = 1f - collapseProgress,
-                        deviceLookupKey = state.deviceLookupKey,
-                        dateFormat = state.dateFormat,
-                        accountEnabledFields = state.resolvedEnabledFields,
-                        hideEmpty = state.resolvedHideEmpty,
-                        revealedFields = revealedFields,
-                        onRevealField = { revealedFields = revealedFields + it },
-                        onCustomizeFields = { showFieldVisibilityDialog = true },
-                        onEdit = onEdit,
-                        fieldDefinitions = state.fieldDefinitions,
-                        fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
-                        savingFieldDefinitionId = state.savingFieldDefinitionId,
-                        onSaveFieldValue = viewModel::saveFieldValue,
-                        allCircles = state.allCircles,
-                        contactCircles = state.contactCircles,
-                        allTags = state.allTags,
-                        contactTags = state.contactTags,
-                        onAddCircle = viewModel::addCircle,
-                        onRemoveCircle = viewModel::removeCircle,
-                        onAddTag = viewModel::addTag,
-                        onRemoveTag = viewModel::removeTag,
-                        onOpenInContacts = onOpenInContacts,
-                        onViewActivities = onViewActivities,
-                        onAddToActivity = { showAddToActivities = true },
-                        onViewNotes = onViewNotes,
-                        onViewReminders = onViewReminders,
-                        onViewAttachments = onViewAttachments,
-                        onViewPhotos = onViewPhotos,
-                        onViewRelationships = onViewRelationships,
-                        onViewCadence = onViewCadence,
-                        onViewLifeEvents = onViewLifeEvents,
-                        onViewGifts = onViewGifts,
-                        onViewPreferences = onViewPreferences,
-                        onViewOccasions = onViewOccasions,
-                        onViewSkills = onViewSkills,
-                        onViewWork = onViewWork,
-                        onViewEntities = onViewEntities,
-                        onViewAnniversaries = onViewAnniversaries,
-                        onViewAgenda = onViewAgenda,
-                        onViewTimeline = onViewTimeline,
-                        onEditActivity = onEditActivity,
-                        onEditNote = onEditNote,
-                        onEditReminder = onEditReminder,
-                        onCompleteReminder = viewModel::completeReminder,
-                        completions = state.completions,
-                        onUndoCompletion = { id -> pendingUndoCompletionId = id },
-                        onUploadProfilePicture = onUploadProfilePicture,
-                        // Issue #212: the header star toggle (web #173).
-                        onToggleFavorite = viewModel::toggleFavorite,
-                        // T90 / issue #831: the header "You" badge (web parity).
-                        isMe = isMe,
-                        // Issue #383 (ADR-0023): the relationship health score badge.
-                        score = state.score,
-                        // Issue #1798: the target picker/offer flow.
-                        onSetTargetCloseness = viewModel::setTargetCloseness,
-                        cadencePolicyOffer = state.cadencePolicyOffer,
-                        onAcceptCadenceOffer = viewModel::acceptCadenceOffer,
-                        onDismissCadenceOffer = viewModel::dismissCadenceOffer,
-                        externalIdentities = state.externalIdentities,
-                        immichSummary = state.immichSummary,
-                        onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
-                        onUnlinkImmich = { pendingImmichUnlink = true },
-                        // Issue #836: sync-now has no confirmation dialog (web parity).
-                        immichSyncing = state.immichSyncing,
-                        onSyncImmich = viewModel::syncImmich,
-                        externalActivities = state.externalActivities,
-                        // Issue #236: the "Add link" entry points, gated per system.
-                        paperlessConfigured = state.paperlessConfigured,
-                        seafileConfigured = state.seafileConfigured,
-                        nextcloudConfigured = state.nextcloudConfigured,
-                        lifeEventCount = state.lifeEventCount,
-                        giftCount = state.giftRowCount,
-                        preferenceCount = state.preferenceCount,
-                        agendaCount = state.agendaCount,
-                        relationshipCount = state.relationshipCount,
-                        attachmentCount = state.attachmentCount,
-                        cadenceCount = state.cadenceCount,
-                        projectedEntityNames = state.projectedEntityNames,
-                        onAddPaperlessLink = {
-                            paperlessPickerOpen = true
-                            viewModel.loadPaperlessDocuments()
-                        },
-                        onAddSeafileLink = {
-                            seafilePickerOpen = true
-                            viewModel.loadSeafileLibraries()
-                        },
-                        onAddNextcloudLink = {
-                            nextcloudPickerOpen = true
-                            viewModel.loadNextcloudDir()
+                    // Issue #2629: a read the repository answered from the offline mirror.
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (contact.servedFromCache) {
+                            SavedDataBanner(onRetry = viewModel::load)
                         }
-                    )
+                        ContactDetailContent(
+                            modifier = Modifier.weight(1f),
+                            contact = contact,
+                            listState = listState,
+                            headerContentAlpha = 1f - collapseProgress,
+                            deviceLookupKey = state.deviceLookupKey,
+                            dateFormat = state.dateFormat,
+                            accountEnabledFields = state.resolvedEnabledFields,
+                            hideEmpty = state.resolvedHideEmpty,
+                            revealedFields = revealedFields,
+                            onRevealField = { revealedFields = revealedFields + it },
+                            onCustomizeFields = { showFieldVisibilityDialog = true },
+                            onEdit = onEdit,
+                            fieldDefinitions = state.fieldDefinitions,
+                            fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
+                            savingFieldDefinitionId = state.savingFieldDefinitionId,
+                            onSaveFieldValue = viewModel::saveFieldValue,
+                            allCircles = state.allCircles,
+                            contactCircles = state.contactCircles,
+                            allTags = state.allTags,
+                            contactTags = state.contactTags,
+                            onAddCircle = viewModel::addCircle,
+                            onRemoveCircle = viewModel::removeCircle,
+                            onAddTag = viewModel::addTag,
+                            onRemoveTag = viewModel::removeTag,
+                            onOpenInContacts = onOpenInContacts,
+                            onViewActivities = onViewActivities,
+                            onAddToActivity = { showAddToActivities = true },
+                            onViewNotes = onViewNotes,
+                            onViewReminders = onViewReminders,
+                            onViewAttachments = onViewAttachments,
+                            onViewPhotos = onViewPhotos,
+                            onViewRelationships = onViewRelationships,
+                            onViewCadence = onViewCadence,
+                            onViewLifeEvents = onViewLifeEvents,
+                            onViewGifts = onViewGifts,
+                            onViewPreferences = onViewPreferences,
+                            onViewOccasions = onViewOccasions,
+                            onViewSkills = onViewSkills,
+                            onViewWork = onViewWork,
+                            onViewEntities = onViewEntities,
+                            onViewAnniversaries = onViewAnniversaries,
+                            onViewAgenda = onViewAgenda,
+                            onViewTimeline = onViewTimeline,
+                            onEditActivity = onEditActivity,
+                            onEditNote = onEditNote,
+                            onEditReminder = onEditReminder,
+                            onCompleteReminder = viewModel::completeReminder,
+                            completions = state.completions,
+                            onUndoCompletion = { id -> pendingUndoCompletionId = id },
+                            onUploadProfilePicture = onUploadProfilePicture,
+                            // Issue #212: the header star toggle (web #173).
+                            onToggleFavorite = viewModel::toggleFavorite,
+                            // T90 / issue #831: the header "You" badge (web parity).
+                            isMe = isMe,
+                            // Issue #383 (ADR-0023): the relationship health score badge.
+                            score = state.score,
+                            // Issue #1798: the target picker/offer flow.
+                            onSetTargetCloseness = viewModel::setTargetCloseness,
+                            cadencePolicyOffer = state.cadencePolicyOffer,
+                            onAcceptCadenceOffer = viewModel::acceptCadenceOffer,
+                            onDismissCadenceOffer = viewModel::dismissCadenceOffer,
+                            externalIdentities = state.externalIdentities,
+                            immichSummary = state.immichSummary,
+                            onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
+                            onUnlinkImmich = { pendingImmichUnlink = true },
+                            // Issue #836: sync-now has no confirmation dialog (web parity).
+                            immichSyncing = state.immichSyncing,
+                            onSyncImmich = viewModel::syncImmich,
+                            externalActivities = state.externalActivities,
+                            // Issue #236: the "Add link" entry points, gated per system.
+                            paperlessConfigured = state.paperlessConfigured,
+                            seafileConfigured = state.seafileConfigured,
+                            nextcloudConfigured = state.nextcloudConfigured,
+                            lifeEventCount = state.lifeEventCount,
+                            giftCount = state.giftRowCount,
+                            preferenceCount = state.preferenceCount,
+                            agendaCount = state.agendaCount,
+                            relationshipCount = state.relationshipCount,
+                            attachmentCount = state.attachmentCount,
+                            cadenceCount = state.cadenceCount,
+                            projectedEntityNames = state.projectedEntityNames,
+                            onAddPaperlessLink = {
+                                paperlessPickerOpen = true
+                                viewModel.loadPaperlessDocuments()
+                            },
+                            onAddSeafileLink = {
+                                seafilePickerOpen = true
+                                viewModel.loadSeafileLibraries()
+                            },
+                            onAddNextcloudLink = {
+                                nextcloudPickerOpen = true
+                                viewModel.loadNextcloudDir()
+                            }
+                        )
+                    }
                 }
             }
         }

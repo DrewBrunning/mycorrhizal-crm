@@ -9,10 +9,10 @@
       "branchesTotal": 88
     },
     "src/App.tsx": {
-      "lines": 88.54,
-      "linesTotal": 96,
-      "branches": 88,
-      "branchesTotal": 50
+      "lines": 92,
+      "linesTotal": 100,
+      "branches": 94.73,
+      "branchesTotal": 57
     },
     "src/AppThemeProvider.tsx": {
       "lines": 87.5,
@@ -644,6 +644,12 @@
       "branches": 100,
       "branchesTotal": 18
     },
+    "src/api/viewerTimezone.ts": {
+      "lines": 100,
+      "linesTotal": 11,
+      "branches": 100,
+      "branchesTotal": 11
+    },
     "src/api/webauthn.ts": {
       "lines": 100,
       "linesTotal": 19,
@@ -1161,10 +1167,10 @@
       "branchesTotal": 54
     },
     "src/components/GlobalSearch.tsx": {
-      "lines": 98.64,
-      "linesTotal": 74,
-      "branches": 86.27,
-      "branchesTotal": 51
+      "lines": 98.86,
+      "linesTotal": 88,
+      "branches": 89.28,
+      "branchesTotal": 56
     },
     "src/components/HouseholdDialog.tsx": {
       "lines": 96.77,
