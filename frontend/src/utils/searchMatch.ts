@@ -1,5 +1,4 @@
-// Structural, so both react-i18next's TFunction and GlobalSearch's narrowed `t` fit.
-type Translate = (key: string, opts?: Record<string, unknown>) => string;
+import type { TFunction } from 'i18next';
 
 // Hand-maintained mirror of the backend's SearchContactHit.matched_on enum
 // (openapi.yaml; frontend trap #4). The keys are literal so keyUsage sees them. A token
@@ -21,7 +20,7 @@ const isMatchField = (v: string): v is MatchField => Object.hasOwn(MATCH_FIELD_K
  * worth saying: `matched_on` absent or empty, or only `name` (the visible title is the reason;
  * entities always report just `["name"]`).
  */
-export function matchReason(t: Translate, matchedOn: readonly string[] | undefined) {
+export function matchReason(t: TFunction, matchedOn: readonly string[] | undefined) {
   const known = (matchedOn ?? []).filter(isMatchField);
   if (known.length === 0 || known.every((f) => f === 'name')) return undefined;
   return t('globalSearch.matchedOn', {
