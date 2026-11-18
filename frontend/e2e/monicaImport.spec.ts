@@ -44,8 +44,11 @@ test.describe('Monica import assistant', () => {
     await dialog.getByLabel('API token').fill('irrelevant-token');
     await dialog.getByRole('button', { name: 'Connect' }).click();
 
-    // An error alert appears; the wizard has not advanced past connect.
-    await expect(dialog.getByRole('alert')).toBeVisible();
+    // #2680: an address problem is reported inline on the address field, and
+    // the wizard has not advanced past connect.
+    const address = dialog.getByLabel('Monica address');
+    await expect(address).toHaveAttribute('aria-invalid', 'true');
+    await expect(address).toHaveAccessibleDescription(/The Monica URL is invalid/);
     await expect(dialog.getByRole('button', { name: 'Connect' })).toBeVisible();
     await expect(dialog.getByRole('button', { name: 'Start import' })).toHaveCount(0);
   });

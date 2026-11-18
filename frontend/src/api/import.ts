@@ -16,6 +16,10 @@ export interface ImportUploadResponse {
   suggested_mappings: ColumnMapping[];
   row_count: number;
   sample_data: string[][];
+  // File-level notices from reading the upload (always present; [] when there
+  // is nothing to report), e.g. concept 'encoding' when a CSV that was not
+  // UTF-8 was read as Windows-1252 (issue #2669).
+  file_diagnostics?: ImportDiagnostic[];
 }
 
 // Match info for duplicate detection
@@ -109,6 +113,8 @@ export interface ImportPreviewResponse {
   // Issue #2000: present only when the preview request carried
   // assign_circle_ids / assign_tag_ids.
   fixed_assignment?: ImportFixedAssignment;
+  // File-level notices (see ImportUploadResponse.file_diagnostics).
+  file_diagnostics?: ImportDiagnostic[];
 }
 
 // Issue #2000: circles/tags every imported contact joins, and the resulting
@@ -168,7 +174,13 @@ export interface ImportRowIssue {
   name: string;
   email: string;
   phone: string;
-  status: 'skipped' | 'failed';
+  // Issue #2741: 'warning' is a row that DID import but lost something (an
+  // invalid birthday/anniversary was dropped); it is counted as created or
+  // updated, never as skipped or failed.
+  status: 'skipped' | 'failed' | 'warning';
+  // The stable key a 'warning' is localized by (birthday, anniversary); absent
+  // on skipped/failed issues.
+  concept?: string;
   reason: string;
 }
 

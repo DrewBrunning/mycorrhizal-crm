@@ -36,6 +36,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
+import type { TFunction } from 'i18next';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FIELD_TYPES } from '../api/fieldDefinitions';
@@ -48,6 +49,7 @@ import {
   type DiscoveredCustomProperty,
   getImportPreview,
   IMPORTABLE_CONTACT_FIELDS,
+  type ImportDiagnostic,
   type ImportFieldMapping,
   type ImportMergeDiff,
   type ImportPreviewResponse,
@@ -67,6 +69,7 @@ import { isContactPickerSupported, pickContactsAsVCardFile } from '../utils/cont
 import { EMPTY_VALUE } from '../utils/emptyValue';
 import { getErrorMessage } from '../utils/errorHandler';
 import { MAX_CSV_IMPORT_MB, MAX_VCF_IMPORT_MB } from '../utils/importLimits';
+import { importWarningKey } from '../utils/importWarning';
 import AppDialog from './AppDialog';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 import ImportFixedAssignmentPicker from './ImportFixedAssignmentPicker';
@@ -936,6 +939,12 @@ export default function ImportContactsDialog({
 
     return (
       <Box>
+        <FileDiagnosticsBanner
+          diagnostics={[
+            ...(previewResponse.file_diagnostics ?? []),
+            ...(uploadResponse?.file_diagnostics ?? []),
+          ]}
+        />
         {previewResponse.fixed_assignment && (
           <Alert severity="info" sx={{ mb: 2 }}>
             {t(
@@ -1426,6 +1435,47 @@ function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
   );
 }
 
+// diagnosticText: the localized text for a known concept (issue #2653: an
+// invalid birthday/anniversary is dropped, the contact still imports), else the
+// adapter's own message (an unknown concept is still worth showing).
+function diagnosticText(t: TFunction, d: ImportDiagnostic): string {
+  const key = importWarningKey(d.concept);
+  return key ? t(key) : d.message;
+}
+
+// FileDiagnosticsBanner shows the file-level notices of the upload (issue
+// #2669: concept 'encoding' when a CSV that was not UTF-8 was read as
+// Windows-1252). The same notice can arrive on both the upload and preview
+// responses, so it is shown once.
+function FileDiagnosticsBanner({ diagnostics }: { diagnostics: ImportDiagnostic[] }) {
+  const { t } = useTranslation();
+  const seen = new Set<string>();
+  const unique = diagnostics.filter((d) => {
+    const key = `${d.concept ?? ''}|${d.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return (
+    <>
+      {unique.map((d) => (
+        <Alert
+          key={`${d.concept ?? ''}|${d.message}`}
+          severity={d.severity === 'warn' ? 'warning' : 'info'}
+          sx={{ mb: 2 }}
+        >
+          {d.concept === 'encoding'
+            ? t(
+                'contacts.import.fileDiagnostic.encoding',
+                "This file isn't UTF-8, so it was read as Windows-1252. Check that accented characters look right before you import.",
+              )
+            : d.message}
+        </Alert>
+      ))}
+    </>
+  );
+}
+
 // ImportRowCard is one contact's decision card in the review step: name,
 // match/diff summary, and the Merge / Keep Both / Discard New choice. Merge is
 // only offered when the row matched an EXISTING record — a within-batch
@@ -1571,6 +1621,19 @@ function ImportRowCard({
               {t('contacts.import.preview.newContact', 'New contact — no match found')}
             </Typography>
           )}
+
+          {(row.diagnostics ?? []).map((d) => (
+            <Typography
+              key={`${d.concept ?? ''}|${d.message}`}
+              variant="caption"
+              sx={{
+                display: 'block',
+                color: d.severity === 'warn' ? 'warning.dark' : 'text.secondary',
+              }}
+            >
+              {diagnosticText(t, d)}
+            </Typography>
+          ))}
 
           {!hasErrors && row.merge_diff && <ImportMergeDiffSummary diff={row.merge_diff} />}
 

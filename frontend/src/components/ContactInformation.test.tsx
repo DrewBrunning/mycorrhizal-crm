@@ -2,7 +2,6 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import '../i18n/config';
 import type { Card, CRMEnvelope } from '../api/contacts';
 import type { ContactEntityLink } from '../api/entities';
 import { getLinkFieldTypes } from '../api/linkFieldTypes';
@@ -10,6 +9,7 @@ import { geocodeDraft } from '../api/map';
 import type { ContactFieldKey } from '../contactFields';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import i18n from '../i18n/config';
 import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 import ContactInformation from './ContactInformation';
 
@@ -753,6 +753,27 @@ test('a projected address shows its source chip and stays out of the address edi
   await waitFor(() => expect(onUpdateCard).toHaveBeenCalled());
   const [patch] = onUpdateCard.mock.calls[0] as unknown as [Partial<Card>];
   expect(patch.addresses?.map((a) => a.id)).toEqual(['own-1']);
+});
+
+// #2681: a private email/phone context (the neutral vocabulary's counterpart of
+// "home") was shown as the raw token "(private)" in every language.
+test('a private context is translated, not shown as the raw token', async () => {
+  renderInformation({ emails: [{ address: 'a@example.com', contexts: ['private'] }] });
+  expect(screen.getByText(/a@example\.com \(Private\)/)).toBeInTheDocument();
+  cleanup();
+  await i18n.changeLanguage('de');
+  try {
+    renderInformation({ emails: [{ address: 'a@example.com', contexts: ['private'] }] });
+    expect(screen.getByText(/a@example\.com \(Privat\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/\(private\)/)).not.toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
+
+test('an unknown context is still shown as typed', () => {
+  renderInformation({ emails: [{ address: 'a@example.com', contexts: ['pager'] }] });
+  expect(screen.getByText(/a@example\.com \(pager\)/)).toBeInTheDocument();
 });
 
 // Issue #2681: a context token rendered as a raw English word ("(private)").

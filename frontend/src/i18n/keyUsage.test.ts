@@ -175,6 +175,12 @@ const DYNAMIC_KEY_SOURCES: readonly DynamicKeySource[] = [
     reason: 'vCard context tokens are a backend enum',
   },
   {
+    prefix: 'contacts.import.warning.',
+    file: 'utils/importWarning.ts',
+    values: ['birthday', 'anniversary'],
+    reason: 'the warning concept is a closed backend token (issues #2653, #2741)',
+  },
+  {
     prefix: 'contacts.import.preview.kind.',
     file: 'components/ImportContactsDialog.tsx',
     reason: 'preview row kind is derived from the imported value',

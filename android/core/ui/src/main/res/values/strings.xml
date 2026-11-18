@@ -193,6 +193,12 @@
     <string name="contacts_search_notes_group">Notes</string>
     <string name="contacts_search_activities_group">Interactions</string>
     <string name="contacts_search_entities_group">Organisations, places &amp; pets</string>
+    <string name="contacts_search_matched_on">Matched on %1$s</string>
+    <string name="contacts_search_matched_field_name">name</string>
+    <string name="contacts_search_matched_field_organization">organisation</string>
+    <string name="contacts_search_matched_field_email">email</string>
+    <string name="contacts_search_matched_field_phone">phone</string>
+    <string name="contacts_search_matched_field_address">address</string>
     <string name="contacts_search_unfiled">Unfiled</string>
     <string name="contacts_search_resolved_relation">Matched relationship: %1$s</string>
 

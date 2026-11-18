@@ -7,6 +7,7 @@ import {
   Step,
   StepLabel,
   Stepper,
+  Typography,
 } from '@mui/material';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -36,6 +37,9 @@ interface Props {
   connectStep: ReactNode;
   // Called after the user acknowledges the result screen.
   onComplete: () => void;
+  // A secondary line under the failure message (the Meerkat "use the database
+  // upload" advice, shown only where that option exists).
+  errorHint?: string;
 }
 
 // The shared Dialog + Stepper shell for every source-import assistant
@@ -49,6 +53,7 @@ export default function SourceImportWizard({
   wizard,
   connectStep,
   onComplete,
+  errorHint,
 }: Props) {
   const { t } = useTranslation();
   const { step } = wizard;
@@ -122,6 +127,11 @@ export default function SourceImportWizard({
         {wizard.error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {wizard.error}
+            {errorHint && (
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {errorHint}
+              </Typography>
+            )}
           </Alert>
         )}
 
