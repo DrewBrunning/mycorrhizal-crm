@@ -271,3 +271,43 @@ test('every result row is a list item wrapping its link', async () => {
   const list = link.closest('ul') as HTMLElement;
   for (const child of Array.from(list.children)) expect(child.tagName).toBe('LI');
 });
+
+// #2744: the results page says why a contact matched when it was not (only) the name.
+test('a contact row shows why it matched; name-only and absent show nothing (#2744)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({
+    ...data,
+    contacts: [
+      {
+        id: 1,
+        uid: 'u1',
+        firstname: 'Beatrix',
+        lastname: 'Zebra',
+        matched_on: ['email', 'address'],
+      },
+      { id: 2, uid: 'u2', firstname: 'Bob', lastname: 'Name', matched_on: ['name'] },
+      { id: 3, uid: 'u3', firstname: 'Cy', lastname: 'Plain' },
+    ],
+  });
+  renderPage('/search?q=zebra');
+  const row = await screen.findByRole('link', { name: /Beatrix Zebra/ });
+  expect(row).toHaveTextContent('Matches: email, address');
+  expect(screen.getAllByText(/^Matches: /)).toHaveLength(1);
+});
+
+test('entity rows never show a match reason (name is the only one) (#2744)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({
+    ...data,
+    entities: [
+      {
+        id: 'e-1',
+        kind: 'place',
+        name: 'Alice Springs House',
+        sensitivity: 'normal',
+        matched_on: ['name'],
+      },
+    ],
+  });
+  renderPage('/search?q=ali&tab=entities');
+  await screen.findByRole('link', { name: /Alice Springs House/ });
+  expect(screen.queryByText(/^Matches: /)).toBeNull();
+});

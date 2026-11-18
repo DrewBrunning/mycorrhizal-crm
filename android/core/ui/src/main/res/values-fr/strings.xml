@@ -198,6 +198,12 @@
     <string name="contacts_search_notes_group">Notes</string>
     <string name="contacts_search_activities_group">Interactions</string>
     <string name="contacts_search_entities_group">Organisations, lieux et animaux</string>
+    <string name="contacts_search_matched_on">Correspond à : %1$s</string>
+    <string name="contacts_search_matched_field_name">nom</string>
+    <string name="contacts_search_matched_field_organization">organisation</string>
+    <string name="contacts_search_matched_field_email">e-mail</string>
+    <string name="contacts_search_matched_field_phone">téléphone</string>
+    <string name="contacts_search_matched_field_address">adresse</string>
     <string name="contacts_search_unfiled">Non classé</string>
     <string name="contacts_search_resolved_relation">Relation correspondante : %1$s</string>
 
@@ -3509,7 +3515,9 @@
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>
     <string name="error_reason_integration_save_failed">%1$s</string>
-    <string name="error_reason_occasion_anchor_date_incomplete">Une date d’ancrage d’occasion nécessite à la fois un mois et un jour, ou aucun des deux</string>
+    <string name="error_reason_occasion_anchor_date_incomplete">Une date d’ancrage d’occasion nécessite à la fois un mois et un jour</string>
+    <string name="error_reason_occasion_anchor_date_invalid">Cette combinaison de mois et de jour n’existe pas, par exemple le 30 février</string>
+    <string name="error_reason_occasion_anchor_date_required">Une occasion a besoin d’un mois et d’un jour pour pouvoir vous le rappeler</string>
     <string name="error_reason_occasion_days_invalid">days doit être 30 ou 90</string>
     <string name="error_reason_occasion_event_circles_required">circle_ids est requis</string>
     <string name="error_reason_occasion_event_end_before_start">L’heure de fin de l’événement ne peut pas précéder l’heure de début</string>

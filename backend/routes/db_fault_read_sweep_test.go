@@ -104,6 +104,7 @@ func faultReadRoutes(s seeded) []string {
 		v1 + "/occasion-obligations/" + s.occasionObligation,
 		v1 + "/occasions/upcoming",
 		v1 + "/occasion-obligations/card-list",
+		v1 + "/occasion-obligations/card-list/summary",
 		v1 + "/occasion-obligations/gift-shopping-list",
 		v1 + "/occasion-events",
 		v1 + "/occasion-events/invitee-suggestions?circle_ids=" + s.circle,

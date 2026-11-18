@@ -143,8 +143,8 @@
     "src/SearchResultsPage.tsx": {
       "lines": 98.55,
       "linesTotal": 69,
-      "branches": 89.61,
-      "branchesTotal": 77
+      "branches": 90.36,
+      "branchesTotal": 83
     },
     "src/SettingsPage.tsx": {
       "lines": 83.13,
@@ -502,9 +502,9 @@
     },
     "src/api/notes.ts": {
       "lines": 100,
-      "linesTotal": 55,
+      "linesTotal": 56,
       "branches": 100,
-      "branchesTotal": 36
+      "branchesTotal": 38
     },
     "src/api/notificationHealth.ts": {
       "lines": 100,
@@ -1169,8 +1169,8 @@
     "src/components/GlobalSearch.tsx": {
       "lines": 98.86,
       "linesTotal": 88,
-      "branches": 89.28,
-      "branchesTotal": 56
+      "branches": 89.65,
+      "branchesTotal": 58
     },
     "src/components/HouseholdDialog.tsx": {
       "lines": 96.77,
@@ -1215,10 +1215,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 93.68,
-      "linesTotal": 364,
-      "branches": 85.76,
-      "branchesTotal": 302
+      "lines": 93.88,
+      "linesTotal": 376,
+      "branches": 86.72,
+      "branchesTotal": 324
     },
     "src/components/ImportFixedAssignmentPicker.tsx": {
       "lines": 84.21,
@@ -1228,9 +1228,9 @@
     },
     "src/components/ImportIssuesReport.tsx": {
       "lines": 100,
-      "linesTotal": 14,
+      "linesTotal": 29,
       "branches": 100,
-      "branchesTotal": 6
+      "branchesTotal": 30
     },
     "src/components/ImportedResourcesSection.tsx": {
       "lines": 100,
@@ -1311,10 +1311,10 @@
       "branchesTotal": 26
     },
     "src/components/MeerkatImportDialog.tsx": {
-      "lines": 96.05,
-      "linesTotal": 76,
-      "branches": 88.88,
-      "branchesTotal": 45
+      "lines": 96.15,
+      "linesTotal": 78,
+      "branches": 90.19,
+      "branchesTotal": 51
     },
     "src/components/MeerkatLiveConnect.tsx": {
       "lines": 100,
@@ -1329,10 +1329,10 @@
       "branchesTotal": 128
     },
     "src/components/MonicaImportDialog.tsx": {
-      "lines": 95.65,
-      "linesTotal": 46,
-      "branches": 92.3,
-      "branchesTotal": 13
+      "lines": 96.49,
+      "linesTotal": 57,
+      "branches": 93.75,
+      "branchesTotal": 32
     },
     "src/components/MultiValueField.tsx": {
       "lines": 96.55,
@@ -1764,7 +1764,7 @@
       "lines": 100,
       "linesTotal": 27,
       "branches": 100,
-      "branchesTotal": 26
+      "branchesTotal": 28
     },
     "src/components/timelineLayout.ts": {
       "lines": 100,
@@ -2196,7 +2196,7 @@
       "lines": 100,
       "linesTotal": 104,
       "branches": 100,
-      "branchesTotal": 40
+      "branchesTotal": 41
     },
     "src/hooks/useSubsystemHealth.ts": {
       "lines": 100,
@@ -2548,7 +2548,13 @@
     },
     "src/utils/importReportCsv.ts": {
       "lines": 100,
-      "linesTotal": 8,
+      "linesTotal": 12,
+      "branches": 100,
+      "branchesTotal": 10
+    },
+    "src/utils/importWarning.ts": {
+      "lines": 100,
+      "linesTotal": 2,
       "branches": 100,
       "branchesTotal": 4
     },
@@ -2597,6 +2603,12 @@
     "src/utils/searchLinks.ts": {
       "lines": 100,
       "linesTotal": 8,
+      "branches": 100,
+      "branchesTotal": 6
+    },
+    "src/utils/searchMatch.ts": {
+      "lines": 100,
+      "linesTotal": 6,
       "branches": 100,
       "branchesTotal": 6
     },

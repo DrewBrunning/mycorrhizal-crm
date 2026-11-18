@@ -9,6 +9,7 @@ import {
   type SourceImportResult,
   type SourceImportStatus,
 } from '../api/sourceImport';
+import { localizeReason } from '../i18n/reason';
 import { getErrorMessage } from '../utils/errorHandler';
 
 // The five wizard steps, shared by every source-import assistant. The
@@ -105,7 +106,13 @@ export function useSourceImportWizard({
 
       if (st.phase === 'failed') {
         stopPolling();
-        setError(st.error || 'The import failed.');
+        // A reason-coded failure is localized; the server's English is only
+        // the fallback (issue #2727).
+        setError(
+          localizeReason(st.error_reason_code, st.error_reason_params) ||
+            st.error ||
+            'The import failed.',
+        );
         return;
       }
 

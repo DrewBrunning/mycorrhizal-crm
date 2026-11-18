@@ -73,6 +73,19 @@ describe('entity CRUD', () => {
     expect(res.entities[0].name).toBe('Acme');
   });
 
+  test('listEntities sends sort and order only when given (#2744)', async () => {
+    let fetchMock = stubFetch({ entities: [], limit: 25, next_cursor: '' });
+    await listEntities({ kind: 'place', sort: 'name', order: 'asc' });
+    let url = new URL(fetchMock.mock.calls[0][0], 'http://x');
+    expect(url.searchParams.get('sort')).toBe('name');
+    expect(url.searchParams.get('order')).toBe('asc');
+    fetchMock = stubFetch({ entities: [], limit: 25, next_cursor: '' });
+    await listEntities({ kind: 'place' });
+    url = new URL(fetchMock.mock.calls[0][0], 'http://x');
+    expect(url.searchParams.has('sort')).toBe(false);
+    expect(url.searchParams.has('order')).toBe(false);
+  });
+
   test('listEntities omits empty filters and tolerates a null entities array', async () => {
     const fetchMock = stubFetch({ entities: null, limit: 25, next_cursor: '' });
     const res = await listEntities({});

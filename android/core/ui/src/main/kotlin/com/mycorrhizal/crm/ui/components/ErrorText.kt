@@ -1913,6 +1913,14 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_occasion_anchor_date_incomplete
         )
 
+        ErrorReasonCode.OCCASION_ANCHOR_DATE_INVALID -> stringResource(
+            R.string.error_reason_occasion_anchor_date_invalid
+        )
+
+        ErrorReasonCode.OCCASION_ANCHOR_DATE_REQUIRED -> stringResource(
+            R.string.error_reason_occasion_anchor_date_required
+        )
+
         ErrorReasonCode.OCCASION_DAYS_INVALID -> stringResource(
             R.string.error_reason_occasion_days_invalid
         )

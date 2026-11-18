@@ -86,6 +86,10 @@ export interface SourceImportStatus {
   phase_done: number;
   phase_total: number;
   error?: string;
+  // Issue #2727 (ADR 0038): the reason-coded form of `error` for a failed
+  // fetch, so it can be localized. `error` stays the English fallback.
+  error_reason_code?: string;
+  error_reason_params?: Record<string, string | number>;
   result?: SourceImportResult;
 }
 

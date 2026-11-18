@@ -217,6 +217,7 @@ var embeddedRouteRows = []embeddedRouteRow{
 		"GET /api/v1/occasion-obligations",
 		"GET /api/v1/occasion-obligations/:id",
 		"GET /api/v1/occasion-obligations/card-list",
+		"GET /api/v1/occasion-obligations/card-list/summary",
 		"GET /api/v1/occasion-obligations/gift-shopping-list",
 		"GET /api/v1/occasions/upcoming",
 		"GET /api/v1/preferences",

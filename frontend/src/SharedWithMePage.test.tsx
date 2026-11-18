@@ -472,3 +472,32 @@ describe('SharedWithMePage pending-count refresh signal', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 });
+
+// #2744: the server labels a note grant with the note's first line once it is active; a
+// pending one stays the generic "Note" (the recipient must accept before seeing content).
+// The row title and every action's accessible name come straight from `label`.
+describe('SharedWithMePage note grant labels (#2744)', () => {
+  const pendingNote = { ...pending, id: 'n1', entity_type: 'note', label: 'Note', sections: [] };
+  const activeNote = {
+    ...active,
+    id: 'n2',
+    entity_type: 'note',
+    label: 'Call the plumber about the leak\u2026',
+    sections: [],
+  };
+
+  test('a pending note shows the generic label, an active note shows its first line', async () => {
+    setup([pendingNote, activeNote]);
+    renderPage();
+    const acceptBtn = await screen.findByRole('button', { name: /^Accept Note from bob/ });
+    const pendingRow = acceptBtn.closest('li') as HTMLElement;
+    expect(within(pendingRow).getAllByText('Note')).toHaveLength(2); // title + type chip
+    const activeRow = await rowFor('Call the plumber about the leak\u2026');
+    expect(within(activeRow).getByText('Note')).toBeInTheDocument(); // the type chip only
+    expect(
+      within(activeRow).getByRole('button', {
+        name: /^View Call the plumber about the leak\u2026/,
+      }),
+    ).toBeVisible();
+  });
+});
