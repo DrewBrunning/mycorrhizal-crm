@@ -27,6 +27,14 @@
     }
   },
   "globalSearch": {
+    "matchedOn": "Corrisponde a: {{fields}}",
+    "matchedField": {
+      "name": "nome",
+      "organization": "organizzazione",
+      "email": "e-mail",
+      "phone": "telefono",
+      "address": "indirizzo"
+    },
     "placeholder": "Cerca contatti, note, attività, luoghi…",
     "label": "Cerca ovunque",
     "open": "Cerca",

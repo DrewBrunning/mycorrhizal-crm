@@ -31,6 +31,7 @@ import {
   noteHref,
   type SearchTab,
 } from './utils/searchLinks';
+import { matchReason } from './utils/searchMatch';
 
 // #2174: the full results page behind the top-bar search — one tab per
 // category. It asks for the server's maximum page (50) per category; when a
@@ -141,12 +142,25 @@ export default function SearchResultsPage() {
     primary: string,
     secondary?: string,
     chip?: string,
+    // Issue #2744: why the hit matched, on its own line so a narrow screen keeps the title wide.
+    reason?: string,
   ) => (
     <ListItem key={key} disablePadding>
       <ListItemButton component={RouterLink} to={to}>
         <ListItemText
           primary={primary}
-          secondary={secondary}
+          secondary={
+            secondary || reason ? (
+              <>
+                {secondary}
+                {reason && (
+                  <Box component="span" sx={{ display: 'block', fontStyle: 'italic' }}>
+                    {reason}
+                  </Box>
+                )}
+              </>
+            ) : undefined
+          }
           slotProps={{
             primary: { sx: { overflowWrap: 'anywhere' } },
           }}
@@ -171,6 +185,8 @@ export default function SearchResultsPage() {
                 contactHref(c.id),
                 `${c.firstname} ${c.lastname}`.trim() || c.fn || '',
                 [c.org, c.primary_email].filter(Boolean).join(' · ') || undefined,
+                undefined,
+                matchReason(t, c.matched_on),
               ),
             )}
           {tab === 'notes' &&

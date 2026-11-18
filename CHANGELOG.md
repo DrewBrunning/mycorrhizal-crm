@@ -64,6 +64,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Number keyboard for dotted and hyphenated dates on Android** ([#2378](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2378)): date fields now open the number keyboard when your date format uses dots or hyphens, such as 10.08.2026. Formats with slashes keep the text keyboard.
 - **Clearer Trash on the web** ([#2707](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2707), [#2717](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2717)): the retention note now says deleted items, not contacts. Deleting forever and emptying the trash ask in a translated dialog that says organisations, places and pets are left alone.
 - **Dark-mode scrollbars** ([#2363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2363)): in dark mode the navigation sidebar and page scrollbars no longer show a bright white track. Light mode is unchanged.
+- **Notes are listed by date** ([#2744](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2744)): the Notes page now orders notes by the date shown on each note, newest first, including after Load more, instead of by when they were last edited.
 - **"Today" follows your time zone** ([#2679](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2679), [#2762](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2762)): the dashboard and upcoming birthdays, occasions, gift shopping list and reminders now count from the day it is where you are, so a birthday that is today for you no longer disappears in the evening.
 
 ### Security

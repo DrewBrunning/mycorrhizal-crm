@@ -47,6 +47,9 @@ export interface GetNotesParams {
   scope?: 'all' | 'unfiled';
   // Fill each note's nested contact (name) for display.
   includeContacts?: boolean;
+  // Issue #2744: 'date' orders by the note's own date (then id), newest first; the default is
+  // last edit. The cursor is sort-specific: keep the same sort for every page of a list.
+  sort?: 'date' | 'updated_at';
 }
 
 // Get notes for a contact
@@ -84,6 +87,7 @@ export async function getUnassignedNotes(params: GetNotesParams = {}): Promise<N
     queryParams.append('toDate', params.toDate);
   }
 
+  if (params.sort) queryParams.append('sort', params.sort);
   if (params.scope === 'all') queryParams.append('scope', 'all');
   if (params.includeContacts) queryParams.append('include', 'contacts');
 
