@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { getFieldDefinitions } from '../api/fieldDefinitions';
 import {
+  cancelImportSession,
   confirmImport,
   confirmVCFImport,
   type DuplicateMatch,
@@ -23,6 +24,7 @@ vi.mock('../api/import', async (importOriginal) => {
     ...actual,
     uploadCSVForImport: vi.fn(),
     uploadVCFForImport: vi.fn(),
+    cancelImportSession: vi.fn().mockResolvedValue(undefined),
     getImportPreview: vi.fn(),
     confirmImport: vi.fn(),
     confirmVCFImport: vi.fn(),
@@ -58,6 +60,8 @@ beforeEach(() => {
   vi.mocked(getImportPreview).mockReset();
   vi.mocked(confirmImport).mockReset();
   vi.mocked(confirmVCFImport).mockReset();
+  vi.mocked(cancelImportSession).mockReset();
+  vi.mocked(cancelImportSession).mockResolvedValue(undefined);
   vi.mocked(getFieldDefinitions).mockReset();
   vi.mocked(getFieldDefinitions).mockResolvedValue({
     field_definitions: [],
@@ -1230,4 +1234,206 @@ test('a CSV just under 20MB but over 5MB is not rejected as too large', async ()
   renderDialog();
   selectFile(oversizeFile('contacts.csv', 6 * 1024 * 1024));
   await waitFor(() => expect(uploadCSVForImport).toHaveBeenCalledTimes(1));
+});
+
+// --- Issue #2661: keyboard-reachable file picker -------------------------
+
+test('the upload step has a real, focusable "Choose file" button that opens the picker', () => {
+  renderDialog();
+  const choose = screen.getByRole('button', { name: /choose file/i });
+  // A native <button> is in the tab order and activates on Enter/Space.
+  expect(choose.tagName).toBe('BUTTON');
+  expect(choose.tabIndex).toBeGreaterThanOrEqual(0);
+  choose.focus();
+  expect(document.activeElement).toBe(choose);
+
+  const input = document.getElementById('import-file-input') as HTMLInputElement;
+  const clicked = vi.spyOn(input, 'click');
+  fireEvent.click(choose);
+  // One picker opening, not two (the click must not also reach the drop zone).
+  expect(clicked).toHaveBeenCalledTimes(1);
+});
+
+test('the Choose file button points at the supported-format instructions', () => {
+  renderDialog();
+  const choose = screen.getByRole('button', { name: /choose file/i });
+  const describedBy = choose.getAttribute('aria-describedby');
+  expect(describedBy).toBeTruthy();
+  expect(document.getElementById(describedBy as string)?.textContent).toMatch(/CSV/);
+});
+
+test('drag and drop onto the zone still uploads', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-d',
+    rows: [row({ parsed_contact: { firstname: 'Ada' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  renderDialog();
+  const zone = screen.getByText(/drag and drop a csv or vcf file/i).parentElement as HTMLElement;
+  const file = new File(['BEGIN:VCARD\nEND:VCARD'], 'a.vcf', { type: 'text/vcard' });
+  fireEvent.drop(zone, { dataTransfer: { files: [file] } });
+  await waitFor(() => expect(uploadVCFForImport).toHaveBeenCalledWith(file));
+});
+
+// --- Issue #2674: named mapping selects ----------------------------------
+
+async function loadMapping() {
+  vi.mocked(uploadCSVForImport).mockResolvedValue({
+    session_id: 'sess-1',
+    headers: ['First Name', 'Email'],
+    suggested_mappings: [
+      { csv_column: 'First Name', contact_field: 'firstname', group: 0 },
+      { csv_column: 'Email', contact_field: 'email', group: 0 },
+    ],
+    row_count: 1,
+    sample_data: [['Ada', 'ada@example.com']],
+  });
+  const view = renderDialog();
+  selectFile(new File(['First Name,Email\nAda,ada@example.com'], 'c.csv', { type: 'text/csv' }));
+  await waitFor(() => expect(screen.getByText('Sample')).toBeInTheDocument());
+  return view;
+}
+
+test('every "Maps To" select is named after its CSV column', async () => {
+  await loadMapping();
+  expect(screen.getByRole('combobox', { name: 'Map column First Name to' })).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: 'Map column Email to' })).toBeInTheDocument();
+});
+
+// --- Issue #2664: release the server session -----------------------------
+
+test('Cancel on the mapping step releases the upload session', async () => {
+  await loadMapping();
+  fireEvent.click(screen.getByRole('button', { name: /^close$/i }));
+  expect(cancelImportSession).toHaveBeenCalledTimes(1);
+  expect(cancelImportSession).toHaveBeenCalledWith('sess-1');
+});
+
+test('Back from the mapping step to upload releases the session, and Close then does not repeat it', async () => {
+  await loadMapping();
+  fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
+  expect(cancelImportSession).toHaveBeenCalledWith('sess-1');
+  expect(screen.getByRole('button', { name: /choose file/i })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+  expect(cancelImportSession).toHaveBeenCalledTimes(1);
+});
+
+test('closing the upload step with no session makes no cancel call', () => {
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+  fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+  expect(onClose).toHaveBeenCalled();
+  expect(cancelImportSession).not.toHaveBeenCalled();
+});
+
+test('a failed upload (no session id) makes no cancel call on close', async () => {
+  vi.mocked(uploadCSVForImport).mockRejectedValue(new Error('bad file'));
+  renderDialog();
+  selectFile(new File(['x'], 'bad.csv', { type: 'text/csv' }));
+  await waitFor(() => expect(uploadCSVForImport).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+  expect(cancelImportSession).not.toHaveBeenCalled();
+});
+
+test('unmounting with a live session releases it', async () => {
+  const { unmount } = await loadMapping();
+  unmount();
+  expect(cancelImportSession).toHaveBeenCalledWith('sess-1');
+});
+
+test('a confirmed import is not cancelled on Done', async () => {
+  vi.mocked(confirmVCFImport).mockResolvedValue({
+    total_processed: 1,
+    created: 1,
+    updated: 0,
+    skipped: 0,
+    errors: [],
+    issues: [],
+  });
+  await loadPreview([row({ parsed_contact: { firstname: 'Ada' } })]);
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
+  fireEvent.click(await screen.findByRole('button', { name: /^done$/i }));
+  expect(cancelImportSession).not.toHaveBeenCalled();
+});
+
+// --- Issue #2665: discard guard ------------------------------------------
+
+test('Escape on the clean upload step closes without a prompt', () => {
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  expect(onClose).toHaveBeenCalled();
+  expect(screen.queryByRole('heading', { name: /unsaved changes/i })).not.toBeInTheDocument();
+});
+
+test('Escape on the review step asks before discarding; Keep editing keeps everything', async () => {
+  const onClose = vi.fn();
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-test',
+    rows: [row({ parsed_contact: { firstname: 'Ada' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  renderDialog({ onClose });
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await screen.findByText('Resolve all as merged');
+
+  fireEvent.keyDown(screen.getAllByRole('dialog')[0], { key: 'Escape' });
+  expect(await screen.findByRole('heading', { name: /unsaved changes/i })).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+  expect(cancelImportSession).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: /keep editing/i }));
+  await waitFor(() =>
+    expect(screen.queryByRole('heading', { name: /unsaved changes/i })).not.toBeInTheDocument(),
+  );
+  expect(onClose).not.toHaveBeenCalled();
+  expect(screen.getByText('Resolve all as merged')).toBeInTheDocument();
+});
+
+test('Discard on the review step closes the dialog and releases the session', async () => {
+  const onClose = vi.fn();
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-test',
+    rows: [row({ parsed_contact: { firstname: 'Ada' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  renderDialog({ onClose });
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await screen.findByText('Resolve all as merged');
+
+  fireEvent.click(screen.getByRole('button', { name: /^close$/i }));
+  fireEvent.click(await screen.findByRole('button', { name: /^discard$/i }));
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(cancelImportSession).toHaveBeenCalledWith('sess-test');
+});
+
+test('Escape inside the fix-row form closes only the form, not the import dialog', async () => {
+  const onClose = vi.fn();
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-test',
+    rows: [row({ parsed_contact: { firstname: 'Ada' }, validation_errors: ['email invalid'] })],
+    total_rows: 1,
+    valid_rows: 0,
+    duplicate_count: 0,
+    error_count: 1,
+  });
+  renderDialog({ onClose });
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  fireEvent.click(await screen.findByRole('button', { name: /fix this row/i }));
+  const field = screen.getByLabelText('First name');
+  fireEvent.keyDown(field, { key: 'Escape' });
+
+  expect(screen.queryByLabelText('First name')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /fix this row/i })).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+  expect(screen.queryByRole('heading', { name: /unsaved changes/i })).not.toBeInTheDocument();
 });

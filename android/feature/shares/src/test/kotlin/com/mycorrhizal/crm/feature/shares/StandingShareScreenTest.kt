@@ -228,7 +228,9 @@ class StandingShareScreenTest {
 
         // Shown both as the empty-state title and as the snackbar, so count rather than pick one.
         assertTrue(
-            composeTestRule.onAllNodesWithText("Organisation, place or pet not found").fetchSemanticsNodes()
+            composeTestRule
+                .onAllNodesWithText("Organisation, place or pet not found")
+                .fetchSemanticsNodes()
                 .isNotEmpty()
         )
         composeTestRule.onAllNodesWithText("RAW SERVER TEXT").assertCountEquals(0)
