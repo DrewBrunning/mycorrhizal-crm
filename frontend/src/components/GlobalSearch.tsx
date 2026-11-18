@@ -20,6 +20,7 @@ import {
   noteHref,
   searchResultsHref,
 } from '../utils/searchLinks';
+import { matchReason } from '../utils/searchMatch';
 
 // #2174/#2472: the top-bar search covers contacts, notes, activities and entities. The
 // dropdown shows the top DROPDOWN_LIMIT hits per category and a last row that
@@ -45,6 +46,8 @@ interface Option {
   kind: Kind;
   primary: string;
   secondary?: string;
+  // Issue #2744: why a contact hit matched ("Matches: email"); absent for name-only.
+  reason?: string;
   to: string;
 }
 
@@ -60,6 +63,7 @@ function toOptions(
       kind: 'contacts',
       primary: `${c.firstname} ${c.lastname}`.trim() || c.fn || '',
       secondary: c.primary_email || c.org,
+      reason: matchReason(t, c.matched_on),
       to: contactHref(c.id),
     });
   }
@@ -309,6 +313,15 @@ export default function GlobalSearch() {
                     sx={{ color: 'text.secondary', display: 'block' }}
                   >
                     {option.secondary}
+                  </Typography>
+                )}
+                {option.reason && (
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{ color: 'text.secondary', display: 'block', fontStyle: 'italic' }}
+                  >
+                    {option.reason}
                   </Typography>
                 )}
               </Box>

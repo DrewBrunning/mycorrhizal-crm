@@ -63,9 +63,11 @@ const NotesPage: React.FC = () => {
   const [sharingNote, setSharingNote] = useState<Note | null>(null);
   const NOTES_PER_PAGE = 25;
 
-  // T17: cursor pagination — the inbox pages by (updated_at, id) and a "load
-  // more" button appends the next_cursor page. There is no page number or
-  // exact total anymore.
+  // T17: cursor pagination — a "load more" button appends the next_cursor page.
+  // There is no page number or exact total anymore. Each note shows its own date,
+  // so the list pages by (date, id) (#2744; the default pages by last edit, which
+  // put an old note someone just edited at the top). The sort never changes for
+  // this list, so a cursor is always used with the sort that issued it.
   const notesParams = useMemo(
     () => ({
       limit: NOTES_PER_PAGE,
@@ -74,6 +76,7 @@ const NotesPage: React.FC = () => {
       toDate: toDate || undefined,
       scope,
       includeContacts: true,
+      sort: 'date' as const,
     }),
     [debouncedSearch, fromDate, toDate, scope],
   );

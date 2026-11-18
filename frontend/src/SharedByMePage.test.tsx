@@ -431,3 +431,28 @@ describe('SharedByMePage', () => {
     expect(screen.getByText('Alice Anderson')).toBeInTheDocument();
   });
 });
+
+// #2744: the owner always sees the note's first line as the row title, so rows are no
+// longer all "Note"; the label also names the row's actions.
+test('a note grant is titled with the note first line and its actions use that label (#2744)', async () => {
+  mockApi(
+    'get',
+    '/share-grants/outgoing',
+    page([
+      grant({
+        id: 'n1',
+        entity_type: 'note',
+        label: 'Gift ideas for Mum',
+        sections: [],
+      }),
+      grant({ id: 'n2', entity_type: 'note', label: 'Note', sections: [] }),
+    ]),
+  );
+  renderPage();
+  const row = await rowFor('Gift ideas for Mum');
+  expect(
+    within(row).getByRole('button', { name: 'Revoke Gift ideas for Mum for bob' }),
+  ).toBeInTheDocument();
+  // An empty note keeps the generic title; the type chip is the other "Note" on screen.
+  expect(screen.getAllByText('Note').length).toBeGreaterThanOrEqual(2);
+});

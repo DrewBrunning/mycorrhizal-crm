@@ -27,6 +27,14 @@
     }
   },
   "globalSearch": {
+    "matchedOn": "Treffer in: {{fields}}",
+    "matchedField": {
+      "name": "Name",
+      "organization": "Organisation",
+      "email": "E-Mail",
+      "phone": "Telefon",
+      "address": "Adresse"
+    },
     "placeholder": "Kontakte, Notizen, Aktivitäten, Orte suchen…",
     "label": "Alles durchsuchen",
     "open": "Suchen",
