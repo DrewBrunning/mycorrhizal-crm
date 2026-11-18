@@ -43,6 +43,12 @@ interface ShareGrantRepository {
 
     suspend fun reconfirm(id: String): Result<OutgoingShareGrant>
 
+    /**
+     * Owner-only: dismiss an ended (declined, expired or revoked) grant from Shared by me. A live
+     * grant is a 409 `share_grant_not_ended`; an unknown or already removed id is a 404.
+     */
+    suspend fun delete(id: String): Result<Unit>
+
     suspend fun accept(id: String): Result<IncomingShareGrant>
 
     /** Decline a pending grant; [block] also blocks the sender and ends all their grants. */

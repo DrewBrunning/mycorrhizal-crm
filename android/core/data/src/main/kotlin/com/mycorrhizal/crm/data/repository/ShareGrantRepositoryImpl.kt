@@ -42,6 +42,8 @@ class ShareGrantRepositoryImpl @Inject constructor(private val apiClient: ApiCli
     override suspend fun reconfirm(id: String): Result<OutgoingShareGrant> =
         apiClient.reconfirmShareGrant(id)
 
+    override suspend fun delete(id: String): Result<Unit> = apiClient.deleteShareGrant(id)
+
     override suspend fun accept(id: String): Result<IncomingShareGrant> =
         apiClient.acceptShareGrant(id)
 
