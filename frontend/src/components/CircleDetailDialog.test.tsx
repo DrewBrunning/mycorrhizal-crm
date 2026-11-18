@@ -193,3 +193,60 @@ test('clicking the selected colour again clears the colour', async () => {
     expect(onSave).toHaveBeenCalledWith('c1', 'Work', { description: '', color: '' }),
   );
 });
+
+// Issue #2665: Escape, the Close button and a backdrop click must not silently
+// drop an edited name/description/colour.
+function renderClosable(onClose: () => void) {
+  getCircleTimeline.mockResolvedValue({ items: [], member_count: 1, next_cursor: '' });
+  return render(
+    <MemoryRouter>
+      <DateFormatProvider>
+        <CircleDetailDialog circle={circle} memberCount={1} onClose={onClose} onSave={vi.fn()} />
+      </DateFormatProvider>
+    </MemoryRouter>,
+  );
+}
+
+test('Escape on an untouched circle closes without a prompt', async () => {
+  const onClose = vi.fn();
+  renderClosable(onClose);
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test('Escape on an edited circle asks before discarding; Keep editing keeps the edit', async () => {
+  const onClose = vi.fn();
+  renderClosable(onClose);
+  fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Work' } });
+  fireEvent.keyDown(screen.getAllByRole('dialog')[0], { key: 'Escape' });
+
+  expect(await screen.findByRole('heading', { name: /unsaved changes/i })).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: /keep editing/i }));
+  await waitFor(() =>
+    expect(screen.queryByRole('heading', { name: /unsaved changes/i })).not.toBeInTheDocument(),
+  );
+  expect(onClose).not.toHaveBeenCalled();
+  expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Work');
+});
+
+test('Close on an edited circle confirms, and Discard closes', async () => {
+  const onClose = vi.fn();
+  renderClosable(onClose);
+  fireEvent.change(screen.getByLabelText('Description'), { target: { value: 'Monthly' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  expect(onClose).not.toHaveBeenCalled();
+  fireEvent.click(await screen.findByRole('button', { name: /^discard$/i }));
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test('a backdrop click on an edited circle confirms instead of discarding', async () => {
+  const onClose = vi.fn();
+  renderClosable(onClose);
+  fireEvent.click(screen.getByRole('button', { name: 'Red' }));
+  const backdrop = document.querySelector('.MuiBackdrop-root') as HTMLElement;
+  fireEvent.mouseDown(backdrop);
+  fireEvent.click(backdrop);
+  expect(await screen.findByRole('heading', { name: /unsaved changes/i })).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+});

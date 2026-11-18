@@ -457,7 +457,9 @@ class TrashScreenTest {
         screenWith(TrashUiState(), events)
         events.trySend(TrashUiEvent.Failed(reasonCoded()))
         composeTestRule.waitUntil(5_000) {
-            composeTestRule.onAllNodesWithText("Organisation, place or pet not found").fetchSemanticsNodes()
+            composeTestRule
+                .onAllNodesWithText("Organisation, place or pet not found")
+                .fetchSemanticsNodes()
                 .isNotEmpty()
         }
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
