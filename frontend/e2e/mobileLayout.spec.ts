@@ -252,7 +252,10 @@ for (const width of [320, 375] as const) {
       });
       try {
         const note = await page.request.post(`${API_BASE_URL}/contacts/${contact.ID}/notes`, {
-          data: { content: 'A note about a person with a very long name', date: '2026-11-01' },
+          data: {
+            content: 'A note about a person with a very long name',
+            date: '2026-11-01T12:00:00Z',
+          },
         });
         expect(note.ok(), `create note: ${note.status()}`).toBeTruthy();
 
