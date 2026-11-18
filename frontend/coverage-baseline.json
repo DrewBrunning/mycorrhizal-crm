@@ -159,10 +159,10 @@
       "branchesTotal": 10
     },
     "src/SharedByMePage.tsx": {
-      "lines": 95.31,
-      "linesTotal": 64,
-      "branches": 98.33,
-      "branchesTotal": 60
+      "lines": 96.1,
+      "linesTotal": 77,
+      "branches": 98.64,
+      "branchesTotal": 74
     },
     "src/SharedWithMePage.tsx": {
       "lines": 98.83,
@@ -586,9 +586,9 @@
     },
     "src/api/shareGrants.ts": {
       "lines": 100,
-      "linesTotal": 42,
-      "branches": 85.71,
-      "branchesTotal": 35
+      "linesTotal": 44,
+      "branches": 86.48,
+      "branchesTotal": 37
     },
     "src/api/sourceImport.ts": {
       "lines": 100,

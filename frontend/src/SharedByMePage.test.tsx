@@ -1,10 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { HttpResponse, http } from 'msw';
 import { API_BASE_URL } from './api/client';
 import { AnnouncerProvider } from './context/AnnouncerContext';
+import { PendingSharesContext } from './context/PendingSharesContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import SharedByMePage from './SharedByMePage';
 import { errorEnvelope, mockApi, server, setupMswServer } from './test/mswServer';
@@ -91,7 +92,12 @@ describe('SharedByMePage', () => {
     const revoked = await rowFor('Old');
     expect(within(revoked).getByText('Revoked')).toBeInTheDocument();
     expect(within(revoked).getByText('The shared item was deleted')).toBeInTheDocument();
-    expect(within(revoked).queryByRole('button')).toBeNull(); // terminal: no actions
+    // Terminal: no revoke/edit/re-confirm, only the Remove (dismiss) action (#2742).
+    expect(
+      within(revoked)
+        .getAllByRole('button')
+        .map((b) => b.textContent),
+    ).toEqual(['Remove']);
 
     expect(screen.queryByText(/last (read|seen|viewed|accessed)/i)).toBeNull();
   });
@@ -429,5 +435,172 @@ describe('SharedByMePage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
     expect(await screen.findByText('Zed')).toBeInTheDocument();
     expect(screen.getByText('Alice Anderson')).toBeInTheDocument();
+  });
+
+  describe('Remove on ended shares (#2742)', () => {
+    const ended = (over: Record<string, unknown> = {}) =>
+      grant({ id: 'e1', label: 'Old Club', status: 'declined', ...over });
+
+    async function openEnded() {
+      fireEvent.click(await screen.findByRole('button', { name: /Ended shares/ }));
+    }
+
+    // The server forgets a grant once it is deleted, so a re-read after Remove
+    // must not bring the row back.
+    function serveOutgoing(grants: Record<string, unknown>[], deletedStatus = 204) {
+      const live = [...grants];
+      let lists = 0;
+      const deleted: string[] = [];
+      server.use(
+        http.get(`${API_BASE_URL}/share-grants/outgoing`, () => {
+          lists += 1;
+          return HttpResponse.json(page(live));
+        }),
+        http.delete(`${API_BASE_URL}/share-grants/:id`, ({ params }) => {
+          deleted.push(String(params.id));
+          const i = live.findIndex((g) => g.id === params.id);
+          if (i >= 0) live.splice(i, 1);
+          return deletedStatus === 204
+            ? new HttpResponse(null, { status: 204 })
+            : errorEnvelope(deletedStatus, 'NOT_FOUND', 'x');
+        }),
+      );
+      return { lists: () => lists, deleted };
+    }
+
+    function renderWithSignal() {
+      const refreshPendingShares = vi.fn();
+      render(
+        <MemoryRouter>
+          <PendingSharesContext.Provider value={{ refreshPendingShares }}>
+            <AnnouncerProvider>
+              <DateFormatProvider>
+                <SharedByMePage />
+              </DateFormatProvider>
+            </AnnouncerProvider>
+          </PendingSharesContext.Provider>
+        </MemoryRouter>,
+      );
+      return refreshPendingShares;
+    }
+
+    test.each(['declined', 'expired', 'revoked'])(
+      'a %s row offers Remove with an item-specific name; a live row does not',
+      async (status) => {
+        mockApi('get', '/share-grants/outgoing', page([ended({ status }), grant()]));
+        renderPage();
+        await openEnded();
+        expect(
+          await screen.findByRole('button', { name: 'Remove share of Old Club to bob' }),
+        ).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: /^Remove / })).toHaveLength(1);
+      },
+    );
+
+    test('confirming sends DELETE, drops the row, announces it and refreshes the badge', async () => {
+      const { lists, deleted } = serveOutgoing([ended(), grant()]);
+      const refreshBadge = renderWithSignal();
+      await openEnded();
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'Remove share of Old Club to bob' }),
+      );
+      const dialog = await screen.findByRole('dialog', { name: 'Remove this share?' });
+      expect(deleted).toHaveLength(0);
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+      await waitFor(() => expect(deleted).toEqual(['e1']));
+      await waitFor(() => expect(screen.queryByText('Old Club')).toBeNull());
+      await waitFor(() =>
+        expect(screen.getByRole('status')).toHaveTextContent(
+          'Removed the share of Old Club to bob.',
+        ),
+      );
+      expect(refreshBadge).toHaveBeenCalled();
+      // The list is re-read from the server after a successful Remove.
+      await waitFor(() => expect(lists()).toBeGreaterThan(1));
+    });
+
+    test('cancelling sends nothing', async () => {
+      mockApi('get', '/share-grants/outgoing', page([ended()]));
+      const del = mockApi('delete', '/share-grants/e1', new Response(null, { status: 204 }));
+      renderPage();
+      await openEnded();
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Club/ }));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      expect(del).toHaveLength(0);
+      expect(screen.getByText('Old Club')).toBeInTheDocument();
+    });
+
+    test('disables the row action while the delete is in flight', async () => {
+      const live = [ended()];
+      server.use(
+        http.get(`${API_BASE_URL}/share-grants/outgoing`, () => HttpResponse.json(page(live))),
+      );
+      let release: () => void = () => {};
+      const gate = new Promise<void>((r) => {
+        release = r;
+      });
+      server.use(
+        http.delete(`${API_BASE_URL}/share-grants/e1`, async () => {
+          await gate;
+          live.length = 0;
+          return new HttpResponse(null, { status: 204 });
+        }),
+      );
+      renderPage();
+      await openEnded();
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Club/ }));
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }),
+      );
+      await waitFor(() =>
+        expect(screen.getByRole('button', { name: /^Remove share of Old Club/ })).toBeDisabled(),
+      );
+      release();
+      await waitFor(() => expect(screen.queryByText('Old Club')).toBeNull());
+    });
+
+    test('a 404 after Remove counts as done: the row goes and no error is shown', async () => {
+      serveOutgoing([ended()], 404);
+      renderPage();
+      await openEnded();
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Club/ }));
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }),
+      );
+      await waitFor(() => expect(screen.queryByText('Old Club')).toBeNull());
+      expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    test('a 409 share_grant_not_ended shows the localized reason and keeps the row', async () => {
+      mockApi('get', '/share-grants/outgoing', page([ended()]));
+      mockApi(
+        'delete',
+        '/share-grants/e1',
+        HttpResponse.json(
+          {
+            error: {
+              code: 'CONFLICT',
+              message: 'raw backend prose',
+              reason_code: 'share_grant_not_ended',
+            },
+            request_id: 'req-1',
+          },
+          { status: 409 },
+        ),
+      );
+      renderPage();
+      await openEnded();
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Club/ }));
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }),
+      );
+      const alert = await screen.findByRole('alert');
+      expect(alert).toHaveTextContent(/Only a share that has ended/);
+      expect(alert).not.toHaveTextContent('raw backend prose');
+      expect(screen.getByText('Old Club')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /^Remove share of Old Club/ })).toBeEnabled();
+    });
   });
 });
