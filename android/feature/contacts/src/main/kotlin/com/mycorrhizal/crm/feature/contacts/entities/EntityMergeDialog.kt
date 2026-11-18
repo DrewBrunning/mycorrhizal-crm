@@ -158,7 +158,15 @@ fun EntityMergeDialog(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(selected = candidate.id == selectedId, onClick = null)
-                                Text(candidate.name, modifier = Modifier.padding(start = 8.dp))
+                                Column(Modifier.padding(start = 8.dp)) {
+                                    Text(candidate.name)
+                                    // Same-named candidates are told apart by their facts.
+                                    Text(
+                                        entityMergeDetail(candidate),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
@@ -286,18 +294,22 @@ private fun KeepOption(
 
 /**
  * "Place · Linked to 3 contacts · Updated 12.11.2026": the facts that tell two same-named records
- * apart. Counts and dates only appear when the record carries them (the page's GET does; a list
- * row does not).
+ * apart. The count and the date appear only when the record carries them: GET /entities/{id}, the
+ * list items and the duplicate-suggestion sides do (#2749); an older server's list rows do not.
  */
 @Composable
-internal fun entityMergeDetail(entity: Entity): String {
+internal fun entityMergeDetail(entity: Entity): String =
+    entityDetailLine(entity.kind, entity.linkCount, entity.updatedAt)
+
+@Composable
+internal fun entityDetailLine(kind: String, linkCount: Int?, updatedAt: String?): String {
     val dateFormat = LocalDateFormat.current
-    val linked = entity.linkCount?.let {
+    val linked = linkCount?.let {
         pluralStringResource(R.plurals.shared_entities_detail_linked_count, it, it)
     }
-    val updated = DateFormat.formatTimestamp(entity.updatedAt, dateFormat)
+    val updated = DateFormat.formatTimestamp(updatedAt, dateFormat)
         .takeIf { it.isNotBlank() }
         ?.let { stringResource(R.string.shared_entities_merge_detail_updated, it) }
-    return listOfNotNull(stringResource(entityKindOneRes(entity.kind)), linked, updated)
+    return listOfNotNull(stringResource(entityKindOneRes(kind)), linked, updated)
         .joinToString(" \u00b7 ")
 }

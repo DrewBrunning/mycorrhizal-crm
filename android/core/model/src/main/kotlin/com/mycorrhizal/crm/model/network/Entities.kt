@@ -50,7 +50,10 @@ data class Entity(
     val core: Map<String, Any?>? = null,
     val sensitivity: String = EntitySensitivity.NORMAL,
     val revision: Int? = null,
-    /** Only on GET /entities/{id}. */
+    /**
+     * On GET /entities/{id} the live link rows; on GET /entities list items (#2749) the distinct
+     * live contacts linked. Null on create / update / restore / merge responses and older servers.
+     */
     @Json(name = "link_count") val linkCount: Int? = null,
     @Json(name = "projection_count") val projectionCount: Int? = null,
     @Json(name = "created_at") val createdAt: String? = null,
@@ -370,7 +373,14 @@ fun ContactRecordResponse.withoutProjectedEntries(): ContactRecordResponse {
 data class EntitySuggestionEntity(
     val id: String = "",
     val kind: String = EntityKind.ORGANISATION,
-    val name: String = ""
+    val name: String = "",
+    /**
+     * Distinct live contacts linked to this side (#2749), so same-named candidates can be told
+     * apart. Null from a server that predates the field; 0 is a real "no links".
+     */
+    @Json(name = "link_count") val linkCount: Int? = null,
+    /** The entity's last update (RFC 3339), null from a server that predates the field. */
+    @Json(name = "updated_at") val updatedAt: String? = null
 )
 
 /**
