@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { ApiError } from '../api/client';
 import { connectMonica, startMonicaFetch } from '../api/monicaImport';
 import MonicaImportDialog from './MonicaImportDialog';
 
@@ -137,4 +138,103 @@ test('Start import kicks off the fetch for the connected session', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
 
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('sess-9', expect.anything()));
+});
+
+// #2680: an unreachable Monica reads "Couldn't reach Monica at <host>" with the
+// request ref on its own line, not the raw "monica service error" sentence.
+test('an unreachable Monica names the host and keeps the ref on a second line', async () => {
+  connectMock.mockImplementationOnce(() =>
+    Promise.reject(
+      new ApiError(
+        'monica service error: The Monica instance could not be reached',
+        'EXTERNAL_SERVICE_ERROR',
+        502,
+        undefined,
+        '9fe614ba',
+        'monica_unreachable',
+      ),
+    ),
+  );
+  renderOpen();
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'https://monica.example/api' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent("Couldn't reach Monica at monica.example");
+  expect(alert).toHaveTextContent('(ref: 9fe614ba)');
+  expect(alert).not.toHaveTextContent('monica service error');
+  expect(screen.getByText('(ref: 9fe614ba)')).not.toBe(alert);
+});
+
+// #2680: a URL problem belongs on the address field, not in a banner.
+test('an invalid Monica URL is attached to the address field', async () => {
+  connectMock.mockImplementationOnce(() =>
+    Promise.reject(
+      new ApiError(
+        'The Monica URL is invalid',
+        'VALIDATION_ERROR',
+        400,
+        undefined,
+        undefined,
+        'monica_url_invalid',
+      ),
+    ),
+  );
+  renderOpen();
+  fireEvent.change(screen.getByLabelText('Monica address'), { target: { value: 'nope' } });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  const field = screen.getByLabelText('Monica address');
+  await waitFor(() => expect(field).toHaveAttribute('aria-invalid', 'true'));
+  expect(field).toHaveAccessibleDescription(/The Monica URL is invalid/);
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+  // Editing the address clears the error.
+  fireEvent.change(field, { target: { value: 'https://monica.example' } });
+  expect(field).toHaveAttribute('aria-invalid', 'false');
+});
+
+test('other connect failures still use the banner', async () => {
+  connectMock.mockImplementationOnce(() =>
+    Promise.reject(
+      new ApiError(
+        'x',
+        'EXTERNAL_SERVICE_ERROR',
+        502,
+        undefined,
+        undefined,
+        'monica_token_rejected',
+      ),
+    ),
+  );
+  renderOpen();
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'https://monica.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'bad' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Monica rejected the API token');
+  expect(screen.getByLabelText('Monica address')).toHaveAttribute('aria-invalid', 'false');
+});
+
+test('an unreachable Monica with an address that is not a URL names it as typed, without a ref', async () => {
+  connectMock.mockImplementationOnce(() =>
+    Promise.reject(
+      new ApiError('x', 'EXTERNAL_SERVICE_ERROR', 502, undefined, undefined, 'monica_unreachable'),
+    ),
+  );
+  renderOpen();
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'monica.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent("Couldn't reach Monica at monica.example");
+  expect(alert).not.toHaveTextContent('ref:');
 });
