@@ -1572,6 +1572,7 @@
     <string name="shares_grant_block">Block sender</string>
     <string name="shares_grant_unblock">Unblock</string>
     <string name="shares_grant_revoke">Revoke</string>
+    <string name="shares_grant_remove">Remove</string>
     <string name="shares_grant_reconfirm">Review and re-confirm</string>
     <string name="shares_grant_edit">Edit</string>
     <string name="shares_grant_decline_message">Decline the share of %1$s from %2$s? They can see that it was declined.</string>
@@ -1581,6 +1582,8 @@
     <string name="shares_grant_leave_message">%1$s will no longer be visible to you. To see it again, %2$s has to share it with you again.</string>
     <string name="shares_grant_revoke_title">Revoke this share?</string>
     <string name="shares_grant_revoke_message">%1$s will lose access the next time they load it. Anything they have already seen cannot be taken back.</string>
+    <string name="shares_grant_remove_title">Remove this share?</string>
+    <string name="shares_grant_remove_message">This share with %1$s has ended. Removing it clears it from this list.</string>
     <string name="shares_grant_reconfirm_title">Share these sections again?</string>
     <string name="shares_grant_reconfirm_message">Some items in this share were marked private or secret, so these sections are withheld from %1$s. Check what they now contain before sharing them again.</string>
     <string name="shares_grant_reconfirm_confirm">Share again</string>
@@ -2114,6 +2117,15 @@
     <string name="import_report_row">Row %1$d · %2$s</string>
     <string name="import_report_skipped">Skipped: %1$s</string>
     <string name="import_report_failed">Failed: %1$s</string>
+    <string name="import_diag_birthday_warn">The birthday is not a valid date, so it will not be imported</string>
+    <string name="import_diag_anniversary_warn">The anniversary is not a valid date, so it will not be imported</string>
+    <string name="import_diag_encoding_warn">This file was not UTF-8, so it was read as Windows-1252. Check that accented characters look right.</string>
+    <string name="import_report_warning_birthday">Imported, but the birthday is not a valid date so it was left out</string>
+    <string name="import_report_warning_anniversary">Imported, but the anniversary is not a valid date so it was left out</string>
+    <string name="import_report_warning">Imported with a warning: %1$s</string>
+    <string name="import_report_note">Note: %1$s</string>
+    <string name="import_report_title_warnings">Imported with warnings</string>
+    <string name="import_report_title_mixed">Rows not imported or with warnings</string>
     <string name="import_report_share">Share as CSV</string>
     <string name="import_report_share_title">Share import report</string>
     <string name="import_resolve_all">Resolve all as merged</string>
