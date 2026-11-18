@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertContentDescriptionEquals
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
@@ -47,6 +48,7 @@ import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.model.network.SearchActivityHit
+import com.mycorrhizal.crm.model.network.SearchContactHit
 import com.mycorrhizal.crm.model.network.SearchEntityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
@@ -461,6 +463,87 @@ class ContactListScreenTest {
         composeTestRule.onNodeWithText("Pet").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Acme Rex").performScrollTo().performClick()
         assertEquals("e2", opened)
+    }
+
+    private fun matchedOnState(
+        searchQuery: String = "zebracorp",
+        resultQuery: String? = "zebracorp",
+        hits: List<SearchContactHit>
+    ) = ContactListUiState(
+        isLoading = false,
+        searchQuery = searchQuery,
+        contacts = listOf(
+            ContactSummary(id = 7, fn = "Beatrix Marlow", firstname = "Beatrix"),
+            ContactSummary(id = 8, fn = "Fenn Zebracorp", firstname = "Fenn"),
+            ContactSummary(id = 9, fn = "Older Server", firstname = "Older")
+        ),
+        searchResult = SearchResult(query = resultQuery, contacts = hits)
+    )
+
+    @Test
+    fun `a contact hit says which of its fields the search matched`() {
+        setContent(
+            matchedOnState(
+                hits = listOf(
+                    SearchContactHit(id = 7, matchedOn = listOf("organization")),
+                    SearchContactHit(id = 8, matchedOn = listOf("name", "email"))
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("Matched on organisation").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Matched on name, email").assertIsDisplayed()
+        // A row the search did not report on (older server, beyond the page) stays plain.
+        composeTestRule.onAllNodesWithText("Matched on", substring = true).assertCountEquals(2)
+    }
+
+    @Test
+    fun `an unknown matched_on token is dropped and a line of only unknown tokens is hidden`() {
+        setContent(
+            matchedOnState(
+                hits = listOf(
+                    SearchContactHit(id = 7, matchedOn = listOf("entity", "phone")),
+                    SearchContactHit(id = 8, matchedOn = listOf("entity"))
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("Matched on phone").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Matched on", substring = true).assertCountEquals(1)
+    }
+
+    @Test
+    fun `reasons from a superseded query are not shown against the new query`() {
+        setContent(
+            matchedOnState(
+                searchQuery = "zebracorp holdings",
+                resultQuery = "zebracorp",
+                hits = listOf(SearchContactHit(id = 7, matchedOn = listOf("organization")))
+            )
+        )
+        composeTestRule.onAllNodesWithText("Matched on", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `an entity hit says it matched on its name when the server reports it`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = emptyList(),
+                searchResult = SearchResult(
+                    entities = listOf(
+                        SearchEntityHit(
+                            id = "e1",
+                            kind = "organisation",
+                            name = "Acme Corp",
+                            matchedOn = listOf("name")
+                        ),
+                        SearchEntityHit(id = "e2", kind = "pet", name = "Acme Rex")
+                    )
+                )
+            )
+        )
+        composeTestRule.onNodeWithTag("contact-list").performScrollToNode(hasText("Acme Corp"))
+        composeTestRule.onNodeWithText("Matched on name").performScrollTo().assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Matched on", substring = true).assertCountEquals(1)
     }
 
     @Test

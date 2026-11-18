@@ -191,6 +191,12 @@
     <string name="contacts_search_notes_group">Notizen</string>
     <string name="contacts_search_activities_group">Interaktionen</string>
     <string name="contacts_search_entities_group">Organisationen, Orte &amp; Haustiere</string>
+    <string name="contacts_search_matched_on">Gefunden in: %1$s</string>
+    <string name="contacts_search_matched_field_name">Name</string>
+    <string name="contacts_search_matched_field_organization">Organisation</string>
+    <string name="contacts_search_matched_field_email">E-Mail</string>
+    <string name="contacts_search_matched_field_phone">Telefon</string>
+    <string name="contacts_search_matched_field_address">Adresse</string>
     <string name="contacts_search_unfiled">Nicht zugeordnet</string>
     <string name="contacts_search_resolved_relation">Übereinstimmende Beziehung: %1$s</string>
 
