@@ -535,12 +535,13 @@ export default function ContactsPage() {
   // and clear the selection only when something actually merged.
   const handleMergeGroupFinished = async (mergedCount: number, survivor?: Contact) => {
     setMergeGroup(null);
-    if (mergedCount > 0) await handleMerged(survivor, mergedCount + 1);
+    // BulkMergeDialog always names the survivor when it committed a merge.
+    if (mergedCount > 0) await handleMerged(survivor as Contact, mergedCount + 1);
   };
 
   const handleMergeClosed = () => setMergePair(null);
 
-  const handleMerged = async (survivor: Contact | undefined, total: number) => {
+  const handleMerged = async (survivor: Contact, total: number) => {
     // T92 step 4: the loser is gone and the survivor gained its
     // circles/tags — refetch so a stale row (or stale membership chips)
     // can't linger, and clear the selection pointing at the dead contact
@@ -549,14 +550,12 @@ export default function ContactsPage() {
     setSelectedUids(new Set());
     await Promise.all([refetch(), refreshCircles(), refreshTags()]);
     // #2688: say what happened, naming the contact that was kept.
-    if (survivor) {
-      showSuccess(
-        t('bulk.mergeDone', {
-          count: total,
-          name: [survivor.firstname, survivor.lastname].filter(Boolean).join(' ').trim(),
-        }),
-      );
-    }
+    showSuccess(
+      t('bulk.mergeDone', {
+        count: total,
+        name: [survivor.firstname, survivor.lastname].filter(Boolean).join(' ').trim(),
+      }),
+    );
   };
 
   // The five list-lens controls. Rendered inline in the toolbar from `sm` up

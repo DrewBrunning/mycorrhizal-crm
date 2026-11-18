@@ -46,6 +46,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Import and merge polish** ([#2688](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2688)): the import dialog fills a phone screen, unselected Keep and Skip labels are easier to read, matches with nothing to merge no longer count as updates, and merging contacts ends with a message naming the one kept.
 - **Clearer Android messages** ([#2629](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2629), [#2630](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2630)): an unreachable server is now named as such, the contact list and contact pages say "Showing saved data" with a Retry when they come from your saved copy, and "Text everyone" explains why it cannot send.
 - **Dates follow your format on Android** ([#2618](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2618)): Trash, import history and circle timelines now use your date and time format, without seconds.
 - **CSV imports with a byte-order mark or old encodings** ([#2662](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2662), [#2669](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2669)): a CSV saved with a byte-order mark now maps its first column, and a file that is not UTF-8 (such as Windows-1252 or Latin-1) is read in that encoding, with a warning, instead of importing garbled characters.
