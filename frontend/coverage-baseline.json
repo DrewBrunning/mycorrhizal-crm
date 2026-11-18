@@ -9,10 +9,10 @@
       "branchesTotal": 88
     },
     "src/App.tsx": {
-      "lines": 88.54,
-      "linesTotal": 96,
-      "branches": 88,
-      "branchesTotal": 50
+      "lines": 92,
+      "linesTotal": 100,
+      "branches": 94.73,
+      "branchesTotal": 57
     },
     "src/AppThemeProvider.tsx": {
       "lines": 87.5,
@@ -77,14 +77,14 @@
     "src/EntitiesPage.tsx": {
       "lines": 91.17,
       "linesTotal": 34,
-      "branches": 81.81,
-      "branchesTotal": 22
+      "branches": 83.33,
+      "branchesTotal": 24
     },
     "src/EntityDetailPage.tsx": {
       "lines": 90.51,
       "linesTotal": 116,
-      "branches": 77.64,
-      "branchesTotal": 85
+      "branches": 78.16,
+      "branchesTotal": 87
     },
     "src/HouseholdsPage.tsx": {
       "lines": 100,
@@ -1035,10 +1035,10 @@
       "branchesTotal": 39
     },
     "src/components/EntityMergeDialog.tsx": {
-      "lines": 98.52,
-      "linesTotal": 68,
-      "branches": 81.81,
-      "branchesTotal": 55
+      "lines": 98.66,
+      "linesTotal": 75,
+      "branches": 84.12,
+      "branchesTotal": 63
     },
     "src/components/EntityPicker.tsx": {
       "lines": 100,
@@ -1048,9 +1048,9 @@
     },
     "src/components/EntitySuggestionsPanel.tsx": {
       "lines": 100,
-      "linesTotal": 49,
-      "branches": 86.95,
-      "branchesTotal": 23
+      "linesTotal": 33,
+      "branches": 88.88,
+      "branchesTotal": 18
     },
     "src/components/ErrorAggregationPanel.tsx": {
       "lines": 100,
@@ -1161,10 +1161,10 @@
       "branchesTotal": 54
     },
     "src/components/GlobalSearch.tsx": {
-      "lines": 98.64,
-      "linesTotal": 74,
-      "branches": 86.27,
-      "branchesTotal": 51
+      "lines": 98.86,
+      "linesTotal": 88,
+      "branches": 89.28,
+      "branchesTotal": 56
     },
     "src/components/HouseholdDialog.tsx": {
       "lines": 96.77,
@@ -2483,7 +2483,7 @@
     "src/utils/entityDisambiguation.ts": {
       "lines": 100,
       "linesTotal": 5,
-      "branches": 50,
+      "branches": 75,
       "branchesTotal": 4
     },
     "src/utils/entityLabels.ts": {
