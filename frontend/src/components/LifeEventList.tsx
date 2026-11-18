@@ -5,6 +5,7 @@ import { Box, Chip, IconButton, Paper, Tooltip, Typography } from '@mui/material
 import { useTranslation } from 'react-i18next';
 import type { Contact } from '../api/contacts';
 import { type LifeEvent, partialDateRangeDisplay } from '../api/lifeEvents';
+import { useOptionalDateFormat } from '../DateFormatProvider';
 
 interface LifeEventListProps {
   events: LifeEvent[];
@@ -20,6 +21,7 @@ export default function LifeEventList({
   onDelete,
 }: LifeEventListProps) {
   const { t } = useTranslation();
+  const dateFormat = useOptionalDateFormat();
 
   if (events.length === 0) {
     return (
@@ -76,7 +78,11 @@ export default function LifeEventList({
                   />
                 )}
                 <Chip
-                  label={partialDateRangeDisplay(event.date, event.end_date)}
+                  label={partialDateRangeDisplay(
+                    event.date,
+                    event.end_date,
+                    dateFormat?.formatBirthday,
+                  )}
                   size="small"
                   variant="outlined"
                 />

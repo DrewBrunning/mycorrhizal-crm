@@ -8,6 +8,7 @@ import {
   partialDateRangeDisplay,
   resolveLifeEventSuggestion,
 } from '../api/lifeEvents';
+import { useOptionalDateFormat } from '../DateFormatProvider';
 
 interface LifeEventSuggestionsProps {
   contactId: string | number;
@@ -26,6 +27,7 @@ function suggestionKey(s: LifeEventSuggestion): string {
 // again. The accepted event is not linked to the period it came from.
 export default function LifeEventSuggestions({ contactId, onAccepted }: LifeEventSuggestionsProps) {
   const { t } = useTranslation();
+  const dateFormat = useOptionalDateFormat();
   const [suggestions, setSuggestions] = useState<LifeEventSuggestion[]>([]);
   const [busy, setBusy] = useState(false);
 
@@ -102,7 +104,7 @@ export default function LifeEventSuggestions({ contactId, onAccepted }: LifeEven
             <Typography variant="body2" sx={{ flexGrow: 1 }}>
               {t('lifeEvent.suggestions.prompt', {
                 event: t(`lifeEvent.types.${s.type}`, s.type),
-                when: partialDateRangeDisplay(s.date, s.end_date),
+                when: partialDateRangeDisplay(s.date, s.end_date, dateFormat?.formatBirthday),
               })}
             </Typography>
             <Button

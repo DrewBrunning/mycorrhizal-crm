@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router';
 import type { Contact } from '../api/contacts';
 import { partialDateDisplay } from '../api/lifeEvents';
 import { getDisplayLabel, getOtherPartyId, type RelationshipEdge } from '../api/relationshipEdges';
+import { useOptionalDateFormat } from '../DateFormatProvider';
 
 interface RelationshipEdgeListProps {
   confirmedEdges: RelationshipEdge[];
@@ -31,6 +32,7 @@ export default function RelationshipEdgeList({
   onReject,
 }: RelationshipEdgeListProps) {
   const { t } = useTranslation();
+  const dateFormat = useOptionalDateFormat();
   const navigate = useNavigate();
 
   const handleDeleteClick = (edgeId: string) => {
@@ -126,7 +128,7 @@ export default function RelationshipEdgeList({
                   >
                     {t(getDisplayLabel(edge, viewedContactUid))}
                     {edge.end_date &&
-                      ` · ${t('relationships.until', { date: partialDateDisplay(edge.end_date) })}`}
+                      ` · ${t('relationships.until', { date: partialDateDisplay(edge.end_date, dateFormat?.formatBirthday) })}`}
                   </Typography>
                   {edge.sensitivity !== 'normal' && (
                     <Chip

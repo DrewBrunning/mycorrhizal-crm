@@ -57,10 +57,10 @@
       "branchesTotal": 171
     },
     "src/DashboardPage.tsx": {
-      "lines": 77.71,
-      "linesTotal": 166,
-      "branches": 68.18,
-      "branchesTotal": 110
+      "lines": 82.42,
+      "linesTotal": 165,
+      "branches": 75,
+      "branchesTotal": 112
     },
     "src/DataSettingsPage.tsx": {
       "lines": 100,
@@ -69,8 +69,8 @@
       "branchesTotal": 79
     },
     "src/DateFormatProvider.tsx": {
-      "lines": 94.71,
-      "linesTotal": 284,
+      "lines": 94.73,
+      "linesTotal": 285,
       "branches": 87.05,
       "branchesTotal": 224
     },
@@ -462,7 +462,7 @@
       "lines": 100,
       "linesTotal": 40,
       "branches": 100,
-      "branchesTotal": 52
+      "branchesTotal": 56
     },
     "src/api/linkFieldTypes.ts": {
       "lines": 100,
@@ -819,10 +819,10 @@
       "branchesTotal": 12
     },
     "src/components/CircleDetailDialog.tsx": {
-      "lines": 98.14,
-      "linesTotal": 54,
+      "lines": 98.18,
+      "linesTotal": 55,
       "branches": 100,
-      "branchesTotal": 55
+      "branchesTotal": 59
     },
     "src/components/CircleTagEntityList.tsx": {
       "lines": 100,
@@ -897,9 +897,9 @@
       "branchesTotal": 88
     },
     "src/components/ContactInformation.tsx": {
-      "lines": 76.25,
-      "linesTotal": 139,
-      "branches": 76.19,
+      "lines": 76.59,
+      "linesTotal": 141,
+      "branches": 76.62,
       "branchesTotal": 231
     },
     "src/components/ContactMap.tsx": {
@@ -953,7 +953,7 @@
     "src/components/CustomFieldsSettings.tsx": {
       "lines": 95.34,
       "linesTotal": 43,
-      "branches": 85.18,
+      "branches": 88.88,
       "branchesTotal": 27
     },
     "src/components/DAVPasswordSettings.tsx": {
@@ -1155,8 +1155,8 @@
       "branchesTotal": 59
     },
     "src/components/GiftDialog.tsx": {
-      "lines": 94.89,
-      "linesTotal": 98,
+      "lines": 94.94,
+      "linesTotal": 99,
       "branches": 88.6,
       "branchesTotal": 79
     },
@@ -1257,14 +1257,14 @@
       "branchesTotal": 114
     },
     "src/components/LifeEventList.tsx": {
-      "lines": 77.77,
-      "linesTotal": 9,
+      "lines": 80,
+      "linesTotal": 10,
       "branches": 61.53,
       "branchesTotal": 13
     },
     "src/components/LifeEventSuggestions.tsx": {
       "lines": 100,
-      "linesTotal": 31,
+      "linesTotal": 32,
       "branches": 75,
       "branchesTotal": 4
     },
@@ -1323,10 +1323,10 @@
       "branchesTotal": 32
     },
     "src/components/MergeContactsDialog.tsx": {
-      "lines": 95.18,
-      "linesTotal": 83,
-      "branches": 88.61,
-      "branchesTotal": 123
+      "lines": 95.34,
+      "linesTotal": 86,
+      "branches": 90.62,
+      "branchesTotal": 128
     },
     "src/components/MonicaImportDialog.tsx": {
       "lines": 95.65,
@@ -1421,8 +1421,8 @@
     "src/components/OccasionObligationList.tsx": {
       "lines": 100,
       "linesTotal": 13,
-      "branches": 90,
-      "branchesTotal": 20
+      "branches": 90.9,
+      "branchesTotal": 22
     },
     "src/components/OfflineBanner.tsx": {
       "lines": 100,
@@ -1539,8 +1539,8 @@
       "branchesTotal": 106
     },
     "src/components/RelationshipEdgeList.tsx": {
-      "lines": 77.77,
-      "linesTotal": 27,
+      "lines": 78.57,
+      "linesTotal": 28,
       "branches": 63.63,
       "branchesTotal": 22
     },
@@ -1715,8 +1715,8 @@
     "src/components/UpcomingOccasionsWidget.tsx": {
       "lines": 100,
       "linesTotal": 4,
-      "branches": 94.73,
-      "branchesTotal": 19
+      "branches": 95.65,
+      "branchesTotal": 23
     },
     "src/components/WebhooksSettings.tsx": {
       "lines": 86.06,
@@ -2420,6 +2420,12 @@
       "branches": 100,
       "branchesTotal": 28
     },
+    "src/utils/birthdayAge.ts": {
+      "lines": 100,
+      "linesTotal": 5,
+      "branches": 100,
+      "branchesTotal": 5
+    },
     "src/utils/circleColors.ts": {
       "lines": 100,
       "linesTotal": 2,
@@ -2522,6 +2528,12 @@
       "branches": 100,
       "branchesTotal": 16
     },
+    "src/utils/humanizeToken.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 2
+    },
     "src/utils/imageCrop.ts": {
       "lines": 100,
       "linesTotal": 12,
@@ -2554,9 +2566,9 @@
     },
     "src/utils/localDate.ts": {
       "lines": 100,
-      "linesTotal": 14,
+      "linesTotal": 21,
       "branches": 100,
-      "branchesTotal": 8
+      "branchesTotal": 11
     },
     "src/utils/markdown.ts": {
       "lines": 96.02,
