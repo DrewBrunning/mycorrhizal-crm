@@ -112,7 +112,7 @@ RUN yarn build
 # =============================================================================
 # Stage 3: Runtime - nginx + Go backend under supervisord
 # =============================================================================
-FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 # Runtime dependencies. shadow provides usermod/groupmod for PUID/PGID remap.
 # No sqlite package needed - the backend uses a pure-Go SQLite driver.
@@ -164,10 +164,11 @@ FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c03
 # ("tzdata-2026f-r0: breaks: world[tzdata=2026e-r0]") -- the same pruned-pin
 # class as libssl3 above.
 # 2026-11-06 (alpine-pin-bump, automated): zlib 1.3.2-r1 -> 1.4-r0. Alpine pruned the old version from the index.
+# 2026-11-18 (alpine-pin-bump, automated): nginx 1.30.6-r0 -> 1.30.7-r0. Alpine pruned the old version from the index.
 RUN apk add --no-cache \
     ca-certificates=20261020-r0 \
     tzdata=2026f-r0 \
-    nginx=1.30.6-r0 \
+    nginx=1.30.7-r0 \
     supervisor=4.3.0-r1 \
     shadow=4.18.0-r1 \
     libc6-compat=1.1.0-r4 \

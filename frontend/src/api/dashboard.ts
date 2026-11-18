@@ -9,6 +9,7 @@ import type { Birthday, Contact } from './contacts';
 import type { OverdueDataDecayPolicy } from './dataDecayPolicies';
 import type { ReachOutSuggestion } from './reachOutSuggestions';
 import type { Reminder } from './reminders';
+import { withViewerTimezone } from './viewerTimezone';
 
 // A Reminder enriched with its contact's display name (nickname-preferred,
 // falling back to firstname+lastname) so the dashboard never needs a second
@@ -60,7 +61,9 @@ export interface DashboardResponse {
 }
 
 export async function getDashboard(): Promise<DashboardResponse> {
-  const response = await apiFetch(`${API_BASE_URL}/dashboard`, { headers: getAuthHeaders() });
+  const response = await apiFetch(withViewerTimezone(`${API_BASE_URL}/dashboard`), {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }

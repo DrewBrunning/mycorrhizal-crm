@@ -53,9 +53,12 @@ internal fun ImportRowPreview.withEdit(edit: ImportRowEdit?): ImportRowPreview {
 
 /**
  * Issue #2610: the fix form edits name, email and phone only. A row with any other validation
- * error (birthday, anniversary, an unparseable card) can never be made valid there, so the form
- * is not offered and the row says what to do instead. The messages are the backend's
- * `ValidateImportedContact` / parse failures; the fixable ones name a name, email or phone.
+ * error (an unparseable card, or a birthday/anniversary from a server older than #2653) can never
+ * be made valid there, so the form is not offered and the row says what to do instead. The
+ * messages are the backend's `ValidateImportedContact` / parse failures; the fixable ones name a
+ * name, email or phone. A current server no longer errors on an invalid birthday or anniversary:
+ * it drops the date and attaches a warning diagnostic, which is not a validation error, so such a
+ * row is valid, importable and never reaches this check.
  */
 internal fun ImportRowPreview.hasUnfixableError(): Boolean = validationErrors.any { error ->
     val text = error.lowercase()

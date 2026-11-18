@@ -258,7 +258,8 @@ fun ImportContactsScreen(
                         onResolveAll = viewModel::resolveAll,
                         onConfirm = viewModel::confirmImport,
                         rowEdits = state.rowEdits,
-                        onRowEditSave = viewModel::saveRowEdit
+                        onRowEditSave = viewModel::saveRowEdit,
+                        fileDiagnostics = preview.fileDiagnostics
                     )
 
                 state.step == ImportStep.RESULT && result != null ->

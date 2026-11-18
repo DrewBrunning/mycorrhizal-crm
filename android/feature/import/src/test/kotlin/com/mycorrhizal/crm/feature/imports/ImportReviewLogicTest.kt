@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.imports
 
 import com.mycorrhizal.crm.model.network.DuplicateMatch
+import com.mycorrhizal.crm.model.network.ImportDiagnostic
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowIssue
 import com.mycorrhizal.crm.model.network.ImportRowPreview
@@ -140,5 +141,20 @@ class ImportReviewLogicTest {
         assertFalse(rowWith("First name is required").hasUnfixableError())
         assertFalse(rowWith("Invalid email format", "Invalid phone format").hasUnfixableError())
         assertFalse(fresh.hasUnfixableError())
+    }
+
+    // Issue #2653: a birthday that cannot be parsed is now a warning on a valid row.
+    @Test
+    fun `a row with only a birthday warning is valid, new and not unfixable`() {
+        val warned = ImportRowPreview(
+            rowIndex = 0,
+            diagnostics = listOf(
+                ImportDiagnostic("warn", "birthday", "birthday not imported: invalid value")
+            )
+        )
+
+        assertFalse(warned.hasUnfixableError())
+        assertTrue(warned.matches(ImportReviewFilter.NEW))
+        assertFalse(warned.matches(ImportReviewFilter.ERRORS))
     }
 }
