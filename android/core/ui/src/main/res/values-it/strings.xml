@@ -2166,6 +2166,15 @@
     <string name="import_report_row">Riga %1$d · %2$s</string>
     <string name="import_report_skipped">Saltata: %1$s</string>
     <string name="import_report_failed">Non riuscita: %1$s</string>
+    <string name="import_diag_birthday_warn">Il compleanno non è una data valida, quindi non verrà importato</string>
+    <string name="import_diag_anniversary_warn">L’anniversario non è una data valida, quindi non verrà importato</string>
+    <string name="import_diag_encoding_warn">Questo file non era in UTF-8, quindi è stato letto come Windows-1252. Controlla che gli accenti siano corretti.</string>
+    <string name="import_report_warning_birthday">Importato, ma il compleanno non è una data valida ed è stato omesso</string>
+    <string name="import_report_warning_anniversary">Importato, ma l’anniversario non è una data valida ed è stato omesso</string>
+    <string name="import_report_warning">Importato con un avviso: %1$s</string>
+    <string name="import_report_note">Nota: %1$s</string>
+    <string name="import_report_title_warnings">Importato con avvisi</string>
+    <string name="import_report_title_mixed">Righe non importate o con avvisi</string>
     <string name="import_report_share">Condividi come CSV</string>
     <string name="import_report_share_title">Condividi il rapporto di importazione</string>
     <string name="import_resolve_all">Risolvi tutto come unito</string>
