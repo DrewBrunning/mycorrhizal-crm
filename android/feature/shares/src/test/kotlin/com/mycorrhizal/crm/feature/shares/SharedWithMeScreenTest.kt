@@ -114,6 +114,10 @@ class SharedWithMeScreenTest {
 
         composeTestRule.onNodeWithText("Decline").performClick()
         composeTestRule.onNodeWithText("Decline this share?").assertIsDisplayed()
+        // Issue #2642: decline, leave and block are one `declined` to the sender (ADR 0042).
+        composeTestRule.onNodeWithText(
+            "Decline the share of Dana White from dana? They will see it as declined or ended."
+        ).assertIsDisplayed()
         coVerify(exactly = 0) { repository.decline(any(), any()) }
         composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
 
@@ -130,6 +134,11 @@ class SharedWithMeScreenTest {
         composeTestRule.onNodeWithContentDescription("More actions for Dana White").performClick()
         composeTestRule.onNodeWithText("Block sender").performClick()
         composeTestRule.onNodeWithText("Block dana?").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "This declines the share and ends every share from dana to you. They are not " +
+                "told you blocked them; they see their shares as declined or ended. Their " +
+                "future shares will not show up here. You can unblock them later."
+        ).assertIsDisplayed()
         coVerify(exactly = 0) { repository.decline(any(), any()) }
         composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
 
@@ -149,6 +158,10 @@ class SharedWithMeScreenTest {
         composeTestRule.onNodeWithContentDescription("More actions for Note").performClick()
         composeTestRule.onNodeWithText("Stop receiving").performClick()
         composeTestRule.onNodeWithText("Stop receiving this share?").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Note will no longer be visible to you. They will see the share as declined or " +
+                "ended. To see it again, dana has to share it with you again."
+        ).assertIsDisplayed()
         coVerify(exactly = 0) { repository.leave(any()) }
         composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
         coVerify(exactly = 1) { repository.leave("g2") }
@@ -179,8 +192,8 @@ class SharedWithMeScreenTest {
         composeTestRule.onNodeWithContentDescription("More actions for Note").performClick()
         composeTestRule.onNodeWithText("Stop receiving").performClick()
         composeTestRule.onNodeWithText(
-            "Note will no longer be visible to you. To see it again, dana has to share it " +
-                "with you again."
+            "Note will no longer be visible to you. They will see the share as declined or " +
+                "ended. To see it again, dana has to share it with you again."
         ).assertIsDisplayed()
     }
 
