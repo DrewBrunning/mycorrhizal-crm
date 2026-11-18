@@ -3872,13 +3872,19 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
 
     // --- Reusable entities (issue #2302, ADR 0043) ---
 
-    /** GET /api/v1/entities — one page; [cursor] is the previous page's `next_cursor`. */
+    /**
+     * GET /api/v1/entities — one page; [cursor] is the previous page's `next_cursor`. [sortByName]
+     * sends `sort=name&order=asc` (A to Z; the server's `order` default is desc, issue #2630).
+     * The cursor is sort-specific, so a caller pages with one value of [sortByName] throughout; a
+     * server that predates the parameters ignores them and keeps its last-modified order.
+     */
     suspend fun listEntities(
         kind: String? = null,
         q: String? = null,
         sensitivity: String? = null,
         cursor: String? = null,
-        limit: Int? = null
+        limit: Int? = null,
+        sortByName: Boolean = false
     ): Result<EntityListResponse> {
         val builder = "$PLACEHOLDER_ORIGIN$ENTITIES_PATH".toHttpUrl().newBuilder()
         kind?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("kind", it) }
@@ -3891,6 +3897,10 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         }
         cursor?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("cursor", it) }
         limit?.let { builder.addQueryParameter("limit", it.toString()) }
+        if (sortByName) {
+            builder.addQueryParameter("sort", "name")
+            builder.addQueryParameter("order", "asc")
+        }
         return executeGet(builder.build().toString()) { _, body ->
             moshi.adapter(EntityListResponse::class.java).fromJson(body)
         }
