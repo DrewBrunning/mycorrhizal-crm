@@ -25,9 +25,12 @@ updates:
       # Playwright 1.65 ships Firefox 159, whose content process crashes while
       # axe-core reads ariaLabelledByElements on a role="dialog": every Firefox
       # smoke/accessibility scan dies with "Page crashed"
-      # (dequelabs/axe-core#5549, microsoft/playwright#44135). Hold the runner
-      # and its browser builds at 1.64.x until axe-core ships the guard
-      # (dequelabs/axe-core#5561), then drop this entry.
+      # (dequelabs/axe-core#5549, microsoft/playwright#44135). A newer Firefox
+      # does not help -- 159.0.1 and Nightly 162 crash too (Mozilla bug
+      # 2090055, fix still in review) -- and Playwright only runs its own
+      # patched build, still Firefox 159 in the 1.66 alpha. Hold the runner and
+      # its browser builds at 1.64.x until axe-core ships the attribute-first
+      # guard (dequelabs/axe-core#5561), then drop this entry.
       - dependency-name: "@playwright/test"
         versions: [">= 1.65.0"]
   - package-ecosystem: "bundler"
