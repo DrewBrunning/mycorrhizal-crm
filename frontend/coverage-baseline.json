@@ -9,10 +9,10 @@
       "branchesTotal": 88
     },
     "src/App.tsx": {
-      "lines": 88.54,
-      "linesTotal": 96,
-      "branches": 88,
-      "branchesTotal": 50
+      "lines": 92,
+      "linesTotal": 100,
+      "branches": 94.73,
+      "branchesTotal": 57
     },
     "src/AppThemeProvider.tsx": {
       "lines": 87.5,
@@ -143,8 +143,8 @@
     "src/SearchResultsPage.tsx": {
       "lines": 98.55,
       "linesTotal": 69,
-      "branches": 89.61,
-      "branchesTotal": 77
+      "branches": 90.36,
+      "branchesTotal": 83
     },
     "src/SettingsPage.tsx": {
       "lines": 83.13,
@@ -502,9 +502,9 @@
     },
     "src/api/notes.ts": {
       "lines": 100,
-      "linesTotal": 55,
+      "linesTotal": 56,
       "branches": 100,
-      "branchesTotal": 36
+      "branchesTotal": 38
     },
     "src/api/notificationHealth.ts": {
       "lines": 100,
@@ -1161,10 +1161,10 @@
       "branchesTotal": 54
     },
     "src/components/GlobalSearch.tsx": {
-      "lines": 98.64,
-      "linesTotal": 74,
-      "branches": 86.27,
-      "branchesTotal": 51
+      "lines": 98.86,
+      "linesTotal": 88,
+      "branches": 89.65,
+      "branchesTotal": 58
     },
     "src/components/HouseholdDialog.tsx": {
       "lines": 96.77,
@@ -2579,6 +2579,12 @@
     "src/utils/searchLinks.ts": {
       "lines": 100,
       "linesTotal": 8,
+      "branches": 100,
+      "branchesTotal": 6
+    },
+    "src/utils/searchMatch.ts": {
+      "lines": 100,
+      "linesTotal": 6,
       "branches": 100,
       "branchesTotal": 6
     },
