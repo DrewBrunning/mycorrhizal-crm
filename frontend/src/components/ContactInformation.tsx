@@ -54,6 +54,7 @@ import { useDateFormat } from '../DateFormatProvider';
 import { useLinkFieldTypes } from '../hooks/useLinkFieldTypes';
 import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 import { looksLikeEmail } from '../utils/emailFormat';
+import { humanizeToken } from '../utils/humanizeToken';
 import {
   buildAddressLink,
   buildMailtoLink,
@@ -184,6 +185,10 @@ export default function ContactInformation({
   // then the token as typed (#2681: "private" used to show raw).
   const typeLabel = (type: string) =>
     t(`contacts.types.${type}`, t(`contacts.contexts.${type}`, type));
+  // Issue #2681: a context token ("private") reads in the user's language, like
+  // the editors' own context pickers, instead of as a raw English word.
+  const contextLabels = (contexts: string[]) =>
+    contexts.map((c) => t(`contacts.contexts.${c}`, humanizeToken(c))).join(', ');
   const { formatBirthday, getBirthdayPlaceholder, calculateAge } = useDateFormat();
   const enabled = enabledFields ?? resolveEnabledFields(null);
   const isOn = (key: ContactFieldKey) => enabled.has(key);
@@ -563,7 +568,7 @@ export default function ContactInformation({
         {rows.map((s, i) => {
           const label = `${s.service ? `${s.service}: ` : ''}${s.uri || s.user || ''}`;
           const href = resolveOnlineServiceLink(s, linkFieldTypes);
-          const suffix = s.contexts?.length ? ` (${s.contexts.join(', ')})` : '';
+          const suffix = s.contexts?.length ? ` (${contextLabels(s.contexts)})` : '';
           const copyValue = s.uri || s.user || label;
           const matched = s.service
             ? linkFieldTypes.find((lt) => lt.name.toLowerCase() === s.service?.toLowerCase())
@@ -703,7 +708,7 @@ export default function ContactInformation({
             <Box sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
               <Typography variant="body2">
                 {l.language}
-                {l.contexts?.length ? ` (${l.contexts.join(', ')})` : ''}
+                {l.contexts?.length ? ` (${contextLabels(l.contexts)})` : ''}
               </Typography>
             </Box>
             <Box sx={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 0.25 }}>

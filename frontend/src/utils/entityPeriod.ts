@@ -1,6 +1,7 @@
 // Link periods (ADR 0025, ADR 0043 decision 2). The web UI edits whole years,
 // like the work/address periods; a finer date already stored is kept when its
 // year is not touched.
+import type { TFunction } from 'i18next';
 import type { TemporalRange } from '../api/entities';
 import type { PartialDate } from '../api/lifeEvents';
 
@@ -54,10 +55,8 @@ export function periodFromYears(
   return { ...(start ? { start } : {}), ...(end ? { end } : {}) };
 }
 
-type TFn = (key: string, options?: Record<string, unknown>) => string;
-
 /** "2019 – 2021", "Since 2019", "Until 2021", or '' for no period. */
-export function formatLinkPeriod(period: TemporalRange | undefined | null, t: TFn): string {
+export function formatLinkPeriod(period: TemporalRange | undefined | null, t: TFunction): string {
   const { startYear, endYear } = yearsFromPeriod(period);
   if (startYear && endYear) return `${startYear} – ${endYear}`;
   if (startYear) return t('contactDetail.period.since', { year: startYear });

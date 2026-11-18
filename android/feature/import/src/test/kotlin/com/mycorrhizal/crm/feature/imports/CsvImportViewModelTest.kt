@@ -23,6 +23,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -639,5 +640,60 @@ class CsvImportViewModelTest {
 
             assertEquals("add", sent.captured.actions.single().action)
             assertEquals(listOf(edit), sent.captured.rowEdits)
+        }
+
+    // Issue #2664 / #2734: leaving discards the unconfirmed server session, fire-and-forget.
+    private fun TestScope.csvUploaded(): CsvImportViewModel {
+        coEvery { apiClient.cancelImportSession(any()) } returns Result.success(Unit)
+        coEvery { apiClient.uploadCsvImport(any(), any()) } returns Result.success(
+            ImportUploadResponse(sessionId = "s-csv", headers = listOf("Name"), rowCount = 1)
+        )
+        return CsvImportViewModel(apiClient).also {
+            it.onFilePicked("c.csv", byteArrayOf(1))
+            advanceUntilIdle()
+        }
+    }
+
+    @Test
+    fun `leaving the mapping step cancels the uploaded session`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = csvUploaded()
+
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.cancelImportSession("s-csv") }
+        }
+
+    @Test
+    fun `leaving before any upload sends nothing`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { apiClient.cancelImportSession(any()) } returns Result.success(Unit)
+
+        CsvImportViewModel(apiClient).leaveScreen()
+        advanceUntilIdle()
+
+        coVerify(exactly = 0) { apiClient.cancelImportSession(any()) }
+    }
+
+    @Test
+    fun `leaving after a successful import does not cancel`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = csvUploaded()
+            coEvery { apiClient.previewCsvImport(any()) } returns Result.success(
+                ImportPreviewResponse(
+                    sessionId = "s-csv",
+                    rows = listOf(ImportRowPreview(rowIndex = 0))
+                )
+            )
+            coEvery { apiClient.confirmImport(any()) } returns Result.success(ImportResult())
+            vm.submitMapping()
+            advanceUntilIdle()
+            vm.confirm()
+            advanceUntilIdle()
+
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { apiClient.cancelImportSession(any()) }
         }
 }

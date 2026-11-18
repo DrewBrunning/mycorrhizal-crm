@@ -270,7 +270,9 @@ describe('password sign-in and 2FA code reason codes', () => {
         json: async () => envelope('auth_invalid_credentials'),
       }),
     );
-    await expect(loginUser('alice', 'wrong')).rejects.toThrow('Invalid email or password');
+    await expect(loginUser('alice', 'wrong')).rejects.toThrow(
+      'Invalid username, email or password',
+    );
   });
 
   test('loginUser shows the lockout retry time from the flat 429 body', async () => {

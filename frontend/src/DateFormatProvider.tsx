@@ -709,3 +709,10 @@ export const useDateFormat = () => {
 
   return context;
 };
+
+/**
+ * Like {@link useDateFormat} but returns `undefined` outside a provider instead
+ * of throwing. For presentational pieces that merely prefer the user's date
+ * format and can fall back to the stored ISO form (issue #2681).
+ */
+export const useOptionalDateFormat = () => useContext(DateFormatContext);

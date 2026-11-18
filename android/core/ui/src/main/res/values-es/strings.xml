@@ -1146,6 +1146,8 @@
     <string name="reminder_overdue">Vencido</string>
     <string name="reminder_flexible">Flexible</string>
     <string name="date_field_pick_date">Elegir fecha</string>
+    <string name="date_field_type_date">Escribir una fecha</string>
+    <string name="date_field_pick_from_calendar">Elegir en el calendario</string>
     <string name="date_field_clear_date">Borrar fecha</string>
     <string name="date_field_add_time">Añadir hora</string>
     <string name="date_field_remove_time">Quitar hora</string>
@@ -2259,13 +2261,29 @@
     <!-- Historial de importación (paridad web, issue #651 / #834) -->
     <string name="import_history_entry">Historial de importación</string>
     <string name="import_history_title">Historial de importación</string>
+    <plurals name="import_history_created_count">
+        <item quantity="one">%1$d creado</item>
+        <item quantity="many">%1$d creados</item>
+        <item quantity="other">%1$d creados</item>
+    </plurals>
+    <plurals name="import_history_updated_count">
+        <item quantity="one">%1$d actualizado</item>
+        <item quantity="many">%1$d actualizados</item>
+        <item quantity="other">%1$d actualizados</item>
+    </plurals>
+    <plurals name="import_history_skipped_count">
+        <item quantity="one">%1$d omitido</item>
+        <item quantity="many">%1$d omitidos</item>
+        <item quantity="other">%1$d omitidos</item>
+    </plurals>
+    <plurals name="import_history_error_count">
+        <item quantity="one">%1$d error</item>
+        <item quantity="many">%1$d errores</item>
+        <item quantity="other">%1$d errores</item>
+    </plurals>
     <string name="import_history_view_report">Ver informe</string>
     <string name="import_history_report_title">Informe de importación</string>
     <string name="import_history_empty">Aún no hay importaciones</string>
-    <string name="import_history_col_created">Creados</string>
-    <string name="import_history_col_updated">Actualizados</string>
-    <string name="import_history_col_skipped">Omitidos</string>
-    <string name="import_history_col_errors">Errores</string>
     <string name="import_history_format_csv">CSV</string>
     <string name="import_history_format_vcf">VCF</string>
     <string name="import_history_format_jscontact">JSContact</string>

@@ -775,3 +775,15 @@ test('an unknown context is still shown as typed', () => {
   renderInformation({ emails: [{ address: 'a@example.com', contexts: ['pager'] }] });
   expect(screen.getByText(/a@example\.com \(pager\)/)).toBeInTheDocument();
 });
+
+// Issue #2681: a context token rendered as a raw English word ("(private)").
+test('an online service context is shown as its label, not the raw token', () => {
+  renderInformation(
+    { socialProfiles: [{ service: 'SomeUnknownService', user: 'alice', contexts: ['private'] }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) },
+  );
+  const row = fieldRow('Social Profiles');
+  expect(within(row).getByText(/\(Private\)/)).toBeInTheDocument();
+  expect(within(row).queryByText(/\(private\)/)).toBeNull();
+});

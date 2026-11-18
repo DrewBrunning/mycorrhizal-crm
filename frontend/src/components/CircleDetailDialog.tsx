@@ -16,6 +16,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
+import type { TFunction } from 'i18next';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
@@ -36,6 +37,7 @@ import { formatActivityDateRange } from '../utils/activityRange';
 import { circleColorHex } from '../utils/circleColors';
 import { isDuplicateCircleNameError } from '../utils/circleName';
 import { getErrorMessage, handleFetchError } from '../utils/errorHandler';
+import { humanizeToken } from '../utils/humanizeToken';
 import { calendarDateOnly } from '../utils/localDate';
 import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 
@@ -50,11 +52,17 @@ interface CircleDetailDialogProps {
 }
 
 // A short human summary of a timeline entry: the first non-empty text field.
-function summarize(item: CircleTimelineItem): string {
+function summarize(item: CircleTimelineItem, t: TFunction): string {
   const data = item.data as unknown as Record<string, unknown>;
   for (const key of ['content', 'title', 'message', 'name', 'description', 'type']) {
     const v = data[key];
-    if (typeof v === 'string' && v.trim()) return v;
+    if (typeof v === 'string' && v.trim()) {
+      // Issue #2681: a life event's `type` is a token ("married"); show its
+      // label, as the contact's own life-event list does.
+      return key === 'type' && item.type === 'life_event'
+        ? t(`lifeEvent.types.${v}`, humanizeToken(v))
+        : v;
+    }
   }
   return '';
 }
@@ -209,7 +217,7 @@ export default function CircleDetailDialog({
                 {items.map((item) => (
                   <ListItem key={`${item.type}-${item.id}`} disableGutters divider>
                     <ListItemText
-                      primary={summarize(item)}
+                      primary={summarize(item, t)}
                       secondary={
                         <>
                           {(item.members ?? []).map((m, i) => (

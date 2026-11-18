@@ -195,6 +195,33 @@ describe('isKnownLifeEventCategory', () => {
   });
 });
 
+describe('partialDateDisplay with a date formatter (issue #2681)', () => {
+  const fmt = (v: string) => `<${v}>`;
+
+  test('hands a full date to the formatter as YYYY-MM-DD', () => {
+    expect(partialDateDisplay({ year: 2026, month: 11, day: 1 }, fmt)).toBe('<2026-11-01>');
+  });
+
+  test('hands a year-less date over as --MM-DD', () => {
+    expect(partialDateDisplay({ month: 3, day: 15 }, fmt)).toBe('<--03-15>');
+  });
+
+  test('a year-only or month-only value never goes through the formatter', () => {
+    expect(partialDateDisplay({ year: 1990 }, fmt)).toBe('1990');
+    expect(partialDateDisplay({ month: 3 }, fmt)).toBe('03/??');
+  });
+
+  test('a range formats both ends', () => {
+    expect(
+      partialDateRangeDisplay(
+        { year: 2019, month: 1, day: 2 },
+        { year: 2024, month: 3, day: 4 },
+        fmt,
+      ),
+    ).toBe('<2019-01-02> – <2024-03-04>');
+  });
+});
+
 describe('partialDateDisplay', () => {
   test('formats a full date as YYYY-MM-DD', () => {
     expect(partialDateDisplay({ year: 1990, month: 3, day: 15 })).toBe('1990-03-15');

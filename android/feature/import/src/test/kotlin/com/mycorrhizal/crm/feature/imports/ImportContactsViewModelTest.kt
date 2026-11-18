@@ -15,6 +15,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -455,5 +456,50 @@ class ImportContactsViewModelTest {
 
             assertEquals(ImportStep.RESULT, vm.uiState.value.step)
             assertEquals(issues, vm.uiState.value.result?.issues)
+        }
+
+    // Issue #2664 / #2734: leaving discards the unconfirmed server session, fire-and-forget.
+    @Test
+    fun `leaving the review step cancels the records session, but not after the import`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val device = DeviceContact(
+                contactId = 1,
+                lookupKey = "lk-1",
+                displayName = "Jane Smith",
+                phones = emptyList(),
+                emails = listOf("jane@example.com"),
+                addresses = emptyList(),
+                organization = null,
+                birthday = null
+            )
+            coEvery { apiClient.cancelImportSession(any()) } returns Result.success(Unit)
+            coEvery { apiClient.uploadImportRecords(any()) } returns Result.success(
+                preview(ImportRowPreview(rowIndex = 0))
+            )
+            val reviewing = vm(listOf(device))
+            reviewing.load(contentResolver = mockk<ContentResolver>(relaxed = true))
+            advanceUntilIdle()
+            reviewing.toggle(1)
+            reviewing.submitSelected()
+            advanceUntilIdle()
+
+            reviewing.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.cancelImportSession("session-device") }
+
+            val done = vm(listOf(device))
+            done.load(contentResolver = mockk<ContentResolver>(relaxed = true))
+            advanceUntilIdle()
+            done.toggle(1)
+            done.submitSelected()
+            advanceUntilIdle()
+            coEvery { apiClient.confirmVcfImport(any()) } returns Result.success(ImportResult())
+            done.confirmImport()
+            advanceUntilIdle()
+            done.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.cancelImportSession(any()) }
         }
 }

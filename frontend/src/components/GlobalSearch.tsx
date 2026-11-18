@@ -8,6 +8,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import type { TFunction } from 'i18next';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router';
@@ -48,11 +49,7 @@ interface Option {
   to: string;
 }
 
-function toOptions(
-  result: SearchResult,
-  query: string,
-  t: (key: string, opts?: Record<string, unknown>) => string,
-): Option[] {
+function toOptions(result: SearchResult, query: string, t: TFunction): Option[] {
   const options: Option[] = [];
   for (const c of result.contacts) {
     options.push({
