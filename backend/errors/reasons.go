@@ -512,6 +512,8 @@ const (
 	ReasonIntegrationRequestBodyInvalid         ReasonCode = "integration_request_body_invalid"
 	ReasonIntegrationSaveFailed                 ReasonCode = "integration_save_failed"
 	ReasonOccasionAnchorDateIncomplete          ReasonCode = "occasion_anchor_date_incomplete"
+	ReasonOccasionAnchorDateInvalid             ReasonCode = "occasion_anchor_date_invalid"
+	ReasonOccasionAnchorDateRequired            ReasonCode = "occasion_anchor_date_required"
 	ReasonOccasionDaysInvalid                   ReasonCode = "occasion_days_invalid"
 	ReasonOccasionEventCirclesRequired          ReasonCode = "occasion_event_circles_required"
 	ReasonOccasionEventEndBeforeStart           ReasonCode = "occasion_event_end_before_start"
@@ -994,7 +996,9 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonImportFileUnreadable:                  {Template: "{reason}", Params: []string{"reason"}},
 	ReasonIntegrationRequestBodyInvalid:         {Template: "{reason}", Params: []string{"reason"}},
 	ReasonIntegrationSaveFailed:                 {Template: "{reason}", Params: []string{"reason"}},
-	ReasonOccasionAnchorDateIncomplete:          {Template: "An occasion anchor date requires both a month and a day, or neither", Params: nil},
+	ReasonOccasionAnchorDateIncomplete:          {Template: "An occasion anchor date requires both a month and a day", Params: nil},
+	ReasonOccasionAnchorDateInvalid:             {Template: "That month and day do not exist together, for example February 30", Params: nil},
+	ReasonOccasionAnchorDateRequired:            {Template: "An occasion needs a month and a day so it can remind you", Params: nil},
 	ReasonOccasionDaysInvalid:                   {Template: "days must be 30 or 90", Params: nil},
 	ReasonOccasionEventCirclesRequired:          {Template: "circle_ids is required", Params: nil},
 	ReasonOccasionEventEndBeforeStart:           {Template: "Event end time cannot be before its start time", Params: nil},
