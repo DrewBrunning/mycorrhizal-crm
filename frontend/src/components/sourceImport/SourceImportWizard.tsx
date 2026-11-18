@@ -7,6 +7,7 @@ import {
   Step,
   StepLabel,
   Stepper,
+  Typography,
   useMediaQuery,
   useTheme,
 } from '@mui/material';
@@ -44,6 +45,9 @@ interface Props {
   // True for a source imported from an uploaded file: the stepper then reads
   // Upload, Review, Import, Done instead of Connect, Fetch, ...
   fileUpload?: boolean;
+  // A secondary line under the failure message (the Meerkat "use the database
+  // upload" advice, shown only where that option exists).
+  errorHint?: string;
 }
 
 // The shared Dialog + Stepper shell for every source-import assistant
@@ -58,6 +62,7 @@ export default function SourceImportWizard({
   connectStep,
   onComplete,
   fileUpload = false,
+  errorHint,
 }: Props) {
   const { t } = useTranslation();
   const phone = useMediaQuery(useTheme().breakpoints.down('sm'));
@@ -139,6 +144,11 @@ export default function SourceImportWizard({
         {wizard.error && (
           <Alert severity="error" sx={{ mb: 2 }}>
             {wizard.error}
+            {errorHint && (
+              <Typography variant="body2" sx={{ mt: 0.5 }}>
+                {errorHint}
+              </Typography>
+            )}
           </Alert>
         )}
 

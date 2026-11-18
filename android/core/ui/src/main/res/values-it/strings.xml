@@ -198,6 +198,12 @@
     <string name="contacts_search_notes_group">Note</string>
     <string name="contacts_search_activities_group">Interazioni</string>
     <string name="contacts_search_entities_group">Organizzazioni, luoghi e animali</string>
+    <string name="contacts_search_matched_on">Corrisponde a: %1$s</string>
+    <string name="contacts_search_matched_field_name">nome</string>
+    <string name="contacts_search_matched_field_organization">organizzazione</string>
+    <string name="contacts_search_matched_field_email">e-mail</string>
+    <string name="contacts_search_matched_field_phone">telefono</string>
+    <string name="contacts_search_matched_field_address">indirizzo</string>
     <string name="contacts_search_unfiled">Non archiviata</string>
     <string name="contacts_search_resolved_relation">Relazione corrispondente: %1$s</string>
 
@@ -3507,7 +3513,9 @@
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>
     <string name="error_reason_integration_save_failed">%1$s</string>
-    <string name="error_reason_occasion_anchor_date_incomplete">Una data di riferimento per un’occasione richiede sia il mese che il giorno, oppure nessuno dei due</string>
+    <string name="error_reason_occasion_anchor_date_incomplete">Una data di riferimento per un’occasione richiede sia il mese che il giorno</string>
+    <string name="error_reason_occasion_anchor_date_invalid">Questa combinazione di mese e giorno non esiste, ad esempio il 30 febbraio</string>
+    <string name="error_reason_occasion_anchor_date_required">Un’occasione richiede un mese e un giorno per poterti inviare un promemoria</string>
     <string name="error_reason_occasion_days_invalid">days deve essere 30 o 90</string>
     <string name="error_reason_occasion_event_circles_required">circle_ids è obbligatorio</string>
     <string name="error_reason_occasion_event_end_before_start">L’ora di fine dell’evento non può precedere quella di inizio</string>

@@ -1959,18 +1959,23 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
      * GET /api/v1/notes — the Notes drawer entry, cursor-paginated. With no [scope] the server
      * returns the N4 unfiled-notes inbox; `scope=all` lists every note (issue #2224, additive from
      * #2223) and [includeContacts] fills each note's nested `contact` (the caller's own contacts).
+     * [sort] is `date` for the note's own date, newest first (issue #2744); the cursor it returns
+     * is specific to that sort, so a caller must send the same [sort] on every page of a list. An
+     * older server ignores the parameter.
      */
     suspend fun listNotes(
         cursor: String? = null,
         limit: Int? = null,
         scope: String? = null,
-        includeContacts: Boolean = false
+        includeContacts: Boolean = false,
+        sort: String? = null
     ): Result<NotesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$NOTES_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
         limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
         scope?.let { urlBuilder.addQueryParameter("scope", it) }
         if (includeContacts) urlBuilder.addQueryParameter("include", "contacts")
+        sort?.let { urlBuilder.addQueryParameter("sort", it) }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(NotesPage::class.java).fromJson(body)
         }

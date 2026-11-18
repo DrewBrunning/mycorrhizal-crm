@@ -27,6 +27,14 @@
     }
   },
   "globalSearch": {
+    "matchedOn": "Corrisponde a: {{fields}}",
+    "matchedField": {
+      "name": "nome",
+      "organization": "organizzazione",
+      "email": "e-mail",
+      "phone": "telefono",
+      "address": "indirizzo"
+    },
     "placeholder": "Cerca contatti, note, attività, luoghi…",
     "label": "Cerca ovunque",
     "open": "Cerca",
@@ -545,12 +553,32 @@
         "colStatus": "Esito",
         "colReason": "Motivo",
         "statusFailed": "Non riuscita",
-        "statusSkipped": "Saltata"
+        "statusSkipped": "Saltata",
+        "statusWarning": "Avviso",
+        "warningsTitle": "Importato con avvisi",
+        "mixedTitle": "Righe da rivedere",
+        "filterLabel": "Mostra",
+        "filterNotImported_one": "Non importata ({{count}})",
+        "filterNotImported_other": "Non importate ({{count}})",
+        "filterNotImported_many": "Non importate ({{count}})",
+        "filterAll_one": "Tutte ({{count}})",
+        "filterAll_other": "Tutte ({{count}})",
+        "filterAll_many": "Tutte ({{count}})",
+        "filterWarnings_one": "Avviso ({{count}})",
+        "filterWarnings_other": "Avvisi ({{count}})",
+        "filterWarnings_many": "Avvisi ({{count}})"
       },
       "errors": {
         "invalidFile": "Seleziona un file CSV valido",
         "fileTooLarge": "Il file è troppo grande. La dimensione massima è {{size}}MB",
         "noMappings": "Mappa almeno una colonna"
+      },
+      "warning": {
+        "anniversary": "Anniversario non importato: valore non valido",
+        "birthday": "Compleanno non importato: valore non valido"
+      },
+      "fileDiagnostic": {
+        "encoding": "Questo file non è in UTF-8, quindi è stato letto come Windows-1252. Prima di importare, controlli che le lettere accentate siano corrette."
       }
     },
     "urls": "Siti web",
@@ -1880,8 +1908,8 @@
           "colFormat": "Formato",
           "colCreated": "Creati",
           "colUpdated": "Aggiornati",
-          "colSkipped": "Ignorati",
-          "colErrors": "Errori",
+          "colSkipped": "Saltate in revisione",
+          "colErrors": "Non riuscite all’importazione",
           "colReport": "Rapporto",
           "viewReport": "Visualizza rapporto",
           "reportTitle": "Rapporto di importazione",
@@ -2123,7 +2151,8 @@
         "foundNotes_other": "{{count}} note",
         "foundNotes_many": "{{count}} note",
         "estimate": "Recuperare tutto richiede circa {{minutes}} min.",
-        "start": "Avvia importazione"
+        "start": "Avvia importazione",
+        "unreachable": "Impossibile raggiungere Monica all’indirizzo {{host}}"
       }
     },
     "meerkatImport": {
@@ -2147,7 +2176,8 @@
         "userOption_one": "{{name}} — {{count}} contatto",
         "userOption_other": "{{name}} — {{count}} contatti",
         "userOption_many": "{{name}} — {{count}} contatti",
-        "start": "Avvia importazione"
+        "start": "Avvia importazione",
+        "fetchFailedHint": "Se Meerkat resta irraggiungibile, scelga «Carica un file» e importi invece una copia del suo database."
       },
       "mode": {
         "label": "Come importare da Meerkat",
@@ -4258,7 +4288,9 @@
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
       "integration_save_failed": "{{reason}}",
-      "occasion_anchor_date_incomplete": "Una data di riferimento per un’occasione richiede sia il mese che il giorno, oppure nessuno dei due",
+      "occasion_anchor_date_incomplete": "Una data di riferimento per un’occasione richiede sia il mese che il giorno",
+      "occasion_anchor_date_invalid": "Questa combinazione di mese e giorno non esiste, ad esempio il 30 febbraio",
+      "occasion_anchor_date_required": "Un’occasione richiede un mese e un giorno per poterti inviare un promemoria",
       "occasion_days_invalid": "days deve essere 30 o 90",
       "occasion_event_circles_required": "circle_ids è obbligatorio",
       "occasion_event_end_before_start": "L’ora di fine dell’evento non può precedere quella di inizio",

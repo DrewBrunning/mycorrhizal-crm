@@ -64,6 +64,14 @@ describe('notes API requests', () => {
     expect(calls[0].search.get('toDate')).toBe('2026-02-01');
   });
 
+  test('getUnassignedNotes sends sort only when asked (#2744)', async () => {
+    const calls = mockApi('get', '/notes', { notes: [] });
+    await getUnassignedNotes({ sort: 'date' });
+    await getUnassignedNotes({});
+    expect(calls[0].search.get('sort')).toBe('date');
+    expect(calls[1].search.has('sort')).toBe(false);
+  });
+
   test('getUnassignedNotes omits a blank search and absent cursor/dates', async () => {
     const calls = mockApi('get', '/notes', { notes: [] });
     await getUnassignedNotes({ search: '   ' });

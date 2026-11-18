@@ -81,25 +81,30 @@ func TestOccasionObligation_RealMigratedSchema(t *testing.T) {
 	// Update: deactivate.
 	inactive := false
 	updateResp := doOccasionJSON(router, "PUT", "/occasion-obligations/"+obligationID, models.OccasionObligationInput{
-		EntityID: contact.VCardUID,
-		Kind:     models.OccasionObligationKindGift,
-		Label:    "Birthday gift",
-		Active:   &inactive,
+		EntityID:    contact.VCardUID,
+		Kind:        models.OccasionObligationKindGift,
+		Label:       "Birthday gift",
+		Active:      &inactive,
+		AnchorMonth: intPtr(8),
+		AnchorDay:   intPtr(9),
 	})
 	require.Equal(t, http.StatusOK, updateResp.Code, updateResp.Body.String())
 	var reloaded models.OccasionObligation
 	require.NoError(t, db.First(&reloaded, "id = ?", obligationID).Error)
 	assert.False(t, reloaded.Active)
-	assert.Nil(t, reloaded.AnchorMonth, "full-replace update must clear an omitted anchor")
+	require.NotNil(t, reloaded.AnchorMonth)
+	assert.Equal(t, 8, *reloaded.AnchorMonth, "full-replace update must replace the anchor")
 
 	// Soft-delete, then recreate for the same contact/kind (no natural-key
 	// unique index to block it, unlike CadencePolicy's partial index).
 	deleteResp := doOccasionJSON(router, "DELETE", "/occasion-obligations/"+obligationID, nil)
 	require.Equal(t, http.StatusOK, deleteResp.Code, deleteResp.Body.String())
 	recreateResp := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
-		EntityID: contact.VCardUID,
-		Kind:     models.OccasionObligationKindGift,
-		Label:    "Birthday gift",
+		EntityID:    contact.VCardUID,
+		Kind:        models.OccasionObligationKindGift,
+		Label:       "Birthday gift",
+		AnchorMonth: intPtr(7),
+		AnchorDay:   intPtr(4),
 	})
 	require.Equal(t, http.StatusCreated, recreateResp.Code, recreateResp.Body.String())
 }

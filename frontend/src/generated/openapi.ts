@@ -2563,6 +2563,16 @@ export type OIDCNativeExchangeResponse = {
   token: string;
 };
 
+export type OccasionCardListSummary = {
+  included: number;
+  skipped: number;
+  skipped_reasons: {
+    no_address: number;
+    private_address_only: number;
+  };
+  total: number;
+};
+
 export type OccasionEvent = {
   created_at: string;
   deleted?: boolean;

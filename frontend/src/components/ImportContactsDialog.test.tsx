@@ -1635,3 +1635,163 @@ test('a saved fix that empties the phone drops it from the card', async () => {
   expect(within(card).getByText('Will be re-checked on import')).toBeInTheDocument();
   expect(within(card).getByRole('button', { name: 'Edit fix' })).toBeInTheDocument();
 });
+
+// --- W7b: diagnostics and file diagnostics (#2631 #2653 #2669) -----------------
+
+const BDAY_DIAG = {
+  severity: 'warn' as const,
+  concept: 'birthday',
+  message: 'birthday not imported: invalid value',
+};
+
+// #2653 (option C): an invalid birthday/anniversary does not fail the row; the
+// contact imports without it and the review warns, keyed on the concept.
+test('a birthday warning shows beside a valid row, localized by concept', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Ada', lastname: 'Lovelace' },
+      diagnostics: [BDAY_DIAG, { ...BDAY_DIAG, concept: 'anniversary' }],
+    }),
+  ]);
+  const card = screen.getByRole('group', { name: 'Ada Lovelace' });
+  expect(within(card).getByText('Birthday not imported: invalid value')).toBeInTheDocument();
+  expect(within(card).getByText('Anniversary not imported: invalid value')).toBeInTheDocument();
+  // Not an error: the row is still decidable and no Errors chip appears.
+  expect(within(card).getByRole('button', { name: 'Keep' })).toBeEnabled();
+  expect(within(card).getByRole('button', { name: 'Keep' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  expect(screen.queryByText(/with an? errors?/)).not.toBeInTheDocument();
+});
+
+test('the warning text follows the language, not the English server message', async () => {
+  await i18n.changeLanguage('de');
+  try {
+    vi.mocked(uploadVCFForImport).mockResolvedValue({
+      session_id: 'sess-de',
+      rows: [row({ parsed_contact: { firstname: 'Ada' }, diagnostics: [BDAY_DIAG] })],
+      total_rows: 1,
+      valid_rows: 1,
+      duplicate_count: 0,
+      error_count: 0,
+      file_diagnostics: [],
+    });
+    renderDialog();
+    selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+    expect(
+      await screen.findByText('Geburtstag nicht importiert: ungültiger Wert'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('birthday not imported: invalid value')).not.toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
+
+test('a diagnostic with another concept shows its own message', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Cy' },
+      diagnostics: [
+        { severity: 'info', concept: 'name', message: 'name taken from email' },
+        { severity: 'warn', message: 'card has no name' },
+      ],
+    }),
+  ]);
+  expect(screen.getByText('name taken from email')).toBeInTheDocument();
+  expect(screen.getByText('card has no name')).toBeInTheDocument();
+});
+
+// #2669: file_diagnostics is always present; an encoding notice becomes a
+// banner on the review step.
+test('an encoding file diagnostic shows a localized banner on the review step', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-enc',
+    rows: [row({ parsed_contact: { firstname: 'Zoë' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    file_diagnostics: [
+      {
+        severity: 'warn',
+        concept: 'encoding',
+        message: 'file was not UTF-8; read as Windows-1252',
+      },
+    ],
+  });
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  const banner = await screen.findByText(/This file isn't UTF-8, so it was read as Windows-1252/);
+  expect(banner.closest('[role="alert"], [role="status"]')).not.toBeNull();
+  expect(screen.queryByText('file was not UTF-8; read as Windows-1252')).not.toBeInTheDocument();
+});
+
+test('an empty file_diagnostics shows no banner', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-ok',
+    rows: [row({ parsed_contact: { firstname: 'Zoe' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    file_diagnostics: [],
+  });
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await screen.findByText('Resolve all as merged');
+  expect(screen.queryByText(/Windows-1252/)).not.toBeInTheDocument();
+});
+
+test('a CSV preview shows the encoding banner from the upload response', async () => {
+  vi.mocked(uploadCSVForImport).mockResolvedValue({
+    session_id: 'sess-csv',
+    headers: ['First'],
+    suggested_mappings: [{ csv_column: 'First', contact_field: 'firstname', group: 0 }],
+    row_count: 1,
+    sample_data: [['Zoë']],
+    file_diagnostics: [
+      {
+        severity: 'warn',
+        concept: 'encoding',
+        message: 'file was not UTF-8; read as Windows-1252',
+      },
+    ],
+  });
+  vi.mocked(getImportPreview).mockResolvedValue({
+    session_id: 'sess-csv',
+    rows: [row({ parsed_contact: { firstname: 'Zoë' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    // The same notice on both responses is shown once.
+    file_diagnostics: [
+      {
+        severity: 'warn',
+        concept: 'encoding',
+        message: 'file was not UTF-8; read as Windows-1252',
+      },
+    ],
+  });
+  renderDialog();
+  selectFile(new File(['First\nZoë'], 'c.csv', { type: 'text/csv' }));
+  fireEvent.click(await screen.findByRole('button', { name: /continue/i }));
+  expect(await screen.findByText(/read as Windows-1252/)).toBeInTheDocument();
+  expect(screen.getAllByText(/read as Windows-1252/)).toHaveLength(1);
+});
+
+test('a file diagnostic with no known concept shows its own message', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-info',
+    rows: [row({ parsed_contact: { firstname: 'Zoe' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    file_diagnostics: [{ severity: 'info', message: 'Header row skipped' }],
+  });
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  expect(await screen.findByText('Header row skipped')).toBeInTheDocument();
+});
