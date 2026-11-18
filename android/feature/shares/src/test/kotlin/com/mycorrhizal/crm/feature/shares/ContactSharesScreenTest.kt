@@ -4,6 +4,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -365,5 +366,30 @@ class ContactSharesScreenTest {
         composeTestRule.onNodeWithText("Copies sent").assertIsDisplayed()
         composeTestRule.onNodeWithText("Incoming").assertDoesNotExist()
         composeTestRule.onNodeWithText("Outgoing").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed load with nothing to show offers Retry that reloads the shares`() {
+        var offline = true
+        coEvery { repository.listIncoming(any(), any()) } answers {
+            if (offline) {
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            } else {
+                Result.success(ContactSharesPage(contactShares = listOf(incomingShare)))
+            }
+        }
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+
+        screen()
+
+        composeTestRule.onAllNodesWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).onFirst().assertIsDisplayed()
+        offline = false
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
     }
 }

@@ -51,6 +51,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -198,7 +199,7 @@ fun NotesInboxScreenContent(
                         )
 
                     state.notes.isEmpty() && state.error != null ->
-                        EmptyState(state.error.localizedMessage())
+                        ErrorState(error = state.error, onRetry = onRefresh)
 
                     else -> {
                         LazyColumn(
