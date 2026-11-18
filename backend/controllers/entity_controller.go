@@ -26,7 +26,7 @@ import (
 // so there is no include_sensitive flag; ?sensitivity= is a plain filter.
 
 func abortEntityNotFound(c *gin.Context, id string) {
-	apperrors.AbortWithError(c, apperrors.ErrNotFound("Entity").WithDetails("id", id))
+	apperrors.AbortWithError(c, apperrors.ErrNotFound("Organisation, place or pet").WithDetails("id", id))
 }
 
 // loadOwnedEntity loads the live entity :id owned by userID or aborts.
