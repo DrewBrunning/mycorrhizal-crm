@@ -11,8 +11,8 @@ require (
 	github.com/emersion/go-ical v0.0.0-20250609112844-439c63cef608
 	github.com/fxamacker/cbor/v2 v2.10.0
 	github.com/gen2brain/heic v0.7.2
-	github.com/getkin/kin-openapi v0.152.0
-	github.com/gin-contrib/cors v1.7.10
+	github.com/getkin/kin-openapi v0.153.0
+	github.com/gin-contrib/cors v1.7.11
 	github.com/gin-gonic/gin v1.12.0
 	github.com/glebarez/go-sqlite v1.23.0
 	github.com/glebarez/sqlite v1.11.0
@@ -29,13 +29,13 @@ require (
 	github.com/rs/zerolog v1.35.1
 	github.com/stretchr/testify v1.12.1
 	go.yaml.in/yaml/v3 v3.0.6
-	golang.org/x/crypto v0.58.0
-	golang.org/x/mod v0.42.0
-	golang.org/x/oauth2 v0.37.0
+	golang.org/x/crypto v0.59.0
+	golang.org/x/mod v0.43.0
+	golang.org/x/oauth2 v0.38.0
 	golang.org/x/time v0.16.0
 	golang.org/x/tools v0.52.0
 	gorm.io/gorm v1.31.2
-	modernc.org/sqlite v1.61.1
+	modernc.org/sqlite v1.62.0
 	pgregory.net/rapid v1.3.0
 )
 
@@ -52,8 +52,6 @@ require (
 	github.com/google/go-tpm v0.9.8 // indirect
 	github.com/google/jsonschema-go v0.4.3 // indirect
 	github.com/ncruces/go-strftime v1.1.0 // indirect
-	github.com/oasdiff/yaml v0.1.1 // indirect
-	github.com/oasdiff/yaml3 v0.0.14 // indirect
 	github.com/philhofer/fwd v1.2.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3 // indirect
@@ -65,8 +63,9 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.mongodb.org/mongo-driver/v2 v2.8.0 // indirect
-	golang.org/x/sync v0.24.0 // indirect
-	modernc.org/libc v1.79.0 // indirect
+	go.yaml.in/yaml/v4 v4.0.0 // indirect
+	golang.org/x/sync v0.25.0 // indirect
+	modernc.org/libc v1.80.1 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.12.1 // indirect
 )
@@ -102,7 +101,7 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/arch v0.29.0 // indirect
 	golang.org/x/net v0.62.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
-	golang.org/x/text v0.43.0
+	golang.org/x/sys v0.50.0 // indirect
+	golang.org/x/text v0.44.0
 	google.golang.org/protobuf v1.36.11 // indirect
 )
