@@ -164,3 +164,11 @@ test('merge is offered the pair with both counts so the dialog need not re-fetch
   fireEvent.click(await screen.findByRole('button', { name: 'Merge…' }));
   expect(onMerge).toHaveBeenCalledWith(sameName);
 });
+
+test('a scan that fails without a message falls back to the generic failure text (#2743)', async () => {
+  listMock.mockRejectedValue(new Error(''));
+  renderPanel();
+  fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't look for duplicates.");
+  expect(screen.queryByText('No duplicates found.')).not.toBeInTheDocument();
+});
