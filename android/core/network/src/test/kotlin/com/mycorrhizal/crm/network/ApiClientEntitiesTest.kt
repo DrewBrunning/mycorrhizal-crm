@@ -76,6 +76,20 @@ class ApiClientEntitiesTest {
     }
 
     @Test
+    fun `listEntities sends sort=name and order=asc only when sortByName is set`() = runBlocking {
+        enqueue("""{"entities":[],"next_cursor":"","limit":50}""")
+        enqueue("""{"entities":[],"next_cursor":"","limit":50}""")
+        client.listEntities(kind = "place", sortByName = true)
+        val sorted = server.takeRequest().requestUrl
+        assertEquals("name", sorted?.queryParameter("sort"))
+        assertEquals("asc", sorted?.queryParameter("order"))
+        client.listEntities(kind = "place")
+        val plain = server.takeRequest().requestUrl
+        assertNull(plain?.queryParameter("sort"))
+        assertNull(plain?.queryParameter("order"))
+    }
+
+    @Test
     fun `getEntity reads the counts and the core map`() = runBlocking {
         enqueue(
             """{"id":"e1","kind":"pet","name":"Rex","core":{"birth":{"year":2019}},"sensitivity":"private",
