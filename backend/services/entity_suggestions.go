@@ -224,8 +224,8 @@ func SuggestEntityPairs(db *gorm.DB, userID uint, kind, cursor string, limit int
 			key: fmt.Sprintf("%s\x00%s\x00%s", a.NameKey, pair[0], pair[1]),
 			pair: models.EntitySuggestionPair{
 				Reason: reason,
-				A:      models.EntitySuggestionEntity{ID: a.ID, Kind: a.Kind, Name: a.Name},
-				B:      models.EntitySuggestionEntity{ID: b.ID, Kind: b.Kind, Name: b.Name},
+				A:      models.EntitySuggestionEntity{ID: a.ID, Kind: a.Kind, Name: a.Name, UpdatedAt: a.UpdatedAt},
+				B:      models.EntitySuggestionEntity{ID: b.ID, Kind: b.Kind, Name: b.Name, UpdatedAt: b.UpdatedAt},
 			},
 		})
 	}
@@ -243,6 +243,19 @@ func SuggestEntityPairs(db *gorm.DB, userID uint, kind, cursor string, limit int
 		}
 		out = append(out, k.pair)
 		lastKey = k.key
+	}
+	// Issue #2743: one grouped query for the sides of this page only.
+	ids := make([]string, 0, 2*len(out))
+	for _, p := range out {
+		ids = append(ids, p.A.ID, p.B.ID)
+	}
+	counts, err := EntityLinkCounts(db, userID, ids)
+	if err != nil {
+		return nil, "", err
+	}
+	for i := range out {
+		out[i].A.LinkCount = counts[out[i].A.ID]
+		out[i].B.LinkCount = counts[out[i].B.ID]
 	}
 	return out, next, nil
 }

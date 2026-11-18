@@ -1446,7 +1446,9 @@ export type EntityRestoreSkip = {
 export type EntitySuggestionEntity = {
   id: string;
   kind: 'organisation' | 'place' | 'pet';
+  link_count: number;
   name: string;
+  updated_at: string;
 };
 
 export type EntitySuggestionPair = {

@@ -8669,6 +8669,8 @@ paths:
       description: |
         The caller's live entities, newest-updated first, cursor-paginated. This is the owner's own
         surface, so every sensitivity is returned; `sensitivity` is a plain filter, not an access gate.
+        Each item carries `updated_at` and (issue #2743) `link_count`, the number of distinct live
+        contacts linked to it, computed with one grouped query for the whole page.
       parameters:
         - name: kind
           in: query
@@ -20686,7 +20688,14 @@ components:
         revision: { type: integer, format: int64, description: "Revision token for If-Match (ADR 0006)." }
         created_at: { type: string, format: date-time }
         updated_at: { type: string, format: date-time }
-        link_count: { type: integer, description: "Live contact links. Present on GET /entities/{id} only." }
+        link_count:
+          type: integer
+          description: >
+            On GET /entities/{id} (and the delete response): the number of live link rows.
+            On GET /entities list items (issue #2743): the number of DISTINCT live contacts
+            linked to the entity (a contact holding several roles counts once; deleted
+            contacts do not count), the "Linked to N contacts" definition; 0 when none.
+            Absent from create, update, restore and merge responses.
         projection_count: { type: integer, description: "Contacts currently receiving a projected ORG/ADR from this entity. Present on GET /entities/{id} only." }
     EntityInput:
       type: object
@@ -20776,11 +20785,13 @@ components:
         restore_scope: { type: string, enum: [entity_only], description: "Restoring the loser revives only the entity; the re-pointed links stay with the survivor." }
     EntitySuggestionEntity:
       type: object
-      required: [id, kind, name]
+      required: [id, kind, name, updated_at, link_count]
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, enum: [organisation, place, pet] }
         name: { type: string }
+        updated_at: { type: string, format: date-time, description: "Issue #2743 — the entity's last update, so same-named candidates can be told apart without a detail call." }
+        link_count: { type: integer, description: "Issue #2743 — distinct live contacts linked to the entity (a contact holding several roles counts once; deleted contacts do not count). 0 when none." }
     EntitySuggestionPair:
       type: object
       required: [reason, a, b]
