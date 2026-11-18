@@ -220,7 +220,7 @@ class OccasionListsScreenTest {
     @Test
     fun `a shopping list load failure is worded from its reason code, never the server text`() {
         renderShopping(Result.failure(reasonCoded()))
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 
@@ -230,7 +230,7 @@ class OccasionListsScreenTest {
         renderActions()
         composeTestRule.onNodeWithText("Share as CSV").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 
