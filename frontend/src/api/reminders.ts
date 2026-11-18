@@ -6,6 +6,7 @@ import {
   getConditionalHeaders,
   parseErrorResponse,
 } from './client';
+import { withViewerTimezone } from './viewerTimezone';
 
 export interface Reminder {
   ID: number;
@@ -54,7 +55,7 @@ export interface CompletionsResponse {
 
 // Get upcoming reminders (next 7 days or at least next 10 reminders)
 export async function getUpcomingReminders(): Promise<Reminder[]> {
-  const response = await apiFetch(`${API_BASE_URL}/reminders/upcoming`, {
+  const response = await apiFetch(withViewerTimezone(`${API_BASE_URL}/reminders/upcoming`), {
     headers: getAuthHeaders(),
   });
 
