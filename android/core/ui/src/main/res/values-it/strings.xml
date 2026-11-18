@@ -1591,6 +1591,7 @@
     <string name="shares_grant_block">Blocca il mittente</string>
     <string name="shares_grant_unblock">Sblocca</string>
     <string name="shares_grant_revoke">Revoca</string>
+    <string name="shares_grant_remove">Rimuovi</string>
     <string name="shares_grant_reconfirm">Rivedi e riconferma</string>
     <string name="shares_grant_edit">Modifica</string>
     <string name="shares_grant_decline_message">Rifiutare la condivisione di %1$s da %2$s? La persona vedrà che è stata rifiutata.</string>
@@ -1600,6 +1601,8 @@
     <string name="shares_grant_leave_message">%1$s non sarà più visibile per te. Per rivederlo, %2$s dovrà condividerlo di nuovo con te.</string>
     <string name="shares_grant_revoke_title">Revocare questa condivisione?</string>
     <string name="shares_grant_revoke_message">%1$s perderà l\'accesso al prossimo caricamento. Ciò che ha già visto non può essere ritirato.</string>
+    <string name="shares_grant_remove_title">Rimuovere questa condivisione?</string>
+    <string name="shares_grant_remove_message">La condivisione con %1$s è terminata. Rimuovendola scompare da questo elenco.</string>
     <string name="shares_grant_reconfirm_title">Condividere di nuovo queste sezioni?</string>
     <string name="shares_grant_reconfirm_message">Alcuni elementi di questa condivisione sono stati contrassegnati come privati o segreti, quindi queste sezioni sono trattenute per %1$s. Controlla il loro contenuto prima di condividerle di nuovo.</string>
     <string name="shares_grant_reconfirm_confirm">Condividi di nuovo</string>

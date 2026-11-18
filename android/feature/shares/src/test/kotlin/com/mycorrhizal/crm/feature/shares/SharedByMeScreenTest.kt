@@ -169,10 +169,133 @@ class SharedByMeScreenTest {
     }
 
     @Test
-    fun `a finished grant has no actions menu`() {
+    fun `a finished grant offers only Remove, never Edit or Revoke`() {
         stub(revoked)
         screen()
-        composeTestRule.onNodeWithContentDescription("More actions for Note").assertDoesNotExist()
+        composeTestRule.onNodeWithContentDescription("More actions for Note").performClick()
+        composeTestRule.onNodeWithText("Remove").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Edit").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Revoke").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a live grant does not offer Remove`() {
+        stub(circleGrant)
+        screen()
+        composeTestRule.onNodeWithContentDescription("More actions for Family").performClick()
+        composeTestRule.onNodeWithText("Revoke").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Remove").assertDoesNotExist()
+    }
+
+    @Test
+    fun `remove is explained, deletes only after confirmation and the row disappears`() {
+        val declined = contactGrant.copy(id = "g4", status = ShareGrantStatuses.DECLINED)
+        coEvery { repository.listOutgoing(any(), any()) } returnsMany listOf(
+            Result.success(OutgoingShareGrantsPage(shareGrants = listOf(declined, circleGrant))),
+            Result.success(OutgoingShareGrantsPage(shareGrants = listOf(circleGrant)))
+        )
+        coEvery { repository.delete("g4") } returns Result.success(Unit)
+        screen()
+
+        composeTestRule.onNodeWithTag("grant-status-g4").assertTextEquals("Declined")
+        composeTestRule.onNodeWithContentDescription("More actions for Dana White").performClick()
+        composeTestRule.onNodeWithText("Remove").performClick()
+        composeTestRule.onNodeWithText("Remove this share?").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "This share with casey has ended. Removing it clears it from this list."
+        ).assertIsDisplayed()
+        coVerify(exactly = 0) { repository.delete(any()) }
+        composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify(exactly = 1) { repository.delete("g4") }
+        composeTestRule.onNodeWithTag("grant-status-g4").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("grant-status-g2").assertIsDisplayed()
+    }
+
+    @Test
+    fun `cancelling the remove dialog deletes nothing`() {
+        stub(revoked)
+        screen()
+        composeTestRule.onNodeWithContentDescription("More actions for Note").performClick()
+        composeTestRule.onNodeWithText("Remove").performClick()
+        composeTestRule.onNodeWithText("Cancel").performClick()
+        composeTestRule.waitForIdle()
+        coVerify(exactly = 0) { repository.delete(any()) }
+        composeTestRule.onNodeWithText("Remove this share?").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a 404 after remove is treated as done with no error`() {
+        val declined = contactGrant.copy(id = "g4", status = ShareGrantStatuses.DECLINED)
+        coEvery { repository.listOutgoing(any(), any()) } returnsMany listOf(
+            Result.success(OutgoingShareGrantsPage(shareGrants = listOf(declined))),
+            Result.success(OutgoingShareGrantsPage(shareGrants = emptyList()))
+        )
+        coEvery { repository.delete("g4") } returns Result.failure(
+            ApiError.Client(
+                404,
+                "RAW SERVER TEXT",
+                reason = ErrorReason(ErrorReasonCode.SHARE_GRANT_NOT_FOUND, emptyMap())
+            )
+        )
+        screen()
+
+        composeTestRule.onNodeWithContentDescription("More actions for Dana White").performClick()
+        composeTestRule.onNodeWithText("Remove").performClick()
+        composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Share grant not found").assertDoesNotExist()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+        composeTestRule.onNodeWithTag("grant-status-g4").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a remove refused as not ended is worded from its reason code, never the server text`() {
+        val declined = contactGrant.copy(id = "g4", status = ShareGrantStatuses.DECLINED)
+        stub(declined)
+        coEvery { repository.delete("g4") } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW SERVER TEXT",
+                reason = ErrorReason(ErrorReasonCode.SHARE_GRANT_NOT_ENDED, emptyMap())
+            )
+        )
+        screen()
+
+        composeTestRule.onNodeWithContentDescription("More actions for Dana White").performClick()
+        composeTestRule.onNodeWithText("Remove").performClick()
+        composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Only a share that has ended (declined, expired or revoked) can be removed; " +
+                "revoke it first"
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+        // The row is still there: nothing was removed.
+        composeTestRule.onNodeWithTag("grant-status-g4").assertIsDisplayed()
+    }
+
+    // Issue #2626: the server labels a note grant with the note's first line; the row shows it
+    // and only an absent label falls back to the generic type name.
+    @Test
+    fun `a note row shows its first-line label, and an absent label falls back to Note`() {
+        stub(
+            revoked.copy(id = "n1", label = "Call plan for Dana's birthday"),
+            revoked.copy(id = "n2", label = "")
+        )
+        screen()
+
+        composeTestRule.onNodeWithText("Call plan for Dana's birthday").assertIsDisplayed()
+        // The blank-label row: title and type caption are both "Note"; the first row only has
+        // the caption.
+        composeTestRule.onAllNodesWithText("Note").assertCountEquals(3)
+        composeTestRule.onNodeWithContentDescription(
+            "More actions for Call plan for Dana's birthday"
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("More actions for Note").assertIsDisplayed()
     }
 
     @Test

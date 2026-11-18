@@ -1556,6 +1556,7 @@
     <string name="shares_grant_block">Absender blockieren</string>
     <string name="shares_grant_unblock">Blockierung aufheben</string>
     <string name="shares_grant_revoke">Widerrufen</string>
+    <string name="shares_grant_remove">Entfernen</string>
     <string name="shares_grant_reconfirm">Prüfen und erneut bestätigen</string>
     <string name="shares_grant_edit">Bearbeiten</string>
     <string name="shares_grant_decline_message">%1$s von %2$s ablehnen? Die Person sieht, dass abgelehnt wurde.</string>
@@ -1565,6 +1566,8 @@
     <string name="shares_grant_leave_message">%1$s ist für dich nicht mehr sichtbar. Damit du es wieder siehst, muss %2$s es erneut mit dir teilen.</string>
     <string name="shares_grant_revoke_title">Diese Freigabe widerrufen?</string>
     <string name="shares_grant_revoke_message">%1$s verliert den Zugriff beim nächsten Laden. Was die Person bereits gesehen hat, lässt sich nicht zurückholen.</string>
+    <string name="shares_grant_remove_title">Diese Freigabe entfernen?</string>
+    <string name="shares_grant_remove_message">Die Freigabe für %1$s ist beendet. Wenn Sie sie entfernen, verschwindet sie aus dieser Liste.</string>
     <string name="shares_grant_reconfirm_title">Diese Bereiche erneut teilen?</string>
     <string name="shares_grant_reconfirm_message">Einige Einträge dieser Freigabe wurden als privat oder geheim markiert, daher werden diese Bereiche %1$s vorenthalten. Prüfen Sie ihren Inhalt, bevor Sie sie erneut teilen.</string>
     <string name="shares_grant_reconfirm_confirm">Erneut teilen</string>
