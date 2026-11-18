@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -234,6 +235,20 @@ internal fun EntitiesContent(
             onValueChange = onQueryChange,
             label = { Text(stringResource(R.string.shared_entities_search)) },
             singleLine = true,
+            trailingIcon = if (state.query.isNotEmpty()) {
+                {
+                    AccessibleIconButton(onClick = { onQueryChange("") }) {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = stringResource(
+                                R.string.shared_entities_search_clear
+                            )
+                        )
+                    }
+                }
+            } else {
+                null
+            },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
                 .testTag("entities-search")
         )

@@ -7496,6 +7496,11 @@
           "required": false
         },
         {
+          "name": "sort",
+          "in": "query",
+          "required": false
+        },
+        {
           "name": "toDate",
           "in": "query",
           "required": false
@@ -9630,6 +9635,31 @@
         },
         {
           "status": "412",
+          "schema": "ref:Error"
+        }
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/share-grants/{id}",
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "required": true
+        }
+      ],
+      "responses": [
+        {
+          "status": "204",
+          "schema": ""
+        },
+        {
+          "status": "404",
+          "schema": "ref:Error"
+        },
+        {
+          "status": "409",
           "schema": "ref:Error"
         }
       ]
@@ -17579,7 +17609,17 @@
           ]
         },
         {
+          "name": "link_count",
+          "type": "integer",
+          "required": true
+        },
+        {
           "name": "name",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "updated_at",
           "type": "string",
           "required": true
         }
@@ -19787,6 +19827,11 @@
           "required": false
         },
         {
+          "name": "file_diagnostics",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
+        {
           "name": "fixed_assignment",
           "type": "ref:ImportFixedAssignment",
           "required": false
@@ -19892,6 +19937,15 @@
       "name": "ImportRowIssue",
       "properties": [
         {
+          "name": "concept",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "birthday",
+            "anniversary"
+          ]
+        },
+        {
           "name": "email",
           "type": "string",
           "required": true
@@ -19922,7 +19976,8 @@
           "required": true,
           "enum": [
             "skipped",
-            "failed"
+            "failed",
+            "warning"
           ]
         }
       ]
@@ -20143,6 +20198,11 @@
     {
       "name": "ImportUploadResponse",
       "properties": [
+        {
+          "name": "file_diagnostics",
+          "type": "array\u003cobject\u003e",
+          "required": false
+        },
         {
           "name": "headers",
           "type": "array\u003cstring\u003e",
@@ -21495,6 +21555,16 @@
         {
           "name": "error",
           "type": "string",
+          "required": false
+        },
+        {
+          "name": "error_reason_code",
+          "type": "string",
+          "required": false
+        },
+        {
+          "name": "error_reason_params",
+          "type": "object",
           "required": false
         },
         {

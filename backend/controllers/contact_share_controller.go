@@ -345,12 +345,13 @@ func AcceptContactShare(c *gin.Context) {
 	sessionID := importSessions.CreateVCFSessionForShare(userID, share.ID, contacts, previews)
 
 	c.JSON(http.StatusOK, models.ImportPreviewResponse{
-		SessionID:      sessionID,
-		Rows:           previews,
-		TotalRows:      len(previews),
-		ValidRows:      stats.ValidCount,
-		DuplicateCount: stats.DuplicateCount,
-		ErrorCount:     stats.ErrorCount,
+		SessionID:       sessionID,
+		Rows:            previews,
+		TotalRows:       len(previews),
+		ValidRows:       stats.ValidCount,
+		DuplicateCount:  stats.DuplicateCount,
+		ErrorCount:      stats.ErrorCount,
+		FileDiagnostics: models.DiagnosticsOrEmpty(nil),
 	})
 }
 

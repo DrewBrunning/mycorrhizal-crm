@@ -80,6 +80,40 @@ class ShareGrantContentScreenTest {
     }
 
     @Test
+    fun `a contact's anniversary kind and personal-info kind read as human labels`() {
+        coEvery { repository.content("g1") } returns Result.success(
+            content(
+                "contact",
+                contact = mapOf(
+                    "name" to mapOf("full" to "Dana White"),
+                    "anniversaries" to mapOf(
+                        "b" to mapOf(
+                            "kind" to "birth",
+                            "date" to mapOf("year" to 1990, "month" to 12, "day" to 3)
+                        )
+                    ),
+                    "personalInfo" to mapOf("i" to mapOf("kind" to "hobby", "value" to "Chess"))
+                )
+            )
+        )
+        screen(sections = "anniversaries,personal_info")
+
+        composeTestRule.onNodeWithText("Birth: 03.12.1990").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Hobby: Chess").assertIsDisplayed()
+        composeTestRule.onNodeWithText("birth: 03.12.1990").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the read view is titled like the list that opens it`() {
+        coEvery { repository.content("g1") } returns Result.success(
+            content("note", note = SharedNote("Met at the fair", "2026-11-01T00:00:00Z"))
+        )
+        screen()
+        composeTestRule.onNodeWithText("Shared with me").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Shared with you").assertDoesNotExist()
+    }
+
+    @Test
     fun `a note renders its text and date only`() {
         coEvery { repository.content("g1") } returns Result.success(
             content("note", note = SharedNote("Met at the fair", "2026-11-01T00:00:00Z"))

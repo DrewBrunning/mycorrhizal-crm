@@ -84,14 +84,14 @@ func UploadCSVForImport(c *gin.Context) {
 	// client upload (the caller gets a 400), not a server fault, so it logs at
 	// info -- the same rule issue #1474 applied to the other 4xx paths, and
 	// what keeps the warn/error log guard from flagging a negative E2E case.
-	headers, dataRows, err := services.ParseCSV(f)
+	headers, dataRows, fileDiags, err := services.ParseCSVWithDiagnostics(f)
 	if err != nil {
 		log.Info().Err(err).Msg("Failed to parse CSV")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()).WithReason(apperrors.ReasonImportFileUnreadable, map[string]any{"reason": err.Error()}))
 		return
 	}
 
-	sessionID := importSessions.CreateCSVSession(userID, headers, dataRows)
+	sessionID := importSessions.CreateCSVSessionWithDiagnostics(userID, headers, dataRows, fileDiags)
 
 	// Get sample data for preview
 	sampleData := make([][]string, 0, services.SampleRows)
@@ -114,6 +114,7 @@ func UploadCSVForImport(c *gin.Context) {
 		SuggestedMappings: suggestedMappings,
 		RowCount:          len(dataRows),
 		SampleData:        sampleData,
+		FileDiagnostics:   models.DiagnosticsOrEmpty(fileDiags),
 	})
 }
 
@@ -159,7 +160,7 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 
 	// Parse VCF using service. A malformed upload is a rejected client
 	// request (400), not a server fault, so it logs at info (issue #1474).
-	vcfContacts, previews, stats, err := services.ParseVCF(f, db, userID)
+	vcfContacts, previews, stats, fileDiags, err := services.ParseVCFWithDiagnostics(f, db, userID)
 	if err != nil {
 		log.Info().Err(err).Msg("Failed to parse VCF")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()).WithReason(apperrors.ReasonImportFileUnreadable, map[string]any{"reason": err.Error()}))
@@ -177,12 +178,13 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 		Msg("VCF uploaded and parsed successfully")
 
 	c.JSON(http.StatusOK, models.ImportPreviewResponse{
-		SessionID:      sessionID,
-		Rows:           previews,
-		TotalRows:      len(previews),
-		ValidRows:      stats.ValidCount,
-		DuplicateCount: stats.DuplicateCount,
-		ErrorCount:     stats.ErrorCount,
+		SessionID:       sessionID,
+		Rows:            previews,
+		TotalRows:       len(previews),
+		ValidRows:       stats.ValidCount,
+		DuplicateCount:  stats.DuplicateCount,
+		ErrorCount:      stats.ErrorCount,
+		FileDiagnostics: models.DiagnosticsOrEmpty(fileDiags),
 	})
 }
 
@@ -255,12 +257,13 @@ func UploadJSContactForImport(c *gin.Context) {
 		Msg("JSContact file uploaded and parsed successfully")
 
 	c.JSON(http.StatusOK, models.ImportPreviewResponse{
-		SessionID:      sessionID,
-		Rows:           previews,
-		TotalRows:      len(previews),
-		ValidRows:      stats.ValidCount,
-		DuplicateCount: stats.DuplicateCount,
-		ErrorCount:     stats.ErrorCount,
+		SessionID:       sessionID,
+		Rows:            previews,
+		TotalRows:       len(previews),
+		ValidRows:       stats.ValidCount,
+		DuplicateCount:  stats.DuplicateCount,
+		ErrorCount:      stats.ErrorCount,
+		FileDiagnostics: models.DiagnosticsOrEmpty(nil),
 	})
 }
 
@@ -357,12 +360,13 @@ func UploadImportRecords(c *gin.Context) {
 		Msg("Import records session created")
 
 	c.JSON(http.StatusOK, models.ImportPreviewResponse{
-		SessionID:      sessionID,
-		Rows:           previews,
-		TotalRows:      len(previews),
-		ValidRows:      stats.ValidCount,
-		DuplicateCount: stats.DuplicateCount,
-		ErrorCount:     stats.ErrorCount,
+		SessionID:       sessionID,
+		Rows:            previews,
+		TotalRows:       len(previews),
+		ValidRows:       stats.ValidCount,
+		DuplicateCount:  stats.DuplicateCount,
+		ErrorCount:      stats.ErrorCount,
+		FileDiagnostics: models.DiagnosticsOrEmpty(nil),
 	})
 }
 

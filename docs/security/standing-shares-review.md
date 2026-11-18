@@ -119,6 +119,7 @@ Sensitivity is enforced **in the query / projection, on every read, independent 
 | content of a pending, declined, revoked, expired or blocked grant | same `404` as above |
 | content when the entity is deleted, trashed, archived or the owner deleted | same `404` |
 | owner calls the recipient route; recipient calls an owner route | same `404` |
+| `DELETE /share-grants/{id}` (owner dismiss of an ended grant, issue #2742) as another user, as the recipient, for an unknown id, or for an id already dismissed | the identical `404 share_grant_not_found`; no row deleted; a pending/active grant is a `409` only for its own owner |
 | `POST /share-grants` with another user's entity id | `404`, identical to a nonexistent id; no row created |
 | `POST /share-grants` to a user who blocked you | `201` as `pending` from your side; no recipient-visible row, no notification (the sender cannot learn the block) |
 | `POST /share-grants` to a nonexistent `to_user_id` | `404`; this discloses nothing beyond P13, which already lists every id |

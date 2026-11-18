@@ -423,6 +423,12 @@ private fun localizedReason(reason: ErrorReason?): String? {
         ErrorReasonCode.MEERKAT_VERSION_UNTESTED ->
             stringResource(R.string.error_reason_meerkat_version_untested)
 
+        ErrorReasonCode.MEERKAT_FETCH_UNREACHABLE ->
+            stringResource(R.string.error_reason_meerkat_fetch_unreachable)
+
+        ErrorReasonCode.MEERKAT_FETCH_UNREADABLE ->
+            stringResource(R.string.error_reason_meerkat_fetch_unreadable)
+
         ErrorReasonCode.COMMON_DATABASE_ERROR -> stringResource(
             R.string.error_reason_common_database_error
         )
@@ -1220,6 +1226,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.SHARE_GRANT_STATE_CONFLICT -> stringResource(
             R.string.error_reason_share_grant_state_conflict
+        )
+
+        ErrorReasonCode.SHARE_GRANT_NOT_ENDED -> stringResource(
+            R.string.error_reason_share_grant_not_ended
         )
 
         ErrorReasonCode.SHARE_GRANT_WIDENING_REFUSED -> stringResource(

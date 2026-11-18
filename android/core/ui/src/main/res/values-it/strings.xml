@@ -197,7 +197,7 @@
     <string name="contacts_search_results_hint">Vengono cercate anche note e attività — i filtri di cerchia e archivio non si applicano ad esse.</string>
     <string name="contacts_search_notes_group">Note</string>
     <string name="contacts_search_activities_group">Interazioni</string>
-    <string name="contacts_search_entities_group">Organizzazioni, luoghi e animali domestici</string>
+    <string name="contacts_search_entities_group">Organizzazioni, luoghi e animali</string>
     <string name="contacts_search_unfiled">Non archiviata</string>
     <string name="contacts_search_resolved_relation">Relazione corrispondente: %1$s</string>
 
@@ -1318,6 +1318,7 @@
     <string name="action_edit">Modifica</string>
     <string name="action_delete">Elimina</string>
     <string name="action_cancel">Annulla</string>
+    <string name="action_remove">Rimuovi</string>
     <string name="action_add">Aggiungi</string>
     <string name="action_back">Indietro</string>
     <string name="action_rename">Rinomina</string>
@@ -1433,6 +1434,7 @@
     <string name="households_suggest_relationships">Suggerisci relazioni</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Scrivi a tutti</string>
+    <string name="group_text_everyone_unavailable">Per scrivere a tutti, almeno due membri devono avere un numero di telefono.</string>
     <plurals name="households_suggestions_generated">
         <item quantity="one">%1$d nuova relazione suggerita generata. Controllala nelle pagine dei contatti dei membri.</item>
         <item quantity="many">%1$d nuove relazioni suggerite generate. Controllale nelle pagine dei contatti dei membri.</item>
@@ -1603,7 +1605,7 @@
     <string name="shares_revoked_reason_owner">Hai revocato questa condivisione</string>
     <string name="shares_revoked_reason_entity_deleted">L\'elemento condiviso è stato eliminato</string>
     <string name="shares_revoked_reason_recipient_deleted">L\'account del destinatario è stato eliminato</string>
-    <string name="shares_content_title">Condiviso con te</string>
+    <string name="shares_content_title">Condiviso con me</string>
     <string name="shares_content_from">Condiviso da %1$s</string>
     <string name="shares_content_unavailable">Questa condivisione non è più disponibile</string>
     <string name="shares_content_offline_hint">Il contenuto condiviso non viene mai salvato su questo dispositivo, quindi non può essere mostrato offline.</string>
@@ -2295,11 +2297,11 @@
     <string name="trash_title">Cestino</string>
     <string name="trash_empty_action">Svuota cestino</string>
     <string name="trash_empty_state">Il cestino è vuoto</string>
-    <string name="trash_retention_forever">I contatti eliminati vengono conservati finché non svuoti il cestino.</string>
+    <string name="trash_retention_forever">Gli elementi eliminati vengono conservati finché non svuoti il cestino.</string>
     <plurals name="trash_retention">
-        <item quantity="one">I contatti eliminati vengono conservati per %1$d giorno, poi eliminati definitivamente.</item>
-        <item quantity="many">I contatti eliminati vengono conservati per %1$d giorni, poi eliminati definitivamente.</item>
-        <item quantity="other">I contatti eliminati vengono conservati per %1$d giorni, poi eliminati definitivamente.</item>
+        <item quantity="one">Gli elementi eliminati vengono conservati per %1$d giorno, poi eliminati definitivamente.</item>
+        <item quantity="many">Gli elementi eliminati vengono conservati per %1$d giorni, poi eliminati definitivamente.</item>
+        <item quantity="other">Gli elementi eliminati vengono conservati per %1$d giorni, poi eliminati definitivamente.</item>
     </plurals>
     <string name="trash_deleted_on">Eliminato il %1$s</string>
     <string name="trash_purge_on">Eliminazione definitiva il %1$s</string>
@@ -3036,7 +3038,7 @@
     <string name="error_request_ref">(rif: %1$s)</string>
     <string name="login_error_invalid_credentials">Credenziali non valide</string>
     <string name="register_error_disabled">La registrazione è disattivata su questo server</string>
-    <string name="error_client_network">Nessuna connessione</string>
+    <string name="error_client_network">Impossibile raggiungere il tuo server. Controlla la connessione e riprova.</string>
     <string name="error_client_timeout">Richiesta scaduta</string>
     <string name="error_client_server">Errore del server (%1$d)</string>
     <string name="error_client_session_expired">Sessione scaduta: accedi di nuovo</string>
@@ -3127,6 +3129,8 @@
     <string name="error_reason_meerkat_sign_in_input_missing">Inserisci un token API di Meerkat oppure un nome utente e una password</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Contatti su questo account Meerkat: %1$d. L’importazione supporta al massimo %2$d</string>
     <string name="error_reason_meerkat_version_untested">Questa versione di Meerkat non è testata con l’importatore. Conferma per provare comunque; non viene scritto nulla finché non verifichi l’anteprima.</string>
+    <string name="error_reason_meerkat_fetch_unreachable">Impossibile raggiungere l’istanza di Meerkat</string>
+    <string name="error_reason_meerkat_fetch_unreadable">Il server Meerkat ha inviato una risposta che l’importatore non ha potuto leggere. Controlla l’URL</string>
     <string name="error_reason_common_database_error">Si è verificato un errore durante il salvataggio o il caricamento dei dati</string>
     <string name="error_reason_common_database_busy">Il server è occupato. Riprova tra un momento</string>
     <string name="error_reason_auth_invalid_credentials">Email o password non validi</string>
@@ -3317,6 +3321,7 @@
     <string name="error_reason_contact_share_already_responded">Hai già risposto a questa condivisione</string>
     <string name="error_reason_share_grant_not_found">Condivisione non trovata</string>
     <string name="error_reason_share_grant_state_conflict">Questa condivisione non può più essere modificata così</string>
+    <string name="error_reason_share_grant_not_ended">Si può rimuovere solo una condivisione terminata (rifiutata, scaduta o revocata); revocala prima</string>
     <string name="error_reason_share_grant_widening_refused">Una condivisione può solo essere ristretta; crea una nuova condivisione per condividere di più</string>
     <string name="error_reason_share_grant_already_exists">Già condiviso con questa persona</string>
     <string name="error_reason_share_grant_pending_limit">Troppe condivisioni sono in attesa di risposta</string>
@@ -3585,6 +3590,7 @@
     <string name="shared_entities_new_pet">Aggiungi animale</string>
     <string name="shared_entities_empty_pet">Ancora nessun animale.</string>
     <string name="shared_entities_search">Cerca per nome</string>
+    <string name="shared_entities_search_clear">Cancella ricerca</string>
     <string name="shared_entities_no_results">Nessun risultato per la tua ricerca.</string>
     <string name="shared_entities_sensitivity_label">Riservatezza</string>
     <string name="shared_entities_sensitivity_normal">Normale</string>

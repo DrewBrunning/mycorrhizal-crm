@@ -198,3 +198,7 @@ fun giftStatusLabel(token: String): String =
 /** Non-composable variant for callbacks that cannot compose (e.g. a plain `(String) -> String`). */
 fun lifeEventTypeLabelText(context: Context, token: String): String =
     lifeEventTypeLabelRes(token)?.let { context.getString(it) } ?: humanizeToken(token)
+
+/** Non-composable label for a card sub-kind token (anniversary `birth`, personal-info `hobby`). */
+fun typeOptionLabelText(context: Context, token: String): String =
+    typeOptionLabelRes(token)?.let { context.getString(it) } ?: humanizeToken(token)

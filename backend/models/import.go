@@ -38,6 +38,12 @@ type ImportUploadResponse struct {
 	SuggestedMappings []ColumnMapping `json:"suggested_mappings"`
 	RowCount          int             `json:"row_count"`
 	SampleData        [][]string      `json:"sample_data"` // First few rows for preview
+
+	// FileDiagnostics are file-level (not per-row) notices from reading the
+	// upload, e.g. {severity:"warn", concept:"encoding"} when the file was not
+	// UTF-8 and was read as Windows-1252 (issue #2669). Always present; [] when
+	// there is nothing to report (frontend trap #8).
+	FileDiagnostics []contactmodel.Diagnostic `json:"file_diagnostics"`
 }
 
 // ImportPreviewRequest is sent to request a preview with mappings
@@ -199,6 +205,10 @@ type ImportPreviewResponse struct {
 	DuplicateCount int                `json:"duplicate_count"`
 	ErrorCount     int                `json:"error_count"`
 
+	// FileDiagnostics are the file-level notices from reading the upload (see
+	// ImportUploadResponse.FileDiagnostics). Always present; [] when none.
+	FileDiagnostics []contactmodel.Diagnostic `json:"file_diagnostics"`
+
 	// FixedAssignment is present only when the preview request carried
 	// assign_circle_ids / assign_tag_ids (issue #2000).
 	FixedAssignment *ImportFixedAssignment `json:"fixed_assignment,omitempty"`
@@ -294,8 +304,11 @@ type ImportResult struct {
 
 // ImportRowIssue is one row that was not (fully) imported. Row is 1-based, the
 // same numbering as the "Row N:" prefix in ImportResult.Errors. Status is
-// "skipped" or "failed". The Contact* fields echo what the row held so the
-// report can be exported as a CSV and the row found in the source file.
+// "skipped", "failed" or (issue #2741) "warning": a row that DID import but
+// lost something (an invalid birthday/anniversary was dropped); warning rows
+// are counted as Created/Updated, never as Skipped or in Errors. The Contact*
+// fields echo what the row held so the report can be exported as a CSV and the
+// row found in the source file.
 type ImportRowIssue struct {
 	Row    int    `json:"row"`
 	Name   string `json:"name"`
@@ -303,6 +316,10 @@ type ImportRowIssue struct {
 	Phone  string `json:"phone"`
 	Status string `json:"status"`
 	Reason string `json:"reason"`
+	// Concept is the stable key clients localize a "warning" issue by
+	// ("birthday" or "anniversary"; the same token as the preview
+	// diagnostic's concept). Empty (and omitted) for skipped/failed issues.
+	Concept string `json:"concept,omitempty"`
 }
 
 // ImportSession stores temporary import data server-side (not persisted to DB)
@@ -344,4 +361,13 @@ type EntityCSVRestoreResponse struct {
 // import session.
 type ImportCancelRequest struct {
 	SessionID string `json:"session_id" validate:"required"`
+}
+
+// DiagnosticsOrEmpty returns d, or an empty non-nil slice when d is nil, so a
+// "never null" response field marshals as [] (frontend trap #8).
+func DiagnosticsOrEmpty(d []contactmodel.Diagnostic) []contactmodel.Diagnostic {
+	if d == nil {
+		return []contactmodel.Diagnostic{}
+	}
+	return d
 }

@@ -1318,6 +1318,7 @@
     <string name="action_edit">Editar</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_cancel">Cancelar</string>
+    <string name="action_remove">Quitar</string>
     <string name="action_add">Añadir</string>
     <string name="action_back">Atrás</string>
     <string name="action_rename">Renombrar</string>
@@ -1433,6 +1434,7 @@
     <string name="households_suggest_relationships">Sugerir relaciones</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Escribir a todos</string>
+    <string name="group_text_everyone_unavailable">Para escribir a todos, al menos dos miembros necesitan un número de teléfono.</string>
     <plurals name="households_suggestions_generated">
         <item quantity="one">%1$d nueva relación sugerida generada. Revísala en las páginas de contacto de los miembros.</item>
         <item quantity="many">%1$d nuevas relaciones sugeridas generadas. Revísalas en las páginas de contacto de los miembros.</item>
@@ -1603,7 +1605,7 @@
     <string name="shares_revoked_reason_owner">Revocaste lo compartido</string>
     <string name="shares_revoked_reason_entity_deleted">El elemento compartido se eliminó</string>
     <string name="shares_revoked_reason_recipient_deleted">Se eliminó la cuenta del destinatario</string>
-    <string name="shares_content_title">Compartido contigo</string>
+    <string name="shares_content_title">Compartido conmigo</string>
     <string name="shares_content_from">Compartido por %1$s</string>
     <string name="shares_content_unavailable">Esto compartido ya no está disponible</string>
     <string name="shares_content_offline_hint">El contenido compartido nunca se guarda en este dispositivo, por lo que no se puede mostrar sin conexión.</string>
@@ -2295,11 +2297,11 @@
     <string name="trash_title">Papelera</string>
     <string name="trash_empty_action">Vaciar papelera</string>
     <string name="trash_empty_state">La papelera está vacía</string>
-    <string name="trash_retention_forever">Los contactos eliminados se conservan hasta que vacíes la papelera.</string>
+    <string name="trash_retention_forever">Los elementos eliminados se conservan hasta que vacíes la papelera.</string>
     <plurals name="trash_retention">
-        <item quantity="one">Los contactos eliminados se conservan %1$d día y después se eliminan para siempre.</item>
-        <item quantity="many">Los contactos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
-        <item quantity="other">Los contactos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
+        <item quantity="one">Los elementos eliminados se conservan %1$d día y después se eliminan para siempre.</item>
+        <item quantity="many">Los elementos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
+        <item quantity="other">Los elementos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
     </plurals>
     <string name="trash_deleted_on">Eliminado el %1$s</string>
     <string name="trash_purge_on">Se elimina para siempre el %1$s</string>
@@ -3036,7 +3038,7 @@
     <string name="error_request_ref">(ref: %1$s)</string>
     <string name="login_error_invalid_credentials">Credenciales no válidas</string>
     <string name="register_error_disabled">El registro está desactivado en este servidor</string>
-    <string name="error_client_network">Sin conexión</string>
+    <string name="error_client_network">No se puede conectar con tu servidor. Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="error_client_timeout">La solicitud agotó el tiempo de espera</string>
     <string name="error_client_server">Error del servidor (%1$d)</string>
     <string name="error_client_session_expired">Sesión caducada: inicia sesión de nuevo</string>
@@ -3127,6 +3129,8 @@
     <string name="error_reason_meerkat_sign_in_input_missing">Introduce un token de API de Meerkat o un nombre de usuario y una contraseña</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Contactos en esta cuenta de Meerkat: %1$d. La importación admite como máximo %2$d</string>
     <string name="error_reason_meerkat_version_untested">Esta versión de Meerkat no está probada con el importador. Confirma para intentarlo de todos modos; no se escribe nada hasta que revises la vista previa.</string>
+    <string name="error_reason_meerkat_fetch_unreachable">No se pudo acceder a la instancia de Meerkat</string>
+    <string name="error_reason_meerkat_fetch_unreadable">El servidor de Meerkat envió una respuesta que el importador no pudo leer. Revise la URL</string>
     <string name="error_reason_common_database_error">Algo salió mal al guardar o cargar tus datos</string>
     <string name="error_reason_common_database_busy">El servidor está ocupado. Inténtalo de nuevo en un momento</string>
     <string name="error_reason_auth_invalid_credentials">Correo electrónico o contraseña no válidos</string>
@@ -3317,6 +3321,7 @@
     <string name="error_reason_contact_share_already_responded">La invitación para compartir ya se ha respondido</string>
     <string name="error_reason_share_grant_not_found">Recurso compartido no encontrado</string>
     <string name="error_reason_share_grant_state_conflict">Este recurso compartido ya no se puede cambiar así</string>
+    <string name="error_reason_share_grant_not_ended">Solo se puede quitar un recurso compartido que haya terminado (rechazado, caducado o revocado); revócalo primero</string>
     <string name="error_reason_share_grant_widening_refused">Un recurso compartido solo se puede restringir; crea uno nuevo para compartir más</string>
     <string name="error_reason_share_grant_already_exists">Ya está compartido con esta persona</string>
     <string name="error_reason_share_grant_pending_limit">Hay demasiados recursos compartidos esperando respuesta</string>
@@ -3585,6 +3590,7 @@
     <string name="shared_entities_new_pet">Añadir mascota</string>
     <string name="shared_entities_empty_pet">Aún no hay mascotas.</string>
     <string name="shared_entities_search">Buscar por nombre</string>
+    <string name="shared_entities_search_clear">Borrar búsqueda</string>
     <string name="shared_entities_no_results">Nada coincide con tu búsqueda.</string>
     <string name="shared_entities_sensitivity_label">Sensibilidad</string>
     <string name="shared_entities_sensitivity_normal">Normal</string>

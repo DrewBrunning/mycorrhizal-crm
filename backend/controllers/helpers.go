@@ -221,6 +221,15 @@ func parseEntitySort(c *gin.Context) (string, *apperrors.AppError) {
 	}
 }
 
+// parseNoteSort normalizes GET /notes' ?sort= query param (issue #2744):
+// "updated_at" (default) is the sync order every existing client relies on;
+// "date" is the human list order, by the note's own date. The accepted set,
+// the 400 policy and the reason params are exactly the activities list's
+// (#2360), so it shares that parser.
+func parseNoteSort(c *gin.Context) (string, *apperrors.AppError) {
+	return parseActivitySort(c)
+}
+
 // ---------------------------------------------------------------------------
 // Cursor pagination + change feeds (T17 — T17).
 //

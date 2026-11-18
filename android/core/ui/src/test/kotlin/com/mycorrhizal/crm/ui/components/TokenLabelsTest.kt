@@ -153,6 +153,13 @@ class TokenLabelsTest {
     }
 
     @Test
+    fun `non-composable type option labels resolve a known token and humanize the rest`() {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        assertEquals("Mobile", typeOptionLabelText(ctx, "cell"))
+        assertEquals("Brand new type", typeOptionLabelText(ctx, "brand_new_type"))
+    }
+
+    @Test
     @Config(sdk = [35], qualifiers = "de")
     fun `labels are translated in German`() {
         val ctx = ApplicationProvider.getApplicationContext<Context>()
