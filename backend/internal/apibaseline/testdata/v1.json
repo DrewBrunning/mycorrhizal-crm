@@ -19892,6 +19892,15 @@
       "name": "ImportRowIssue",
       "properties": [
         {
+          "name": "concept",
+          "type": "string",
+          "required": false,
+          "enum": [
+            "birthday",
+            "anniversary"
+          ]
+        },
+        {
           "name": "email",
           "type": "string",
           "required": true
@@ -19922,7 +19931,8 @@
           "required": true,
           "enum": [
             "skipped",
-            "failed"
+            "failed",
+            "warning"
           ]
         }
       ]

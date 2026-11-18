@@ -21934,20 +21934,36 @@ components:
           type: array
           description: >
             Issue #2187 — every skipped or failed row with the reason ([] when
-            there is nothing to report).
+            there is nothing to report). Issue #2741 widens it additively with
+            `warning` issues: rows that DID import but lost a value (an
+            invalid birthday/anniversary dropped; `concept` says which). A
+            warning row is counted in created/updated like any imported row and
+            never in skipped or errors, so the counters are unchanged.
           items: { $ref: "#/components/schemas/ImportRowIssue" }
 
     ImportRowIssue:
       type: object
       required: [row, name, email, phone, status, reason]
-      description: One row that was not (fully) imported.
+      description: One row that was not (fully) imported, or imported with a warning.
       properties:
         row: { type: integer, description: "1-based row number, as in the 'Row N:' prefix of ImportResult.errors." }
         name: { type: string, description: "Display name; falls back to the email, then the phone, then empty." }
         email: { type: string }
         phone: { type: string }
-        status: { type: string, enum: [skipped, failed] }
+        status:
+          type: string
+          enum: [skipped, failed, warning]
+          description: >
+            `warning` (issue #2741) is a row that imported but lost a value; clients
+            that do not know it should render it as a generic notice.
         reason: { type: string }
+        concept:
+          type: string
+          enum: [birthday, anniversary]
+          description: >
+            Issue #2741 — present on `warning` issues only: the stable key
+            clients localize the warning by (the same token as the preview
+            diagnostic's `concept`). Omitted for skipped/failed issues.
 
     ImportRun:
       type: object
