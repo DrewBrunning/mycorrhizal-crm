@@ -30,7 +30,7 @@ updates:
       # 2090055, fix still in review) -- and Playwright only runs its own
       # patched build, still Firefox 159 in the 1.66 alpha. Hold the runner and
       # its browser builds at 1.64.x until axe-core ships the attribute-first
-      # guard (dequelabs/axe-core#5561), then drop this entry.
+      # guard (dequelabs/axe-core#5561), then drop this entry. Tracking: #2799.
       - dependency-name: "@playwright/test"
         versions: [">= 1.65.0"]
   - package-ecosystem: "bundler"
