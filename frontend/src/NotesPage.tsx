@@ -345,7 +345,25 @@ const NotesPage: React.FC = () => {
           </Typography>
         </Paper>
       ) : (
-        <Timeline position="right">
+        <Timeline
+          position="right"
+          sx={{
+            // #2704: side by side, the date column left the note card only
+            // ~84px at 320px, so its text had nowhere to go. On phones stack
+            // the date above the card and drop the marker rail instead.
+            '@media (max-width:599.95px)': {
+              '& .MuiTimelineItem-root': { flexDirection: 'column', minHeight: 0 },
+              '& .MuiTimelineOppositeContent-root': {
+                flex: 'none',
+                marginRight: 0,
+                paddingBottom: 0,
+                textAlign: 'left',
+              },
+              '& .MuiTimelineSeparator-root': { display: 'none' },
+              '& .MuiTimelineContent-root': { flex: 'none', width: '100%' },
+            },
+          }}
+        >
           {notes.map((note, index) => (
             <TimelineItem key={note.ID}>
               <TimelineOppositeContent
