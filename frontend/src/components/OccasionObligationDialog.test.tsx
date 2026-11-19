@@ -376,3 +376,55 @@ test('edit mode pre-fills the existing obligation', () => {
   expect(screen.getByLabelText('Active')).not.toBeChecked();
   expect(screen.getByLabelText('Notes')).toHaveValue('Loves board games');
 });
+
+test('typing in an invalid field clears its error', async () => {
+  renderDialog();
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  const label = screen.getByLabelText('Label *');
+  await vi.waitFor(() => expect(label).toHaveAttribute('aria-invalid', 'true'));
+  fireEvent.change(label, { target: { value: 'C' } });
+  expect(label).toHaveAttribute('aria-invalid', 'false');
+});
+
+test('rejects a day set with no month, naming the Month field', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({ onSave });
+  fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Card' } });
+  fireEvent.mouseDown(screen.getByLabelText('Day'));
+  fireEvent.click(await screen.findByRole('option', { name: '5' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+  const month = screen.getByRole('combobox', { name: 'Month' });
+  await vi.waitFor(() => expect(month).toHaveAttribute('aria-invalid', 'true'));
+  expect(month).toHaveAccessibleDescription(
+    'An occasion anchor date requires both a month and a day',
+  );
+  expect(onSave).not.toHaveBeenCalled();
+});
+
+test('a stored impossible date (Feb 31) is flagged on the Day field instead of being resubmitted', async () => {
+  const onSave = vi.fn().mockResolvedValue(undefined);
+  renderDialog({
+    onSave,
+    obligation: {
+      id: 'o1',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      entity_id: 'alice-uid',
+      kind: 'gift',
+      label: 'Feb31 test',
+      anchor_month: 2,
+      anchor_day: 31,
+      lead_time_days: 0,
+      active: true,
+      sensitivity: 'normal',
+    },
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  const day = screen.getByRole('combobox', { name: 'Day' });
+  await vi.waitFor(() => expect(day).toHaveAttribute('aria-invalid', 'true'));
+  expect(day).toHaveAccessibleDescription(
+    'That month and day do not exist together, for example February 30',
+  );
+  expect(onSave).not.toHaveBeenCalled();
+});
