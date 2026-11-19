@@ -17,6 +17,8 @@ import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.RelationshipEdge
 import com.mycorrhizal.crm.model.network.RelationshipEdgeStatuses
 import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
@@ -286,6 +288,149 @@ class RelationshipsScreenTest {
         assertTrue(
             composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty()
         )
+    }
+
+    // Issue #2629: a failed edge load is the shared ErrorState (localized reason) with a Retry
+    // that re-runs the load; the transient snackbar must not also announce it.
+    @Test
+    fun `a failed edge load shows the localized reason with Retry that reloads the edges`() {
+        val edgeRepository = mockk<RelationshipEdgeRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed"))
+        )
+        coEvery { edgeRepository.listForContact("u-viewed", null, null) } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(
+                listOf(confirmedEdge("e1", "u-other", "u-viewed", RelationshipEdgeTypes.FRIEND_OF))
+            )
+        )
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(
+            mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice"))
+        )
+        val vm = RelationshipsViewModel(
+            edgeRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.relationships_empty)).assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithContentDescription("Delete Alice").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { edgeRepository.listForContact("u-viewed", null, null) }
+    }
+
+    // The ErrorState is not a toast: a mutation error while it is on screen still toasts, and the
+    // ErrorState (with its Retry) stays.
+    @Test
+    fun `a mutation error still toasts while the load error stays on screen`() {
+        val edgeRepository = mockk<RelationshipEdgeRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed"))
+        )
+        coEvery { edgeRepository.listForContact("u-viewed", null, null) } returns
+            Result.failure(ApiError.Client(500, "down"))
+        coEvery { edgeRepository.delete("e1") } returns
+            Result.failure(ApiError.Client(400, "cannot-delete"))
+        val vm = RelationshipsViewModel(
+            edgeRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm)
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { vm.delete("e1") }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("cannot-delete").assertIsDisplayed()
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
+    // Issue #2629: a failed refresh with edges already listed keeps the list and toasts.
+    @Test
+    fun `a failed refresh keeps the edges and toasts the error`() {
+        val edgeRepository = mockk<RelationshipEdgeRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed"))
+        )
+        coEvery { edgeRepository.listForContact("u-viewed", null, null) } returnsMany listOf(
+            Result.success(
+                listOf(confirmedEdge("e1", "u-other", "u-viewed", RelationshipEdgeTypes.FRIEND_OF))
+            ),
+            Result.failure(ApiError.Client(500, "down"))
+        )
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(
+            mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice"))
+        )
+        val vm = RelationshipsViewModel(
+            edgeRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm)
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Alice", substring = true).assertIsDisplayed()
+
+        composeTestRule.runOnIdle { vm.load() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    // A missing contact id is not a network failure: plain message, no Retry to offer.
+    @Test
+    fun `a missing contact id shows its message without Retry`() {
+        val vm = RelationshipsViewModel(
+            mockk<RelationshipEdgeRepository>(),
+            mockk<ContactRepository>(),
+            SavedStateHandle()
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        assertTrue(
+            composeTestRule.onAllNodesWithText(str(R.string.relationships_error_missing_contact_id))
+                .fetchSemanticsNodes().isNotEmpty()
+        )
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
     }
 
     @Test

@@ -65,6 +65,33 @@ class HouseholdsViewModelTest {
         assertNull(vm.uiState.value.error)
     }
 
+    // Issue #2629: only a failed load sets loadError (the screen's ErrorState + Retry); a failed
+    // create stays a toast-level `error`, and a reload clears it.
+    @Test
+    fun `a failed load sets loadError and a mutation failure does not`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val offline = ApiError.Server(503, "down")
+            coEvery { householdRepository.list(any(), any()) } returnsMany listOf(
+                Result.failure(offline),
+                Result.success(emptyList())
+            )
+            coEvery { householdRepository.create(any(), any()) } returns
+                Result.failure(ApiError.Client(409, "dup"))
+
+            val vm = HouseholdsViewModel(householdRepository, contactRepository)
+            advanceUntilIdle()
+            assertEquals(offline, vm.uiState.value.loadError)
+
+            vm.load()
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.loadError)
+
+            vm.create("Home", HouseholdTypes.FAMILY_UNIT)
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.loadError)
+            assertEquals("dup", vm.uiState.value.error?.message)
+        }
+
     @Test
     fun `load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { householdRepository.list(any(), any()) } returns Result.failure(
