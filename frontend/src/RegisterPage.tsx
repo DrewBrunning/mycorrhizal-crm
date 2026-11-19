@@ -109,7 +109,9 @@ export default function RegisterPage({ setToken }: RegisterPageProps) {
           >
             {t('register.title')}
           </Typography>
-          <Alert severity="info">{t('register.registrationDisabled')}</Alert>
+          <Alert severity="info" role="status">
+            {t('register.registrationDisabled')}
+          </Alert>
           <Button component={Link} to="/login" color="primary" variant="text" sx={{ mt: 2 }}>
             {t('register.backToLogin')}
           </Button>

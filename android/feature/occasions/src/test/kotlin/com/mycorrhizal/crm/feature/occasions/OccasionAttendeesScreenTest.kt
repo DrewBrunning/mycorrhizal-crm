@@ -22,6 +22,7 @@ import com.mycorrhizal.crm.model.network.OccasionEventAttendee
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
 import com.mycorrhizal.crm.model.network.OccasionEventDetail
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -176,5 +177,47 @@ class OccasionAttendeesScreenTest {
         names.forEach { name ->
             composeTestRule.onNodeWithText(name).performScrollTo().assertIsDisplayed()
         }
+    }
+
+    @Test
+    fun `a failed load shows the server message with Retry that reloads the attendees`() {
+        coEvery { occasionRepository.get("e1") } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(
+                OccasionEventDetail(
+                    occasionEvent = OccasionEvent(
+                        id = "e1",
+                        title = "BBQ",
+                        startsAt = "2026-07-04T15:00:00Z"
+                    ),
+                    attendees = listOf(attendee())
+                )
+            )
+        )
+        coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
+        val viewModel = OccasionAttendeesViewModel(
+            occasionRepository,
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("eventId" to "e1"))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                OccasionAttendeesScreen(onBack = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("No one invited yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { occasionRepository.get("e1") }
     }
 }

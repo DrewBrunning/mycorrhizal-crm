@@ -321,4 +321,22 @@ class ApiTokensViewModelTest {
 
             assertEquals(1, vm.uiState.value.activeCount)
         }
+
+    @Test
+    fun `a failed load sets loadError and a successful reload clears it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list() } returnsMany listOf(
+                Result.failure(ApiError.Network(java.io.IOException("offline"))),
+                Result.success(listOf(token(1)))
+            )
+            val vm = ApiTokensViewModel(repository)
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.loadError is ApiError.Network)
+
+            vm.load()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.loadError)
+            assertEquals(1, vm.uiState.value.tokens.size)
+        }
 }

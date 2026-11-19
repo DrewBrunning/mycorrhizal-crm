@@ -201,3 +201,32 @@ export async function downloadOccasionCardListCSV(params?: {
   if (!response.ok) throw await parseErrorResponse(response);
   await downloadFileFromResponse(response, `mycorrhizal-${kind}-list.csv`);
 }
+
+// Counts-only companion to the card-list CSV (issue #2786, OccasionCardListSummary):
+// how many recipients the CSV holds for the same query and how many it skips.
+// `included` always equals the CSV's data-row count; no names or addresses.
+export interface OccasionCardListSummary {
+  total: number;
+  included: number;
+  skipped: number;
+  skipped_reasons: {
+    no_address: number;
+    private_address_only: number;
+  };
+}
+
+// GET /occasion-obligations/card-list/summary
+export async function getOccasionCardListSummary(params?: {
+  kind?: string;
+  includeSensitive?: boolean;
+}): Promise<OccasionCardListSummary> {
+  const { kind = 'card', includeSensitive = false } = params || {};
+  const queryParams = new URLSearchParams({ kind });
+  if (includeSensitive) queryParams.append('include_sensitive', 'true');
+  const response = await apiFetch(
+    `${API_BASE_URL}/occasion-obligations/card-list/summary?${queryParams.toString()}`,
+    { headers: getAuthHeaders() },
+  );
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
+}

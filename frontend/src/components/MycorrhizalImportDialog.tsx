@@ -112,7 +112,7 @@ export default function MycorrhizalImportDialog({ open, onClose, onImportComplet
       </Typography>
 
       {upload && (
-        <Alert severity="info">
+        <Alert severity="info" role="status">
           <Typography variant="body2" gutterBottom>
             {t('settings.mycorrhizalImport.connect.found', {
               contacts: t('settings.mycorrhizalImport.connect.foundContacts', {

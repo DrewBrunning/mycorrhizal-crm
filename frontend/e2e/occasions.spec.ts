@@ -96,7 +96,9 @@ test.describe('Occasions', () => {
       await bad.getByRole('combobox', { name: 'Month' }).click();
       await page.getByRole('option', { name: 'January', exact: true }).click();
       await bad.getByRole('button', { name: 'Save' }).click();
-      await expect(bad.getByText('Set both a month and a day, or leave both unset.')).toBeVisible();
+      await expect(bad.getByRole('combobox', { name: 'Day' })).toHaveAccessibleDescription(
+        'An occasion anchor date requires both a month and a day',
+      );
       await bad.getByRole('button', { name: 'Cancel' }).click();
 
       // --- deleting the contact takes its obligation with it ---

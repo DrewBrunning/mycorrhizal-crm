@@ -319,7 +319,7 @@ export default function DataSettingsPage() {
               </Alert>
             )}
             {relationshipSuggestMessage && (
-              <Alert severity="info" sx={{ py: 0 }}>
+              <Alert severity="info" role="status" sx={{ py: 0 }}>
                 {relationshipSuggestMessage}
               </Alert>
             )}
@@ -329,7 +329,7 @@ export default function DataSettingsPage() {
               </Alert>
             )}
             {addressSuggestMessage && (
-              <Alert severity="info" sx={{ py: 0 }}>
+              <Alert severity="info" role="status" sx={{ py: 0 }}>
                 {addressSuggestMessage}
               </Alert>
             )}
@@ -533,7 +533,7 @@ export default function DataSettingsPage() {
               and a user who assumes it also means "not in my backup file"
               would hand out more than they meant to.
             */}
-            <Alert severity="info" sx={{ py: 0 }}>
+            <Alert severity="info" role="status" sx={{ py: 0 }}>
               {t('settings.export.sensitivityNotice')}
             </Alert>
             {exportError && (

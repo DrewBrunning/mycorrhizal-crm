@@ -42,9 +42,15 @@ const MaxEntityCSVRows = MaxCSVRows
 // EntityCSVRejection is a client-side rejection of the uploaded file (too many
 // rows, unreadable CSV), as opposed to a database fault. The HTTP layer maps it
 // to a 400; anything else is a server error.
-type EntityCSVRejection struct{ msg string }
+type EntityCSVRejection struct {
+	msg   string
+	cause error
+}
 
 func (e *EntityCSVRejection) Error() string { return e.msg }
+
+// Unwrap exposes the cause (ErrImportNotText for a binary upload, issue #2688).
+func (e *EntityCSVRejection) Unwrap() error { return e.cause }
 
 // IsEntityCSVRejection reports whether err is, or wraps, an EntityCSVRejection.
 func IsEntityCSVRejection(err error) bool {
@@ -106,6 +112,9 @@ func ParseEntityCSVSections(r io.Reader) (*EntityCSVSections, []ImportIssue, err
 	raw, readErr := io.ReadAll(r)
 	if readErr != nil {
 		return nil, nil, &EntityCSVRejection{msg: fmt.Sprintf("invalid CSV format: %v", readErr)}
+	}
+	if sniffErr := SniffImportText(raw); sniffErr != nil {
+		return nil, nil, &EntityCSVRejection{msg: sniffErr.Error(), cause: sniffErr}
 	}
 	// A BOM in front of the first section marker would hide it from
 	// csvMarkerRE (issue #2662); the export itself is always UTF-8.

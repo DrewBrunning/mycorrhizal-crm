@@ -142,7 +142,11 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
             >
               {t('passwordReset.checkEmail', { email })}
             </Typography>
-            {message && <Alert severity="info">{message}</Alert>}
+            {message && (
+              <Alert severity="info" role="status">
+                {message}
+              </Alert>
+            )}
             {error && (
               <Alert severity="error" id="forgot-password-error" ref={errorRef} tabIndex={-1}>
                 {error}

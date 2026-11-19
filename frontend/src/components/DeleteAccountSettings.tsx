@@ -151,7 +151,7 @@ export default function DeleteAccountSettings() {
               )}
               {needsPromotion && (
                 <>
-                  <Alert severity="info" sx={{ py: 0 }}>
+                  <Alert severity="info" role="status" sx={{ py: 0 }}>
                     {t('settings.deleteAccount.promotionNotice')}
                   </Alert>
                   <FormControl fullWidth size="small" required>

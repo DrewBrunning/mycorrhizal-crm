@@ -33,6 +33,8 @@ data class ApiTokensUiState(
     val revealedIsRotation: Boolean = false,
     /** A transient action error (load/create/revoke/revoke-all/rotate), shown and then cleared. */
     val error: ApiError? = null,
+    /** Issue #2629: the last list load failed (cleared when a load starts); shown with Retry. */
+    val loadError: ApiError? = null,
     /** How many tokens the last revoke-all call actually revoked, shown and then cleared. */
     val revokedAllCount: Int? = null
 ) {
@@ -77,15 +79,13 @@ class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRep
     fun load() {
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, loadError = null) }
             repository.list()
                 .onSuccess { list -> _uiState.update { it.copy(isLoading = false, tokens = list) } }
                 .onFailure { e ->
+                    val error = e.toApiError()
                     _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            error = e.toApiError()
-                        )
+                        it.copy(isLoading = false, error = error, loadError = error)
                     }
                 }
         }

@@ -2,9 +2,11 @@ package com.mycorrhizal.crm.feature.circles
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -20,6 +22,7 @@ import com.mycorrhizal.crm.testing.a11y.assertNoDuplicateContentDescriptions
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertTrue
@@ -71,6 +74,60 @@ class CirclesScreenTest {
                 CirclesScreen(onOpenCircle = {}, viewModel = viewModel)
             }
         }
+    }
+
+    @Test
+    fun `saved circles show the saved-data banner and Retry reloads the list`() {
+        val repository = mockk<CircleRepository>()
+        coEvery { repository.list(any(), any()) } returnsMany listOf(
+            Result.success(listOf(Circle(id = "c1", name = "Friends", servedFromCache = true))),
+            Result.success(listOf(Circle(id = "c1", name = "Friends")))
+        )
+        val viewModel = CirclesViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme { CirclesScreen(onOpenCircle = {}, viewModel = viewModel) }
+        }
+
+        composeTestRule.onNodeWithText(str(R.string.saved_data_banner_message)).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Friends").assertIsDisplayed()
+
+        composeTestRule.onNodeWithText(str(R.string.action_retry)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onAllNodesWithText(str(R.string.saved_data_banner_message))
+            .assertCountEquals(0)
+        coVerify(exactly = 2) { repository.list(any(), any()) }
+    }
+
+    @Test
+    fun `fresh circles show no saved-data banner`() {
+        setScreen(darkTheme = false)
+
+        composeTestRule.onAllNodesWithText(str(R.string.saved_data_banner_message))
+            .assertCountEquals(0)
+    }
+
+    @Test
+    fun `a failed load with nothing saved shows the server message and Retry reloads`() {
+        val repository = mockk<CircleRepository>()
+        coEvery { repository.list(any(), any()) } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(Circle(id = "c1", name = "Friends")))
+        )
+        val viewModel = CirclesViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme { CirclesScreen(onOpenCircle = {}, viewModel = viewModel) }
+        }
+
+        // The inline message and the error snackbar both carry the text.
+        composeTestRule.onAllNodesWithText(str(R.string.error_client_network))
+            .onFirst()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.action_retry)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Friends").assertIsDisplayed()
+        coVerify(exactly = 2) { repository.list(any(), any()) }
     }
 
     @Test

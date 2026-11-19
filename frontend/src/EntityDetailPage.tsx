@@ -201,6 +201,7 @@ export default function EntityDetailPage() {
         {back}
         <Alert
           severity="info"
+          role="status"
           action={
             <Button
               color="inherit"

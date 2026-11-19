@@ -242,6 +242,17 @@ func TestRestoreEntitiesCSV_RejectionsCarryReasonCodes(t *testing.T) {
 		router.ServeHTTP(w, newFileUploadRequest(t, entityCSVRestorePath, "backup.txt", []byte("=== ENTITIES ===\n")))
 		requireReason(t, w, http.StatusBadRequest, "csv_file_not_csv")
 	})
+	t.Run("binary renamed csv", func(t *testing.T) {
+		for name, body := range map[string][]byte{
+			"png": append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 64)...),
+			"zip": []byte("PK\x03\x04\x14\x00\x00\x00\x08\x00data"),
+		} {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, newFileUploadRequest(t, entityCSVRestorePath, name+".csv", body))
+			requireReason(t, w, http.StatusBadRequest, "import_csv_not_text")
+		}
+		assert.EqualValues(t, 0, countUserEntities(t, db, u.ID))
+	})
 	t.Run("too many rows", func(t *testing.T) {
 		var b strings.Builder
 		b.WriteString("=== ENTITIES ===\nID,Kind,Name,Sensitivity,Core (JSON)\n")

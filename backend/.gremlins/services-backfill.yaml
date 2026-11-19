@@ -74,6 +74,7 @@ unleash:
         - ^import_row_issues\.go$
         - ^import_service\.go$
         - ^import_session\.go$
+        - ^import_sniff\.go$
         - ^import_source\.go$
         - ^import_source_bundle\.go$
         - ^import_source_entities\.go$

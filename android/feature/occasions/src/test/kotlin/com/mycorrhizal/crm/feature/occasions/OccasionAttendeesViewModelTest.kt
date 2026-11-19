@@ -25,6 +25,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -306,5 +307,35 @@ class OccasionAttendeesViewModelTest {
 
             vm.onContactQueryChange("")
             assertEquals(0, vm.uiState.value.contactResults.size)
+        }
+
+    @Test
+    fun `a failed load is a screen-level load error, not a toast, and a reload clears it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { occasionRepository.get("e1") } returnsMany listOf(
+                Result.failure(ApiError.Network(java.io.IOException("offline"))),
+                Result.success(
+                    OccasionEventDetail(
+                        occasionEvent = OccasionEvent(
+                            id = "e1",
+                            title = "BBQ",
+                            startsAt = "2026-07-04T15:00:00Z"
+                        ),
+                        attendees = listOf(attendeeView)
+                    )
+                )
+            )
+            coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
+
+            val vm = viewModel()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.loadError is ApiError.Network)
+            assertNull(vm.uiState.value.error)
+
+            vm.load()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.loadError)
+            assertEquals(1, vm.uiState.value.attendees.size)
         }
 }
