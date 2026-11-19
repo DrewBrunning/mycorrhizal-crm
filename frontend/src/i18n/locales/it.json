@@ -525,12 +525,13 @@
         "allResolved": "Tutti i conflitti risolti: rivedi le decisioni qui sotto.",
         "fixRow": "Correggi questa riga",
         "editFix": "Modifica correzione",
-        "fixSaved": "Correzione salvata: verrà ricontrollata durante l’importazione",
         "fixFirstName": "Nome",
         "fixLastName": "Cognome",
         "fixEmail": "E-mail",
         "fixPhone": "Telefono",
-        "saveFix": "Salva correzione"
+        "saveFix": "Salva correzione",
+        "willRecheck": "Verrà ricontrollato durante l’importazione",
+        "cannotFixHere": "Questo errore non si può correggere qui: salti la riga o modifichi il contatto dopo l’importazione"
       },
       "result": {
         "title": "Importazione Completata",
@@ -1216,7 +1217,10 @@
     "deleteConfirm_many": "Spostare {{count}} contatti nel Cestino? Puoi ripristinarli finché non vengono eliminati definitivamente.",
     "selectContact": "Seleziona {{name}}",
     "resultFailure": "{{succeeded}} di {{total}} riusciti. {{failed}} falliti.",
-    "resultError": "L'operazione in blocco non è riuscita. Riprova."
+    "resultError": "L'operazione in blocco non è riuscita. Riprova.",
+    "mergeDone_one": "{{count}} contatto unito a {{name}}",
+    "mergeDone_other": "{{count}} contatti uniti a {{name}}",
+    "mergeDone_many": "{{count}} contatti uniti a {{name}}"
   },
   "common": {
     "save": "Salva",

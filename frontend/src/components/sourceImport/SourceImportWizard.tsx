@@ -8,6 +8,8 @@ import {
   StepLabel,
   Stepper,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,6 +25,9 @@ import SourceImportResult from './SourceImportResult';
 import SourceImportReview from './SourceImportReview';
 
 const STEP_ORDER: SourceImportStep[] = ['connect', 'fetching', 'review', 'importing', 'result'];
+// A source that is a plain file upload has no connection to make and nothing
+// to fetch: the upload step covers both (#2688).
+const UPLOAD_STEP_ORDER: SourceImportStep[] = ['connect', 'review', 'importing', 'result'];
 
 interface Props {
   open: boolean;
@@ -37,6 +42,9 @@ interface Props {
   connectStep: ReactNode;
   // Called after the user acknowledges the result screen.
   onComplete: () => void;
+  // True for a source imported from an uploaded file: the stepper then reads
+  // Upload, Review, Import, Done instead of Connect, Fetch, ...
+  fileUpload?: boolean;
   // A secondary line under the failure message (the Meerkat "use the database
   // upload" advice, shown only where that option exists).
   errorHint?: string;
@@ -53,11 +61,14 @@ export default function SourceImportWizard({
   wizard,
   connectStep,
   onComplete,
+  fileUpload = false,
   errorHint,
 }: Props) {
   const { t } = useTranslation();
+  const phone = useMediaQuery(useTheme().breakpoints.down('sm'));
   const { step } = wizard;
-  const activeStep = STEP_ORDER.indexOf(step);
+  const stepOrder = fileUpload ? UPLOAD_STEP_ORDER : STEP_ORDER;
+  const activeStep = stepOrder.indexOf(fileUpload && step === 'fetching' ? 'connect' : step);
 
   const handleCancel = () => {
     void wizard.cancel();
@@ -113,13 +124,19 @@ export default function SourceImportWizard({
   const photosPending = step === 'importing';
 
   return (
-    <AppDialog open={open} onClose={handleDialogClose} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={handleDialogClose} maxWidth="md" fullWidth fullScreen={phone}>
       <DialogTitle>{t(titleKey)}</DialogTitle>
       <DialogContent dividers>
-        <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
-          {STEP_ORDER.map((key) => (
+        <Stepper activeStep={activeStep} alternativeLabel={phone} sx={{ mb: 3 }}>
+          {stepOrder.map((key) => (
             <Step key={key}>
-              <StepLabel>{t(`settings.sourceImport.steps.${key}`)}</StepLabel>
+              <StepLabel>
+                {t(
+                  key === 'connect' && fileUpload
+                    ? 'contacts.import.steps.upload'
+                    : `settings.sourceImport.steps.${key}`,
+                )}
+              </StepLabel>
             </Step>
           ))}
         </Stepper>
