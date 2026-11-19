@@ -117,6 +117,7 @@ type Config struct {
 	CookieSecure                 bool     `cfgreg:"env=COOKIE_SECURE;type=bool;default=false;required=false;restart=true;desc=Set Secure flag on the auth cookie (requires HTTPS)"`             // Set Secure flag on auth cookie (requires HTTPS)
 	CookieDomain                 string   `cfgreg:"env=COOKIE_DOMAIN;type=string;range=hostname, optionally dot-prefixed;default=;required=false;restart=true;desc=Domain for the auth cookie"` // Domain for auth cookie (empty = current domain only)
 	RegistrationDisabled         bool     `cfgreg:"env=DISABLE_REGISTRATION;type=bool;default=false;required=false;restart=true;desc=Disable new user registration"`
+	ShareDirectoryMode           string   `cfgreg:"env=SHARE_DIRECTORY_MODE;type=enum;enum=all|search;default=all;required=false;restart=true;desc=Share-recipient directory: all lists every user; search returns only username-prefix matches for a query of 3+ characters (becomes the default in v2.0.0)"`
 	WebhookBlockPrivateURLs      bool     `cfgreg:"env=WEBHOOK_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block webhook deliveries to private/loopback addresses"`
 	CalDAVSyncIntervalHours      int      `cfgreg:"env=CALDAV_SYNC_INTERVAL_HOURS;type=int;range=>=1, invalid value refuses to boot;default=6;required=false;restart=true;desc=Interval for the scheduled calendar sync job, in hours"`
 	CalDAVBlockPrivateURLs       bool     `cfgreg:"env=CALDAV_BLOCK_PRIVATE_URLS;type=bool;default=false;required=false;restart=true;desc=Block calendar sync requests to private/loopback addresses"`
@@ -521,6 +522,7 @@ func baseConfig() *Config {
 		StorageSampleRetentionDays:    DefaultStorageSampleRetentionDays,
 		LogLevel:                      "info",
 		GinMode:                       "debug",
+		ShareDirectoryMode:            ShareDirectoryModeAll,
 		OIDC: OIDCConfig{
 			Scopes: []string{"openid", "email", "profile"},
 		},
@@ -729,6 +731,7 @@ func LoadConfig() *Config {
 	cfg.DemoMode = getBoolEnv("DEMO_MODE", cfg.DemoMode)
 	cfg.LogLevel = getEnv("LOG_LEVEL", cfg.LogLevel)
 	cfg.GinMode = getEnv("GIN_MODE", cfg.GinMode)
+	cfg.ShareDirectoryMode = getEnv("SHARE_DIRECTORY_MODE", cfg.ShareDirectoryMode)
 
 	// Assigned outside the aligned literal above so a longer key name does not
 	// reflow every line in it. Opt-in RTO budget for the restore drill (#506).
@@ -1619,6 +1622,19 @@ func (c *Config) Validate() []ValidationError {
 		})
 	}
 
+	// SHARE_DIRECTORY_MODE (issue #2787): an unknown value would silently
+	// fall back to listing every account, the exposure the operator is trying
+	// to close, so refuse it at boot. The empty zero value (hand-built Config)
+	// behaves as "all".
+	switch c.ShareDirectoryMode {
+	case "", ShareDirectoryModeAll, ShareDirectoryModeSearch:
+	default:
+		errors = append(errors, ValidationError{
+			Field:   "SHARE_DIRECTORY_MODE",
+			Message: fmt.Sprintf("Invalid SHARE_DIRECTORY_MODE '%s'. Must be one of: all, search.", c.ShareDirectoryMode),
+		})
+	}
+
 	// Deployment shape (ADR 0028, issue #1258). An unrecognised value would
 	// silently behave like server mode (the zero value) while the caller
 	// believed they had an embedded one — or vice versa — so refuse it.
@@ -1637,6 +1653,12 @@ func (c *Config) Validate() []ValidationError {
 
 	return errors
 }
+
+// Share-recipient directory modes (SHARE_DIRECTORY_MODE, issue #2787).
+const (
+	ShareDirectoryModeAll    = "all"
+	ShareDirectoryModeSearch = "search"
+)
 
 // ValidateError runs Validate and folds any failures into a single error whose
 // message is the same operator-facing block ValidateOrPanic prints. It is the
