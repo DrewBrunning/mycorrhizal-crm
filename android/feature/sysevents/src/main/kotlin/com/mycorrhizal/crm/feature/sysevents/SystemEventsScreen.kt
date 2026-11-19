@@ -70,6 +70,7 @@ import com.mycorrhizal.crm.model.network.SystemEventTypes
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -233,12 +234,8 @@ fun SystemEventsScreen(onBack: () -> Unit, viewModel: SystemEventsViewModel = hi
                             LoadingSkeleton(modifier = Modifier.testTag("sysevents-loading"))
 
                         state.events.isEmpty() && loadError != null ->
-                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                Text(
-                                    text = loadError,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
+                            state.error?.let { error ->
+                                ErrorState(error = error, onRetry = viewModel::load)
                             }
 
                         state.events.isEmpty() ->

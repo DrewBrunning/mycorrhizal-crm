@@ -102,6 +102,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -580,14 +581,10 @@ fun ContactListScreenContent(
                             }
                         }
 
+                        // With nothing to list (and no saved rows to fall back on) a failed
+                        // load is the shared ErrorState; Retry re-runs the load.
                         uiState.contacts.isEmpty() && uiState.error != null -> item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-                                Text(
-                                    text = uiState.error.localizedMessage(),
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
+                            ErrorState(error = uiState.error, onRetry = onRefresh)
                         }
 
                         else -> {
@@ -779,7 +776,9 @@ fun ContactListScreenContent(
         )
     }
 
-    uiState.error?.let { error ->
+    // With nothing listed the error is the list's ErrorState (and its Retry); a toast that clears
+    // the error on dismissal would take that state away again (and flip it to the empty state).
+    uiState.error?.takeIf { uiState.contacts.isNotEmpty() }?.let { error ->
         val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)

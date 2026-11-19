@@ -47,6 +47,8 @@ import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.SearchActivityHit
 import com.mycorrhizal.crm.model.network.SearchContactHit
 import com.mycorrhizal.crm.model.network.SearchEntityHit
@@ -1321,6 +1323,159 @@ class ContactListScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+    }
+
+    // Issue #2629: a failed first load with nothing to show is the shared ErrorState (localized
+    // reason) whose Retry re-runs the load; the onboarding empty state must not show instead.
+    @Test
+    fun `a failed first load shows the localized reason and Retry wired to refresh`() {
+        var refreshes = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = emptyList(),
+                        error = ApiError.Client(
+                            409,
+                            "raw-body-not-shown",
+                            ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                        )
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {},
+                    onRefresh = { refreshes += 1 }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No contacts yet").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Retry").performClick()
+
+        assertEquals(1, refreshes)
+    }
+
+    // The saved-data fallback (#2748) is unchanged: cached rows plus the banner, never the
+    // no-data ErrorState, so Retry appears once (the banner's).
+    @Test
+    fun `cached rows with a failed refresh keep the saved data banner and no error state`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = listOf(ContactSummary(id = 1, fn = "Alice")),
+                        showingSavedData = true,
+                        error = ApiError.Network(java.io.IOException("offline"))
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Showing saved data").assertExists()
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Retry").assertCountEquals(1)
+    }
+
+    // With rows still listed a failed refresh keeps its toast (there is no ErrorState to show).
+    @Test
+    fun `a failed refresh with rows still listed toasts the error and shows no error state`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = listOf(ContactSummary(id = 1, fn = "Alice")),
+                        error = ApiError.Client(500, "refresh-failed")
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("refresh-failed").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    // The error must survive on screen: the snackbar path clears the error when dismissed, which
+    // would turn the state back into the onboarding empty state (so it is skipped while empty).
+    @Test
+    fun `the top-level screen retries a failed first load and then lists the contacts`() {
+        val repository = mockk<ContactRepository>()
+        coEvery { repository.observeContacts() } returns emptyFlow()
+        coEvery { repository.searchLocal(any()) } returns emptyList()
+        coEvery { repository.syncContacts() } returns Result.success(Unit)
+        // The screen also reloads on resume, so count the calls instead of scripting a sequence.
+        var recovered = false
+        var loads = 0
+        coEvery {
+            repository.listContacts(any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } coAnswers {
+            loads += 1
+            if (recovered) {
+                Result.success(
+                    ContactsPage(
+                        contacts = listOf(
+                            ContactSummary(id = 1, fn = "Alice", firstname = "Alice")
+                        ),
+                        nextCursor = null,
+                        limit = 50,
+                        sync = null
+                    )
+                )
+            } else {
+                Result.failure(
+                    ApiError.Client(
+                        409,
+                        "raw-body-not-shown",
+                        ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                    )
+                )
+            }
+        }
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
+        val circleRepository = mockk<CircleRepository>()
+        coEvery { circleRepository.list() } returns Result.success(emptyList())
+        val tagRepository = mockk<TagRepository>()
+        coEvery { tagRepository.list() } returns Result.success(emptyList())
+        val authRepository = mockk<AuthRepository>()
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        val appSettingsRepository = mockk<AppSettingsRepository>()
+        every { appSettingsRepository.contactSortPreference() } returns flowOf(
+            AppSettingsRepository.CONTACT_SORT_NAME
+        )
+        val viewModel = ContactListViewModel(
+            repository,
+            apiClient,
+            circleRepository,
+            mockk<BulkOperationRepository>(),
+            tagRepository,
+            authRepository,
+            appSettingsRepository
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactListScreen(onContactClick = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("No contacts yet").assertDoesNotExist()
+
+        val loadsBeforeRetry = loads
+        recovered = true
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(loadsBeforeRetry + 1, loads)
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
     }
 
     // ADR 0029 §6 (issue #1271): the "Share to…" single-select picker mode.

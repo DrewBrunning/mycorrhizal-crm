@@ -14,6 +14,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.SystemEventRepository
 import com.mycorrhizal.crm.model.network.ErrorAggregationResponse
 import com.mycorrhizal.crm.model.network.ErrorBucket
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.JobRunHealth
 import com.mycorrhizal.crm.model.network.JobRunHealthResponse
 import com.mycorrhizal.crm.model.network.SubsystemHealth
@@ -24,6 +26,7 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -127,6 +130,57 @@ class SystemEventsScreenTest {
         screen()
 
         assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    // Issue #2629: a failed first load is the shared ErrorState (localized reason) with a Retry
+    // that re-runs the load; the empty state must not show and Retry then brings the rows back.
+    @Test
+    fun `a failed load shows the localized reason with Retry that reloads the timeline`() {
+        stubPanels()
+        coEvery {
+            repository.list(
+                component = any(),
+                severity = any(),
+                eventType = any(),
+                correlationId = any(),
+                ids = any(),
+                limit = any()
+            )
+        } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(SystemEventsResponse(systemEvents = listOf(event(1, "sync_failed"))))
+        )
+
+        screen()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.sysevents_empty_no_filters))
+            .assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("sysevents-row-1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) {
+            repository.list(
+                component = any(),
+                severity = any(),
+                eventType = any(),
+                correlationId = any(),
+                ids = any(),
+                limit = any()
+            )
+        }
     }
 
     @Test

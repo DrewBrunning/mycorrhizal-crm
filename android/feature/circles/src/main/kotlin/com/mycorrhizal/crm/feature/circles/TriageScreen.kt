@@ -37,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -98,13 +99,10 @@ fun TriageScreen(
                     state.items.isEmpty() && state.error == null ->
                         EmptyState(title = stringResource(R.string.triage_empty))
 
-                    state.items.isEmpty() && state.error != null -> {
-                        Text(
-                            text = state.error?.localizedMessage().orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
+                    state.items.isEmpty() && state.error != null ->
+                        state.error?.let { error ->
+                            ErrorState(error = error, onRetry = viewModel::load)
+                        }
 
                     else -> ClassifyContent(
                         state = state,
