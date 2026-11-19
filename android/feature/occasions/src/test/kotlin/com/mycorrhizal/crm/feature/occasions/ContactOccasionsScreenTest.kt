@@ -7,7 +7,7 @@ import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
@@ -46,6 +46,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+private const val SNACKBAR_MS = 11_000L
 private const val UID = "11111111-1111-4111-8111-111111111111"
 
 @RunWith(RobolectricTestRunner::class)
@@ -162,12 +163,28 @@ class ContactOccasionsScreenTest {
         composeTestRule.onNodeWithText("boom").assertIsDisplayed()
     }
 
+    /** Opens the dropdown tagged [tag] and picks [text], scrolling the popup list to it. */
+    private fun choose(tag: String, text: String) {
+        composeTestRule.onNodeWithTag(tag).performScrollTo().performClick()
+        composeTestRule.onNodeWithText(text).performScrollTo().performClick()
+    }
+
+    private fun pickMonthAndDay(month: String, day: String) {
+        choose("occasion-ob-month", month)
+        choose("occasion-ob-day", day)
+    }
+
+    private fun openDayList() {
+        composeTestRule.onNodeWithTag("occasion-ob-day").performScrollTo().performClick()
+    }
+
     @Test
     fun `creating an occasion submits the typed label and returns to the list`() {
         render(emptyList())
         coEvery { repository.create(any()) } returns Result.success(ob("n", "Birthday gift"))
         composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
         composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Birthday gift")
+        pickMonthAndDay("June", "3")
         composeTestRule.onNodeWithText("Create").performClick()
         composeTestRule.waitForIdle()
 
@@ -175,7 +192,8 @@ class ContactOccasionsScreenTest {
             repository.create(
                 match {
                     it.entityId == UID && it.label == "Birthday gift" && it.kind == "card" &&
-                        it.active && it.leadTimeDays == 0 && it.anchorMonth == null
+                        it.active && it.leadTimeDays == 0 &&
+                        it.anchorMonth == 6 && it.anchorDay == 3
                 }
             )
         }
@@ -198,12 +216,105 @@ class ContactOccasionsScreenTest {
     }
 
     @Test
-    fun `save stays disabled until a label is typed`() {
+    fun `a fresh form shows no validation error and blank-label Create explains itself`() {
         render(emptyList())
         composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
-        composeTestRule.onNodeWithText("Create").assertIsNotEnabled()
-        composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("x")
-        composeTestRule.onNodeWithText("Create").assertIsDisplayed()
+        // Nothing is flagged before the user has interacted or submitted.
+        composeTestRule.onNodeWithText("Enter a label for this occasion.").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Create").assertIsEnabled()
+
+        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Enter a label for this occasion.").assertIsDisplayed()
+        coVerify(exactly = 0) { repository.create(any()) }
+    }
+
+    @Test
+    fun `submitting without a date shows the localized required reason and keeps the input`() {
+        render(emptyList())
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+        composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Edge")
+        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("An occasion needs a month and a day so it can remind you")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("Edge").assertIsDisplayed()
+        coVerify(exactly = 0) { repository.create(any()) }
+    }
+
+    @Test
+    fun `the Day list follows the chosen month`() {
+        render(emptyList())
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+
+        choose("occasion-ob-month", "February")
+        openDayList()
+        composeTestRule.onNodeWithText("29").assertExists()
+        composeTestRule.onNodeWithText("30").assertDoesNotExist()
+        composeTestRule.onNodeWithText("31").assertDoesNotExist()
+        composeTestRule.onNodeWithText("29").performScrollTo().performClick()
+
+        choose("occasion-ob-month", "April")
+        openDayList()
+        composeTestRule.onNodeWithText("30").assertExists()
+        composeTestRule.onNodeWithText("31").assertDoesNotExist()
+        composeTestRule.onNodeWithText("30").performScrollTo().performClick()
+
+        choose("occasion-ob-month", "December")
+        openDayList()
+        composeTestRule.onNodeWithText("31").assertExists()
+    }
+
+    @Test
+    fun `switching to a shorter month clears a day that no longer exists`() {
+        render(emptyList())
+        coEvery { repository.create(any()) } returns Result.success(ob("n", "Edge"))
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+        composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Edge")
+        pickMonthAndDay("January", "31")
+
+        choose("occasion-ob-month", "February")
+        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.waitForIdle()
+
+        // The 31 was dropped with the month change, so it is "incomplete", never a Feb 31.
+        composeTestRule.onNodeWithText("An occasion anchor date requires both a month and a day")
+            .assertIsDisplayed()
+        coVerify(exactly = 0) { repository.create(any()) }
+    }
+
+    @Test
+    fun `each server anchor-date reason renders localized text and keeps the form input`() {
+        val cases = listOf(
+            ErrorReasonCode.OCCASION_ANCHOR_DATE_REQUIRED to
+                "An occasion needs a month and a day so it can remind you",
+            ErrorReasonCode.OCCASION_ANCHOR_DATE_INCOMPLETE to
+                "An occasion anchor date requires both a month and a day",
+            ErrorReasonCode.OCCASION_ANCHOR_DATE_INVALID to
+                "That month and day do not exist together, for example February 30"
+        )
+        render(emptyList())
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+        composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Edge")
+        pickMonthAndDay("February", "29")
+        for ((code, text) in cases) {
+            coEvery { repository.create(any()) } returns Result.failure(
+                ApiError.Client(400, "RAW SERVER TEXT", reason = ErrorReason(code, emptyMap()))
+            )
+            composeTestRule.onNodeWithText("Create").performClick()
+            composeTestRule.waitForIdle()
+
+            composeTestRule.onNodeWithText(text).assertIsDisplayed()
+            composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+            composeTestRule.onNodeWithText("Add an occasion").assertIsDisplayed()
+            composeTestRule.onNodeWithText("Edge").assertIsDisplayed()
+            composeTestRule.onNodeWithTag("occasion-ob-month").assertTextContains("February")
+            composeTestRule.onNodeWithTag("occasion-ob-day").assertTextContains("29")
+            // Let the snackbar clear before the next reason.
+            composeTestRule.mainClock.advanceTimeBy(SNACKBAR_MS)
+        }
     }
 
     @Test
@@ -212,6 +323,7 @@ class ContactOccasionsScreenTest {
         coEvery { repository.create(any()) } returns Result.failure(ApiError.Client(422, "nope"))
         composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
         composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("x")
+        pickMonthAndDay("March", "9")
         composeTestRule.onNodeWithText("Create").performClick()
         composeTestRule.waitForIdle()
 
@@ -269,6 +381,7 @@ class ContactOccasionsScreenTest {
         coEvery { repository.create(any()) } returns Result.success(ob("n", "x", kind = "invite"))
         composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
         composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Dinner")
+        pickMonthAndDay("March", "9")
         composeTestRule.onNodeWithText("Invite").performClick()
         kindField().assertTextContains("Invite")
         composeTestRule.onNodeWithTag("occasion-ob-kind").performTextReplacement("Flowers")
@@ -284,6 +397,7 @@ class ContactOccasionsScreenTest {
         coEvery { repository.create(any()) } returns Result.success(ob("n", "x", kind = "gift"))
         composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
         composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Present")
+        pickMonthAndDay("March", "9")
         composeTestRule.onNodeWithTag("occasion-ob-kind").performTextReplacement("Gift")
         composeTestRule.onNodeWithText("Create").performClick()
         composeTestRule.waitForIdle()

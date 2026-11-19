@@ -174,3 +174,5 @@ class ContactOccasionsViewModel @Inject constructor(
         _uiState.update { it.copy(error = null, errorRes = null) }
     }
 }
+
+internal fun daysInMonth(month: Int?): Int = 31
