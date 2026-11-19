@@ -44,7 +44,7 @@ internal fun grantTitle(label: String, entityType: String): String =
 @StringRes
 internal fun grantStatusLabelRes(status: String): Int = when (status) {
     ShareGrantStatuses.ACTIVE -> R.string.shares_status_active
-    ShareGrantStatuses.DECLINED -> R.string.shares_status_declined
+    ShareGrantStatuses.DECLINED -> R.string.shares_status_declined_by_recipient
     ShareGrantStatuses.REVOKED -> R.string.shares_status_revoked
     ShareGrantStatuses.EXPIRED -> R.string.shares_status_expired
     else -> R.string.shares_status_pending

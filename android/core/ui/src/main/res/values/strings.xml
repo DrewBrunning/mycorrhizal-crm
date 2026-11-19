@@ -1519,6 +1519,8 @@
     <string name="shares_status_pending">Pending</string>
     <string name="shares_status_accepted">Accepted</string>
     <string name="shares_status_declined">Declined</string>
+    <!-- Issue #2642: decline, leave and block are one `declined` to the sender (ADR 0042). -->
+    <string name="shares_status_declined_by_recipient">Declined or ended by the recipient</string>
     <string name="shares_accept">Accept</string>
     <string name="shares_decline">Decline</string>
     <string name="shares_decline_confirm_title">Decline this share?</string>
@@ -1583,11 +1585,11 @@
     <string name="shares_grant_remove">Remove</string>
     <string name="shares_grant_reconfirm">Review and re-confirm</string>
     <string name="shares_grant_edit">Edit</string>
-    <string name="shares_grant_decline_message">Decline the share of %1$s from %2$s? They can see that it was declined.</string>
+    <string name="shares_grant_decline_message">Decline the share of %1$s from %2$s? They will see it as declined or ended.</string>
     <string name="shares_grant_block_title">Block %1$s?</string>
-    <string name="shares_grant_block_message">This declines the share and ends every share from %1$s. Their future shares will not show up here and they are not told you blocked them. You can unblock them later.</string>
+    <string name="shares_grant_block_message">This declines the share and ends every share from %1$s to you. They are not told you blocked them; they see their shares as declined or ended. Their future shares will not show up here. You can unblock them later.</string>
     <string name="shares_grant_leave_title">Stop receiving this share?</string>
-    <string name="shares_grant_leave_message">%1$s will no longer be visible to you. To see it again, %2$s has to share it with you again.</string>
+    <string name="shares_grant_leave_message">%1$s will no longer be visible to you. They will see the share as declined or ended. To see it again, %2$s has to share it with you again.</string>
     <string name="shares_grant_revoke_title">Revoke this share?</string>
     <string name="shares_grant_revoke_message">%1$s will lose access the next time they load it. Anything they have already seen cannot be taken back.</string>
     <string name="shares_grant_remove_title">Remove this share?</string>
@@ -3077,7 +3079,7 @@
     <string name="error_reason_meerkat_fetch_unreadable">The Meerkat server sent a response the importer could not read. Check the URL</string>
     <string name="error_reason_common_database_error">Something went wrong while saving or loading your data</string>
     <string name="error_reason_common_database_busy">The server is busy. Try again in a moment</string>
-    <string name="error_reason_auth_invalid_credentials">Invalid email or password</string>
+    <string name="error_reason_auth_invalid_credentials">Invalid username, email or password</string>
     <string name="error_reason_auth_token_expired">Your session has expired. Sign in again</string>
     <string name="error_reason_auth_token_invalid">Your session is no longer valid. Sign in again</string>
     <string name="error_reason_common_client_not_supported">This app version is no longer supported. Update to %1$s or later</string>
@@ -3413,6 +3415,7 @@
     <string name="error_reason_household_suggestion_member_stale">The contact is no longer a member of this household</string>
     <string name="error_reason_household_suggestion_stale">The suggested members no longer share an address — re-run the suggestion scan</string>
     <string name="error_reason_household_type_invalid">type must be one of family_unit, roommates, other</string>
+    <string name="error_reason_import_csv_not_text">This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.</string>
     <string name="error_reason_import_disk_space_low">not enough disk space to import %1$s contacts: %2$s</string>
     <string name="error_reason_import_field_mapping_target_invalid">An imported value can only go into a custom field that applies to contacts</string>
     <string name="error_reason_import_field_mappings_invalid">%1$s</string>

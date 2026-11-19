@@ -65,6 +65,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.DeceasedDot
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.HealthScoreDot
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -246,13 +247,8 @@ fun NetworkScreenContent(
                                 )
 
                             uiState.groupedChains.isEmpty() && uiState.error != null &&
-                                !uiState.showEntities -> {
-                                Text(
-                                    text = uiState.error.localizedMessage(),
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
+                                !uiState.showEntities ->
+                                ErrorState(error = uiState.error, onRetry = onRefresh)
 
                             else -> NetworkList(
                                 uiState = uiState,

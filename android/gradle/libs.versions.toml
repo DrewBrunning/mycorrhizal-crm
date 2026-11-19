@@ -1,6 +1,6 @@
 [versions]
-agp = "9.3.1"
-kotlin = "2.3.10"
+agp = "9.5.1"
+kotlin = "2.4.21"
 ksp = "2.3.11"
 firebaseMessaging = "24.1.2"
 googleServices = "4.4.4"
@@ -12,7 +12,7 @@ composeBom = "2026.08.00"
 navigationCompose = "2.8.5"
 hilt = "2.60.1"
 hiltNavigationCompose = "1.2.0"
-room = "2.8.4"
+room = "2.8.5"
 okhttp = "4.12.0"
 moshi = "1.15.1"
 coil = "3.0.4"
@@ -23,7 +23,7 @@ datastore = "1.1.1"
 securityCrypto = "1.1.0-alpha06"
 javaxInject = "1"
 work = "2.9.1"
-turbine = "1.2.0"
+turbine = "1.2.1"
 # 1.14.x: its ByteBuddy line supports the JDK 25 test JVM (1.13.x predates
 # Java 25 class files). Test-only, so no release lockfile is affected.
 mockk = "1.14.9"
@@ -94,7 +94,7 @@ aboutLibraries = "14.2.1"
 # Compatibility matrix: https://mrmans0n.github.io/compose-rules/detekt/
 composeRules = "0.6.8"
 # Issue #1908: per-module dependency hygiene (unused/misdeclared dependencies).
-# 3.19.0+ is explicitly built and tested against AGP 9.3.1; the plugin is
+# 3.19.0+ is explicitly built and tested against AGP 9.5.1; the plugin is
 # applied at the root and gated by `buildHealth`.
 dependencyAnalysis = "3.19.2"
 

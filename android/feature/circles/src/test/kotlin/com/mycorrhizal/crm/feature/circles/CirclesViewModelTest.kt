@@ -66,6 +66,71 @@ class CirclesViewModelTest {
     }
 
     @Test
+    fun `saved circles raise the saved-data flag and a successful retry clears it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returnsMany listOf(
+                Result.success(listOf(Circle(id = "c1", name = "Friends", servedFromCache = true))),
+                Result.success(listOf(Circle(id = "c1", name = "Friends")))
+            )
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.showingSavedData)
+            assertEquals(listOf("Friends"), vm.uiState.value.circles.map { it.name })
+
+            vm.load()
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.showingSavedData)
+            coVerify(exactly = 2) { circleRepository.list(any(), any()) }
+        }
+
+    @Test
+    fun `fresh circles do not raise the saved-data flag`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns
+                Result.success(listOf(Circle(id = "c1", name = "Friends")))
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.showingSavedData)
+        }
+
+    @Test
+    fun `retry after a failed load re-runs the load and recovers`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returnsMany listOf(
+                Result.failure(ApiError.Network(java.io.IOException("offline"))),
+                Result.success(listOf(Circle(id = "c1", name = "Friends")))
+            )
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.error is ApiError.Network)
+
+            vm.load()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.error)
+            assertEquals(listOf("Friends"), vm.uiState.value.circles.map { it.name })
+            assertFalse(vm.uiState.value.showingSavedData)
+        }
+
+    @Test
+    fun `a failed refresh over saved circles is served by the repository not shown as an error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { circleRepository.list(any(), any()) } returns
+                Result.success(listOf(Circle(id = "c1", name = "Friends", servedFromCache = true)))
+
+            val vm = CirclesViewModel(circleRepository)
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.error)
+            assertTrue(vm.uiState.value.showingSavedData)
+        }
+
+    @Test
     fun `create adds the circle to the list`() = runTest(mainDispatcherRule.testDispatcher) {
         coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
         coEvery {

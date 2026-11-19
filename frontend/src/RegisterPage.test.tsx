@@ -204,3 +204,13 @@ describe('RegisterPage post-registration sign-in', () => {
     expect(await screen.findByText('LOGIN PAGE', {}, { timeout: 3000 })).toBeInTheDocument();
   });
 });
+
+// #2675 (WCAG 1.3.5): the sign-up fields carry autocomplete tokens.
+describe('RegisterPage autocomplete tokens', () => {
+  test('username, email and a new password are declared', () => {
+    renderRegister();
+    expect(screen.getByLabelText(/username/i)).toHaveAttribute('autocomplete', 'username');
+    expect(screen.getByLabelText(/email/i)).toHaveAttribute('autocomplete', 'email');
+    expect(screen.getByLabelText(/password/i)).toHaveAttribute('autocomplete', 'new-password');
+  });
+});

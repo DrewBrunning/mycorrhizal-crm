@@ -1536,6 +1536,8 @@
     <string name="shares_status_pending">Pendiente</string>
     <string name="shares_status_accepted">Aceptada</string>
     <string name="shares_status_declined">Rechazada</string>
+    <!-- Issue #2642: decline, leave and block are one `declined` to the sender (ADR 0042). -->
+    <string name="shares_status_declined_by_recipient">Rechazada o finalizada por el destinatario</string>
     <string name="shares_accept">Aceptar</string>
     <string name="shares_decline">Rechazar</string>
     <string name="shares_decline_confirm_title">¿Rechazar esta compartición?</string>
@@ -1600,11 +1602,11 @@
     <string name="shares_grant_remove">Quitar</string>
     <string name="shares_grant_reconfirm">Revisar y volver a confirmar</string>
     <string name="shares_grant_edit">Editar</string>
-    <string name="shares_grant_decline_message">¿Rechazar lo compartido (%1$s) de %2$s? Esa persona verá que fue rechazado.</string>
+    <string name="shares_grant_decline_message">¿Rechazar lo compartido (%1$s) de %2$s? Esa persona lo verá como rechazado o finalizado.</string>
     <string name="shares_grant_block_title">¿Bloquear a %1$s?</string>
-    <string name="shares_grant_block_message">Esto rechaza lo compartido y termina todo lo que %1$s comparte contigo. Lo que comparta en el futuro no aparecerá aquí y no se le avisa del bloqueo. Puedes desbloquearlo más tarde.</string>
+    <string name="shares_grant_block_message">Esto rechaza lo compartido y termina todo lo que %1$s comparte contigo. No se le avisa del bloqueo; verá lo que compartió como rechazado o finalizado. Lo que comparta en el futuro no aparecerá aquí. Puedes desbloquearlo más tarde.</string>
     <string name="shares_grant_leave_title">¿Dejar de recibir lo compartido?</string>
-    <string name="shares_grant_leave_message">%1$s dejará de ser visible para ti. Para verlo de nuevo, %2$s tendrá que volver a compartirlo contigo.</string>
+    <string name="shares_grant_leave_message">%1$s dejará de ser visible para ti. Esa persona verá lo compartido como rechazado o finalizado. Para verlo de nuevo, %2$s tendrá que volver a compartirlo contigo.</string>
     <string name="shares_grant_revoke_title">¿Revocar lo compartido?</string>
     <string name="shares_grant_revoke_message">%1$s perderá el acceso la próxima vez que lo cargue. Lo que ya haya visto no se puede recuperar.</string>
     <string name="shares_grant_remove_title">¿Quitar lo compartido?</string>
@@ -3171,7 +3173,7 @@
     <string name="error_reason_meerkat_fetch_unreadable">El servidor de Meerkat envió una respuesta que el importador no pudo leer. Revise la URL</string>
     <string name="error_reason_common_database_error">Algo salió mal al guardar o cargar tus datos</string>
     <string name="error_reason_common_database_busy">El servidor está ocupado. Inténtalo de nuevo en un momento</string>
-    <string name="error_reason_auth_invalid_credentials">Correo electrónico o contraseña no válidos</string>
+    <string name="error_reason_auth_invalid_credentials">Nombre de usuario, correo electrónico o contraseña no válidos</string>
     <string name="error_reason_auth_token_expired">Tu sesión ha caducado. Inicia sesión de nuevo</string>
     <string name="error_reason_auth_token_invalid">Tu sesión ya no es válida. Inicia sesión de nuevo</string>
     <string name="error_reason_common_client_not_supported">Esta versión de la app ya no es compatible. Actualiza a %1$s o posterior</string>
@@ -3507,6 +3509,7 @@
     <string name="error_reason_household_suggestion_member_stale">El contacto ya no es miembro de este hogar</string>
     <string name="error_reason_household_suggestion_stale">Los miembros sugeridos ya no comparten dirección; vuelve a ejecutar el escaneo de sugerencias</string>
     <string name="error_reason_household_type_invalid">type debe ser family_unit, roommates u other</string>
+    <string name="error_reason_import_csv_not_text">Este archivo no es un archivo CSV de texto sin formato. Expórtalo de nuevo como CSV (UTF-8) e inténtalo otra vez.</string>
     <string name="error_reason_import_disk_space_low">no hay suficiente espacio en disco para importar %1$s contactos: %2$s</string>
     <string name="error_reason_import_field_mapping_target_invalid">Un valor importado solo puede ir a un campo personalizado que se aplique a los contactos</string>
     <string name="error_reason_import_field_mappings_invalid">%1$s</string>

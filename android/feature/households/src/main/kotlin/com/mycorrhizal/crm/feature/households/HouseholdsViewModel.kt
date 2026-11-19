@@ -41,6 +41,8 @@ data class HouseholdsUiState(
     val contactsByUid: Map<String, ContactSummary> = emptyMap(),
     val isLoading: Boolean = false,
     val error: ApiError? = null,
+    /** Issue #2629: the last list load failed (cleared when a load starts); shown with Retry. */
+    val loadError: ApiError? = null,
     val isSaving: Boolean = false,
     val deletingId: String? = null,
     @AnyRes val infoRes: Int? = null,
@@ -63,13 +65,14 @@ class HouseholdsViewModel @Inject constructor(
     fun load() {
         if (_uiState.value.isLoading) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.update { it.copy(isLoading = true, error = null, loadError = null) }
             householdRepository.list().foldApiError(
                 onSuccess = { households ->
                     _uiState.update { it.copy(isLoading = false, households = households) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+                    // Issue #2629: also the screen's ErrorState (with Retry) when nothing loaded.
+                    _uiState.update { it.copy(isLoading = false, error = error, loadError = error) }
                 }
             )
         }

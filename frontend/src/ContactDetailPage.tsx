@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import type { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
@@ -255,12 +255,29 @@ function ContactJumpNav({
 }) {
   const theme = useTheme();
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'));
+  const pendingFocusRef = useRef<HTMLElement | null>(null);
+
+  // WCAG 2.3.3: no animated scroll for people who ask for reduced motion.
+  const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
 
   const handleSelectChange = (event: SelectChangeEvent<string>) => {
-    const id = event.target.value as string;
-    if (id) {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
-    }
+    const section = document.getElementById(event.target.value);
+    section?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+    // #2682: scrolling alone leaves keyboard focus up in the select, so the
+    // next Tab lands at the top of the page. Remember the section; the focus
+    // move happens once the menu has closed (handleMenuExited), because closing
+    // the menu hands focus back to the select and would otherwise undo it.
+    pendingFocusRef.current = section;
+  };
+
+  // Move focus to the chosen section's heading (the wide-screen anchor links get
+  // this from the browser). preventScroll: the scroll above already positions it.
+  const handleMenuExited = () => {
+    const target =
+      pendingFocusRef.current?.querySelector<HTMLElement>('h2') ?? pendingFocusRef.current;
+    pendingFocusRef.current = null;
+    target?.setAttribute('tabindex', '-1');
+    target?.focus({ preventScroll: true });
   };
 
   if (isNarrow) {
@@ -287,6 +304,7 @@ function ContactJumpNav({
           value=""
           displayEmpty
           onChange={handleSelectChange}
+          MenuProps={{ slotProps: { transition: { onExited: handleMenuExited } } }}
           sx={{ '& .MuiSelect-select': { py: 0.75 } }}
           renderValue={() => ariaLabel}
           // The `nav`'s aria-label above names the landmark, not this

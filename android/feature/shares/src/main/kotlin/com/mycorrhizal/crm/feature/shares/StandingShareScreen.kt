@@ -37,6 +37,7 @@ import com.mycorrhizal.crm.model.network.ShareGrantEntityTypes
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
@@ -93,7 +94,9 @@ fun StandingShareScreen(
                     EmptyState(title = stringResource(R.string.shares_no_recipients))
 
                 state.recipients.isEmpty() && state.error != null ->
-                    EmptyState(title = state.error?.localizedMessage().orEmpty())
+                    state.error?.let { error ->
+                        ErrorState(error = error, onRetry = viewModel::load)
+                    }
 
                 else -> Column(
                     modifier = Modifier

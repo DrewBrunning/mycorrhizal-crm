@@ -36,6 +36,17 @@ test('renders the label, kind, and anchor date', () => {
   expect(screen.getByText('December 25')).toBeInTheDocument();
 });
 
+test('says a legacy dateless occasion has no date and no reminder (#2670)', () => {
+  render(
+    <OccasionObligationList
+      obligations={[{ ...baseObligation, anchor_month: undefined, anchor_day: undefined }]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('No date \u2014 no reminder')).toBeInTheDocument();
+});
+
 test('shows an Inactive chip for a paused obligation', () => {
   render(
     <OccasionObligationList
@@ -52,7 +63,7 @@ test('calls onEdit when the edit button is clicked', () => {
   render(
     <OccasionObligationList obligations={[baseObligation]} onEdit={onEdit} onDelete={vi.fn()} />,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   expect(onEdit).toHaveBeenCalledWith(baseObligation);
 });
 
@@ -62,7 +73,7 @@ test('confirms before calling onDelete', () => {
   render(
     <OccasionObligationList obligations={[baseObligation]} onEdit={vi.fn()} onDelete={onDelete} />,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   expect(confirmSpy).toHaveBeenCalledWith('Delete this occasion?');
   expect(onDelete).toHaveBeenCalledWith('o1');
   confirmSpy.mockRestore();
@@ -74,7 +85,7 @@ test('does not call onDelete when the confirm is dismissed', () => {
   render(
     <OccasionObligationList obligations={[baseObligation]} onEdit={vi.fn()} onDelete={onDelete} />,
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   expect(onDelete).not.toHaveBeenCalled();
   confirmSpy.mockRestore();
 });
@@ -93,7 +104,7 @@ test('separates the anchor date from the lead time', () => {
   expect(leadTime.textContent).toMatch(/^·\s+14 days lead time$/);
 });
 
-test('shows the lead time without a separator when there is no anchor date', () => {
+test('separates the lead time from the "No date" label of a dateless row', () => {
   render(
     <OccasionObligationList
       obligations={[
@@ -103,5 +114,16 @@ test('shows the lead time without a separator when there is no anchor date', () 
       onDelete={vi.fn()}
     />,
   );
-  expect(screen.getByText('14 days lead time').textContent).not.toContain('·');
+  // #2670: the "No date" label now precedes the lead time, so the dot belongs.
+  expect(screen.getByText('No date \u2014 no reminder')).toBeInTheDocument();
+  expect(screen.getByText('14 days lead time').textContent).toContain('·');
+});
+
+// #2673: every row's Edit/Delete icon button names its item.
+test('edit and delete buttons name the obligation they act on', () => {
+  render(
+    <OccasionObligationList obligations={[baseObligation]} onEdit={vi.fn()} onDelete={vi.fn()} />,
+  );
+  expect(screen.getByRole('button', { name: 'Edit Christmas card' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Delete Christmas card' })).toBeInTheDocument();
 });

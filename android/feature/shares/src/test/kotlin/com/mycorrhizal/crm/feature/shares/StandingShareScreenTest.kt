@@ -9,6 +9,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -234,5 +235,32 @@ class StandingShareScreenTest {
                 .isNotEmpty()
         )
         composeTestRule.onAllNodesWithText("RAW SERVER TEXT").assertCountEquals(0)
+    }
+
+    @Test
+    fun `a failed directory load offers Retry that reloads the recipients`() {
+        coEvery { directory.userDirectory() } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(UserDirectoryEntry(id = 1, username = "alice")))
+        )
+        val vm = StandingShareViewModel(
+            directory,
+            grants,
+            SavedStateHandle(
+                mapOf("entityType" to ShareGrantEntityTypes.NOTE, "entityId" to "e-1")
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { StandingShareScreen(onBack = {}, onShared = {}, viewModel = vm) }
+        }
+
+        composeTestRule.onAllNodesWithText(str(R.string.error_client_network)).onFirst()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.action_retry)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onAllNodesWithText(str(R.string.error_client_network))
+            .assertCountEquals(0)
+        coVerify(exactly = 2) { directory.userDirectory() }
     }
 }

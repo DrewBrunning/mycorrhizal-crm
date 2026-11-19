@@ -58,7 +58,7 @@ test('shows the current display value when present', () => {
 test('entering edit mode reveals the editor and cancel/save controls', () => {
   renderRow({ value: 'Teal' });
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
 
   expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
@@ -68,7 +68,7 @@ test('cancel restores the display value and leaves edit mode without saving', ()
   const onSave = vi.fn().mockResolvedValue(undefined);
   renderRow({ value: 'Teal', onSave });
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   const input = screen.getByRole('textbox') as HTMLInputElement;
   fireEvent.change(input, { target: { value: 'Blue' } });
 
@@ -83,7 +83,7 @@ test('saving a new value calls onSave with the definition id and the wire-encode
   const onSave = vi.fn().mockResolvedValue(undefined);
   renderRow({ value: 'Teal', onSave });
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   const input = screen.getByRole('textbox') as HTMLInputElement;
   fireEvent.change(input, { target: { value: 'Blue' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -99,7 +99,7 @@ test('clearing the value to empty saves null (remove signal)', async () => {
   const onSave = vi.fn().mockResolvedValue(undefined);
   renderRow({ value: 'Teal', onSave });
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   const input = screen.getByRole('textbox') as HTMLInputElement;
   fireEvent.change(input, { target: { value: '' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -111,7 +111,7 @@ test('a save failure surfaces the error via the snackbar and keeps edit mode ope
   const onSave = vi.fn().mockRejectedValue(new Error('Network down'));
   renderRow({ value: 'Teal', onSave });
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   await waitFor(() => expect(screen.getByText('Network down')).toBeInTheDocument());
@@ -127,7 +127,7 @@ test('boolean definitions render a checkbox-style editor and save the boolean wi
   // Boolean false is a real value, so it displays as "false", not the em-dash.
   expect(screen.getByText('false')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   // MUI's Switch exposes role="switch", not "checkbox".
   fireEvent.click(screen.getByRole('switch'));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));

@@ -1,4 +1,5 @@
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
@@ -11,8 +12,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ApiError } from '../api/client';
 import {
   OCCASION_OBLIGATION_KINDS,
   type OccasionObligation,
@@ -20,6 +22,7 @@ import {
   type OccasionSensitivity,
 } from '../api/occasionObligations';
 import { useDirtyDialog } from '../hooks/useDirtyDialog';
+import { localizeReason } from '../i18n/reason';
 import AppDialog from './AppDialog';
 
 export interface OccasionObligationFormData {
@@ -41,7 +44,21 @@ interface OccasionObligationDialogProps {
 }
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
-const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+// Longest each month gets in a yearly recurrence; February is 29 so a leap-day
+// anchor stays expressible. Mirrors the backend's occasionMaxDay table
+// (controllers/occasion_obligation_controller.go) -- keep the two in sync.
+const MONTH_MAX_DAY = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const maxDayOf = (month: number | ''): number => (month === '' ? 31 : MONTH_MAX_DAY[month - 1]);
+
+// A field's validation message; '' marks the field invalid with no text of its own.
+type FieldErrors = Partial<Record<'label' | 'month' | 'day' | 'leadTime', string>>;
+
+// The server's reason codes for a rejected anchor date, and the field each names.
+const ANCHOR_REASON_FIELD: Record<string, 'month' | 'day'> = {
+  occasion_anchor_date_required: 'month',
+  occasion_anchor_date_incomplete: 'day',
+  occasion_anchor_date_invalid: 'day',
+};
 
 export default function OccasionObligationDialog({
   open,
@@ -59,7 +76,12 @@ export default function OccasionObligationDialog({
   const [sensitivity, setSensitivity] = useState<OccasionSensitivity>('normal');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState('');
+  const [dayNotice, setDayNotice] = useState('');
+  // Bumped whenever a rejected save should move focus to the first invalid control.
+  const [focusTick, setFocusTick] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
@@ -72,26 +94,85 @@ export default function OccasionObligationDialog({
       setActive(obligation ? obligation.active : true);
       setSensitivity(obligation?.sensitivity || 'normal');
       setNotes(obligation?.notes || '');
-      setError('');
+      setFieldErrors({});
+      setFormError('');
+      setDayNotice('');
     }
   }, [open, obligation]);
 
+  // Issue #2672: after a rejected save, focus the first invalid control so a
+  // screen-reader user lands on the field and hears its error.
+  useEffect(() => {
+    if (focusTick === 0) return;
+    contentRef.current
+      ?.querySelector<HTMLElement>('[aria-invalid="true"]:not([aria-hidden="true"])')
+      ?.focus();
+  }, [focusTick]);
+
+  const reject = (errors: FieldErrors) => {
+    setFieldErrors(errors);
+    setFormError('');
+    setFocusTick((n) => n + 1);
+  };
+  const clearField = (field: keyof FieldErrors) => {
+    setFieldErrors((prev) => {
+      if (!(field in prev)) return prev;
+      const { [field]: _removed, ...rest } = prev;
+      return rest;
+    });
+    setFormError('');
+  };
+
+  const handleMonthChange = (value: number | '') => {
+    markDirty();
+    setAnchorMonth(value);
+    clearField('month');
+    const max = maxDayOf(value);
+    if (anchorDay !== '' && anchorDay > max) {
+      setAnchorDay('');
+      setDayNotice(
+        t('occasions.obligation.dayClamped', { month: t(`occasions.months.${value}`), max }),
+      );
+    } else {
+      setDayNotice('');
+    }
+  };
+
   const handleSave = async () => {
     const trimmedLabel = label.trim();
-    if (!trimmedLabel) {
-      setError(t('occasions.obligation.validation.labelRequired'));
-      return;
-    }
-    // Mirrors the backend's "both or neither" anchor rule (ADR 0024) client-side.
-    if ((anchorMonth === '') !== (anchorDay === '')) {
-      setError(t('occasions.obligation.validation.anchorBothOrNeither'));
-      return;
+    const errors: FieldErrors = {};
+    if (!trimmedLabel) errors.label = t('occasions.obligation.validation.labelRequired');
+    // A row saved before dates were required may still be retired (saved
+    // inactive, still dateless); anything else needs a real month and day,
+    // matching the server (ADR 0024, issues #2670 #2671).
+    const legacyRetire =
+      obligation != null &&
+      obligation.anchor_month == null &&
+      obligation.anchor_day == null &&
+      !active;
+    if (anchorMonth === '' && anchorDay === '') {
+      if (!legacyRetire) {
+        errors.month = t('errors.reason.occasion_anchor_date_required');
+        errors.day = '';
+      }
+    } else if (anchorMonth === '') {
+      errors.month = t('errors.reason.occasion_anchor_date_incomplete');
+    } else if (anchorDay === '') {
+      errors.day = t('errors.reason.occasion_anchor_date_incomplete');
+    } else if (anchorDay > maxDayOf(anchorMonth)) {
+      errors.day = t('errors.reason.occasion_anchor_date_invalid');
     }
     const leadTime = leadTimeDays.trim() === '' ? 0 : parseInt(leadTimeDays, 10);
     if (Number.isNaN(leadTime) || leadTime < 0) {
-      setError(t('occasions.obligation.validation.invalidLeadTime'));
+      errors.leadTime = t('occasions.obligation.validation.invalidLeadTime');
+    }
+    if (Object.keys(errors).length > 0) {
+      reject(errors);
       return;
     }
+    setFieldErrors({});
+    setFormError('');
+    setDayNotice('');
 
     setSaving(true);
     try {
@@ -106,19 +187,36 @@ export default function OccasionObligationDialog({
         notes: notes.trim() || undefined,
       });
       onClose();
-    } catch {
-      setError(t('occasions.obligation.validation.saveFailed'));
+    } catch (err) {
+      // Show the server's own reason, localized, rather than the generic
+      // failure: on the field it names when it is an anchor-date rejection.
+      const reason = err instanceof ApiError ? err.reasonCode : undefined;
+      const localized =
+        err instanceof ApiError ? localizeReason(err.reasonCode, err.reasonParams) : undefined;
+      const field = reason ? ANCHOR_REASON_FIELD[reason] : undefined;
+      if (field && localized) {
+        reject({ [field]: localized });
+      } else {
+        setFormError(localized ?? t('occasions.obligation.validation.saveFailed'));
+      }
     } finally {
       setSaving(false);
     }
   };
+
+  // The Day list follows the month; an existing out-of-range day (a row saved
+  // before the server checked) stays listed so the select can show it.
+  const dayOptions = Array.from(
+    { length: Math.max(maxDayOf(anchorMonth), anchorDay === '' ? 0 : anchorDay) },
+    (_, i) => i + 1,
+  );
 
   return (
     <AppDialog open={open} onClose={requestClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {obligation ? t('occasions.obligation.editTitle') : t('occasions.obligation.createTitle')}
       </DialogTitle>
-      <DialogContent>
+      <DialogContent ref={contentRef}>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {t('occasions.obligation.dialogHint')}
@@ -130,7 +228,7 @@ export default function OccasionObligationDialog({
             onInputChange={(_e, value) => {
               markDirty();
               setKind(value);
-              setError('');
+              setFormError('');
             }}
             renderInput={(params) => (
               <TextField
@@ -147,11 +245,12 @@ export default function OccasionObligationDialog({
             onChange={(e) => {
               markDirty();
               setLabel(e.target.value);
-              setError('');
+              clearField('label');
             }}
             fullWidth
             required
-            helperText={t('occasions.obligation.labelHint')}
+            error={fieldErrors.label !== undefined}
+            helperText={fieldErrors.label || t('occasions.obligation.labelHint')}
           />
 
           <Box sx={{ display: 'flex', gap: 1 }}>
@@ -159,12 +258,12 @@ export default function OccasionObligationDialog({
               select
               label={t('occasions.obligation.anchorMonth')}
               value={anchorMonth}
-              onChange={(e) => {
-                markDirty();
-                setAnchorMonth(e.target.value === '' ? '' : Number(e.target.value));
-                setError('');
-              }}
+              onChange={(e) =>
+                handleMonthChange(e.target.value === '' ? '' : Number(e.target.value))
+              }
               fullWidth
+              error={fieldErrors.month !== undefined}
+              helperText={fieldErrors.month || undefined}
             >
               <MenuItem value="">{t('occasions.obligation.anchorDateUnset')}</MenuItem>
               {MONTHS.map((m) => (
@@ -180,12 +279,15 @@ export default function OccasionObligationDialog({
               onChange={(e) => {
                 markDirty();
                 setAnchorDay(e.target.value === '' ? '' : Number(e.target.value));
-                setError('');
+                setDayNotice('');
+                clearField('day');
               }}
               fullWidth
+              error={fieldErrors.day !== undefined}
+              helperText={fieldErrors.day || dayNotice || undefined}
             >
               <MenuItem value="">{t('occasions.obligation.anchorDateUnset')}</MenuItem>
-              {DAYS.map((d) => (
+              {dayOptions.map((d) => (
                 <MenuItem key={d} value={d}>
                   {d}
                 </MenuItem>
@@ -200,9 +302,11 @@ export default function OccasionObligationDialog({
             onChange={(e) => {
               markDirty();
               setLeadTimeDays(e.target.value);
+              clearField('leadTime');
             }}
             fullWidth
-            helperText={t('occasions.obligation.leadTimeDaysHint')}
+            error={fieldErrors.leadTime !== undefined}
+            helperText={fieldErrors.leadTime || t('occasions.obligation.leadTimeDaysHint')}
             slotProps={{ htmlInput: { min: 0, max: 365 } }}
           />
 
@@ -246,11 +350,7 @@ export default function OccasionObligationDialog({
             minRows={2}
           />
 
-          {error && (
-            <Typography color="error" variant="body2">
-              {error}
-            </Typography>
-          )}
+          {formError && <Alert severity="error">{formError}</Alert>}
         </Box>
       </DialogContent>
       <DialogActions>

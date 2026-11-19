@@ -9,6 +9,8 @@ import {
   loginWithPasskey,
   loginWithPasskeyPasswordless,
   logoutAndRedirect,
+  shouldProbeSession,
+  startOidcLogin,
 } from './auth';
 import { getTimeFormat, setTimeFormat } from './timeFormat';
 import { requestOptionsWire, stubWebAuthn, unstubWebAuthn } from './webauthnTestUtils';
@@ -75,6 +77,23 @@ describe('fetchAndCacheUserInfo', () => {
     expect(info?.self_contact_vcard_uid).toBe('uid-9');
     const cached = JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}');
     expect(cached.self_contact_vcard_uid).toBe('uid-9');
+  });
+
+  // #2685: the account's saved UI language is handed back to the caller (it is
+  // not part of the cached identity).
+  test('returns the account language without caching it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ id: 1, username: 'u', is_admin: false, language: 'de' }),
+      }),
+    );
+
+    const info = await fetchAndCacheUserInfo();
+
+    expect(info?.language).toBe('de');
+    expect(JSON.parse(localStorage.getItem(USER_INFO_KEY) || '{}').language).toBeUndefined();
   });
 
   test('caches a null self contact when the server has none', async () => {
@@ -540,5 +559,38 @@ describe('logoutAndRedirect', () => {
       Object.defineProperty(window, 'location', { configurable: true, value: originalLocation });
     }
     expect(fakeLocation.href).toBe('/login');
+  });
+});
+
+// #2718: a plain signed-out visit must not probe /users/me (a guaranteed 401).
+describe('shouldProbeSession', () => {
+  afterEach(() => {
+    sessionStorage.clear();
+    localStorage.clear();
+  });
+
+  test('is false for an empty browser', () => {
+    expect(shouldProbeSession()).toBe(false);
+  });
+
+  test('is true for a browser with a cached user', () => {
+    localStorage.setItem(USER_INFO_KEY, JSON.stringify({ user_id: 1 }));
+    expect(shouldProbeSession()).toBe(true);
+  });
+
+  test('is true once after the SSO round trip, then false again', () => {
+    sessionStorage.setItem('oidc_pending', '1');
+    expect(shouldProbeSession()).toBe(true);
+    expect(shouldProbeSession()).toBe(false);
+  });
+});
+
+describe('startOidcLogin', () => {
+  test('leaves the one-shot hint and navigates to the provider login', () => {
+    const fakeLocation = { href: '' };
+    vi.stubGlobal('location', fakeLocation);
+    startOidcLogin();
+    expect(fakeLocation.href).toBe(`${API_BASE_URL}/auth/oidc/login`);
+    expect(sessionStorage.getItem('oidc_pending')).toBe('1');
   });
 });

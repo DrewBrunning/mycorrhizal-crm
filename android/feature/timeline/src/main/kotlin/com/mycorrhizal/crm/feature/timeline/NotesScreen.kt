@@ -50,6 +50,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -173,14 +174,13 @@ fun NotesScreenContent(
                         // branch: the missing-contact-id state sets errorRes with
                         // error == null, so the empty branch used to swallow it and
                         // show "No notes yet" instead of the real cause.
-                        state.notes.isEmpty() && (state.errorRes != null || state.error != null) ->
-                            EmptyState(
-                                state.errorRes?.let {
-                                    stringResource(
-                                        it
-                                    )
-                                } ?: state.error?.localizedMessage().orEmpty()
-                            )
+                        // A load error is retryable; the missing-id state is not (retrying
+                        // cannot supply an id), so it stays a plain message.
+                        state.notes.isEmpty() && state.errorRes != null ->
+                            EmptyState(stringResource(state.errorRes))
+
+                        state.notes.isEmpty() && state.error != null ->
+                            ErrorState(error = state.error, onRetry = onRefresh)
 
                         state.notes.isEmpty() && state.error == null ->
                             EmptyState(

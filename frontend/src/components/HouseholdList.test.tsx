@@ -68,7 +68,7 @@ test('remove member calls onRemoveMember with the household and vcard uid', () =
   const onRemoveMember = vi.fn();
   renderList({ onRemoveMember });
 
-  const removeButtons = screen.getAllByLabelText('Remove Member');
+  const removeButtons = screen.getAllByLabelText(/^Remove .* from household$/);
   fireEvent.click(removeButtons[0]);
   expect(onRemoveMember).toHaveBeenCalledWith('h1', 'alice-uid');
 });

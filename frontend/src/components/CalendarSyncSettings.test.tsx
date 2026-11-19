@@ -138,7 +138,7 @@ test('deleting a calendar asks for confirmation before removing it', async () =>
   render(<CalendarSyncSettings />);
   await waitFor(() => expect(screen.getByText('To Delete')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete To Delete' }));
   expect(screen.getByText('Delete calendar?')).toBeInTheDocument();
   expect(deleteCalendarSubscription).not.toHaveBeenCalled();
 

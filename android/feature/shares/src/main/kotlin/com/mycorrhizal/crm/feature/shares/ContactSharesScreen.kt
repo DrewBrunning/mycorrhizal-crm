@@ -49,6 +49,7 @@ import com.mycorrhizal.crm.ui.LocalPendingShareGrantCount
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -145,11 +146,9 @@ fun ContactSharesScreen(
                         )
 
                         list.isEmpty() && state.error != null -> {
-                            Text(
-                                text = state.error?.localizedMessage().orEmpty(),
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.align(Alignment.Center)
-                            )
+                            state.error?.let { error ->
+                                ErrorState(error = error, onRetry = viewModel::load)
+                            }
                         }
 
                         else -> {

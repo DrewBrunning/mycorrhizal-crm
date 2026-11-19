@@ -2055,9 +2055,24 @@ paths:
         Unlike admin-only GET /admin/users, any authenticated user can call
         this — it exists to populate the recipient picker for P1 contact
         sharing and deliberately returns nothing beyond id/username.
+
+        Behaviour depends on the operator setting `SHARE_DIRECTORY_MODE`
+        (issue #2787). `all` (the default) returns every user except the
+        caller and ignores `q`. `search` returns an empty list unless `q`
+        (trimmed) has at least 3 characters, and then only users whose
+        username starts with `q` (case-insensitive; email is never matched),
+        ordered by username and capped at 10. The response shape is the same
+        in both modes and the status is always 200 for an authenticated caller.
+        `search` becomes the default in v2.0.0.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          description: Username prefix, at least 3 characters. Ignored when `SHARE_DIRECTORY_MODE=all`.
+          schema: { type: string }
       responses:
         "200":
-          description: Every user except the caller.
+          description: Every user except the caller (`all`), or up to 10 username-prefix matches (`search`).
           content:
             application/json:
               schema:
@@ -4021,7 +4036,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: Missing file, wrong extension, oversized file, or malformed CSV.
+          description: >
+            Missing file, wrong extension, oversized file, or malformed CSV.
+            A file that is not text (a PNG, ZIP/XLSX, PDF, GIF, JPEG, gzip or
+            legacy Excel file, a UTF-16 export, or one with NUL or mostly
+            control bytes in its first 8 KiB) is rejected with reason code
+            `import_csv_not_text`. UTF-8, UTF-8 with a BOM, and
+            Windows-1252/Latin-1 text are still accepted.
   /contacts/import/vcf/upload:
     post:
       summary: Upload a VCF (vCard 3.0/4.0) file to start a contact import
@@ -4848,7 +4869,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: No file, not a .csv, over the 20 MB cap, or unreadable / over the row limit.
+          description: >
+            No file, not a .csv, over the 20 MB cap, unreadable / over the row
+            limit, or not a text file (reason code `import_csv_not_text`, same
+            sniffing as the contact CSV upload).
         "429":
           content:
             application/json:
@@ -6171,9 +6195,21 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: sort
+          in: query
+          description: >
+            Cursor order for the list (issue #2797, same semantics as GET
+            /notes?sort=date). updated_at (default) is (updated_at, id),
+            last-modified first under order=desc. date orders by the note's own
+            date (newest first under order=desc) with an id tiebreak, so
+            editing an old note does not move it; resume cursors take their own
+            (date, id) shape and are not interchangeable with updated_at
+            cursors (400, reason validation_cursor_invalid). An unrecognized
+            value is a 400 (reason validation_sort_invalid).
+          schema: { type: string, enum: [updated_at, date], default: updated_at }
         - name: order
           in: query
-          description: Direction for the (updated_at, id) cursor order.
+          description: Direction for the cursor order (updated_at or date, per sort).
           schema: { type: string, enum: [asc, desc], default: desc }
         - name: search
           in: query
@@ -6205,7 +6241,7 @@ paths:
                   limit: { type: integer }
               example: {"notes": [{"ID": 2, "CreatedAt": "2026-08-21T00:08:42Z", "UpdatedAt": "2026-08-21T00:08:42Z", "DeletedAt": null, "content": "Contract fixture note", "date": "2026-08-20T18:00:00Z", "contact_id": 11, "revision": 1}, {"ID": 3, "CreatedAt": "2026-08-21T00:09:42Z", "UpdatedAt": "2026-08-21T00:09:42Z", "DeletedAt": null, "content": "Unfiled fixture note", "date": "2026-08-20T19:00:00Z", "contact_id": null, "revision": 2}], "next_cursor": "", "limit": 25}
         "400":
-          description: Malformed cursor.
+          description: Malformed cursor, cursor from the other sort, or unrecognized sort.
           content:
             application/json:
               schema:

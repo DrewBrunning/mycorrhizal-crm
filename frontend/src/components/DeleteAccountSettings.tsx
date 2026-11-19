@@ -127,6 +127,7 @@ export default function DeleteAccountSettings() {
               </Alert>
               <TextField
                 label={t('settings.deleteAccount.currentPasswordLabel')}
+                autoComplete="current-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -150,7 +151,7 @@ export default function DeleteAccountSettings() {
               )}
               {needsPromotion && (
                 <>
-                  <Alert severity="info" sx={{ py: 0 }}>
+                  <Alert severity="info" role="status" sx={{ py: 0 }}>
                     {t('settings.deleteAccount.promotionNotice')}
                   </Alert>
                   <FormControl fullWidth size="small" required>

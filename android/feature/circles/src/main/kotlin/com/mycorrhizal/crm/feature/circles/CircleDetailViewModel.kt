@@ -31,6 +31,8 @@ data class CircleDetailUiState(
     val isLoading: Boolean = false,
     val removingUid: String? = null,
     val error: ApiError? = null,
+    /** Issue #2629: the last load failed (cleared when a load starts); shown with Retry. */
+    val loadError: ApiError? = null,
     @StringRes val errorRes: Int? = null,
     /** Edit dialog: the save is in flight. */
     val isSaving: Boolean = false,
@@ -83,7 +85,9 @@ class CircleDetailViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
+            _uiState.update {
+                it.copy(isLoading = true, error = null, errorRes = null, loadError = null)
+            }
             circleRepository.getWithMembers(circleId).foldApiError(
                 onSuccess = { detail ->
                     _uiState.update {
@@ -92,7 +96,8 @@ class CircleDetailViewModel @Inject constructor(
                     resolveMemberNames(detail.members)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+                    // Issue #2629: also the screen's ErrorState (with Retry) when nothing loaded.
+                    _uiState.update { it.copy(isLoading = false, error = error, loadError = error) }
                 }
             )
         }

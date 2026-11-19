@@ -33,6 +33,9 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
+// Issue #2642: decline, leave and block are one `declined` to the sender (ADR 0042).
+private const val DECLINED_LABEL = "Declined or ended by the recipient"
+
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -118,7 +121,7 @@ class SharedByMeScreenTest {
         )
         screen()
 
-        composeTestRule.onNodeWithTag("grant-status-d").assertTextEquals("Declined")
+        composeTestRule.onNodeWithTag("grant-status-d").assertTextEquals(DECLINED_LABEL)
         composeTestRule.onNodeWithTag("grant-status-x").assertTextEquals("Expired")
     }
 
@@ -197,7 +200,7 @@ class SharedByMeScreenTest {
         coEvery { repository.delete("g4") } returns Result.success(Unit)
         screen()
 
-        composeTestRule.onNodeWithTag("grant-status-g4").assertTextEquals("Declined")
+        composeTestRule.onNodeWithTag("grant-status-g4").assertTextEquals(DECLINED_LABEL)
         composeTestRule.onNodeWithContentDescription("More actions for Dana White").performClick()
         composeTestRule.onNodeWithText("Remove").performClick()
         composeTestRule.onNodeWithText("Remove this share?").assertIsDisplayed()

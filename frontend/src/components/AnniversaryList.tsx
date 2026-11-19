@@ -78,7 +78,9 @@ export default function AnniversaryList({ anniversaries, onEdit, onDelete }: Ann
                 <IconButton
                   size="small"
                   onClick={() => onEdit(anniversary)}
-                  aria-label={t('common.edit')}
+                  aria-label={t('common.editNamed', {
+                    name: t(`contacts.anniversaryFields.kindOptions.${anniversary.kind}`),
+                  })}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -86,7 +88,9 @@ export default function AnniversaryList({ anniversaries, onEdit, onDelete }: Ann
                   size="small"
                   color="error"
                   onClick={() => handleDelete(anniversary)}
-                  aria-label={t('common.delete')}
+                  aria-label={t('common.deleteNamed', {
+                    name: t(`contacts.anniversaryFields.kindOptions.${anniversary.kind}`),
+                  })}
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>

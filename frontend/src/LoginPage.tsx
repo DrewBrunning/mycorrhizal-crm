@@ -5,12 +5,12 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { notifySessionRestored } from './api/sessionExpiry';
 import {
-  API_BASE_URL,
   isAuthenticated,
   login2FA,
   loginUser,
   loginWithPasskey,
   loginWithPasskeyPasswordless,
+  startOidcLogin,
 } from './auth';
 import BrandLogo from './components/BrandLogo';
 import ForgotPasswordDialog from './components/ForgotPasswordDialog';
@@ -201,6 +201,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
               <Stack spacing={2}>
                 <TextField
                   label={t('login.twoFactorCode')}
+                  autoComplete="one-time-code"
                   type="text"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
@@ -260,6 +261,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
               <Stack spacing={2}>
                 <TextField
                   label={t('login.identifier')}
+                  autoComplete="username"
                   type="text"
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
@@ -272,6 +274,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                 />
                 <TextField
                   label={t('login.password')}
+                  autoComplete="current-password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -317,7 +320,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
                     variant="outlined"
                     color="primary"
                     onClick={() => {
-                      window.location.href = `${API_BASE_URL}/auth/oidc/login`;
+                      startOidcLogin();
                     }}
                   >
                     {t('login.ssoButton', { provider: oidcConfig.provider_name })}

@@ -107,6 +107,14 @@ test.describe('Mobile layout: page headers wrap in every locale (#1785)', () => 
           await page.addInitScript((lng) => {
             localStorage.setItem('i18nextLng', lng);
           }, locale);
+          // The saved account language wins over the detected one on load (#2685), and the
+          // shared user's account language is English. Report the sweep's locale as the
+          // account language so the locale under test is the one that stays applied.
+          await page.route('**/api/v1/users/me', async (route) => {
+            const response = await route.fetch();
+            const body = (await response.json()) as Record<string, unknown>;
+            await route.fulfill({ response, json: { ...body, language: locale } });
+          });
           await page.setViewportSize({ width, height: 800 });
           await page.goto(route);
           await expect(page.locator('h1').first(), `${route} renders its heading`).toBeVisible();

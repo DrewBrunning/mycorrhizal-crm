@@ -51,6 +51,7 @@ import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
 import com.mycorrhizal.crm.model.registry.OccasionRsvp
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
@@ -112,6 +113,10 @@ fun OccasionAttendeesScreen(
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (state.errorRes != null) {
                 CenteredMessage(stringResource(state.errorRes!!))
+            } else if (state.loadError != null && state.attendees.isEmpty()) {
+                state.loadError?.let { error ->
+                    ErrorState(error = error, onRetry = viewModel::load)
+                }
             } else {
                 Column(
                     modifier = Modifier.fillMaxSize().verticalScroll(

@@ -336,7 +336,7 @@ export default function FieldDefinitionDialog({
                       size="small"
                       color="error"
                       onClick={() => removeEnumRow(index)}
-                      aria-label={t('common.delete')}
+                      aria-label={t('common.deleteEntry', { number: index + 1 })}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>

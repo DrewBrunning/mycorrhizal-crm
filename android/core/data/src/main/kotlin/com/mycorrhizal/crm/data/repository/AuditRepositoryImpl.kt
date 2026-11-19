@@ -17,5 +17,5 @@ class AuditRepositoryImpl @Inject constructor(private val apiClient: ApiClient) 
     ): Result<AuditEventsResponse> =
         apiClient.getAuditEvents(entityType = entityType, entityId = entityId, limit = limit)
 
-    override suspend fun undo(id: Long): Result<Unit> = apiClient.undoAuditEvent(id).map { Unit }
+    override suspend fun undo(id: Long): Result<Unit> = apiClient.undoAuditEvent(id).map {}
 }

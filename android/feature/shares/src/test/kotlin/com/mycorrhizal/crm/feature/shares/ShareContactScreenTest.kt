@@ -11,6 +11,7 @@ import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -472,5 +473,23 @@ class ShareContactScreenTest {
         composeTestRule.onNodeWithText("Birthday: 17.05.1990").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Wedding: 01.06.").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Other: 1985").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed directory load offers Retry that reloads the recipients`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory() } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(UserDirectoryEntry(id = 1, username = "alice")))
+        )
+        screen(repo)
+
+        composeTestRule.onAllNodesWithText(str(R.string.error_client_network)).onFirst()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.action_retry)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient)).assertIsDisplayed()
+        coVerify(exactly = 2) { repo.userDirectory() }
     }
 }

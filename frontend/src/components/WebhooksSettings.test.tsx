@@ -120,7 +120,7 @@ test('editing a webhook prefills the form and saves via update', async () => {
   render(<WebhooksSettings />);
   await waitFor(() => expect(screen.getByText('Original')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   const nameInput = screen.getByLabelText('Name *') as HTMLInputElement;
   expect(nameInput.value).toBe('Original');
 
@@ -139,7 +139,7 @@ test('deleting a webhook requires confirmation', async () => {
   render(<WebhooksSettings />);
   await waitFor(() => expect(screen.getByText('To Delete')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   expect(deleteWebhook).not.toHaveBeenCalled();
   expect(screen.getByText(/delete/i, { selector: 'h2' })).toBeInTheDocument();
 
@@ -165,7 +165,7 @@ test('testing a webhook reports a successful delivery', async () => {
   render(<WebhooksSettings />);
   await waitFor(() => expect(screen.getByText('Live Hook')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Test\b/ }));
 
   await waitFor(() => expect(screen.getByText('Test delivered (200)')).toBeInTheDocument());
 });
@@ -186,7 +186,7 @@ test('testing a webhook reports a failed delivery without throwing', async () =>
   render(<WebhooksSettings />);
   await waitFor(() => expect(screen.getByText('Flaky Hook')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Test\b/ }));
 
   await waitFor(() =>
     expect(screen.getByText(/test failed: connection refused/i)).toBeInTheDocument(),

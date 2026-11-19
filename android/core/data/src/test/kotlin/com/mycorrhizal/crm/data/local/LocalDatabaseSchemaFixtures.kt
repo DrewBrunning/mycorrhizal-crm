@@ -217,4 +217,19 @@ object LocalDatabaseSchemaFixtures {
                 "`org` TEXT, content=`cached_contacts`, tokenize=unicode61)"
         )
     }
+
+    /**
+     * The v19 shape (post [MIGRATION_18_19]): v18 plus `cached_occasion_events`. This is the
+     * "before" database for the v19→v20 hop ([MIGRATION_19_20] adds `description` and `color`
+     * to `cached_circles`). Does not set `db.version`.
+     */
+    fun createV19Tables(db: SQLiteDatabase) {
+        createV18Tables(db)
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `cached_occasion_events` (`id` TEXT NOT NULL, " +
+                "`title` TEXT NOT NULL, `startsAt` TEXT NOT NULL, `endsAt` TEXT, " +
+                "`location` TEXT, `sensitivity` TEXT NOT NULL, `notes` TEXT, " +
+                "`updatedAt` TEXT, `deleted` INTEGER NOT NULL, PRIMARY KEY(`id`))"
+        )
+    }
 }

@@ -1501,6 +1501,8 @@
     <string name="shares_status_pending">Ausstehend</string>
     <string name="shares_status_accepted">Akzeptiert</string>
     <string name="shares_status_declined">Abgelehnt</string>
+    <!-- Issue #2642: decline, leave and block are one `declined` to the sender (ADR 0042). -->
+    <string name="shares_status_declined_by_recipient">Vom Empfänger abgelehnt oder beendet</string>
     <string name="shares_accept">Akzeptieren</string>
     <string name="shares_decline">Ablehnen</string>
     <string name="shares_decline_confirm_title">Diese Freigabe ablehnen?</string>
@@ -1565,11 +1567,11 @@
     <string name="shares_grant_remove">Entfernen</string>
     <string name="shares_grant_reconfirm">Prüfen und erneut bestätigen</string>
     <string name="shares_grant_edit">Bearbeiten</string>
-    <string name="shares_grant_decline_message">%1$s von %2$s ablehnen? Die Person sieht, dass abgelehnt wurde.</string>
+    <string name="shares_grant_decline_message">%1$s von %2$s ablehnen? Die Person sieht die Freigabe als abgelehnt oder beendet.</string>
     <string name="shares_grant_block_title">%1$s blockieren?</string>
-    <string name="shares_grant_block_message">Dadurch wird die Freigabe abgelehnt und alle Freigaben von %1$s werden beendet. Künftige Freigaben erscheinen hier nicht, und die Person erfährt nicht von der Blockierung. Du kannst sie später wieder freigeben.</string>
+    <string name="shares_grant_block_message">Dadurch wird die Freigabe abgelehnt und alle Freigaben von %1$s an Sie werden beendet. Die Person erfährt nicht von der Blockierung; sie sieht ihre Freigaben als abgelehnt oder beendet. Künftige Freigaben erscheinen hier nicht. Sie können die Person später wieder freigeben.</string>
     <string name="shares_grant_leave_title">Diese Freigabe nicht mehr empfangen?</string>
-    <string name="shares_grant_leave_message">%1$s ist für dich nicht mehr sichtbar. Damit du es wieder siehst, muss %2$s es erneut mit dir teilen.</string>
+    <string name="shares_grant_leave_message">%1$s ist für Sie nicht mehr sichtbar. Die Person sieht die Freigabe als abgelehnt oder beendet. Damit Sie es wieder sehen, muss %2$s es erneut mit Ihnen teilen.</string>
     <string name="shares_grant_revoke_title">Diese Freigabe widerrufen?</string>
     <string name="shares_grant_revoke_message">%1$s verliert den Zugriff beim nächsten Laden. Was die Person bereits gesehen hat, lässt sich nicht zurückholen.</string>
     <string name="shares_grant_remove_title">Diese Freigabe entfernen?</string>
@@ -3060,7 +3062,7 @@
     <string name="error_reason_meerkat_fetch_unreadable">Der Meerkat-Server hat eine Antwort gesendet, die der Import nicht lesen konnte. Prüfen Sie die URL</string>
     <string name="error_reason_common_database_error">Beim Speichern oder Laden Ihrer Daten ist ein Fehler aufgetreten</string>
     <string name="error_reason_common_database_busy">Der Server ist ausgelastet. Versuchen Sie es gleich noch einmal</string>
-    <string name="error_reason_auth_invalid_credentials">Ungültige E-Mail-Adresse oder ungültiges Passwort</string>
+    <string name="error_reason_auth_invalid_credentials">Ungültiger Benutzername, ungültige E-Mail-Adresse oder ungültiges Passwort</string>
     <string name="error_reason_auth_token_expired">Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an</string>
     <string name="error_reason_auth_token_invalid">Ihre Sitzung ist nicht mehr gültig. Melden Sie sich erneut an</string>
     <string name="error_reason_common_client_not_supported">Diese App-Version wird nicht mehr unterstützt. Aktualisieren Sie auf %1$s oder neuer</string>
@@ -3396,6 +3398,7 @@
     <string name="error_reason_household_suggestion_member_stale">Der Kontakt ist kein Mitglied dieses Haushalts mehr</string>
     <string name="error_reason_household_suggestion_stale">Die vorgeschlagenen Mitglieder teilen keine Adresse mehr — starte den Vorschlag-Scan erneut</string>
     <string name="error_reason_household_type_invalid">type muss family_unit, roommates oder other sein</string>
+    <string name="error_reason_import_csv_not_text">Diese Datei ist keine reine Text-CSV-Datei. Exportieren Sie sie erneut als CSV (UTF-8) und versuchen Sie es noch einmal.</string>
     <string name="error_reason_import_disk_space_low">nicht genügend Speicherplatz zum Importieren von %1$s Kontakten: %2$s</string>
     <string name="error_reason_import_field_mapping_target_invalid">Ein importierter Wert kann nur in ein benutzerdefiniertes Feld für Kontakte übernommen werden</string>
     <string name="error_reason_import_field_mappings_invalid">%1$s</string>

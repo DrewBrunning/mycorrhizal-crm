@@ -40,6 +40,8 @@ data class RelationshipsUiState(
     val contactSearchResults: List<ContactSummary> = emptyList(),
     val contactSearchLoading: Boolean = false,
     val error: ApiError? = null,
+    /** Issue #2629: the last edge load failed (cleared when a load starts); shown with Retry. */
+    val loadError: ApiError? = null,
     @StringRes val errorRes: Int? = null
 ) {
     val confirmedEdges: List<RelationshipEdge>
@@ -82,7 +84,9 @@ class RelationshipsViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
+            _uiState.update {
+                it.copy(isLoading = true, error = null, errorRes = null, loadError = null)
+            }
             // The graph invariants use the contact's VCardUID, so resolve it
             // from the record before listing edges. vcardUid prefers the
             // top-level uid (the canonical field; issue #693).
@@ -104,7 +108,8 @@ class RelationshipsViewModel @Inject constructor(
                     resolveOtherParties(edges, uid)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+                    // Issue #2629: also the screen's ErrorState (with Retry) when nothing loaded.
+                    _uiState.update { it.copy(isLoading = false, error = error, loadError = error) }
                 }
             )
         }
