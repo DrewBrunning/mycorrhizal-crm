@@ -40,8 +40,16 @@ export interface UserDirectoryEntry {
   username: string;
 }
 
-export async function getUserDirectory(): Promise<UserDirectoryEntry[]> {
-  const response = await apiFetch(`${API_BASE_URL}/users/directory`, { headers: getAuthHeaders() });
+// GET /users/directory. `q` is the typed recipient search: the server's
+// SHARE_DIRECTORY_MODE=search matches a username prefix (3+ characters) and returns
+// nothing otherwise; SHARE_DIRECTORY_MODE=all (the default) ignores it. A blank query
+// sends no parameter at all.
+export async function getUserDirectory(q?: string): Promise<UserDirectoryEntry[]> {
+  const query = q?.trim();
+  const suffix = query ? `?q=${encodeURIComponent(query)}` : '';
+  const response = await apiFetch(`${API_BASE_URL}/users/directory${suffix}`, {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) throw await parseErrorResponse(response);
   const result = await response.json();
   return result.users;

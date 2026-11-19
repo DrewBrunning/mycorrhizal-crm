@@ -256,7 +256,7 @@ const CASES: DialogCase[] = [
       fireEvent.mouseDown(combobox);
       fireEvent.click(await screen.findByRole('option', { name: 'bob' }));
     },
-    readTypedValue: () => screen.getByRole('combobox').textContent ?? '',
+    readTypedValue: () => (screen.getByRole('combobox') as HTMLInputElement).value,
     expectedTypedValue: 'bob',
   },
   {

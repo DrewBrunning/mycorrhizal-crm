@@ -3242,9 +3242,12 @@
       "description": "Send a filtered, one-time copy of this contact to another user on this instance. They choose whether to accept it.",
       "frozenNotice": "This can't be recalled once sent — the recipient sees a snapshot from right now, and any edits you make to this contact afterward won't reach a pending or already-accepted share.",
       "recipient": "Recipient",
-      "selectRecipient": "Choose a recipient…",
       "sharing": "Sharing…",
       "shareButton": "Share"
+    },
+    "recipientPicker": {
+      "searchHint": "Type at least {{min}} letters of the username",
+      "noMatches": "No matching users."
     },
     "incoming": {
       "empty": "No incoming shares.",

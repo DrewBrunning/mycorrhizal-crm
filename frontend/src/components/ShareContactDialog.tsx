@@ -8,25 +8,20 @@ import {
   FormControl,
   FormControlLabel,
   FormLabel,
-  MenuItem,
   Radio,
   RadioGroup,
-  TextField,
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  createContactShare,
-  getUserDirectory,
-  type UserDirectoryEntry,
-} from '../api/contactShares';
+import { createContactShare, type UserDirectoryEntry } from '../api/contactShares';
 import { EXPORT_FIELD_SECTIONS } from '../api/export';
 import type { ShareGrantOwnerView } from '../api/shareGrants';
 import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 import FieldSectionPicker from './FieldSectionPicker';
+import ShareRecipientPicker from './ShareRecipientPicker';
 import StandingShareForm from './StandingShareForm';
 
 interface ShareContactDialogProps {
@@ -62,8 +57,7 @@ export default function ShareContactDialog({
 }: ShareContactDialogProps) {
   const { t } = useTranslation();
   const [mode, setMode] = useState<'oneTime' | 'standing'>('oneTime');
-  const [recipients, setRecipients] = useState<UserDirectoryEntry[]>([]);
-  const [toUserID, setToUserID] = useState<number | ''>('');
+  const [recipient, setRecipient] = useState<UserDirectoryEntry | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sensitiveRevealed, setSensitiveRevealed] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -80,11 +74,8 @@ export default function ShareContactDialog({
     setMode('oneTime');
     setSelected(new Set(defaultSelection));
     setSensitiveRevealed(false);
-    setToUserID('');
+    setRecipient(null);
     setError('');
-    getUserDirectory()
-      .then(setRecipients)
-      .catch((err) => setError(getErrorMessage(err)));
   }, [open, defaultSelection]);
 
   const toggle = (token: string, checked: boolean) => {
@@ -101,7 +92,7 @@ export default function ShareContactDialog({
   };
 
   const handleShare = async () => {
-    if (toUserID === '') return;
+    if (!recipient) return;
     const includeSensitive =
       sensitiveRevealed && EXPORT_FIELD_SECTIONS.some((s) => s.sensitive && selected.has(s.token));
 
@@ -109,7 +100,7 @@ export default function ShareContactDialog({
     setError('');
     try {
       await createContactShare({
-        to_user_id: toUserID,
+        to_user_id: recipient.id,
         vcard_uid: vcardUID,
         sections: [...selected],
         include_sensitive: includeSensitive,
@@ -190,25 +181,15 @@ export default function ShareContactDialog({
             {t('contactShares.shareDialog.frozenNotice')}
           </Alert>
 
-          <TextField
-            select
+          <ShareRecipientPicker
             label={t('contactShares.shareDialog.recipient')}
-            value={toUserID}
-            onChange={(e) => {
+            value={recipient}
+            onChange={(next) => {
               markDirty();
-              setToUserID(e.target.value === '' ? '' : Number(e.target.value));
+              setRecipient(next);
             }}
-            fullWidth
-          >
-            <MenuItem value="">
-              <em>{t('contactShares.shareDialog.selectRecipient')}</em>
-            </MenuItem>
-            {recipients.map((u) => (
-              <MenuItem key={u.id} value={u.id}>
-                {u.username}
-              </MenuItem>
-            ))}
-          </TextField>
+            onError={setError}
+          />
 
           <FieldSectionPicker
             selected={selected}
@@ -234,7 +215,7 @@ export default function ShareContactDialog({
         <Button
           onClick={() => void handleShare()}
           variant="contained"
-          disabled={sharing || toUserID === '' || selected.size === 0}
+          disabled={sharing || recipient === null || selected.size === 0}
         >
           {sharing
             ? t('contactShares.shareDialog.sharing')
