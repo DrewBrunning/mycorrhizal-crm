@@ -200,6 +200,30 @@ class HouseholdsScreenTest {
         composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
     }
 
+    // Issue #2629: a failed refresh with households already listed keeps the list and toasts.
+    @Test
+    fun `a failed refresh keeps the households and toasts the error`() {
+        val householdRepository = mockk<HouseholdRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { householdRepository.list(any(), any()) } returnsMany listOf(
+            Result.success(listOf(Household(id = "h1", name = "The Smiths"))),
+            Result.failure(ApiError.Client(500, "down"))
+        )
+        val viewModel = HouseholdsViewModel(householdRepository, contactRepository)
+        composeTestRule.setContent {
+            MycorrhizalTheme { HouseholdsScreen(onOpenHousehold = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("The Smiths").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { viewModel.load() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("The Smiths").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
     private fun setScreenWithSuggestions(
         suggestions: List<AddressHouseholdSuggestion>,
         onAccept: (() -> Unit)? = null,

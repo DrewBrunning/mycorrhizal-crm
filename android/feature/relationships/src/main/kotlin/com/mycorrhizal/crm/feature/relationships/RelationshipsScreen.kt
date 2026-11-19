@@ -97,9 +97,9 @@ fun RelationshipsScreen(
     var pendingReject by remember { mutableStateOf<RelationshipEdge?>(null) }
     // With nothing listed a failed load is the screen's ErrorState (and its Retry); a toast that
     // clears the error on dismissal would take that state away again.
-    val loadErrorOnScreen = state.loadError != null && state.edges.isEmpty()
+    val onScreenLoadError = state.loadError?.takeIf { state.edges.isEmpty() }
     val errorMessage = state.errorRes?.let { stringResource(it) }
-        ?: state.error?.takeUnless { loadErrorOnScreen && it === state.loadError }?.localizedMessage()
+        ?: state.error?.takeUnless { it === onScreenLoadError }?.localizedMessage()
 
     @Composable
     fun displayName(edge: RelationshipEdge): String {
@@ -181,9 +181,8 @@ fun RelationshipsScreen(
                     when {
                         state.isLoading && state.edges.isEmpty() -> LoadingSkeleton()
 
-                        loadErrorOnScreen -> state.loadError?.let { error ->
-                            ErrorState(error = error, onRetry = viewModel::load)
-                        }
+                        onScreenLoadError != null ->
+                            ErrorState(error = onScreenLoadError, onRetry = viewModel::load)
 
                         state.edges.isEmpty() && errorMessage == null ->
                             EmptyState(

@@ -70,10 +70,10 @@ fun CircleDetailScreen(
     var showTextHint by remember { mutableStateOf(false) }
     // With nothing loaded a failed load is the screen's ErrorState (and its Retry); a toast that
     // clears the error on dismissal would take that state away again.
-    val loadErrorOnScreen =
-        state.loadError != null && state.members.isEmpty() && state.circle == null
+    val onScreenLoadError =
+        state.loadError?.takeIf { state.members.isEmpty() && state.circle == null }
     val errorMessage = state.errorRes?.let { stringResource(it) }
-        ?: state.error?.takeUnless { loadErrorOnScreen && it === state.loadError }?.localizedMessage()
+        ?: state.error?.takeUnless { it === onScreenLoadError }?.localizedMessage()
     val context = LocalContext.current
 
     // Issue #218: numbers for the "text everyone" group SMS. Members with no
@@ -175,9 +175,8 @@ fun CircleDetailScreen(
                 when {
                     state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
 
-                    loadErrorOnScreen -> state.loadError?.let { error ->
-                        ErrorState(error = error, onRetry = viewModel::load)
-                    }
+                    onScreenLoadError != null ->
+                        ErrorState(error = onScreenLoadError, onRetry = viewModel::load)
 
                     state.members.isEmpty() && state.circle == null && errorMessage != null -> {
                         Text(

@@ -402,6 +402,44 @@ class CircleDetailScreenTest {
         composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
     }
 
+    // Issue #2629: a failed refresh with members already on screen is not a full-screen error:
+    // the list stays and the failure is announced by the transient message.
+    @Test
+    fun `a failed refresh keeps the members and toasts the error`() {
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { circleRepository.getWithMembers("c1") } returnsMany listOf(
+            Result.success(
+                CircleDetail(
+                    circle = Circle(id = "c1", name = "Family"),
+                    members = listOf(
+                        CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice")
+                    )
+                )
+            ),
+            Result.failure(ApiError.Client(500, "down"))
+        )
+        coEvery { contactRepository.resolveByUid(any()) } returns
+            Result.success(mapOf("uid-alice" to alice))
+        val vm = CircleDetailViewModel(
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("circleId" to "c1"))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { vm.load() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
     // A missing circle id is not a network failure: plain message, no Retry to offer.
     @Test
     fun `a missing circle id shows its message without Retry`() {

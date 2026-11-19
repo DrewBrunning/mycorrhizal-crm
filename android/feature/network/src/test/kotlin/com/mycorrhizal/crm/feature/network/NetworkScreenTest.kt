@@ -588,6 +588,34 @@ class NetworkScreenTest {
         )
     }
 
+    // Issue #2629: the entity overlay renders inside the list, so with the toggle on a failed
+    // traversal does not replace it with the full-screen ErrorState.
+    @Test
+    fun `a failed traversal with the entity overlay on keeps the list instead of the error state`() {
+        val graphRepository = mockk<GraphRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+        coEvery { graphRepository.selfContactVCardUid() } returns Result.success("uid-self")
+        coEvery { contactRepository.resolveByUid(listOf("uid-self")) } returns Result.success(
+            mapOf("uid-self" to ContactSummary(id = 1, uid = "uid-self", firstname = "Alice"))
+        )
+        coEvery { graphRepository.getConnections("uid-self", 2, null) } returns
+            Result.failure(ApiError.Client(500, "down"))
+        coEvery { graphRepository.entityOverlay("uid-self", 2) } returns
+            Result.failure(ApiError.Client(500, "overlay-down"))
+        val vm = NetworkViewModel(graphRepository, contactRepository, SavedStateHandle())
+        composeTestRule.setContent {
+            MycorrhizalTheme { NetworkScreen(viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { vm.setShowEntities(true) }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
     // Issue #2629: a failed traversal is the shared ErrorState (localized reason) with a Retry
     // that re-runs the load; the empty state must not show and Retry then brings the rows back.
     @Test

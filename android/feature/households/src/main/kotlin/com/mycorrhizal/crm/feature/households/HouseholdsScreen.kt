@@ -79,6 +79,10 @@ fun HouseholdsScreen(
     viewModel: HouseholdsViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    // With nothing listed a failed load is the screen's ErrorState (and its Retry); a toast that
+    // clears the error on dismissal would take that state away again.
+    val onScreenLoadError =
+        state.loadError?.takeIf { state.households.isEmpty() && !state.suggestionsLoaded }
     val snackbarHostState = remember { SnackbarHostState() }
     var showCreateDialog by remember { mutableStateOf(false) }
 
@@ -158,19 +162,16 @@ fun HouseholdsScreen(
                         when {
                             state.isLoading && state.households.isEmpty() -> LoadingSkeleton()
 
-                            state.households.isEmpty() && !state.suggestionsLoaded &&
-                                state.loadError == null ->
+                            onScreenLoadError != null ->
+                                ErrorState(error = onScreenLoadError, onRetry = viewModel::load)
+
+                            state.households.isEmpty() && !state.suggestionsLoaded ->
                                 EmptyState(
                                     title = stringResource(R.string.households_empty),
                                     body = stringResource(R.string.households_empty_body),
                                     actionLabel = stringResource(R.string.households_new),
                                     onAction = { showCreateDialog = true }
                                 )
-
-                            state.households.isEmpty() && !state.suggestionsLoaded ->
-                                state.loadError?.let { error ->
-                                    ErrorState(error = error, onRetry = viewModel::load)
-                                }
 
                             else -> {
                                 LazyColumn(
@@ -269,11 +270,7 @@ fun HouseholdsScreen(
         )
     }
 
-    // With nothing listed a failed load is the screen's ErrorState (and its Retry); a toast that
-    // clears the error on dismissal would take that state away again.
-    val loadErrorOnScreen = state.loadError != null && state.households.isEmpty() &&
-        !state.suggestionsLoaded
-    state.error?.takeUnless { loadErrorOnScreen && it === state.loadError }?.let { error ->
+    state.error?.takeUnless { it === onScreenLoadError }?.let { error ->
         val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)

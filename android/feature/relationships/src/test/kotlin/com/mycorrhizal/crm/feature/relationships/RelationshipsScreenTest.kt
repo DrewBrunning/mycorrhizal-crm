@@ -373,6 +373,44 @@ class RelationshipsScreenTest {
         composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
     }
 
+    // Issue #2629: a failed refresh with edges already listed keeps the list and toasts.
+    @Test
+    fun `a failed refresh keeps the edges and toasts the error`() {
+        val edgeRepository = mockk<RelationshipEdgeRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { contactRepository.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = "u-viewed"))
+        )
+        coEvery { edgeRepository.listForContact("u-viewed", null, null) } returnsMany listOf(
+            Result.success(
+                listOf(confirmedEdge("e1", "u-other", "u-viewed", RelationshipEdgeTypes.FRIEND_OF))
+            ),
+            Result.failure(ApiError.Client(500, "down"))
+        )
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(
+            mapOf("u-other" to ContactSummary(id = 9, uid = "u-other", firstname = "Alice"))
+        )
+        val vm = RelationshipsViewModel(
+            edgeRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm)
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Alice", substring = true).assertIsDisplayed()
+
+        composeTestRule.runOnIdle { vm.load() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
     // A missing contact id is not a network failure: plain message, no Retry to offer.
     @Test
     fun `a missing contact id shows its message without Retry`() {
