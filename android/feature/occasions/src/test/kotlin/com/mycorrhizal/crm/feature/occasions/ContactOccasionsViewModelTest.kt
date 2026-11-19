@@ -152,12 +152,20 @@ class ContactOccasionsViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            vm.save(null, OccasionObligationFormData(kind = " ", label = "x", notes = "   "))
+            vm.save(
+                null,
+                OccasionObligationFormData(
+                    kind = " ",
+                    label = "x",
+                    anchorMonth = 3,
+                    anchorDay = 9,
+                    notes = "   "
+                )
+            )
             advanceUntilIdle()
 
             assertEquals("card", captured.captured.kind)
             assertNull(captured.captured.notes)
-            assertNull(captured.captured.anchorMonth)
             assertEquals(0, captured.captured.leadTimeDays)
         }
 
@@ -170,17 +178,23 @@ class ContactOccasionsViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            // Clearing the anchor in the form must persist as cleared.
+            // The new anchor replaces the old one; the link is carried forward.
             vm.save(
                 ob(),
-                OccasionObligationFormData(kind = "card", label = "Renamed", leadTimeText = "0")
+                OccasionObligationFormData(
+                    kind = "card",
+                    label = "Renamed",
+                    anchorMonth = 2,
+                    anchorDay = 29,
+                    leadTimeText = "0"
+                )
             )
             advanceUntilIdle()
 
             assertEquals("le1", captured.captured.linkedLifeEventId)
             assertEquals(UID, captured.captured.entityId)
-            assertNull(captured.captured.anchorMonth)
-            assertNull(captured.captured.anchorDay)
+            assertEquals(2, captured.captured.anchorMonth)
+            assertEquals(29, captured.captured.anchorDay)
             assertEquals("Renamed", captured.captured.label)
             assertTrue(vm.uiState.value.saved)
         }
@@ -201,7 +215,24 @@ class ContactOccasionsViewModelTest {
         }
 
     @Test
-    fun `a month without a day or a day without a month is rejected`() =
+    fun `a missing month and day is rejected with the required reason before any request`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.listForContact(UID) } returns Result.success(emptyList())
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.save(null, OccasionObligationFormData(label = "x"))
+            advanceUntilIdle()
+
+            assertEquals(
+                R.string.error_reason_occasion_anchor_date_required,
+                vm.uiState.value.errorRes
+            )
+            coVerify(exactly = 0) { repository.create(any()) }
+        }
+
+    @Test
+    fun `a month without a day or a day without a month is rejected as incomplete`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.listForContact(UID) } returns Result.success(emptyList())
             val vm = viewModel()
@@ -209,14 +240,110 @@ class ContactOccasionsViewModelTest {
 
             vm.save(null, OccasionObligationFormData(label = "x", anchorMonth = 3))
             advanceUntilIdle()
-            assertEquals(R.string.occasion_ob_validation_anchor_both, vm.uiState.value.errorRes)
+            assertEquals(
+                R.string.error_reason_occasion_anchor_date_incomplete,
+                vm.uiState.value.errorRes
+            )
 
             vm.onErrorShown()
             vm.save(null, OccasionObligationFormData(label = "x", anchorDay = 9))
             advanceUntilIdle()
-            assertEquals(R.string.occasion_ob_validation_anchor_both, vm.uiState.value.errorRes)
+            assertEquals(
+                R.string.error_reason_occasion_anchor_date_incomplete,
+                vm.uiState.value.errorRes
+            )
             coVerify(exactly = 0) { repository.create(any()) }
         }
+
+    @Test
+    fun `a month and day that never coexist are rejected as invalid but Feb 29 is allowed`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.listForContact(UID) } returns Result.success(emptyList())
+            coEvery { repository.create(any()) } returns Result.success(ob())
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            for ((month, day) in listOf(2 to 30, 2 to 31, 4 to 31, 6 to 31, 9 to 31, 11 to 31)) {
+                vm.onErrorShown()
+                vm.save(
+                    null,
+                    OccasionObligationFormData(label = "x", anchorMonth = month, anchorDay = day)
+                )
+                advanceUntilIdle()
+                assertEquals(
+                    "$month/$day",
+                    R.string.error_reason_occasion_anchor_date_invalid,
+                    vm.uiState.value.errorRes
+                )
+            }
+            coVerify(exactly = 0) { repository.create(any()) }
+
+            vm.onErrorShown()
+            vm.save(null, OccasionObligationFormData(label = "x", anchorMonth = 2, anchorDay = 29))
+            advanceUntilIdle()
+            coVerify(exactly = 1) { repository.create(match { it.anchorDay == 29 }) }
+        }
+
+    @Test
+    fun `a legacy dateless row can only be saved while inactive`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.listForContact(UID) } returns Result.success(emptyList())
+            coEvery { repository.update(any(), any()) } returns Result.success(ob())
+            coEvery { repository.create(any()) } returns Result.success(ob())
+            val vm = viewModel()
+            advanceUntilIdle()
+            val legacy = ob().copy(anchorMonth = null, anchorDay = null)
+
+            // Still active and dateless: refused, exactly like the server.
+            vm.save(legacy, OccasionObligationFormData(label = "x", active = true))
+            advanceUntilIdle()
+            assertEquals(
+                R.string.error_reason_occasion_anchor_date_required,
+                vm.uiState.value.errorRes
+            )
+            coVerify(exactly = 0) { repository.update(any(), any()) }
+
+            // Retired (inactive) and still dateless: accepted.
+            vm.onErrorShown()
+            vm.save(legacy, OccasionObligationFormData(label = "x", active = false))
+            advanceUntilIdle()
+            coVerify(exactly = 1) {
+                repository.update("o1", match { !it.active && it.anchorMonth == null })
+            }
+        }
+
+    @Test
+    fun `inactive alone never excuses a missing date on a new or dated row`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.listForContact(UID) } returns Result.success(emptyList())
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.save(null, OccasionObligationFormData(label = "x", active = false))
+            advanceUntilIdle()
+            assertEquals(
+                R.string.error_reason_occasion_anchor_date_required,
+                vm.uiState.value.errorRes
+            )
+
+            vm.onErrorShown()
+            vm.save(ob(), OccasionObligationFormData(label = "x", active = false))
+            advanceUntilIdle()
+            assertEquals(
+                R.string.error_reason_occasion_anchor_date_required,
+                vm.uiState.value.errorRes
+            )
+            coVerify(exactly = 0) { repository.create(any()) }
+            coVerify(exactly = 0) { repository.update(any(), any()) }
+        }
+
+    @Test
+    fun `daysInMonth follows the calendar and allows Feb 29`() {
+        assertEquals(29, daysInMonth(2))
+        for (m in listOf(4, 6, 9, 11)) assertEquals("month $m", 30, daysInMonth(m))
+        for (m in listOf(1, 3, 5, 7, 8, 10, 12)) assertEquals("month $m", 31, daysInMonth(m))
+        assertEquals(31, daysInMonth(null))
+    }
 
     @Test
     fun `lead time must be a whole number from 0 to 365`() =
@@ -227,7 +354,15 @@ class ContactOccasionsViewModelTest {
 
             for (bad in listOf("abc", "-1", "366", "1.5")) {
                 vm.onErrorShown()
-                vm.save(null, OccasionObligationFormData(label = "x", leadTimeText = bad))
+                vm.save(
+                    null,
+                    OccasionObligationFormData(
+                        label = "x",
+                        anchorMonth = 3,
+                        anchorDay = 9,
+                        leadTimeText = bad
+                    )
+                )
                 advanceUntilIdle()
                 assertEquals(
                     "lead time '$bad'",
@@ -240,7 +375,15 @@ class ContactOccasionsViewModelTest {
             // Blank means 0 and the 365 boundary is allowed.
             coEvery { repository.create(any()) } returns Result.success(ob())
             vm.onErrorShown()
-            vm.save(null, OccasionObligationFormData(label = "x", leadTimeText = "365"))
+            vm.save(
+                null,
+                OccasionObligationFormData(
+                    label = "x",
+                    anchorMonth = 3,
+                    anchorDay = 9,
+                    leadTimeText = "365"
+                )
+            )
             advanceUntilIdle()
             coVerify(exactly = 1) { repository.create(match { it.leadTimeDays == 365 }) }
         }
@@ -253,7 +396,10 @@ class ContactOccasionsViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            vm.save(null, OccasionObligationFormData(label = "x"))
+            vm.save(
+                null,
+                OccasionObligationFormData(label = "x", anchorMonth = 3, anchorDay = 9)
+            )
             advanceUntilIdle()
 
             assertTrue(vm.uiState.value.error is ApiError.Client)
@@ -269,8 +415,8 @@ class ContactOccasionsViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            vm.save(null, OccasionObligationFormData(label = "x"))
-            vm.save(null, OccasionObligationFormData(label = "x"))
+            vm.save(null, OccasionObligationFormData(label = "x", anchorMonth = 3, anchorDay = 9))
+            vm.save(null, OccasionObligationFormData(label = "x", anchorMonth = 3, anchorDay = 9))
             advanceUntilIdle()
 
             coVerify(exactly = 1) { repository.create(any()) }
@@ -317,7 +463,7 @@ class ContactOccasionsViewModelTest {
             coEvery { repository.create(any()) } returns Result.success(ob())
             val vm = viewModel()
             advanceUntilIdle()
-            vm.save(null, OccasionObligationFormData(label = "x"))
+            vm.save(null, OccasionObligationFormData(label = "x", anchorMonth = 3, anchorDay = 9))
             advanceUntilIdle()
             assertTrue(vm.uiState.value.saved)
 

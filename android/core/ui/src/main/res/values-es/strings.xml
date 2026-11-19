@@ -2552,17 +2552,22 @@
     <string name="occasion_ob_kind_gift">Regalo</string>
     <string name="occasion_ob_kind_invite">Invitación</string>
     <string name="occasion_ob_label">Etiqueta</string>
-    <string name="occasion_ob_label_hint">p. ej. «Tarjeta de Navidad», «Regalo de cumpleaños»</string>
+    <string name="occasion_ob_label_hint">p. ej. «Tarjeta de Navidad», «Regalo de aniversario»</string>
     <string name="occasion_ob_anchor_month">Mes</string>
     <string name="occasion_ob_anchor_day">Día</string>
     <string name="occasion_ob_anchor_unset">Sin definir</string>
+    <plurals name="occasion_ob_day_cleared">
+        <item quantity="one">%1$s tiene como máximo %2$d día, así que se borró el día. Elige un día de nuevo.</item>
+        <item quantity="many">%1$s tiene como máximo %2$d días, así que se borró el día. Elige un día de nuevo.</item>
+        <item quantity="other">%1$s tiene como máximo %2$d días, así que se borró el día. Elige un día de nuevo.</item>
+    </plurals>
+    <string name="occasion_ob_no_date">Sin fecha: sin recordatorio</string>
     <string name="occasion_ob_lead_time">Antelación (días)</string>
     <string name="occasion_ob_lead_time_hint">Cuántos días antes de la fecha quieres el recordatorio, p. ej. 14 para «regalo dos semanas antes»</string>
     <string name="occasion_ob_active">Activa</string>
     <string name="occasion_ob_inactive">Inactiva</string>
     <string name="occasion_ob_delete_title">Eliminar ocasión</string>
     <string name="occasion_ob_validation_label_required">Introduce una etiqueta para esta ocasión.</string>
-    <string name="occasion_ob_validation_anchor_both">Define el mes y el día, o deja ambos sin definir.</string>
     <string name="occasion_ob_validation_lead_time">Introduce un número entero de días de antelación de 0 a 365.</string>
     <plurals name="occasion_ob_lead_time_display">
         <item quantity="one">%1$d día de antelación</item>
