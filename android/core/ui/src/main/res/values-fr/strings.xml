@@ -2580,6 +2580,23 @@
     <string name="occasion_card_list_description">Partagez un CSV des contacts ayant une occasion de carte active : une ligne par obligation active, avec le nom du contact, son adresse de sensibilité normale et l\'occasion. Les adresses privées et secrètes sont exclues.</string>
     <string name="occasion_card_list_share">Partager en CSV</string>
     <string name="occasion_card_list_share_title">Partager la liste de cartes</string>
+    <!-- Issue #2786: who the card list holds and skips; quantity follows the included count. -->
+    <string name="occasion_card_list_summary_checking">Vérification des personnes de la liste…</string>
+    <plurals name="occasion_card_list_summary">
+        <item quantity="one">%1$d destinataire</item>
+        <item quantity="many">%1$d de destinataires</item>
+        <item quantity="other">%1$d destinataires</item>
+    </plurals>
+    <plurals name="occasion_card_list_summary_skipped">
+        <item quantity="one">%1$d destinataire ; ignorés : %2$d (%3$s)</item>
+        <item quantity="many">%1$d de destinataires ; ignorés : %2$d (%3$s)</item>
+        <item quantity="other">%1$d destinataires ; ignorés : %2$d (%3$s)</item>
+    </plurals>
+    <string name="occasion_card_list_skipped_no_address">sans adresse postale : %1$d</string>
+    <string name="occasion_card_list_skipped_private_address">adresse privée uniquement : %1$d</string>
+    <string name="occasion_card_list_reasons_separator">", "</string>
+    <string name="occasion_card_list_no_recipients">Aucun destinataire n\'a d\'adresse postale.</string>
+    <string name="occasion_card_list_no_obligations">Aucune occasion de carte active pour le moment. Ajoutez-en une depuis la page d\'un contact.</string>
     <string name="occasion_gift_list_title">Liste de cadeaux à acheter</string>
     <string name="occasion_gift_list_description">Cadeaux à venir et si vous avez une idée, l\'avez acheté ou déjà offert.</string>
     <string name="occasion_gift_list_empty">Aucun cadeau nécessaire sur cette période.</string>

@@ -1,7 +1,11 @@
 package com.mycorrhizal.crm.feature.occasions
 
 import com.mycorrhizal.crm.domain.repository.OccasionObligationRepository
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.GiftShoppingItem
+import com.mycorrhizal.crm.model.network.OccasionCardListSkippedReasons
+import com.mycorrhizal.crm.model.network.OccasionCardListSummary
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -173,5 +177,110 @@ class OccasionListsViewModelTest {
             advanceUntilIdle()
 
             coVerify(exactly = 1) { repository.cardListCsv("card") }
+        }
+
+    private val summary = OccasionCardListSummary(
+        total = 12,
+        included = 9,
+        skipped = 3,
+        skippedReasons = OccasionCardListSkippedReasons(noAddress = 2, privateAddressOnly = 1)
+    )
+
+    @Test
+    fun `loadSummary stores the counts and clears the loading flag`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.cardListSummary("card") } returns Result.success(summary)
+            val vm = OccasionCardListViewModel(repository)
+
+            vm.loadSummary()
+            advanceUntilIdle()
+
+            assertEquals(summary, vm.uiState.value.summary)
+            assertFalse(vm.uiState.value.isSummaryLoading)
+            assertNull(vm.uiState.value.summaryError)
+        }
+
+    @Test
+    fun `loadSummary reports loading while the request runs`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.cardListSummary("card") } coAnswers {
+                kotlinx.coroutines.awaitCancellation()
+            }
+            val vm = OccasionCardListViewModel(repository)
+
+            vm.loadSummary()
+            advanceUntilIdle()
+
+            assertTrue(vm.uiState.value.isSummaryLoading)
+            assertNull(vm.uiState.value.summary)
+        }
+
+    @Test
+    fun `a summary failure keeps the reason-coded error and never touches the download error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val failure = ApiError.Client(
+                400,
+                "RAW",
+                reason = ErrorReason(ErrorReasonCode.OCCASION_KIND_INVALID, emptyMap())
+            )
+            coEvery { repository.cardListSummary("card") } returns Result.failure(failure)
+            val vm = OccasionCardListViewModel(repository)
+
+            vm.loadSummary()
+            advanceUntilIdle()
+
+            assertEquals(failure, vm.uiState.value.summaryError)
+            assertNull(vm.uiState.value.error)
+            assertNull(vm.uiState.value.summary)
+            assertFalse(vm.uiState.value.isSummaryLoading)
+        }
+
+    @Test
+    fun `a retry after a failure replaces the error with the counts`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.cardListSummary("card") } returnsMany listOf(
+                Result.failure(ApiError.Client(500, "boom")),
+                Result.success(summary)
+            )
+            val vm = OccasionCardListViewModel(repository)
+
+            vm.loadSummary()
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.summaryError != null)
+
+            vm.loadSummary()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.summaryError)
+            assertEquals(summary, vm.uiState.value.summary)
+        }
+
+    @Test
+    fun `a summary load while one is running is ignored`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.cardListSummary("card") } returns Result.success(summary)
+            val vm = OccasionCardListViewModel(repository)
+
+            vm.loadSummary()
+            vm.loadSummary()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { repository.cardListSummary("card") }
+        }
+
+    @Test
+    fun `a failed summary does not block the download`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.cardListSummary("card") } returns
+                Result.failure(ApiError.Client(500, "boom"))
+            coEvery { repository.cardListCsv("card") } returns Result.success("a,b".toByteArray())
+            val vm = OccasionCardListViewModel(repository)
+
+            vm.loadSummary()
+            advanceUntilIdle()
+            vm.download()
+            advanceUntilIdle()
+
+            assertArrayEquals("a,b".toByteArray(), vm.uiState.value.csv)
         }
 }
