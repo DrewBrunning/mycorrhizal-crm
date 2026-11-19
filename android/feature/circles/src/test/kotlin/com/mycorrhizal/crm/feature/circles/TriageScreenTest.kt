@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.CircleRepository
@@ -15,10 +16,13 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactsPage
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -182,6 +186,43 @@ class TriageScreenTest {
         screen(TriageViewModel(contactRepository, mockk(), mockk()))
 
         assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    // Issue #2629: a failed load is the shared ErrorState (localized reason) with a Retry that
+    // re-runs the load; the "nothing to clean up" state must not show and Retry then lists the rows.
+    @Test
+    fun `a failed load shows the localized reason with Retry that reloads the legacy strings`() {
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { contactRepository.listLegacyCircles() } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(listOf("Friends"))
+        )
+        coEvery {
+            contactRepository.listContacts(any(), any(), any(), any(), any(), any(), any())
+        } returns Result.success(
+            ContactsPage(contacts = emptyList(), nextCursor = null, limit = 500, sync = null)
+        )
+
+        screen(TriageViewModel(contactRepository, mockk(), mockk()))
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.triage_empty)).assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Friends").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { contactRepository.listLegacyCircles() }
     }
 
     @Test
