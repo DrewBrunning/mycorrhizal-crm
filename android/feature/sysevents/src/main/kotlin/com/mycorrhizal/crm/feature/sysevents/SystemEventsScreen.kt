@@ -90,7 +90,8 @@ import java.time.format.FormatStyle
 fun SystemEventsScreen(onBack: () -> Unit, viewModel: SystemEventsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val loadError = state.error?.localizedMessage()
+    val stateError = state.error
+    val loadError = stateError?.localizedMessage()
 
     var correlationInput by rememberSaveable { mutableStateOf(state.correlationId) }
     // Keep the field in sync when "view related" sets the filter programmatically.
@@ -233,10 +234,8 @@ fun SystemEventsScreen(onBack: () -> Unit, viewModel: SystemEventsViewModel = hi
                         state.isLoading && state.events.isEmpty() ->
                             LoadingSkeleton(modifier = Modifier.testTag("sysevents-loading"))
 
-                        state.events.isEmpty() && loadError != null ->
-                            state.error?.let { error ->
-                                ErrorState(error = error, onRetry = viewModel::load)
-                            }
+                        state.events.isEmpty() && stateError != null ->
+                            ErrorState(error = stateError, onRetry = viewModel::load)
 
                         state.events.isEmpty() ->
                             EmptyState(

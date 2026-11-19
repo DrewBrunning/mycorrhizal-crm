@@ -92,7 +92,8 @@ fun AuditScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     // Local copy so the delegated `state.error` can be smart-cast/sent to
     // suspend APIs (a delegated property's getter defeats Kotlin's smart cast).
-    val loadError = state.error?.localizedMessage()
+    val stateError = state.error
+    val loadError = stateError?.localizedMessage()
 
     // Mirrors web's debounced entity-id field: the input echoes keystrokes
     // immediately while the applied (server-side) filter follows 350ms later.
@@ -190,10 +191,8 @@ fun AuditScreen(
                         state.isLoading && state.events.isEmpty() ->
                             LoadingSkeleton(modifier = Modifier.testTag("audit-loading"))
 
-                        state.events.isEmpty() && loadError != null ->
-                            state.error?.let { error ->
-                                ErrorState(error = error, onRetry = viewModel::load)
-                            }
+                        state.events.isEmpty() && stateError != null ->
+                            ErrorState(error = stateError, onRetry = viewModel::load)
 
                         state.events.isEmpty() ->
                             EmptyState(

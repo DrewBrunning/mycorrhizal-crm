@@ -55,6 +55,7 @@ fun TriageScreen(
     viewModel: TriageViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val loadError = state.error
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
@@ -96,13 +97,11 @@ fun TriageScreen(
 
                     state.done -> DoneContent(state = state, onBack = onBack)
 
-                    state.items.isEmpty() && state.error == null ->
-                        EmptyState(title = stringResource(R.string.triage_empty))
+                    state.items.isEmpty() && loadError != null ->
+                        ErrorState(error = loadError, onRetry = viewModel::load)
 
-                    state.items.isEmpty() && state.error != null ->
-                        state.error?.let { error ->
-                            ErrorState(error = error, onRetry = viewModel::load)
-                        }
+                    state.items.isEmpty() ->
+                        EmptyState(title = stringResource(R.string.triage_empty))
 
                     else -> ClassifyContent(
                         state = state,
