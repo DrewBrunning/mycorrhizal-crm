@@ -4,6 +4,7 @@ import {
   deleteOccasionObligation,
   downloadOccasionCardListCSV,
   getGiftShoppingList,
+  getOccasionCardListSummary,
   getOccasionObligations,
   getUpcomingOccasions,
   updateOccasionObligation,
@@ -186,6 +187,57 @@ describe('getGiftShoppingList', () => {
 
     const [url] = fetchMock.mock.calls[0];
     expect(url).toContain('/occasion-obligations/gift-shopping-list?');
+  });
+});
+
+describe('getOccasionCardListSummary', () => {
+  const body = {
+    total: 3,
+    included: 1,
+    skipped: 2,
+    skipped_reasons: { no_address: 1, private_address_only: 1 },
+  };
+
+  test('requests the summary for the kind and parses the counts', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => body });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getOccasionCardListSummary({ kind: 'card' })).resolves.toEqual(body);
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain('/occasion-obligations/card-list/summary?kind=card');
+    expect(url).not.toContain('include_sensitive');
+  });
+
+  test('sends include_sensitive only when asked', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => body });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getOccasionCardListSummary({ kind: 'gift card', includeSensitive: true });
+
+    const [url] = fetchMock.mock.calls[0];
+    expect(url).toContain('kind=gift+card');
+    expect(url).toContain('include_sensitive=true');
+  });
+
+  test('throws the parsed API error with its reason code', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'kind must not contain control characters',
+          reason_code: 'occasion_kind_invalid',
+        },
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(getOccasionCardListSummary({ kind: 'x' })).rejects.toMatchObject({
+      status: 400,
+      reasonCode: 'occasion_kind_invalid',
+    });
   });
 });
 

@@ -2,11 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
+import { ApiError } from './api/client';
 import type { OccasionEvent } from './api/occasionEvents';
 import {
   downloadOccasionCardListCSV,
   type GiftShoppingItem,
   getGiftShoppingList,
+  getOccasionCardListSummary,
+  type OccasionCardListSummary,
 } from './api/occasionObligations';
 import { useOccasionEventAttendees, useOccasionEvents } from './hooks/useOccasionEvents';
 import OccasionsPage from './OccasionsPage';
@@ -29,6 +32,7 @@ vi.mock('./api/occasionObligations', async (importOriginal) => {
     ...actual,
     getGiftShoppingList: vi.fn(),
     downloadOccasionCardListCSV: vi.fn(),
+    getOccasionCardListSummary: vi.fn(),
   };
 });
 
@@ -39,6 +43,21 @@ vi.mock('./hooks/useOccasionEvents', () => ({
 
 const getGiftShoppingListMock = vi.mocked(getGiftShoppingList);
 const downloadMock = vi.mocked(downloadOccasionCardListCSV);
+const summaryMock = vi.mocked(getOccasionCardListSummary);
+
+function summary(
+  included: number,
+  noAddress = 0,
+  privateOnly = 0,
+  total = included + noAddress + privateOnly,
+): OccasionCardListSummary {
+  return {
+    total,
+    included,
+    skipped: noAddress + privateOnly,
+    skipped_reasons: { no_address: noAddress, private_address_only: privateOnly },
+  };
+}
 const useOccasionEventsMock = vi.mocked(useOccasionEvents);
 
 const sampleEvent: OccasionEvent = {
@@ -55,6 +74,8 @@ beforeEach(() => {
   downloadMock.mockReset();
   getGiftShoppingListMock.mockResolvedValue({ gift_shopping_list: [], days: 30 });
   downloadMock.mockResolvedValue(undefined);
+  summaryMock.mockReset();
+  summaryMock.mockResolvedValue(summary(2));
   useOccasionEventsMock.mockReturnValue({
     events: [],
     loading: false,
@@ -234,4 +255,85 @@ test('shows an events fetch error', () => {
   });
   renderPage();
   expect(screen.getByText('events boom')).toBeInTheDocument();
+});
+
+// --- Card list summary (#2676 / #2786) ---
+
+test('asks for the card-list summary of the same query the CSV uses', async () => {
+  renderPage();
+  await waitFor(() =>
+    expect(summaryMock).toHaveBeenCalledWith({ kind: 'card', includeSensitive: false }),
+  );
+});
+
+test('announces how many recipients the CSV will hold when none are skipped', async () => {
+  summaryMock.mockResolvedValue(summary(2));
+  renderPage();
+  expect(await screen.findByRole('status')).toHaveTextContent('2 recipients');
+  expect(screen.getByRole('status')).not.toHaveTextContent('skipped');
+});
+
+test('uses the singular for one recipient', async () => {
+  summaryMock.mockResolvedValue(summary(1));
+  renderPage();
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/^1 recipient$/));
+});
+
+test('breaks down who was skipped and why', async () => {
+  summaryMock.mockResolvedValue(summary(3, 2, 1));
+  renderPage();
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '3 recipients; 3 skipped (no postal address: 2, private address only: 1)',
+    ),
+  );
+});
+
+test('lists only the skip reasons that apply', async () => {
+  summaryMock.mockResolvedValue(summary(1, 0, 4));
+  renderPage();
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '1 recipient; 4 skipped (private address only: 4)',
+    ),
+  );
+});
+
+test('says nobody has a postal address and offers no download when nothing would be included', async () => {
+  summaryMock.mockResolvedValue(summary(0, 2, 0));
+  renderPage();
+  expect(await screen.findByText('No recipients have a postal address.')).toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('2 skipped (no postal address: 2)');
+  expect(screen.queryByRole('button', { name: /download csv/i })).not.toBeInTheDocument();
+});
+
+test('says there are no card occasions yet when the summary is empty', async () => {
+  summaryMock.mockResolvedValue(summary(0));
+  renderPage();
+  expect(await screen.findByText(/No active card occasions yet/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /download csv/i })).not.toBeInTheDocument();
+});
+
+test('keeps the download button while the summary is loading', async () => {
+  summaryMock.mockReturnValue(new Promise(() => {}));
+  renderPage();
+  expect(screen.getByRole('status')).toHaveTextContent('Checking who is on the list');
+  expect(screen.getByRole('button', { name: /download csv/i })).toBeEnabled();
+});
+
+test('shows the localized reason when the summary is rejected and keeps the download', async () => {
+  summaryMock.mockRejectedValue(
+    new ApiError('English', 'VALIDATION_ERROR', 400, undefined, undefined, 'occasion_kind_invalid'),
+  );
+  renderPage();
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Could not check the recipients: kind must not contain control characters',
+  );
+  expect(screen.getByRole('button', { name: /download csv/i })).toBeEnabled();
+});
+
+test('shows a generic message when the summary fails without a reason', async () => {
+  summaryMock.mockRejectedValue(new Error('network down'));
+  renderPage();
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not check the recipients.');
 });
