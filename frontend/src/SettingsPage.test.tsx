@@ -240,6 +240,20 @@ test('a failed backend sync keeps the local time-format choice', async () => {
 
 // --- Password change ---------------------------------------------------
 
+// #2675 (WCAG 1.3.5): the change-password fields declare their purpose.
+test('the change-password fields carry autocomplete tokens', () => {
+  renderPage();
+  expect(screen.getByLabelText('Current password *')).toHaveAttribute(
+    'autocomplete',
+    'current-password',
+  );
+  expect(screen.getByLabelText('New password *')).toHaveAttribute('autocomplete', 'new-password');
+  expect(screen.getByLabelText('Confirm new password *')).toHaveAttribute(
+    'autocomplete',
+    'new-password',
+  );
+});
+
 test('changing the password submits current/new and shows the success message', async () => {
   vi.mocked(changePassword).mockResolvedValue('Password updated successfully.');
   renderPage();

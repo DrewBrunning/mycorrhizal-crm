@@ -690,6 +690,7 @@ export default function SettingsPage() {
               )}
               <TextField
                 label={t('settings.password.current')}
+                autoComplete="current-password"
                 type="password"
                 value={currentPassword}
                 onChange={(event) => setCurrentPassword(event.target.value)}
@@ -699,6 +700,7 @@ export default function SettingsPage() {
               />
               <TextField
                 label={t('settings.password.new')}
+                autoComplete="new-password"
                 type="password"
                 value={newPassword}
                 onChange={(event) => setNewPassword(event.target.value)}
@@ -708,6 +710,7 @@ export default function SettingsPage() {
               />
               <TextField
                 label={t('settings.password.confirm')}
+                autoComplete="new-password"
                 type="password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}

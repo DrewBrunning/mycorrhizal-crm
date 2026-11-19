@@ -161,6 +161,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
             />
             <TextField
               label={t('passwordReset.newPassword')}
+              autoComplete="new-password"
               type="password"
               value={newPassword}
               onChange={(event) => setNewPassword(event.target.value)}
@@ -173,6 +174,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
             />
             <TextField
               label={t('passwordReset.confirmPassword')}
+              autoComplete="new-password"
               type="password"
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
@@ -209,6 +211,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
           )}
           <TextField
             label={t('passwordReset.email')}
+            autoComplete="email"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}

@@ -240,7 +240,13 @@ async function signInErrorMessage(response: Response, fallback: string): Promise
 }
 
 // Fetch current user info from the server and cache it
-export async function fetchAndCacheUserInfo(): Promise<UserInfo | null> {
+// What /users/me returns beyond the cached identity: the account's saved UI
+// language, so a start-up refresh can apply a change made on another device.
+export interface FetchedUserInfo extends UserInfo {
+  language?: string;
+}
+
+export async function fetchAndCacheUserInfo(): Promise<FetchedUserInfo | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/users/me`, {
       credentials: 'include',
@@ -259,10 +265,41 @@ export async function fetchAndCacheUserInfo(): Promise<UserInfo | null> {
     // Issue #1830: keep the time-format preference in step with the server (it
     // may have been changed on another device).
     initializeTimeFormatFromBackend(data.time_format);
-    return userInfo;
+    return { ...userInfo, language: typeof data.language === 'string' ? data.language : undefined };
   } catch {
     return null;
   }
+}
+
+// #2718: the session cookie is httpOnly, so JS cannot tell whether one exists.
+// A browser with no cached user can only have a live session by coming back
+// from the SSO redirect, so that round trip leaves this one-shot hint in
+// sessionStorage. Without it (a plain signed-out visit) the start-up
+// /users/me probe would only produce a 401 console error.
+const OIDC_PENDING_KEY = 'oidc_pending';
+
+// Start the SSO sign-in: leave the hint, then hand the tab to the provider.
+export function startOidcLogin(): void {
+  try {
+    sessionStorage.setItem(OIDC_PENDING_KEY, '1');
+  } catch {
+    // Storage blocked: the return trip then relies on a manual reload.
+  }
+  window.location.href = `${API_BASE_URL}/auth/oidc/login`;
+}
+
+// Whether the app should ask /users/me at start: always for a cached user (to
+// refresh preferences such as the language), and for an uncached browser only
+// right after the SSO redirect. Reading consumes the one-shot SSO hint.
+export function shouldProbeSession(): boolean {
+  let returningFromSso = false;
+  try {
+    returningFromSso = sessionStorage.getItem(OIDC_PENDING_KEY) !== null;
+    sessionStorage.removeItem(OIDC_PENDING_KEY);
+  } catch {
+    // Storage blocked.
+  }
+  return returningFromSso || localStorage.getItem(USER_INFO_KEY) !== null;
 }
 
 // Returns null - token is in httpOnly cookie (not accessible from JS)

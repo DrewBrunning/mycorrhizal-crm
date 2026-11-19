@@ -127,6 +127,7 @@ export default function DeleteAccountSettings() {
               </Alert>
               <TextField
                 label={t('settings.deleteAccount.currentPasswordLabel')}
+                autoComplete="current-password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}

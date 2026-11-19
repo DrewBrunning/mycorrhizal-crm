@@ -137,6 +137,7 @@ export default function RegisterPage({ setToken }: RegisterPageProps) {
           <Stack spacing={2}>
             <TextField
               label={t('register.username')}
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -148,6 +149,7 @@ export default function RegisterPage({ setToken }: RegisterPageProps) {
             />
             <TextField
               label={t('register.email')}
+              autoComplete="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -160,6 +162,7 @@ export default function RegisterPage({ setToken }: RegisterPageProps) {
             />
             <TextField
               label={t('register.password')}
+              autoComplete="new-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
