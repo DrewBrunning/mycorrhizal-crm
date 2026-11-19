@@ -190,7 +190,7 @@ export default function StandingShareForm({
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {t('standingShares.form.description')}
           </Typography>
-          <Alert severity="info" sx={{ py: 0 }}>
+          <Alert severity="info" role="status" sx={{ py: 0 }}>
             {t('standingShares.form.noRecallNotice')}
           </Alert>
           {isContact && (

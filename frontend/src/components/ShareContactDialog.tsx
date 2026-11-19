@@ -186,7 +186,7 @@ export default function ShareContactDialog({
             {t('contactShares.shareDialog.description')}
           </Typography>
 
-          <Alert severity="info" sx={{ py: 0 }}>
+          <Alert severity="info" role="status" sx={{ py: 0 }}>
             {t('contactShares.shareDialog.frozenNotice')}
           </Alert>
 

@@ -158,17 +158,21 @@ export function useOccasionEventAttendees(eventId: string | undefined, notifier?
   );
 
   const loadSuggestions = useCallback(
-    async (circleIds: string[]) => {
+    // Resolves true only when the request completed (an empty answer
+    // included), so callers can tell "none suggested" from "never asked/failed".
+    async (circleIds: string[]): Promise<boolean> => {
       if (!eventId || circleIds.length === 0) {
         setSuggestions([]);
-        return;
+        return false;
       }
       setSuggestionsLoading(true);
       try {
         setSuggestions(await getInviteeSuggestions({ circleIds, eventId }));
+        return true;
       } catch (err) {
         handleError(err, { operation: 'loading invitee suggestions' }, notifier);
         setSuggestions([]);
+        return false;
       } finally {
         setSuggestionsLoading(false);
       }

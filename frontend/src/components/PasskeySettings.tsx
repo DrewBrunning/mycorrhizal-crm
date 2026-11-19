@@ -259,7 +259,7 @@ export default function PasskeySettings() {
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               {t('settings.passkeys.description')}
             </Typography>
-            <Alert severity="info" sx={{ py: 0 }}>
+            <Alert severity="info" role="status" sx={{ py: 0 }}>
               {t('settings.passkeys.davWarning')}
             </Alert>
 
@@ -312,7 +312,7 @@ export default function PasskeySettings() {
             )}
 
             {!supported ? (
-              <Alert severity="info" sx={{ py: 0 }}>
+              <Alert severity="info" role="status" sx={{ py: 0 }}>
                 {t('settings.passkeys.unsupported')}
               </Alert>
             ) : (

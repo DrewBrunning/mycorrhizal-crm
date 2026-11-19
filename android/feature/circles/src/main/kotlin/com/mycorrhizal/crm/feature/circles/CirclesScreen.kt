@@ -51,6 +51,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.RowAction
 import com.mycorrhizal.crm.ui.components.RowOverflowMenu
+import com.mycorrhizal.crm.ui.components.SavedDataBanner
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -108,6 +109,7 @@ fun CirclesScreen(
                 modifier = Modifier.fillMaxSize()
             ) {
                 Column(Modifier.fillMaxSize()) {
+                    if (state.showingSavedData) SavedDataBanner(onRetry = viewModel::load)
                     Text(
                         text = stringResource(R.string.circles_description),
                         style = MaterialTheme.typography.bodyMedium,
@@ -127,10 +129,10 @@ fun CirclesScreen(
                                 )
 
                             state.circles.isEmpty() && state.error != null -> {
-                                Text(
-                                    text = state.error?.localizedMessage().orEmpty(),
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
+                                EmptyState(
+                                    title = state.error?.localizedMessage().orEmpty(),
+                                    actionLabel = stringResource(R.string.action_retry),
+                                    onAction = viewModel::load
                                 )
                             }
 

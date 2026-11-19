@@ -106,7 +106,7 @@ test('a report without warnings has no filter and keeps its title', () => {
   expect(screen.queryByRole('button', { name: /^All/ })).not.toBeInTheDocument();
 });
 
-test('the CSV download carries the warning status and concept', async () => {
+test('the CSV download carries the worded warning status and concept', async () => {
   const createObjectURL = vi.fn((_blob: Blob) => 'blob:report');
   Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
   render(<ImportIssuesReport issues={[warningIssue]} />);
@@ -118,7 +118,7 @@ test('the CSV download carries the warning status and concept', async () => {
     reader.readAsText(blob);
   });
   expect(text).toContain('Status,Reason,Concept');
-  expect(text).toContain(',warning,birthday not imported: invalid value,birthday');
+  expect(text).toContain(',Warning,birthday not imported: invalid value,birthday');
 });
 
 test('pressing the selected filter again keeps it selected', () => {

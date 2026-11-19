@@ -64,6 +64,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -175,6 +176,10 @@ fun ApiTokensScreen(onBack: () -> Unit, viewModel: ApiTokensViewModel = hiltView
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator()
+                }
+            } else if (state.tokens.isEmpty() && state.loadError != null) {
+                state.loadError?.let { error ->
+                    ErrorState(error = error, onRetry = viewModel::load)
                 }
             } else if (state.tokens.isEmpty()) {
                 EmptyState(

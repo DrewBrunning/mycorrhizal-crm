@@ -107,6 +107,17 @@ sealed class ApiError(message: String, cause: Throwable? = null) : Exception(mes
 }
 
 /**
+ * Issue #2629: whether a failed read may be answered from the offline mirror. Only
+ * connectivity-class failures qualify (a 404 means the record is gone server-side, a 401/403 is
+ * an auth problem; neither should be papered over with stale rows). The one rule every
+ * repository with a saved copy shares.
+ */
+fun ApiError.canServeSavedData(): Boolean = this is ApiError.Network ||
+    this is ApiError.Timeout ||
+    this is ApiError.Unknown ||
+    this is ApiError.Server
+
+/**
  * Maps any thrown exception to an [ApiError]. Callers that already produced
  * an [ApiError] pass through unchanged.
  */

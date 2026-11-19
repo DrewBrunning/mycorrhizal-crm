@@ -62,6 +62,9 @@ func ParseCSVWithDiagnostics(reader io.Reader) (headers []string, rows [][]strin
 	if readErr != nil {
 		return nil, nil, nil, fmt.Errorf("invalid CSV format: %w", readErr)
 	}
+	if sniffErr := SniffImportText(raw); sniffErr != nil {
+		return nil, nil, nil, sniffErr
+	}
 	text, diags := DecodeImportText(raw)
 	csvReader := csv.NewReader(bytes.NewReader(text))
 	csvReader.FieldsPerRecord = -1 // Allow variable number of fields

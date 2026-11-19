@@ -53,7 +53,7 @@ export default function MapPage() {
       {!error && styleUrl !== null && points !== null && (
         <>
           {points.length === 0 ? (
-            <Alert severity="info" sx={{ mb: 2 }}>
+            <Alert severity="info" role="status" sx={{ mb: 2 }}>
               {t('map.empty')}
             </Alert>
           ) : (

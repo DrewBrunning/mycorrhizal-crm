@@ -80,7 +80,8 @@ FROM nginxinc/nginx-unprivileged:1.31-alpine@sha256:b5047b9b76845eac124358373c68
 # libssl3 above (#1062/#1131).
 USER 0
 # 2026-11-06 (alpine-pin-bump, automated): zlib 1.3.2-r1 -> 1.4-r0. Alpine pruned the old version from the index.
-RUN apk add --no-cache libssl3=3.5.9-r0 libcrypto3=3.5.9-r0 zlib=1.4-r0
+# 2026-11-19 (alpine-pin-bump, automated): libssl3 3.5.9-r0 -> 3.5.9-r1, libcrypto3 3.5.9-r0 -> 3.5.9-r1. Alpine pruned the old version from the index.
+RUN apk add --no-cache libssl3=3.5.9-r1 libcrypto3=3.5.9-r1 zlib=1.4-r0
 USER 101
 
 # Copy custom nginx config

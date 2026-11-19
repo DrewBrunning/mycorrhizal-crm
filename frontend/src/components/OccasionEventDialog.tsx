@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   DialogActions,
@@ -8,7 +9,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { OccasionEvent, OccasionEventInput } from '../api/occasionEvents';
 import type { OccasionSensitivity } from '../api/occasionObligations';
@@ -57,7 +58,13 @@ export default function OccasionEventDialog({
   const [sensitivity, setSensitivity] = useState<OccasionSensitivity>('normal');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<'title' | 'startsAt' | 'endsAt', string>>
+  >({});
+  const [formError, setFormError] = useState('');
+  // Bumped when a rejected save should move focus to the first invalid field.
+  const [focusTick, setFocusTick] = useState(0);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { markDirty, requestClose, guardElement } = useDirtyDialog(open, onClose);
 
   useEffect(() => {
@@ -68,26 +75,44 @@ export default function OccasionEventDialog({
       setLocation(event?.location || '');
       setSensitivity(event?.sensitivity || 'normal');
       setNotes(event?.notes || '');
-      setError('');
+      setFieldErrors({});
+      setFormError('');
     }
   }, [open, event]);
 
+  // Issue #2672: focus the first invalid field so its error is announced.
+  useEffect(() => {
+    if (focusTick === 0) return;
+    contentRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [focusTick]);
+
+  const clearField = (field: 'title' | 'startsAt' | 'endsAt') => {
+    setFieldErrors((prev) => {
+      if (!(field in prev)) return prev;
+      const { [field]: _removed, ...rest } = prev;
+      return rest;
+    });
+    setFormError('');
+  };
+
   const handleSave = async () => {
     const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      setError(t('occasions.events.validation.titleRequired'));
-      return;
-    }
+    const errors: typeof fieldErrors = {};
+    if (!trimmedTitle) errors.title = t('occasions.events.validation.titleRequired');
     const startsIso = fromDatetimeLocal(startsAt);
-    if (!startsIso) {
-      setError(t('occasions.events.validation.startRequired'));
-      return;
-    }
+    if (!startsIso) errors.startsAt = t('occasions.events.validation.startRequired');
     const endsIso = fromDatetimeLocal(endsAt);
-    if (endsIso && new Date(endsIso) < new Date(startsIso)) {
-      setError(t('occasions.events.validation.endBeforeStart'));
+    if (startsIso && endsIso && new Date(endsIso) < new Date(startsIso)) {
+      errors.endsAt = t('occasions.events.validation.endBeforeStart');
+    }
+    if (Object.keys(errors).length > 0 || !startsIso) {
+      setFieldErrors(errors);
+      setFormError('');
+      setFocusTick((n) => n + 1);
       return;
     }
+    setFieldErrors({});
+    setFormError('');
 
     setSaving(true);
     try {
@@ -101,7 +126,7 @@ export default function OccasionEventDialog({
       });
       onClose();
     } catch {
-      setError(t('occasions.events.validation.saveFailed'));
+      setFormError(t('occasions.events.validation.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -112,7 +137,7 @@ export default function OccasionEventDialog({
       <DialogTitle>
         {event ? t('occasions.events.editTitle') : t('occasions.events.createTitle')}
       </DialogTitle>
-      <DialogContent>
+      <DialogContent ref={contentRef}>
         <Box sx={{ pt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {t('occasions.events.dialogHint')}
@@ -123,10 +148,12 @@ export default function OccasionEventDialog({
             onChange={(e) => {
               markDirty();
               setTitle(e.target.value);
-              setError('');
+              clearField('title');
             }}
             fullWidth
             required
+            error={fieldErrors.title !== undefined}
+            helperText={fieldErrors.title}
           />
 
           <TextField
@@ -136,10 +163,12 @@ export default function OccasionEventDialog({
             onChange={(e) => {
               markDirty();
               setStartsAt(e.target.value);
-              setError('');
+              clearField('startsAt');
             }}
             fullWidth
             required
+            error={fieldErrors.startsAt !== undefined}
+            helperText={fieldErrors.startsAt}
             slotProps={{ inputLabel: { shrink: true } }}
           />
 
@@ -150,9 +179,11 @@ export default function OccasionEventDialog({
             onChange={(e) => {
               markDirty();
               setEndsAt(e.target.value);
-              setError('');
+              clearField('endsAt');
             }}
             fullWidth
+            error={fieldErrors.endsAt !== undefined}
+            helperText={fieldErrors.endsAt}
             slotProps={{ inputLabel: { shrink: true } }}
           />
 
@@ -193,11 +224,7 @@ export default function OccasionEventDialog({
             minRows={2}
           />
 
-          {error && (
-            <Typography color="error" variant="body2">
-              {error}
-            </Typography>
-          )}
+          {formError && <Alert severity="error">{formError}</Alert>}
         </Box>
       </DialogContent>
       <DialogActions>

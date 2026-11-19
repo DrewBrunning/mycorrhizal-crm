@@ -305,4 +305,64 @@ class FieldDefinitionsScreenTest {
         // on the collection rather than a single node (mirrors TagsScreenTest).
         assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
     }
+
+    @Test
+    fun `a failed load shows the server message with Retry that reloads the definitions`() {
+        val repository = setScreen(
+            result = Result.failure(ApiError.Network(java.io.IOException("offline")))
+        )
+        coEvery { repository.list() } returns Result.success(
+            listOf(
+                FieldDefinition(
+                    id = "d1",
+                    label = "Coffee order",
+                    key = "coffee_order",
+                    type = "string",
+                    sensitivity = "normal",
+                    projection = "internal-only"
+                )
+            )
+        )
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("No custom fields yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Coffee order").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { repository.list() }
+    }
+
+    @Test
+    fun `an action error over a populated list is a toast and keeps the list`() {
+        val repository = mockk<FieldDefinitionRepository>()
+        coEvery { repository.list() } returns twoDefinitions()
+        coEvery { repository.reorder(any()) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        val viewModel = FieldDefinitionsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                FieldDefinitionsScreen(
+                    onBack = {},
+                    onCreate = {},
+                    onEdit = {},
+                    viewModel = viewModel
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.runOnIdle { viewModel.moveBy("d1", 1) }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Coffee order").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
 }

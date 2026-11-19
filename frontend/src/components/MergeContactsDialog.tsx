@@ -423,7 +423,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
 
             {preview.resolution.conflicts.length === 0 &&
             preview.resolution.field_value_conflicts.length === 0 ? (
-              <Alert severity="info" sx={{ mb: 2 }}>
+              <Alert severity="info" role="status" sx={{ mb: 2 }}>
                 {t('contactMerge.noConflicts')}
               </Alert>
             ) : (
@@ -498,7 +498,7 @@ export default function MergeContactsDialog(props: MergeContactsDialogProps) {
             )}
 
             {hasAssociations && counts && (
-              <Alert severity="info" sx={{ mt: 1 }}>
+              <Alert severity="info" role="status" sx={{ mt: 1 }}>
                 {t('contactMerge.associationSummary', {
                   notes: t('contactMerge.associationSummaryNotes', {
                     count: counts.notes,

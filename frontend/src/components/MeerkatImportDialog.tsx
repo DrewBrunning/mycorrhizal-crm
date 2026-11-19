@@ -190,7 +190,7 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
       </Typography>
 
       {upload && (
-        <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+        <Alert severity="info" role="status" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
           <Typography variant="body2" gutterBottom>
             {t('settings.meerkatImport.connect.found', {
               contacts: t('settings.meerkatImport.connect.foundContacts', {
