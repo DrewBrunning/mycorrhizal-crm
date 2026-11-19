@@ -74,7 +74,7 @@ test('renders incoming shares with the sender username on the incoming tab', asy
 
   expect(await screen.findByText('Alice Anderson')).toBeInTheDocument();
   expect(screen.getByText('From sender_bob')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Accept\b/ })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Decline' })).toBeInTheDocument();
 });
 
@@ -87,7 +87,7 @@ test('switching to the outgoing tab shows sent shares without accept/decline act
 
   expect(await screen.findByText('Bob Brown')).toBeInTheDocument();
   expect(screen.getByText('To carol')).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Accept' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Accept\b/ })).not.toBeInTheDocument();
 });
 
 // declineContactShare's response body is never parsed (the api function
@@ -167,7 +167,7 @@ test('accepting opens the preview dialog and confirming completes the import', a
   renderPage();
 
   await screen.findByText('Alice Anderson');
-  fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Accept\b/ }));
 
   await screen.findByText('Review shared contact');
   const confirmButton = await screen.findByRole('button', { name: 'Confirm' });

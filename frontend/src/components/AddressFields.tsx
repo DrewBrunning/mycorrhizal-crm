@@ -212,7 +212,7 @@ export default function AddressFields({ label, value, onChange, contactId }: Add
                     size="small"
                     color="error"
                     onClick={() => removeAddr(index)}
-                    aria-label={t('common.delete')}
+                    aria-label={t('common.deleteEntry', { number: index + 1 })}
                   >
                     <DeleteIcon fontSize="small" />
                   </IconButton>

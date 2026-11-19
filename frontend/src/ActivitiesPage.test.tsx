@@ -442,7 +442,7 @@ test('editing an activity prefills the dialog, fetches all contacts once, and sa
   renderPage();
   await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
 
   await waitFor(() => {
     expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined();
@@ -486,7 +486,7 @@ test('west of UTC an activity date shows the same day in the list and the edit f
     // Both the sm+ date column and the phone caption (#1783) show the calendar day.
     await waitFor(() => expect(screen.getAllByText('05.01.2026')).toHaveLength(2));
 
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
     await waitFor(() => expect(screen.getByLabelText('Date')).toHaveValue('05.01.2026'));
 
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -511,7 +511,7 @@ test('saving an edit with a blank title is a no-op guard, not a request', async 
   renderPage();
   await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
 
   fireEvent.change(screen.getByDisplayValue('Coffee catch-up'), { target: { value: '   ' } });
@@ -536,10 +536,10 @@ test('deleting an activity confirms, calls DELETE, and refetches', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   await waitFor(() => {
     expect(calls.some((c) => c.method === 'DELETE' && c.url.includes('/activities/1'))).toBe(true);
@@ -577,16 +577,16 @@ test('saving and deleting an activity send its revision as If-Match', async () =
 
   renderPage();
   await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() => expect(calls.some((c) => c.method === 'PUT')).toBe(true));
   expect(calls.find((c) => c.method === 'PUT')?.headers?.['If-Match']).toBe('"5"');
 
   await waitFor(() => expect(screen.queryByDisplayValue('Coffee catch-up')).toBeNull());
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() => expect(calls.some((c) => c.method === 'DELETE')).toBe(true));
   expect(calls.find((c) => c.method === 'DELETE')?.headers?.['If-Match']).toBe('"5"');
 });
@@ -603,7 +603,7 @@ test('a 412 on save shows the conflict dialog; Keep editing keeps the edit, Load
 
   renderPage();
   await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -635,9 +635,9 @@ test('a 412 on delete shows the conflict dialog and keeps the edit open', async 
 
   renderPage();
   await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   expect(await screen.findByText('Changed elsewhere')).toBeDefined();
   expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined();
@@ -664,14 +664,14 @@ test('a non-412 failure on save or delete logs and shows no conflict dialog', as
 
   renderPage();
   await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
 
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() =>
     expect(consoleError).toHaveBeenCalledWith('Failed to update activity:', expect.anything()),
   );
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() =>
     expect(consoleError).toHaveBeenCalledWith('Failed to delete activity:', expect.anything()),
   );
@@ -716,7 +716,7 @@ test('saving an activity with no description, location, date or contacts sends t
 
   renderPage();
   await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeDefined());
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByDisplayValue('Coffee catch-up')).toBeDefined());
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -749,7 +749,7 @@ test('an activity offers a standing share that targets its uuid', async () => {
     },
   ]);
   renderPage();
-  fireEvent.click(await screen.findByRole('button', { name: 'Share this activity' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Share activity Coffee catch-up' }));
   expect(await screen.findByRole('dialog', { name: 'Share this activity' })).toBeInTheDocument();
   const input = await screen.findByRole('combobox', { name: 'Recipient' });
   fireEvent.keyDown(input, { key: 'ArrowDown' });

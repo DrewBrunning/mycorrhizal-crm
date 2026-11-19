@@ -135,7 +135,7 @@ test('editing a definition opens the dialog prefilled and saves via update', asy
   renderSettings();
   await waitFor(() => expect(screen.getByText('Pronouns')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   expect(screen.getByText('Edit Custom Field')).toBeInTheDocument();
   const labelInput = screen.getByLabelText('Label *') as HTMLInputElement;
   expect(labelInput.value).toBe('Pronouns');
@@ -163,7 +163,7 @@ test('deleting a definition requires confirmation and calls delete with the id',
   renderSettings();
   await waitFor(() => expect(screen.getByText('Pronouns')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   expect(deleteFieldDefinition).not.toHaveBeenCalled();
   expect(screen.getByText('Delete Custom Field')).toBeInTheDocument();
   expect(
@@ -173,7 +173,7 @@ test('deleting a definition requires confirmation and calls delete with the id',
   ).toBeInTheDocument();
 
   // Confirm within the dialog (the second "Delete" button, the destructive one).
-  const deleteButtons = screen.getAllByRole('button', { name: 'Delete' });
+  const deleteButtons = screen.getAllByRole('button', { name: /^Delete\b/ });
   fireEvent.click(deleteButtons[deleteButtons.length - 1]);
 
   await waitFor(() => expect(deleteFieldDefinition).toHaveBeenCalledWith('def-1'));
@@ -186,7 +186,7 @@ test('canceling the delete dialog does not delete anything', async () => {
   renderSettings();
   await waitFor(() => expect(screen.getByText('Pronouns')).toBeInTheDocument());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
   expect(deleteFieldDefinition).not.toHaveBeenCalled();
@@ -254,7 +254,7 @@ test("shows each definition's group and offers existing groups when editing", as
   );
   renderSettings();
   await waitFor(() => expect(screen.getByText('Travel')).toBeInTheDocument());
-  fireEvent.click(screen.getAllByRole('button', { name: 'Edit' })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: /^Edit\b/ })[0]);
   expect(await screen.findByLabelText('Group')).toHaveValue('Travel');
   fireEvent.mouseDown(screen.getByLabelText('Group'));
   expect(await screen.findByRole('option', { name: 'Travel' })).toBeInTheDocument();

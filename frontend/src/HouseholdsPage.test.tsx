@@ -249,7 +249,7 @@ test('editing a household pre-fills the dialog and calls updateHousehold with th
   renderPage();
   await screen.findByText('Smith Family');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   const nameInput = screen.getByLabelText('Name *') as HTMLInputElement;
   expect(nameInput.value).toBe('Smith Family');
 
@@ -273,7 +273,7 @@ test('deleting a household prompts for confirmation and calls deleteHousehold wh
   renderPage();
   await screen.findByText('Smith Family');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   expect(confirmSpy).toHaveBeenCalledWith(
     'Are you sure you want to delete this household? Its members will not be deleted.',
@@ -291,7 +291,7 @@ test('declining the delete confirmation never calls deleteHousehold', async () =
   renderPage();
   await screen.findByText('Smith Family');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   expect(confirmSpy).toHaveBeenCalled();
   expect(deleteHouseholdMock).not.toHaveBeenCalled();
@@ -307,7 +307,7 @@ test('a failed delete is swallowed by the page (error already surfaced by the ho
   renderPage();
   await screen.findByText('Smith Family');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   await waitFor(() => expect(deleteHouseholdMock).toHaveBeenCalled());
   // No "Household deleted" success toast, and no unhandled rejection crash.
@@ -414,7 +414,7 @@ test('removing a member calls removeHouseholdMember with the household id and me
   renderPage();
   await screen.findByText('Smith Family');
 
-  fireEvent.click(screen.getByLabelText('Remove Member'));
+  fireEvent.click(screen.getByLabelText(/^Remove .* from household$/));
 
   await waitFor(() => {
     expect(removeHouseholdMemberMock).toHaveBeenCalledWith('h1', 'alice-uid');
@@ -428,7 +428,7 @@ test('a failed member removal does not crash the page', async () => {
   renderPage();
   await screen.findByText('Smith Family');
 
-  fireEvent.click(screen.getByLabelText('Remove Member'));
+  fireEvent.click(screen.getByLabelText(/^Remove .* from household$/));
 
   await waitFor(() => expect(removeHouseholdMemberMock).toHaveBeenCalled());
   expect(screen.getByText('Smith Family')).toBeInTheDocument();
@@ -541,7 +541,7 @@ test('accepting an address suggestion calls acceptAddressHouseholdSuggestion, re
   fireEvent.click(screen.getByRole('button', { name: 'Suggest Households' }));
   await screen.findByText('123 Main St');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Accept\b/ }));
 
   await waitFor(() => {
     expect(acceptAddressHouseholdSuggestionMock).toHaveBeenCalledWith(['alice-uid']);
@@ -572,7 +572,7 @@ test('a failed accept re-scans instead of leaving a stale suggestion displayed',
   fireEvent.click(screen.getByRole('button', { name: 'Suggest Households' }));
   await screen.findByText('123 Main St');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Accept' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Accept\b/ }));
 
   await waitFor(() => expect(suggestAddressHouseholdsMock).toHaveBeenCalledTimes(2));
   expect(
@@ -602,7 +602,7 @@ test('dismissing an address suggestion calls dismissAddressHouseholdSuggestion a
   fireEvent.click(screen.getByRole('button', { name: 'Suggest Households' }));
   await screen.findByText('123 Main St');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Dismiss\b/ }));
 
   await waitFor(() => {
     expect(dismissAddressHouseholdSuggestionMock).toHaveBeenCalledWith(['alice-uid']);
@@ -631,7 +631,7 @@ test('a failed dismiss surfaces the fetch error but leaves the page usable', asy
   fireEvent.click(screen.getByRole('button', { name: 'Suggest Households' }));
   await screen.findByText('123 Main St');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Dismiss\b/ }));
 
   await waitFor(() => expect(dismissAddressHouseholdSuggestionMock).toHaveBeenCalled());
   // The card stays -- dismiss failed, so it wasn't filtered out.

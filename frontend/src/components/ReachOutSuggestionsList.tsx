@@ -153,7 +153,9 @@ export default function ReachOutSuggestionsList({
                     <Tooltip title={t('reachOut.dismiss')}>
                       <IconButton
                         size="small"
-                        aria-label={t('reachOut.dismiss')}
+                        aria-label={t('reachOut.dismissNamed', {
+                          name: s.contact_name || t('cadence.unknownContact'),
+                        })}
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();

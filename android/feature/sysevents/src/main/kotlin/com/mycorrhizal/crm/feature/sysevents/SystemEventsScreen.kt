@@ -70,6 +70,7 @@ import com.mycorrhizal.crm.model.network.SystemEventTypes
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -89,7 +90,8 @@ import java.time.format.FormatStyle
 fun SystemEventsScreen(onBack: () -> Unit, viewModel: SystemEventsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
-    val loadError = state.error?.localizedMessage()
+    val stateError = state.error
+    val loadError = stateError?.localizedMessage()
 
     var correlationInput by rememberSaveable { mutableStateOf(state.correlationId) }
     // Keep the field in sync when "view related" sets the filter programmatically.
@@ -232,14 +234,8 @@ fun SystemEventsScreen(onBack: () -> Unit, viewModel: SystemEventsViewModel = hi
                         state.isLoading && state.events.isEmpty() ->
                             LoadingSkeleton(modifier = Modifier.testTag("sysevents-loading"))
 
-                        state.events.isEmpty() && loadError != null ->
-                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                Text(
-                                    text = loadError,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
+                        state.events.isEmpty() && stateError != null ->
+                            ErrorState(error = stateError, onRetry = viewModel::load)
 
                         state.events.isEmpty() ->
                             EmptyState(

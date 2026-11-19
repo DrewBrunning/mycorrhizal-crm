@@ -54,6 +54,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { upcomingBirthdayAge } from './utils/birthdayAge';
 import { dashboardGridSx } from './utils/dashboardGrid';
 import { handleError, handleFetchError } from './utils/errorHandler';
+import { itemLabel } from './utils/itemLabel';
 import { calendarDateOnly, isBeforeLocalToday } from './utils/localDate';
 
 // Mirrors backend controllers.DashboardSectionLimit (issue #1791) -- keep in
@@ -468,7 +469,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setFavoritesInfoAnchor(e.currentTarget)}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('dashboard.favorites') })}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -575,7 +576,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setBirthdaysInfoAnchor(e.currentTarget)}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('dashboard.upcomingBirthdays') })}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -682,7 +683,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setRemindersInfoAnchor(e.currentTarget)}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('dashboard.upcomingReminders') })}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -792,7 +793,9 @@ function DashboardPage() {
                                 e.stopPropagation();
                                 void handleSkipReminder(reminder.ID);
                               }}
-                              aria-label={t('reminders.skip')}
+                              aria-label={t('reminders.skipNamed', {
+                                title: itemLabel(reminder.message),
+                              })}
                               sx={{
                                 transition: 'transform 0.15s ease-in-out',
                                 '&:hover': {
@@ -811,7 +814,9 @@ function DashboardPage() {
                                 e.stopPropagation();
                                 void handleCompleteReminder(reminder.ID);
                               }}
-                              aria-label={t('reminders.complete')}
+                              aria-label={t('reminders.completeNamed', {
+                                title: itemLabel(reminder.message),
+                              })}
                               sx={{
                                 transition:
                                   'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
@@ -851,7 +856,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setStayInTouchInfoAnchor(e.currentTarget)}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('dashboard.randomContacts') })}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>

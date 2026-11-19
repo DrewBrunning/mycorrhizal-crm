@@ -81,8 +81,8 @@ test('open items render with a working mark-discussed action', () => {
   renderList({ items: [item()], onDiscuss });
 
   expect(screen.getByText('Ask about her mother’s surgery')).toBeInTheDocument();
-  expect(screen.getByLabelText('Mark as discussed')).toBeInTheDocument();
-  fireEvent.click(screen.getByLabelText('Mark as discussed'));
+  expect(screen.getByLabelText(/^Mark .* as discussed$/)).toBeInTheDocument();
+  fireEvent.click(screen.getByLabelText(/^Mark .* as discussed$/));
   expect(onDiscuss).toHaveBeenCalledWith(item());
 });
 
@@ -93,7 +93,7 @@ test('discussed items render resolved: no mark-discussed action, discussed date 
 
   expect(screen.getByText('Ask about her mother’s surgery')).toBeInTheDocument();
   expect(screen.getByText('Discussed')).toBeInTheDocument();
-  expect(screen.queryByLabelText('Mark as discussed')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/^Mark .* as discussed$/)).not.toBeInTheDocument();
 });
 
 test('delete asks for confirmation before calling onDelete', () => {
@@ -104,7 +104,7 @@ test('delete asks for confirmation before calling onDelete', () => {
   const onDelete = vi.fn();
   renderList({ items: [item()], onDelete });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(onDelete).toHaveBeenCalledWith('agenda-1');
 
   vi.unstubAllGlobals();
@@ -118,7 +118,7 @@ test('a declining delete confirmation does not call onDelete', () => {
   const onDelete = vi.fn();
   renderList({ items: [item()], onDelete });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(onDelete).not.toHaveBeenCalled();
 
   vi.unstubAllGlobals();
@@ -149,4 +149,14 @@ test('a non-http scheme reference_url is shown as text, never as an href', () =>
 
   expect(screen.queryByRole('link')).not.toBeInTheDocument();
   expect(screen.getByText('mailto:a@b.com')).toBeInTheDocument();
+});
+
+// #2673: every row's action icon buttons name their item.
+test('row buttons name the agenda item they act on', () => {
+  renderList({ items: [item({ content: 'Ask about the surgery' })] });
+  expect(screen.getByRole('button', { name: 'Edit Ask about the surgery' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Delete Ask about the surgery' })).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Mark Ask about the surgery as discussed' }),
+  ).toBeInTheDocument();
 });
