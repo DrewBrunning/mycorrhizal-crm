@@ -833,8 +833,8 @@
     "src/components/ClothingSizesPanel.tsx": {
       "lines": 85.41,
       "linesTotal": 48,
-      "branches": 67.85,
-      "branchesTotal": 28
+      "branches": 71.87,
+      "branchesTotal": 32
     },
     "src/components/ConfirmDiscardDialog.tsx": {
       "lines": 100,
@@ -917,8 +917,8 @@
     "src/components/ContactTimeline.tsx": {
       "lines": 93.1,
       "linesTotal": 29,
-      "branches": 93.47,
-      "branchesTotal": 92
+      "branches": 93.61,
+      "branchesTotal": 94
     },
     "src/components/ConversationAgendaDialog.tsx": {
       "lines": 97.05,
@@ -1391,8 +1391,8 @@
     "src/components/NotificationSettings.tsx": {
       "lines": 79.73,
       "linesTotal": 153,
-      "branches": 68.54,
-      "branchesTotal": 124
+      "branches": 71.09,
+      "branchesTotal": 128
     },
     "src/components/OccasionEventAttendeesDialog.tsx": {
       "lines": 100,
@@ -1517,8 +1517,8 @@
     "src/components/ReachOutSuggestionsList.tsx": {
       "lines": 90.9,
       "linesTotal": 11,
-      "branches": 75,
-      "branchesTotal": 16
+      "branches": 88.88,
+      "branchesTotal": 18
     },
     "src/components/RecordConflictDialog.tsx": {
       "lines": 100,
@@ -1691,8 +1691,8 @@
     "src/components/SyncConflictList.tsx": {
       "lines": 95,
       "linesTotal": 20,
-      "branches": 60,
-      "branchesTotal": 25
+      "branches": 72.41,
+      "branchesTotal": 29
     },
     "src/components/TimelineExplorerDialog.tsx": {
       "lines": 100,
@@ -2563,6 +2563,12 @@
       "linesTotal": 2,
       "branches": 100,
       "branchesTotal": 4
+    },
+    "src/utils/itemLabel.ts": {
+      "lines": 100,
+      "linesTotal": 4,
+      "branches": 100,
+      "branchesTotal": 5
     },
     "src/utils/jscontactDisplay.ts": {
       "lines": 66.66,

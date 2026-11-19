@@ -123,7 +123,7 @@ test('an idea renders with a working one-click mark-given action', async () => {
   renderList({ items: [item()], onMarkGiven });
 
   expect(screen.getByText('She liked the ceramics shop')).toBeInTheDocument();
-  fireEvent.click(screen.getByLabelText('Mark as given'));
+  fireEvent.click(screen.getByLabelText(/^Mark .* as given$/));
   await vi.waitFor(() => expect(onMarkGiven).toHaveBeenCalledWith(item()));
 });
 
@@ -145,7 +145,7 @@ test('a given gift renders resolved with its date, value and currency, and no ma
   // "Given" appears both as the status chip and the section heading.
   expect(screen.getAllByText('Given').length).toBeGreaterThan(0);
   expect(screen.getByText('birthday')).toBeInTheDocument();
-  expect(screen.queryByLabelText('Mark as given')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/^Mark .* as given$/)).not.toBeInTheDocument();
 });
 
 test('a received gift renders under the Received section', () => {
@@ -172,7 +172,7 @@ test('delete asks for confirmation before calling onDelete', () => {
   const onDelete = vi.fn();
   renderList({ items: [item()], onDelete });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(onDelete).toHaveBeenCalledWith('gift-1');
 
   vi.unstubAllGlobals();
@@ -186,7 +186,7 @@ test('a declining delete confirmation does not call onDelete', () => {
   const onDelete = vi.fn();
   renderList({ items: [item()], onDelete });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(onDelete).not.toHaveBeenCalled();
 
   vi.unstubAllGlobals();
@@ -283,6 +283,20 @@ test('a purchased item still shows the mark-given action', async () => {
 
   expect(screen.getByText('Purchased')).toBeInTheDocument();
   expect(screen.getByText('Bought but not yet given')).toBeInTheDocument();
-  fireEvent.click(screen.getByLabelText('Mark as given'));
+  fireEvent.click(screen.getByLabelText(/^Mark .* as given$/));
   await vi.waitFor(() => expect(onMarkGiven).toHaveBeenCalled());
+});
+
+// #2673: each gift's buttons name the gift.
+test('row buttons name the gift they act on', () => {
+  renderList({ items: [item()] });
+  expect(
+    screen.getByRole('button', { name: 'Edit She liked the ceramics shop' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Delete She liked the ceramics shop' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Mark She liked the ceramics shop as given' }),
+  ).toBeInTheDocument();
 });

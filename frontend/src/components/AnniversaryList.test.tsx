@@ -81,7 +81,7 @@ test('edit calls back with the exact entry', () => {
   const onEdit = vi.fn();
   renderList([wedding, death], { onEdit });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[1]);
 
   expect(onEdit).toHaveBeenCalledWith(death);
 });
@@ -92,7 +92,7 @@ test('delete confirms before calling back', () => {
   const onDelete = vi.fn();
   renderList([wedding], { onDelete });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   expect(confirm).toHaveBeenCalled();
   expect(onDelete).toHaveBeenCalledWith(wedding);
@@ -107,7 +107,7 @@ test('declining the delete confirmation makes no callback', () => {
   const onDelete = vi.fn();
   renderList([wedding], { onDelete });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   expect(onDelete).not.toHaveBeenCalled();
   vi.unstubAllGlobals();

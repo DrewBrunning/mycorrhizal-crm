@@ -182,7 +182,7 @@ test.describe('Web-link http(s) allowlist', () => {
       // and swallow the click (the documented ContactDetailPage dialog-opener
       // race in fixtures.ts). A plain .click() intermittently left the edit
       // dialog unopened (nightly failure #1859).
-      await stableClick(row.getByRole('button', { name: 'Edit', exact: true }));
+      await stableClick(row.getByRole('button', { name: /^Edit / }));
 
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Edit Agenda Item' })).toBeVisible();

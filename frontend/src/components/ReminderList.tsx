@@ -24,6 +24,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Reminder } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
+import { itemLabel } from '../utils/itemLabel';
 import { calendarDateOnly, isBeforeLocalToday } from '../utils/localDate';
 
 interface ReminderListProps {
@@ -160,7 +161,9 @@ export default function ReminderList({
                       onClick={() => void handleCompleteClick(reminder.ID)}
                       disabled={loading === reminder.ID}
                       color="success"
-                      aria-label={t('reminders.complete')}
+                      aria-label={t('reminders.completeNamed', {
+                        title: itemLabel(reminder.message),
+                      })}
                       sx={{
                         transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
                         '&:hover': {
@@ -182,12 +185,12 @@ export default function ReminderList({
                       transition: 'opacity 0.2s ease-in-out',
                     }}
                   >
-                    <Tooltip title={t('common.edit')}>
+                    <Tooltip title={t('common.editNamed', { name: itemLabel(reminder.message) })}>
                       <IconButton
                         size="small"
                         onClick={() => onEdit(reminder)}
                         disabled={loading === reminder.ID}
-                        aria-label={t('common.edit')}
+                        aria-label={t('common.editNamed', { name: itemLabel(reminder.message) })}
                       >
                         <EditIcon />
                       </IconButton>
@@ -199,7 +202,7 @@ export default function ReminderList({
                         onClick={() => handleDeleteClick(reminder.ID)}
                         disabled={loading === reminder.ID}
                         color="error"
-                        aria-label={t('common.delete')}
+                        aria-label={t('common.deleteNamed', { name: itemLabel(reminder.message) })}
                       >
                         <DeleteIcon />
                       </IconButton>

@@ -394,7 +394,7 @@ export default function ContactTimeline({
                     className="action-icon"
                     size="small"
                     color="error"
-                    aria-label={t('common.delete')}
+                    aria-label={t('timeline.deleteCompletionFrom', { date: dateLabel })}
                     onClick={() => onDeleteCompletion?.((item.data as ReminderCompletion).ID)}
                     sx={{
                       position: 'absolute',
@@ -410,7 +410,10 @@ export default function ContactTimeline({
                   <IconButton
                     className="action-icon"
                     size="small"
-                    aria-label={t('common.edit')}
+                    aria-label={t(
+                      item.type === 'note' ? 'timeline.editNoteFrom' : 'timeline.editActivityFrom',
+                      { date: dateLabel },
+                    )}
                     onClick={() =>
                       onEditItem(item.type as 'note' | 'activity', item.data as Note | Activity)
                     }

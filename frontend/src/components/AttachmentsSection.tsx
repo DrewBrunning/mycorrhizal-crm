@@ -158,7 +158,9 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
                       component="a"
                       href={attachmentDownloadUrl(attachment.ID)}
                       size="small"
-                      aria-label={t('attachments.download')}
+                      aria-label={t('attachments.downloadNamed', {
+                        name: attachment.original_name,
+                      })}
                     >
                       <DownloadIcon fontSize="small" />
                     </IconButton>
@@ -166,7 +168,7 @@ export default function AttachmentsSection({ contactId }: AttachmentsSectionProp
                   <Tooltip title={t('attachments.delete')}>
                     <IconButton
                       size="small"
-                      aria-label={t('attachments.delete')}
+                      aria-label={t('common.deleteNamed', { name: attachment.original_name })}
                       onClick={() => void handleDelete(attachment)}
                     >
                       <DeleteIcon fontSize="small" />

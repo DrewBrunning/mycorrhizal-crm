@@ -159,7 +159,7 @@ test('edit saves with the current revision and refreshes the page', async () => 
   updateMock.mockResolvedValue({ ...acme, name: 'Acme Ltd', revision: 6 });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Acme Ltd' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   expect(await screen.findByRole('heading', { name: 'Acme Ltd' })).toBeInTheDocument();
@@ -208,7 +208,7 @@ test('custom fields for this kind are editable and saved as the full value set',
   expect(screen.queryByText('Nickname')).not.toBeInTheDocument();
 
   const region = screen.getByRole('region', { name: 'Custom fields' });
-  fireEvent.click(within(region).getByLabelText('Edit'));
+  fireEvent.click(within(region).getByLabelText(/^Edit\b/));
   fireEvent.change(within(region).getByRole('textbox'), { target: { value: 'B-2' } });
   fireEvent.click(within(region).getByRole('button', { name: 'Save' }));
   await waitFor(() =>
@@ -220,14 +220,14 @@ test('delete names how many contacts lose the organisation and deletes with the 
   deleteMock.mockResolvedValue({ message: 'ok', link_count: 3, projection_count: 2 });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   const dialog = await screen.findByRole('dialog', { name: 'Delete Acme?' });
   expect(
     within(dialog).getByText(
       'Acme is the primary organisation of 2 contacts; they will lose that organisation.',
     ),
   ).toBeInTheDocument();
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('e1', 5));
   expect(adoptMock).not.toHaveBeenCalled();
   // Deleted state with a restore action instead of silently navigating away.
@@ -246,12 +246,12 @@ test('adopt-all copies the organisation into each current primary contact before
   deleteMock.mockResolvedValue({ message: 'ok', link_count: 4, projection_count: 2 });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(
     within(dialog).getByRole('checkbox', { name: /Keep the organisation on those contacts first/ }),
   );
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() => expect(deleteMock).toHaveBeenCalled());
   expect(adoptMock.mock.calls.map((c) => [c[0], c[1]])).toEqual([
     [11, 'l1'],
@@ -263,10 +263,10 @@ test('if an adopt fails nothing is deleted and the error is shown', async () => 
   adoptMock.mockRejectedValue(new ApiError('nope', 'ERR', 500));
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('checkbox', { name: /Keep the organisation/ }));
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
   expect(await within(dialog).findByRole('alert')).toHaveTextContent('so nothing was deleted');
   expect(deleteMock).not.toHaveBeenCalled();
 });
@@ -281,11 +281,11 @@ test('restore brings the deleted entity back', async () => {
   });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   fireEvent.click(
-    within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }),
+    within(await screen.findByRole('dialog')).getByRole('button', { name: /^Delete\b/ }),
   );
-  fireEvent.click(await screen.findByRole('button', { name: 'Restore' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Restore\b/ }));
   await waitFor(() => expect(restoreMock).toHaveBeenCalledWith('e1'));
   expect(await screen.findByRole('heading', { name: 'Acme' })).toBeInTheDocument();
 });
@@ -300,11 +300,11 @@ test('a restore that finds a live same-name entity warns about it', async () => 
   });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   fireEvent.click(
-    within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }),
+    within(await screen.findByRole('dialog')).getByRole('button', { name: /^Delete\b/ }),
   );
-  fireEvent.click(await screen.findByRole('button', { name: 'Restore' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Restore\b/ }));
   expect(
     await screen.findByText(/Another one of this kind with the same name already exists/),
   ).toBeInTheDocument();
@@ -398,7 +398,7 @@ test('three links over two contacts read "Linked to 2 contacts" in the header an
   ]);
   renderPage();
   expect(await screen.findByText('Linked to 2 contacts')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   const dialog = await screen.findByRole('dialog', { name: 'Delete Acme?' });
   expect(within(dialog).getByText(/linked to 2 contacts in total/)).toBeInTheDocument();
 });
@@ -454,7 +454,7 @@ test('a deleted (not merged) entity page offers Restore (#2708)', async () => {
   });
   renderPage();
   expect(await screen.findByText('Acme was deleted')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Restore' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Restore\b/ })).toBeInTheDocument();
 });
 
 test('an id that is not in the trash either still shows not-found (#2708)', async () => {

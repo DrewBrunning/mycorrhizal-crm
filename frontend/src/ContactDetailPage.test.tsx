@@ -959,7 +959,7 @@ test('editing an existing occasion opens the edit dialog pre-filled, and saves v
   await waitFor(() => expect(screen.getByText('Christmas card')).toBeInTheDocument());
 
   const item = screen.getByText('Christmas card').closest('.MuiPaper-root') as HTMLElement;
-  fireEvent.click(within(item).getByLabelText('Edit'));
+  fireEvent.click(within(item).getByLabelText(/^Edit\b/));
   expect(screen.getByText('Edit occasion')).toBeInTheDocument();
   expect(screen.getByDisplayValue('Christmas card')).toBeInTheDocument();
 
@@ -994,7 +994,7 @@ test('editing the birthday saves it as a Card anniversary of kind "birth"', asyn
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(within(fieldRow('Birthday')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('Birthday')).getByLabelText(/^Edit\b/));
   const content = fieldContent('Birthday');
   // The default display format (no stored preference) is EU (DD.MM.YYYY),
   // and onEditValueChange runs every keystroke through autoFormatBirthdayInput
@@ -1022,7 +1022,7 @@ test('an invalid birthday is rejected before any save request', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(within(fieldRow('Birthday')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('Birthday')).getByLabelText(/^Edit\b/));
   const content = fieldContent('Birthday');
   // Day 01, month 13 -- autoFormatBirthdayInput reformats the typed digits to
   // "01.13.1990" (still DD.MM.YYYY shaped), but month 13 doesn't exist.
@@ -1042,7 +1042,7 @@ test('editing "how we met" saves it as a plain CRM string field', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText(/^Edit\b/));
   const content = fieldContent('How We Met');
   fireEvent.change(within(content).getByRole('textbox'), {
     target: { value: 'At a conference' },
@@ -1062,7 +1062,7 @@ test('a save sends the loaded revision as If-Match', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText(/^Edit\b/));
   const content = fieldContent('How We Met');
   fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'Somewhere' } });
   fireEvent.click(within(content).getByLabelText('Save'));
@@ -1082,7 +1082,7 @@ test('a 412 opens the conflict dialog, and "Load latest version" refetches and d
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText(/^Edit\b/));
   const content = fieldContent('How We Met');
   fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'My stale edit' } });
   fireEvent.click(within(content).getByLabelText('Save'));
@@ -1107,7 +1107,7 @@ test('"Keep editing" on the conflict dialog leaves the edit open', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText(/^Edit\b/));
   const content = fieldContent('How We Met');
   fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'My stale edit' } });
   fireEvent.click(within(content).getByLabelText('Save'));
@@ -1129,7 +1129,7 @@ test('handleSaveProfile alerts and does not save when the first name is blank', 
 
   // The header's own name-edit pencil is first in the DOM; ContactInformation's
   // per-field pencils (also aria-label "Edit") come after it.
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
   const firstNameInput = screen.getByLabelText('First Name *');
   fireEvent.change(firstNameInput, { target: { value: '   ' } });
   fireEvent.click(screen.getByLabelText('Save'));
@@ -1144,7 +1144,7 @@ test('handleSaveProfile assembles the edited name components into Card.name', as
   renderPage();
   await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
   fireEvent.change(screen.getByLabelText('First Name *'), { target: { value: 'Alicia' } });
   fireEvent.change(screen.getByLabelText('Last Name'), { target: { value: 'Wonderland' } });
   fireEvent.change(screen.getByLabelText('Nickname'), { target: { value: 'Ali' } });
@@ -1265,7 +1265,7 @@ function section(id: string): HTMLElement {
 // button) -- lists on this page don't share one row element type.
 function rowWith(text: string, scope: HTMLElement = document.body): HTMLElement {
   let el: HTMLElement | null = within(scope).getAllByText(text).at(-1) as HTMLElement;
-  while (el && !within(el).queryAllByRole('button', { name: 'Edit' }).length) {
+  while (el && !within(el).queryAllByRole('button', { name: /^Edit\b/ }).length) {
     el = el.parentElement;
   }
   return el as HTMLElement;
@@ -1290,7 +1290,7 @@ test.each([
     'gift preference',
     () => within(section('gifts')).getByRole('button', { name: 'Add Preference' }),
   ],
-  ['preference edit', () => within(rowWith('Sushi')).getByRole('button', { name: 'Edit' })],
+  ['preference edit', () => within(rowWith('Sushi')).getByRole('button', { name: /^Edit\b/ })],
   ['life event', () => screen.getByRole('button', { name: 'Add Life Event' })],
   ['cadence', () => screen.getByRole('button', { name: 'Add Cadence' })],
   ['note', () => screen.getByRole('button', { name: 'Add Note' })],
@@ -1463,7 +1463,7 @@ test('editing a skill preserves its stable ID and metadata; deleting removes bot
 
   const row = rowWith('Go', section('skills'));
   const dialog = await openDialog(() =>
-    fireEvent.click(within(row).getByRole('button', { name: 'Edit' })),
+    fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ })),
   );
   expect(within(dialog).getByLabelText('Value *')).toHaveValue('Go');
   expect(within(dialog).getByLabelText('Notes (optional)')).toHaveValue('core language');
@@ -1481,7 +1481,7 @@ test('editing a skill preserves its stable ID and metadata; deleting removes bot
 
   // Delete the only entry: both the Card entry and its metadata key go.
   vi.spyOn(window, 'confirm').mockReturnValue(true);
-  fireEvent.click(within(section('skills')).getByLabelText('Delete'));
+  fireEvent.click(within(section('skills')).getByLabelText(/^Delete\b/));
   await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(2));
   const deleteBody = lastPutBody(calls);
   expect(deleteBody?.card?.personalInfo).toBeUndefined();
@@ -1511,7 +1511,7 @@ test('editing an organization keeps its ID and period; deleting a title drops it
 
   const orgRow = rowWith('Acme', section('work'));
   const dialog = await openDialog(() =>
-    fireEvent.click(within(orgRow).getByRole('button', { name: 'Edit' })),
+    fireEvent.click(within(orgRow).getByRole('button', { name: /^Edit\b/ })),
   );
   fireEvent.change(within(dialog).getByLabelText('Organization *'), {
     target: { value: 'NewCo' },
@@ -1536,7 +1536,7 @@ test('editing an organization keeps its ID and period; deleting a title drops it
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   fireEvent.click(
     within(within(section('work')).getByRole('region', { name: 'Titles & roles' })).getByLabelText(
-      'Delete',
+      /^Delete\b/,
     ),
   );
 
@@ -1573,7 +1573,7 @@ test('deleting an organization drops its period and leaves the other entries alo
   vi.spyOn(window, 'confirm').mockReturnValue(true);
 
   const acme = rowWith('Acme', section('work'));
-  fireEvent.click(within(acme).getByLabelText('Delete'));
+  fireEvent.click(within(acme).getByLabelText(/^Delete\b/));
 
   await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(1));
   const body = lastPutBody(calls);
@@ -1594,7 +1594,7 @@ test('deleting the only organization clears the list', async () => {
   await renderLoaded();
   vi.spyOn(window, 'confirm').mockReturnValue(true);
 
-  fireEvent.click(within(rowWith('Acme', section('work'))).getByLabelText('Delete'));
+  fireEvent.click(within(rowWith('Acme', section('work'))).getByLabelText(/^Delete\b/));
 
   await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(1));
   expect(lastPutBody(calls)?.card?.organizations).toBeUndefined();
@@ -1617,7 +1617,7 @@ test('editing an anniversary updates it in place; deleting it removes the entry'
 
   const row = rowWith('Wedding anniversary', section('anniversaries'));
   const dialog = await openDialog(() =>
-    fireEvent.click(within(row).getByRole('button', { name: 'Edit' })),
+    fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ })),
   );
   fireEvent.change(within(dialog).getByLabelText('Date *'), {
     target: { value: '2016-07-02' },
@@ -1633,7 +1633,7 @@ test('editing an anniversary updates it in place; deleting it removes the entry'
   ]);
 
   vi.spyOn(window, 'confirm').mockReturnValue(true);
-  fireEvent.click(within(section('anniversaries')).getByLabelText('Delete'));
+  fireEvent.click(within(section('anniversaries')).getByLabelText(/^Delete\b/));
   await waitFor(() => expect(calls.filter((c) => c.method === 'PUT')).toHaveLength(2));
   const deleteBody = lastPutBody(calls);
   expect(deleteBody?.card?.anniversaries).toBeUndefined();
@@ -1667,7 +1667,7 @@ test('editing a life event opens its dialog pre-filled', async () => {
   await renderLoaded();
   const row = rowWith('Fixture life event', section('timeline'));
   const dialog = await openDialog(() =>
-    fireEvent.click(within(row).getByRole('button', { name: 'Edit' })),
+    fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ })),
   );
   expect(within(dialog).getByDisplayValue('Fixture life event')).toBeInTheDocument();
   await dismiss(dialog);
@@ -1682,7 +1682,7 @@ test('deleting a married life event confirms, deletes, and reloads the record', 
   const before = recordLoads();
 
   const row = rowWith('Fixture wedding', section('timeline'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Delete\b/ }));
 
   await waitFor(() =>
     expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/life-events/le-2'))).toBe(
@@ -1698,8 +1698,8 @@ test('declining a life-event or preference delete makes no request', async () =>
   await renderLoaded();
 
   const row = rowWith('Fixture wedding', section('timeline'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
-  fireEvent.click(within(section('overview')).getAllByRole('button', { name: 'Delete' })[0]);
+  fireEvent.click(within(row).getByRole('button', { name: /^Delete\b/ }));
+  fireEvent.click(within(section('overview')).getAllByRole('button', { name: /^Delete\b/ })[0]);
 
   expect(confirmSpy).toHaveBeenCalledTimes(2);
   expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
@@ -1709,7 +1709,7 @@ test('deleting a preference confirms and sends the DELETE', async () => {
   const calls = mockFetch();
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   await renderLoaded();
-  fireEvent.click(within(section('gifts')).getAllByRole('button', { name: 'Delete' })[0]);
+  fireEvent.click(within(section('gifts')).getAllByRole('button', { name: /^Delete\b/ })[0]);
   await waitFor(() =>
     expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/preferences/pref-2'))).toBe(
       true,
@@ -1720,7 +1720,7 @@ test('deleting a preference confirms and sends the DELETE', async () => {
 test('"Mark as given" flips a gift idea to given, defaulting the date to now', async () => {
   const calls = mockFetch();
   await renderLoaded();
-  fireEvent.click(screen.getByRole('button', { name: 'Mark as given' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Mark .* as given$/ }));
   await waitFor(() => {
     const put = calls.find((c) => c.method === 'PUT' && c.url.endsWith('/gifts/gift-1'));
     expect(put?.body).toMatchObject({
@@ -1736,7 +1736,7 @@ test('a failed "Mark as given" shows the gift save error', async () => {
   consoleError.mockImplementation(() => {});
   mockFetch({ fail: { giftUpdate: true } });
   await renderLoaded();
-  fireEvent.click(screen.getByRole('button', { name: 'Mark as given' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Mark .* as given$/ }));
   expect(await screen.findByText('Failed to save gift.')).toBeInTheDocument();
 });
 
@@ -1744,7 +1744,7 @@ test('editing a gift saves it via PUT with the entity id', async () => {
   const calls = mockFetch();
   await renderLoaded();
   const row = rowWith('Fixture gift idea', section('gifts'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
   await waitFor(() => {
@@ -1756,7 +1756,7 @@ test('editing a gift saves it via PUT with the entity id', async () => {
 test('marking an agenda item discussed sends the discuss PATCH', async () => {
   const calls = mockFetch();
   await renderLoaded();
-  fireEvent.click(screen.getByRole('button', { name: 'Mark as discussed' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Mark .* as discussed$/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: /mark as discussed|confirm/i }));
   await waitFor(() =>
@@ -1772,7 +1772,7 @@ test('editing an agenda item saves it via PUT', async () => {
   const calls = mockFetch();
   await renderLoaded();
   const row = rowWith('Ask about the Lisbon trip');
-  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
   await waitFor(() => {
@@ -1790,7 +1790,7 @@ test('saving a relationship nudges toward address suggestions when the scan find
   const calls = mockFetch({ addressSuggestions: [{ id: 's-1' }] });
   await renderLoaded();
   const row = rowWith('Bob Builder', section('people'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
   await waitFor(() =>
@@ -1805,7 +1805,7 @@ test('editing a timeline note saves it through the edit dialog', async () => {
   const calls = mockFetch();
   await renderLoaded();
   const row = rowWith('Contract fixture note', section('timeline'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
   await waitFor(() =>
@@ -1817,7 +1817,7 @@ test('editing a timeline activity saves it through the edit dialog', async () =>
   const calls = mockFetch();
   await renderLoaded();
   const row = rowWith('Fixture activity', section('timeline'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
   await waitFor(() =>
@@ -1953,7 +1953,7 @@ test.each([
   const calls = mockFetch();
   await renderLoaded();
   const dialog = await openDialog(() =>
-    fireEvent.click(within(rowWith(value)).getByRole('button', { name: 'Edit' })),
+    fireEvent.click(within(rowWith(value)).getByRole('button', { name: /^Edit\b/ })),
   );
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
   await waitFor(() => {
@@ -1971,7 +1971,7 @@ test('saving an edited married life event PUTs it and reloads the record', async
   const dialog = await openDialog(() =>
     fireEvent.click(
       within(rowWith('Fixture wedding', section('timeline'))).getByRole('button', {
-        name: 'Edit',
+        name: /^Edit\b/,
       }),
     ),
   );
@@ -1991,10 +1991,10 @@ test('deleting a reminder completion from the timeline confirms, deletes, and re
     .getByText('Fixture completed reminder')
     .closest('.MuiTimelineItem-root') as HTMLElement;
 
-  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Delete\b/ }));
   expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
 
-  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() =>
     expect(
       calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/reminder-completions/5')),
@@ -2023,7 +2023,7 @@ test('a failed completion delete keeps the row on the timeline and does not refr
     calls.filter((c) => c.method === 'GET' && c.url.endsWith('/contacts/1/notes')).length;
   const before = notesLoads();
 
-  fireEvent.click(within(row).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() => expect(consoleError).toHaveBeenCalled());
 
   expect(within(section('timeline')).getByText('Fixture completed reminder')).toBeInTheDocument();
@@ -2037,11 +2037,11 @@ test('deleting a note from its edit dialog sends the DELETE', async () => {
   const dialog = await openDialog(() =>
     fireEvent.click(
       within(rowWith('Contract fixture note', section('timeline'))).getByRole('button', {
-        name: 'Edit',
+        name: /^Edit\b/,
       }),
     ),
   );
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() =>
     expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/notes/2'))).toBe(true),
   );
@@ -2087,10 +2087,10 @@ test('an existing cadence can be edited and saved, and deleted after confirmatio
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
   await renderLoaded();
   const cadence = section('cadence');
-  await within(cadence).findAllByRole('button', { name: 'Edit' });
+  await within(cadence).findAllByRole('button', { name: /^Edit\b/ });
 
   const dialog = await openDialog(() =>
-    fireEvent.click(within(cadence).getAllByRole('button', { name: 'Edit' })[0]),
+    fireEvent.click(within(cadence).getAllByRole('button', { name: /^Edit\b/ })[0]),
   );
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
   await waitFor(() =>
@@ -2098,9 +2098,9 @@ test('an existing cadence can be edited and saved, and deleted after confirmatio
   );
 
   const writes = () => calls.filter((c) => c.method === 'DELETE').length;
-  fireEvent.click((await within(cadence).findAllByRole('button', { name: 'Delete' }))[0]);
+  fireEvent.click((await within(cadence).findAllByRole('button', { name: /^Delete\b/ }))[0]);
   expect(writes()).toBe(0);
-  fireEvent.click(within(cadence).getAllByRole('button', { name: 'Delete' })[0]);
+  fireEvent.click(within(cadence).getAllByRole('button', { name: /^Delete\b/ })[0]);
   await waitFor(() => expect(writes()).toBe(1));
   expect(confirmSpy).toHaveBeenCalledTimes(2);
 });
@@ -2147,7 +2147,7 @@ test('an existing data decay policy can be verified, edited and saved, and delet
   );
 
   const dialog = await openDialog(() =>
-    fireEvent.click(within(dataDecay).getByRole('button', { name: 'Edit' })),
+    fireEvent.click(within(dataDecay).getByRole('button', { name: /^Edit\b/ })),
   );
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
   await waitFor(() =>
@@ -2158,9 +2158,9 @@ test('an existing data decay policy can be verified, edited and saved, and delet
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
   const writes = () => calls.filter((c) => c.method === 'DELETE').length;
-  fireEvent.click(within(dataDecay).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dataDecay).getByRole('button', { name: /^Delete\b/ }));
   expect(writes()).toBe(0);
-  fireEvent.click(within(dataDecay).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dataDecay).getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() => expect(writes()).toBe(1));
   expect(confirmSpy).toHaveBeenCalledTimes(2);
 });
@@ -2179,7 +2179,7 @@ test.each([
     await renderLoaded();
     const dialog = await openDialog(() =>
       fireEvent.click(
-        within(rowWith('Bob Builder', section('people'))).getByRole('button', { name: 'Edit' }),
+        within(rowWith('Bob Builder', section('people'))).getByRole('button', { name: /^Edit\b/ }),
       ),
     );
     fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
@@ -2221,7 +2221,7 @@ test('deleting a non-married life event does not reload the record', async () =>
   const before = recordLoads();
   fireEvent.click(
     within(rowWith('Fixture life event', section('timeline'))).getByRole('button', {
-      name: 'Delete',
+      name: /^Delete\b/,
     }),
   );
   await waitFor(() =>
@@ -2294,7 +2294,7 @@ test('editing a clothing size keeps its type and PUTs the new size', async () =>
   });
   await renderLoaded();
   const row = rowWith('Shirt: M', section('gifts'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ }));
   fireEvent.change(within(section('gifts')).getByDisplayValue('M'), { target: { value: 'L' } });
   fireEvent.click(within(section('gifts')).getByRole('button', { name: 'Save' }));
   await waitFor(() => {
@@ -2310,11 +2310,11 @@ test('deleting an activity from its edit dialog sends the DELETE', async () => {
   const dialog = await openDialog(() =>
     fireEvent.click(
       within(rowWith('Fixture activity', section('timeline'))).getByRole('button', {
-        name: 'Edit',
+        name: /^Edit\b/,
       }),
     ),
   );
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() =>
     expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/activities/2'))).toBe(true),
   );
@@ -2367,7 +2367,7 @@ test('a timeline note save sends the note revision as If-Match', async () => {
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   await renderLoaded();
   const row = rowWith('Contract fixture note', section('timeline'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
   await waitFor(() =>
@@ -2382,7 +2382,7 @@ test('a 412 on a timeline note save opens the conflict dialog, keeps the edit, a
   const calls = mockFetch({ staleOnce: ['PUT /notes/2'] });
   await renderLoaded();
   const row = rowWith('Contract fixture note', section('timeline'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
@@ -2402,9 +2402,9 @@ test('a 412 on a timeline note delete opens the conflict dialog', async () => {
   vi.spyOn(window, 'confirm').mockReturnValue(true);
   await renderLoaded();
   const row = rowWith('Contract fixture note', section('timeline'));
-  fireEvent.click(within(row).getByRole('button', { name: 'Edit' }));
+  fireEvent.click(within(row).getByRole('button', { name: /^Edit\b/ }));
   const dialog = await screen.findByRole('dialog');
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
 
   expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
 });
@@ -2447,7 +2447,7 @@ test('a save that did not touch the toggle sends crm.ambient back exactly as rea
   });
   await renderLoaded();
 
-  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText(/^Edit\b/));
   const content = fieldContent('How We Met');
   fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'Somewhere' } });
   fireEvent.click(within(content).getByLabelText('Save'));
@@ -2488,7 +2488,7 @@ test('a save on a contact with no ambient flag does not invent one', async () =>
   const calls = mockFetch();
   await renderLoaded();
 
-  fireEvent.click(within(fieldRow('How We Met')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('How We Met')).getByLabelText(/^Edit\b/));
   const content = fieldContent('How We Met');
   fireEvent.change(within(content).getByRole('textbox'), { target: { value: 'Somewhere' } });
   fireEvent.click(within(content).getByLabelText('Save'));
@@ -2575,7 +2575,7 @@ test('hide-empty never takes away the add-this-field affordance: the menu reveal
   fireEvent.click(await screen.findByRole('menuitem', { name: 'Birthday' }));
 
   // The empty field is rendered again, and editable, while the user fills it.
-  fireEvent.click(within(fieldRow('Birthday')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('Birthday')).getByLabelText(/^Edit\b/));
   const content = fieldContent('Birthday');
   fireEvent.change(within(content).getByRole('textbox'), { target: { value: '30.04.1990' } });
   expect(within(content).getByRole('textbox')).toHaveValue('30.04.1990');
@@ -2710,7 +2710,7 @@ test('a projected organisation is chipped with its entity and cannot be edited a
     '/entities/ent-1',
   );
   const orgs = within(work.getByRole('region', { name: 'Organizations' }));
-  expect(orgs.getAllByRole('button', { name: 'Edit' })).toHaveLength(1);
+  expect(orgs.getAllByRole('button', { name: /^Edit\b/ })).toHaveLength(1);
   const entities = within(document.getElementById('entities') as HTMLElement);
   expect(await entities.findByRole('link', { name: 'Acme Corp' })).toBeInTheDocument();
   expect(entities.getByText('Shown as organisation')).toBeInTheDocument();
@@ -2730,7 +2730,7 @@ test('saving the contact never sends a projected ent- organisation back', async 
   });
   await renderLoaded();
   // Any card write (here: the birthday) builds its body from the whole record.
-  fireEvent.click(within(fieldRow('Birthday')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('Birthday')).getByLabelText(/^Edit\b/));
   const content = fieldContent('Birthday');
   fireEvent.change(within(content).getByRole('textbox'), { target: { value: '30.04.1990' } });
   fireEvent.click(within(content).getByLabelText('Save'));

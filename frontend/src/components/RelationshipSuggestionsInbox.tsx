@@ -179,7 +179,9 @@ export default function RelationshipSuggestionsInbox({
                     color="success"
                     disabled={busy}
                     onClick={() => void handleAccept(edge.id)}
-                    aria-label={t('relationships.accept')}
+                    aria-label={t('relationships.acceptNamed', {
+                      name: `${nameFor(edge.source_id)} · ${label} · ${nameFor(edge.target_id)}`,
+                    })}
                   >
                     <CheckIcon fontSize="small" />
                   </IconButton>
@@ -188,7 +190,9 @@ export default function RelationshipSuggestionsInbox({
                     color="error"
                     disabled={busy}
                     onClick={() => void handleReject(edge.id)}
-                    aria-label={t('relationships.reject')}
+                    aria-label={t('relationships.rejectNamed', {
+                      name: `${nameFor(edge.source_id)} · ${label} · ${nameFor(edge.target_id)}`,
+                    })}
                   >
                     <CloseIcon fontSize="small" />
                   </IconButton>

@@ -71,9 +71,9 @@ test('while the delete is in flight both buttons are disabled, then onDeleted fi
   let resolve!: (r: EntityDeleteResponse) => void;
   deleteMock.mockReturnValue(new Promise((r) => (resolve = r)));
   const { onDeleted } = renderDialog();
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Delete' })).toBeDisabled());
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Delete\b/ })).toBeDisabled());
   expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
   expect(deleteMock).toHaveBeenCalledWith('e1', 3);
   expect(onDeleted).not.toHaveBeenCalled();
@@ -85,11 +85,11 @@ test('while the delete is in flight both buttons are disabled, then onDeleted fi
 test('a failed delete shows the error, re-enables the buttons and does not report a delete', async () => {
   deleteMock.mockRejectedValue(new Error('revision conflict'));
   const { onDeleted } = renderDialog();
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent('revision conflict');
   expect(onDeleted).not.toHaveBeenCalled();
-  expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: /^Delete\b/ })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'Cancel' })).toBeEnabled();
 });
 
@@ -97,7 +97,7 @@ test('a failed adopt reports the count and never deletes the entity', async () =
   adoptMock.mockRejectedValueOnce(new Error('nope')).mockResolvedValueOnce({} as never);
   const { onDeleted } = renderDialog();
   fireEvent.click(screen.getByRole('checkbox'));
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   expect(await screen.findByRole('alert')).toHaveTextContent(
     "Couldn't copy it to 1 contact, so nothing was deleted.",
@@ -105,13 +105,13 @@ test('a failed adopt reports the count and never deletes the entity', async () =
   expect(adoptMock).toHaveBeenCalledTimes(2);
   expect(deleteMock).not.toHaveBeenCalled();
   expect(onDeleted).not.toHaveBeenCalled();
-  expect(screen.getByRole('button', { name: 'Delete' })).toBeEnabled();
+  expect(screen.getByRole('button', { name: /^Delete\b/ })).toBeEnabled();
 });
 
 test('without ticking adopt, nothing is copied before the delete', async () => {
   deleteMock.mockResolvedValue(response);
   const { onDeleted } = renderDialog();
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() => expect(onDeleted).toHaveBeenCalled());
   expect(adoptMock).not.toHaveBeenCalled();
 });

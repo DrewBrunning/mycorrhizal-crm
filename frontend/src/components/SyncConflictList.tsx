@@ -161,7 +161,9 @@ export default function SyncConflictList({
                     <IconButton
                       size="small"
                       color="primary"
-                      aria-label={t('syncConflicts.restore')}
+                      aria-label={t('syncConflicts.restoreNamed', {
+                        name: conflict.contact_name || t('cadence.unknownContact'),
+                      })}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -174,7 +176,9 @@ export default function SyncConflictList({
                   <Tooltip title={t('syncConflicts.dismiss')}>
                     <IconButton
                       size="small"
-                      aria-label={t('syncConflicts.dismiss')}
+                      aria-label={t('syncConflicts.dismissNamed', {
+                        name: conflict.contact_name || t('cadence.unknownContact'),
+                      })}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();

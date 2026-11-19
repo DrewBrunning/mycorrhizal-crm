@@ -61,10 +61,10 @@ test('restore and dismiss handlers fire with the conflict', () => {
   const onDismiss = vi.fn();
   renderList({ conflicts: [conflict()], onRestore, onDismiss });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Restore local value' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Restore local value\b/ }));
   expect(onRestore).toHaveBeenCalledWith(conflict());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Dismiss\b/ }));
   expect(onDismiss).toHaveBeenCalledWith('conflict-1');
 });
 
@@ -78,4 +78,15 @@ test('renders scalar values verbatim and the empty state when none exist', () =>
 
   renderList({ conflicts: [] });
   expect(screen.getByText('No sync conflicts right now.')).toBeInTheDocument();
+});
+
+// #2673: the row buttons name the contact, with a fallback when it has no name.
+test('restore and dismiss name the contact they act on', () => {
+  renderList({ conflicts: [conflict(), conflict({ id: 'conflict-2', contact_name: '' })] });
+  expect(
+    screen.getByRole('button', { name: 'Restore local value for Grace Hopper' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Dismiss conflict for Unknown contact' }),
+  ).toBeInTheDocument();
 });

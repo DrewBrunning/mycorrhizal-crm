@@ -168,12 +168,18 @@ export default function TrashPage() {
                   .join(' · ')}
               />
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button size="small" variant="contained" onClick={() => void handleRestore(item)}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  aria-label={t('trash.restoreLabel', { name: displayName(item) })}
+                  onClick={() => void handleRestore(item)}
+                >
                   {t('trash.restore')}
                 </Button>
                 <Button
                   size="small"
                   color="error"
+                  aria-label={t('trash.deleteForeverLabel', { name: displayName(item) })}
                   onClick={() => setConfirm({ kind: 'purge', item })}
                 >
                   {t('trash.deleteForever')}
@@ -216,6 +222,7 @@ export default function TrashPage() {
               <Button
                 size="small"
                 variant="contained"
+                aria-label={t('trash.restoreLabel', { name: item.entity.name })}
                 onClick={() => void handleRestoreEntity(item)}
               >
                 {t('trash.restore')}

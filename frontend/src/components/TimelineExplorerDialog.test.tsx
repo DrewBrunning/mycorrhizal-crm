@@ -179,7 +179,7 @@ test('routes edit/delete through the page-level handlers', async () => {
 
   // The completion row's delete action is hover-gated via opacity, but
   // fireEvent clicks regardless of visibility.
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(onDeleteCompletion).toHaveBeenCalledWith(5);
 });
 
