@@ -4,7 +4,6 @@ import DownloadIcon from '@mui/icons-material/Download';
 import EventIcon from '@mui/icons-material/Event';
 import MailIcon from '@mui/icons-material/Mail';
 import {
-  Alert,
   Box,
   Button,
   Card,
@@ -18,7 +17,6 @@ import {
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
-import { ApiError } from './api/client';
 import type { OccasionEvent, OccasionEventInput } from './api/occasionEvents';
 import {
   downloadOccasionCardListCSV,
@@ -33,7 +31,6 @@ import OccasionEventDialog from './components/OccasionEventDialog';
 import OccasionEventList from './components/OccasionEventList';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useOccasionEvents } from './hooks/useOccasionEvents';
-import { localizeReason } from './i18n/reason';
 import { handleError, handleFetchError } from './utils/errorHandler';
 import { localDaysUntil } from './utils/localDate';
 
@@ -61,36 +58,29 @@ export default function OccasionsPage() {
   const [cardSummaryLoading, setCardSummaryLoading] = useState(true);
   const [cardSummaryError, setCardSummaryError] = useState('');
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadCardSummary = useCallback(async () => {
     setCardSummaryLoading(true);
     setCardSummaryError('');
-    getOccasionCardListSummary({
-      kind: cardListKind,
-      includeSensitive: cardListIncludeSensitive,
-    })
-      .then((result) => {
-        if (!cancelled) setCardSummary(result);
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        handleError(err, { operation: 'fetching card list summary' });
-        setCardSummary(null);
-        const reason =
-          err instanceof ApiError ? localizeReason(err.reasonCode, err.reasonParams) : undefined;
-        setCardSummaryError(
-          reason
-            ? t('occasions.cardList.summaryFailedReason', { reason })
-            : t('occasions.cardList.summaryFailed'),
-        );
-      })
-      .finally(() => {
-        if (!cancelled) setCardSummaryLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
+    try {
+      setCardSummary(
+        await getOccasionCardListSummary({
+          kind: cardListKind,
+          includeSensitive: cardListIncludeSensitive,
+        }),
+      );
+    } catch (err) {
+      // The server's localized reason (and request ref on a 5xx), as every
+      // other failed load on this page.
+      setCardSummary(null);
+      setCardSummaryError(handleFetchError(err, 'fetching card list summary'));
+    } finally {
+      setCardSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCardSummary();
+  }, [loadCardSummary]);
 
   const [days, setDays] = useState<30 | 90>(30);
   const [items, setItems] = useState<GiftShoppingItem[]>([]);
@@ -217,9 +207,11 @@ export default function OccasionsPage() {
             )}
           </Box>
           {cardSummaryError && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-              {cardSummaryError}
-            </Alert>
+            <LoadError
+              message={cardSummaryError}
+              onRetry={() => void loadCardSummary()}
+              sx={{ mb: 2 }}
+            />
           )}
           {!(cardSummary && cardSummary.included === 0) && (
             <Button

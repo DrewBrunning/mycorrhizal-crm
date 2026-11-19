@@ -3114,9 +3114,7 @@
       "skippedNoAddress": "keine Postanschrift: {{n}}",
       "skippedPrivateAddress": "nur private Anschrift: {{n}}",
       "noRecipients": "Kein Empfänger hat eine Postanschrift.",
-      "noObligations": "Noch keine aktiven Kartenanlässe. Fügen Sie auf der Seite eines Kontakts einen hinzu.",
-      "summaryFailed": "Die Empfänger konnten nicht geprüft werden.",
-      "summaryFailedReason": "Die Empfänger konnten nicht geprüft werden: {{reason}}"
+      "noObligations": "Noch keine aktiven Kartenanlässe. Fügen Sie auf der Seite eines Kontakts einen hinzu."
     },
     "giftShoppingList": {
       "title": "Geschenkeliste",

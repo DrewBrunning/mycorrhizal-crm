@@ -3218,9 +3218,7 @@
       "skippedNoAddress": "senza indirizzo postale: {{n}}",
       "skippedPrivateAddress": "solo indirizzo privato: {{n}}",
       "noRecipients": "Nessun destinatario ha un indirizzo postale.",
-      "noObligations": "Nessuna occasione biglietto attiva per ora. Aggiungine una dalla pagina di un contatto.",
-      "summaryFailed": "Impossibile verificare i destinatari.",
-      "summaryFailedReason": "Impossibile verificare i destinatari: {{reason}}"
+      "noObligations": "Nessuna occasione biglietto attiva per ora. Aggiungine una dalla pagina di un contatto."
     },
     "giftShoppingList": {
       "title": "Lista regali da comprare",

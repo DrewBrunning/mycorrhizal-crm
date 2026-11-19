@@ -3114,9 +3114,7 @@
       "skippedNoAddress": "no postal address: {{n}}",
       "skippedPrivateAddress": "private address only: {{n}}",
       "noRecipients": "No recipients have a postal address.",
-      "noObligations": "No active card occasions yet. Add one from a contact's page.",
-      "summaryFailed": "Could not check the recipients.",
-      "summaryFailedReason": "Could not check the recipients: {{reason}}"
+      "noObligations": "No active card occasions yet. Add one from a contact's page."
     },
     "giftShoppingList": {
       "title": "Gift Shopping List",

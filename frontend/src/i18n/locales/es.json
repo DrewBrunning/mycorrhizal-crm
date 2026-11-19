@@ -3218,9 +3218,7 @@
       "skippedNoAddress": "sin dirección postal: {{n}}",
       "skippedPrivateAddress": "solo dirección privada: {{n}}",
       "noRecipients": "Ningún destinatario tiene dirección postal.",
-      "noObligations": "Aún no hay ocasiones de tarjeta activas. Añade una desde la página de un contacto.",
-      "summaryFailed": "No se pudieron comprobar los destinatarios.",
-      "summaryFailedReason": "No se pudieron comprobar los destinatarios: {{reason}}"
+      "noObligations": "Aún no hay ocasiones de tarjeta activas. Añade una desde la página de un contacto."
     },
     "giftShoppingList": {
       "title": "Lista de compras de regalos",

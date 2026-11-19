@@ -3218,9 +3218,7 @@
       "skippedNoAddress": "sans adresse postale : {{n}}",
       "skippedPrivateAddress": "adresse privée uniquement : {{n}}",
       "noRecipients": "Aucun destinataire n'a d'adresse postale.",
-      "noObligations": "Aucune occasion de carte active pour l'instant. Ajoutez-en une depuis la page d'un contact.",
-      "summaryFailed": "Impossible de vérifier les destinataires.",
-      "summaryFailedReason": "Impossible de vérifier les destinataires : {{reason}}"
+      "noObligations": "Aucune occasion de carte active pour l'instant. Ajoutez-en une depuis la page d'un contact."
     },
     "giftShoppingList": {
       "title": "Liste de cadeaux à acheter",

@@ -326,14 +326,19 @@ test('shows the localized reason when the summary is rejected and keeps the down
     new ApiError('English', 'VALIDATION_ERROR', 400, undefined, undefined, 'occasion_kind_invalid'),
   );
   renderPage();
-  expect(await screen.findByRole('alert')).toHaveTextContent(
-    'Could not check the recipients: kind must not contain control characters',
-  );
+  const alert = await screen.findByRole('alert');
+  expect(alert).toHaveTextContent('kind must not contain control characters');
+  expect(alert).toHaveTextContent("Couldn't load this data");
   expect(screen.getByRole('button', { name: /download csv/i })).toBeEnabled();
 });
 
-test('shows a generic message when the summary fails without a reason', async () => {
-  summaryMock.mockRejectedValue(new Error('network down'));
+test('Retry refetches the summary in place', async () => {
+  summaryMock.mockRejectedValueOnce(new Error('network down'));
+  summaryMock.mockResolvedValue(summary(2));
   renderPage();
-  expect(await screen.findByRole('alert')).toHaveTextContent('Could not check the recipients.');
+  await screen.findByRole('alert');
+  fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('2 recipients'));
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(summaryMock).toHaveBeenCalledTimes(2);
 });
