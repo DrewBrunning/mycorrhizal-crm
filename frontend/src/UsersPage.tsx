@@ -545,6 +545,7 @@ export default function UsersPage() {
               />
               <TextField
                 label={t('users.createDialog.password')}
+                autoComplete="new-password"
                 type="password"
                 value={createForm.password}
                 onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
@@ -598,6 +599,7 @@ export default function UsersPage() {
               />
               <TextField
                 label={t('users.editDialog.password')}
+                autoComplete="new-password"
                 type="password"
                 value={editForm.password || ''}
                 onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}

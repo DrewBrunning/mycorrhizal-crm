@@ -505,6 +505,6 @@ test('an attendee action failure is announced as an alert', async () => {
   const handleRemove = vi.fn().mockRejectedValue(new Error('boom'));
   vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn({ handleRemove }));
   render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
-  fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Remove\b/ }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Failed to update the attendee.');
 });

@@ -9,10 +9,10 @@
       "branchesTotal": 88
     },
     "src/App.tsx": {
-      "lines": 92,
-      "linesTotal": 100,
-      "branches": 94.73,
-      "branchesTotal": 57
+      "lines": 92.23,
+      "linesTotal": 103,
+      "branches": 94.91,
+      "branchesTotal": 59
     },
     "src/AppThemeProvider.tsx": {
       "lines": 87.5,
@@ -663,10 +663,10 @@
       "branchesTotal": 4
     },
     "src/auth.ts": {
-      "lines": 98.94,
-      "linesTotal": 95,
+      "lines": 99.03,
+      "linesTotal": 104,
       "branches": 100,
-      "branchesTotal": 72
+      "branchesTotal": 76
     },
     "src/components/AcceptContactShareDialog.tsx": {
       "lines": 94.28,
@@ -2245,6 +2245,12 @@
       "linesTotal": 19,
       "branches": 100,
       "branchesTotal": 0
+    },
+    "src/i18n/accountLanguage.ts": {
+      "lines": 100,
+      "linesTotal": 7,
+      "branches": 77.77,
+      "branchesTotal": 9
     },
     "src/i18n/config.ts": {
       "lines": 83.33,
