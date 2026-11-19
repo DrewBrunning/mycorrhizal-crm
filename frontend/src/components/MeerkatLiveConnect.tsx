@@ -202,7 +202,7 @@ export default function MeerkatLiveConnect({
               />
             </Alert>
           )}
-          <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+          <Alert severity="info" role="status" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
             {/* Connect only learns the contact total; relationships and notes
                 are counted once the fetch has read them. */}
             <Typography variant="body2" gutterBottom>

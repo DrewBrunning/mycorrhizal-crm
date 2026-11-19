@@ -219,7 +219,9 @@ export default function GeoPulseSuggestionsDialog({
             )}
 
             {geopulse.suggestions && suggestions.length === 0 && (
-              <Alert severity="info">{t('geopulse.dialog.noStays')}</Alert>
+              <Alert severity="info" role="status">
+                {t('geopulse.dialog.noStays')}
+              </Alert>
             )}
 
             {suggestions.map((s) => {

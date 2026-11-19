@@ -705,3 +705,21 @@ test('View report lists a warning row as Warning with its explanation', async ()
   expect(within(dialog).getByText('Birthday not imported: invalid value')).toBeInTheDocument();
   expect(within(dialog).queryByText('Skipped')).not.toBeInTheDocument();
 });
+
+// #2683: informational notices must not announce as alerts when the page loads.
+test('static informational notices are status regions, not alerts, on load', async () => {
+  historyMock.mockResolvedValue([]);
+  renderPage();
+
+  const notice = await screen.findByText(/private or secret/i);
+  expect(notice.closest('[role="status"]')).not.toBeNull();
+  expect(notice.closest('[role="alert"]')).toBeNull();
+  expect(screen.queryAllByRole('alert')).toHaveLength(0);
+});
+
+test('a real error is still announced as an alert', async () => {
+  historyMock.mockRejectedValue(new Error('history down'));
+  renderPage();
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('history down');
+});

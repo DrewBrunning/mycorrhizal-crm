@@ -967,7 +967,7 @@ export default function ImportContactsDialog({
           ]}
         />
         {previewResponse.fixed_assignment && (
-          <Alert severity="info" sx={{ mb: 2 }}>
+          <Alert severity="info" role="status" sx={{ mb: 2 }}>
             {t(
               'contacts.import.fixedAssignment.summary',
               'Every imported contact will be added to: {{groups}}. Up to {{count}} memberships will be added.',
