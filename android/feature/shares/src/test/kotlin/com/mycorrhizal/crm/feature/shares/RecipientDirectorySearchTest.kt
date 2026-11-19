@@ -28,9 +28,8 @@ class RecipientDirectorySearchTest {
     private val alina = UserDirectoryEntry(id = 2, username = "alina")
 
     /** Records every query and answers from [answers], defaulting to an empty list. */
-    private class FakeDirectory(
-        private val answers: (String) -> Result<List<UserDirectoryEntry>>
-    ) : ContactShareRepository by io.mockk.mockk(relaxed = true) {
+    private class FakeDirectory(private val answers: (String) -> Result<List<UserDirectoryEntry>>) :
+        ContactShareRepository by io.mockk.mockk(relaxed = true) {
         val queries = mutableListOf<String>()
         override suspend fun userDirectory(query: String): Result<List<UserDirectoryEntry>> {
             queries += query
@@ -222,7 +221,11 @@ class RecipientDirectorySearchTest {
     fun `a failed first load reports the error and retry asks again`() = runTest {
         var calls = 0
         val repo = FakeDirectory {
-            if (calls++ == 0) Result.failure(ApiError.Server(500, "boom")) else Result.success(listOf(alice))
+            if (calls++ == 0) {
+                Result.failure(ApiError.Server(500, "boom"))
+            } else {
+                Result.success(listOf(alice))
+            }
         }
         val h = Harness(this, repo)
         h.search.load()

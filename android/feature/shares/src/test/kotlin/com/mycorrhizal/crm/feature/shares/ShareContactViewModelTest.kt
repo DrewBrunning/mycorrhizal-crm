@@ -516,7 +516,9 @@ class ShareContactViewModelTest {
         vm.setRecipientQuery("alice")
         advanceUntilIdle()
         assertEquals("the same text keeps the pick", 1L, vm.uiState.value.selectedRecipientId)
-        coEvery { repo.userDirectory("alin") } returns Result.success(listOf(UserDirectoryEntry(2, "alina")))
+        coEvery { repo.userDirectory("alin") } returns Result.success(
+            listOf(UserDirectoryEntry(2, "alina"))
+        )
         vm.setRecipientQuery("alin")
         advanceUntilIdle()
         assertEquals(listOf("alina"), vm.uiState.value.recipients.map { it.username })

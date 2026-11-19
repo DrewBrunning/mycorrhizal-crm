@@ -179,7 +179,8 @@ class StandingShareScreenTest {
         mount(ShareGrantEntityTypes.NOTE, recipients = emptyList())
         composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
             .assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.shares_recipient_no_match)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_no_match))
+            .assertDoesNotExist()
     }
 
     @Test
@@ -198,13 +199,15 @@ class StandingShareScreenTest {
                 .fetchSemanticsNodes().isNotEmpty()
         }
         coVerify(exactly = 1) { directory.userDirectory("zzz") }
-        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertDoesNotExist()
     }
 
     @Test
     fun `all mode shows neither hint nor a text input`() {
         mount(ShareGrantEntityTypes.NOTE)
-        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertDoesNotExist()
         composeTestRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
     }
 

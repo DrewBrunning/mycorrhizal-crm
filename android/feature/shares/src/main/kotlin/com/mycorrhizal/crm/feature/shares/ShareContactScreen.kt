@@ -503,9 +503,12 @@ internal fun recipientSupportingText(
     hasMatches: Boolean
 ): String? = when {
     !searchMode -> null
+
     query.trim().length < SHARE_SEARCH_MIN_CHARS ->
         stringResource(R.string.shares_recipient_search_hint)
+
     settled && !hasMatches -> stringResource(R.string.shares_recipient_no_match)
+
     else -> null
 }
 

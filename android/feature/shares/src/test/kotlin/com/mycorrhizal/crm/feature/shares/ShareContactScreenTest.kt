@@ -117,7 +117,8 @@ class ShareContactScreenTest {
 
         composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
             .assertIsDisplayed()
-        composeTestRule.onNodeWithText(str(R.string.shares_recipient_no_match)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_no_match))
+            .assertDoesNotExist()
         composeTestRule.onNodeWithText(str(R.string.shares_share_button))
             .performScrollTo()
             .assertIsNotEnabled()
@@ -140,7 +141,8 @@ class ShareContactScreenTest {
         waitFor { composeTestRule.onAllNodesWithText(str(R.string.shares_recipient_no_match)) }
 
         coVerify(exactly = 1) { repo.userDirectory("zzz") }
-        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertDoesNotExist()
     }
 
     @Test
@@ -169,8 +171,10 @@ class ShareContactScreenTest {
         )
         screen(repo)
 
-        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint)).assertDoesNotExist()
-        composeTestRule.onNodeWithText(str(R.string.shares_recipient_no_match)).assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_no_match))
+            .assertDoesNotExist()
         composeTestRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
     }
 
@@ -185,7 +189,9 @@ class ShareContactScreenTest {
 
     /** The debounce runs on the real clock under Robolectric; poll until the node appears. */
     private fun waitFor(nodes: () -> androidx.compose.ui.test.SemanticsNodeInteractionCollection) {
-        composeTestRule.waitUntil(timeoutMillis = 5_000) { nodes().fetchSemanticsNodes().isNotEmpty() }
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            nodes().fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test

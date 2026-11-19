@@ -70,7 +70,9 @@ internal class RecipientDirectorySearch(
         job?.cancel()
         generation++
         if (q.length < SHARE_SEARCH_MIN_CHARS) {
-            publish(state.copy(query = raw, recipients = emptyList(), isLoading = false, settled = true))
+            publish(
+                state.copy(query = raw, recipients = emptyList(), isLoading = false, settled = true)
+            )
             return
         }
         publish(state.copy(query = raw, isLoading = false, settled = false))
