@@ -50,6 +50,8 @@ extend-exclude = [
   "android/core/ui/src/main/res/values-es/strings.xml",
   "android/core/ui/src/main/res/values-fr/strings.xml",
   "android/core/ui/src/main/res/values-it/strings.xml",
+  # Matches informal German words (du/dein...) to forbid them (issue #2686).
+  "frontend/src/i18n/germanFormality.test.ts",
   # Asserts German strings verbatim (issue #2379).
   "android/app/src/androidTest/kotlin/com/mycorrhizal/crm/e2e/LocalizedErrorE2eTest.kt",
 ]
@@ -71,6 +73,8 @@ extend-ignore-re = [
 ]
 
 [default.extend-words]
+# German formal "you", named in prose about the German locale (issue #2686).
+Sie = "Sie"
 # Valid English variant that typos prefers to "unparsable".
 unparseable = "unparseable"
 # SLSA in-toto attestation format.

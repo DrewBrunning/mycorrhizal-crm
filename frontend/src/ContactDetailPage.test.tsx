@@ -918,13 +918,23 @@ test('adding an occasion opens the create dialog and saves it via POST', async (
   fireEvent.change(screen.getByLabelText('Label *'), {
     target: { value: 'Christmas card' },
   });
+  // A standing occasion needs a month and day (#2670).
+  fireEvent.mouseDown(screen.getByLabelText('Month'));
+  fireEvent.click(await screen.findByRole('option', { name: 'December' }));
+  fireEvent.mouseDown(screen.getByLabelText('Day'));
+  fireEvent.click(await screen.findByRole('option', { name: '25' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   await waitFor(() => {
     const postCall = calls.find(
       (c) => c.method === 'POST' && c.url.endsWith('/occasion-obligations'),
     );
-    expect(postCall?.body).toMatchObject({ entity_id: 'alice-uid', label: 'Christmas card' });
+    expect(postCall?.body).toMatchObject({
+      entity_id: 'alice-uid',
+      label: 'Christmas card',
+      anchor_month: 12,
+      anchor_day: 25,
+    });
   });
   await waitFor(() => expect(screen.queryByText('Add an occasion')).not.toBeInTheDocument());
 });
@@ -937,6 +947,8 @@ test('editing an existing occasion opens the edit dialog pre-filled, and saves v
     entity_id: 'alice-uid',
     kind: 'card',
     label: 'Christmas card',
+    anchor_month: 12,
+    anchor_day: 25,
     lead_time_days: 14,
     active: true,
     sensitivity: 'normal',
@@ -1813,11 +1825,13 @@ test('editing a timeline activity saves it through the edit dialog', async () =>
   );
 });
 
-test('the narrow jump nav is a select that scrolls to the chosen section', async () => {
+// matchMedia stub: the narrow-layout (width) queries match; `reduceMotion`
+// decides the prefers-reduced-motion query.
+function stubNarrowViewport(reduceMotion: boolean) {
   vi.stubGlobal(
     'matchMedia',
     vi.fn((query: string) => ({
-      matches: true,
+      matches: query.includes('prefers-reduced-motion') ? reduceMotion : true,
       media: query,
       onchange: null,
       addEventListener: vi.fn(),
@@ -1827,6 +1841,10 @@ test('the narrow jump nav is a select that scrolls to the chosen section', async
       dispatchEvent: vi.fn(),
     })),
   );
+}
+
+test('the narrow jump nav is a select that scrolls to the chosen section', async () => {
+  stubNarrowViewport(false);
   const scrollIntoView = vi.fn();
   Element.prototype.scrollIntoView = scrollIntoView;
   mockFetch();
@@ -1835,6 +1853,52 @@ test('the narrow jump nav is a select that scrolls to the chosen section', async
   fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Jump to section' }));
   fireEvent.click(await screen.findByRole('option', { name: 'People' }));
   expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' });
+});
+
+// #2682
+test('choosing a section in the narrow jump nav moves focus to that section heading', async () => {
+  stubNarrowViewport(false);
+  Element.prototype.scrollIntoView = vi.fn();
+  mockFetch();
+  await renderLoaded();
+
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Jump to section' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'People' }));
+
+  await waitFor(() => {
+    const active = document.activeElement as HTMLElement;
+    expect(active.tagName).toBe('H2');
+    expect(active.closest('section')?.id).toBe('people');
+    expect(active).toHaveAttribute('tabindex', '-1');
+  });
+});
+
+// #2682: a section with no heading still takes focus itself.
+test('a section without a heading takes focus itself', async () => {
+  stubNarrowViewport(false);
+  Element.prototype.scrollIntoView = vi.fn();
+  mockFetch();
+  await renderLoaded();
+  document.querySelectorAll('#people h2').forEach((h) => {
+    h.remove();
+  });
+
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Jump to section' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'People' }));
+
+  await waitFor(() => expect(document.activeElement?.id).toBe('people'));
+});
+
+test('the jump nav scrolls instantly when the user prefers reduced motion', async () => {
+  stubNarrowViewport(true);
+  const scrollIntoView = vi.fn();
+  Element.prototype.scrollIntoView = scrollIntoView;
+  mockFetch();
+  await renderLoaded();
+
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Jump to section' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'People' }));
+  expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto' });
 });
 
 test('quick-adding an agenda item and a gift idea POSTs them for this contact', async () => {

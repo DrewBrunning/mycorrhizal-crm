@@ -4115,6 +4115,11 @@
           "required": false
         },
         {
+          "name": "sort",
+          "in": "query",
+          "required": false
+        },
+        {
           "name": "toDate",
           "in": "query",
           "required": false
@@ -10356,7 +10361,13 @@
     {
       "method": "GET",
       "path": "/users/directory",
-      "parameters": null,
+      "parameters": [
+        {
+          "name": "q",
+          "in": "query",
+          "required": false
+        }
+      ],
       "responses": [
         {
           "status": "200",

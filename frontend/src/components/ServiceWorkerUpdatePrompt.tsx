@@ -31,6 +31,7 @@ export default function ServiceWorkerUpdatePrompt() {
     >
       <Alert
         severity="info"
+        role="status"
         variant="filled"
         sx={{ width: '100%' }}
         action={

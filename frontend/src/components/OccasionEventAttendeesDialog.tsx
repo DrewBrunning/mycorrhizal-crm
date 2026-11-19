@@ -1,6 +1,7 @@
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import {
+  Alert,
   Autocomplete,
   Box,
   Button,
@@ -65,10 +66,14 @@ export default function OccasionEventAttendeesDialog({
   const [contactSearch, setContactSearch] = useState('');
   const [selectedCircleIds, setSelectedCircleIds] = useState<string[]>([]);
   const [actionError, setActionError] = useState('');
+  // Issue #2687: "no suggestions" answers a completed Suggest request; it is
+  // not the default state of a freshly chosen circle.
+  const [hasRequestedSuggestions, setHasRequestedSuggestions] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setSelectedCircleIds([]);
+    setHasRequestedSuggestions(false);
     setActionError('');
     clearSuggestions();
     setCirclesLoaded(false);
@@ -142,7 +147,8 @@ export default function OccasionEventAttendeesDialog({
 
   const handleSuggest = async () => {
     setActionError('');
-    await loadSuggestions(selectedCircleIds);
+    setHasRequestedSuggestions(false);
+    setHasRequestedSuggestions(await loadSuggestions(selectedCircleIds));
   };
 
   const handleAddSuggestion = async (entityId: string) => {
@@ -184,11 +190,7 @@ export default function OccasionEventAttendeesDialog({
             {t('occasions.events.rsvpHint')}
           </Typography>
 
-          {error && (
-            <Typography color="error" variant="body2">
-              {error}
-            </Typography>
-          )}
+          {error && <Alert severity="error">{error}</Alert>}
 
           {loading && attendees.length === 0 ? (
             <Typography variant="body2">{t('common.loading')}</Typography>
@@ -266,6 +268,7 @@ export default function OccasionEventAttendeesDialog({
                 value={circles.filter((c) => selectedCircleIds.includes(c.id))}
                 onChange={(_e, value) => {
                   setSelectedCircleIds(value.map((c) => c.id));
+                  setHasRequestedSuggestions(false);
                   clearSuggestions();
                 }}
                 renderInput={(params) => (
@@ -314,7 +317,8 @@ export default function OccasionEventAttendeesDialog({
             </Stack>
           )}
 
-          {selectedCircleIds.length > 0 &&
+          {hasRequestedSuggestions &&
+            selectedCircleIds.length > 0 &&
             !suggestionsLoading &&
             suggestions.length === 0 &&
             !actionError && (
@@ -323,11 +327,7 @@ export default function OccasionEventAttendeesDialog({
               </Typography>
             )}
 
-          {actionError && (
-            <Typography color="error" variant="body2">
-              {actionError}
-            </Typography>
-          )}
+          {actionError && <Alert severity="error">{actionError}</Alert>}
         </Box>
       </DialogContent>
       <DialogActions>

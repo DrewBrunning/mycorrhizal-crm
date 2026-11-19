@@ -58,6 +58,7 @@ candidate and post-publish digests.
 | `SMTP_FROM_EMAIL` | Sender e-mail address for SMTP |
 | `SMTP_USE_TLS` | Set to `true` for implicit TLS (port 465); otherwise STARTTLS is used |
 | `CARDDAV_ENABLED` | When set to `true` the application acts as a CardDAV server which allows contacts to be synced with your phone |
+| `SHARE_DIRECTORY_MODE` | `all` (default) lists every other account when choosing a share recipient; `search` returns only username-prefix matches for a query of at least 3 characters (max 10), so users cannot enumerate each other. `search` becomes the default in v2.0.0. **Recommended for multi-user instances** |
 | `DISABLE_REGISTRATION` | When set to `true`, new user registration is disabled (existing users can still log in). Default is `false`. **Recommended for any multi-user instance** — see [Supported versions → The deployment shape](supported-versions.html#the-deployment-shape) |
 | `DATA_PATH` | Host directory where the database file should be stored |
 | `PHOTOS_PATH` | Host directory where the contact photos should be stored |

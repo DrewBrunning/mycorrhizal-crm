@@ -1881,6 +1881,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_household_type_invalid
         )
 
+        ErrorReasonCode.IMPORT_CSV_NOT_TEXT -> stringResource(
+            R.string.error_reason_import_csv_not_text
+        )
+
         ErrorReasonCode.IMPORT_DISK_SPACE_LOW -> {
             val p1 = reason.str("total")
             val p2 = reason.str("reason")
