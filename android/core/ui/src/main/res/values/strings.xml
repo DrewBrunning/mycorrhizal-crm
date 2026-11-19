@@ -2489,7 +2489,10 @@
     <string name="occasion_ob_anchor_month">Month</string>
     <string name="occasion_ob_anchor_day">Day</string>
     <string name="occasion_ob_anchor_unset">Not set</string>
-    <string name="occasion_ob_day_cleared">%1$s has at most %2$d days, so the day was cleared. Choose a day again.</string>
+    <plurals name="occasion_ob_day_cleared">
+        <item quantity="one">%1$s has at most %2$d day, so the day was cleared. Choose a day again.</item>
+        <item quantity="other">%1$s has at most %2$d days, so the day was cleared. Choose a day again.</item>
+    </plurals>
     <string name="occasion_ob_no_date">No date — no reminder</string>
     <string name="occasion_ob_lead_time">Lead time (days)</string>
     <string name="occasion_ob_lead_time_hint">How many days before the date to be reminded, e.g. 14 for “gift two weeks before”</string>

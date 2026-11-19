@@ -2556,7 +2556,11 @@
     <string name="occasion_ob_anchor_month">Mes</string>
     <string name="occasion_ob_anchor_day">Día</string>
     <string name="occasion_ob_anchor_unset">Sin definir</string>
-    <string name="occasion_ob_day_cleared">%1$s tiene como máximo %2$d días, así que se borró el día. Elige un día de nuevo.</string>
+    <plurals name="occasion_ob_day_cleared">
+        <item quantity="one">%1$s tiene como máximo %2$d día, así que se borró el día. Elige un día de nuevo.</item>
+        <item quantity="many">%1$s tiene como máximo %2$d días, así que se borró el día. Elige un día de nuevo.</item>
+        <item quantity="other">%1$s tiene como máximo %2$d días, así que se borró el día. Elige un día de nuevo.</item>
+    </plurals>
     <string name="occasion_ob_no_date">Sin fecha: sin recordatorio</string>
     <string name="occasion_ob_lead_time">Antelación (días)</string>
     <string name="occasion_ob_lead_time_hint">Cuántos días antes de la fecha quieres el recordatorio, p. ej. 14 para «regalo dos semanas antes»</string>

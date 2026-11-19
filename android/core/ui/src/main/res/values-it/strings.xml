@@ -2556,7 +2556,11 @@
     <string name="occasion_ob_anchor_month">Mese</string>
     <string name="occasion_ob_anchor_day">Giorno</string>
     <string name="occasion_ob_anchor_unset">Non impostato</string>
-    <string name="occasion_ob_day_cleared">%1$s ha al massimo %2$d giorni, quindi il giorno è stato cancellato. Scegli di nuovo un giorno.</string>
+    <plurals name="occasion_ob_day_cleared">
+        <item quantity="one">%1$s ha al massimo %2$d giorno, quindi il giorno è stato cancellato. Scegli di nuovo un giorno.</item>
+        <item quantity="many">%1$s ha al massimo %2$d giorni, quindi il giorno è stato cancellato. Scegli di nuovo un giorno.</item>
+        <item quantity="other">%1$s ha al massimo %2$d giorni, quindi il giorno è stato cancellato. Scegli di nuovo un giorno.</item>
+    </plurals>
     <string name="occasion_ob_no_date">Nessuna data: nessun promemoria</string>
     <string name="occasion_ob_lead_time">Anticipo (giorni)</string>
     <string name="occasion_ob_lead_time_hint">Quanti giorni prima della data vuoi il promemoria, ad es. 14 per «regalo due settimane prima»</string>

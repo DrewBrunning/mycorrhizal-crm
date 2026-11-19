@@ -2472,7 +2472,10 @@
     <string name="occasion_ob_anchor_month">Monat</string>
     <string name="occasion_ob_anchor_day">Tag</string>
     <string name="occasion_ob_anchor_unset">Nicht festgelegt</string>
-    <string name="occasion_ob_day_cleared">%1$s hat höchstens %2$d Tage, deshalb wurde der Tag geleert. Wählen Sie den Tag erneut aus.</string>
+    <plurals name="occasion_ob_day_cleared">
+        <item quantity="one">%1$s hat höchstens %2$d Tag, deshalb wurde der Tag geleert. Wählen Sie den Tag erneut aus.</item>
+        <item quantity="other">%1$s hat höchstens %2$d Tage, deshalb wurde der Tag geleert. Wählen Sie den Tag erneut aus.</item>
+    </plurals>
     <string name="occasion_ob_no_date">Kein Datum – keine Erinnerung</string>
     <string name="occasion_ob_lead_time">Vorlaufzeit (Tage)</string>
     <string name="occasion_ob_lead_time_hint">Wie viele Tage vor dem Datum du erinnert werden möchtest, z. B. 14 für „Geschenk zwei Wochen vorher“</string>

@@ -2556,7 +2556,11 @@
     <string name="occasion_ob_anchor_month">Mois</string>
     <string name="occasion_ob_anchor_day">Jour</string>
     <string name="occasion_ob_anchor_unset">Non défini</string>
-    <string name="occasion_ob_day_cleared">%1$s compte au plus %2$d jours ; le jour a donc été effacé. Choisissez de nouveau un jour.</string>
+    <plurals name="occasion_ob_day_cleared">
+        <item quantity="one">%1$s compte au plus %2$d jour ; le jour a donc été effacé. Choisissez de nouveau un jour.</item>
+        <item quantity="many">%1$s compte au plus %2$d jours ; le jour a donc été effacé. Choisissez de nouveau un jour.</item>
+        <item quantity="other">%1$s compte au plus %2$d jours ; le jour a donc été effacé. Choisissez de nouveau un jour.</item>
+    </plurals>
     <string name="occasion_ob_no_date">Pas de date : pas de rappel</string>
     <string name="occasion_ob_lead_time">Délai (jours)</string>
     <string name="occasion_ob_lead_time_hint">Combien de jours avant la date vous voulez être rappelé, p. ex. 14 pour « cadeau deux semaines avant »</string>

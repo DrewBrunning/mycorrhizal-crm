@@ -519,7 +519,12 @@ private fun OccasionObligationForm(
                 },
                 errorText = dayError,
                 helperText = dayClearedFor?.let {
-                    stringResource(R.string.occasion_ob_day_cleared, monthName(it), daysInMonth(it))
+                    pluralStringResource(
+                        R.plurals.occasion_ob_day_cleared,
+                        daysInMonth(it),
+                        monthName(it),
+                        daysInMonth(it)
+                    )
                 },
                 modifier = Modifier.testTag("occasion-ob-day")
             )
