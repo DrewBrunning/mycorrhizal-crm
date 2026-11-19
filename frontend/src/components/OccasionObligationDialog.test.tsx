@@ -299,7 +299,9 @@ test.each([
     const control = screen.getByRole('combobox', { name: field });
     await vi.waitFor(() => expect(control).toHaveAttribute('aria-invalid', 'true'));
     expect(control).toHaveAccessibleDescription(text);
-    expect(control).toHaveFocus();
+    // Focus moves in an effect after the error state renders; wait for it
+    // rather than racing it under CI load.
+    await vi.waitFor(() => expect(control).toHaveFocus());
     expect(screen.queryByText('Failed to save occasion.')).not.toBeInTheDocument();
   },
 );
