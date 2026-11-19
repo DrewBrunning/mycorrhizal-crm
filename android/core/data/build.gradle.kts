@@ -83,7 +83,7 @@ val sqlcipherAar = configurations.detachedConfiguration(
     dependencies.create("net.zetetic:sqlcipher-android:${libs.versions.sqlcipher.get()}"),
 ).files.filter { it.extension == "aar" }.single()
 
-val extractSqlcipherNative by tasks.registering(Sync::class) {
+val extractSqlcipherNative = tasks.register<Sync>("extractSqlcipherNative") {
     from(zipTree(sqlcipherAar)) {
         include("jni/$hostAbi/libsqlcipher.so")
         eachFile { relativePath = RelativePath(true, name) }

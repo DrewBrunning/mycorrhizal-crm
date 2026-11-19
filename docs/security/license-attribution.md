@@ -97,7 +97,7 @@ already-required job rather than creating a new required context, per
 ## Android: GMS-free in-app surface
 
 The app applies AboutLibraries' Android Gradle plugin (version 14.2.x, the
-Compose 1.10 / AGP 9 line that matches this project's Kotlin 2.3 toolchain). It
+Compose 1.10 / AGP 9 line that matches this project's Kotlin 2.4 toolchain). It
 collects the `release` dependency graph at build time into
 `res/raw/aboutlibraries.json`; `feature:settings` parses that data with
 `aboutlibraries-core` and renders it under **Settings → About → Third-party

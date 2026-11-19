@@ -1,6 +1,7 @@
 # This is a Gradle generated file for dependency locking.
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
+# To regenerate this file, run: ./gradlew :core:testing:dependencies --write-locks
 androidx.activity:activity-compose:1.7.0=releaseRuntimeClasspath
 androidx.activity:activity-ktx:1.7.0=releaseRuntimeClasspath
 androidx.activity:activity:1.7.0=releaseCompileClasspath,releaseRuntimeClasspath
@@ -142,7 +143,7 @@ org.jetbrains.kotlin:kotlin-parcelize-runtime:1.9.22=releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-reflect:1.8.21=releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.21=releaseCompileClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.21=releaseCompileClasspath,releaseRuntimeClasspath
-org.jetbrains.kotlin:kotlin-stdlib:2.3.21=releaseCompileClasspath,releaseRuntimeClasspath
+org.jetbrains.kotlin:kotlin-stdlib:2.4.21=releaseCompileClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0=releaseCompileClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.9.0=releaseCompileClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.9.0=releaseCompileClasspath,releaseRuntimeClasspath
