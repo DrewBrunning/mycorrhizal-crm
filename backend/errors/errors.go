@@ -167,7 +167,7 @@ func ErrUnauthorized(message string) *AppError {
 
 // ErrInvalidCredentials returns an invalid credentials error
 func ErrInvalidCredentials() *AppError {
-	return NewError(ErrCodeInvalidCredentials, "Invalid email or password", http.StatusUnauthorized).
+	return NewError(ErrCodeInvalidCredentials, "Invalid username, email or password", http.StatusUnauthorized).
 		withDefaultReason(ReasonAuthInvalidCredentials, nil)
 }
 

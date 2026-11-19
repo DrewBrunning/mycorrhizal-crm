@@ -95,6 +95,32 @@ class OccasionsScreenTest {
     }
 
     @Test
+    fun `a failed load shows the server message with Retry that reloads the events`() {
+        coEvery { repository.list() } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(event()))
+        )
+        val viewModel = OccasionsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                OccasionsScreen(onMenuClick = {}, onOpenAttendees = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("No events yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Summer BBQ").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    @Test
     fun `shows the empty state when there are no events`() {
         render(emptyList())
         composeTestRule

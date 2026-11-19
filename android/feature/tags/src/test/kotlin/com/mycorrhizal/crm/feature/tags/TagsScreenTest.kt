@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Tag
@@ -19,6 +20,7 @@ import com.mycorrhizal.crm.testing.a11y.assertNoDuplicateContentDescriptions
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertTrue
@@ -165,5 +167,58 @@ class TagsScreenTest {
         // The error is both the body Text and the transient snackbar, so assert
         // on the collection rather than a single node.
         assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    @Test
+    fun `a failed load shows the server message with Retry that reloads the tags`() {
+        val repository = mockk<TagRepository>()
+        coEvery { repository.list(any(), any()) } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(Tag(id = "t1", name = "vip")))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TagsScreen(onOpenTag = {}, viewModel = TagsViewModel(repository))
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("No tags yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("vip").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { repository.list(any(), any()) }
+    }
+
+    @Test
+    fun `an action error over a populated list is a toast and keeps the list`() {
+        val repository = mockk<TagRepository>()
+        coEvery { repository.list(any(), any()) } returns Result.success(
+            listOf(Tag(id = "t1", name = "vip"))
+        )
+        coEvery { repository.delete("t1") } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        val viewModel = TagsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                TagsScreen(onOpenTag = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.runOnIdle { viewModel.delete("t1") }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("vip").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
     }
 }

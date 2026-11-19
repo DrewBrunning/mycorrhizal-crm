@@ -17,6 +17,7 @@ import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertEquals
@@ -417,5 +418,28 @@ class ApiTokensScreenTest {
 
         composeTestRule.onNodeWithContentDescription("More options").performClick()
         composeTestRule.onNodeWithText("Revoke all").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a failed load shows the server message with Retry that reloads the tokens`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(token(1)))
+        )
+        setScreen(ApiTokensViewModel(repository))
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("No API tokens yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("CI token").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { repository.list() }
     }
 }
