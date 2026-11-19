@@ -209,6 +209,15 @@ describe('getOccasionCardListSummary', () => {
     expect(url).not.toContain('include_sensitive');
   });
 
+  test('defaults to the card kind when called without arguments', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => body });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await getOccasionCardListSummary();
+
+    expect(fetchMock.mock.calls[0][0]).toContain('/card-list/summary?kind=card');
+  });
+
   test('sends include_sensitive only when asked', async () => {
     const fetchMock = vi.fn().mockResolvedValueOnce({ ok: true, json: async () => body });
     vi.stubGlobal('fetch', fetchMock);
