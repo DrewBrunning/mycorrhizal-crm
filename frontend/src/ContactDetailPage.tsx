@@ -257,32 +257,27 @@ function ContactJumpNav({
   const isNarrow = useMediaQuery(theme.breakpoints.down('md'));
   const pendingFocusRef = useRef<HTMLElement | null>(null);
 
+  // WCAG 2.3.3: no animated scroll for people who ask for reduced motion.
+  const reduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+
   const handleSelectChange = (event: SelectChangeEvent<string>) => {
-    const id = event.target.value as string;
-    if (!id) return;
-    const section = document.getElementById(id);
-    if (!section) return;
-    // WCAG 2.3.3: no animated scroll for people who ask for reduced motion.
-    const reduceMotion =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    section.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+    const section = document.getElementById(event.target.value);
+    section?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
     // #2682: scrolling alone leaves keyboard focus up in the select, so the
     // next Tab lands at the top of the page. Remember the section; the focus
-    // move happens once the menu has closed (onMenuExited), because closing the
-    // menu hands focus back to the select and would otherwise undo it.
+    // move happens once the menu has closed (handleMenuExited), because closing
+    // the menu hands focus back to the select and would otherwise undo it.
     pendingFocusRef.current = section;
   };
 
   // Move focus to the chosen section's heading (the wide-screen anchor links get
   // this from the browser). preventScroll: the scroll above already positions it.
   const handleMenuExited = () => {
-    const section = pendingFocusRef.current;
+    const target =
+      pendingFocusRef.current?.querySelector<HTMLElement>('h2') ?? pendingFocusRef.current;
     pendingFocusRef.current = null;
-    if (!section) return;
-    const target = section.querySelector<HTMLElement>('h2') ?? section;
-    if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
-    target.focus({ preventScroll: true });
+    target?.setAttribute('tabindex', '-1');
+    target?.focus({ preventScroll: true });
   };
 
   if (isNarrow) {

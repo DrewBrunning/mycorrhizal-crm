@@ -1861,6 +1861,22 @@ test('choosing a section in the narrow jump nav moves focus to that section head
   });
 });
 
+// #2682: a section with no heading still takes focus itself.
+test('a section without a heading takes focus itself', async () => {
+  stubNarrowViewport(false);
+  Element.prototype.scrollIntoView = vi.fn();
+  mockFetch();
+  await renderLoaded();
+  document.querySelectorAll('#people h2').forEach((h) => {
+    h.remove();
+  });
+
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Jump to section' }));
+  fireEvent.click(await screen.findByRole('option', { name: 'People' }));
+
+  await waitFor(() => expect(document.activeElement?.id).toBe('people'));
+});
+
 test('the jump nav scrolls instantly when the user prefers reduced motion', async () => {
   stubNarrowViewport(true);
   const scrollIntoView = vi.fn();
