@@ -26,7 +26,7 @@ gradlePlugin {
 dependencies {
     implementation("com.android.tools.build:gradle:9.3.1")
     implementation("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.10")
-    implementation("org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:2.3.10")
+    implementation("org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:2.4.21")
     implementation("com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:2.3.11")
     implementation("com.google.dagger:hilt-android-gradle-plugin:2.60.1")
     // Issue #358: detekt applied to every module from the convention plugins
