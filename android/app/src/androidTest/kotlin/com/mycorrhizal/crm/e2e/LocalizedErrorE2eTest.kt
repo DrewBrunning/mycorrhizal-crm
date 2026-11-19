@@ -23,7 +23,7 @@ import org.junit.runner.RunWith
  * The Robolectric screen/view-model tests (#2097, #2106) use fake errors; nothing else follows
  * the real server's `reason_code` through the app to the on-screen string. A wrong-password
  * login is a UI-reachable trigger: the server answers
- * `{"error":{"code":"INVALID_CREDENTIALS","message":"Invalid email or password",
+ * `{"error":{"code":"INVALID_CREDENTIALS","message":"Invalid username, email or password",
  * "reason_code":"auth_invalid_credentials"}}`. The English server message equals the English
  * string, so the app runs in German: seeing the German text proves the reason-code lookup ran,
  * and the absence of the English server message proves it did not fall back to it.
@@ -137,9 +137,9 @@ class LocalizedErrorE2eTest : E2eBaseTest() {
 
         // core/ui values-de/strings.xml: login_sign_in, error_reason_auth_invalid_credentials.
         const val GERMAN_SIGN_IN = "Anmelden"
-        const val GERMAN_INVALID_CREDENTIALS = "Ungültige E-Mail-Adresse oder ungültiges Passwort"
+        const val GERMAN_INVALID_CREDENTIALS = "Ungültiger Benutzername, ungültige E-Mail-Adresse oder ungültiges Passwort"
 
         // The server's English message, identical to values/strings.xml.
-        const val ENGLISH_INVALID_CREDENTIALS = "Invalid email or password"
+        const val ENGLISH_INVALID_CREDENTIALS = "Invalid username, email or password"
     }
 }

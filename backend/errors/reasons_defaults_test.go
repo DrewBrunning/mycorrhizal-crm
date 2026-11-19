@@ -20,7 +20,7 @@ func TestConstructorDefaultReasons(t *testing.T) {
 		{"database", ErrDatabase("save"), ReasonCommonDatabaseError, nil, "Something went wrong while saving or loading your data"},
 		{"database empty op", ErrDatabase(""), ReasonCommonDatabaseError, nil, "Something went wrong while saving or loading your data"},
 		{"database busy", ErrDatabaseBusy(), ReasonCommonDatabaseBusy, nil, "The server is busy. Try again in a moment"},
-		{"invalid credentials", ErrInvalidCredentials(), ReasonAuthInvalidCredentials, nil, "Invalid email or password"},
+		{"invalid credentials", ErrInvalidCredentials(), ReasonAuthInvalidCredentials, nil, "Invalid username, email or password"},
 		{"token expired", ErrTokenExpired(), ReasonAuthTokenExpired, nil, "Your session has expired. Sign in again"},
 		{"token invalid", ErrTokenInvalid(), ReasonAuthTokenInvalid, nil, "Your session is no longer valid. Sign in again"},
 		{"client not supported", ErrClientNotSupported("1.2.3"), ReasonCommonClientNotSupported, map[string]any{"required_version": "1.2.3"}, "This app version is no longer supported. Update to 1.2.3 or later"},
