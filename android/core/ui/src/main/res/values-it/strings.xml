@@ -1536,6 +1536,8 @@
     <string name="shares_status_pending">In attesa</string>
     <string name="shares_status_accepted">Accettato</string>
     <string name="shares_status_declined">Rifiutato</string>
+    <!-- Issue #2642: decline, leave and block are one `declined` to the sender (ADR 0042). -->
+    <string name="shares_status_declined_by_recipient">Rifiutata o terminata dal destinatario</string>
     <string name="shares_accept">Accetta</string>
     <string name="shares_decline">Rifiuta</string>
     <string name="shares_decline_confirm_title">Rifiutare questa condivisione?</string>
@@ -1600,11 +1602,11 @@
     <string name="shares_grant_remove">Rimuovi</string>
     <string name="shares_grant_reconfirm">Rivedi e riconferma</string>
     <string name="shares_grant_edit">Modifica</string>
-    <string name="shares_grant_decline_message">Rifiutare la condivisione di %1$s da %2$s? La persona vedrà che è stata rifiutata.</string>
+    <string name="shares_grant_decline_message">Rifiutare la condivisione di %1$s da %2$s? La persona la vedrà come rifiutata o terminata.</string>
     <string name="shares_grant_block_title">Bloccare %1$s?</string>
-    <string name="shares_grant_block_message">Questo rifiuta la condivisione e termina tutte quelle di %1$s. Le sue condivisioni future non compariranno qui e non viene avvisato del blocco. Potrai sbloccarlo in seguito.</string>
+    <string name="shares_grant_block_message">Questo rifiuta la condivisione e termina tutte quelle di %1$s con te. Non viene avvisato del blocco; vede le sue condivisioni come rifiutate o terminate. Le sue condivisioni future non compariranno qui. Potrai sbloccarlo in seguito.</string>
     <string name="shares_grant_leave_title">Non ricevere più questa condivisione?</string>
-    <string name="shares_grant_leave_message">%1$s non sarà più visibile per te. Per rivederlo, %2$s dovrà condividerlo di nuovo con te.</string>
+    <string name="shares_grant_leave_message">%1$s non sarà più visibile per te. La persona vedrà la condivisione come rifiutata o terminata. Per rivederlo, %2$s dovrà condividerlo di nuovo con te.</string>
     <string name="shares_grant_revoke_title">Revocare questa condivisione?</string>
     <string name="shares_grant_revoke_message">%1$s perderà l\'accesso al prossimo caricamento. Ciò che ha già visto non può essere ritirato.</string>
     <string name="shares_grant_remove_title">Rimuovere questa condivisione?</string>
