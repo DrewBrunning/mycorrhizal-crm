@@ -108,14 +108,18 @@ export default function OccasionObligationList({
               )}
             </Box>
             <Box sx={{ display: 'flex', gap: 0.5 }}>
-              <IconButton size="small" onClick={() => onEdit(o)} aria-label={t('common.edit')}>
+              <IconButton
+                size="small"
+                onClick={() => onEdit(o)}
+                aria-label={t('common.editNamed', { name: o.label })}
+              >
                 <EditIcon fontSize="small" />
               </IconButton>
               <IconButton
                 size="small"
                 color="error"
                 onClick={() => handleDeleteClick(o.id)}
-                aria-label={t('common.delete')}
+                aria-label={t('common.deleteNamed', { name: o.label })}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>

@@ -81,7 +81,7 @@ test('accept calls the accept endpoint', async () => {
   stubFetch([edge], acceptCalls);
   render(<RelationshipSuggestionsInbox loadKey={0} />);
 
-  const acceptButton = await screen.findByRole('button', { name: 'Accept' });
+  const acceptButton = await screen.findByRole('button', { name: /^Accept\b/ });
   acceptButton.click();
 
   await waitFor(() => {
@@ -98,7 +98,7 @@ test('reject calls the delete endpoint (reject is DELETE)', async () => {
   stubFetch([edge], rejectCalls);
   render(<RelationshipSuggestionsInbox loadKey={0} />);
 
-  const rejectButton = await screen.findByRole('button', { name: 'Reject' });
+  const rejectButton = await screen.findByRole('button', { name: /^Reject\b/ });
   rejectButton.click();
 
   await waitFor(() => {

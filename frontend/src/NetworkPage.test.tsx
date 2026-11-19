@@ -275,7 +275,7 @@ test('a 412 on activity delete opens the conflict dialog and keeps the edit open
   await waitFor(() => {
     expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   await screen.findByRole('button', { name: 'Load latest version' });
   expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
@@ -313,7 +313,7 @@ test('a non-412 failure on activity delete logs and leaves the dialog open', asy
   await waitFor(() => {
     expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   await waitFor(() => {
     expect(consoleError).toHaveBeenCalledWith('Failed to delete activity:', expect.any(Error));
@@ -362,7 +362,7 @@ test('deleting the activity confirms, calls deleteActivity, and closes the dialo
     expect(screen.getByDisplayValue('Coffee Chat')).toBeDefined();
   });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   await waitFor(() => {
     expect(deleteActivity).toHaveBeenCalledWith(7, 4);

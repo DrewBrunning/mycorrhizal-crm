@@ -92,7 +92,7 @@ test('case-different labels are separate groups', () => {
 
 test('editing a value in a group saves through onSave', async () => {
   const onSave = renderGroups([def('t', 'Hotel', 'Travel')], { t: 'Hilton' });
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   fireEvent.change(screen.getByDisplayValue('Hilton'), { target: { value: 'Ritz' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await vi.waitFor(() => expect(onSave).toHaveBeenCalledWith('t', 'Ritz'));

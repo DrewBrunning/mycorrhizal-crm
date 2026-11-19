@@ -53,7 +53,10 @@ test.describe('Gifts', () => {
       // An idea has no link or notes yet — those come from the full dialog.
       // This contact has no clothing sizes, so the gift row owns the only Edit
       // action in the section.
-      await gifts.getByLabel('Edit', { exact: true }).first().click();
+      await gifts
+        .getByLabel(/^Edit /)
+        .first()
+        .click();
       const dialog = page.getByRole('dialog');
       await expect(dialog.getByRole('heading', { name: 'Edit gift' })).toBeVisible();
 
@@ -248,9 +251,9 @@ test.describe('Gifts', () => {
 
       const gifts = page.locator('#gifts');
       await expect(gifts.getByText('The wool scarf')).toBeVisible({ timeout: 15000 });
-      await gifts.getByLabel('Mark as given').click();
+      await gifts.getByLabel(/^Mark .* as given$/).click();
 
-      await expect(gifts.getByLabel('Mark as given')).toHaveCount(0);
+      await expect(gifts.getByLabel(/^Mark .* as given$/)).toHaveCount(0);
 
       const list = await page.request.get(
         `${API_BASE_URL}/gifts?entity_id=${contact.uid}&limit=50`,

@@ -76,7 +76,7 @@ test('edits a size inline and reports it upward', async () => {
   const onEdit = vi.fn().mockResolvedValue(undefined);
   renderPanel({ sizes: [size()], onEdit });
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   const editInput = screen.getByDisplayValue('M');
   fireEvent.change(editInput, { target: { value: 'L' } });
   fireEvent.click(screen.getByLabelText('Save'));
@@ -88,6 +88,6 @@ test('deletes a size', () => {
   const onDelete = vi.fn().mockResolvedValue(undefined);
   renderPanel({ sizes: [size()], onDelete });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(onDelete).toHaveBeenCalledWith('size-1');
 });

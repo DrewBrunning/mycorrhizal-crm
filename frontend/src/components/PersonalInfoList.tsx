@@ -6,6 +6,7 @@ import { Box, Chip, IconButton, Paper, Stack, Tooltip, Typography } from '@mui/m
 import { useTranslation } from 'react-i18next';
 import type { CardPersonalInfo, PersonalInfoMeta } from '../api/contacts';
 import { PERSONAL_INFO_KIND_OPTIONS } from '../contactFields';
+import { itemLabel } from '../utils/itemLabel';
 
 interface PersonalInfoListProps {
   entries: CardPersonalInfo[];
@@ -101,14 +102,18 @@ export default function PersonalInfoList({
             className="personal-info-actions"
             sx={{ display: 'flex', gap: 0.5, opacity: 0, transition: 'opacity 0.2s' }}
           >
-            <IconButton size="small" onClick={() => onEdit(entry)} aria-label={t('common.edit')}>
+            <IconButton
+              size="small"
+              onClick={() => onEdit(entry)}
+              aria-label={t('common.editNamed', { name: itemLabel(entry.value) })}
+            >
               <EditIcon fontSize="small" />
             </IconButton>
             <IconButton
               size="small"
               color="error"
               onClick={() => handleDelete(entry)}
-              aria-label={t('common.delete')}
+              aria-label={t('common.deleteNamed', { name: itemLabel(entry.value) })}
             >
               <DeleteIcon fontSize="small" />
             </IconButton>

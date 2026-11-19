@@ -96,7 +96,7 @@ test('calls onEdit and onManageAttendees', () => {
   const onEdit = vi.fn();
   const onManageAttendees = vi.fn();
   renderList({ onEdit, onManageAttendees });
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   expect(onEdit).toHaveBeenCalledWith(baseEvent);
   fireEvent.click(screen.getByRole('button', { name: 'Attendees' }));
   expect(onManageAttendees).toHaveBeenCalledWith(baseEvent);
@@ -106,7 +106,7 @@ test('confirms before deleting', () => {
   const onDelete = vi.fn();
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   renderList({ onDelete });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   expect(confirmSpy).toHaveBeenCalledWith('Delete this event?');
   expect(onDelete).toHaveBeenCalledWith('ev-1');
   confirmSpy.mockRestore();
@@ -116,7 +116,7 @@ test('does not delete when the confirm is dismissed', () => {
   const onDelete = vi.fn();
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
   renderList({ onDelete });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   expect(onDelete).not.toHaveBeenCalled();
   confirmSpy.mockRestore();
 });
@@ -179,4 +179,12 @@ test('the list uses the formatters bound to the user preferences', () => {
     setTimeFormat('auto');
     setDateFormatPreference('eu');
   }
+});
+
+// #2673: every row's Edit/Delete icon button names its item.
+test('edit and delete buttons name the event they act on', () => {
+  renderList({ events: [baseEvent, { ...baseEvent, id: 'ev-2', title: 'Book club' }] });
+  expect(screen.getByRole('button', { name: 'Edit Summer BBQ' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Delete Book club' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
 });

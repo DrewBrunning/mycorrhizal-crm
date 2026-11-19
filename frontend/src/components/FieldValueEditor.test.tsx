@@ -103,7 +103,7 @@ test('Multi removes a row through the delete button', () => {
   const multiString = def({ type: 'string', constraints: { multi: true } });
   renderEditor(multiString, ['a', 'b'], onChange);
 
-  const deleteButtons = screen.getAllByRole('button', { name: 'Delete' });
+  const deleteButtons = screen.getAllByRole('button', { name: /^Delete\b/ });
   expect(deleteButtons).toHaveLength(2);
   fireEvent.click(deleteButtons[0]);
 

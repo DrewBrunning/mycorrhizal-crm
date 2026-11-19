@@ -137,7 +137,9 @@ export default function ClothingSizesPanel({
                     setEditKey(size.key || '');
                     setEditValue(size.value);
                   }}
-                  aria-label={t('common.edit')}
+                  aria-label={t('common.editNamed', {
+                    name: size.key ? `${typeLabel(size.key)}: ${size.value}` : size.value,
+                  })}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -145,7 +147,9 @@ export default function ClothingSizesPanel({
                   size="small"
                   color="error"
                   onClick={() => void onDelete(size.id)}
-                  aria-label={t('common.delete')}
+                  aria-label={t('common.deleteNamed', {
+                    name: size.key ? `${typeLabel(size.key)}: ${size.value}` : size.value,
+                  })}
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>

@@ -70,10 +70,10 @@ test('renders a suggested edge with the warning chip and working accept/reject a
   expect(screen.getByText('Bob Brown')).toBeInTheDocument();
   expect(screen.getByText('Suggested')).toBeInTheDocument();
 
-  fireEvent.click(screen.getByLabelText('Accept'));
+  fireEvent.click(screen.getByLabelText(/^Accept\b/));
   expect(onAccept).toHaveBeenCalledWith('edge-1');
 
-  fireEvent.click(screen.getByLabelText('Reject'));
+  fireEvent.click(screen.getByLabelText(/^Reject\b/));
   expect(onReject).toHaveBeenCalledWith('edge-1');
 
   vi.unstubAllGlobals();
@@ -107,7 +107,7 @@ test('confirmed edges render without a suggested chip and without accept/reject 
 
   expect(screen.getByText('Bob Brown')).toBeInTheDocument();
   expect(screen.queryByText('Suggested')).not.toBeInTheDocument();
-  expect(screen.queryByLabelText('Accept')).not.toBeInTheDocument();
+  expect(screen.queryByLabelText(/^Accept\b/)).not.toBeInTheDocument();
 });
 
 // #196 (audit gap, N-1's sibling): the edit/delete actions were revealed only
