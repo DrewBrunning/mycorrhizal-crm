@@ -525,12 +525,13 @@
         "allResolved": "Tous les conflits résolus — vérifiez les décisions ci-dessous.",
         "fixRow": "Corriger cette ligne",
         "editFix": "Modifier la correction",
-        "fixSaved": "Correction enregistrée : elle sera revérifiée à l’import",
         "fixFirstName": "Prénom",
         "fixLastName": "Nom",
         "fixEmail": "E-mail",
         "fixPhone": "Téléphone",
-        "saveFix": "Enregistrer la correction"
+        "saveFix": "Enregistrer la correction",
+        "willRecheck": "Sera revérifié à l’import",
+        "cannotFixHere": "Cette erreur ne peut pas être corrigée ici : ignorez la ligne ou modifiez le contact après l’import"
       },
       "result": {
         "title": "Importation terminée",
@@ -1216,7 +1217,10 @@
     "deleteConfirm_many": "Déplacer {{count}} contacts dans la Corbeille ? Vous pouvez les restaurer jusqu’à leur suppression définitive.",
     "selectContact": "Sélectionner {{name}}",
     "resultFailure": "{{succeeded}} sur {{total}} réussis. {{failed}} échecs.",
-    "resultError": "L'opération groupée a échoué. Veuillez réessayer."
+    "resultError": "L'opération groupée a échoué. Veuillez réessayer.",
+    "mergeDone_one": "{{count}} contact fusionné avec {{name}}",
+    "mergeDone_other": "{{count}} contacts fusionnés avec {{name}}",
+    "mergeDone_many": "{{count}} contacts fusionnés avec {{name}}"
   },
   "common": {
     "save": "Enregistrer",
