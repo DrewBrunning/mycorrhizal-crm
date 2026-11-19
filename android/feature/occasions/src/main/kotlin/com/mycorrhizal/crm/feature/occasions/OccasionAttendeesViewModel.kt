@@ -41,7 +41,9 @@ data class OccasionAttendeesUiState(
     val contactResults: List<ContactSummary> = emptyList(),
     val contactSearchLoading: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: ApiError? = null
+    val error: ApiError? = null,
+    /** Issue #2629: a failed load of the event/roster; a screen state with Retry, not a toast. */
+    val loadError: ApiError? = null
 )
 
 /**
@@ -81,9 +83,12 @@ class OccasionAttendeesViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
+            _uiState.update {
+                it.copy(isLoading = true, error = null, errorRes = null, loadError = null)
+            }
+            // Issue #2629: a failed load is a screen state with Retry, not a toast.
             val error = fetchDetail()
-            _uiState.update { it.copy(isLoading = false, error = error) }
+            _uiState.update { it.copy(isLoading = false, loadError = error) }
         }
     }
 

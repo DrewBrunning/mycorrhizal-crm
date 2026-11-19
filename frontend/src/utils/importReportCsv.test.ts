@@ -64,3 +64,17 @@ test('adds a Concept column only when an issue carries a concept', () => {
       '2,Bob,,,skipped,duplicate,\r\n',
   );
 });
+
+// #2681: the Status column reads like the on-screen report, not the raw token.
+test('writes the caller-supplied status wording instead of the raw token', () => {
+  const csv = importIssuesToCsv(
+    [
+      { row: 2, name: 'Ada', email: 'ada@example.com', phone: '', status: 'skipped', reason: 'x' },
+      { row: 4, name: 'Bob', email: '', phone: '', status: 'failed', reason: 'y' },
+    ],
+    (issue) => (issue.status === 'skipped' ? 'Übersprungen' : 'Fehlgeschlagen'),
+  );
+  expect(csv).toContain('2,Ada,ada@example.com,,Übersprungen,x');
+  expect(csv).toContain('4,Bob,,,Fehlgeschlagen,y');
+  expect(csv).not.toContain(',skipped,');
+});

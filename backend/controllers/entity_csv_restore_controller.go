@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -81,6 +82,11 @@ func RestoreEntitiesCSV(c *gin.Context) {
 
 	report, err := services.RestoreEntityCSV(c.Request.Context(), db, userID, f)
 	if err != nil {
+		if errors.Is(err, services.ErrImportNotText) {
+			log.Info().Err(err).Msg("Entity CSV restore rejected: not a text file")
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.").WithReason(apperrors.ReasonImportCSVNotText, nil))
+			return
+		}
 		if services.IsEntityCSVRejection(err) {
 			log.Info().Err(err).Msg("Entity CSV restore rejected")
 			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()).WithReason(apperrors.ReasonImportFileUnreadable, map[string]any{"reason": err.Error()}))

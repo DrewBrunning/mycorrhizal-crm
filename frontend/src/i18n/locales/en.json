@@ -3093,10 +3093,12 @@
       "kind": "Kind",
       "kindHint": "card, gift, invite, or your own label",
       "label": "Label",
-      "labelHint": "e.g. “Christmas card”, “Birthday gift”",
+      "labelHint": "e.g. “Christmas card”, “Anniversary gift”",
       "anchorMonth": "Month",
       "anchorDay": "Day",
       "anchorDateUnset": "Not set",
+      "dayClamped": "{{month}} has at most {{max}} days, so the day was cleared. Choose a day again.",
+      "noDate": "No date — no reminder",
       "leadTimeDays": "Lead time (days)",
       "leadTimeDaysHint": "How many days before the date to be reminded, e.g. 14 for “gift two weeks before”",
       "leadTimeDisplay_one": "{{count}} day lead time",
@@ -3114,7 +3116,6 @@
       "empty": "No standing occasions yet. Add one for a recurring card, gift, or invite.",
       "validation": {
         "labelRequired": "Enter a label for this occasion.",
-        "anchorBothOrNeither": "Set both a month and a day, or leave both unset.",
         "invalidLeadTime": "Enter a valid number of lead-time days.",
         "saveFailed": "Failed to save occasion."
       },
@@ -3124,7 +3125,16 @@
       "title": "Card List",
       "description": "Download a CSV of contacts with an active card occasion: one row per active obligation, with the contact name, their normal-sensitivity address, and the occasion. Private and secret addresses are left out.",
       "download": "Download CSV",
-      "downloadFailed": "Failed to download the card list."
+      "downloadFailed": "Failed to download the card list.",
+      "summaryChecking": "Checking who is on the list…",
+      "summary_one": "{{count}} recipient",
+      "summary_other": "{{count}} recipients",
+      "summarySkipped_one": "{{count}} recipient; {{skipped}} skipped ({{reasons}})",
+      "summarySkipped_other": "{{count}} recipients; {{skipped}} skipped ({{reasons}})",
+      "skippedNoAddress": "no postal address: {{n}}",
+      "skippedPrivateAddress": "private address only: {{n}}",
+      "noRecipients": "No recipients have a postal address.",
+      "noObligations": "No active card occasions yet. Add one from a contact's page."
     },
     "giftShoppingList": {
       "title": "Gift Shopping List",
@@ -4194,6 +4204,7 @@
       "household_suggestion_member_stale": "The contact is no longer a member of this household",
       "household_suggestion_stale": "The suggested members no longer share an address — re-run the suggestion scan",
       "household_type_invalid": "type must be one of family_unit, roommates, other",
+      "import_csv_not_text": "This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.",
       "import_disk_space_low": "not enough disk space to import {{total}} contacts: {{reason}}",
       "import_field_mapping_target_invalid": "An imported value can only go into a custom field that applies to contacts",
       "import_field_mappings_invalid": "{{reason}}",

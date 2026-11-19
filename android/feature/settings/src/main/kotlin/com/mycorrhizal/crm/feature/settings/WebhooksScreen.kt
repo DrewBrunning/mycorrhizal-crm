@@ -54,6 +54,7 @@ import com.mycorrhizal.crm.model.network.WebhookInput
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -160,6 +161,10 @@ fun WebhooksScreen(onBack: () -> Unit, viewModel: WebhooksViewModel = hiltViewMo
                     horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
                 ) {
                     CircularProgressIndicator()
+                }
+            } else if (state.webhooks.isEmpty() && state.loadError != null) {
+                state.loadError?.let { error ->
+                    ErrorState(error = error, onRetry = viewModel::load)
                 }
             } else if (state.webhooks.isEmpty()) {
                 EmptyState(

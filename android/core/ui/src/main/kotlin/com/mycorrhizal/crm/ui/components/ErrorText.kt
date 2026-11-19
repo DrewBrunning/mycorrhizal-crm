@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.ui.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -1880,6 +1881,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_household_type_invalid
         )
 
+        ErrorReasonCode.IMPORT_CSV_NOT_TEXT -> stringResource(
+            R.string.error_reason_import_csv_not_text
+        )
+
         ErrorReasonCode.IMPORT_DISK_SPACE_LOW -> {
             val p1 = reason.str("total")
             val p2 = reason.str("reason")
@@ -2050,4 +2055,18 @@ private fun ErrorReason.int(name: String): Int? = when (val value = params[name]
     is Number -> value.toInt()
     is String -> value.toIntOrNull()
     else -> null
+}
+
+/**
+ * Issue #2629: the fatal-error state of a screen that has nothing to show (a failed load with no
+ * rows): the localized message and a Retry that re-runs the load.
+ */
+@Composable
+fun ErrorState(error: ApiError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    EmptyState(
+        title = error.localizedMessage(),
+        modifier = modifier,
+        actionLabel = stringResource(R.string.action_retry),
+        onAction = onRetry
+    )
 }

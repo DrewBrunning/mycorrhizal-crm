@@ -38,6 +38,34 @@ func TestImportReasonCodes_CSVUpload(t *testing.T) {
 		router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", "contacts.txt", csvFixture([3]string{"A", "B", "a@example.com"})))
 		requireReason(t, w, http.StatusBadRequest, "csv_file_not_csv")
 	})
+	// Issue #2688: content sniffing. A binary renamed .csv is a 400 with its
+	// own reason; legitimate encodings still upload.
+	t.Run("binary renamed csv", func(t *testing.T) {
+		fixtures := map[string][]byte{
+			"png":  append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 64)...),
+			"zip":  []byte("PK\x03\x04\x14\x00\x00\x00\x08\x00data"),
+			"xlsx": []byte("PK\x03\x04\x14\x00\x06\x00\x08\x00[Content_Types].xml"),
+			"pdf":  []byte("%PDF-1.4\n1 0 obj\n"),
+			"nul":  []byte("First Name,Last Name\nAda,Love\x00lace\n"),
+		}
+		for name, body := range fixtures {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", name+".csv", body))
+			requireReason(t, w, http.StatusBadRequest, "import_csv_not_text")
+			reason, params := wireReason(t, w)
+			assert.Equal(t, "import_csv_not_text", reason, name)
+			assert.Empty(t, params, name)
+		}
+	})
+	t.Run("legitimate encodings still upload", func(t *testing.T) {
+		win1252 := []byte("First Name,Last Name,Email\nJos\xe9,M\xfcller,j@example.com\n")
+		bom := append([]byte{0xEF, 0xBB, 0xBF}, csvFixture([3]string{"A", "B", "a@example.com"})...)
+		for name, body := range map[string][]byte{"win1252": win1252, "bom": bom} {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", name+".csv", body))
+			assert.Equal(t, http.StatusOK, w.Code, "%s: %s", name, w.Body.String())
+		}
+	})
 	t.Run("parser error carries the wrapper reason", func(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", "empty.csv", []byte("First Name,Last Name,Email\n")))

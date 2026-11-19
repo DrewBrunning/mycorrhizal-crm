@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"mycorrhizal/config"
 	apperrors "mycorrhizal/errors"
@@ -201,12 +202,26 @@ type UserDirectoryEntry struct {
 	Username string `json:"username"`
 }
 
+// Search-mode bounds for ListUserDirectory (issue #2787).
+const (
+	UserDirectorySearchMinChars = 3
+	UserDirectorySearchLimit    = 10
+)
+
+// escapeLikePrefix escapes LIKE wildcards so user input matches literally.
+func escapeLikePrefix(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
 // ListUserDirectory returns every OTHER user on the instance (id + username
 // only) for any authenticated user — unlike ListUsers, which is admin-only
 // and returns the full user record. This exists to populate the recipient
 // picker for P1 contact sharing: sharing a contact needs to name a recipient, and there was
 // previously no way for a non-admin user to discover who else is on the
 // instance.
+//
+// With SHARE_DIRECTORY_MODE=search it instead requires `q` (3+ characters) and
+// returns only username-prefix matches, capped; see the constants above.
 func ListUserDirectory(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)
@@ -214,8 +229,21 @@ func ListUserDirectory(c *gin.Context) {
 		return
 	}
 
+	query := db.Select("id, username").Where("id != ?", userID).Order("username ASC")
+	if currentConfig(c).ShareDirectoryMode == config.ShareDirectoryModeSearch {
+		// SHARE_DIRECTORY_MODE=search (issue #2787): no enumeration. Only a
+		// case-insensitive username PREFIX of at least 3 characters matches
+		// (never email), at most UserDirectorySearchLimit rows.
+		q := strings.TrimSpace(c.Query("q"))
+		if utf8.RuneCountInString(q) < UserDirectorySearchMinChars {
+			c.JSON(http.StatusOK, gin.H{"users": []UserDirectoryEntry{}})
+			return
+		}
+		query = query.Where(`LOWER(username) LIKE ? ESCAPE '\'`, escapeLikePrefix(strings.ToLower(q))+"%").Limit(UserDirectorySearchLimit)
+	}
+
 	var users []models.User
-	if err := db.Select("id, username").Where("id != ?", userID).Order("username ASC").Find(&users).Error; err != nil {
+	if err := query.Find(&users).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve user directory").WithError(err))
 		return
 	}

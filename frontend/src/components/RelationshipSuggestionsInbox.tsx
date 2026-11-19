@@ -139,12 +139,14 @@ export default function RelationshipSuggestionsInbox({
         </Alert>
       )}
       {loading && (
-        <Alert severity="info" sx={{ mb: 1 }}>
+        <Alert severity="info" role="status" sx={{ mb: 1 }}>
           {t('settings.data.propose.loadingSuggestions')}
         </Alert>
       )}
       {edges.length === 0 && !loading && (
-        <Alert severity="info">{t('settings.data.propose.noRelationshipSuggestions')}</Alert>
+        <Alert severity="info" role="status">
+          {t('settings.data.propose.noRelationshipSuggestions')}
+        </Alert>
       )}
       <Stack spacing={1}>
         {edges.map((edge) => {

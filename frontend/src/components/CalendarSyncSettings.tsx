@@ -472,7 +472,7 @@ export default function CalendarSyncSettings() {
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <Alert severity="info" sx={{ py: 0.5 }}>
+            <Alert severity="info" role="status" sx={{ py: 0.5 }}>
               {t('settings.calendarSync.dialogInfo')}
             </Alert>
             <TextField

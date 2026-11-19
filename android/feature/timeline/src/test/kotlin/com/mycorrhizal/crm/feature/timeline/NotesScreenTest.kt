@@ -43,12 +43,14 @@ class NotesScreenTest {
         onSearchChange: (String) -> Unit = {},
         onFromDateChange: (String) -> Unit = {},
         onToDateChange: (String) -> Unit = {},
-        onLoadMore: () -> Unit = {}
+        onLoadMore: () -> Unit = {},
+        onRefresh: () -> Unit = {}
     ) {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 NotesScreenContent(
                     uiState = state,
+                    onRefresh = onRefresh,
                     onEditNote = onEditNote,
                     onSearchChange = onSearchChange,
                     onFromDateChange = onFromDateChange,
@@ -323,5 +325,36 @@ class NotesScreenTest {
         )
 
         composeTestRule.onNodeWithText("Loves climbing").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty list with a load error offers Retry that refreshes`() {
+        var refreshes = 0
+        setContent(
+            NotesUiState(
+                contactId = 1,
+                notes = emptyList(),
+                error = ApiError.Client(400, "boom")
+            ),
+            onRefresh = { refreshes += 1 }
+        )
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+
+        org.junit.Assert.assertEquals(1, refreshes)
+    }
+
+    @Test
+    fun `the missing contact id state has no Retry because retrying cannot help`() {
+        setContent(
+            NotesUiState(
+                contactId = 0,
+                notes = emptyList(),
+                errorRes = R.string.note_error_missing_id
+            )
+        )
+
+        composeTestRule.onNodeWithText("Missing contact id").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
     }
 }

@@ -3175,7 +3175,7 @@
     <string name="error_reason_meerkat_fetch_unreadable">Le serveur Meerkat a envoyé une réponse que l’importateur n’a pas pu lire. Vérifiez l’URL</string>
     <string name="error_reason_common_database_error">Une erreur s\'est produite lors de l\'enregistrement ou du chargement de vos données</string>
     <string name="error_reason_common_database_busy">Le serveur est occupé. Réessayez dans un instant</string>
-    <string name="error_reason_auth_invalid_credentials">E-mail ou mot de passe incorrect</string>
+    <string name="error_reason_auth_invalid_credentials">Nom d’utilisateur, e-mail ou mot de passe incorrect</string>
     <string name="error_reason_auth_token_expired">Votre session a expiré. Reconnectez-vous</string>
     <string name="error_reason_auth_token_invalid">Votre session n\'est plus valide. Reconnectez-vous</string>
     <string name="error_reason_common_client_not_supported">Cette version de l\'application n\'est plus prise en charge. Passez à la version %1$s ou ultérieure</string>
@@ -3511,6 +3511,7 @@
     <string name="error_reason_household_suggestion_member_stale">Le contact n’est plus membre de ce foyer</string>
     <string name="error_reason_household_suggestion_stale">Les membres suggérés ne partagent plus d’adresse — relancez l’analyse des suggestions</string>
     <string name="error_reason_household_type_invalid">type doit être family_unit, roommates ou other</string>
+    <string name="error_reason_import_csv_not_text">Ce fichier n\'est pas un fichier CSV en texte brut. Exportez-le à nouveau au format CSV (UTF-8) et réessayez.</string>
     <string name="error_reason_import_disk_space_low">espace disque insuffisant pour importer %1$s contacts : %2$s</string>
     <string name="error_reason_import_field_mapping_target_invalid">Une valeur importée ne peut aller que dans un champ personnalisé qui s\'applique aux contacts</string>
     <string name="error_reason_import_field_mappings_invalid">%1$s</string>

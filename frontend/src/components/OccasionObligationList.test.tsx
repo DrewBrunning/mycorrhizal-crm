@@ -36,6 +36,17 @@ test('renders the label, kind, and anchor date', () => {
   expect(screen.getByText('December 25')).toBeInTheDocument();
 });
 
+test('says a legacy dateless occasion has no date and no reminder (#2670)', () => {
+  render(
+    <OccasionObligationList
+      obligations={[{ ...baseObligation, anchor_month: undefined, anchor_day: undefined }]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('No date \u2014 no reminder')).toBeInTheDocument();
+});
+
 test('shows an Inactive chip for a paused obligation', () => {
   render(
     <OccasionObligationList
@@ -93,7 +104,7 @@ test('separates the anchor date from the lead time', () => {
   expect(leadTime.textContent).toMatch(/^·\s+14 days lead time$/);
 });
 
-test('shows the lead time without a separator when there is no anchor date', () => {
+test('separates the lead time from the "No date" label of a dateless row', () => {
   render(
     <OccasionObligationList
       obligations={[
@@ -103,7 +114,9 @@ test('shows the lead time without a separator when there is no anchor date', () 
       onDelete={vi.fn()}
     />,
   );
-  expect(screen.getByText('14 days lead time').textContent).not.toContain('·');
+  // #2670: the "No date" label now precedes the lead time, so the dot belongs.
+  expect(screen.getByText('No date \u2014 no reminder')).toBeInTheDocument();
+  expect(screen.getByText('14 days lead time').textContent).toContain('·');
 });
 
 // #2673: every row's Edit/Delete icon button names its item.

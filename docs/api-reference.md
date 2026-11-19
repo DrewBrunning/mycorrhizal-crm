@@ -138,7 +138,7 @@ These routes, and everything else under `/webauthn/*`, are absent from an embedd
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/contacts/:id/notes` | List notes for a contact |
+| `GET` | `/contacts/:id/notes` | List notes for a contact (`?sort=date` orders by note date) |
 | `POST` | `/contacts/:id/notes` | Create a note for a contact |
 | `GET` | `/notes` | List unassigned notes |
 | `POST` | `/notes` | Create an unassigned note |

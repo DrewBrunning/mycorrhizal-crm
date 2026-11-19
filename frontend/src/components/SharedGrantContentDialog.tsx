@@ -90,7 +90,11 @@ export default function SharedGrantContentDialog({
     if (state.status === 'loading')
       return <CircularProgress size={24} aria-label={t('common.loading')} />;
     if (state.status === 'unavailable') {
-      return <Alert severity="info">{t('standingShares.content.unavailable')}</Alert>;
+      return (
+        <Alert severity="info" role="status">
+          {t('standingShares.content.unavailable')}
+        </Alert>
+      );
     }
     if (state.status === 'error') {
       return (

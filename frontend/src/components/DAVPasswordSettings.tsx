@@ -84,7 +84,7 @@ export default function DAVPasswordSettings() {
               </Alert>
             )}
             {hasSecondFactor && (
-              <Alert severity="info" sx={{ mb: 1.5 }}>
+              <Alert severity="info" role="status" sx={{ mb: 1.5 }}>
                 {t('davPassword.twoFactorNotice')}
               </Alert>
             )}

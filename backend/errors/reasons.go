@@ -505,6 +505,7 @@ const (
 	ReasonHouseholdSuggestionMemberStale        ReasonCode = "household_suggestion_member_stale"
 	ReasonHouseholdSuggestionStale              ReasonCode = "household_suggestion_stale"
 	ReasonHouseholdTypeInvalid                  ReasonCode = "household_type_invalid"
+	ReasonImportCSVNotText                      ReasonCode = "import_csv_not_text"
 	ReasonImportDiskSpaceLow                    ReasonCode = "import_disk_space_low"
 	ReasonImportFieldMappingTargetInvalid       ReasonCode = "import_field_mapping_target_invalid"
 	ReasonImportFieldMappingsInvalid            ReasonCode = "import_field_mappings_invalid"
@@ -619,7 +620,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	// Constructor defaults (issue #2099).
 	ReasonCommonDatabaseError:                           {Template: "Something went wrong while saving or loading your data"},
 	ReasonCommonDatabaseBusy:                            {Template: "The server is busy. Try again in a moment"},
-	ReasonAuthInvalidCredentials:                        {Template: "Invalid email or password"},
+	ReasonAuthInvalidCredentials:                        {Template: "Invalid username, email or password"},
 	ReasonAuthTokenExpired:                              {Template: "Your session has expired. Sign in again"},
 	ReasonAuthTokenInvalid:                              {Template: "Your session is no longer valid. Sign in again"},
 	ReasonCommonClientNotSupported:                      {Template: "This app version is no longer supported. Update to {required_version} or later", Params: []string{"required_version"}},
@@ -990,6 +991,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonHouseholdSuggestionMemberStale:        {Template: "The contact is no longer a member of this household", Params: nil},
 	ReasonHouseholdSuggestionStale:              {Template: "The suggested members no longer share an address — re-run the suggestion scan", Params: nil},
 	ReasonHouseholdTypeInvalid:                  {Template: "type must be one of family_unit, roommates, other", Params: nil},
+	ReasonImportCSVNotText:                      {Template: "This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.", Params: nil},
 	ReasonImportDiskSpaceLow:                    {Template: "not enough disk space to import {total} contacts: {reason}", Params: []string{"total", "reason"}},
 	ReasonImportFieldMappingTargetInvalid:       {Template: "An imported value can only go into a custom field that applies to contacts", Params: nil},
 	ReasonImportFieldMappingsInvalid:            {Template: "{reason}", Params: []string{"reason"}},

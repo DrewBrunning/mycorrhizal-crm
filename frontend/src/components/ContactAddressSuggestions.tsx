@@ -116,12 +116,14 @@ export default function ContactAddressSuggestions({ loadKey }: ContactAddressSug
         </Alert>
       )}
       {loading && (
-        <Alert severity="info" sx={{ mb: 1 }}>
+        <Alert severity="info" role="status" sx={{ mb: 1 }}>
           {t('settings.data.propose.loadingSuggestions')}
         </Alert>
       )}
       {suggestions.length === 0 && !loading && (
-        <Alert severity="info">{t('settings.data.propose.noAddressSuggestions')}</Alert>
+        <Alert severity="info" role="status">
+          {t('settings.data.propose.noAddressSuggestions')}
+        </Alert>
       )}
       <Stack spacing={1}>
         {suggestions.map((suggestion) => {
