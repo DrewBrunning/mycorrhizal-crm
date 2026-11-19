@@ -3173,7 +3173,7 @@
     <string name="error_reason_meerkat_fetch_unreadable">Il server Meerkat ha inviato una risposta che l’importatore non ha potuto leggere. Controlla l’URL</string>
     <string name="error_reason_common_database_error">Si è verificato un errore durante il salvataggio o il caricamento dei dati</string>
     <string name="error_reason_common_database_busy">Il server è occupato. Riprova tra un momento</string>
-    <string name="error_reason_auth_invalid_credentials">Email o password non validi</string>
+    <string name="error_reason_auth_invalid_credentials">Nome utente, email o password non validi</string>
     <string name="error_reason_auth_token_expired">La sessione è scaduta. Accedi di nuovo</string>
     <string name="error_reason_auth_token_invalid">La sessione non è più valida. Accedi di nuovo</string>
     <string name="error_reason_common_client_not_supported">Questa versione dell\'app non è più supportata. Aggiorna alla versione %1$s o successiva</string>

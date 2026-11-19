@@ -3079,7 +3079,7 @@
     <string name="error_reason_meerkat_fetch_unreadable">The Meerkat server sent a response the importer could not read. Check the URL</string>
     <string name="error_reason_common_database_error">Something went wrong while saving or loading your data</string>
     <string name="error_reason_common_database_busy">The server is busy. Try again in a moment</string>
-    <string name="error_reason_auth_invalid_credentials">Invalid email or password</string>
+    <string name="error_reason_auth_invalid_credentials">Invalid username, email or password</string>
     <string name="error_reason_auth_token_expired">Your session has expired. Sign in again</string>
     <string name="error_reason_auth_token_invalid">Your session is no longer valid. Sign in again</string>
     <string name="error_reason_common_client_not_supported">This app version is no longer supported. Update to %1$s or later</string>

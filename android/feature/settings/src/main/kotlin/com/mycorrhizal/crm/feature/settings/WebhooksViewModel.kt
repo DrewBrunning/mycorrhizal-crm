@@ -31,6 +31,8 @@ data class WebhooksUiState(
     val createdWebhook: WebhookCreateResponse? = null,
     /** A transient action error (test/delete/save/load), shown and then cleared. */
     val error: ApiError? = null,
+    /** Issue #2629: the last list load failed (cleared when a load starts); shown with Retry. */
+    val loadError: ApiError? = null,
     /** Server-reported delivery failure text (not a request error). */
     val deliveryError: String? = null,
     /** A transient action success message (test). */
@@ -55,6 +57,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                 it.copy(
                     isLoading = true,
                     error = null,
+                    loadError = null,
                     deliveryError = null,
                     message = null
                 )
@@ -64,7 +67,8 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                     _uiState.update { it.copy(isLoading = false, webhooks = list) }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isLoading = false, error = e.toApiError()) }
+                    val error = e.toApiError()
+                    _uiState.update { it.copy(isLoading = false, error = error, loadError = error) }
                 }
         }
     }

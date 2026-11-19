@@ -3062,7 +3062,7 @@
     <string name="error_reason_meerkat_fetch_unreadable">Der Meerkat-Server hat eine Antwort gesendet, die der Import nicht lesen konnte. Prüfen Sie die URL</string>
     <string name="error_reason_common_database_error">Beim Speichern oder Laden Ihrer Daten ist ein Fehler aufgetreten</string>
     <string name="error_reason_common_database_busy">Der Server ist ausgelastet. Versuchen Sie es gleich noch einmal</string>
-    <string name="error_reason_auth_invalid_credentials">Ungültige E-Mail-Adresse oder ungültiges Passwort</string>
+    <string name="error_reason_auth_invalid_credentials">Ungültiger Benutzername, ungültige E-Mail-Adresse oder ungültiges Passwort</string>
     <string name="error_reason_auth_token_expired">Ihre Sitzung ist abgelaufen. Melden Sie sich erneut an</string>
     <string name="error_reason_auth_token_invalid">Ihre Sitzung ist nicht mehr gültig. Melden Sie sich erneut an</string>
     <string name="error_reason_common_client_not_supported">Diese App-Version wird nicht mehr unterstützt. Aktualisieren Sie auf %1$s oder neuer</string>

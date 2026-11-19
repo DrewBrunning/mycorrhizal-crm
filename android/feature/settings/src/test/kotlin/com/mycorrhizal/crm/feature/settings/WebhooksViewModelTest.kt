@@ -221,4 +221,36 @@ class WebhooksViewModelTest {
             assertTrue(vm.uiState.value.error is ApiError.Server)
             assertTrue(vm.uiState.value.webhooks.isNotEmpty())
         }
+
+    @Test
+    fun `a failed load sets loadError and a successful reload clears it`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list() } returnsMany listOf(
+                Result.failure(ApiError.Network(java.io.IOException("offline"))),
+                Result.success(listOf(webhook(1)))
+            )
+            val vm = WebhooksViewModel(repository)
+            advanceUntilIdle()
+            assertTrue(vm.uiState.value.loadError is ApiError.Network)
+
+            vm.load()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.loadError)
+            assertEquals(1, vm.uiState.value.webhooks.size)
+        }
+
+    @Test
+    fun `a failed action is not a load error`() = runTest(mainDispatcherRule.testDispatcher) {
+        coEvery { repository.list() } returns Result.success(listOf(webhook(1)))
+        coEvery { repository.test(1) } returns Result.failure(ApiError.Server(500, "boom"))
+        val vm = WebhooksViewModel(repository)
+        advanceUntilIdle()
+
+        vm.test(webhook(1))
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.error is ApiError.Server)
+        assertNull(vm.uiState.value.loadError)
+    }
 }

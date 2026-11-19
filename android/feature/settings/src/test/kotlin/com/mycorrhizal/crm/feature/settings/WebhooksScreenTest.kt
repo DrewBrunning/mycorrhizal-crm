@@ -19,6 +19,7 @@ import com.mycorrhizal.crm.model.network.WebhookInput
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertEquals
@@ -321,5 +322,28 @@ class WebhooksScreenTest {
         composeTestRule.onNodeWithText("Active")
             .assertIsToggleable()
             .assertIsOn()
+    }
+
+    @Test
+    fun `a failed load shows the server message with Retry that reloads the webhooks`() {
+        val repository = mockk<WebhookRepository>()
+        coEvery { repository.list() } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(webhook(1, name = "Hook A")))
+        )
+        setScreen(WebhooksViewModel(repository))
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("No webhooks yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Hook A").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { repository.list() }
     }
 }

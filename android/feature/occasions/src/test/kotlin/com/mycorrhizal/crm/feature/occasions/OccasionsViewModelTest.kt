@@ -46,9 +46,30 @@ class OccasionsViewModelTest {
         val viewModel = OccasionsViewModel(repository)
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.error is ApiError.Unknown)
+        // A failed load is a screen-level state (Retry), not a toast (issue #2629).
+        assertTrue(viewModel.uiState.value.loadError is ApiError.Unknown)
+        assertNull(viewModel.uiState.value.error)
         assertEquals(0, viewModel.uiState.value.events.size)
     }
+
+    @Test
+    fun `load after a failed load clears the load error and shows the events`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list() } returnsMany listOf(
+                Result.failure(RuntimeException("boom")),
+                Result.success(listOf(event()))
+            )
+
+            val viewModel = OccasionsViewModel(repository)
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.loadError != null)
+
+            viewModel.load()
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.loadError)
+            assertEquals(1, viewModel.uiState.value.events.size)
+        }
 
     @Test
     fun `create sends the input and reloads`() = runTest(mainDispatcherRule.testDispatcher) {
