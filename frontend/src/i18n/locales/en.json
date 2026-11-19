@@ -4171,6 +4171,7 @@
       "household_suggestion_member_stale": "The contact is no longer a member of this household",
       "household_suggestion_stale": "The suggested members no longer share an address — re-run the suggestion scan",
       "household_type_invalid": "type must be one of family_unit, roommates, other",
+      "import_csv_not_text": "This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.",
       "import_disk_space_low": "not enough disk space to import {{total}} contacts: {{reason}}",
       "import_field_mapping_target_invalid": "An imported value can only go into a custom field that applies to contacts",
       "import_field_mappings_invalid": "{{reason}}",

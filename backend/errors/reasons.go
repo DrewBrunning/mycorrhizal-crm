@@ -505,6 +505,7 @@ const (
 	ReasonHouseholdSuggestionMemberStale        ReasonCode = "household_suggestion_member_stale"
 	ReasonHouseholdSuggestionStale              ReasonCode = "household_suggestion_stale"
 	ReasonHouseholdTypeInvalid                  ReasonCode = "household_type_invalid"
+	ReasonImportCSVNotText                      ReasonCode = "import_csv_not_text"
 	ReasonImportDiskSpaceLow                    ReasonCode = "import_disk_space_low"
 	ReasonImportFieldMappingTargetInvalid       ReasonCode = "import_field_mapping_target_invalid"
 	ReasonImportFieldMappingsInvalid            ReasonCode = "import_field_mappings_invalid"
@@ -990,6 +991,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonHouseholdSuggestionMemberStale:        {Template: "The contact is no longer a member of this household", Params: nil},
 	ReasonHouseholdSuggestionStale:              {Template: "The suggested members no longer share an address — re-run the suggestion scan", Params: nil},
 	ReasonHouseholdTypeInvalid:                  {Template: "type must be one of family_unit, roommates, other", Params: nil},
+	ReasonImportCSVNotText:                      {Template: "This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.", Params: nil},
 	ReasonImportDiskSpaceLow:                    {Template: "not enough disk space to import {total} contacts: {reason}", Params: []string{"total", "reason"}},
 	ReasonImportFieldMappingTargetInvalid:       {Template: "An imported value can only go into a custom field that applies to contacts", Params: nil},
 	ReasonImportFieldMappingsInvalid:            {Template: "{reason}", Params: []string{"reason"}},

@@ -4021,7 +4021,13 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: Missing file, wrong extension, oversized file, or malformed CSV.
+          description: >
+            Missing file, wrong extension, oversized file, or malformed CSV.
+            A file that is not text (a PNG, ZIP/XLSX, PDF, GIF, JPEG, gzip or
+            legacy Excel file, a UTF-16 export, or one with NUL or mostly
+            control bytes in its first 8 KiB) is rejected with reason code
+            `import_csv_not_text`. UTF-8, UTF-8 with a BOM, and
+            Windows-1252/Latin-1 text are still accepted.
   /contacts/import/vcf/upload:
     post:
       summary: Upload a VCF (vCard 3.0/4.0) file to start a contact import
@@ -4848,7 +4854,10 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-          description: No file, not a .csv, over the 20 MB cap, or unreadable / over the row limit.
+          description: >
+            No file, not a .csv, over the 20 MB cap, unreadable / over the row
+            limit, or not a text file (reason code `import_csv_not_text`, same
+            sniffing as the contact CSV upload).
         "429":
           content:
             application/json:
