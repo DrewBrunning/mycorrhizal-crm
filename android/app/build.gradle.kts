@@ -31,7 +31,7 @@ aboutLibraries {
 // files stay single-sourced at the repository root; this task only copies them
 // into the app's assets at build time.
 val thirdPartyAttributionAssets = layout.buildDirectory.dir("generated/thirdPartyAttribution/assets")
-val copyThirdPartyAttribution by tasks.registering(Copy::class) {
+val copyThirdPartyAttribution = tasks.register<Copy>("copyThirdPartyAttribution") {
     group = "build"
     description = "Copies Go/font third-party notices into the app's assets."
     from(rootProject.file("../THIRD_PARTY_NOTICES.md")) { into("thirdparty") }
@@ -387,14 +387,15 @@ val embeddedServerRequired: Boolean =
     providers.gradleProperty("MYCORRHIZAL_BUILD_EMBEDDED_SERVER").orNull == "true"
 
 val goAvailable: Boolean = runCatching {
-    val probe = ProcessBuilder("go", "version").redirectErrorStream(true).start()
-    probe.waitFor()
-    probe.exitValue() == 0
+    providers.exec {
+        commandLine("go", "version")
+        isIgnoreExitValue = true
+    }.result.get().exitValue == 0
 }.getOrDefault(false)
 
 val embeddedServerOutput = embeddedServerJniLibs.map { it.file("arm64-v8a/libmycorrhizal.so").asFile }
 
-val buildEmbeddedServer by tasks.registering(Exec::class) {
+val buildEmbeddedServer = tasks.register<Exec>("buildEmbeddedServer") {
     group = "build"
     description = "Cross-compiles the embedded Go server for Android arm64-v8a into jniLibs."
     workingDir = rootProject.file("../backend")

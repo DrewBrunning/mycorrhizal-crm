@@ -1,6 +1,6 @@
 [versions]
-agp = "9.3.1"
-kotlin = "2.3.10"
+agp = "9.5.1"
+kotlin = "2.4.21"
 ksp = "2.3.11"
 firebaseMessaging = "24.1.2"
 googleServices = "4.4.4"
@@ -94,7 +94,7 @@ aboutLibraries = "14.2.1"
 # Compatibility matrix: https://mrmans0n.github.io/compose-rules/detekt/
 composeRules = "0.6.8"
 # Issue #1908: per-module dependency hygiene (unused/misdeclared dependencies).
-# 3.19.0+ is explicitly built and tested against AGP 9.3.1; the plugin is
+# 3.19.0+ is explicitly built and tested against AGP 9.5.1; the plugin is
 # applied at the root and gated by `buildHealth`.
 dependencyAnalysis = "3.19.2"
 
