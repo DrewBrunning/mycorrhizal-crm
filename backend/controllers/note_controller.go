@@ -507,7 +507,16 @@ func GetNotesForContact(c *gin.Context) {
 		return
 	}
 
-	params, err := GetCursorParams(c)
+	// Issue #2797: ?sort=date mirrors GET /notes?sort=date (#2753) — the
+	// note's own date then id, with its own (date, id) cursor. ?since= is not
+	// part of this endpoint, so there is no feed to conflict with.
+	sort, err := parseNoteSort(c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	dateSorted := sort == "date"
+	params, err := GetCursorParamsForActivitySort(c, sort)
 	if err != nil {
 		apperrors.AbortWithError(c, err)
 		return
@@ -542,7 +551,15 @@ func GetNotesForContact(c *gin.Context) {
 	// T17: cursor pagination on (updated_at, id).
 	var notes []models.Note
 	desc := params.Order == "desc"
-	if params.Cursor != nil {
+	if params.DateCursor != nil {
+		id, ok := parseCursorID(params.DateCursor)
+		if !ok {
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
+			return
+		}
+		pred, t, idv := dateCursorPredicate("notes", params.DateCursor, id, desc)
+		baseQuery = baseQuery.Where(pred, t, idv)
+	} else if params.Cursor != nil {
 		id, ok := parseCursorID(params.Cursor)
 		if !ok {
 			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("cursor", "cursor id is malformed").WithReason(apperrors.ReasonValidationCursorMalformed, nil))
@@ -552,14 +569,25 @@ func GetNotesForContact(c *gin.Context) {
 		baseQuery = baseQuery.Where(pred, t, idv)
 	}
 
-	if err := cursorOrderBy(baseQuery, "notes", desc).Limit(params.Limit + 1).Find(&notes).Error; err != nil {
+	var listQuery *gorm.DB
+	if dateSorted {
+		listQuery = dateCursorOrderBy(baseQuery, "notes", desc)
+	} else {
+		listQuery = cursorOrderBy(baseQuery, "notes", desc)
+	}
+	if err := listQuery.Limit(params.Limit + 1).Find(&notes).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("Failed to retrieve notes").WithError(err))
 		return
 	}
 	nextCursor := ""
 	if len(notes) > params.Limit {
 		notes = notes[:params.Limit]
-		nextCursor = EncodeCursor(notes[len(notes)-1].UpdatedAt, notes[len(notes)-1].ID)
+		last := notes[len(notes)-1]
+		if dateSorted {
+			nextCursor = EncodeDateCursor(last.Date, last.ID)
+		} else {
+			nextCursor = EncodeCursor(last.UpdatedAt, last.ID)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
