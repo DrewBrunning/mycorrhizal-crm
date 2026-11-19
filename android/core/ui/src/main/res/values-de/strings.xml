@@ -1517,7 +1517,8 @@
     <string name="shares_share_dialog_title">Kontakt teilen</string>
     <string name="shares_share_dialog_description">Sende eine gefilterte, einmalige Kopie dieses Kontakts an einen anderen Benutzer dieser Instanz. Dieser entscheidet, ob er sie annimmt.</string>
     <string name="shares_recipient">Empfänger</string>
-    <string name="shares_no_recipients">Es gibt keine weiteren Benutzer auf dieser Instanz, mit denen du teilen kannst</string>
+    <string name="shares_recipient_search_hint">Geben Sie mindestens 3 Buchstaben des Benutzernamens ein</string>
+    <string name="shares_recipient_no_match">Keine passenden Benutzer</string>
     <string name="shares_error_no_vcard_uid">Dieser Kontakt hat keine VCard-UID — er kann nicht geteilt werden.</string>
     <string name="shares_share_button">Teilen</string>
     <string name="shares_sharing">Wird geteilt…</string>

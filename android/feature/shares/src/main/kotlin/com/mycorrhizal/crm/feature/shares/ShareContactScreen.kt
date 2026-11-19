@@ -56,7 +56,6 @@ import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.ShareFieldSections
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
-import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -117,10 +116,7 @@ fun ShareContactScreen(
 
                 // No other users on the instance (empty directory, no error): there is
                 // nobody to share with — explain rather than showing an unusable form.
-                state.recipients.isEmpty() && state.error == null && !state.isLoading ->
-                    EmptyState(title = stringResource(R.string.shares_no_recipients))
-
-                state.recipients.isEmpty() && state.error != null ->
+                state.recipients.isEmpty() && state.error != null && !state.recipientSearchMode ->
                     state.error?.let { error ->
                         ErrorState(error = error, onRetry = viewModel::load)
                     }
@@ -170,9 +166,16 @@ fun ShareContactScreen(
 
                         RecipientField(
                             recipients = state.recipients.map { it.username },
-                            selectedRecipient = state.selectedRecipientId?.let { selectedId ->
-                                state.recipients.firstOrNull { it.id == selectedId }?.username
-                            },
+                            selectedRecipient = state.selectedRecipient?.username,
+                            searchMode = state.recipientSearchMode,
+                            query = state.recipientQuery,
+                            onQueryChange = viewModel::setRecipientQuery,
+                            supportingText = recipientSupportingText(
+                                state.recipientSearchMode,
+                                state.recipientQuery,
+                                state.recipientSearchSettled,
+                                state.recipients.isNotEmpty()
+                            ),
                             expanded = recipientExpanded,
                             onExpandedChange = { recipientExpanded = it },
                             onSelect = { username ->
@@ -430,6 +433,12 @@ internal fun StandingExpiryChooser(expiryDays: Int?, onChange: (Int?) -> Unit) {
     }
 }
 
+/**
+ * The recipient picker. In `all` mode (the default) it is the read-only dropdown of every other
+ * user. In `search` mode (inferred, issues #2787 / #2658) the field takes the typed username
+ * prefix and the menu lists the matches; [supportingText] carries the "type at least 3 letters"
+ * and "no matching users" messages.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun RecipientField(
@@ -437,24 +446,39 @@ internal fun RecipientField(
     selectedRecipient: String?,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    searchMode: Boolean = false,
+    query: String = "",
+    onQueryChange: (String) -> Unit = {},
+    supportingText: String? = null
 ) {
     ExposedDropdownMenuBox(
-        expanded = expanded,
+        expanded = expanded && recipients.isNotEmpty(),
         onExpandedChange = onExpandedChange
     ) {
         OutlinedTextField(
-            value = selectedRecipient.orEmpty(),
-            onValueChange = {},
-            readOnly = true,
+            value = if (searchMode) query else selectedRecipient.orEmpty(),
+            onValueChange = {
+                onQueryChange(it)
+                onExpandedChange(true)
+            },
+            readOnly = !searchMode,
+            singleLine = true,
             label = { Text(stringResource(R.string.shares_recipient)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            supportingText = supportingText?.let { { Text(it) } },
+            trailingIcon = {
+                if (!searchMode) ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
             modifier = Modifier.fillMaxWidth().menuAnchor(
-                ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                if (searchMode) {
+                    ExposedDropdownMenuAnchorType.PrimaryEditable
+                } else {
+                    ExposedDropdownMenuAnchorType.PrimaryNotEditable
+                }
             )
         )
         ExposedDropdownMenu(
-            expanded = expanded,
+            expanded = expanded && recipients.isNotEmpty(),
             onDismissRequest = { onExpandedChange(false) }
         ) {
             recipients.forEach { username ->
@@ -468,6 +492,21 @@ internal fun RecipientField(
             }
         }
     }
+}
+
+/** The search-mode hint under the recipient field, or null when there is nothing to say. */
+@Composable
+internal fun recipientSupportingText(
+    searchMode: Boolean,
+    query: String,
+    settled: Boolean,
+    hasMatches: Boolean
+): String? = when {
+    !searchMode -> null
+    query.trim().length < SHARE_SEARCH_MIN_CHARS ->
+        stringResource(R.string.shares_recipient_search_hint)
+    settled && !hasMatches -> stringResource(R.string.shares_recipient_no_match)
+    else -> null
 }
 
 /** @StringRes label for a section token (mirrors the web's settings.exportFieldPicker.sections.*). */

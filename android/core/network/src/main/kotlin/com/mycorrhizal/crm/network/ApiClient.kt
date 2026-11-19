@@ -3639,11 +3639,19 @@ class ApiClient(
     suspend fun markShareGrantNotificationsRead(): Result<Unit> =
         executePostEmpty("$SHARE_GRANTS_PATH/notifications/read") { _, _ -> Unit }
 
-    /** GET /api/v1/users/directory — every other user (id + username), for the recipient picker. */
-    suspend fun getUserDirectory(): Result<List<UserDirectoryEntry>> =
-        executeGet("$PLACEHOLDER_ORIGIN$USERS_PATH/directory") { _, body ->
+    /**
+     * GET /api/v1/users/directory[?q=] — id + username of the other users, for the recipient
+     * picker. [query] is the typed username prefix: a server running SHARE_DIRECTORY_MODE=search
+     * needs 3+ characters of it, while one in the default `all` mode (and any older server,
+     * which never reads `q`) ignores it and lists everyone. A blank query sends no parameter.
+     */
+    suspend fun getUserDirectory(query: String = ""): Result<List<UserDirectoryEntry>> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$USERS_PATH/directory".toHttpUrl().newBuilder()
+        query.trim().takeIf { it.isNotEmpty() }?.let { urlBuilder.addQueryParameter("q", it) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(UserDirectoryResponse::class.java).fromJson(body)?.users
         }
+    }
 
     // --- Admin user management (issue #348) — the five admin-group routes in
     // backend/routes/routes.go; the caller must be an admin or every one of

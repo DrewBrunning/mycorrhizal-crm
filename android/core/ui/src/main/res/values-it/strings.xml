@@ -1552,7 +1552,8 @@
     <string name="shares_share_dialog_title">Condividi contatto</string>
     <string name="shares_share_dialog_description">Invia una copia filtrata e una tantum di questo contatto a un altro utente della stessa istanza. Sarà lui a decidere se accettarla.</string>
     <string name="shares_recipient">Destinatario</string>
-    <string name="shares_no_recipients">Non ci sono altri utenti su questa istanza con cui condividere</string>
+    <string name="shares_recipient_search_hint">Digita almeno 3 lettere del nome utente</string>
+    <string name="shares_recipient_no_match">Nessun utente corrispondente</string>
     <string name="shares_error_no_vcard_uid">Questo contatto non ha un UID vCard — non può essere condiviso.</string>
     <string name="shares_share_button">Condividi</string>
     <string name="shares_sharing">Condivisione in corso…</string>

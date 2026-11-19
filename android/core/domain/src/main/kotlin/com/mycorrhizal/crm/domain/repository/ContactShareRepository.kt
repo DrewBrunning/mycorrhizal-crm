@@ -42,5 +42,5 @@ interface ContactShareRepository {
     suspend fun decline(id: String): Result<Unit>
 
     /** Every other user on the instance (id + username), for the recipient picker. */
-    suspend fun userDirectory(): Result<List<UserDirectoryEntry>>
+    suspend fun userDirectory(query: String = ""): Result<List<UserDirectoryEntry>>
 }
