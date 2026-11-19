@@ -4115,6 +4115,11 @@
           "required": false
         },
         {
+          "name": "sort",
+          "in": "query",
+          "required": false
+        },
+        {
           "name": "toDate",
           "in": "query",
           "required": false

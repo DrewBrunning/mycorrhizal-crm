@@ -6186,9 +6186,21 @@ paths:
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, default: 25 }
+        - name: sort
+          in: query
+          description: >
+            Cursor order for the list (issue #2797, same semantics as GET
+            /notes?sort=date). updated_at (default) is (updated_at, id),
+            last-modified first under order=desc. date orders by the note's own
+            date (newest first under order=desc) with an id tiebreak, so
+            editing an old note does not move it; resume cursors take their own
+            (date, id) shape and are not interchangeable with updated_at
+            cursors (400, reason validation_cursor_invalid). An unrecognized
+            value is a 400 (reason validation_sort_invalid).
+          schema: { type: string, enum: [updated_at, date], default: updated_at }
         - name: order
           in: query
-          description: Direction for the (updated_at, id) cursor order.
+          description: Direction for the cursor order (updated_at or date, per sort).
           schema: { type: string, enum: [asc, desc], default: desc }
         - name: search
           in: query
@@ -6220,7 +6232,7 @@ paths:
                   limit: { type: integer }
               example: {"notes": [{"ID": 2, "CreatedAt": "2026-08-21T00:08:42Z", "UpdatedAt": "2026-08-21T00:08:42Z", "DeletedAt": null, "content": "Contract fixture note", "date": "2026-08-20T18:00:00Z", "contact_id": 11, "revision": 1}, {"ID": 3, "CreatedAt": "2026-08-21T00:09:42Z", "UpdatedAt": "2026-08-21T00:09:42Z", "DeletedAt": null, "content": "Unfiled fixture note", "date": "2026-08-20T19:00:00Z", "contact_id": null, "revision": 2}], "next_cursor": "", "limit": 25}
         "400":
-          description: Malformed cursor.
+          description: Malformed cursor, cursor from the other sort, or unrecognized sort.
           content:
             application/json:
               schema:
