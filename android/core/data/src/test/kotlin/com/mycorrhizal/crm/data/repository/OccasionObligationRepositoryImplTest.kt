@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.model.network.GiftShoppingItem
 import com.mycorrhizal.crm.model.network.GiftShoppingListResponse
+import com.mycorrhizal.crm.model.network.OccasionCardListSummary
 import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.model.network.OccasionObligationInput
 import com.mycorrhizal.crm.model.network.OccasionObligationsResponse
@@ -96,5 +97,16 @@ class OccasionObligationRepositoryImplTest {
             Result.success("a,b".toByteArray())
 
         assertEquals("a,b", String(repository.cardListCsv("gift").getOrThrow()))
+    }
+
+    @Test
+    fun `cardListSummary returns the counts and propagates failures`() = runTest {
+        val summary = OccasionCardListSummary(total = 3, included = 2, skipped = 1)
+        coEvery { apiClient.getOccasionCardListSummary("card") } returns Result.success(summary)
+        coEvery { apiClient.getOccasionCardListSummary("gift") } returns
+            Result.failure(RuntimeException("z"))
+
+        assertEquals(summary, repository.cardListSummary("card").getOrThrow())
+        assertTrue(repository.cardListSummary("gift").isFailure)
     }
 }

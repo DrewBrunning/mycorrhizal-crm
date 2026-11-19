@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.data.repository
 
 import com.mycorrhizal.crm.domain.repository.OccasionObligationRepository
 import com.mycorrhizal.crm.model.network.GiftShoppingItem
+import com.mycorrhizal.crm.model.network.OccasionCardListSummary
 import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.model.network.OccasionObligationInput
 import com.mycorrhizal.crm.network.ApiClient
@@ -42,6 +43,9 @@ class OccasionObligationRepositoryImpl @Inject constructor(private val apiClient
 
     override suspend fun cardListCsv(kind: String): Result<ByteArray> =
         apiClient.exportOccasionCardListCsv(kind)
+
+    override suspend fun cardListSummary(kind: String): Result<OccasionCardListSummary> =
+        apiClient.getOccasionCardListSummary(kind)
 
     private companion object {
         const val PAGE_LIMIT = 100
