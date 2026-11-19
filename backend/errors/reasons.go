@@ -619,7 +619,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	// Constructor defaults (issue #2099).
 	ReasonCommonDatabaseError:                           {Template: "Something went wrong while saving or loading your data"},
 	ReasonCommonDatabaseBusy:                            {Template: "The server is busy. Try again in a moment"},
-	ReasonAuthInvalidCredentials:                        {Template: "Invalid email or password"},
+	ReasonAuthInvalidCredentials:                        {Template: "Invalid username, email or password"},
 	ReasonAuthTokenExpired:                              {Template: "Your session has expired. Sign in again"},
 	ReasonAuthTokenInvalid:                              {Template: "Your session is no longer valid. Sign in again"},
 	ReasonCommonClientNotSupported:                      {Template: "This app version is no longer supported. Update to {required_version} or later", Params: []string{"required_version"}},
