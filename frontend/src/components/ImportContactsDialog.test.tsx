@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { getFieldDefinitions } from '../api/fieldDefinitions';
 import {
   cancelImportSession,
@@ -514,6 +515,33 @@ test('an upload failure surfaces the error without advancing the step', async ()
 
   await waitFor(() => expect(screen.getByText('server exploded')).toBeInTheDocument());
   // Still on the upload step — the dropzone is still showing.
+  expect(screen.getByText(/drag and drop a csv or vcf file/i)).toBeInTheDocument();
+});
+
+// #2688 / backend #2814: a binary file renamed .csv is refused with the reason
+// import_csv_not_text; the dialog shows the localized sentence, not the server's English.
+test('a non-text file renamed .csv shows the localized import_csv_not_text message', async () => {
+  vi.mocked(uploadCSVForImport).mockRejectedValue(
+    new ApiError(
+      'file is not a text CSV',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      'req-1',
+      'import_csv_not_text',
+    ),
+  );
+
+  renderDialog();
+  selectFile(new File([new Uint8Array([137, 80, 78, 71, 0, 1])], 'contacts.csv'));
+
+  expect(
+    await screen.findByText(
+      'This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('file is not a text CSV')).not.toBeInTheDocument();
+  // Still on the upload step.
   expect(screen.getByText(/drag and drop a csv or vcf file/i)).toBeInTheDocument();
 });
 

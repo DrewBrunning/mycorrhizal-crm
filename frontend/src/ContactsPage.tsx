@@ -541,6 +541,19 @@ export default function ContactsPage() {
 
   const handleMergeClosed = () => setMergePair(null);
 
+  // #2688: after a merge the dialog and the selection are gone, so focus would fall to <body>.
+  // Move it to the surviving contact's row (its select checkbox is the row's first focusable
+  // control) once the refetched list has rendered. If the survivor is not on this page, nothing
+  // is focused. A merge cannot be undone, so there is no Undo to offer.
+  const [focusSurvivorId, setFocusSurvivorId] = useState<number | null>(null);
+  useEffect(() => {
+    if (focusSurvivorId === null) return;
+    document
+      .querySelector<HTMLElement>(`[data-contact-id="${focusSurvivorId}"] input[type="checkbox"]`)
+      ?.focus();
+    setFocusSurvivorId(null);
+  }, [focusSurvivorId]);
+
   const handleMerged = async (survivor: Contact, total: number) => {
     // T92 step 4: the loser is gone and the survivor gained its
     // circles/tags — refetch so a stale row (or stale membership chips)
@@ -549,6 +562,7 @@ export default function ContactsPage() {
     setMergePair(null);
     setSelectedUids(new Set());
     await Promise.all([refetch(), refreshCircles(), refreshTags()]);
+    setFocusSurvivorId(survivor.ID);
     // #2688: say what happened, naming the contact that was kept.
     showSuccess(
       t('bulk.mergeDone', {
