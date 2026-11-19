@@ -68,7 +68,8 @@ jobs:
           echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
 
       - name: Cache apt packages for Playwright
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        id: apt-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           # The apt .deb cache (issue #1646) keeps a slow Ubuntu mirror from
           # being re-downloaded every run; the retry script seeds apt's
@@ -102,3 +103,15 @@ jobs:
         timeout-minutes: 16
         working-directory: frontend
         run: bash ../.github/scripts/playwright-install-retry.sh chromium firefox
+
+      - name: Save apt packages for Playwright
+        # Saved even when the install step fails or times out (issue #2826,
+        # #2828, #2841): actions/cache's own post-step only saves on success, so
+        # a run whose Ubuntu mirror stalled threw away every .deb it had
+        # fetched and the next run started from zero. The retry script
+        # collects partial downloads into this directory on failure too.
+        if: ${{ always() && steps.apt-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-firefox-${{ hashFiles('frontend/yarn.lock') }}
