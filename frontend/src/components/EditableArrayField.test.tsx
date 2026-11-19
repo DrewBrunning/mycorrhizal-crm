@@ -27,7 +27,7 @@ function renderField() {
 test('edit pencil is named, keyboard-revealable, and >= 24x24', () => {
   renderField();
 
-  const btn = screen.getByRole('button', { name: 'Edit' });
+  const btn = screen.getByRole('button', { name: /^Edit\b/ });
   expect(btn).toHaveClass('edit-button');
 
   const css = Array.from(document.querySelectorAll('style'))

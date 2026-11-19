@@ -210,9 +210,9 @@ test('an activity shows its location and linked contacts; edit and delete action
   expect(screen.getByText(/Countess/)).toBeInTheDocument();
   expect(screen.getByText(/Bob\s+Builder/)).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   expect(onEditItem).toHaveBeenCalledWith('activity', expect.objectContaining({ ID: 9 }));
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   expect(onDeleteCompletion).toHaveBeenCalledWith(5);
 });
 

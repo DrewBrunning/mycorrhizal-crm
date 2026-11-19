@@ -109,7 +109,7 @@ test('pressing Enter with a blank new name does not create the entity', () => {
 test('clicking edit switches the row into an editable text field prefilled with the name', () => {
   renderList();
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
 
   const editInput = screen.getByDisplayValue('Close Friends');
   expect(editInput).toBeInTheDocument();
@@ -119,7 +119,7 @@ test('saving an edit renames via onRename with the trimmed value', async () => {
   const onRename = vi.fn().mockResolvedValue(undefined);
   renderList({ onRename });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
   const editInput = screen.getByDisplayValue('Close Friends');
   fireEvent.change(editInput, { target: { value: '  Best Friends  ' } });
   fireEvent.click(screen.getByLabelText('Save'));
@@ -132,7 +132,7 @@ test('pressing Escape while editing cancels without calling onRename', () => {
   const onRename = vi.fn();
   renderList({ onRename });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
   const editInput = screen.getByDisplayValue('Close Friends');
   fireEvent.change(editInput, { target: { value: 'Changed' } });
   fireEvent.keyDown(editInput, { key: 'Escape' });
@@ -145,7 +145,7 @@ test('pressing Enter while editing saves via onRename', async () => {
   const onRename = vi.fn().mockResolvedValue(undefined);
   renderList({ onRename });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
   const editInput = screen.getByDisplayValue('Close Friends');
   fireEvent.change(editInput, { target: { value: 'Best Friends' } });
   fireEvent.keyDown(editInput, { key: 'Enter' });
@@ -157,7 +157,7 @@ test('saving an edit with a blank name does not rename', () => {
   const onRename = vi.fn();
   renderList({ onRename });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
   fireEvent.change(screen.getByDisplayValue('Close Friends'), { target: { value: '   ' } });
   fireEvent.click(screen.getByLabelText('Save'));
 
@@ -168,7 +168,7 @@ test('clicking cancel while editing discards the change', () => {
   const onRename = vi.fn();
   renderList({ onRename });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
   fireEvent.change(screen.getByDisplayValue('Close Friends'), { target: { value: 'Changed' } });
   fireEvent.click(screen.getByLabelText('Cancel'));
 
@@ -181,7 +181,7 @@ test('deleting requires window.confirm and calls onDelete with the id when confi
   const onDelete = vi.fn().mockResolvedValue(undefined);
   renderList({ onDelete });
 
-  fireEvent.click(screen.getAllByLabelText('Delete')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Delete\b/)[0]);
 
   await waitFor(() => expect(confirmSpy).toHaveBeenCalledWith('Delete Close Friends?'));
   await waitFor(() => expect(onDelete).toHaveBeenCalledWith('1'));
@@ -198,7 +198,7 @@ test('shows a progress indicator while a confirmed delete is pending', async () 
   );
   renderList({ onDelete });
 
-  fireEvent.click(screen.getAllByLabelText('Delete')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Delete\b/)[0]);
 
   await waitFor(() => expect(screen.getByRole('progressbar')).toBeInTheDocument());
   resolveDelete();
@@ -210,7 +210,7 @@ test('declining the confirm dialog does not call onDelete', () => {
   const onDelete = vi.fn();
   renderList({ onDelete });
 
-  fireEvent.click(screen.getAllByLabelText('Delete')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Delete\b/)[0]);
 
   expect(onDelete).not.toHaveBeenCalled();
 });
@@ -248,7 +248,7 @@ test('a duplicate-name rename failure shows an inline error and stays in edit mo
   const onRename = vi.fn().mockRejectedValue(duplicateError());
   renderList({ onRename });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
   fireEvent.change(screen.getByDisplayValue('Close Friends'), { target: { value: 'Book Club' } });
   fireEvent.click(screen.getByLabelText('Save'));
 
@@ -271,7 +271,7 @@ test('other rename failures do not render an inline duplicate message and stay i
   const onRename = vi.fn().mockRejectedValue(new ApiError('boom', 'INTERNAL_ERROR', 500));
   renderList({ onRename });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[0]);
   fireEvent.change(screen.getByDisplayValue('Close Friends'), { target: { value: 'Work' } });
   fireEvent.click(screen.getByLabelText('Save'));
 

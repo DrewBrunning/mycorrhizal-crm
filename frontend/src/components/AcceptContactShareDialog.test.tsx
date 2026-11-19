@@ -122,7 +122,7 @@ test('selecting a different action before confirming sends that action', async (
   await waitFor(() => expect(screen.getByText('Matches: Alice Smith (email)')).toBeInTheDocument());
 
   fireEvent.mouseDown(screen.getByLabelText('Action'));
-  fireEvent.click(await screen.findByRole('option', { name: 'Skip' }));
+  fireEvent.click(await screen.findByRole('option', { name: /^Skip\b/ }));
   fireEvent.click(screen.getByRole('button', { name: 'Confirm' }));
 
   await waitFor(() =>

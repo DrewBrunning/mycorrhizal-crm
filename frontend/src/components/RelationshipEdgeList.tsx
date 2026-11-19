@@ -150,13 +150,17 @@ export default function RelationshipEdgeList({
                   transition: 'opacity 0.2s ease-in-out',
                 }}
               >
-                <IconButton size="small" onClick={() => onEdit(edge)} aria-label={t('common.edit')}>
+                <IconButton
+                  size="small"
+                  onClick={() => onEdit(edge)}
+                  aria-label={t('common.editNamed', { name: otherPartyName(edge).name })}
+                >
                   <EditIcon fontSize="small" />
                 </IconButton>
                 <IconButton
                   size="small"
                   onClick={() => handleDeleteClick(edge.id)}
-                  aria-label={t('common.delete')}
+                  aria-label={t('common.deleteNamed', { name: otherPartyName(edge).name })}
                   color="error"
                 >
                   <DeleteIcon fontSize="small" />
@@ -230,7 +234,9 @@ export default function RelationshipEdgeList({
                     <IconButton
                       size="small"
                       onClick={() => onAccept(edge.id)}
-                      aria-label={t('relationships.accept')}
+                      aria-label={t('relationships.acceptNamed', {
+                        name: otherPartyName(edge).name,
+                      })}
                       color="success"
                     >
                       <CheckIcon fontSize="small" />
@@ -238,7 +244,9 @@ export default function RelationshipEdgeList({
                     <IconButton
                       size="small"
                       onClick={() => handleRejectClick(edge.id)}
-                      aria-label={t('relationships.reject')}
+                      aria-label={t('relationships.rejectNamed', {
+                        name: otherPartyName(edge).name,
+                      })}
                       color="error"
                     >
                       <CloseIcon fontSize="small" />

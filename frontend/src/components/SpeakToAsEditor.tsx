@@ -86,7 +86,7 @@ export default function SpeakToAsEditor({ value, onChange }: SpeakToAsEditorProp
                   size="small"
                   color="error"
                   onClick={() => removePronoun(index)}
-                  aria-label={t('common.delete')}
+                  aria-label={t('common.deleteEntry', { number: index + 1 })}
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
@@ -152,7 +152,7 @@ export default function SpeakToAsEditor({ value, onChange }: SpeakToAsEditorProp
                 size="small"
                 color="error"
                 onClick={() => removeGender(index)}
-                aria-label={t('common.delete')}
+                aria-label={t('common.deleteEntry', { number: index + 1 })}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>

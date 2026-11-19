@@ -47,7 +47,7 @@ test('requires a label before saving', async () => {
   const label = screen.getByLabelText('Label *');
   await vi.waitFor(() => expect(label).toHaveAttribute('aria-invalid', 'true'));
   expect(label).toHaveAccessibleDescription(/Enter a label for this occasion\./);
-  expect(label).toHaveFocus();
+  await vi.waitFor(() => expect(label).toHaveFocus());
   expect(onSave).not.toHaveBeenCalled();
 });
 
@@ -64,7 +64,7 @@ test('requires a month and a day (neither set), naming the Month field and focus
     /An occasion needs a month and a day so it can remind you/,
   );
   expect(screen.getByLabelText('Day')).toHaveAttribute('aria-invalid', 'true');
-  expect(month).toHaveFocus();
+  await vi.waitFor(() => expect(month).toHaveFocus());
   expect(onSave).not.toHaveBeenCalled();
 });
 
@@ -204,7 +204,7 @@ test('rejects a month set with no day', async () => {
   expect(day).toHaveAccessibleDescription(
     'An occasion anchor date requires both a month and a day',
   );
-  expect(day).toHaveFocus();
+  await vi.waitFor(() => expect(day).toHaveFocus());
   expect(onSave).not.toHaveBeenCalled();
 });
 

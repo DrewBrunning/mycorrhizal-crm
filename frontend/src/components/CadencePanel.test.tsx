@@ -93,10 +93,10 @@ test('edit and delete actions fire their handlers', () => {
   const policy = basePolicy({ has_qualifying_interaction: false, overdue_by: 0, ambient: false });
   renderPanel(policy, { onEdit, onDelete });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   expect(onEdit).toHaveBeenCalledWith(policy);
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   expect(onDelete).toHaveBeenCalledWith(policy.id);
 });
 

@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ConversationAgenda } from '../api/conversationAgenda';
 import { useDateFormat } from '../DateFormatProvider';
+import { itemLabel } from '../utils/itemLabel';
 import { isHttpUrlString } from '../utils/linkResolution';
 
 interface ConversationAgendaListProps {
@@ -77,21 +78,25 @@ export default function ConversationAgendaList({
         <IconButton
           size="small"
           onClick={() => onDiscuss(item)}
-          aria-label={t('conversationAgenda.markDiscussed')}
+          aria-label={t('conversationAgenda.markDiscussedNamed', { name: itemLabel(item.content) })}
           color="success"
           title={t('conversationAgenda.markDiscussed')}
         >
           <CheckIcon fontSize="small" />
         </IconButton>
       )}
-      <IconButton size="small" onClick={() => onEdit(item)} aria-label={t('common.edit')}>
+      <IconButton
+        size="small"
+        onClick={() => onEdit(item)}
+        aria-label={t('common.editNamed', { name: itemLabel(item.content) })}
+      >
         <EditIcon fontSize="small" />
       </IconButton>
       <IconButton
         size="small"
         color="error"
         onClick={() => handleDeleteClick(item.id)}
-        aria-label={t('common.delete')}
+        aria-label={t('common.deleteNamed', { name: itemLabel(item.content) })}
       >
         <DeleteIcon fontSize="small" />
       </IconButton>

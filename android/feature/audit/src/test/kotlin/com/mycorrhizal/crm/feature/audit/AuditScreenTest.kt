@@ -16,6 +16,8 @@ import com.mycorrhizal.crm.model.network.AuditEvent
 import com.mycorrhizal.crm.model.network.AuditEventsResponse
 import com.mycorrhizal.crm.model.network.AuditOperations
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -345,6 +347,43 @@ class AuditScreenTest {
         // Empty list + error → the persistent inline error, not a snackbar
         // (the toast path is gated on a non-empty list).
         composeTestRule.onNodeWithText("boom").assertIsDisplayed()
+    }
+
+    // Issue #2629: a failed first load is the shared ErrorState (localized reason) with a Retry
+    // that re-runs the load; the empty state must not show and Retry then brings the rows back.
+    @Test
+    fun `a failed load shows the localized reason with Retry that reloads the events`() {
+        val auditRepository = mockk<AuditRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery {
+            auditRepository.list(entityType = any(), entityId = any(), limit = any())
+        } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(AuditEventsResponse(auditEvents = listOf(contactUpdate(id = 1))))
+        )
+        coEvery { contactRepository.resolveByUid(any()) } returns Result.success(emptyMap())
+
+        setScreen(auditRepository, contactRepository)
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No audit events yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithTag("audit-undo-1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) {
+            auditRepository.list(entityType = any(), entityId = any(), limit = any())
+        }
     }
 
     // --- Issue #214: Compose semantics a11y sweep (the axe-core analog) -----
