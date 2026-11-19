@@ -52,6 +52,7 @@ extend-exclude = [
   "android/core/ui/src/main/res/values-it/strings.xml",
   # Matches informal German words (du/dein...) to forbid them (issue #2686).
   "frontend/src/i18n/germanFormality.test.ts",
+  "android/core/ui/src/test/kotlin/com/mycorrhizal/crm/ui/GermanFormalityTest.kt",
   # Asserts German strings verbatim (issue #2379).
   "android/app/src/androidTest/kotlin/com/mycorrhizal/crm/e2e/LocalizedErrorE2eTest.kt",
 ]

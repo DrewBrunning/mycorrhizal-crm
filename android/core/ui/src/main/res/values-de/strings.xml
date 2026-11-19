@@ -13,7 +13,7 @@
     <string name="dashboard_data_decay_overdue">Daten müssen überprüft werden</string>
     <!-- Issue #177: event-driven reach-out suggestions. -->
     <string name="dashboard_reach_out">Gründe, sich zu melden</string>
-    <string name="dashboard_random_contacts">Bleibe in Kontakt</string>
+    <string name="dashboard_random_contacts">Bleiben Sie in Kontakt</string>
     <!-- Issue #212: the favorites quick-access block (web #173). -->
     <string name="dashboard_favorites">Favoriten</string>
     <string name="dashboard_no_favorites">Noch keine Favoriten</string>
@@ -46,7 +46,7 @@
         <item quantity="other">%1$d Tage überfällig</item>
     </plurals>
     <string name="dashboard_stay_in_touch_no_interactions">Noch keine Interaktionen</string>
-    <string name="dashboard_stay_in_touch_keep">Bleib in Kontakt</string>
+    <string name="dashboard_stay_in_touch_keep">Bleiben Sie in Kontakt</string>
     <string name="dashboard_add_reminder">Erinnerung hinzufügen</string>
     <string name="cd_quick_capture">Schnellerfassung</string>
     <!-- Issue #1758: drawer sections, the signed-in header, and the unassigned-notes destination. -->
@@ -66,7 +66,7 @@
     <string name="cd_back">Zurück</string>
 
     <!-- Anmeldung -->
-    <string name="login_connect_to_server">Mit deinem Mycorrhizal-Server verbinden</string>
+    <string name="login_connect_to_server">Mit Ihrem Mycorrhizal-Server verbinden</string>
     <string name="login_server_url">Server-URL</string>
     <string name="login_server_url_hint">https://crm.example.com</string>
     <string name="login_mode_password">Passwort</string>
@@ -74,10 +74,10 @@
     <string name="login_api_token">API-Token</string>
     <string name="login_api_token_hint">mycorrhizal_…</string>
     <string name="login_sso">Mit SSO anmelden</string>
-    <string name="login_sso_disabled_hint">Gib eine Server-URL ein, um SSO zu nutzen</string>
-    <string name="oidc_login_failed">Die SSO-Anmeldung ist fehlgeschlagen. Versuche es erneut oder melde dich mit deinem Passwort an.</string>
+    <string name="login_sso_disabled_hint">Geben Sie eine Server-URL ein, um SSO zu nutzen</string>
+    <string name="oidc_login_failed">Die SSO-Anmeldung ist fehlgeschlagen. Versuchen Sie es erneut oder melden Sie sich mit Ihrem Passwort an.</string>
     <string name="login_sign_in">Anmelden</string>
-    <string name="login_error_valid_server_url">Gib eine gültige Server-URL ein, z. B. https://crm.example.com</string>
+    <string name="login_error_valid_server_url">Geben Sie eine gültige Server-URL ein, z. B. https://crm.example.com</string>
     <string name="login_error_identifier_required">Benutzername oder E-Mail ist erforderlich</string>
     <string name="login_error_password_required">Passwort ist erforderlich</string>
     <string name="login_error_token_required">API-Token ist erforderlich</string>
@@ -117,7 +117,7 @@
     <string name="login_no_account">Kein Konto? Eines erstellen</string>
     <string name="login_forgot_password">Passwort vergessen?</string>
     <string name="register_title">Konto erstellen</string>
-    <string name="register_subtitle">Ein neues Konto auf deinem Server einrichten</string>
+    <string name="register_subtitle">Ein neues Konto auf Ihrem Server einrichten</string>
     <string name="register_username">Benutzername</string>
     <string name="register_email">E-Mail</string>
     <string name="register_create">Konto erstellen</string>
@@ -129,16 +129,16 @@
     <string name="register_error_email_required">E-Mail ist erforderlich</string>
     <string name="register_error_password_required">Passwort ist erforderlich</string>
     <string name="register_error_password_weak">Das Passwort ist zu schwach</string>
-    <string name="register_created_login_failed">Konto erstellt. Bitte melde dich an.</string>
+    <string name="register_created_login_failed">Konto erstellt. Bitte melden Sie sich an.</string>
     <string name="forgot_password_title">Passwort zurücksetzen</string>
-    <string name="forgot_password_request_hint">Gib die E-Mail deines Kontos ein und wir senden einen Zurücksetzungs-Link.</string>
+    <string name="forgot_password_request_hint">Geben Sie die E-Mail-Adresse Ihres Kontos ein. Wir senden Ihnen einen Zurücksetzungs-Link.</string>
     <string name="forgot_password_email">E-Mail</string>
     <string name="forgot_password_send">Zurücksetzungs-E-Mail senden</string>
     <string name="forgot_password_token">Zurücksetzungstoken</string>
     <string name="forgot_password_new_password">Neues Passwort</string>
     <string name="forgot_password_confirm_password">Neues Passwort bestätigen</string>
     <string name="forgot_password_reset">Passwort zurücksetzen</string>
-    <string name="forgot_password_done">Passwort erfolgreich zurückgesetzt. Du kannst dich jetzt anmelden.</string>
+    <string name="forgot_password_done">Passwort erfolgreich zurückgesetzt. Sie können sich jetzt anmelden.</string>
     <string name="forgot_password_error_email_required">E-Mail ist erforderlich</string>
     <string name="forgot_password_error_token_required">Zurücksetzungstoken ist erforderlich</string>
     <string name="forgot_password_error_password_required">Neues Passwort ist erforderlich</string>
@@ -151,7 +151,7 @@
     <string name="contacts_sort_recently_contacted">Zuletzt kontaktiert</string>
     <string name="contacts_sort_recently_added">Zuletzt hinzugefügt</string>
     <string name="contacts_empty">Noch keine Kontakte</string>
-    <string name="contacts_empty_body">Füge jemanden hinzu, um zu starten, oder importiere deine Kontakte.</string>
+    <string name="contacts_empty_body">Fügen Sie jemanden hinzu, um zu starten, oder importieren Sie Ihre Kontakte.</string>
     <string name="contacts_no_match">Keine Kontakte passen zu „%1$s“</string>
     <string name="contacts_clear_search">Suche löschen</string>
     <string name="contacts_new">Neuer Kontakt</string>
@@ -173,13 +173,13 @@
     </plurals>
     <string name="contacts_select_all">Alle auswählen</string>
     <!-- Issue #150: right-hand pane of the two-pane tablet contacts layout when no contact is selected -->
-    <string name="contacts_select_contact">Wähle einen Kontakt aus, um seine Details anzusehen</string>
+    <string name="contacts_select_contact">Wählen Sie einen Kontakt aus, um seine Details anzusehen</string>
     <!-- Issue #210/#214: onClickLabel/onLongClickLabel for a contact row's combinedClickable -->
     <string name="contacts_open_contact">Kontakt öffnen</string>
     <string name="contacts_row_select_action">Kontakt auswählen</string>
     <!-- Issue #212: the per-row / header star toggle's accessible labels
          (web's contacts.favoriteContact / unfavoriteContact). -->
-    <string name="contacts_favorite_contact">Markiere %1$s als Favorit</string>
+    <string name="contacts_favorite_contact">%1$s als Favorit markieren</string>
     <string name="contacts_unfavorite_contact">Favoritenmarkierung für %1$s entfernen</string>
 
     <!-- Contact list: cross-entity search (T87) -->
@@ -252,11 +252,11 @@
     <string name="contact_mark_as_me">Das bin ich</string>
     <string name="contact_unmark_as_me">Das bin nicht ich</string>
     <!-- Issue #2206 (web #2192): confirmation before marking/unmarking the Me contact. -->
-    <string name="contact_me_mark_title">Diesen Kontakt als dich markieren?</string>
-    <string name="contact_me_mark_body">Dieser Kontakt wird zu dir. Mit dir selbst in Kontakt zu bleiben ergibt keinen Sinn, deshalb wird er auch als Umgebungskontakt markiert: Er ist nie überfällig und sein Beziehungswert gilt immer als aktuell. Du kannst diese Markierung am Kontakt jederzeit wieder ausschalten.</string>
+    <string name="contact_me_mark_title">Diesen Kontakt als Sie markieren?</string>
+    <string name="contact_me_mark_body">Dieser Kontakt wird zu Ihnen. Mit sich selbst in Kontakt zu bleiben ergibt keinen Sinn, deshalb wird er auch als Umgebungskontakt markiert: Er ist nie überfällig und sein Beziehungswert gilt immer als aktuell. Sie können diese Markierung am Kontakt jederzeit wieder ausschalten.</string>
     <string name="contact_me_mark_confirm">Ja, das bin ich</string>
-    <string name="contact_me_unmark_title">Dieser Kontakt bist nicht du?</string>
-    <string name="contact_me_unmark_body">Dieser Kontakt ist nicht mehr du. Wenn die Markierung als du den Umgebungskontakt eingeschaltet hat, wird er wieder ausgeschaltet. Eine Einstellung, die du selbst gewählt hast, bleibt erhalten.</string>
+    <string name="contact_me_unmark_title">Sind Sie nicht dieser Kontakt?</string>
+    <string name="contact_me_unmark_body">Dieser Kontakt ist nicht mehr Sie. Wenn die Markierung als Sie den Umgebungskontakt eingeschaltet hat, wird er wieder ausgeschaltet. Eine Einstellung, die Sie selbst gewählt haben, bleibt erhalten.</string>
     <string name="contact_me_unmark_confirm">Ja, das bin nicht ich</string>
     <string name="contact_you_badge">Sie</string>
     <string name="contact_export_vcf4">Als vCard 4.0 exportieren</string>
@@ -269,7 +269,7 @@
     <string name="contact_delete_title">Kontakt löschen?</string>
     <string name="contact_delete_confirm">%1$s löschen? Der Kontakt wandert in den Papierkorb und kann dort wiederhergestellt werden, bis er endgültig gelöscht wird. Seine Notizen und Erinnerungen wandern mit.</string>
     <string name="contact_archive_title">Kontakt archivieren?</string>
-    <string name="contact_archive_confirm">Möchtest du %1$s wirklich archivieren? Alle Erinnerungen werden gelöscht. Du kannst später das Archiv wieder aufheben, die Erinnerungen werden aber nicht wiederhergestellt.</string>
+    <string name="contact_archive_confirm">Möchten Sie %1$s wirklich archivieren? Alle Erinnerungen werden gelöscht. Sie können das Archiv später wieder aufheben, die Erinnerungen werden aber nicht wiederhergestellt.</string>
     <string name="contact_unarchive_title">Archivierung aufheben?</string>
     <string name="contact_unarchive_confirm">Archivierung von %1$s aufheben?</string>
     <string name="contact_circles_empty">Noch keine Kreise</string>
@@ -457,19 +457,19 @@
         <item quantity="other">Es werden nur die ersten %1$d Adressen angezeigt; die Karte ist auf diese Anzahl von Punkten begrenzt.</item>
     </plurals>
     <string name="map_empty">Noch keine Kontakte auf der Karte</string>
-    <string name="map_empty_body">Füge der Adresse eines Kontakts Koordinaten hinzu, damit er hier erscheint.</string>
+    <string name="map_empty_body">Fügen Sie der Adresse eines Kontakts Koordinaten hinzu, damit er hier erscheint.</string>
     <string name="contact_address_coordinates">Koordinaten (Breitengrad, Längengrad)</string>
     <string name="contact_address_coordinates_hint">Zum Beispiel 51.5007, -0.1246</string>
-    <string name="contact_address_coordinates_invalid">Gib Breitengrad (-90 bis 90) und Längengrad (-180 bis 180) ein, getrennt durch ein Komma.</string>
+    <string name="contact_address_coordinates_invalid">Geben Sie Breitengrad (-90 bis 90) und Längengrad (-180 bis 180) ein, getrennt durch ein Komma.</string>
     <string name="contact_address_find_coordinates">Koordinaten suchen</string>
-    <string name="contact_address_find_coordinates_save_first">Speichere zuerst diesen Kontakt und suche dann die Koordinaten. Der Adresstext muss nicht gespeichert sein.</string>
-    <string name="contact_address_find_coordinates_local">In lokalen Profilen nicht verfügbar — gib die Koordinaten von Hand ein.</string>
+    <string name="contact_address_find_coordinates_save_first">Speichern Sie zuerst diesen Kontakt und suchen Sie dann die Koordinaten. Der Adresstext muss nicht gespeichert sein.</string>
+    <string name="contact_address_find_coordinates_local">In lokalen Profilen nicht verfügbar — geben Sie die Koordinaten von Hand ein.</string>
     <string name="contact_address_sensitivity">Vertraulichkeit</string>
     <string name="contact_address_sensitivity_normal">Normal</string>
     <string name="contact_address_sensitivity_private">Privat</string>
     <string name="contact_address_sensitivity_secret">Geheim</string>
     <string name="contact_address_sensitivity_hint">Private und geheime Adressen werden von Synchronisierung, Exporten und Freigaben ausgenommen.</string>
-    <string name="contact_address_find_coordinates_sensitive">Diese Adresse ist als privat oder geheim markiert und wird daher nie an den Geocoder gesendet. Gib die Koordinaten stattdessen von Hand ein.</string>
+    <string name="contact_address_find_coordinates_sensitive">Diese Adresse ist als privat oder geheim markiert und wird daher nie an den Geocoder gesendet. Geben Sie die Koordinaten stattdessen von Hand ein.</string>
     <string name="contact_address_find_coordinates_loading">Koordinaten werden gesucht…</string>
     <string name="contact_period_from">Von (Jahr)</string>
     <string name="contact_period_to">Bis (Jahr)</string>
@@ -479,7 +479,7 @@
 
     <!-- Prep-Ansicht (N2 / M11) -->
     <string name="prep_title">Briefing</string>
-    <string name="prep_subtitle">Alles, was du vor dem Treffen wissen solltest</string>
+    <string name="prep_subtitle">Alles, was Sie vor dem Treffen wissen sollten</string>
     <string name="prep_unknown_contact">Unbekannt</string>
     <string name="prep_not_found">Kontakt nicht gefunden</string>
     <string name="prep_cadence_title">Beziehungszustand</string>
@@ -621,7 +621,7 @@
     <string name="settings_no">Nein</string>
     <string name="settings_log_out">Abmelden</string>
     <string name="settings_log_out_title">Abmelden?</string>
-    <string name="settings_log_out_body">Du musst dich erneut anmelden, um auf diesen Server zuzugreifen.</string>
+    <string name="settings_log_out_body">Sie müssen sich erneut anmelden, um auf diesen Server zuzugreifen.</string>
         <string name="settings_tracking">Tracking und Benachrichtigungen</string>
     <string name="settings_call_tracking">Anrufe als Aktivitäten protokollieren</string>
     <string name="settings_sms_tracking">Nachrichten als Aktivitäten protokollieren</string>
@@ -656,13 +656,13 @@
     <string name="settings_password_new">Neues Passwort</string>
     <string name="settings_password_confirm">Neues Passwort bestätigen</string>
     <string name="settings_password_change_button">Passwort aktualisieren</string>
-    <string name="settings_password_change_hint">Gib dein neues Passwort ein und bestätige es, um fortzufahren</string>
+    <string name="settings_password_change_hint">Geben Sie Ihr neues Passwort ein und bestätigen Sie es, um fortzufahren</string>
     <string name="settings_password_mismatch">Die neuen Passwörter stimmen nicht überein.</string>
 
     <!-- Settings: lokale App-Sperre (issue #722) -->
     <string name="settings_local_auth">App-Sperre</string>
     <string name="settings_local_auth_enable">Biometrie oder Geräte-PIN zum Öffnen der App verlangen</string>
-    <string name="settings_local_auth_enable_hint">Beim Öffnen der App, oder nachdem sie eine Weile im Hintergrund war, mit Fingerabdruck, Gesicht oder Geräte-PIN entsperren, bevor deine Kontakte angezeigt werden.</string>
+    <string name="settings_local_auth_enable_hint">Beim Öffnen der App, oder nachdem sie eine Weile im Hintergrund war, mit Fingerabdruck, Gesicht oder Geräte-PIN entsperren, bevor Ihre Kontakte angezeigt werden.</string>
     <!-- Settings: opt-in screenshot / screen-recording block, FLAG_SECURE (issue #1741) -->
     <string name="settings_block_screenshots">Screenshots und Bildschirmaufnahmen blockieren</string>
     <string name="settings_block_screenshots_hint">Blendet diese App außerdem in der Übersicht der zuletzt verwendeten Apps auf allen Android-Versionen aus.</string>
@@ -676,39 +676,39 @@
     <string name="settings_local_auth_unavailable">Nicht verfügbar — dieses Gerät hat keinen Fingerabdruck, keine Gesichtserkennung und keinen sicheren Sperrbildschirm.</string>
 
     <!-- App-Sperr-Bildschirm (issue #722) -->
-    <string name="app_lock_heading">Deine Daten sind gesperrt</string>
+    <string name="app_lock_heading">Ihre Daten sind gesperrt</string>
     <string name="app_lock_signed_in_as">Angemeldet als %1$s</string>
-    <string name="app_lock_subtitle">Entsperre mit Fingerabdruck, Gesicht oder Geräte-PIN, um fortzufahren.</string>
+    <string name="app_lock_subtitle">Entsperren Sie mit Fingerabdruck, Gesicht oder Geräte-PIN, um fortzufahren.</string>
     <string name="app_lock_unlock">Entsperren</string>
-    <string name="app_lock_auth_failed">Entsperren fehlgeschlagen. Bitte versuche es erneut.</string>
-    <string name="app_lock_unsupported">Fingerabdruck-, Gesichts- oder Geräte-PIN-Entsperrung ist auf diesem Gerät nicht verfügbar. Melde dich ab, um dich mit deinem Passwort anzumelden.</string>
+    <string name="app_lock_auth_failed">Entsperren fehlgeschlagen. Bitte versuchen Sie es erneut.</string>
+    <string name="app_lock_unsupported">Fingerabdruck-, Gesichts- oder Geräte-PIN-Entsperrung ist auf diesem Gerät nicht verfügbar. Melden Sie sich ab, um sich mit Ihrem Passwort anzumelden.</string>
     <!-- Kompatibilität zwischen App und Server (issue #528) -->
     <string name="force_update_heading">Update erforderlich</string>
-    <string name="force_update_message">Dieser Server benötigt Mycorrhizal-Version %1$s oder neuer. Du verwendest Version %2$s, die dieser Server nicht mehr unterstützt.</string>
+    <string name="force_update_message">Dieser Server benötigt Mycorrhizal-Version %1$s oder neuer. Sie verwenden Version %2$s, die dieser Server nicht mehr unterstützt.</string>
     <string name="force_update_server">Server: %1$s</string>
-    <string name="force_update_instructions">Aktualisiere die Mycorrhizal-App, um diesen Server weiter nutzen zu können. Falls du die App über einen Download-Link oder einen Update-Kanal installiert hast, installiere die neueste dort angebotene Version.</string>
+    <string name="force_update_instructions">Aktualisieren Sie die Mycorrhizal-App, um diesen Server weiter nutzen zu können. Falls Sie die App über einen Download-Link oder einen Update-Kanal installiert haben, installieren Sie die neueste dort angebotene Version.</string>
     <string name="server_outdated_notice_message">Dieser Server läuft mit Version %1$s, die älter ist als diese App (Version %2$s). Einige Funktionen funktionieren möglicherweise erst, wenn der Server aktualisiert wurde.</string>
     <string name="server_outdated_notice_dismiss">Verwerfen</string>
     <!-- Issue #692: the pre-login "server too old" gate + force-update escape -->
     <string name="force_update_back_to_login">Zurück zur Anmeldung</string>
     <string name="server_too_old_heading">Server-Update erforderlich</string>
-    <string name="server_too_old_message">Dieser Server läuft mit Version %2$s. Diese App benötigt einen Server mit Version %1$s oder neuer. Aktualisiere den Server, um diese App weiter mit ihm nutzen zu können.</string>
+    <string name="server_too_old_message">Dieser Server läuft mit Version %2$s. Diese App benötigt einen Server mit Version %1$s oder neuer. Aktualisieren Sie den Server, um diese App weiter mit ihm nutzen zu können.</string>
     <string name="server_too_old_server">Server: %1$s</string>
 
     <!-- Biometrische Anmeldung (issue #722) -->
     <string name="biometric_enroll_dialog_title">Mit Biometrie anmelden?</string>
-    <string name="biometric_enroll_dialog_body">Verwende beim nächsten Mal deinen Fingerabdruck, dein Gesicht oder deine Geräte-PIN, um diese App zu entsperren, statt dein Passwort einzutippen.</string>
+    <string name="biometric_enroll_dialog_body">Verwenden Sie beim nächsten Mal Ihren Fingerabdruck, Ihr Gesicht oder Ihre Geräte-PIN, um diese App zu entsperren, statt Ihr Passwort einzutippen.</string>
     <string name="biometric_enroll_action">Einrichten</string>
     <string name="biometric_enroll_not_now">Später</string>
     <string name="biometric_enroll_never">Nie wieder fragen</string>
-    <string name="biometric_enroll_error">Biometrische Anmeldung konnte nicht eingerichtet werden. Bitte versuche es erneut.</string>
+    <string name="biometric_enroll_error">Biometrische Anmeldung konnte nicht eingerichtet werden. Bitte versuchen Sie es erneut.</string>
     <string name="settings_biometric_signin_enabled">Biometrische Anmeldung ist für dieses Gerät aktiv</string>
     <string name="settings_biometric_signin_remove">Biometrische Anmeldung deaktivieren</string>
-    <string name="biometric_remove_error">Biometrische Anmeldung konnte nicht deaktiviert werden. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="biometric_remove_error">Biometrische Anmeldung konnte nicht deaktiviert werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.</string>
 
     <!-- Settings: webhooks (M25) -->
     <string name="settings_webhooks_title">Webhooks</string>
-    <string name="settings_webhooks_description">HTTP-POST-Benachrichtigungen empfangen, wenn Ereignisse in deinem CRM auftreten.</string>
+    <string name="settings_webhooks_description">HTTP-POST-Benachrichtigungen empfangen, wenn Ereignisse in Ihrem CRM auftreten.</string>
     <string name="settings_webhooks_add">Webhook hinzufügen</string>
     <string name="settings_webhooks_edit">Bearbeiten</string>
     <string name="settings_webhooks_edit_named">%1$s bearbeiten</string>
@@ -732,7 +732,7 @@
     <string name="settings_webhooks_no_deliveries">Noch keine Zustellungen</string>
     <string name="settings_webhooks_test_success">Test zugestellt (%1$s)</string>
     <string name="settings_webhooks_secret_title">Webhook-Secret</string>
-    <string name="settings_webhooks_secret_warning">Dieses Secret wird nur einmal angezeigt. Kopiere es, bevor du schließt.</string>
+    <string name="settings_webhooks_secret_warning">Dieses Secret wird nur einmal angezeigt. Kopieren Sie es, bevor Sie schließen.</string>
     <string name="settings_webhooks_event_contact_created">Kontakt erstellt</string>
     <string name="settings_webhooks_event_contact_updated">Kontakt aktualisiert</string>
     <string name="settings_webhooks_event_contact_deleted">Kontakt gelöscht</string>
@@ -752,7 +752,7 @@
     <string name="settings_api_tokens_create">Token erstellen</string>
     <string name="settings_api_tokens_revoke_all">Alle widerrufen</string>
     <string name="settings_api_tokens_empty">Noch keine API-Tokens</string>
-    <string name="settings_api_tokens_empty_body">Mit Tokens können andere Apps und Skripte dein Konto nutzen.</string>
+    <string name="settings_api_tokens_empty_body">Mit Tokens können andere Apps und Skripte Ihr Konto nutzen.</string>
     <string name="settings_api_tokens_active">Aktiv</string>
     <string name="settings_api_tokens_revoked">Widerrufen</string>
     <string name="settings_api_tokens_expired">Abgelaufen</string>
@@ -876,13 +876,13 @@
 
     <!-- Settings: notification channels — ntfy/Gotify (M25) -->
     <string name="settings_notifications_title">Benachrichtigungskanäle</string>
-    <string name="settings_notifications_description">Wähle, wie dich Erinnerungs-Benachrichtigungen erreichen. E-Mail wird serverseitig konfiguriert und pro Erinnerung aktiviert; die Kanäle unten liefern Erinnerungen an deine selbst gehosteten Push-Dienste.</string>
+    <string name="settings_notifications_description">Wählen Sie, wie Sie Erinnerungs-Benachrichtigungen erreichen. E-Mail wird serverseitig konfiguriert und pro Erinnerung aktiviert; die Kanäle unten liefern Erinnerungen an Ihre selbst gehosteten Push-Dienste.</string>
     <string name="settings_notifications_ntfy">ntfy</string>
     <string name="settings_notifications_ntfy_enable">Erinnerungen per ntfy senden</string>
     <string name="settings_notifications_ntfy_url">ntfy-Server-URL</string>
     <string name="settings_notifications_ntfy_topic">Thema</string>
     <string name="settings_notifications_ntfy_token">ntfy-Zugriffstoken</string>
-    <string name="settings_notifications_ntfy_token_hint_new">Optional. Nur nötig, wenn dein ntfy-Server zum Veröffentlichen eine Anmeldung verlangt.</string>
+    <string name="settings_notifications_ntfy_token_hint_new">Optional. Nur nötig, wenn Ihr ntfy-Server zum Veröffentlichen eine Anmeldung verlangt.</string>
     <string name="settings_notifications_ntfy_token_hint_existing">Ein Token ist bereits gespeichert. Leer lassen, um es zu behalten.</string>
     <string name="settings_notifications_ntfy_token_hint_removing">Das gespeicherte Token wird beim Speichern entfernt.</string>
     <string name="settings_notifications_ntfy_token_remove">Token entfernen</string>
@@ -891,7 +891,7 @@
     <string name="settings_notifications_gotify_url">Gotify-Server-URL</string>
     <string name="settings_notifications_gotify_token">App-Token</string>
     <string name="settings_notifications_gotify_token_hint_existing">Ein Token ist bereits gespeichert. Leer lassen, um es zu behalten.</string>
-    <string name="settings_notifications_gotify_token_hint_new">Erstelle einen App-Token in deiner Gotify-Instanz.</string>
+    <string name="settings_notifications_gotify_token_hint_new">Erstellen Sie einen App-Token in Ihrer Gotify-Instanz.</string>
     <string name="settings_notifications_test">Testbenachrichtigung senden</string>
     <string name="settings_notifications_testing">Wird gesendet…</string>
     <string name="settings_notifications_test_success">Testbenachrichtigung über %1$s gesendet</string>
@@ -900,11 +900,11 @@
 
     <!-- Einstellungen: Immich-Verbindungskonfiguration (Issue #236). -->
     <string name="settings_immich_title">Immich</string>
-    <string name="immich_settings_description">Verbinde Immich, um Fotos und Personen mit deinen Kontakten zu verknüpfen.</string>
+    <string name="immich_settings_description">Verbinden Sie Immich, um Fotos und Personen mit Ihren Kontakten zu verknüpfen.</string>
     <string name="immich_settings_base_url">Immich-Server-URL</string>
     <string name="immich_settings_api_key">API-Token</string>
-    <string name="immich_settings_api_key_hint_existing">Es ist bereits ein Schlüssel gespeichert. Lasse das Feld leer, um ihn zu behalten.</string>
-    <string name="immich_settings_api_key_hint_new">Erstelle einen API-Schlüssel in deinen Immich-Kontoeinstellungen.</string>
+    <string name="immich_settings_api_key_hint_existing">Es ist bereits ein Schlüssel gespeichert. Lassen Sie das Feld leer, um ihn zu behalten.</string>
+    <string name="immich_settings_api_key_hint_new">Erstellen Sie einen API-Schlüssel in Ihren Immich-Kontoeinstellungen.</string>
     <string name="immich_settings_sync_enabled">Automatisch synchronisieren</string>
     <string name="immich_settings_test">Verbindung testen</string>
     <string name="immich_settings_testing">Wird getestet…</string>
@@ -917,11 +917,11 @@
 
     <!-- Einstellungen: Paperless-ngx-Verbindungskonfiguration (Issue #833). -->
     <string name="settings_paperless_title">Paperless-ngx</string>
-    <string name="paperless_settings_description">Verbinde eine selbst gehostete Paperless-ngx-Instanz, um Kontakte mit Dokumenten (Verträge, Scans, Formulare) zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet.</string>
+    <string name="paperless_settings_description">Verbinden Sie eine selbst gehostete Paperless-ngx-Instanz, um Kontakte mit Dokumenten (Verträge, Scans, Formulare) zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von Ihrem eigenen Server verwendet.</string>
     <string name="paperless_settings_base_url">Paperless-Server-URL</string>
     <string name="paperless_settings_api_token">API-Token</string>
-    <string name="paperless_settings_api_token_hint_existing">Es ist bereits ein Token gespeichert. Lasse das Feld leer, um es zu behalten.</string>
-    <string name="paperless_settings_api_token_hint_new">Füge das API-Token deiner Paperless-Instanz ein (Einstellungen → API-Token).</string>
+    <string name="paperless_settings_api_token_hint_existing">Es ist bereits ein Token gespeichert. Lassen Sie das Feld leer, um es zu behalten.</string>
+    <string name="paperless_settings_api_token_hint_new">Fügen Sie das API-Token Ihrer Paperless-Instanz ein (Einstellungen → API-Token).</string>
     <string name="paperless_settings_test">Verbindung testen</string>
     <string name="paperless_settings_testing">Wird getestet…</string>
     <string name="paperless_settings_test_success">Verbindungstest erfolgreich</string>
@@ -932,11 +932,11 @@
 
     <!-- Einstellungen: Seafile-Verbindungskonfiguration (Issue #833). -->
     <string name="settings_seafile_title">Seafile</string>
-    <string name="seafile_settings_description">Verbinde einen selbst gehosteten Seafile-Server, um Kontakte mit Dateien und Ordnern in deinen Bibliotheken zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet.</string>
+    <string name="seafile_settings_description">Verbinden Sie einen selbst gehosteten Seafile-Server, um Kontakte mit Dateien und Ordnern in Ihren Bibliotheken zu verknüpfen. Das API-Token wird verschlüsselt gespeichert und nur zum Lesen von Ihrem eigenen Server verwendet.</string>
     <string name="seafile_settings_base_url">Seafile-Server-URL</string>
     <string name="seafile_settings_api_token">API-Token</string>
-    <string name="seafile_settings_api_token_hint_existing">Es ist bereits ein Token gespeichert. Lasse das Feld leer, um es zu behalten.</string>
-    <string name="seafile_settings_api_token_hint_new">Füge das API-Token deines Seafile-Kontos ein (Avatar → Einstellungen → API-Token).</string>
+    <string name="seafile_settings_api_token_hint_existing">Es ist bereits ein Token gespeichert. Lassen Sie das Feld leer, um es zu behalten.</string>
+    <string name="seafile_settings_api_token_hint_new">Fügen Sie das API-Token Ihres Seafile-Kontos ein (Avatar → Einstellungen → API-Token).</string>
     <string name="seafile_settings_test">Verbindung testen</string>
     <string name="seafile_settings_testing">Wird getestet…</string>
     <string name="seafile_settings_test_success">Verbindungstest erfolgreich</string>
@@ -947,12 +947,12 @@
 
     <!-- Einstellungen: Nextcloud/ownCloud-Verbindungskonfiguration (Issue #833). -->
     <string name="settings_nextcloud_title">Nextcloud / ownCloud</string>
-    <string name="nextcloud_settings_description">Verbinde eine selbst gehostete Nextcloud- oder ownCloud-Instanz (über WebDAV), um Kontakte mit Dateien und Ordnern zu verknüpfen. Das App-Passwort wird verschlüsselt gespeichert und nur zum Lesen von deinem eigenen Server verwendet. Es wird nur ein App-Passwort akzeptiert – niemals dein Kontopasswort.</string>
+    <string name="nextcloud_settings_description">Verbinden Sie eine selbst gehostete Nextcloud- oder ownCloud-Instanz (über WebDAV), um Kontakte mit Dateien und Ordnern zu verknüpfen. Das App-Passwort wird verschlüsselt gespeichert und nur zum Lesen von Ihrem eigenen Server verwendet. Es wird nur ein App-Passwort akzeptiert – niemals Ihr Kontopasswort.</string>
     <string name="nextcloud_settings_base_url">Nextcloud-Server-URL</string>
     <string name="nextcloud_settings_username">Benutzername</string>
     <string name="nextcloud_settings_app_password">App-Passwort</string>
-    <string name="nextcloud_settings_app_password_hint_existing">Es ist bereits ein App-Passwort gespeichert. Lasse das Feld leer, um es zu behalten.</string>
-    <string name="nextcloud_settings_app_password_hint_new">Erstelle ein App-Passwort in deiner Instanz (Persönliche Einstellungen → Sicherheit → App-Passwörter) und füge es hier ein.</string>
+    <string name="nextcloud_settings_app_password_hint_existing">Es ist bereits ein App-Passwort gespeichert. Lassen Sie das Feld leer, um es zu behalten.</string>
+    <string name="nextcloud_settings_app_password_hint_new">Erstellen Sie ein App-Passwort in Ihrer Instanz (Persönliche Einstellungen → Sicherheit → App-Passwörter) und fügen Sie es hier ein.</string>
     <string name="nextcloud_settings_test">Verbindung testen</string>
     <string name="nextcloud_settings_testing">Wird getestet…</string>
     <string name="nextcloud_settings_test_success">Verbindungstest erfolgreich</string>
@@ -995,13 +995,13 @@
     <string name="settings_call_sms_unavailable">Anruf- und Nachrichtenprotokollierung ist in dieser Version nicht verfügbar.</string>
     <!-- Issue #721: runtime-permission flow for the tracking toggles. -->
     <string name="settings_permission_rationale_title">Berechtigung erforderlich</string>
-    <string name="settings_call_permission_rationale">Die Anruferfassung protokolliert Anrufe als Aktivitäten und benötigt dafür Zugriff auf dein Anrufprotokoll und den Telefonstatus. Erteile die Berechtigung, um sie zu aktivieren.</string>
-    <string name="settings_sms_permission_rationale">Die Nachrichtenerfassung protokolliert Nachrichten als Aktivitäten und benötigt dafür Zugriff auf deine Nachrichten. Erteile die Berechtigung, um sie zu aktivieren.</string>
-    <string name="settings_notification_permission_rationale">Benachrichtigungen benötigen die Berechtigung, um angezeigt zu werden. Erlaube Benachrichtigungen, um Erinnerungen und Hinweise zu erhalten.</string>
+    <string name="settings_call_permission_rationale">Die Anruferfassung protokolliert Anrufe als Aktivitäten und benötigt dafür Zugriff auf Ihr Anrufprotokoll und den Telefonstatus. Erteilen Sie die Berechtigung, um sie zu aktivieren.</string>
+    <string name="settings_sms_permission_rationale">Die Nachrichtenerfassung protokolliert Nachrichten als Aktivitäten und benötigt dafür Zugriff auf Ihre Nachrichten. Erteilen Sie die Berechtigung, um sie zu aktivieren.</string>
+    <string name="settings_notification_permission_rationale">Benachrichtigungen benötigen die Berechtigung, um angezeigt zu werden. Erlauben Sie Benachrichtigungen, um Erinnerungen und Hinweise zu erhalten.</string>
     <string name="settings_permission_settings_title">Berechtigung blockiert</string>
-    <string name="settings_call_permission_settings">Die Anruferfassung benötigt die Berechtigungen „Anrufprotokoll“ und „Telefon“. Sie sind blockiert – aktiviere sie für Mycorrhizal in den Systemeinstellungen und schalte den Schalter wieder ein.</string>
-    <string name="settings_sms_permission_settings">Die Nachrichtenerfassung benötigt die SMS-Berechtigungen. Sie sind blockiert – aktiviere sie für Mycorrhizal in den Systemeinstellungen und schalte den Schalter wieder ein.</string>
-    <string name="settings_notification_permission_settings">Benachrichtigungen sind blockiert – aktiviere sie für Mycorrhizal in den Systemeinstellungen und schalte den Schalter dann wieder ein.</string>
+    <string name="settings_call_permission_settings">Die Anruferfassung benötigt die Berechtigungen „Anrufprotokoll“ und „Telefon“. Sie sind blockiert – aktivieren Sie sie für Mycorrhizal in den Systemeinstellungen und schalten Sie den Schalter wieder ein.</string>
+    <string name="settings_sms_permission_settings">Die Nachrichtenerfassung benötigt die SMS-Berechtigungen. Sie sind blockiert – aktivieren Sie sie für Mycorrhizal in den Systemeinstellungen und schalten Sie den Schalter wieder ein.</string>
+    <string name="settings_notification_permission_settings">Benachrichtigungen sind blockiert – aktivieren Sie sie für Mycorrhizal in den Systemeinstellungen und schalten Sie den Schalter dann wieder ein.</string>
     <string name="settings_permission_try_again">Erneut versuchen</string>
     <string name="settings_permission_open_settings">Einstellungen öffnen</string>
     <string name="settings_permission_not_now">Jetzt nicht</string>
@@ -1026,10 +1026,10 @@
 
     <!-- Aktivitäten -->
     <string name="activities_empty">Noch keine Aktivitäten</string>
-    <string name="activities_empty_body">Protokolliere Anrufe, Treffen und Nachrichten, um den Überblick zu behalten.</string>
-    <string name="activities_description">Aktivitäten sind Dinge, die bereits passiert sind – ein Anruf, ein Kaffee, eine Nachricht. Erfasse sie hier, damit die Geschichte jedes Kontakts vollständig bleibt.</string>
+    <string name="activities_empty_body">Protokollieren Sie Anrufe, Treffen und Nachrichten, um den Überblick zu behalten.</string>
+    <string name="activities_description">Aktivitäten sind Dinge, die bereits passiert sind – ein Anruf, ein Kaffee, eine Nachricht. Erfassen Sie sie hier, damit die Geschichte jedes Kontakts vollständig bleibt.</string>
     <string name="activities_search">Aktivitäten durchsuchen</string>
-    <string name="activities_no_results">Keine Aktivitäten entsprechen deinen Filtern</string>
+    <string name="activities_no_results">Keine Aktivitäten entsprechen Ihren Filtern</string>
     <string name="activities_delete_title">Aktivität löschen?</string>
     <string name="activities_delete_named">%1$s löschen</string>
     <string name="activities_delete_confirm">Diese Aktivität löschen? \"%1$s\"</string>
@@ -1054,19 +1054,19 @@
 
     <!-- Notizen -->
     <string name="notes_empty">Noch keine Notizen</string>
-    <string name="notes_empty_body">Notizen halten fest, was du dir über jemanden merken möchtest.</string>
+    <string name="notes_empty_body">Notizen halten fest, was Sie sich über jemanden merken möchten.</string>
     <!-- Issue #2224: the All notes / Unfiled filter on the Notes screen (web: notes.filterAll/filterUnfiled). -->
     <string name="notes_filter_all">Alle Notizen</string>
     <string name="notes_filter_unfiled">Nicht zugewiesen</string>
     <!-- Issue #1757: the unassigned-notes inbox says which set of notes it shows. -->
     <string name="notes_unassigned_empty">Noch keine nicht zugeordneten Notizen</string>
-    <string name="notes_unassigned_empty_body">Notizen, die du ohne Kontakt erfasst, landen hier.</string>
+    <string name="notes_unassigned_empty_body">Notizen, die Sie ohne Kontakt erfassen, landen hier.</string>
     <plurals name="notes_inbox_total">
         <item quantity="one">%1$d insgesamt</item>
         <item quantity="other">%1$d insgesamt</item>
     </plurals>
     <string name="notes_search">Notizen durchsuchen</string>
-    <string name="notes_no_results">Keine Notizen entsprechen deinen Filtern</string>
+    <string name="notes_no_results">Keine Notizen entsprechen Ihren Filtern</string>
     <string name="notes_delete_title">Notiz löschen?</string>
     <string name="notes_delete_named">%1$s löschen</string>
     <string name="notes_delete_confirm">Diese Notiz löschen? \"%1$s\"</string>
@@ -1098,7 +1098,7 @@
     <!-- Erinnerungen -->
     <string name="reminders_title">Erinnerungen</string>
     <string name="reminders_empty">Noch keine Erinnerungen</string>
-    <string name="reminders_empty_body">Erinnerungen stupsen dich an, dich zur richtigen Zeit zu melden.</string>
+    <string name="reminders_empty_body">Erinnerungen stupsen Sie an, sich zur richtigen Zeit zu melden.</string>
     <string name="reminder_new">Neue Erinnerung</string>
     <string name="reminder_edit">Erinnerung bearbeiten</string>
     <string name="reminder_message">Nachricht</string>
@@ -1135,7 +1135,7 @@
     <string name="date_field_remove_time">Uhrzeit entfernen</string>
     <string name="date_field_time">Uhrzeit</string>
     <string name="date_field_year_unknown">Jahr unbekannt</string>
-    <string name="date_field_error_invalid">Gib ein gültiges Datum im Format %1$s ein.</string>
+    <string name="date_field_error_invalid">Geben Sie ein gültiges Datum im Format %1$s ein.</string>
     <string name="date_field_error_range">Dieses Datum liegt außerhalb des zulässigen Bereichs.</string>
     <string name="reminder_reoccur_from_completion">Ab Erledigungsdatum neu planen</string>
     <string name="reminder_reoccur_from_completion_hint">Bei Erledigung wird die nächste Erinnerung ab dem Erledigungsdatum statt ab dem ursprünglichen Datum geplant.</string>
@@ -1184,8 +1184,8 @@
     <string name="circles_remove_member_named">Mitglied %1$s entfernen</string>
     <string name="circles_member_vcard_uid">Kontakt-VCard-UID</string>
     <string name="circles_empty">Noch keine Kreise</string>
-    <string name="circles_description">Kreise sind Gruppen, mit denen du gemeinsam in Kontakt bleibst, etwa Familie, Freunde oder Kollegen. Ein Kontakt kann mehreren angehören.</string>
-    <string name="circles_empty_body">Kreise gruppieren Menschen, mit denen du gemeinsam in Kontakt bleibst. Ein Kontakt kann mehreren angehören.</string>
+    <string name="circles_description">Kreise sind Gruppen, mit denen Sie gemeinsam in Kontakt bleiben, etwa Familie, Freunde oder Kollegen. Ein Kontakt kann mehreren angehören.</string>
+    <string name="circles_empty_body">Kreise gruppieren Menschen, mit denen Sie gemeinsam in Kontakt bleiben. Ein Kontakt kann mehreren angehören.</string>
     <string name="circles_members_empty">Noch keine Mitglieder</string>
     <string name="circles_error_missing_id">Fehlende Kreis-ID</string>
     <!-- Issue #218: group SMS to every circle member with a phone number. -->
@@ -1251,7 +1251,7 @@
         <item quantity="one">%1$d Tag</item>
         <item quantity="other">%1$d Tags</item>
     </plurals>
-    <string name="triage_done_partial_format">%1$s und %2$s. Führe die Bereinigung erneut aus, um es zu wiederholen.</string>
+    <string name="triage_done_partial_format">%1$s und %2$s. Führen Sie die Bereinigung erneut aus, um es zu wiederholen.</string>
     <plurals name="triage_done_partial_items">
         <item quantity="one">%1$d Element konnte nicht erstellt werden</item>
         <item quantity="other">%1$d Elemente konnten nicht erstellt werden</item>
@@ -1268,7 +1268,7 @@
     <!-- Admin user management (issue #348) -->
     <string name="users_title">Benutzerverwaltung</string>
     <string name="users_empty">Noch keine Benutzer</string>
-    <string name="users_empty_body">Erstelle einen Account, um diese Instanz zu teilen.</string>
+    <string name="users_empty_body">Erstellen Sie einen Account, um diese Instanz zu teilen.</string>
     <string name="users_add">Benutzer hinzufügen</string>
     <string name="users_edit">Benutzer bearbeiten</string>
     <string name="users_username">Benutzername</string>
@@ -1319,7 +1319,7 @@
     <!-- Custom field definitions (issue #830) -->
     <!-- Contact field settings (issue #832, web parity) -->
     <string name="settings_contact_fields_title">Kontaktfeld-Einstellungen</string>
-    <string name="settings_contact_fields_description">Wähle aus, welche Kontaktfelder beim Anzeigen oder Bearbeiten eines Kontakts erscheinen.</string>
+    <string name="settings_contact_fields_description">Wählen Sie aus, welche Kontaktfelder beim Anzeigen oder Bearbeiten eines Kontakts erscheinen.</string>
     <string name="settings_contact_fields_group_communication">Kommunikation</string>
     <string name="settings_contact_fields_group_name">Name</string>
     <string name="settings_contact_fields_group_work">Arbeit</string>
@@ -1336,7 +1336,7 @@
     <string name="settings_custom_fields_advanced">Erweitert</string>
     <string name="settings_custom_fields_advanced_hint">Standards-Projektion und vCard-Eigenschaftsname.</string>
     <string name="settings_custom_fields_empty">Noch keine benutzerdefinierten Felder</string>
-    <string name="settings_custom_fields_empty_body">Füge eigene Felder hinzu, um zusätzliche Angaben zu Kontakten zu speichern.</string>
+    <string name="settings_custom_fields_empty_body">Fügen Sie eigene Felder hinzu, um zusätzliche Angaben zu Kontakten zu speichern.</string>
     <string name="settings_custom_fields_new_title">Neues benutzerdefiniertes Feld</string>
     <string name="settings_custom_fields_edit_title">Benutzerdefiniertes Feld bearbeiten</string>
     <string name="settings_custom_fields_delete_title">Benutzerdefiniertes Feld löschen?</string>
@@ -1412,13 +1412,13 @@
     <string name="households_text_everyone">Allen schreiben</string>
     <string name="group_text_everyone_unavailable">Um allen zu schreiben, müssen mindestens zwei Mitglieder eine Telefonnummer haben.</string>
     <plurals name="households_suggestions_generated">
-        <item quantity="one">%1$d neue vorgeschlagene Beziehung erstellt. Prüfe sie auf den Kontaktseiten der Mitglieder.</item>
-        <item quantity="other">%1$d neue vorgeschlagene Beziehungen erstellt. Prüfe sie auf den Kontaktseiten der Mitglieder.</item>
+        <item quantity="one">%1$d neue vorgeschlagene Beziehung erstellt. Prüfen Sie sie auf den Kontaktseiten der Mitglieder.</item>
+        <item quantity="other">%1$d neue vorgeschlagene Beziehungen erstellt. Prüfen Sie sie auf den Kontaktseiten der Mitglieder.</item>
     </plurals>
     <string name="households_no_new_suggestions">Keine neuen Vorschläge — die bestehenden Beziehungen decken diesen Haushalt bereits ab.</string>
     <string name="households_suggest_addresses">Haushalte aus gemeinsamer Adresse vorschlagen</string>
     <string name="households_address_suggestions">Vorschläge mit gemeinsamer Adresse</string>
-    <string name="households_no_address_suggestions">Keine Vorschläge mit gemeinsamer Adresse gefunden. Füge mehr Kontakten Adressen hinzu, um Gruppen zu finden.</string>
+    <string name="households_no_address_suggestions">Keine Vorschläge mit gemeinsamer Adresse gefunden. Fügen Sie mehr Kontakten Adressen hinzu, um Gruppen zu finden.</string>
     <string name="households_accept_suggestion">Übernehmen</string>
     <string name="households_dismiss_suggestion">Verwerfen</string>
     <string name="households_suggestion_accepted">Haushalt aus dem Vorschlag erstellt</string>
@@ -1455,7 +1455,7 @@
     <string name="relationships_sensitivity_secret">Geheim</string>
     <string name="relationships_edit_title">Beziehung bearbeiten</string>
     <string name="relationships_edit_named">%1$s bearbeiten</string>
-    <string name="relationships_other_party_readonly_hint">Die andere Person kann hier nicht geändert werden — lösche die Beziehung und lege sie neu an, um einen anderen Kontakt zu verknüpfen.</string>
+    <string name="relationships_other_party_readonly_hint">Die andere Person kann hier nicht geändert werden — löschen Sie die Beziehung und legen Sie sie neu an, um einen anderen Kontakt zu verknüpfen.</string>
     <string name="relationships_unknown_contact">Unbekannter Kontakt</string>
     <string name="relationships_suggested_section">Vorgeschlagen</string>
     <string name="relationships_reject">Ablehnen</string>
@@ -1470,11 +1470,11 @@
     <string name="contact_network">Verbindungen erkunden</string>
     <string name="network_start_from">Start von</string>
     <string name="network_change">Ändern</string>
-    <string name="network_pick_prompt">Wähle einen Startkontakt, um sein Netzwerk zu erkunden.</string>
+    <string name="network_pick_prompt">Wählen Sie einen Startkontakt, um sein Netzwerk zu erkunden.</string>
     <string name="network_pick_button">Kontakt wählen</string>
     <string name="network_pick_title">Start von…</string>
     <string name="network_search_contacts">Kontakte suchen</string>
-    <string name="network_pick_no_results">Tippe, um nach einem Kontakt zu suchen.</string>
+    <string name="network_pick_no_results">Tippen Sie, um nach einem Kontakt zu suchen.</string>
     <string name="network_depth">Tiefe</string>
     <string name="network_direct">Direkt</string>
     <plurals name="network_hops">
@@ -1486,7 +1486,7 @@
     <string name="network_relation_apply">Übernehmen</string>
     <string name="network_all_circles">Alle Kreise</string>
     <string name="network_empty">Noch keine Verbindungen</string>
-    <string name="network_empty_body">Füge Beziehungen hinzu, um hier ein Netzwerk aufzubauen.</string>
+    <string name="network_empty_body">Fügen Sie Beziehungen hinzu, um hier ein Netzwerk aufzubauen.</string>
     <string name="network_row_description">%1$s — %2$s</string>
     <string name="network_error_no_vcard_uid">Kontakt hat keine VCard-UID</string>
 
@@ -1515,16 +1515,16 @@
     <string name="shares_accept_dialog_confirm">Bestätigen</string>
     <string name="shares_accept_dialog_confirming">Wird bestätigt…</string>
     <string name="shares_share_dialog_title">Kontakt teilen</string>
-    <string name="shares_share_dialog_description">Sende eine gefilterte, einmalige Kopie dieses Kontakts an einen anderen Benutzer dieser Instanz. Dieser entscheidet, ob er sie annimmt.</string>
+    <string name="shares_share_dialog_description">Senden Sie eine gefilterte, einmalige Kopie dieses Kontakts an einen anderen Benutzer dieser Instanz. Dieser entscheidet, ob er sie annimmt.</string>
     <string name="shares_recipient">Empfänger</string>
-    <string name="shares_no_recipients">Es gibt keine weiteren Benutzer auf dieser Instanz, mit denen du teilen kannst</string>
+    <string name="shares_no_recipients">Es gibt keine weiteren Benutzer auf dieser Instanz, mit denen Sie teilen können</string>
     <string name="shares_error_no_vcard_uid">Dieser Kontakt hat keine VCard-UID — er kann nicht geteilt werden.</string>
     <string name="shares_share_button">Teilen</string>
     <string name="shares_sharing">Wird geteilt…</string>
     <string name="shares_fields_label">Einzuschließende Felder</string>
     <string name="shares_reveal_button">Vertrauliche Felder aktivieren</string>
     <string name="shares_reveal_title">Vertrauliche Daten einschließen?</string>
-    <string name="shares_reveal_confirm">Einige dieser Felder können private oder vertrauliche Informationen enthalten, z. B. private Beziehungen oder benutzerdefinierte Felder. Sie bleiben ausgeschlossen, sofern du sie hier nicht bewusst einschließt.</string>
+    <string name="shares_reveal_confirm">Einige dieser Felder können private oder vertrauliche Informationen enthalten, z. B. private Beziehungen oder benutzerdefinierte Felder. Sie bleiben ausgeschlossen, sofern Sie sie hier nicht bewusst einschließen.</string>
     <string name="shares_reveal_confirm_button">Aktivieren</string>
     <string name="shares_section_emails">E-Mail-Adressen</string>
     <string name="shares_section_phones">Telefonnummern</string>
@@ -1547,9 +1547,9 @@
     <string name="shares_open_shared_by_me">Von mir geteilt</string>
     <string name="shares_with_me_title">Mit mir geteilt</string>
     <string name="shares_by_me_title">Von mir geteilt</string>
-    <string name="shares_with_me_empty">Noch nichts mit dir geteilt</string>
+    <string name="shares_with_me_empty">Noch nichts mit Ihnen geteilt</string>
     <string name="shares_by_me_empty">Noch keine dauerhaften Freigaben</string>
-    <string name="shares_with_me_pending_hint">Wartet auf dich. Erst nach deiner Zustimmung ist etwas sichtbar.</string>
+    <string name="shares_with_me_pending_hint">Wartet auf Sie. Erst nach Ihrer Zustimmung ist etwas sichtbar.</string>
     <string name="shares_entity_contact">Kontakt</string>
     <string name="shares_entity_note">Notiz</string>
     <string name="shares_entity_activity">Aktivität</string>
@@ -1579,9 +1579,9 @@
     <string name="shares_grant_reconfirm_title">Diese Bereiche erneut teilen?</string>
     <string name="shares_grant_reconfirm_message">Einige Einträge dieser Freigabe wurden als privat oder geheim markiert, daher werden diese Bereiche %1$s vorenthalten. Prüfen Sie ihren Inhalt, bevor Sie sie erneut teilen.</string>
     <string name="shares_grant_reconfirm_confirm">Erneut teilen</string>
-    <string name="shares_grant_needs_reconfirm">Einige Bereiche werden zurückgehalten, bis du sie prüfst</string>
+    <string name="shares_grant_needs_reconfirm">Einige Bereiche werden zurückgehalten, bis Sie sie prüfen</string>
     <string name="shares_blocked_title">Blockierte Absender</string>
-    <string name="shares_revoked_reason_owner">Du hast diese Freigabe widerrufen</string>
+    <string name="shares_revoked_reason_owner">Sie haben diese Freigabe widerrufen</string>
     <string name="shares_revoked_reason_entity_deleted">Der geteilte Eintrag wurde gelöscht</string>
     <string name="shares_revoked_reason_recipient_deleted">Das Konto des Empfängers wurde gelöscht</string>
     <string name="shares_content_title">Mit mir geteilt</string>
@@ -1595,7 +1595,7 @@
     <string name="shares_content_type">Art</string>
     <string name="shares_content_members_truncated">Es werden nur einige Mitglieder angezeigt</string>
     <string name="shares_edit_title">Freigabe bearbeiten</string>
-    <string name="shares_edit_hint">Du kannst Bereiche entfernen oder das Ablaufdatum ändern. Um mehr zu teilen, erstelle eine neue Freigabe.</string>
+    <string name="shares_edit_hint">Sie können Bereiche entfernen oder das Ablaufdatum ändern. Um mehr zu teilen, erstellen Sie eine neue Freigabe.</string>
     <string name="shares_expiry_label">Ablauf</string>
     <string name="shares_expiry_keep">Unverändert lassen</string>
     <string name="shares_expiry_none">Kein Ablaufdatum</string>
@@ -1603,19 +1603,19 @@
     <string name="shares_mode_one_time">Einmalige Kopie</string>
     <string name="shares_mode_one_time_desc">Jetzt eine Kopie senden. Spätere Änderungen erreichen die Person nicht.</string>
     <string name="shares_mode_standing">Dauerhaft teilen</string>
-    <string name="shares_mode_standing_desc">Die Person kann die gewählten Bereiche immer aktuell lesen, bis du widerrufst oder die Freigabe abläuft. Sie muss zuerst zustimmen und kann nichts ändern. Bereits Gesehenes kann sie behalten.</string>
+    <string name="shares_mode_standing_desc">Die Person kann die gewählten Bereiche immer aktuell lesen, bis Sie widerrufen oder die Freigabe abläuft. Sie muss zuerst zustimmen und kann nichts ändern. Bereits Gesehenes kann sie behalten.</string>
     <string name="shares_standing_share_button">Freigabe starten</string>
     <string name="shares_standing_sharing">Wird gestartet …</string>
     <!-- Issue #2519: standing-share notices and the "What they will see" preview on Share contact. -->
-    <string name="shares_standing_live_notice">Sie ist live: Alles, was du später zu einem freigegebenen Bereich hinzufügst, etwa eine neue E-Mail-Adresse, ist sofort für sie sichtbar.</string>
+    <string name="shares_standing_live_notice">Sie ist live: Alles, was Sie später zu einem freigegebenen Bereich hinzufügen, etwa eine neue E-Mail-Adresse, ist sofort für sie sichtbar.</string>
     <string name="shares_standing_no_recall_notice">Ein Widerruf stoppt künftige Zugriffe. Er holt nichts zurück, was die Person bereits gesehen oder kopiert hat.</string>
-    <string name="shares_standing_private_notice">Private und geheime Einträge werden nie geteilt, auch nicht in einem Bereich, den du auswählst.</string>
+    <string name="shares_standing_private_notice">Private und geheime Einträge werden nie geteilt, auch nicht in einem Bereich, den Sie auswählen.</string>
     <string name="shares_standing_preview_title">Das sieht die Person</string>
-    <string name="shares_standing_preview_hint">Basierend auf deinen aktuellen Daten, ohne private und geheime Einträge.</string>
+    <string name="shares_standing_preview_hint">Basierend auf Ihren aktuellen Daten, ohne private und geheime Einträge.</string>
     <string name="shares_standing_preview_loading">Vorschau wird geladen …</string>
     <string name="shares_standing_preview_error">Die Vorschau konnte nicht geladen werden.</string>
     <string name="shares_standing_preview_empty">In diesen Bereichen wird derzeit nichts geteilt, nur der Name.</string>
-    <string name="shares_standing_reveal_confirm">Diese Bereiche können private Beziehungen oder benutzerdefinierte Felder enthalten. Es werden nur Einträge mit normaler Sensibilität geteilt. Alles, was du als privat oder geheim markierst, bleibt verborgen.</string>
+    <string name="shares_standing_reveal_confirm">Diese Bereiche können private Beziehungen oder benutzerdefinierte Felder enthalten. Es werden nur Einträge mit normaler Sensibilität geteilt. Alles, was Sie als privat oder geheim markieren, bleibt verborgen.</string>
     <string name="shares_standing_expiry_label">Läuft ab</string>
     <string name="shares_standing_pending_note">Die Person sieht, wer teilt und um welche Art von Eintrag es geht, und muss zustimmen, bevor sie etwas lesen kann.</string>
     <!-- Issue #2518: standing shares of a note, an activity and a circle (ADR 0042). -->
@@ -1624,11 +1624,11 @@
     <string name="shares_standing_title_circle">Diesen Kreis teilen</string>
     <string name="shares_standing_notice_note">Die Person sieht Text und Datum dieser Notiz, nicht den verknüpften Kontakt.</string>
     <string name="shares_standing_notice_activity">Die Person sieht Titel, Beschreibung, Ort, Daten und Art, nicht die Teilnehmer.</string>
-    <string name="shares_standing_notice_circle">Die Person sieht Name, Beschreibung, Farbe und die Namen der aktuellen Mitglieder des Kreises. Personen, die du später hinzufügst, sind sofort für sie sichtbar.</string>
+    <string name="shares_standing_notice_circle">Die Person sieht Name, Beschreibung, Farbe und die Namen der aktuellen Mitglieder des Kreises. Personen, die Sie später hinzufügen, sind sofort für sie sichtbar.</string>
     <string name="shares_error_no_entity">Dieser Eintrag kann nicht geteilt werden: Er hat keine Kennung.</string>
     <plurals name="shares_pending_count">
-        <item quantity="one">%1$d Freigabe wartet auf dich</item>
-        <item quantity="other">%1$d Freigaben warten auf dich</item>
+        <item quantity="one">%1$d Freigabe wartet auf Sie</item>
+        <item quantity="other">%1$d Freigaben warten auf Sie</item>
     </plurals>
     <plurals name="shares_content_members">
         <item quantity="one">%1$d Mitglied</item>
@@ -1663,8 +1663,8 @@
         <item quantity="other">im Abstand von %1$d Tagen</item>
     </plurals>
     <string name="cadence_interval_days">Intervall (Tage)</string>
-    <string name="cadence_interval_hint">Wie oft du in Kontakt bleiben möchtest.</string>
-    <string name="cadence_interval_required">Gib eine positive Anzahl von Tagen ein.</string>
+    <string name="cadence_interval_hint">Wie oft Sie in Kontakt bleiben möchten.</string>
+    <string name="cadence_interval_required">Geben Sie eine positive Anzahl von Tagen ein.</string>
     <string name="cadence_qualifying_types">Qualifizierende Interaktionen</string>
     <string name="cadence_qualifying_hint">Welche Interaktionsarten diese Kadenz zurücksetzen. Keine Auswahl bedeutet: alle Interaktionsarten außer passiven Foto-Beiträgen zählen.</string>
     <string name="cadence_type_call">Anruf</string>
@@ -1675,7 +1675,7 @@
     <string name="cadence_type_message">Nachricht</string>
     <string name="cadence_type_shared_activity">Gemeinsame Aktivität</string>
     <string name="cadence_no_policy">Noch keine Kadenz</string>
-    <string name="cadence_no_policy_body">Lege fest, wie oft du mit diesem Kontakt in Verbindung bleiben möchtest.</string>
+    <string name="cadence_no_policy_body">Legen Sie fest, wie oft Sie mit diesem Kontakt in Verbindung bleiben möchten.</string>
     <string name="cadence_no_interactions_yet">Noch keine qualifizierenden Interaktionen – die Kadenz beginnt mit der ersten.</string>
     <string name="cadence_on_track">Im Zeitplan</string>
     <plurals name="cadence_overdue_by">
@@ -1713,27 +1713,27 @@
     <string name="life_events_title">Lebensereignisse</string>
     <string name="life_events_new">Neues Lebensereignis</string>
     <string name="life_events_empty">Noch keine Lebensereignisse</string>
-    <string name="life_events_empty_body">Halte Umzüge, neue Jobs und andere erinnernswerte Momente fest.</string>
+    <string name="life_events_empty_body">Halten Sie Umzüge, neue Jobs und andere erinnernswerte Momente fest.</string>
     <string name="life_events_edit">Lebensereignis bearbeiten</string>
     <string name="life_events_description">Beschreibung</string>
     <string name="gifts_title">Geschenke</string>
     <string name="gifts_new">Neues Geschenk</string>
     <string name="gifts_empty">Noch keine Geschenke</string>
-    <string name="gifts_empty_body">Behalte Geschenkideen und bereits Verschenktes im Blick.</string>
+    <string name="gifts_empty_body">Behalten Sie Geschenkideen und bereits Verschenktes im Blick.</string>
     <string name="gifts_preferences_empty">Noch keine Geschenkvorlieben</string>
     <string name="gifts_edit">Geschenk bearbeiten</string>
     <string name="gifts_description">Beschreibung</string>
     <string name="preferences_title">Vorlieben</string>
     <string name="preferences_new">Neue Vorliebe</string>
     <string name="preferences_empty">Noch keine Vorlieben</string>
-    <string name="preferences_empty_body">Halte Vorlieben, Abneigungen und Allergien fest, damit du sie nicht vergisst.</string>
+    <string name="preferences_empty_body">Halten Sie Vorlieben, Abneigungen und Allergien fest, damit Sie sie nicht vergessen.</string>
     <string name="preferences_edit">Vorliebe bearbeiten</string>
     <string name="preferences_category">Kategorie</string>
     <string name="preferences_value">Wert</string>
     <string name="agenda_title">Gesprächsagenda</string>
     <string name="agenda_new">Neuer Punkt</string>
     <string name="agenda_empty">Noch keine Gesprächspunkte</string>
-    <string name="agenda_empty_body">Notiere, worüber du beim nächsten Mal sprechen möchtest.</string>
+    <string name="agenda_empty_body">Notieren Sie, worüber Sie beim nächsten Mal sprechen möchten.</string>
     <string name="agenda_edit">Punkt bearbeiten</string>
     <string name="agenda_content">Inhalt</string>
 
@@ -1853,7 +1853,7 @@
     <string name="merge_done">Kontakte zusammengeführt.</string>
     <string name="merge_step">Zusammenführung %1$d von %2$d</string>
     <!-- M23: Zusammenführungsziel per Suche + vollständige Zuordnungsaufschlüsselung -->
-    <string name="merge_keep_hint">Der geöffnete Kontakt wird behalten. Suche nach dem anderen Kontakt, der hinein zusammengeführt werden soll.</string>
+    <string name="merge_keep_hint">Der geöffnete Kontakt wird behalten. Suchen Sie nach dem anderen Kontakt, der hinein zusammengeführt werden soll.</string>
     <string name="merge_pick_other">Anderen Kontakt auswählen</string>
     <string name="merge_picked_other">%1$s wird in den behaltenen Kontakt zusammengeführt.</string>
     <plurals name="merge_hidden_matches">
@@ -2006,7 +2006,7 @@
     <string name="contact_attachments">Anhänge</string>
     <string name="attachments_upload">Anhang hinzufügen</string>
     <string name="attachments_empty">Noch keine Anhänge</string>
-    <string name="attachments_empty_body">Hänge diesem Kontakt Dateien wie Scans, Verträge oder Fotos an.</string>
+    <string name="attachments_empty_body">Hängen Sie diesem Kontakt Dateien wie Scans, Verträge oder Fotos an.</string>
     <string name="attachments_open">Anhang öffnen</string>
     <string name="attachments_size">%1$s</string>
     <string name="attachments_delete">Löschen</string>
@@ -2032,7 +2032,7 @@
     <string name="data_custom_export_format_vcf3">vCard 3.0 (.vcf)</string>
     <string name="data_custom_export_format_jscontact">JSContact (.json)</string>
     <string name="data_custom_export_button">Exportieren</string>
-    <string name="data_custom_export_exporting">Exportiere…</string>
+    <string name="data_custom_export_exporting">Wird exportiert…</string>
     <string name="data_custom_export_preview_button">Vorschau: Was bei diesem Export verloren geht</string>
     <string name="data_custom_export_preview_checking">Wird geprüft…</string>
     <string name="data_custom_export_preview_title">Exportvorschau</string>
@@ -2061,14 +2061,14 @@
     <string name="import_vcf_pick">VCF-Datei auswählen</string>
     <string name="import_vcf_pick_hint">Wählen Sie eine .vcf-Datei (vCard), die aus einer anderen App exportiert wurde.</string>
     <string name="import_vcf_cf_title">Benutzerdefinierte Felder gefunden</string>
-    <string name="import_vcf_cf_description">Diese Datei enthält benutzerdefinierte X-Eigenschaften, die deine App noch nicht kennt. Mach daraus durchsuchbare benutzerdefinierte Felder oder behalte sie unverändert („Passthrough“): Behaltene Eigenschaften werden unverändert beim Kontakt gespeichert und später wieder exportiert, lassen sich hier aber nicht durchsuchen oder bearbeiten.</string>
+    <string name="import_vcf_cf_description">Diese Datei enthält benutzerdefinierte X-Eigenschaften, die Ihre App noch nicht kennt. Machen Sie daraus durchsuchbare benutzerdefinierte Felder oder behalten Sie sie unverändert („Passthrough“): Behaltene Eigenschaften werden unverändert beim Kontakt gespeichert und später wieder exportiert, lassen sich hier aber nicht durchsuchen oder bearbeiten.</string>
     <string name="import_vcf_cf_sample_value">Beispielwert: %1$s</string>
     <string name="import_vcf_cf_action_ignore">Als Passthrough behalten</string>
     <string name="import_vcf_cf_action_map">Auf vorhandenes Feld abbilden</string>
     <string name="import_vcf_cf_action_create">Neues Feld erstellen</string>
     <string name="import_vcf_cf_help_ignore">Wird unverändert beim Kontakt gespeichert und später wieder exportiert, ist hier aber nicht durchsuchbar oder bearbeitbar. Nichts geht verloren.</string>
     <string name="import_vcf_cf_help_map">Trägt den Wert in ein bereits angelegtes benutzerdefiniertes Feld ein, sodass er durchsuchbar und bearbeitbar ist.</string>
-    <string name="import_vcf_cf_help_map_empty">Du hast noch keine benutzerdefinierten Felder. Wähle „Neues Feld erstellen“, um aus dieser Eigenschaft eines anzulegen.</string>
+    <string name="import_vcf_cf_help_map_empty">Sie haben noch keine benutzerdefinierten Felder. Wählen Sie „Neues Feld erstellen“, um aus dieser Eigenschaft eines anzulegen.</string>
     <string name="import_vcf_cf_help_create">Legt aus dieser Eigenschaft ein neues durchsuchbares benutzerdefiniertes Feld an und füllt es für jeden importierten Kontakt aus.</string>
     <string name="import_vcf_cf_field">Benutzerdefiniertes Feld</string>
     <string name="import_vcf_cf_select_field">Feld auswählen…</string>
@@ -2104,7 +2104,7 @@
     <string name="import_row_fix">Zeile korrigieren</string>
     <string name="import_row_fix_edit">Korrektur bearbeiten</string>
     <string name="import_row_fix_saved">Korrektur gespeichert – wird beim Import erneut geprüft</string>
-    <string name="import_row_unfixable">Dieser Fehler lässt sich hier nicht beheben – überspringe die Zeile oder bearbeite den Kontakt nach dem Import</string>
+    <string name="import_row_unfixable">Dieser Fehler lässt sich hier nicht beheben – überspringen Sie die Zeile oder bearbeiten Sie den Kontakt nach dem Import</string>
     <string name="import_row_fix_save">Korrektur speichern</string>
     <string name="import_report_title">Nicht importierte Zeilen</string>
     <string name="import_report_row">Zeile %1$d · %2$s</string>
@@ -2246,9 +2246,9 @@
     <string name="audit_entity_types_tag">Tag</string>
     <string name="audit_entity_types_household">Haushalt</string>
     <string name="audit_entity_types_reminder">Erinnerung</string>
-    <string name="audit_empty">Keine Audit-Ereignisse entsprechen deinen Filtern</string>
+    <string name="audit_empty">Keine Audit-Ereignisse entsprechen Ihren Filtern</string>
     <string name="audit_empty_no_filters">Noch keine Audit-Ereignisse</string>
-    <string name="audit_empty_no_filters_body">Änderungen an deinen Kontakten und anderen Einträgen erscheinen hier.</string>
+    <string name="audit_empty_no_filters_body">Änderungen an Ihren Kontakten und anderen Einträgen erscheinen hier.</string>
     <string name="audit_undo_button">Rückgängig</string>
     <string name="audit_undo_confirm_title">Diese Änderung rückgängig machen?</string>
     <string name="audit_undo_confirm_message">%1$s auf den Stand vom %2$s zurücksetzen?</string>
@@ -2274,7 +2274,7 @@
         <item quantity="one">%1$s wiederhergestellt, aber %2$d Eintrag konnte nicht wiederhergestellt werden, weil das Verknüpfte nicht mehr existiert.</item>
         <item quantity="other">%1$s wiederhergestellt, aber %2$d Einträge konnten nicht wiederhergestellt werden, weil das Verknüpfte nicht mehr existiert.</item>
     </plurals>
-    <string name="trash_restore_conflict">%1$s kann nicht wiederhergestellt werden: Ein anderer Kontakt verwendet bereits die ID dieses Kontakts. Führe diesen Kontakt zuerst zusammen oder lösche ihn.</string>
+    <string name="trash_restore_conflict">%1$s kann nicht wiederhergestellt werden: Ein anderer Kontakt verwendet bereits die ID dieses Kontakts. Führen Sie diesen Kontakt zuerst zusammen oder löschen Sie ihn.</string>
     <string name="trash_purge_confirm">%1$s endgültig löschen? Dies kann nicht rückgängig gemacht werden.</string>
     <string name="trash_purged">%1$s endgültig gelöscht.</string>
     <string name="trash_merged_into">Mit %1$s zusammengeführt</string>
@@ -2338,7 +2338,7 @@
     <string name="sysevents_details_error">Fehler</string>
     <string name="sysevents_details_view_related">Zugehörige anzeigen</string>
     <string name="sysevents_related_banner">Alle Ereignisse in Kette %1$s werden angezeigt.</string>
-    <string name="sysevents_empty">Keine Systemereignisse entsprechen deinen Filtern</string>
+    <string name="sysevents_empty">Keine Systemereignisse entsprechen Ihren Filtern</string>
     <string name="sysevents_empty_no_filters">Noch keine Systemereignisse</string>
     <!-- Subsystem health (issue #427) -->
     <string name="subsystem_health_title">Subsystem-Zustand</string>
@@ -2415,8 +2415,8 @@
     <string name="occasions_title">Anlässe</string>
     <string name="occasions_add_event">Neue Veranstaltung</string>
     <string name="occasions_empty">Noch keine Veranstaltungen</string>
-    <string name="occasions_description">Anlässe sind die wiederkehrenden Dinge, die du für Menschen tust, etwa eine jährliche Karte oder ein Geschenk, sowie einmalige Veranstaltungen mit Gästeliste. Aktive Verpflichtungen erzeugen automatisch Erinnerungen; Erinnerungen sind der Hinweis, kein zweiter Anlass. Um etwas bereits Geschehenes zu erfassen, nutze Aktivitäten.</string>
-    <string name="occasions_empty_body">Erstelle eine Veranstaltung, um Gäste einzuladen und RSVPs zu erfassen.</string>
+    <string name="occasions_description">Anlässe sind die wiederkehrenden Dinge, die Sie für Menschen tun, etwa eine jährliche Karte oder ein Geschenk, sowie einmalige Veranstaltungen mit Gästeliste. Aktive Verpflichtungen erzeugen automatisch Erinnerungen; Erinnerungen sind der Hinweis, kein zweiter Anlass. Um etwas bereits Geschehenes zu erfassen, nutzen Sie Aktivitäten.</string>
+    <string name="occasions_empty_body">Erstellen Sie eine Veranstaltung, um Gäste einzuladen und RSVPs zu erfassen.</string>
     <string name="occasions_event_title">Titel</string>
     <string name="occasions_starts_at">Beginn</string>
     <string name="occasions_ends_at">Ende</string>
@@ -2427,7 +2427,7 @@
     <string name="occasions_sensitivity_private">Privat</string>
     <string name="occasions_sensitivity_secret">Geheim</string>
     <string name="occasions_time">Uhrzeit</string>
-    <string name="occasions_event_dialog_hint">Eine einmalige Veranstaltung, die du planst. Füge nach dem Speichern Gäste hinzu und halte fest, was dir jede Person gesagt hat.</string>
+    <string name="occasions_event_dialog_hint">Eine einmalige Veranstaltung, die Sie planen. Fügen Sie nach dem Speichern Gäste hinzu und halten Sie fest, was Ihnen jede Person gesagt hat.</string>
     <string name="occasions_create_title">Veranstaltung erstellen</string>
     <string name="occasions_edit_title">Veranstaltung bearbeiten</string>
     <string name="occasions_delete_title">Veranstaltung löschen</string>
@@ -2449,10 +2449,10 @@
     <string name="occasions_no_suggestions">Keine neuen Vorschläge aus diesen Kreisen.</string>
     <string name="occasions_no_circles">Noch keine Kreise</string>
     <string name="occasions_search_contacts">Kontakte suchen</string>
-    <string name="occasions_rsvp_hint">Notiere, was dir jeder Gast gesagt hat — von hier wird keine Einladung versendet.</string>
+    <string name="occasions_rsvp_hint">Notieren Sie, was Ihnen jeder Gast gesagt hat — von hier wird keine Einladung versendet.</string>
     <string name="occasions_error_missing_event_id">Diese Veranstaltung konnte nicht geöffnet werden (fehlende ID).</string>
-    <string name="occasions_validation_title_required">Gib einen Titel für diese Veranstaltung ein.</string>
-    <string name="occasions_validation_start_required">Wähle ein Startdatum und eine Uhrzeit.</string>
+    <string name="occasions_validation_title_required">Geben Sie einen Titel für diese Veranstaltung ein.</string>
+    <string name="occasions_validation_start_required">Wählen Sie ein Startdatum und eine Uhrzeit.</string>
     <string name="occasions_validation_end_before_start">Das Ende darf nicht vor dem Beginn liegen.</string>
     <!-- ADR 0024 (issue #2521): standing occasion obligations. -->
     <string name="contact_occasions">Anlässe</string>
@@ -2460,10 +2460,10 @@
     <string name="occasion_ob_create_title">Anlass hinzufügen</string>
     <string name="occasion_ob_edit_title">Anlass bearbeiten</string>
     <string name="occasion_ob_empty">Noch keine festen Anlässe</string>
-    <string name="occasion_ob_empty_body">Füge einen für eine wiederkehrende Karte, ein Geschenk oder eine Einladung hinzu.</string>
+    <string name="occasion_ob_empty_body">Fügen Sie einen für eine wiederkehrende Karte, ein Geschenk oder eine Einladung hinzu.</string>
     <string name="occasion_ob_hint">Eine feste Regel, etwa eine jährliche Karte oder ein Geschenk. Ein aktiver Anlass erstellt zur Vorlaufzeit eine eigene Erinnerung.</string>
     <string name="occasion_ob_kind">Art</string>
-    <string name="occasion_ob_kind_hint">Wähle Karte, Geschenk oder Einladung oder gib eine eigene Bezeichnung ein</string>
+    <string name="occasion_ob_kind_hint">Wählen Sie Karte, Geschenk oder Einladung oder geben Sie eine eigene Bezeichnung ein</string>
     <string name="occasion_ob_kind_card">Karte</string>
     <string name="occasion_ob_kind_gift">Geschenk</string>
     <string name="occasion_ob_kind_invite">Einladung</string>
@@ -2478,23 +2478,23 @@
     </plurals>
     <string name="occasion_ob_no_date">Kein Datum – keine Erinnerung</string>
     <string name="occasion_ob_lead_time">Vorlaufzeit (Tage)</string>
-    <string name="occasion_ob_lead_time_hint">Wie viele Tage vor dem Datum du erinnert werden möchtest, z. B. 14 für „Geschenk zwei Wochen vorher“</string>
+    <string name="occasion_ob_lead_time_hint">Wie viele Tage vor dem Datum Sie erinnert werden möchten, z. B. 14 für „Geschenk zwei Wochen vorher“</string>
     <string name="occasion_ob_active">Aktiv</string>
     <string name="occasion_ob_inactive">Inaktiv</string>
     <string name="occasion_ob_delete_title">Anlass löschen</string>
-    <string name="occasion_ob_validation_label_required">Gib eine Bezeichnung für diesen Anlass ein.</string>
-    <string name="occasion_ob_validation_lead_time">Gib eine ganze Zahl von 0 bis 365 für die Vorlaufzeit in Tagen ein.</string>
+    <string name="occasion_ob_validation_label_required">Geben Sie eine Bezeichnung für diesen Anlass ein.</string>
+    <string name="occasion_ob_validation_lead_time">Geben Sie eine ganze Zahl von 0 bis 365 für die Vorlaufzeit in Tagen ein.</string>
     <plurals name="occasion_ob_lead_time_display">
         <item quantity="one">%1$d Tag Vorlaufzeit</item>
         <item quantity="other">%1$d Tage Vorlaufzeit</item>
     </plurals>
     <!-- ADR 0024 (issue #2521): card list, gift shopping list and upcoming occasions. -->
     <string name="occasion_card_list_title">Kartenliste</string>
-    <string name="occasion_card_list_description">Teile eine CSV-Datei der Kontakte mit einem aktiven Kartenanlass: eine Zeile pro aktiver Verpflichtung, mit Kontaktname, ihrer Adresse mit normaler Sensibilität und dem Anlass. Private und geheime Adressen werden ausgelassen.</string>
+    <string name="occasion_card_list_description">Teilen Sie eine CSV-Datei der Kontakte mit einem aktiven Kartenanlass: eine Zeile pro aktiver Verpflichtung, mit Kontaktname, ihrer Adresse mit normaler Sensibilität und dem Anlass. Private und geheime Adressen werden ausgelassen.</string>
     <string name="occasion_card_list_share">Als CSV teilen</string>
     <string name="occasion_card_list_share_title">Kartenliste teilen</string>
     <string name="occasion_gift_list_title">Geschenke-Einkaufsliste</string>
-    <string name="occasion_gift_list_description">Bald anstehende Geschenke und ob du schon eine Idee hast, eines gekauft oder es bereits übergeben hast.</string>
+    <string name="occasion_gift_list_description">Bald anstehende Geschenke und ob Sie schon eine Idee haben, eines gekauft oder es bereits übergeben haben.</string>
     <string name="occasion_gift_list_empty">In diesem Zeitraum werden keine Geschenke benötigt.</string>
     <string name="occasion_window_30">30 Tage</string>
     <string name="occasion_window_90">90 Tage</string>
@@ -2518,7 +2518,7 @@
     <string name="settings_servers_title">Server</string>
     <string name="settings_servers_add">Server hinzufügen</string>
     <string name="settings_servers_empty">Noch keine Server</string>
-    <string name="settings_servers_empty_body">Füge die Adresse deines Mycorrhizal-Servers hinzu, um dich anzumelden.</string>
+    <string name="settings_servers_empty_body">Fügen Sie die Adresse Ihres Mycorrhizal-Servers hinzu, um sich anzumelden.</string>
     <string name="settings_servers_label">Bezeichnung</string>
     <string name="settings_servers_url">Server-URL</string>
     <string name="settings_servers_active">Aktiv</string>
@@ -2541,7 +2541,7 @@
         <item quantity="other">%1$d erfasste Interaktionen wurden noch nicht gesendet. Beim Wechsel zu %2$s werden sie verworfen.</item>
     </plurals>
     <string name="settings_servers_switch_confirm">Verwerfen und wechseln</string>
-    <string name="servers_add_invalid_url">Gib eine gültige Server-URL ein, zum Beispiel https://crm.example.com.</string>
+    <string name="servers_add_invalid_url">Geben Sie eine gültige Server-URL ein, zum Beispiel https://crm.example.com.</string>
     <string name="login_use_local_only">Nur auf diesem Gerät verwenden</string>
 
     <!-- Issue #1265: attach-to-remote migration wizard (ADR 0028 Decision 3) -->
@@ -2595,9 +2595,9 @@
     <string name="data_bundle_exported">Konto-Bundle gespeichert</string>
     <string name="data_bundle_write_failed">Das Konto-Bundle konnte an diesem Ort nicht gespeichert werden</string>
     <string name="bundle_restore_title">Aus Bundle wiederherstellen</string>
-    <string name="bundle_restore_pick_hint">Wähle eine aus Mycorrhizal exportierte Konto-Bundle-Datei. Du kannst alles prüfen, bevor es wiederhergestellt wird.</string>
+    <string name="bundle_restore_pick_hint">Wählen Sie eine aus Mycorrhizal exportierte Konto-Bundle-Datei. Sie können alles prüfen, bevor es wiederhergestellt wird.</string>
     <string name="bundle_restore_pick">Bundle-Datei auswählen</string>
-    <string name="bundle_restore_working">Dein Bundle wird verarbeitet…</string>
+    <string name="bundle_restore_working">Ihr Bundle wird verarbeitet…</string>
     <plurals name="bundle_restore_loss">
         <item quantity="one">%1$d Element kann nicht exakt wiederhergestellt werden</item>
         <item quantity="other">%1$d Elemente können nicht exakt wiederhergestellt werden</item>
@@ -2652,15 +2652,15 @@
     <string name="meerkat_import_error_failed">Der Import wurde nicht abgeschlossen. Es wurde nichts geändert.</string>
     <string name="monica_import_entry">Aus Monica importieren</string>
     <string name="monica_import_title">Aus Monica importieren</string>
-    <string name="monica_import_description">Verbinde dich mit deinem Monica-Konto, und deine Kontakte samt Verlauf werden direkt über die API abgerufen. Eine Exportdatei ist nicht nötig, und nichts wird geschrieben, bevor du es geprüft und bestätigt hast.</string>
+    <string name="monica_import_description">Verbinden Sie sich mit Ihrem Monica-Konto, und Ihre Kontakte samt Verlauf werden direkt über die API abgerufen. Eine Exportdatei ist nicht nötig, und nichts wird geschrieben, bevor Sie es geprüft und bestätigt haben.</string>
     <string name="monica_import_url_label">Monica-Adresse</string>
-    <string name="monica_import_url_help">Die Webadresse, unter der du Monica öffnest, z. B. https://app.monicahq.com</string>
+    <string name="monica_import_url_help">Die Webadresse, unter der Sie Monica öffnen, z. B. https://app.monicahq.com</string>
     <string name="monica_import_token_label">API-Token</string>
-    <string name="monica_import_token_help">Erstelle eines in Monica unter Einstellungen, dann API. Es wird einmal verwendet und nur für diesen Import behalten.</string>
+    <string name="monica_import_token_help">Erstellen Sie eines in Monica unter Einstellungen, dann API. Es wird einmal verwendet und nur für diesen Import behalten.</string>
     <string name="monica_import_include_relationships">Beziehungen zwischen Kontakten einbeziehen</string>
     <string name="monica_import_include_extras">Anrufe, Aufgaben, Geschenke und Schulden einbeziehen</string>
     <string name="monica_import_connect">Verbinden</string>
-    <string name="monica_import_connecting">Verbinde…</string>
+    <string name="monica_import_connecting">Verbindung wird hergestellt…</string>
     <string name="monica_import_found">%1$s, %2$s und %3$s gefunden.</string>
     <plurals name="monica_import_found_contacts">
         <item quantity="one">%1$d Kontakt</item>
@@ -2676,7 +2676,7 @@
     </plurals>
     <string name="monica_import_estimate">Das Abrufen dauert etwa %1$d Min.</string>
     <string name="monica_import_start">Import starten</string>
-    <string name="monica_import_working">Deine Monica-Daten werden abgerufen…</string>
+    <string name="monica_import_working">Ihre Monica-Daten werden abgerufen…</string>
     <plurals name="monica_import_loss">
         <item quantity="one">%1$d Element kann nicht exakt importiert werden</item>
         <item quantity="other">%1$d Elemente können nicht exakt importiert werden</item>
@@ -2685,11 +2685,11 @@
         <item quantity="one">Importiert: %1$d erstellt, %2$d aktualisiert, %3$d übersprungen</item>
         <item quantity="other">Importiert: %1$d erstellt, %2$d aktualisiert, %3$d übersprungen</item>
     </plurals>
-    <string name="monica_import_unavailable">Der Import aus Monica benötigt ein Serverprofil. Wechsle dafür zu einem Serverprofil.</string>
+    <string name="monica_import_unavailable">Der Import aus Monica benötigt ein Serverprofil. Wechseln Sie dafür zu einem Serverprofil.</string>
     <string name="monica_import_error_failed">Der Import wurde nicht abgeschlossen. Es wurde nichts geändert.</string>
     <string name="monica_import_unreachable">Monica unter %1$s ist nicht erreichbar</string>
-    <string name="dashboard_backup_reminder_title">Sichere deine Daten</string>
-    <string name="dashboard_backup_reminder_body">Deine Daten liegen nur auf diesem Gerät. Speichere ein Konto-Bundle, um sie wiederherzustellen, falls das Gerät verloren geht oder zurückgesetzt wird.</string>
+    <string name="dashboard_backup_reminder_title">Sichern Sie Ihre Daten</string>
+    <string name="dashboard_backup_reminder_body">Ihre Daten liegen nur auf diesem Gerät. Speichern Sie ein Konto-Bundle, um sie wiederherzustellen, falls das Gerät verloren geht oder zurückgesetzt wird.</string>
     <string name="dashboard_backup_reminder_action">Jetzt sichern</string>
     <string name="dashboard_backup_reminder_dismiss">Ausblenden</string>
     <!-- ADR 0029 §6 (issue #1271): share-to-CRM -->
@@ -2698,15 +2698,15 @@
 
     <!-- Issue #160 (ADR 0033): GeoPulse location-history correlation -->
     <string name="settings_geopulse_title">GeoPulse</string>
-    <string name="geopulse_settings_description">Verbinde eine selbst gehostete GeoPulse-Instanz, um aus einem Tag Standortverlauf Aktivitätsvorschläge zu machen. Nichts wird automatisch importiert: Du wählst ein Datum, prüfst die Orte und entscheidest, mit wem du dort warst. Das API-Token wird verschlüsselt auf deinem Server gespeichert.</string>
+    <string name="geopulse_settings_description">Verbinden Sie eine selbst gehostete GeoPulse-Instanz, um aus einem Tag Standortverlauf Aktivitätsvorschläge zu machen. Nichts wird automatisch importiert: Sie wählen ein Datum, prüfen die Orte und entscheiden, mit wem Sie dort waren. Das API-Token wird verschlüsselt auf Ihrem Server gespeichert.</string>
     <string name="geopulse_settings_base_url">GeoPulse-Server-URL</string>
     <string name="geopulse_settings_base_url_required">Die Server-URL ist erforderlich.</string>
     <string name="geopulse_settings_base_url_invalid">Die Server-URL muss eine http://- oder https://-Adresse sein.</string>
     <string name="geopulse_settings_api_key">API-Token</string>
     <string name="geopulse_settings_api_key_hint_existing">Ein Token ist bereits gespeichert. Lass das Feld leer, um es zu behalten.</string>
-    <string name="geopulse_settings_api_key_hint_new">Erstelle in GeoPulse ein Token (Profil → Sicherheit) und füge es hier ein.</string>
+    <string name="geopulse_settings_api_key_hint_new">Erstellen Sie in GeoPulse ein Token (Profil → Sicherheit) und fügen Sie es hier ein.</string>
     <string name="geopulse_settings_api_key_required">Zum Verbinden ist das API-Token erforderlich.</string>
-    <string name="geopulse_settings_api_key_required_origin_change">Die Serveradresse hat sich geändert, gib daher das API-Token erneut ein. Das gespeicherte Token wird nie an einen anderen Server gesendet.</string>
+    <string name="geopulse_settings_api_key_required_origin_change">Die Serveradresse hat sich geändert, geben Sie daher das API-Token erneut ein. Das gespeicherte Token wird nie an einen anderen Server gesendet.</string>
     <string name="geopulse_settings_test">Verbindung testen</string>
     <string name="geopulse_settings_testing">Wird getestet…</string>
     <string name="geopulse_settings_test_success">Verbindungstest erfolgreich</string>
@@ -2714,10 +2714,10 @@
     <string name="geopulse_settings_test_unknown">unbekannter Fehler</string>
     <string name="geopulse_settings_remove">Trennen</string>
     <string name="geopulse_settings_remove_title">GeoPulse trennen</string>
-    <string name="geopulse_settings_remove_confirm">GeoPulse trennen? Aktivitäten, die du bereits aus dem Standortverlauf angelegt hast, bleiben erhalten.</string>
+    <string name="geopulse_settings_remove_confirm">GeoPulse trennen? Aktivitäten, die Sie bereits aus dem Standortverlauf angelegt haben, bleiben erhalten.</string>
     <string name="geopulse_entry_point">Aus Standortverlauf erfassen</string>
     <string name="geopulse_title">Aus Standortverlauf erfassen</string>
-    <string name="geopulse_description">Wähle ein Datum, um die von GeoPulse aufgezeichneten Orte zu sehen. Nichts wird gespeichert, bis du einen erfasst, und du entscheidest, mit wem du dort warst.</string>
+    <string name="geopulse_description">Wählen Sie ein Datum, um die von GeoPulse aufgezeichneten Orte zu sehen. Nichts wird gespeichert, bis Sie einen erfassen, und Sie entscheiden, mit wem Sie dort waren.</string>
     <string name="geopulse_date">Datum</string>
     <string name="geopulse_pick_date">Datum wählen</string>
     <string name="geopulse_look_up">Abrufen</string>
@@ -2736,9 +2736,9 @@
     <string name="geopulse_duration_hours">%1$d Std.</string>
     <string name="geopulse_duration_hours_minutes">%1$d Std. %2$d Min.</string>
     <string name="conflict_title">Anderswo geändert</string>
-    <string name="conflict_message_edit">Dies wurde auf einem anderen Gerät oder in der Web-App geändert, nachdem du es geöffnet hast. Deine Änderung wurde nicht gespeichert. Lade die neueste Version, um deine Änderung zu verwerfen und die aktuelle zu sehen, oder bearbeite weiter, um deine Änderungen zuerst zu kopieren.</string>
-    <string name="conflict_message_delete">Dies wurde auf einem anderen Gerät oder in der Web-App geändert, nachdem du es geöffnet hast, und wurde deshalb nicht gelöscht. Lade die neueste Version, um die aktuelle zu sehen.</string>
-    <string name="conflict_message_edit_closed">Dies wurde auf einem anderen Gerät oder in der Web-App geändert, nachdem du es geöffnet hast. Deine Änderung wurde nicht gespeichert. Lade die neueste Version, um die aktuelle zu sehen.</string>
+    <string name="conflict_message_edit">Dies wurde auf einem anderen Gerät oder in der Web-App geändert, nachdem Sie es geöffnet haben. Ihre Änderung wurde nicht gespeichert. Laden Sie die neueste Version, um Ihre Änderung zu verwerfen und die aktuelle zu sehen, oder bearbeiten Sie weiter, um Ihre Änderungen zuerst zu kopieren.</string>
+    <string name="conflict_message_delete">Dies wurde auf einem anderen Gerät oder in der Web-App geändert, nachdem Sie es geöffnet haben, und wurde deshalb nicht gelöscht. Laden Sie die neueste Version, um die aktuelle zu sehen.</string>
+    <string name="conflict_message_edit_closed">Dies wurde auf einem anderen Gerät oder in der Web-App geändert, nachdem Sie es geöffnet haben. Ihre Änderung wurde nicht gespeichert. Laden Sie die neueste Version, um die aktuelle zu sehen.</string>
     <string name="conflict_load_latest">Neueste Version laden</string>
     <string name="conflict_keep_editing">Weiter bearbeiten</string>
     <string name="conflict_dismiss">Jetzt nicht</string>
@@ -2752,7 +2752,7 @@
     <string name="settings_custom_fields_error_group_too_long">Die Gruppe darf höchstens 100 Zeichen lang sein</string>
     <string name="contact_ambient_toggle">Alltagskontakt – ich sehe die Person ständig</string>
     <string name="ambient_explainer">Zählt als regelmäßiger Kontakt, ohne dass Aktivitäten erfasst werden</string>
-    <string name="ambient_reason_household">Lebt mit dir zusammen (Haushalt)</string>
+    <string name="ambient_reason_household">Lebt mit Ihnen zusammen (Haushalt)</string>
     <string name="ambient_reason_flag">Als Alltagskontakt markiert</string>
     <!-- Issue #1755: translated labels for stored type tokens (TokenLabels.kt). Keep in sync with
          backend/models/relationship_type_registry.go and life_event.go; wording mirrors the web locales. -->
@@ -2827,13 +2827,13 @@
     <!-- Issue #1773: labelled pickers, suggestion chips, full-screen gift/life-event forms -->
     <string name="life_events_category_label">Kategorie</string>
     <string name="life_events_type_label">Ereignistyp</string>
-    <string name="life_events_save_hint">Wähle einen Ereignistyp, um fortzufahren</string>
+    <string name="life_events_save_hint">Wählen Sie einen Ereignistyp, um fortzufahren</string>
     <string name="gifts_status_label">Status</string>
-    <string name="gifts_save_hint_description">Gib eine Beschreibung ein, um fortzufahren</string>
-    <string name="preferences_save_hint">Gib einen Wert ein, um fortzufahren</string>
-    <string name="relationships_save_hint_name">Gib einen Namen ein, um fortzufahren</string>
-    <string name="relationships_save_hint_contact">Wähle einen Kontakt, um fortzufahren</string>
-    <string name="form_save_hint_fix_fields">Korrigiere die markierten Felder, um fortzufahren</string>
+    <string name="gifts_save_hint_description">Geben Sie eine Beschreibung ein, um fortzufahren</string>
+    <string name="preferences_save_hint">Geben Sie einen Wert ein, um fortzufahren</string>
+    <string name="relationships_save_hint_name">Geben Sie einen Namen ein, um fortzufahren</string>
+    <string name="relationships_save_hint_contact">Wählen Sie einen Kontakt, um fortzufahren</string>
+    <string name="form_save_hint_fix_fields">Korrigieren Sie die markierten Felder, um fortzufahren</string>
     <string name="preferences_key_suggestions">Vorschläge</string>
     <string name="note_change_contact">Ändern</string>
     <!-- Issue #1798 (ADR 0023 amendment): per-contact target closeness. -->
@@ -2855,14 +2855,14 @@
     <string name="target_closeness_offer_accept">Rhythmus anlegen</string>
     <string name="target_closeness_offer_dismiss">Jetzt nicht</string>
     <string name="reach_out_kind_target_behind">Ziel verfehlt</string>
-    <string name="reach_out_behind_target">Hinter deinem Ziel „%1$s“ · letzter Kontakt %2$s</string>
+    <string name="reach_out_behind_target">Hinter Ihrem Ziel „%1$s“ · letzter Kontakt %2$s</string>
     <!-- Issue #1728: contact-page drill-downs moved out of the edit form. -->
     <string name="contact_skills_interests">Fähigkeiten &amp; Interessen</string>
     <string name="contact_work">Beruf</string>
     <string name="contact_skills_add">Fähigkeit oder Interesse hinzufügen</string>
     <string name="contact_skills_edit">Fähigkeit oder Interesse bearbeiten</string>
     <string name="contact_skills_empty">Noch keine Fähigkeiten oder Interessen</string>
-    <string name="contact_skills_empty_body">Füge Fachkenntnisse, Hobbys und Interessen hinzu, um festzuhalten, was ihnen wichtig ist.</string>
+    <string name="contact_skills_empty_body">Fügen Sie Fachkenntnisse, Hobbys und Interessen hinzu, um festzuhalten, was ihnen wichtig ist.</string>
     <string name="contact_skills_kind">Art</string>
     <string name="contact_skills_value">Fähigkeit oder Interesse</string>
     <string name="contact_skills_level">Niveau</string>
@@ -2894,7 +2894,7 @@
     <string name="contact_work_kind_title">Titel</string>
     <string name="contact_work_kind_role">Rolle</string>
     <string name="contact_work_empty">Noch keine Arbeitsdetails</string>
-    <string name="contact_work_empty_body">Füge Arbeitgeber, Rollen oder Arbeitsinformationen hinzu.</string>
+    <string name="contact_work_empty_body">Fügen Sie Arbeitgeber, Rollen oder Arbeitsinformationen hinzu.</string>
     <string name="contact_work_section_organizations">Organisationen</string>
     <string name="contact_work_section_titles">Titel &amp; Rollen</string>
     <string name="contact_work_section_information">Arbeitsinformationen</string>
@@ -2902,7 +2902,7 @@
     <string name="contact_work_information_hint">Alles, was über ihre Arbeit sehenswert ist</string>
     <string name="contact_work_add">Arbeitsdetails hinzufügen</string>
     <string name="contact_anniversaries_empty">Noch keine Jahrestage</string>
-    <string name="contact_anniversaries_empty_body">Füge Hochzeiten, Todestage oder andere denkwürdige Daten hinzu.</string>
+    <string name="contact_anniversaries_empty_body">Fügen Sie Hochzeiten, Todestage oder andere denkwürdige Daten hinzu.</string>
     <string name="contact_anniversary_add">Jahrestag hinzufügen</string>
     <string name="contact_anniversary_edit">Jahrestag bearbeiten</string>
     <string name="contact_anniversary_date">Datum</string>
@@ -2940,7 +2940,7 @@
         <item quantity="one">Im Beziehungsnetz %1$d Schritt entfernt</item>
         <item quantity="other">Im Beziehungsnetz %1$d Schritte entfernt</item>
     </plurals>
-    <string name="score_reason_closeness_unknown">Im Beziehungsnetz nicht mit dir verbunden, daher ist die Nähe unbekannt</string>
+    <string name="score_reason_closeness_unknown">Im Beziehungsnetz nicht mit Ihnen verbunden, daher ist die Nähe unbekannt</string>
     <string name="score_reason_recency_none">Noch keine zählende Interaktion erfasst</string>
     <plurals name="score_reason_recency_days">
         <item quantity="one">Letzte zählende Interaktion vor %1$d Tag (Ziel: %2$s)</item>
@@ -2956,11 +2956,11 @@
         <item quantity="one">Kontaktdaten zuletzt vor %1$d Tag bearbeitet</item>
         <item quantity="other">Kontaktdaten zuletzt vor %1$d Tagen bearbeitet</item>
     </plurals>
-    <string name="score_reason_ambient_household">Umgebungskontakt (lebt mit dir zusammen)</string>
+    <string name="score_reason_ambient_household">Umgebungskontakt (lebt mit Ihnen zusammen)</string>
     <string name="score_reason_ambient_flag">Umgebungskontakt (markiert)</string>
     <plurals name="score_reason_target_cadence_policy">
-        <item quantity="one">Aktualität und Häufigkeit ergeben %1$d gemessen an deinem Rhythmus (%2$s)</item>
-        <item quantity="other">Aktualität und Häufigkeit ergeben %1$d gemessen an deinem Rhythmus (%2$s)</item>
+        <item quantity="one">Aktualität und Häufigkeit ergeben %1$d gemessen an Ihrem Rhythmus (%2$s)</item>
+        <item quantity="other">Aktualität und Häufigkeit ergeben %1$d gemessen an Ihrem Rhythmus (%2$s)</item>
     </plurals>
     <plurals name="score_reason_target_tier">
         <item quantity="one">Aktualität und Häufigkeit ergeben %1$d gemessen am Ziel „%2$s“ (%3$s)</item>
@@ -2974,31 +2974,31 @@
     <string name="error_client_timeout">Zeitüberschreitung bei der Anfrage</string>
     <string name="error_client_server">Serverfehler (%1$d)</string>
     <string name="error_client_session_expired">Sitzung abgelaufen – bitte erneut anmelden</string>
-    <string name="error_client_forbidden">Dir fehlt die Berechtigung dafür</string>
+    <string name="error_client_forbidden">Ihnen fehlt die Berechtigung dafür</string>
     <string name="error_client_not_found">Nicht gefunden</string>
     <string name="error_client_conflict">Konflikt</string>
     <string name="error_client_request_failed">Anfrage fehlgeschlagen</string>
-    <string name="error_client_precondition_failed">Anderswo geändert – lade die neueste Version</string>
+    <string name="error_client_precondition_failed">Anderswo geändert – laden Sie die neueste Version</string>
     <string name="error_client_parse">Unerwartete Serverantwort</string>
-    <string name="error_client_archived_profile">Dieses Profil ist ein schreibgeschütztes Archiv – wechsle zu deinem Server, um Änderungen vorzunehmen</string>
+    <string name="error_client_archived_profile">Dieses Profil ist ein schreibgeschütztes Archiv – wechseln Sie zu Ihrem Server, um Änderungen vorzunehmen</string>
     <string name="error_client_unknown">Etwas ist schiefgelaufen</string>
-    <string name="error_client_no_pending_two_factor">Keine ausstehende Zwei-Faktor-Anmeldung gefunden. Bitte melde dich erneut an.</string>
+    <string name="error_client_no_pending_two_factor">Keine ausstehende Zwei-Faktor-Anmeldung gefunden. Bitte melden Sie sich erneut an.</string>
     <string name="error_reason_common_test_only">Prüfung %1$d</string>
     <string name="error_reason_contact_bulk_custom_field_duplicate">Eine benutzerdefinierte Felddefinition kommt mehrfach vor</string>
     <string name="error_reason_contact_bulk_custom_field_in_both">Ein benutzerdefiniertes Feld darf nicht gleichzeitig in custom_set und custom_clear stehen</string>
     <string name="error_reason_contact_bulk_custom_field_invalid">Der Wert von %1$s ist ungültig</string>
-    <string name="error_reason_contact_bulk_custom_field_not_found">Eine benutzerdefinierte Felddefinition wurde nicht gefunden oder gehört nicht dir</string>
+    <string name="error_reason_contact_bulk_custom_field_not_found">Eine benutzerdefinierte Felddefinition wurde nicht gefunden oder gehört nicht Ihnen</string>
     <string name="error_reason_contact_bulk_field_in_set_and_clear">%1$s darf nicht gleichzeitig in set und clear stehen</string>
     <string name="error_reason_contact_bulk_field_not_editable">%1$s kann nicht gemeinsam bearbeitet werden</string>
-    <string name="error_reason_contact_bulk_no_operations">Gib mindestens eines von set, clear, custom_set oder custom_clear an</string>
+    <string name="error_reason_contact_bulk_no_operations">Geben Sie mindestens eines von set, clear, custom_set oder custom_clear an</string>
     <string name="error_reason_contact_bulk_value_empty">%1$s darf nicht leer sein; zum Leeren in clear angeben</string>
     <string name="error_reason_contact_field_override_unknown_key">%1$s ist kein Feld, das ein- oder ausgeblendet werden kann</string>
     <string name="error_reason_contact_field_override_state_invalid">Für %1$s sind nur inherit, show oder hide zulässig</string>
     <string name="error_reason_contact_bulk_value_too_long">Die Länge von %1$s ist höchstens %2$d</string>
     <string name="error_reason_import_circles_not_found">Einer oder mehrere Kreise wurden nicht gefunden</string>
     <string name="error_reason_import_tags_not_found">Einer oder mehrere Tags wurden nicht gefunden</string>
-    <string name="error_reason_relationship_contact_ambiguous">Gib entweder einen bestehenden oder einen neuen Kontakt an, nicht beides</string>
-    <string name="error_reason_relationship_contact_missing">Gib einen bestehenden oder einen neuen Kontakt an</string>
+    <string name="error_reason_relationship_contact_ambiguous">Geben Sie entweder einen bestehenden oder einen neuen Kontakt an, nicht beides</string>
+    <string name="error_reason_relationship_contact_missing">Geben Sie einen bestehenden oder einen neuen Kontakt an</string>
     <string name="error_reason_relationship_day_out_of_range">Der Tag muss zwischen 1 und 31 liegen</string>
     <string name="error_reason_relationship_end_before_start">Das Enddatum darf nicht vor dem Startdatum liegen</string>
     <string name="error_reason_relationship_month_out_of_range">Der Monat muss zwischen 1 und 12 liegen</string>
@@ -3023,7 +3023,7 @@
     <string name="error_reason_validation_geouri">%1$s muss eine geo:-URI mit Breitengrad -90..90 und Längengrad -180..180 sein</string>
     <string name="error_reason_validation_invalid">%1$s ist ungültig</string>
     <string name="error_reason_validation_cursor_malformed">Die Cursor-ID ist ungültig</string>
-    <string name="error_reason_trash_uid_in_use">Ein aktiver Kontakt verwendet bereits die UID dieses Kontakts; führe ihn zuerst zusammen oder lösche ihn</string>
+    <string name="error_reason_trash_uid_in_use">Ein aktiver Kontakt verwendet bereits die UID dieses Kontakts; führen Sie ihn zuerst zusammen oder löschen Sie ihn</string>
     <string name="error_reason_trash_snapshot_unsupported">Der Löschschnappschuss dieses Kontakts wird von dieser Version nicht unterstützt; er kann weiterhin endgültig gelöscht werden</string>
     <string name="error_reason_entity_not_found">Organisation, Ort oder Haustier nicht gefunden</string>
     <string name="error_reason_entity_kind_required">kind ist erforderlich und muss organisation, place oder pet sein</string>
@@ -3039,7 +3039,7 @@
     <string name="error_reason_entity_merge_kind_mismatch">Nur Einträge derselben Art können zusammengeführt werden</string>
     <string name="error_reason_entity_merge_resolution_invalid">%1$s</string>
     <string name="error_reason_contact_field_definition_target_immutable">Das Ziel einer Felddefinition kann nicht geändert werden</string>
-    <string name="error_reason_contact_field_definition_projection_target_invalid">Nur Kontakt-Felddefinitionen können eine vCard-Projektion verwenden; verwende internal-only</string>
+    <string name="error_reason_contact_field_definition_projection_target_invalid">Nur Kontakt-Felddefinitionen können eine vCard-Projektion verwenden; verwenden Sie internal-only</string>
     <string name="error_reason_contact_field_definition_target_mismatch">Die Felddefinition gilt nicht für diese Art von Datensatz</string>
     <string name="error_reason_circle_color_invalid">Die Farbe muss eine der Palettenfarben sein</string>
     <string name="error_reason_circle_sync_scope_out_of_scope">Der Kontakt liegt außerhalb des CardDAV-Synchronisierungsbereichs dieses Geräts</string>
@@ -3049,7 +3049,7 @@
     <string name="error_reason_meerkat_session_not_owned">Die Sitzung gehört nicht zum aktuellen Benutzer</string>
     <string name="error_reason_meerkat_session_expired">Importsitzung abgelaufen</string>
     <string name="error_reason_meerkat_db_size">Die Datenbankdatei ist leer oder größer als das Limit von 100 MB</string>
-    <string name="error_reason_meerkat_upload_not_sqlite">Lade eine Meerkat-SQLite-Datenbank hoch (.db, .sqlite oder .sqlite3)</string>
+    <string name="error_reason_meerkat_upload_not_sqlite">Laden Sie eine Meerkat-SQLite-Datenbank hoch (.db, .sqlite oder .sqlite3)</string>
     <string name="error_reason_meerkat_upload_unreadable">Der Upload konnte nicht gelesen werden</string>
     <string name="error_reason_meerkat_file_not_meerkat">Diese Datei ist keine Meerkat-Datenbank</string>
     <string name="error_reason_meerkat_db_unreadable">Die Datenbank konnte nicht als Meerkat-Datenbank gelesen werden</string>
@@ -3059,9 +3059,9 @@
     <string name="error_reason_meerkat_not_prepared">Die Meerkat-Datenbank ist noch nicht vorbereitet</string>
     <string name="error_reason_meerkat_api_error">%1$s</string>
     <string name="error_reason_meerkat_upstream_error">Die Meerkat-Instanz ist nicht erreichbar oder hat eine unlesbare Antwort gesendet. Prüfen Sie die Adresse und ob die Instanz online ist.%1$s</string>
-    <string name="error_reason_meerkat_sign_in_input_missing">Gib einen Meerkat-API-Token oder einen Benutzernamen und ein Passwort ein</string>
+    <string name="error_reason_meerkat_sign_in_input_missing">Geben Sie einen Meerkat-API-Token oder einen Benutzernamen und ein Passwort ein</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Kontakte auf diesem Meerkat-Konto: %1$d. Der Import unterstützt höchstens %2$d</string>
-    <string name="error_reason_meerkat_version_untested">Diese Meerkat-Version ist mit dem Importer nicht getestet. Bestätige, um es trotzdem zu versuchen; es wird nichts geschrieben, bis du die Vorschau prüfst.</string>
+    <string name="error_reason_meerkat_version_untested">Diese Meerkat-Version ist mit dem Importer nicht getestet. Bestätigen Sie, um es trotzdem zu versuchen; es wird nichts geschrieben, bis Sie die Vorschau prüfen.</string>
     <string name="error_reason_meerkat_fetch_unreachable">Die Meerkat-Instanz ist nicht erreichbar</string>
     <string name="error_reason_meerkat_fetch_unreadable">Der Meerkat-Server hat eine Antwort gesendet, die der Import nicht lesen konnte. Prüfen Sie die URL</string>
     <string name="error_reason_common_database_error">Beim Speichern oder Laden Ihrer Daten ist ein Fehler aufgetreten</string>
@@ -3183,7 +3183,7 @@
     <string name="error_reason_import_session_expired">Importsitzung abgelaufen</string>
     <string name="error_reason_import_endpoint_csv_vcf_only">Dieser Endpunkt ist nur für CSV- oder VCF-Importe vorgesehen</string>
     <string name="error_reason_import_endpoint_vcf_records_only">Dieser Endpunkt ist nur für VCF- oder Datensatz-Importe vorgesehen</string>
-    <string name="error_reason_import_preview_required">Bitte erstelle zuerst eine Vorschau</string>
+    <string name="error_reason_import_preview_required">Bitte erstellen Sie zuerst eine Vorschau</string>
     <string name="error_reason_import_file_missing">Keine Datei hochgeladen</string>
     <string name="error_reason_import_jscontact_file_too_large">Datei zu groß. Die maximale Größe beträgt %1$d MB</string>
     <string name="error_reason_import_file_not_jscontact">Die Datei muss eine JSON-Datei (JSContact) sein</string>
@@ -3196,7 +3196,7 @@
     <string name="error_reason_monica_token_rejected">Monica hat das API-Token abgelehnt</string>
     <string name="error_reason_monica_url_invalid">Die Monica-URL ist ungültig</string>
     <string name="error_reason_monica_url_private">Die Monica-URL führt auf eine private Adresse, die dieser Server blockiert</string>
-    <string name="error_reason_monica_not_monica_api">Der Server hat nicht wie eine Monica-API geantwortet – prüfe die URL</string>
+    <string name="error_reason_monica_not_monica_api">Der Server hat nicht wie eine Monica-API geantwortet – prüfen Sie die URL</string>
     <string name="error_reason_monica_unreachable">Die Monica-Instanz ist nicht erreichbar</string>
     <string name="error_reason_monica_too_many_contacts">Dieses Monica-Konto hat %1$s Kontakte; der Import unterstützt höchstens %2$d</string>
     <string name="error_reason_monica_too_many_records">Dieses Monica-Konto hat %1$s Datensätze; der Import unterstützt höchstens %2$d</string>
@@ -3255,7 +3255,7 @@
     <string name="error_reason_share_grant_not_found">Freigabe nicht gefunden</string>
     <string name="error_reason_share_grant_state_conflict">Diese Freigabe kann so nicht mehr geändert werden</string>
     <string name="error_reason_share_grant_not_ended">Nur eine beendete Freigabe (abgelehnt, abgelaufen oder widerrufen) kann entfernt werden; widerrufen Sie sie zuerst</string>
-    <string name="error_reason_share_grant_widening_refused">Eine Freigabe kann nur eingeschränkt werden; erstelle eine neue Freigabe, um mehr freizugeben</string>
+    <string name="error_reason_share_grant_widening_refused">Eine Freigabe kann nur eingeschränkt werden; erstellen Sie eine neue Freigabe, um mehr freizugeben</string>
     <string name="error_reason_share_grant_already_exists">Das ist bereits mit dieser Person geteilt</string>
     <string name="error_reason_share_grant_pending_limit">Zu viele Freigaben warten auf eine Antwort</string>
     <string name="error_reason_contact_share_session_mismatch">Die Sitzung gehört nicht zu dieser Freigabe</string>
@@ -3329,8 +3329,8 @@
     <string name="error_reason_notification_device_registration_limit">Das Maximum von %1$s Geräteregistrierungen pro Benutzer ist erreicht</string>
     <string name="error_reason_feed_limit_reached">Feed-Limit erreicht (höchstens %1$s aktive Feeds)</string>
     <string name="error_reason_feed_entity_id_not_allowed">Muss bei einem Sammel-Feed leer sein</string>
-    <string name="error_reason_account_attachment_quota_reached">Das Anhang-Speicherkontingent pro Benutzer ist erreicht (%1$s von %2$s belegt); lösche Anhänge oder erhöhe PER_USER_ATTACHMENT_QUOTA_MB</string>
-    <string name="error_reason_account_resource_quota_reached">Benutzerkontingent für %1$s erreicht (%2$s von %3$s); lösche einige %1$s oder erhöhe %4$s</string>
+    <string name="error_reason_account_attachment_quota_reached">Das Anhang-Speicherkontingent pro Benutzer ist erreicht (%1$s von %2$s belegt); löschen Sie Anhänge oder erhöhen Sie PER_USER_ATTACHMENT_QUOTA_MB</string>
+    <string name="error_reason_account_resource_quota_reached">Benutzerkontingent für %1$s erreicht (%2$s von %3$s); löschen Sie einige %1$s oder erhöhen Sie %4$s</string>
     <string name="error_reason_admin_error_window_invalid">muss eine ganze Zahl zwischen 1 und 168 sein</string>
     <string name="error_reason_attachment_file_missing">Keine Datei hochgeladen</string>
     <string name="error_reason_attachment_file_too_large">Datei zu groß. Die maximale Größe ist %1$s MB</string>
@@ -3341,20 +3341,20 @@
     <string name="error_reason_audit_undo_update_only">Rückgängig machen unterstützt nur Aktualisierungsereignisse</string>
     <string name="error_reason_auth_interactive_session_required">Dieser Endpunkt erfordert eine interaktive Sitzung; API-Token können keine Anmeldedaten verwalten</string>
     <string name="error_reason_auth_login_request_invalid">%1$s</string>
-    <string name="error_reason_auth_passkey_removal_verify_other">Das ist der Passkey, der entfernt wird. Bestätige mit einem anderen Passkey.</string>
+    <string name="error_reason_auth_passkey_removal_verify_other">Das ist der Passkey, der entfernt wird. Bestätigen Sie mit einem anderen Passkey.</string>
     <string name="error_reason_auth_token_scope_required">Diesem Token fehlt der für diese Anfrage erforderliche Bereich %1$s</string>
     <string name="error_reason_auth_webauthn_config_invalid">%1$s</string>
-    <string name="error_reason_bundle_export_too_large">Das Kontobündel ist %1$s MiB groß und überschreitet damit das Importlimit von %2$s MiB. Entferne nicht mehr benötigte Kontakte oder Profilfotos und versuche es erneut, oder verwende den CSV-/vCard-Export.</string>
+    <string name="error_reason_bundle_export_too_large">Das Kontobündel ist %1$s MiB groß und überschreitet damit das Importlimit von %2$s MiB. Entfernen Sie nicht mehr benötigte Kontakte oder Profilfotos und versuchen Sie es erneut, oder verwenden Sie den CSV-/vCard-Export.</string>
     <string name="error_reason_calendar_sync_failed">%1$s</string>
     <string name="error_reason_common_idempotency_key_too_long">darf höchstens %1$s Zeichen lang sein</string>
-    <string name="error_reason_common_precondition_failed">Vorbedingung fehlgeschlagen — die Ressource wurde seitdem letzten Lesen geändert; lade sie neu und versuche es erneut</string>
+    <string name="error_reason_common_precondition_failed">Vorbedingung fehlgeschlagen — die Ressource wurde seitdem letzten Lesen geändert; laden Sie sie neu und versuchen Sie es erneut</string>
     <string name="error_reason_common_request_body_too_large">Anfragekörper zu groß</string>
     <string name="error_reason_common_request_body_unreadable">Anfragekörper konnte nicht gelesen werden</string>
     <string name="error_reason_contact_address_already_exists">Der Kontakt hat diese Adresse bereits</string>
     <string name="error_reason_contact_address_key_required">address_key ist erforderlich</string>
-    <string name="error_reason_contact_address_sensitive">Diese Adresse ist als %1$s markiert; sende include_sensitive=true, um sie zu geokodieren</string>
+    <string name="error_reason_contact_address_sensitive">Diese Adresse ist als %1$s markiert; senden Sie include_sensitive=true, um sie zu geokodieren</string>
     <string name="error_reason_contact_address_source_kind_invalid">source_kind muss relationship oder household sein</string>
-    <string name="error_reason_contact_address_suggestion_stale">Der Quellkontakt hat diese Adresse nicht mehr — starte den Adressvorschlag-Scan erneut</string>
+    <string name="error_reason_contact_address_suggestion_stale">Der Quellkontakt hat diese Adresse nicht mehr — starten Sie den Adressvorschlag-Scan erneut</string>
     <string name="error_reason_contact_bulk_circle_required">circle_id ist für diese Aktion erforderlich</string>
     <string name="error_reason_contact_bulk_tag_required">tag_id ist für diese Aktion erforderlich</string>
     <string name="error_reason_contact_derived_rebuild_in_progress">Ein Neuaufbau der abgeleiteten Spalten läuft bereits</string>
@@ -3376,15 +3376,15 @@
     <string name="error_reason_contact_sync_conflict_already_resolved">Synchronisierungskonflikt bereits gelöst</string>
     <string name="error_reason_contact_sync_conflict_restore_failed">%1$s</string>
     <string name="error_reason_contact_uid_immutable">Die Kontakt-UID kann nicht geändert werden</string>
-    <string name="error_reason_export_audit_limit">Das Audit-Protokoll überschreitet das Exportlimit von %1$s Zeilen; verwende stattdessen den paginierten /audit-Endpunkt</string>
-    <string name="error_reason_export_contacts_limit">Der Export von %1$s Kontakten überschreitet das Einzelanfragelimit von %2$s; verwende stattdessen die paginierte /contacts-API</string>
+    <string name="error_reason_export_audit_limit">Das Audit-Protokoll überschreitet das Exportlimit von %1$s Zeilen; verwenden Sie stattdessen den paginierten /audit-Endpunkt</string>
+    <string name="error_reason_export_contacts_limit">Der Export von %1$s Kontakten überschreitet das Einzelanfragelimit von %2$s; verwenden Sie stattdessen die paginierte /contacts-API</string>
     <string name="error_reason_export_format_invalid">format muss vcard4, vcard3 oder jscontact sein</string>
     <string name="error_reason_export_selection_invalid">%1$s</string>
-    <string name="error_reason_geocoder_credentials_rejected">der Anbieter hat die Zugangsdaten dieses Servers abgelehnt (prüfe GEOCODER_API_KEY)</string>
+    <string name="error_reason_geocoder_credentials_rejected">der Anbieter hat die Zugangsdaten dieses Servers abgelehnt (prüfen Sie GEOCODER_API_KEY)</string>
     <string name="error_reason_geocoder_disabled">Geokodierung ist auf diesem Server nicht aktiviert</string>
     <string name="error_reason_geocoder_no_result">der Geokodierer hat keine Übereinstimmung für diese Adresse gefunden</string>
     <string name="error_reason_geocoder_private_address">der Anbieter löste zu einer privaten Adresse auf und wurde blockiert</string>
-    <string name="error_reason_geocoder_rate_limited">der Anbieter begrenzt Anfragen; versuche es in Kürze erneut</string>
+    <string name="error_reason_geocoder_rate_limited">der Anbieter begrenzt Anfragen; versuchen Sie es in Kürze erneut</string>
     <string name="error_reason_geocoder_response_unusable">der Anbieter hat eine unbrauchbare Antwort zurückgegeben</string>
     <string name="error_reason_geocoder_unreachable">der Anbieter war nicht erreichbar</string>
     <string name="error_reason_graph_depth_invalid">depth muss eine ganze Zahl von 1 bis %1$s sein</string>
@@ -3392,15 +3392,15 @@
     <string name="error_reason_graph_depth_too_large">depth darf höchstens %1$s sein</string>
     <string name="error_reason_graph_from_required">from (eine Contact.VCardUID) ist erforderlich</string>
     <string name="error_reason_graph_full_invalid">full muss true oder false sein</string>
-    <string name="error_reason_household_address_stale">Der Haushalt hat diese Adresse nicht mehr — starte den Adressvorschlag-Scan erneut</string>
+    <string name="error_reason_household_address_stale">Der Haushalt hat diese Adresse nicht mehr — starten Sie den Adressvorschlag-Scan erneut</string>
     <string name="error_reason_household_members_address_mismatch">diese Kontakte teilen keine Adresse</string>
     <string name="error_reason_household_members_already_together">Diese Kontakte sind bereits gemeinsam in einem Haushalt</string>
     <string name="error_reason_household_members_distinct_required">mindestens zwei verschiedene Kontakte sind erforderlich, um einen Haushalt zu bilden</string>
     <string name="error_reason_household_members_distinct_required_short">mindestens zwei verschiedene Kontakte sind erforderlich</string>
     <string name="error_reason_household_members_required">mindestens zwei Kontakte sind erforderlich, um einen Haushalt zu bilden</string>
-    <string name="error_reason_household_suggestion_dismissed">Dieser Vorschlag wurde verworfen — starte den Scan erneut, um ihn erneut anzubieten, oder erstelle den Haushalt manuell</string>
+    <string name="error_reason_household_suggestion_dismissed">Dieser Vorschlag wurde verworfen — starten Sie den Scan erneut, um ihn erneut anzubieten, oder erstellen Sie den Haushalt manuell</string>
     <string name="error_reason_household_suggestion_member_stale">Der Kontakt ist kein Mitglied dieses Haushalts mehr</string>
-    <string name="error_reason_household_suggestion_stale">Die vorgeschlagenen Mitglieder teilen keine Adresse mehr — starte den Vorschlag-Scan erneut</string>
+    <string name="error_reason_household_suggestion_stale">Die vorgeschlagenen Mitglieder teilen keine Adresse mehr — starten Sie den Vorschlag-Scan erneut</string>
     <string name="error_reason_household_type_invalid">type muss family_unit, roommates oder other sein</string>
     <string name="error_reason_import_csv_not_text">Diese Datei ist keine reine Text-CSV-Datei. Exportieren Sie sie erneut als CSV (UTF-8) und versuchen Sie es noch einmal.</string>
     <string name="error_reason_import_disk_space_low">nicht genügend Speicherplatz zum Importieren von %1$s Kontakten: %2$s</string>
@@ -3420,10 +3420,10 @@
     <string name="error_reason_photo_fetch_failed">Bild konnte nicht von der URL abgerufen werden</string>
     <string name="error_reason_photo_file_too_large">Datei zu groß. Die maximale Größe ist %1$s MB</string>
     <string name="error_reason_photo_invalid_path">Ungültiger Fotopfad</string>
-    <string name="error_reason_photo_process_failed">Foto konnte nicht verarbeitet werden — prüfe, ob die Datei ein gültiges JPEG-, PNG- oder HEIC-Bild ist</string>
+    <string name="error_reason_photo_process_failed">Foto konnte nicht verarbeitet werden — prüfen Sie, ob die Datei ein gültiges JPEG-, PNG- oder HEIC-Bild ist</string>
     <string name="error_reason_photo_svg_unsupported">SVG-Bilder werden vom Bild-Proxy nicht unterstützt</string>
     <string name="error_reason_photo_uploads_disabled_demo">Foto-Uploads sind im Demo-Modus deaktiviert</string>
-    <string name="error_reason_relationship_suggestion_stale">Die vorgeschlagene Beziehung existiert nicht mehr — starte den Adressvorschlag-Scan erneut</string>
+    <string name="error_reason_relationship_suggestion_stale">Die vorgeschlagene Beziehung existiert nicht mehr — starten Sie den Adressvorschlag-Scan erneut</string>
     <string name="error_reason_search_limit_invalid">limit muss eine positive ganze Zahl sein</string>
     <string name="error_reason_search_query_required">q (ein Suchbegriff) ist erforderlich</string>
     <string name="error_reason_search_query_too_long">q darf höchstens %1$s Zeichen lang sein</string>
@@ -3441,12 +3441,12 @@
     <string name="error_reason_validation_timestamp_invalid">muss ein RFC3339-Zeitstempel sein</string>
     <string name="error_reason_image_too_large">Datei zu groß. Maximal %1$d MB</string>
     <string name="error_reason_image_pixels_exceeded">Die Bildabmessungen überschreiten das Pixel-Limit (%1$d)</string>
-    <string name="error_reason_image_unsupported_format">Nicht unterstütztes Bildformat; verwende JPEG, PNG oder GIF</string>
+    <string name="error_reason_image_unsupported_format">Nicht unterstütztes Bildformat; verwenden Sie JPEG, PNG oder GIF</string>
     <string name="error_reason_image_heic_unsupported">HEIC-Bilder werden nicht unterstützt; zuerst in JPEG umwandeln</string>
     <string name="error_reason_image_corrupt">Das Bild ist beschädigt oder abgeschnitten</string>
     <string name="error_reason_image_limit_reached">Dieses Element hat bereits die maximale Anzahl an Bildern (%1$d)</string>
     <string name="error_reason_note_requires_content_or_image">Eine Notiz braucht Text oder mindestens ein Bild</string>
-    <string name="error_reason_image_processing_busy">Die Bildverarbeitung ist ausgelastet; versuche es gleich noch einmal</string>
+    <string name="error_reason_image_processing_busy">Die Bildverarbeitung ist ausgelastet; versuchen Sie es gleich noch einmal</string>
     <string name="error_reason_image_not_found">Bild nicht gefunden</string>
     <string name="error_reason_image_insufficient_storage">Nicht genügend Speicherplatz für das Bild</string>
     <string name="activity_images_add">Fotos hinzufügen</string>
@@ -3457,7 +3457,7 @@
     <string name="contact_field_visibility_customize">Felder anpassen</string>
     <string name="contact_field_visibility_add_field">Feld hinzufügen</string>
     <string name="contact_field_visibility_title">Felder für diesen Kontakt anpassen</string>
-    <string name="contact_field_visibility_description">Lege fest, welche Felder bei diesem Kontakt erscheinen. Das ändert nur die Anzeige: Die Kontaktdaten und die Synchronisierung bleiben unverändert.</string>
+    <string name="contact_field_visibility_description">Legen Sie fest, welche Felder bei diesem Kontakt erscheinen. Das ändert nur die Anzeige: Die Kontaktdaten und die Synchronisierung bleiben unverändert.</string>
     <string name="contact_field_visibility_empty_fields">Leere Felder</string>
     <string name="contact_field_visibility_inherit">Standard (%1$s)</string>
     <string name="contact_field_visibility_show">Anzeigen</string>
@@ -3473,7 +3473,7 @@
     <string name="contact_gender_not_set">Geschlecht: Nicht gesetzt</string>
     <string name="contact_birthday_not_set">Geburtstag: Nicht gesetzt</string>
     <string name="settings_contact_fields_hide_empty_label">Leere Felder ausblenden</string>
-    <string name="settings_contact_fields_hide_empty_description">Auf der Kontaktseite werden Felder ohne Wert nicht angezeigt. Über das Menü „Feld hinzufügen“ kannst du sie trotzdem ausfüllen, und einzelne Kontakte können diese Einstellung überschreiben.</string>
+    <string name="settings_contact_fields_hide_empty_description">Auf der Kontaktseite werden Felder ohne Wert nicht angezeigt. Über das Menü „Feld hinzufügen“ können Sie sie trotzdem ausfüllen, und einzelne Kontakte können diese Einstellung überschreiben.</string>
     <string name="note_images_add">Fotos hinzufügen</string>
     <string name="note_images_empty">Noch keine Fotos</string>
     <string name="note_images_alt">Notizfoto</string>
@@ -3482,7 +3482,7 @@
     <string name="contact_images_title">Fotos</string>
     <string name="contact_images_add">Fotos hinzufügen</string>
     <string name="contact_images_empty">Noch keine Fotos</string>
-    <string name="contact_images_empty_body">Füge Fotos dieses Kontakts hinzu, um sie beisammen zu halten.</string>
+    <string name="contact_images_empty_body">Fügen Sie Fotos dieses Kontakts hinzu, um sie beisammen zu halten.</string>
     <string name="contact_images_alt">Kontaktfoto</string>
     <string name="contact_images_delete">Foto löschen</string>
     <string name="contact_images_delete_title">Foto löschen?</string>
@@ -3514,7 +3514,7 @@
     <string name="contact_images_delete_source_confirm">Dieses Foto löschen? Es wird auch aus der zugehörigen Notiz oder Aktivität entfernt.</string>
     <!-- Reusable entities: organisations, places, pets (issue #2302, ADR 0043) -->
     <string name="shared_entities_title">Organisationen, Orte &amp; Haustiere</string>
-    <string name="shared_entities_description">Organisationen, Orte und Haustiere, die mehrere Kontakte gemeinsam haben. Benenne einen Eintrag einmal um, und alle verknüpften Kontakte folgen.</string>
+    <string name="shared_entities_description">Organisationen, Orte und Haustiere, die mehrere Kontakte gemeinsam haben. Benennen Sie einen Eintrag einmal um, und alle verknüpften Kontakte folgen.</string>
     <string name="shared_entities_kind_organisation">Organisationen</string>
     <string name="shared_entities_kind_place">Orte</string>
     <string name="shared_entities_kind_pet">Haustiere</string>
@@ -3527,7 +3527,7 @@
     <string name="shared_entities_empty_pet">Noch keine Haustiere.</string>
     <string name="shared_entities_search">Nach Name suchen</string>
     <string name="shared_entities_search_clear">Suche löschen</string>
-    <string name="shared_entities_no_results">Keine Treffer für deine Suche.</string>
+    <string name="shared_entities_no_results">Keine Treffer für Ihre Suche.</string>
     <string name="shared_entities_sensitivity_label">Vertraulichkeit</string>
     <string name="shared_entities_sensitivity_normal">Normal</string>
     <string name="shared_entities_sensitivity_private">Privat</string>
@@ -3549,8 +3549,8 @@
     <string name="shared_entities_field_date_hint">JJJJ, JJJJ-MM oder JJJJ-MM-TT</string>
     <string name="shared_entities_field_address">Adresse</string>
     <string name="shared_entities_form_edit_title">%1$s bearbeiten</string>
-    <string name="shared_entities_form_name_required">Gib einen Namen ein.</string>
-    <string name="shared_entities_form_invalid_date">Gib %1$s als JJJJ, JJJJ-MM oder JJJJ-MM-TT ein.</string>
+    <string name="shared_entities_form_name_required">Geben Sie einen Namen ein.</string>
+    <string name="shared_entities_form_invalid_date">Geben Sie %1$s als JJJJ, JJJJ-MM oder JJJJ-MM-TT ein.</string>
     <string name="shared_entities_detail_not_found">Dieser Eintrag existiert nicht oder wurde gelöscht.</string>
     <string name="shared_entities_detail_details">Details</string>
     <string name="shared_entities_detail_no_details">Noch keine Details.</string>
@@ -3559,11 +3559,11 @@
     <string name="shared_entities_detail_delete">Löschen</string>
     <string name="shared_entities_detail_merge">Mit anderem zusammenführen…</string>
     <string name="shared_entities_people_title">Personen</string>
-    <string name="shared_entities_people_empty">Noch keine Kontakte verknüpft. Verknüpfe ihn auf der Seite eines Kontakts.</string>
+    <string name="shared_entities_people_empty">Noch keine Kontakte verknüpft. Verknüpfen Sie ihn auf der Seite eines Kontakts.</string>
     <string name="shared_entities_people_primary">Primär</string>
     <string name="shared_entities_people_load_failed">Die verknüpften Kontakte konnten nicht geladen werden.</string>
     <string name="shared_entities_delete_title">%1$s löschen?</string>
-    <string name="shared_entities_delete_plain">%1$s wird gelöscht. Du kannst es gleich danach wiederherstellen.</string>
+    <string name="shared_entities_delete_plain">%1$s wird gelöscht. Sie können es gleich danach wiederherstellen.</string>
     <string name="shared_entities_delete_adopt_organisation">Die Organisation vorher bei diesen Kontakten behalten (als eigenen Wert in jeden Kontakt kopieren)</string>
     <string name="shared_entities_delete_adopt_place">Die Adresse vorher bei diesen Kontakten behalten (als eigenen Wert in jeden Kontakt kopieren)</string>
     <string name="shared_entities_delete_confirm">Löschen</string>
@@ -3613,16 +3613,16 @@
     <string name="contact_entity_links_kind">Art</string>
     <string name="contact_entity_links_entity">Organisation, Ort oder Haustier</string>
     <string name="contact_entity_links_create">„%1$s“ erstellen</string>
-    <string name="contact_entity_links_entity_required">Wähle eine Organisation, einen Ort oder ein Haustier, oder tippe einen Namen, um einen neuen Eintrag anzulegen.</string>
+    <string name="contact_entity_links_entity_required">Wählen Sie eine Organisation, einen Ort oder ein Haustier, oder tippen Sie einen Namen, um einen neuen Eintrag anzulegen.</string>
     <string name="contact_entity_links_role">Rolle</string>
     <string name="contact_entity_links_role_label">Rollendetail (optional)</string>
     <string name="contact_entity_links_primary_help">Primär (auf der Karte dieses Kontakts angezeigt)</string>
-    <string name="contact_entity_links_year_invalid">Gib Jahre vierstellig ein; das Ende darf nicht vor dem Beginn liegen.</string>
+    <string name="contact_entity_links_year_invalid">Geben Sie Jahre vierstellig ein; das Ende darf nicht vor dem Beginn liegen.</string>
     <string name="contact_entity_links_projected_from">von %1$s</string>
     <string name="contact_entity_links_projected_from_unknown">von einem verknüpften Eintrag</string>
     <string name="contact_entity_links_projected_hint">Aus der verknüpften Organisation oder dem verknüpften Ort angezeigt. Ändern Sie den Wert auf dessen Seite oder kopieren Sie ihn in diesen Kontakt, um ihn hier zu bearbeiten.</string>
     <string name="contact_entity_links_from_own_title">Einen eigenen Wert verknüpfen</string>
-    <string name="contact_entity_links_from_own_intro">Verbinde eine eigene Organisation oder Adresse dieses Kontakts mit einem gemeinsamen Eintrag. Der Wert bleibt beim Kontakt.</string>
+    <string name="contact_entity_links_from_own_intro">Verbinden Sie eine eigene Organisation oder Adresse dieses Kontakts mit einem gemeinsamen Eintrag. Der Wert bleibt beim Kontakt.</string>
     <string name="contact_entity_links_from_own_value">Wert</string>
     <string name="contact_entity_links_from_own_create_new_organisation">Aus diesem Wert eine neue Organisation erstellen</string>
     <string name="contact_entity_links_from_own_create_new_place">Aus diesem Wert einen neuen Ort erstellen</string>
@@ -3631,10 +3631,10 @@
     <string name="contact_entity_links_from_own_linked">Mit %1$s verknüpft.</string>
     <string name="shared_entities_empty_organisation">Noch keine Organisationen.</string>
     <string name="shared_entities_empty_place">Noch keine Orte.</string>
-    <string name="shared_entities_detail_no_custom_fields">Für diese Art gibt es noch keine benutzerdefinierten Felder. Füge in den Einstellungen eines hinzu.</string>
+    <string name="shared_entities_detail_no_custom_fields">Für diese Art gibt es noch keine benutzerdefinierten Felder. Fügen Sie in den Einstellungen eines hinzu.</string>
     <string name="shared_entities_loading_failed">Organisationen, Orte und Haustiere konnten nicht geladen werden.</string>
     <string name="shared_entities_merge_search">Suche nach dem Eintrag zum Zusammenführen</string>
-    <string name="shared_entities_merge_nothing_unless_confirmed">Nichts wird zusammengeführt, solange du unten nicht bestätigst.</string>
+    <string name="shared_entities_merge_nothing_unless_confirmed">Nichts wird zusammengeführt, solange Sie unten nicht bestätigen.</string>
     <string name="shared_entities_merge_title_direction">%1$s in %2$s zusammenführen</string>
     <string name="shared_entities_merge_keep_option">%1$s behalten und %2$s darin zusammenführen</string>
     <string name="shared_entities_merge_undo_action">Rückgängig</string>
@@ -3648,7 +3648,7 @@
     <string name="shared_entities_restore_failed">Dieser Eintrag konnte nicht wiederhergestellt werden.</string>
     <string name="shared_entities_open">%1$s öffnen</string>
     <string name="shared_entities_suggestions_title">Mögliche Duplikate</string>
-    <string name="shared_entities_suggestions_description">Einträge mit gleichem oder sehr ähnlichem Namen. Es wird nichts zusammengeführt, wenn du es nicht willst.</string>
+    <string name="shared_entities_suggestions_description">Einträge mit gleichem oder sehr ähnlichem Namen. Es wird nichts zusammengeführt, wenn Sie es nicht wollen.</string>
     <string name="shared_entities_suggestions_load">Duplikate suchen</string>
     <string name="shared_entities_suggestions_none">Keine Duplikate gefunden.</string>
     <string name="shared_entities_suggestions_failed">Die Suche nach Duplikaten ist fehlgeschlagen.</string>
@@ -3688,8 +3688,8 @@
     <string name="shared_entities_from_contacts_open">Aus meinen Kontakten erstellen…</string>
     <string name="shared_entities_from_contacts_title">Einträge aus meinen Kontakten erstellen</string>
     <string name="shared_entities_from_contacts_intro">Gruppen derselben Organisation oder Adresse, die bei Ihren Kontakten gefunden wurden. Haken Sie eine Gruppe an, um sie anzulegen, und wählen Sie dann die zu verknüpfenden Kontakte. Bei einem Kontakt wird nichts geändert oder gelöscht. Sie können das jederzeit erneut ausführen; angeboten werden nur noch nicht verknüpfte Werte.</string>
-    <string name="shared_entities_from_contacts_none">Aus deinen Kontakten gibt es nichts mehr anzulegen.</string>
-    <string name="shared_entities_from_contacts_load_failed">Deine Kontakte konnten nicht durchsucht werden.</string>
+    <string name="shared_entities_from_contacts_none">Aus Ihren Kontakten gibt es nichts mehr anzulegen.</string>
+    <string name="shared_entities_from_contacts_load_failed">Ihre Kontakte konnten nicht durchsucht werden.</string>
     <string name="shared_entities_from_contacts_create_failed">Die Einträge konnten nicht erstellt werden.</string>
     <string name="shared_entities_from_contacts_include_cd">%1$s einbeziehen</string>
     <string name="shared_entities_from_contacts_variants">Auch geschrieben als: %1$s</string>
@@ -3703,7 +3703,7 @@
     <string name="settings_custom_fields_group_hint_entity">Optional. Felder mit derselben Gruppe werden auf der Seite zusammen angezeigt.</string>
     <string name="shared_entities_from_contacts_contacts_heading">Zu verknüpfende Kontakte</string>
     <string name="shared_entities_from_contacts_result_none">Es wurde nichts angelegt.</string>
-    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: übersprungen. Es existiert möglicherweise schon oder passt nicht mehr zu deinen Kontakten.</string>
+    <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: übersprungen. Es existiert möglicherweise schon oder passt nicht mehr zu Ihren Kontakten.</string>
     <string name="shared_entities_from_contacts_skip_contact_not_in_group">%1$s: ein Kontakt gehört nicht mehr dazu.</string>
     <string name="shared_entities_from_contacts_skip_contact_named">%1$s: %2$s gehört nicht mehr dazu.</string>
     <string name="shared_entities_from_contacts_skip_name_invalid">%1$s: Der Name ist ungültig.</string>
