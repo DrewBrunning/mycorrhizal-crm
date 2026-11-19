@@ -20,7 +20,9 @@ interface BulkMergeDialogProps {
   contacts: Contact[];
   // Called exactly once when the flow ends -- completed, or cancelled -- with
   // how many merges were committed, so the page can refetch only when needed.
-  onFinish: (mergedCount: number) => void | Promise<void>;
+  // When at least one merge was committed, `survivor` is the contact the rest
+  // were folded into (the page names it in its confirmation).
+  onFinish: (mergedCount: number, survivor?: Contact) => void | Promise<void>;
 }
 
 function contactName(c: Contact): string {
@@ -52,10 +54,13 @@ export default function BulkMergeDialog({ open, contacts, onFinish }: BulkMergeD
   // changes, so a fresh object per render would undo the user's swap.
   const pair = useMemo(() => (next ? { a: primary, b: next } : null), [primary, next]);
 
+  const survivorRef = useRef<Contact | undefined>(undefined);
+
   const finish = (count: number) => {
     if (finished.current) return;
     finished.current = true;
-    void onFinish(count);
+    if (count > 0 && survivorRef.current) void onFinish(count, survivorRef.current);
+    else void onFinish(count);
   };
 
   if (!started) {
@@ -112,6 +117,7 @@ export default function BulkMergeDialog({ open, contacts, onFinish }: BulkMergeD
         const survivor = keeperId === next.ID ? next : primary;
         const loser = survivor === next ? primary : next;
         const merged = [...mergedIds, loser.ID];
+        survivorRef.current = survivor;
         setPrimaryId(survivor.ID);
         setMergedIds(merged);
         // The primary may have been the one folded away (a swap); it is

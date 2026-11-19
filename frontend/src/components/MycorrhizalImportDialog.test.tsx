@@ -151,3 +151,13 @@ test('Escape closes the dialog and resets it', async () => {
   fireEvent.keyDown(await screen.findByRole('dialog'), { key: 'Escape' });
   await waitFor(() => expect(onClose).toHaveBeenCalled());
 });
+
+// #2688: a bundle is uploaded from a file, so the stepper reads
+// Upload -> Review -> Import -> Done, not Connect/Fetch.
+test('the stepper names the file upload, not Connect/Fetch', () => {
+  renderOpen();
+  const labels = Array.from(document.querySelectorAll('.MuiStepLabel-label')).map(
+    (el) => el.textContent,
+  );
+  expect(labels).toEqual(['Upload', 'Review', 'Import', 'Done']);
+});

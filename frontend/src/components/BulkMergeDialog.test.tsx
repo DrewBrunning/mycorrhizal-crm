@@ -76,7 +76,7 @@ test('defaults the primary to the first contact and merges the rest into it', as
     fireEvent.click(btn);
     await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(1, loser, {}));
   }
-  await waitFor(() => expect(onDone).toHaveBeenCalledWith(2));
+  await waitFor(() => expect(onDone).toHaveBeenCalledWith(2, trio[0]));
 });
 
 test('keeps merging into whoever survived when the user swaps the keeper mid-way', async () => {
@@ -112,7 +112,7 @@ test('cancelling part-way still reports the merges that already happened', async
   expect(onFinish).not.toHaveBeenCalled();
 
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
-  await waitFor(() => expect(onFinish).toHaveBeenCalledWith(1));
+  await waitFor(() => expect(onFinish).toHaveBeenCalledWith(1, trio[0]));
 });
 
 test('cancelling before any merge reports zero', () => {

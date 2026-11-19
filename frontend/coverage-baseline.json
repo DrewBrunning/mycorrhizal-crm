@@ -51,10 +51,10 @@
       "branchesTotal": 37
     },
     "src/ContactsPage.tsx": {
-      "lines": 92.51,
-      "linesTotal": 254,
-      "branches": 87.71,
-      "branchesTotal": 171
+      "lines": 92.6,
+      "linesTotal": 257,
+      "branches": 87.86,
+      "branchesTotal": 173
     },
     "src/DashboardPage.tsx": {
       "lines": 82.42,
@@ -777,10 +777,10 @@
       "branchesTotal": 37
     },
     "src/components/BulkMergeDialog.tsx": {
-      "lines": 97.05,
-      "linesTotal": 34,
-      "branches": 82.6,
-      "branchesTotal": 23
+      "lines": 97.29,
+      "linesTotal": 37,
+      "branches": 85.18,
+      "branchesTotal": 27
     },
     "src/components/CadenceDialog.tsx": {
       "lines": 94.87,
@@ -897,8 +897,8 @@
       "branchesTotal": 88
     },
     "src/components/ContactInformation.tsx": {
-      "lines": 76.59,
-      "linesTotal": 141,
+      "lines": 76.92,
+      "linesTotal": 143,
       "branches": 76.62,
       "branchesTotal": 231
     },
@@ -1215,10 +1215,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 93.88,
-      "linesTotal": 376,
-      "branches": 86.72,
-      "branchesTotal": 324
+      "lines": 94.23,
+      "linesTotal": 399,
+      "branches": 86.9,
+      "branchesTotal": 359
     },
     "src/components/ImportFixedAssignmentPicker.tsx": {
       "lines": 84.21,
@@ -1762,9 +1762,9 @@
     },
     "src/components/sourceImport/SourceImportWizard.tsx": {
       "lines": 100,
-      "linesTotal": 27,
+      "linesTotal": 30,
       "branches": 100,
-      "branchesTotal": 28
+      "branchesTotal": 39
     },
     "src/components/timelineLayout.ts": {
       "lines": 100,
