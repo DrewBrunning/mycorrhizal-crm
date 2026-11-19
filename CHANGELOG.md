@@ -37,6 +37,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Android Activities explains itself** ([#2211](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2211)): the Activities screen now says that activities are things that already happened, matching the web page and the Occasions screen, so it is easier to tell them from occasions and reminders.
 - **Android hides features an older server does not have** ([#2527](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2527)): connected to a server older than v1.7.0, the app no longer shows standing shares, organisations/places/pets or the import report link, and Trash no longer fails. Nothing to do when upgrading; they reappear once the server is updated.
 - **Export account bundle on the web** ([#2678](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2678)): Settings → Data has an Export account bundle button that downloads a complete, re-importable copy of your account, after a reminder that it includes private and secret items. Move it to another server with Import account bundle.
+- **Card list shows who is left out** ([#2676](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2676), [#2786](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2786)): before you download the card list, the Occasions page says how many recipients it holds and how many are skipped for having no postal address or only a private one. With no addresses at all, it says so instead of offering an empty file.
 
 ### Changed
 

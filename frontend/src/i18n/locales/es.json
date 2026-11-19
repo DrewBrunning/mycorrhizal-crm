@@ -3208,7 +3208,18 @@
       "title": "Lista de tarjetas",
       "description": "Descarga un CSV de contactos con una ocasión de tarjeta activa: una fila por obligación activa, con el nombre del contacto, su dirección con sensibilidad normal y la ocasión. Las direcciones privadas y secretas se omiten.",
       "download": "Descargar CSV",
-      "downloadFailed": "No se pudo descargar la lista de tarjetas."
+      "downloadFailed": "No se pudo descargar la lista de tarjetas.",
+      "summaryChecking": "Comprobando quién está en la lista…",
+      "summary_one": "{{count}} destinatario",
+      "summary_many": "{{count}} de destinatarios",
+      "summary_other": "{{count}} destinatarios",
+      "summarySkipped_one": "{{count}} destinatario; {{skipped}} omitidos ({{reasons}})",
+      "summarySkipped_many": "{{count}} de destinatarios; {{skipped}} omitidos ({{reasons}})",
+      "summarySkipped_other": "{{count}} destinatarios; {{skipped}} omitidos ({{reasons}})",
+      "skippedNoAddress": "sin dirección postal: {{n}}",
+      "skippedPrivateAddress": "solo dirección privada: {{n}}",
+      "noRecipients": "Ningún destinatario tiene dirección postal.",
+      "noObligations": "Aún no hay ocasiones de tarjeta activas. Añade una desde la página de un contacto."
     },
     "giftShoppingList": {
       "title": "Lista de compras de regalos",

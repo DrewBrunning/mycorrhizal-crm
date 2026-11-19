@@ -3208,7 +3208,18 @@
       "title": "Elenco biglietti",
       "description": "Scarica un CSV dei contatti con un'occasione biglietto attiva: una riga per impegno attivo, con il nome del contatto, il suo indirizzo a sensibilità normale e l'occasione. Gli indirizzi privati e segreti sono esclusi.",
       "download": "Scarica CSV",
-      "downloadFailed": "Impossibile scaricare l'elenco dei biglietti."
+      "downloadFailed": "Impossibile scaricare l'elenco dei biglietti.",
+      "summaryChecking": "Verifica di chi è nell'elenco…",
+      "summary_one": "{{count}} destinatario",
+      "summary_many": "{{count}} di destinatari",
+      "summary_other": "{{count}} destinatari",
+      "summarySkipped_one": "{{count}} destinatario; {{skipped}} esclusi ({{reasons}})",
+      "summarySkipped_many": "{{count}} di destinatari; {{skipped}} esclusi ({{reasons}})",
+      "summarySkipped_other": "{{count}} destinatari; {{skipped}} esclusi ({{reasons}})",
+      "skippedNoAddress": "senza indirizzo postale: {{n}}",
+      "skippedPrivateAddress": "solo indirizzo privato: {{n}}",
+      "noRecipients": "Nessun destinatario ha un indirizzo postale.",
+      "noObligations": "Nessuna occasione biglietto attiva per ora. Aggiungine una dalla pagina di un contatto."
     },
     "giftShoppingList": {
       "title": "Lista regali da comprare",

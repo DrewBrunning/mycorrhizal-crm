@@ -3106,7 +3106,16 @@
       "title": "Card List",
       "description": "Download a CSV of contacts with an active card occasion: one row per active obligation, with the contact name, their normal-sensitivity address, and the occasion. Private and secret addresses are left out.",
       "download": "Download CSV",
-      "downloadFailed": "Failed to download the card list."
+      "downloadFailed": "Failed to download the card list.",
+      "summaryChecking": "Checking who is on the list…",
+      "summary_one": "{{count}} recipient",
+      "summary_other": "{{count}} recipients",
+      "summarySkipped_one": "{{count}} recipient; {{skipped}} skipped ({{reasons}})",
+      "summarySkipped_other": "{{count}} recipients; {{skipped}} skipped ({{reasons}})",
+      "skippedNoAddress": "no postal address: {{n}}",
+      "skippedPrivateAddress": "private address only: {{n}}",
+      "noRecipients": "No recipients have a postal address.",
+      "noObligations": "No active card occasions yet. Add one from a contact's page."
     },
     "giftShoppingList": {
       "title": "Gift Shopping List",

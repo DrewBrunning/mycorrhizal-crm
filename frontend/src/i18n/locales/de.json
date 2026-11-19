@@ -3106,7 +3106,16 @@
       "title": "Kartenliste",
       "description": "Lade eine CSV der Kontakte mit einem aktiven Kartenanlass herunter: eine Zeile pro aktiver Verpflichtung, mit Kontaktname, Adresse mit normaler Sensitivität und dem Anlass. Private und geheime Adressen werden weggelassen.",
       "download": "CSV herunterladen",
-      "downloadFailed": "Die Kartenliste konnte nicht heruntergeladen werden."
+      "downloadFailed": "Die Kartenliste konnte nicht heruntergeladen werden.",
+      "summaryChecking": "Die Liste wird geprüft …",
+      "summary_one": "{{count}} Empfänger",
+      "summary_other": "{{count}} Empfänger",
+      "summarySkipped_one": "{{count}} Empfänger; {{skipped}} übersprungen ({{reasons}})",
+      "summarySkipped_other": "{{count}} Empfänger; {{skipped}} übersprungen ({{reasons}})",
+      "skippedNoAddress": "keine Postanschrift: {{n}}",
+      "skippedPrivateAddress": "nur private Anschrift: {{n}}",
+      "noRecipients": "Kein Empfänger hat eine Postanschrift.",
+      "noObligations": "Noch keine aktiven Kartenanlässe. Fügen Sie auf der Seite eines Kontakts einen hinzu."
     },
     "giftShoppingList": {
       "title": "Geschenkeliste",
