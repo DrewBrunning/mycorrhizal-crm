@@ -23,7 +23,7 @@ datastore = "1.1.1"
 securityCrypto = "1.1.0-alpha06"
 javaxInject = "1"
 work = "2.9.1"
-turbine = "1.2.0"
+turbine = "1.2.1"
 # 1.14.x: its ByteBuddy line supports the JDK 25 test JVM (1.13.x predates
 # Java 25 class files). Test-only, so no release lockfile is affected.
 mockk = "1.14.9"
