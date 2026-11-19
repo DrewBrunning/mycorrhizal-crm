@@ -68,6 +68,7 @@ import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LabelledDropdown
@@ -94,7 +95,11 @@ fun RelationshipsScreen(
     val listState = rememberLazyListState()
     var pendingDelete by remember { mutableStateOf<RelationshipEdge?>(null) }
     var pendingReject by remember { mutableStateOf<RelationshipEdge?>(null) }
-    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
+    // With nothing listed a failed load is the screen's ErrorState (and its Retry); a toast that
+    // clears the error on dismissal would take that state away again.
+    val loadErrorOnScreen = state.loadError != null && state.edges.isEmpty()
+    val errorMessage = state.errorRes?.let { stringResource(it) }
+        ?: state.error?.takeUnless { loadErrorOnScreen && it === state.loadError }?.localizedMessage()
 
     @Composable
     fun displayName(edge: RelationshipEdge): String {
@@ -175,6 +180,10 @@ fun RelationshipsScreen(
                 ) {
                     when {
                         state.isLoading && state.edges.isEmpty() -> LoadingSkeleton()
+
+                        loadErrorOnScreen -> state.loadError?.let { error ->
+                            ErrorState(error = error, onRetry = viewModel::load)
+                        }
 
                         state.edges.isEmpty() && errorMessage == null ->
                             EmptyState(

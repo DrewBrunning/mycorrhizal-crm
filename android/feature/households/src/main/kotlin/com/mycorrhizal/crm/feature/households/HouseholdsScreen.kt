@@ -61,6 +61,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -158,7 +159,7 @@ fun HouseholdsScreen(
                             state.isLoading && state.households.isEmpty() -> LoadingSkeleton()
 
                             state.households.isEmpty() && !state.suggestionsLoaded &&
-                                state.error == null ->
+                                state.loadError == null ->
                                 EmptyState(
                                     title = stringResource(R.string.households_empty),
                                     body = stringResource(R.string.households_empty_body),
@@ -166,14 +167,10 @@ fun HouseholdsScreen(
                                     onAction = { showCreateDialog = true }
                                 )
 
-                            state.households.isEmpty() && !state.suggestionsLoaded &&
-                                state.error != null -> {
-                                Text(
-                                    text = state.error?.localizedMessage().orEmpty(),
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
+                            state.households.isEmpty() && !state.suggestionsLoaded ->
+                                state.loadError?.let { error ->
+                                    ErrorState(error = error, onRetry = viewModel::load)
+                                }
 
                             else -> {
                                 LazyColumn(
@@ -272,7 +269,11 @@ fun HouseholdsScreen(
         )
     }
 
-    state.error?.let { error ->
+    // With nothing listed a failed load is the screen's ErrorState (and its Retry); a toast that
+    // clears the error on dismissal would take that state away again.
+    val loadErrorOnScreen = state.loadError != null && state.households.isEmpty() &&
+        !state.suggestionsLoaded
+    state.error?.takeUnless { loadErrorOnScreen && it === state.loadError }?.let { error ->
         val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
