@@ -34,7 +34,7 @@ class ShareContactViewModelTest {
     private val grantRepository = mockk<ShareGrantRepository>()
 
     private fun viewModel(uid: String = "uid-5"): ShareContactViewModel {
-        coEvery { shareRepository.userDirectory() } returns Result.success(
+        coEvery { shareRepository.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 9, username = "casey"))
         )
         coEvery { grantRepository.previewContact(any(), any()) } returns
@@ -194,7 +194,7 @@ class ShareContactViewModelTest {
 
     @Test
     fun `directory load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { shareRepository.userDirectory() } returns Result.failure(
+        coEvery { shareRepository.userDirectory("") } returns Result.failure(
             ApiError.Client(500, "boom")
         )
         val vm = ShareContactViewModel(

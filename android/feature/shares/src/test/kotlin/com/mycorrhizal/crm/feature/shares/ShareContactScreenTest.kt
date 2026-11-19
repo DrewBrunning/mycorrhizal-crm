@@ -72,7 +72,7 @@ class ShareContactScreenTest {
     @Test
     fun `renders the recipient picker and sections once the directory loads`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -89,7 +89,7 @@ class ShareContactScreenTest {
     @Test
     fun `a failed directory load shows the localized error`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.failure(ApiError.Client(404, "gone"))
+        coEvery { repo.userDirectory("") } returns Result.failure(ApiError.Client(404, "gone"))
         screen(repo)
 
         composeTestRule.onAllNodesWithText("Not found").assertCountEquals(2)
@@ -98,7 +98,7 @@ class ShareContactScreenTest {
     @Test
     fun `share is disabled until a recipient is selected`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -197,7 +197,7 @@ class ShareContactScreenTest {
     @Test
     fun `share screen has no accessibility violations`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -208,7 +208,7 @@ class ShareContactScreenTest {
     @Test
     fun `the reveal button opens the sensitive confirmation dialog`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -224,7 +224,7 @@ class ShareContactScreenTest {
     @Test
     fun `sharing with a selected recipient calls the repository`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         coEvery { repo.create(any()) } returns Result.success(
@@ -248,7 +248,7 @@ class ShareContactScreenTest {
     @Test
     fun `section, mode and expiry rows are at least 48dp tall`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         val grants = mockk<ShareGrantRepository>()
@@ -283,7 +283,7 @@ class ShareContactScreenTest {
     @Test
     fun `one-time is the default mode and keeps the existing description`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -301,7 +301,7 @@ class ShareContactScreenTest {
         val repo = mockk<ContactShareRepository>()
         val grants = mockk<ShareGrantRepository>()
         coEvery { grants.previewContact(any(), any()) } returns Result.success(emptyMap())
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         coEvery { grants.create(any()) } returns Result.success(
@@ -331,7 +331,7 @@ class ShareContactScreenTest {
         val repo = mockk<ContactShareRepository>()
         val grants = mockk<ShareGrantRepository>()
         coEvery { grants.previewContact(any(), any()) } returns Result.success(emptyMap())
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         coEvery { grants.create(any()) } returns Result.failure(
@@ -380,7 +380,7 @@ class ShareContactScreenTest {
         }
     ): ShareContactViewModel {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         return standingScreen(repo, grants)
@@ -557,7 +557,7 @@ class ShareContactScreenTest {
     @Test
     fun `a failed directory load offers Retry that reloads the recipients`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returnsMany listOf(
+        coEvery { repo.userDirectory("") } returnsMany listOf(
             Result.failure(ApiError.Network(java.io.IOException("offline"))),
             Result.success(listOf(UserDirectoryEntry(id = 1, username = "alice")))
         )
@@ -569,6 +569,6 @@ class ShareContactScreenTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText(str(R.string.shares_recipient)).assertIsDisplayed()
-        coVerify(exactly = 2) { repo.userDirectory() }
+        coVerify(exactly = 2) { repo.userDirectory("") }
     }
 }

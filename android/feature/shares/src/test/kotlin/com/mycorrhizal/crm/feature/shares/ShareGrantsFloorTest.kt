@@ -64,7 +64,7 @@ class ShareGrantsFloorTest {
 
     private fun shareContact(version: AppVersion?) {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         val vm = ShareContactViewModel(

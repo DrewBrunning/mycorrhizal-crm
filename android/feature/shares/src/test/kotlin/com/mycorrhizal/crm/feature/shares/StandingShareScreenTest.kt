@@ -63,7 +63,7 @@ class StandingShareScreenTest {
         ),
         onShared: () -> Unit = {}
     ): StandingShareViewModel {
-        coEvery { directory.userDirectory() } returns Result.success(recipients)
+        coEvery { directory.userDirectory("") } returns Result.success(recipients)
         val vm = StandingShareViewModel(
             directory,
             grants,
@@ -241,7 +241,7 @@ class StandingShareScreenTest {
 
     @Test
     fun `a failed directory load is worded from its reason code, never the server text`() {
-        coEvery { directory.userDirectory() } returns Result.failure(
+        coEvery { directory.userDirectory("") } returns Result.failure(
             ApiError.Client(
                 409,
                 "RAW SERVER TEXT",
@@ -272,7 +272,7 @@ class StandingShareScreenTest {
 
     @Test
     fun `a failed directory load offers Retry that reloads the recipients`() {
-        coEvery { directory.userDirectory() } returnsMany listOf(
+        coEvery { directory.userDirectory("") } returnsMany listOf(
             Result.failure(ApiError.Network(java.io.IOException("offline"))),
             Result.success(listOf(UserDirectoryEntry(id = 1, username = "alice")))
         )
@@ -294,6 +294,6 @@ class StandingShareScreenTest {
 
         composeTestRule.onAllNodesWithText(str(R.string.error_client_network))
             .assertCountEquals(0)
-        coVerify(exactly = 2) { directory.userDirectory() }
+        coVerify(exactly = 2) { directory.userDirectory("") }
     }
 }

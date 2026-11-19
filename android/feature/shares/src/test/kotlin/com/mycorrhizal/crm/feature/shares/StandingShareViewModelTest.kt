@@ -36,7 +36,7 @@ class StandingShareViewModelTest {
         type: String = ShareGrantEntityTypes.NOTE,
         id: String = "entity-1"
     ): StandingShareViewModel {
-        coEvery { directory.userDirectory() } returns Result.success(
+        coEvery { directory.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 9, username = "casey"))
         )
         return StandingShareViewModel(
@@ -70,7 +70,7 @@ class StandingShareViewModelTest {
         mainDispatcherRule.testDispatcher
     ) {
         val vm = viewModel()
-        coEvery { directory.userDirectory() } returns Result.failure(ApiError.Client(404, "gone"))
+        coEvery { directory.userDirectory("") } returns Result.failure(ApiError.Client(404, "gone"))
         vm.load()
         advanceUntilIdle()
 

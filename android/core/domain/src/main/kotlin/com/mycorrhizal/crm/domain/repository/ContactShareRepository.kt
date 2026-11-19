@@ -41,6 +41,9 @@ interface ContactShareRepository {
     /** Decline a pending share (flips its status; the sender's offer survives). */
     suspend fun decline(id: String): Result<Unit>
 
-    /** Every other user on the instance (id + username), for the recipient picker. */
-    suspend fun userDirectory(query: String = ""): Result<List<UserDirectoryEntry>>
+    /**
+     * The other users on the instance (id + username), for the recipient picker. [query] is the
+     * typed username prefix: `search`-mode servers need 3+ characters, others ignore it.
+     */
+    suspend fun userDirectory(query: String): Result<List<UserDirectoryEntry>>
 }
