@@ -36,35 +36,43 @@ class GermanFormalityTest {
         assertTrue("Missing values-de/strings.xml", file.exists())
         val text = file.readText()
         val out = linkedMapOf<String, String>()
+        val itemPattern = Regex("""<item quantity="([^"]+)">([\s\S]*?)</item>""")
         Regex("""<string name="([^"]+)"[^>]*>([\s\S]*?)</string>""").findAll(text).forEach {
             out[it.groupValues[1]] = it.groupValues[2]
         }
         Regex("""<plurals name="([^"]+)"[^>]*>([\s\S]*?)</plurals>""").findAll(text).forEach { p ->
-            Regex("""<item quantity="([^"]+)">([\s\S]*?)</item>""").findAll(p.groupValues[2]).forEach {
+            itemPattern.findAll(p.groupValues[2]).forEach {
                 out["${p.groupValues[1]}#${it.groupValues[1]}"] = it.groupValues[2]
             }
         }
         return out
     }
 
-    private fun offenders(pattern: Regex): List<String> =
-        germanStrings().filter { (name, value) -> name !in allowlist && pattern.containsMatchIn(value) }.keys.toList()
+    private fun offenders(pattern: Regex): List<String> {
+        val strings = germanStrings()
+        return strings
+            .filter { (name, value) -> name !in allowlist && pattern.containsMatchIn(value) }
+            .keys
+            .toList()
+    }
 
     @Test
     fun `German strings address the user formally with no du or dein pronouns`() {
+        val found = offenders(informalPronouns)
         assertEquals(
-            "values-de strings with informal pronouns (use Sie/Ihnen/Ihr): ${offenders(informalPronouns)}",
+            "values-de strings with informal pronouns (use Sie/Ihnen/Ihr): $found",
             emptyList<String>(),
-            offenders(informalPronouns)
+            found
         )
     }
 
     @Test
     fun `German strings use Sie imperatives not informal ones`() {
+        val found = offenders(informalImperatives)
         assertEquals(
-            "values-de strings with informal imperatives (use e.g. 'Geben Sie ein'): ${offenders(informalImperatives)}",
+            "values-de strings with informal imperatives (use e.g. 'Geben Sie ein'): $found",
             emptyList<String>(),
-            offenders(informalImperatives)
+            found
         )
     }
 
