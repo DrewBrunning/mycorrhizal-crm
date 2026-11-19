@@ -398,7 +398,7 @@ export default function UsersPage() {
                       size="small"
                       onClick={() => handleEditClick(user)}
                       title={t('common.edit')}
-                      aria-label={t('common.edit')}
+                      aria-label={t('common.editNamed', { name: user.username })}
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
@@ -406,7 +406,7 @@ export default function UsersPage() {
                       size="small"
                       onClick={() => handleResetTwoFactorClick(user)}
                       title={t('users.resetTwoFactor')}
-                      aria-label={t('users.resetTwoFactor')}
+                      aria-label={t('users.resetTwoFactorNamed', { name: user.username })}
                     >
                       <LockResetIcon fontSize="small" />
                     </IconButton>
@@ -414,7 +414,7 @@ export default function UsersPage() {
                       size="small"
                       onClick={() => handleDeleteClick(user)}
                       title={t('common.delete')}
-                      aria-label={t('common.delete')}
+                      aria-label={t('common.deleteNamed', { name: user.username })}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>
@@ -475,7 +475,7 @@ export default function UsersPage() {
                       size="small"
                       onClick={() => handleEditClick(user)}
                       title={t('common.edit')}
-                      aria-label={t('common.edit')}
+                      aria-label={t('common.editNamed', { name: user.username })}
                     >
                       <EditIcon fontSize="small" />
                     </IconButton>
@@ -483,7 +483,7 @@ export default function UsersPage() {
                       size="small"
                       onClick={() => handleResetTwoFactorClick(user)}
                       title={t('users.resetTwoFactor')}
-                      aria-label={t('users.resetTwoFactor')}
+                      aria-label={t('users.resetTwoFactorNamed', { name: user.username })}
                     >
                       <LockResetIcon fontSize="small" />
                     </IconButton>
@@ -491,7 +491,7 @@ export default function UsersPage() {
                       size="small"
                       onClick={() => handleDeleteClick(user)}
                       title={t('common.delete')}
-                      aria-label={t('common.delete')}
+                      aria-label={t('common.deleteNamed', { name: user.username })}
                     >
                       <DeleteIcon fontSize="small" />
                     </IconButton>

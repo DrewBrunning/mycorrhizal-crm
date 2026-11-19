@@ -44,6 +44,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useNotes } from './hooks/useNotes';
 import { useRecordConflict } from './hooks/useRecordConflict';
 import { handleError } from './utils/errorHandler';
+import { itemLabel } from './utils/itemLabel';
 import { calendarDateOnly } from './utils/localDate';
 
 const NotesPage: React.FC = () => {
@@ -244,7 +245,7 @@ const NotesPage: React.FC = () => {
             <IconButton
               size="small"
               aria-describedby={infoPopoverId}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('notes.title') })}
               onClick={handleInfoClick}
             >
               <InfoOutlinedIcon fontSize="small" />
@@ -423,7 +424,9 @@ const NotesPage: React.FC = () => {
                           <IconButton
                             size="small"
                             onClick={() => setSharingNote(note)}
-                            aria-label={t('standingShares.shareNote')}
+                            aria-label={t('standingShares.shareNoteNamed', {
+                              name: itemLabel(note.content),
+                            })}
                           >
                             <ShareIcon fontSize="small" />
                           </IconButton>
@@ -431,7 +434,9 @@ const NotesPage: React.FC = () => {
                         <IconButton
                           size="small"
                           onClick={() => handleEditClick(note)}
-                          aria-label={t('contactDetail.editNote')}
+                          aria-label={t('contactDetail.editNoteNamed', {
+                            name: itemLabel(note.content),
+                          })}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>

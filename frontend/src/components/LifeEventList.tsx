@@ -131,13 +131,21 @@ export default function LifeEventList({
               className="life-event-actions"
               sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
             >
-              <IconButton size="small" onClick={() => onEdit(event)} aria-label={t('common.edit')}>
+              <IconButton
+                size="small"
+                onClick={() => onEdit(event)}
+                aria-label={t('common.editNamed', {
+                  name: t(`lifeEvent.types.${event.type}`, event.type),
+                })}
+              >
                 <EditIcon fontSize="small" />
               </IconButton>
               <IconButton
                 size="small"
                 onClick={() => onDelete(event.id)}
-                aria-label={t('common.delete')}
+                aria-label={t('common.deleteNamed', {
+                  name: t(`lifeEvent.types.${event.type}`, event.type),
+                })}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>

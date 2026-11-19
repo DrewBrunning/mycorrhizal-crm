@@ -197,7 +197,9 @@ test.describe('T44 — the LinkFieldType registry reaches the editors', () => {
 
       const serviceInput = page.getByRole('combobox', { name: 'Service' });
       await expect(serviceInput).toBeVisible();
-      await expect(page.getByLabel('Address')).toHaveValue('xmpp:alice@example.com');
+      await expect(page.getByLabel('Address', { exact: true })).toHaveValue(
+        'xmpp:alice@example.com',
+      );
       await expect(page.getByLabel('Username')).toHaveCount(0);
 
       // The registry is offered here too (seeded WhatsApp is always present).

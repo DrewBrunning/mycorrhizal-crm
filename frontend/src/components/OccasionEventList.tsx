@@ -121,14 +121,18 @@ export default function OccasionEventList({
               >
                 {t('occasions.events.manageAttendees')}
               </Button>
-              <IconButton size="small" onClick={() => onEdit(event)} aria-label={t('common.edit')}>
+              <IconButton
+                size="small"
+                onClick={() => onEdit(event)}
+                aria-label={t('common.editNamed', { name: event.title })}
+              >
                 <EditIcon fontSize="small" />
               </IconButton>
               <IconButton
                 size="small"
                 color="error"
                 onClick={() => handleDeleteClick(event.id)}
-                aria-label={t('common.delete')}
+                aria-label={t('common.deleteNamed', { name: event.title })}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>

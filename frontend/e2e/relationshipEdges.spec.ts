@@ -109,7 +109,7 @@ test.describe('RelationshipEdges', () => {
       // Hover the card to reveal the edit action, then edit the type.
       const card = page.locator(`text=${relName}`).locator('..').locator('..');
       await card.hover();
-      await card.getByLabel('Edit').click();
+      await card.getByLabel(/^Edit /).click();
 
       const editDialog = page.getByRole('dialog');
       await expect(editDialog).toBeVisible();
@@ -193,7 +193,7 @@ test.describe('RelationshipEdges', () => {
       page.on('dialog', (d) => d.accept());
       const card = page.locator(`text=${relName}`).locator('..').locator('..');
       await card.hover();
-      await card.getByLabel('Delete').click();
+      await card.getByLabel(/^Delete /).click();
 
       await expect(page.getByText(relName)).toBeHidden();
     } finally {

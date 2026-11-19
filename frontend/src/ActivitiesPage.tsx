@@ -53,6 +53,7 @@ import {
   endDateFieldError,
   formatActivityDateRange,
 } from './utils/activityRange';
+import { itemLabel } from './utils/itemLabel';
 
 const ActivitiesPage: React.FC = () => {
   const { t } = useTranslation();
@@ -267,7 +268,7 @@ const ActivitiesPage: React.FC = () => {
             <IconButton
               size="small"
               aria-describedby={infoPopoverId}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('activities.title') })}
               onClick={handleInfoClick}
             >
               <InfoOutlinedIcon fontSize="small" />
@@ -463,7 +464,9 @@ const ActivitiesPage: React.FC = () => {
                           <IconButton
                             size="small"
                             onClick={() => setSharingActivity(activity)}
-                            aria-label={t('standingShares.shareActivity')}
+                            aria-label={t('standingShares.shareActivityNamed', {
+                              name: itemLabel(activity.title),
+                            })}
                           >
                             <ShareIcon fontSize="small" />
                           </IconButton>
@@ -471,7 +474,9 @@ const ActivitiesPage: React.FC = () => {
                         <IconButton
                           size="small"
                           onClick={() => void handleEditClick(activity)}
-                          aria-label={t('contactDetail.editActivity')}
+                          aria-label={t('contactDetail.editActivityNamed', {
+                            name: itemLabel(activity.title),
+                          })}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>

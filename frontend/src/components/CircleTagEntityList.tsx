@@ -201,7 +201,7 @@ export default function CircleTagEntityList({
                           <IconButton
                             size="small"
                             onClick={() => onOpen(item.id)}
-                            aria-label={t('circlesTags.openDetails')}
+                            aria-label={t('circlesTags.openDetailsNamed', { name: item.name })}
                           >
                             <InfoOutlinedIcon fontSize="small" />
                           </IconButton>
@@ -219,7 +219,7 @@ export default function CircleTagEntityList({
                           size="small"
                           onClick={() => startEdit(item)}
                           disabled={isDeleting}
-                          aria-label={t('common.edit')}
+                          aria-label={t('common.editNamed', { name: item.name })}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
@@ -228,7 +228,7 @@ export default function CircleTagEntityList({
                           color="error"
                           onClick={() => void handleDeleteClick(item)}
                           disabled={isDeleting}
-                          aria-label={t('common.delete')}
+                          aria-label={t('common.deleteNamed', { name: item.name })}
                         >
                           {isDeleting ? (
                             <CircularProgress size={16} />
