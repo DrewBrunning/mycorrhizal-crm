@@ -52,9 +52,26 @@ export interface GetNotesParams {
   sort?: 'date' | 'updated_at';
 }
 
+// Query for GET /contacts/{id}/notes. Issue #2797: sort='date' orders by the note's own date
+// (then id), newest first, like GET /notes?sort=date; the default is last edit. The cursor is
+// sort-specific, so a caller that pages must send the same sort on every page.
+export interface GetContactNotesParams {
+  sort?: 'date' | 'updated_at';
+  cursor?: string;
+  limit?: number;
+}
+
 // Get notes for a contact
-export async function getContactNotes(contactId: string | number): Promise<NotesResponse> {
-  const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/notes`, {
+export async function getContactNotes(
+  contactId: string | number,
+  params: GetContactNotesParams = {},
+): Promise<NotesResponse> {
+  const query = new URLSearchParams();
+  if (params.sort) query.append('sort', params.sort);
+  if (params.cursor) query.append('cursor', params.cursor);
+  if (params.limit) query.append('limit', params.limit.toString());
+  const suffix = query.size > 0 ? `?${query.toString()}` : '';
+  const response = await apiFetch(`${API_BASE_URL}/contacts/${contactId}/notes${suffix}`, {
     headers: getAuthHeaders(),
   });
 

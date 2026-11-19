@@ -2387,8 +2387,10 @@ test('a 412 on a timeline note save opens the conflict dialog, keeps the edit, a
   fireEvent.click(within(dialog).getByRole('button', { name: 'Save' }));
 
   expect(await screen.findByText('Changed elsewhere')).toBeInTheDocument();
+  // #2797: every contact-notes request asks for the note-date order.
   const notesGets = () =>
-    calls.filter((c) => c.method === 'GET' && c.url.endsWith('/contacts/1/notes')).length;
+    calls.filter((c) => c.method === 'GET' && /\/contacts\/1\/notes\?sort=date$/.test(c.url))
+      .length;
   const before = notesGets();
 
   fireEvent.click(screen.getByRole('button', { name: 'Load latest version' }));

@@ -88,6 +88,12 @@ describe('fetchContactDetailCore', () => {
     expect(getCompletionsForContact).toHaveBeenCalledWith(1);
   });
 
+  // #2797: the timeline shows the newest notes by their own date, not the last-edited ones.
+  test('asks for the notes ordered by note date', async () => {
+    await fetchContactDetailCore('1');
+    expect(getContactNotes).toHaveBeenCalledWith('1', { sort: 'date' });
+  });
+
   test('normalizes missing list keys to empty arrays', async () => {
     vi.mocked(getContactNotes).mockResolvedValue({} as never);
     vi.mocked(getContactActivities).mockResolvedValue({} as never);
@@ -187,6 +193,7 @@ describe('useContactDetailData', () => {
     await act(() => result.current.refreshNotesAndActivities());
     expect(result.current.notes).toEqual([note]);
     expect(result.current.timelineRevision).toBe(1);
+    expect(getContactNotes).toHaveBeenLastCalledWith('1', { sort: 'date' });
   });
 
   test('refreshNotesAndActivities keeps state when a fetch fails', async () => {
@@ -475,7 +482,7 @@ describe('useContactDetailData state', () => {
     expect(result.current.notes).toEqual([note]);
     expect(result.current.activities).toEqual([activity]);
     expect(result.current.completions).toEqual([completion]);
-    expect(getContactNotes).toHaveBeenCalledWith('7');
+    expect(getContactNotes).toHaveBeenCalledWith('7', { sort: 'date' });
     expect(getCompletionsForContact).toHaveBeenCalledWith(7);
 
     vi.mocked(getContactNotes).mockResolvedValueOnce({} as never);
@@ -495,7 +502,7 @@ describe('useContactDetailData state', () => {
     rerender({ id: '9' });
     await act(() => result.current.refreshNotesAndActivities());
     await act(() => result.current.reloadRecord());
-    expect(getContactNotes).toHaveBeenLastCalledWith('9');
+    expect(getContactNotes).toHaveBeenLastCalledWith('9', { sort: 'date' });
     expect(getContactRecord).toHaveBeenLastCalledWith('9');
   });
 });
