@@ -918,13 +918,23 @@ test('adding an occasion opens the create dialog and saves it via POST', async (
   fireEvent.change(screen.getByLabelText('Label *'), {
     target: { value: 'Christmas card' },
   });
+  // A standing occasion needs a month and day (#2670).
+  fireEvent.mouseDown(screen.getByLabelText('Month'));
+  fireEvent.click(await screen.findByRole('option', { name: 'December' }));
+  fireEvent.mouseDown(screen.getByLabelText('Day'));
+  fireEvent.click(await screen.findByRole('option', { name: '25' }));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   await waitFor(() => {
     const postCall = calls.find(
       (c) => c.method === 'POST' && c.url.endsWith('/occasion-obligations'),
     );
-    expect(postCall?.body).toMatchObject({ entity_id: 'alice-uid', label: 'Christmas card' });
+    expect(postCall?.body).toMatchObject({
+      entity_id: 'alice-uid',
+      label: 'Christmas card',
+      anchor_month: 12,
+      anchor_day: 25,
+    });
   });
   await waitFor(() => expect(screen.queryByText('Add an occasion')).not.toBeInTheDocument());
 });
@@ -937,6 +947,8 @@ test('editing an existing occasion opens the edit dialog pre-filled, and saves v
     entity_id: 'alice-uid',
     kind: 'card',
     label: 'Christmas card',
+    anchor_month: 12,
+    anchor_day: 25,
     lead_time_days: 14,
     active: true,
     sensitivity: 'normal',
