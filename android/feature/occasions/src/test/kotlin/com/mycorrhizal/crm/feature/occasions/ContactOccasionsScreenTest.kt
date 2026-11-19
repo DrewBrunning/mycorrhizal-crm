@@ -78,14 +78,16 @@ class ContactOccasionsScreenTest {
         active: Boolean = true,
         sensitivity: String = "normal",
         notes: String? = null,
-        leadTimeDays: Int = 14
+        leadTimeDays: Int = 14,
+        anchorMonth: Int? = 12,
+        anchorDay: Int? = 25
     ) = OccasionObligation(
         id = id,
         entityId = UID,
         kind = kind,
         label = label,
-        anchorMonth = 12,
-        anchorDay = 25,
+        anchorMonth = anchorMonth,
+        anchorDay = anchorDay,
         leadTimeDays = leadTimeDays,
         active = active,
         sensitivity = sensitivity,
@@ -117,6 +119,13 @@ class ContactOccasionsScreenTest {
         composeTestRule.onNodeWithText("December 25").assertIsDisplayed()
         composeTestRule.onNodeWithText("14 days lead time").assertIsDisplayed()
         composeTestRule.onNodeWithText("Send to the new address").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a legacy dateless row says it has no date instead of leaving a blank`() {
+        render(listOf(ob(anchorMonth = null, anchorDay = null)))
+        composeTestRule.onNodeWithText("No date — no reminder").assertIsDisplayed()
+        composeTestRule.onNodeWithText("December 25").assertDoesNotExist()
     }
 
     @Test
@@ -268,6 +277,68 @@ class ContactOccasionsScreenTest {
     }
 
     @Test
+    fun `the label error appears on the field once it is left empty, then clears on typing`() {
+        render(emptyList())
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+        composeTestRule.onNodeWithTag("occasion-ob-label").performClick()
+        composeTestRule.onNodeWithText("Enter a label for this occasion.").assertDoesNotExist()
+
+        // Leaving the field empty is the blur that reveals the error, on the field itself.
+        composeTestRule.onNodeWithTag("occasion-ob-lead-time").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Enter a label for this occasion.").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Card")
+        composeTestRule.onNodeWithText("Enter a label for this occasion.").assertDoesNotExist()
+    }
+
+    @Test
+    fun `changing to a shorter month tells the user the day was cleared`() {
+        render(emptyList())
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+        pickMonthAndDay("January", "31")
+        composeTestRule.onNodeWithText("February has at most 29 days", substring = true)
+            .assertDoesNotExist()
+
+        choose("occasion-ob-month", "February")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "February has at most 29 days, so the day was cleared. Choose a day again."
+        ).assertExists()
+        composeTestRule.onNodeWithTag("occasion-ob-day").assertTextContains("Not set")
+    }
+
+    @Test
+    fun `a legacy dateless row can be retired by saving it inactive`() {
+        render(listOf(ob(anchorMonth = null, anchorDay = null)))
+        coEvery { repository.update(any(), any()) } returns Result.success(ob())
+        composeTestRule.onNodeWithContentDescription("Edit Christmas card").performClick()
+        composeTestRule.onNodeWithText("Active").performScrollTo().performClick()
+        composeTestRule.onNodeWithText("Save").performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify {
+            repository.update(
+                "o1",
+                match { !it.active && it.anchorMonth == null && it.anchorDay == null }
+            )
+        }
+    }
+
+    @Test
+    fun `a legacy dateless row that stays active is refused on the date fields`() {
+        render(listOf(ob(anchorMonth = null, anchorDay = null)))
+        composeTestRule.onNodeWithContentDescription("Edit Christmas card").performClick()
+        composeTestRule.onNodeWithText("Save").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("An occasion needs a month and a day so it can remind you")
+            .assertExists()
+        coVerify(exactly = 0) { repository.update(any(), any()) }
+    }
+
+    @Test
     fun `switching to a shorter month clears a day that no longer exists`() {
         render(emptyList())
         coEvery { repository.create(any()) } returns Result.success(ob("n", "Edge"))
@@ -288,18 +359,27 @@ class ContactOccasionsScreenTest {
     @Test
     fun `each server anchor-date reason renders localized text and keeps the form input`() {
         val cases = listOf(
-            ErrorReasonCode.OCCASION_ANCHOR_DATE_REQUIRED to
+            Triple(
+                ErrorReasonCode.OCCASION_ANCHOR_DATE_REQUIRED,
                 "An occasion needs a month and a day so it can remind you",
-            ErrorReasonCode.OCCASION_ANCHOR_DATE_INCOMPLETE to
+                "occasion-ob-month"
+            ),
+            Triple(
+                ErrorReasonCode.OCCASION_ANCHOR_DATE_INCOMPLETE,
                 "An occasion anchor date requires both a month and a day",
-            ErrorReasonCode.OCCASION_ANCHOR_DATE_INVALID to
-                "That month and day do not exist together, for example February 30"
+                "occasion-ob-day"
+            ),
+            Triple(
+                ErrorReasonCode.OCCASION_ANCHOR_DATE_INVALID,
+                "That month and day do not exist together, for example February 30",
+                "occasion-ob-day"
+            )
         )
         render(emptyList())
         composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
         composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("Edge")
         pickMonthAndDay("February", "29")
-        for ((code, text) in cases) {
+        for ((code, text, fieldTag) in cases) {
             coEvery { repository.create(any()) } returns Result.failure(
                 ApiError.Client(400, "RAW SERVER TEXT", reason = ErrorReason(code, emptyMap()))
             )
@@ -307,6 +387,9 @@ class ContactOccasionsScreenTest {
             composeTestRule.waitForIdle()
 
             composeTestRule.onNodeWithText(text).assertIsDisplayed()
+            // The message is the named field's own error, not a toast.
+            composeTestRule.onNodeWithTag(fieldTag)
+                .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Error))
             composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
             composeTestRule.onNodeWithText("Add an occasion").assertIsDisplayed()
             composeTestRule.onNodeWithText("Edge").assertIsDisplayed()

@@ -48,6 +48,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -60,6 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.model.network.OccasionObligationKinds
 import com.mycorrhizal.crm.model.registry.OccasionSensitivity
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
@@ -94,7 +96,10 @@ fun ContactOccasionsScreen(
     val editing = editingId?.let { id -> state.items.firstOrNull { it.id == id } }
     val snackbarHostState = remember { SnackbarHostState() }
     val currentOnErrorShown = rememberUpdatedState(viewModel::onErrorShown)
-    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
+    // A rejected anchor date is shown on its own Month/Day field (inside the form), not as a toast.
+    val anchorError = state.error?.takeIf { it.anchorDateField() != null }
+    val errorMessage = state.errorRes?.let { stringResource(it) }
+        ?: state.error?.takeIf { anchorError == null }?.localizedMessage()
 
     // A successful save returns to the list; a rejected one keeps the form open with its input.
     LaunchedEffect(state.saved) {
@@ -124,6 +129,8 @@ fun ContactOccasionsScreen(
             initial = editing,
             isSaving = state.isSaving,
             snackbarHostState = snackbarHostState,
+            serverAnchorError = anchorError,
+            onAnchorEdited = viewModel::onErrorShown,
             onSave = { form -> viewModel.save(editing, form) },
             onBack = {
                 showForm = false
@@ -271,13 +278,12 @@ internal fun OccasionObligationRow(obligation: OccasionObligation, modifier: Mod
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary
             )
-            anchorText(obligation)?.let {
-                Text(
-                    it,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
+            // A row saved before dates were required has none, so it can never remind.
+            Text(
+                anchorText(obligation) ?: stringResource(R.string.occasion_ob_no_date),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
             if (obligation.leadTimeDays > 0) {
                 Text(
                     pluralStringResource(
@@ -348,14 +354,14 @@ private fun sensitivityLabelRes(sensitivity: String): Int = when (sensitivity) {
     else -> R.string.occasions_sensitivity_normal
 }
 
-private const val DAYS_IN_MONTH_MAX = 31
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun OccasionObligationForm(
     initial: OccasionObligation?,
     isSaving: Boolean,
     snackbarHostState: SnackbarHostState,
+    serverAnchorError: ApiError?,
+    onAnchorEdited: () -> Unit,
     onSave: (OccasionObligationFormData) -> Unit,
     onBack: () -> Unit
 ) {
@@ -374,6 +380,33 @@ private fun OccasionObligationForm(
         mutableStateOf(initial?.sensitivity ?: OccasionSensitivity.NORMAL)
     }
     var notes by rememberSaveable(initial?.id) { mutableStateOf(initial?.notes ?: "") }
+    // Issue #2648: nothing is flagged until the user has left the label empty or tried to submit.
+    var attempted by rememberSaveable(initial?.id) { mutableStateOf(false) }
+    var labelTouched by rememberSaveable(initial?.id) { mutableStateOf(false) }
+    var labelFocused by remember { mutableStateOf(false) }
+    // The month whose length cleared the chosen day, so the Day field can say why it is empty.
+    var dayClearedFor by rememberSaveable(initial?.id) { mutableStateOf<Int?>(null) }
+    val formData = OccasionObligationFormData(
+        kind = kind,
+        label = label,
+        anchorMonth = month,
+        anchorDay = day,
+        leadTimeText = leadTime,
+        active = active,
+        sensitivity = sensitivity,
+        notes = notes
+    )
+    val errors = validateOccasionForm(formData, initial)
+    val serverField = serverAnchorError?.anchorDateField()
+    val serverText = serverAnchorError?.localizedMessage()
+    val labelError = errors.label?.takeIf { attempted || labelTouched }
+        ?.let { stringResource(it) }
+    val monthError = errors.month?.takeIf { attempted }?.let { stringResource(it) }
+        ?: serverText.takeIf { serverField == AnchorField.MONTH }
+    val dayError = errors.day?.takeIf { attempted }?.let { stringResource(it) }
+        ?: serverText.takeIf { serverField == AnchorField.DAY }
+        ?: "".takeIf { (attempted && errors.dayFlagged) || serverField == AnchorField.MONTH }
+    val leadTimeError = errors.leadTime?.takeIf { attempted }?.let { stringResource(it) }
     val isDirty = kind != (initial?.kind ?: OccasionObligationKinds.CARD) ||
         label != (initial?.label ?: "") ||
         month != initial?.anchorMonth ||
@@ -391,22 +424,10 @@ private fun OccasionObligationForm(
         saveLabel = stringResource(if (isEditing) R.string.action_save else R.string.action_create),
         isSaving = isSaving,
         onSave = {
-            onSave(
-                OccasionObligationFormData(
-                    kind = kind,
-                    label = label,
-                    anchorMonth = month,
-                    anchorDay = day,
-                    leadTimeText = leadTime,
-                    active = active,
-                    sensitivity = sensitivity,
-                    notes = notes
-                )
-            )
+            attempted = true
+            if (!errors.any) onSave(formData)
         },
         snackbarHostState = snackbarHostState,
-        saveEnabled = label.isNotBlank(),
-        saveDisabledHint = stringResource(R.string.occasion_ob_validation_label_required),
         isDirty = isDirty,
         entityLabel = stringResource(R.string.entity_occasion)
     ) { padding ->
@@ -446,9 +467,20 @@ private fun OccasionObligationForm(
                 value = label,
                 onValueChange = { label = it },
                 label = { Text(stringResource(R.string.occasion_ob_label)) },
-                supportingText = { Text(stringResource(R.string.occasion_ob_label_hint)) },
+                supportingText = {
+                    Text(
+                        labelError ?: stringResource(R.string.occasion_ob_label_hint)
+                    )
+                },
+                isError = labelError != null,
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth().testTag("occasion-ob-label")
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged {
+                        if (labelFocused && !it.isFocused) labelTouched = true
+                        labelFocused = it.isFocused
+                    }
+                    .testTag("occasion-ob-label")
             )
             val unset = stringResource(R.string.occasion_ob_anchor_unset)
             LabelledDropdown(
@@ -456,22 +488,49 @@ private fun OccasionObligationForm(
                 valueText = month?.let { monthName(it) } ?: unset,
                 options = listOf(DropdownOption<Int?>(null, unset)) +
                     (1..Month.entries.size).map { DropdownOption<Int?>(it, monthName(it)) },
-                onSelect = { month = it },
+                onSelect = { picked ->
+                    month = picked
+                    onAnchorEdited()
+                    // The Day list follows the month: a day it no longer has is cleared, with
+                    // a note on the Day field, rather than kept as an impossible date.
+                    val chosen = day
+                    if (chosen != null && chosen > daysInMonth(picked)) {
+                        day = null
+                        dayClearedFor = picked
+                    } else {
+                        dayClearedFor = null
+                    }
+                },
+                errorText = monthError,
                 modifier = Modifier.testTag("occasion-ob-month")
             )
             LabelledDropdown(
                 label = stringResource(R.string.occasion_ob_anchor_day),
                 valueText = day?.toString() ?: unset,
+                // A stored day past the month's length (saved before the server checked) stays
+                // listed so the field can show it and the user sees what to fix.
                 options = listOf(DropdownOption<Int?>(null, unset)) +
-                    (1..DAYS_IN_MONTH_MAX).map { DropdownOption<Int?>(it, it.toString()) },
-                onSelect = { day = it },
+                    (1..maxOf(daysInMonth(month), day ?: 0))
+                        .map { DropdownOption<Int?>(it, it.toString()) },
+                onSelect = {
+                    day = it
+                    dayClearedFor = null
+                    onAnchorEdited()
+                },
+                errorText = dayError,
+                helperText = dayClearedFor?.let {
+                    stringResource(R.string.occasion_ob_day_cleared, monthName(it), daysInMonth(it))
+                },
                 modifier = Modifier.testTag("occasion-ob-day")
             )
             OutlinedTextField(
                 value = leadTime,
                 onValueChange = { leadTime = it },
                 label = { Text(stringResource(R.string.occasion_ob_lead_time)) },
-                supportingText = { Text(stringResource(R.string.occasion_ob_lead_time_hint)) },
+                supportingText = {
+                    Text(leadTimeError ?: stringResource(R.string.occasion_ob_lead_time_hint))
+                },
+                isError = leadTimeError != null,
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth().testTag("occasion-ob-lead-time")

@@ -221,7 +221,7 @@ class ContactOccasionsViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            vm.save(null, OccasionObligationFormData(label = "x", anchorMonth = 3, anchorDay = 9))
+            vm.save(null, OccasionObligationFormData(label = "x"))
             advanceUntilIdle()
 
             assertEquals(
@@ -282,6 +282,59 @@ class ContactOccasionsViewModelTest {
             vm.save(null, OccasionObligationFormData(label = "x", anchorMonth = 2, anchorDay = 29))
             advanceUntilIdle()
             coVerify(exactly = 1) { repository.create(match { it.anchorDay == 29 }) }
+        }
+
+    @Test
+    fun `a legacy dateless row can only be saved while inactive`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.listForContact(UID) } returns Result.success(emptyList())
+            coEvery { repository.update(any(), any()) } returns Result.success(ob())
+            coEvery { repository.create(any()) } returns Result.success(ob())
+            val vm = viewModel()
+            advanceUntilIdle()
+            val legacy = ob().copy(anchorMonth = null, anchorDay = null)
+
+            // Still active and dateless: refused, exactly like the server.
+            vm.save(legacy, OccasionObligationFormData(label = "x", active = true))
+            advanceUntilIdle()
+            assertEquals(
+                R.string.error_reason_occasion_anchor_date_required,
+                vm.uiState.value.errorRes
+            )
+            coVerify(exactly = 0) { repository.update(any(), any()) }
+
+            // Retired (inactive) and still dateless: accepted.
+            vm.onErrorShown()
+            vm.save(legacy, OccasionObligationFormData(label = "x", active = false))
+            advanceUntilIdle()
+            coVerify(exactly = 1) {
+                repository.update("o1", match { !it.active && it.anchorMonth == null })
+            }
+        }
+
+    @Test
+    fun `inactive alone never excuses a missing date on a new or dated row`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.listForContact(UID) } returns Result.success(emptyList())
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.save(null, OccasionObligationFormData(label = "x", active = false))
+            advanceUntilIdle()
+            assertEquals(
+                R.string.error_reason_occasion_anchor_date_required,
+                vm.uiState.value.errorRes
+            )
+
+            vm.onErrorShown()
+            vm.save(ob(), OccasionObligationFormData(label = "x", active = false))
+            advanceUntilIdle()
+            assertEquals(
+                R.string.error_reason_occasion_anchor_date_required,
+                vm.uiState.value.errorRes
+            )
+            coVerify(exactly = 0) { repository.create(any()) }
+            coVerify(exactly = 0) { repository.update(any(), any()) }
         }
 
     @Test
