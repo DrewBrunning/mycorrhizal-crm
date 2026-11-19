@@ -67,6 +67,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.localizedMessage
 import java.time.Instant
@@ -156,6 +157,11 @@ fun OccasionsScreen(
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 when {
                     state.errorRes != null -> CenteredMessage(stringResource(state.errorRes!!))
+
+                    state.loadError != null && state.events.isEmpty() ->
+                        state.loadError?.let { error ->
+                            ErrorState(error = error, onRetry = viewModel::load)
+                        }
 
                     state.isLoading && state.events.isEmpty() -> CenteredMessage(
                         stringResource(R.string.a11y_state_loading)

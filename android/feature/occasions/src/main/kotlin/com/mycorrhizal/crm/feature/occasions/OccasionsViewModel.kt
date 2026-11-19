@@ -21,7 +21,8 @@ data class OccasionsUiState(
     val isLoading: Boolean = false,
     val isMutating: Boolean = false,
     @StringRes val errorRes: Int? = null,
-    val error: ApiError? = null
+    val error: ApiError? = null,
+    val loadError: ApiError? = null
 )
 
 /**
@@ -42,7 +43,9 @@ class OccasionsViewModel @Inject constructor(private val repository: OccasionEve
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
+            _uiState.update {
+                it.copy(isLoading = true, error = null, errorRes = null, loadError = null)
+            }
             repository.list().foldApiError(
                 onSuccess = { events ->
                     _uiState.update {
@@ -54,9 +57,10 @@ class OccasionsViewModel @Inject constructor(private val repository: OccasionEve
                 },
                 onError = { error ->
                     _uiState.update {
+                        // Issue #2629: a failed load is a screen state with Retry, not a toast.
                         it.copy(
                             isLoading = false,
-                            error = error
+                            loadError = error
                         )
                     }
                 }
