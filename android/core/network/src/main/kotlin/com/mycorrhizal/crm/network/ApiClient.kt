@@ -219,6 +219,7 @@ import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.model.network.NotificationTestChannelRequest
 import com.mycorrhizal.crm.model.network.NotificationTestResult
+import com.mycorrhizal.crm.model.network.OccasionCardListSummary
 import com.mycorrhizal.crm.model.network.OccasionEvent
 import com.mycorrhizal.crm.model.network.OccasionEventAttendee
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
@@ -2325,6 +2326,20 @@ class ApiClient(
             .toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("kind", kind)
         return executeGetBytes(urlBuilder.build().toString())
+    }
+
+    /**
+     * GET /api/v1/occasion-obligations/card-list/summary?kind=… (issue #2786): counts-only twin of
+     * the CSV. `include_sensitive` is never sent, matching the CSV, so `included` equals the
+     * rows of the file this app shares.
+     */
+    suspend fun getOccasionCardListSummary(kind: String): Result<OccasionCardListSummary> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/card-list/summary"
+            .toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("kind", kind)
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(OccasionCardListSummary::class.java).fromJson(body)
+        }
     }
 
     /**

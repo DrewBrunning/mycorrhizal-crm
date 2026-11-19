@@ -2574,6 +2574,23 @@
     <string name="occasion_card_list_description">Comparte un CSV de los contactos con una ocasión de tarjeta activa: una fila por obligación activa, con el nombre del contacto, su dirección de sensibilidad normal y la ocasión. Se omiten las direcciones privadas y secretas.</string>
     <string name="occasion_card_list_share">Compartir como CSV</string>
     <string name="occasion_card_list_share_title">Compartir lista de tarjetas</string>
+    <!-- Issue #2786: who the card list holds and skips; quantity follows the included count. -->
+    <string name="occasion_card_list_summary_checking">Comprobando quién está en la lista…</string>
+    <plurals name="occasion_card_list_summary">
+        <item quantity="one">%1$d destinatario</item>
+        <item quantity="many">%1$d de destinatarios</item>
+        <item quantity="other">%1$d destinatarios</item>
+    </plurals>
+    <plurals name="occasion_card_list_summary_skipped">
+        <item quantity="one">%1$d destinatario; %2$d omitidos (%3$s)</item>
+        <item quantity="many">%1$d de destinatarios; %2$d omitidos (%3$s)</item>
+        <item quantity="other">%1$d destinatarios; %2$d omitidos (%3$s)</item>
+    </plurals>
+    <string name="occasion_card_list_skipped_no_address">sin dirección postal: %1$d</string>
+    <string name="occasion_card_list_skipped_private_address">solo dirección privada: %1$d</string>
+    <string name="occasion_card_list_reasons_separator">", "</string>
+    <string name="occasion_card_list_no_recipients">Ningún destinatario tiene una dirección postal.</string>
+    <string name="occasion_card_list_no_obligations">Aún no hay ocasiones de tarjeta activas. Añada una desde la página de un contacto.</string>
     <string name="occasion_gift_list_title">Lista de compras de regalos</string>
     <string name="occasion_gift_list_description">Regalos próximos y si tienes una idea, ya lo compraste o ya lo entregaste.</string>
     <string name="occasion_gift_list_empty">No hacen falta regalos en este periodo.</string>

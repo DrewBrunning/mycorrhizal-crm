@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.OccasionObligationRepository
 import com.mycorrhizal.crm.model.network.GiftShoppingItem
+import com.mycorrhizal.crm.model.network.OccasionCardListSummary
 import com.mycorrhizal.crm.model.network.OccasionObligationKinds
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
@@ -78,7 +79,10 @@ data class OccasionCardListUiState(
     val isDownloading: Boolean = false,
     /** The fetched CSV, waiting for the screen to hand it to the share sheet. */
     val csv: ByteArray? = null,
-    val error: ApiError? = null
+    val error: ApiError? = null,
+    val summary: OccasionCardListSummary? = null,
+    val isSummaryLoading: Boolean = false,
+    val summaryError: ApiError? = null
 )
 
 /**
@@ -92,6 +96,25 @@ class OccasionCardListViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(OccasionCardListUiState())
     val uiState: StateFlow<OccasionCardListUiState> = _uiState.asStateFlow()
+
+    /**
+     * Fetches the counts the card list will hold and skip (issue #2786). A failure only fills
+     * [OccasionCardListUiState.summaryError]; it never blocks [download].
+     */
+    fun loadSummary() {
+        if (_uiState.value.isSummaryLoading) return
+        _uiState.update { it.copy(isSummaryLoading = true, summaryError = null) }
+        viewModelScope.launch {
+            repository.cardListSummary(OccasionObligationKinds.CARD).foldApiError(
+                onSuccess = { summary ->
+                    _uiState.update { it.copy(isSummaryLoading = false, summary = summary) }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(isSummaryLoading = false, summaryError = error) }
+                }
+            )
+        }
+    }
 
     fun download() {
         if (_uiState.value.isDownloading) return

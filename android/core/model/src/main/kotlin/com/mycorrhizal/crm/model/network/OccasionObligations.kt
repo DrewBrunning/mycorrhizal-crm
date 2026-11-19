@@ -110,6 +110,27 @@ data class GiftShoppingListResponse(
 }
 
 /**
+ * GET /occasion-obligations/card-list/summary (issue #2786): counts only, never names or
+ * addresses. [included] equals the CSV's data-row count; [total] = [included] + [skipped].
+ * Missing counts default to 0 so an unexpected body never crashes the screen.
+ */
+@JsonClass(generateAdapter = true)
+data class OccasionCardListSummary(
+    val total: Int = 0,
+    val included: Int = 0,
+    val skipped: Int = 0,
+    @Json(name = "skipped_reasons") val skippedReasons: OccasionCardListSkippedReasons =
+        OccasionCardListSkippedReasons()
+)
+
+/** Why recipients were left out of the card list; both counts default to 0. */
+@JsonClass(generateAdapter = true)
+data class OccasionCardListSkippedReasons(
+    @Json(name = "no_address") val noAddress: Int = 0,
+    @Json(name = "private_address_only") val privateAddressOnly: Int = 0
+)
+
+/**
  * `GiftShoppingItem.Status`: the four `Gift.Status*` values plus `needed` (no gift row found yet).
  * A hardcoded mirror of the backend (frontend trap #4).
  */

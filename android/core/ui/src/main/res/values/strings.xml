@@ -2506,6 +2506,21 @@
     <string name="occasion_card_list_description">Share a CSV of contacts with an active card occasion: one row per active obligation, with the contact name, their normal-sensitivity address, and the occasion. Private and secret addresses are left out.</string>
     <string name="occasion_card_list_share">Share as CSV</string>
     <string name="occasion_card_list_share_title">Share card list</string>
+    <!-- Issue #2786: who the card list holds and skips; quantity follows the included count. -->
+    <string name="occasion_card_list_summary_checking">Checking who is on the list…</string>
+    <plurals name="occasion_card_list_summary">
+        <item quantity="one">%1$d recipient</item>
+        <item quantity="other">%1$d recipients</item>
+    </plurals>
+    <plurals name="occasion_card_list_summary_skipped">
+        <item quantity="one">%1$d recipient; %2$d skipped (%3$s)</item>
+        <item quantity="other">%1$d recipients; %2$d skipped (%3$s)</item>
+    </plurals>
+    <string name="occasion_card_list_skipped_no_address">no postal address: %1$d</string>
+    <string name="occasion_card_list_skipped_private_address">private address only: %1$d</string>
+    <string name="occasion_card_list_reasons_separator">", "</string>
+    <string name="occasion_card_list_no_recipients">No recipients have a postal address.</string>
+    <string name="occasion_card_list_no_obligations">No active card occasions yet. Add one from a contact\'s page.</string>
     <string name="occasion_gift_list_title">Gift shopping list</string>
     <string name="occasion_gift_list_description">Gifts coming up soon, and whether you have an idea, have bought one or have already given it.</string>
     <string name="occasion_gift_list_empty">No gifts needed in this window.</string>

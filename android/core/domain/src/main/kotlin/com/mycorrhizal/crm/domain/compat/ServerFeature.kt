@@ -36,7 +36,7 @@ private val SERVER_BASELINE: AppVersion = AppVersion(1, 0, 0)
  * baseline, so the baseline gate dominates and none of them hides anything on a supported
  * server. A capability added after v1.0.0 gets a floor above the baseline, which is the only
  * case [ServerCapabilities.isSupported] can act on: SHARE_GRANTS, ENTITIES and IMPORT_RUN_REPORT
- * (v1.7.0, issue #2527) are the first, followed by IMPORT_ROW_EDITS (v1.7.0, issue #2551); their
+ * (v1.7.0, issue #2527) are the first, followed by IMPORT_ROW_EDITS (v1.7.0, issue #2551) and CARD_LIST_SUMMARY (v1.7.0, issue #2786); their
  * entry points are hidden on a v1.6.x server.
  *
  * Raising a floor (moving a capability onto a newer server) is a MAINT-02
@@ -202,5 +202,12 @@ enum class ServerFeature(val minServerVersion: AppVersion) {
      * the shared import review step (CSV, VCF and device contacts); against an older server
      * errored rows stay skip-only.
      */
-    IMPORT_ROW_EDITS(AppVersion(1, 7, 0))
+    IMPORT_ROW_EDITS(AppVersion(1, 7, 0)),
+
+    /**
+     * The card-list summary: `GET /occasion-obligations/card-list/summary` (#2786; first in main
+     * 2026-11-19, after v1.6.0). Gates the "N recipients; M skipped" line above the card-list
+     * share on the Occasions screen; the CSV share itself is older and stays on a v1.6.x server.
+     */
+    CARD_LIST_SUMMARY(AppVersion(1, 7, 0))
 }
