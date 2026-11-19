@@ -1032,6 +1032,8 @@ test('merging a pair with the second contact as keeper names that contact', asyn
 
   await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(2, 1, {}));
   expect(await screen.findByText('Merged 2 contacts into Bob')).toBeInTheDocument();
+  // #2688: focus lands on the surviving contact's row, not on <body>.
+  await waitFor(() => expect(screen.getByLabelText('Select Bob')).toHaveFocus());
 });
 
 // #2197: three or more selected contacts fold into one primary, one pair at a
@@ -1088,6 +1090,7 @@ test('merging three selected contacts picks a primary and folds the others in on
   expect(getContacts).toHaveBeenCalledTimes(2);
   // #2688: the confirmation names the contact the others were merged into.
   expect(await screen.findByText('Merged 3 contacts into Carol')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByLabelText('Select Carol')).toHaveFocus());
 });
 
 // Selection is keyed by VCardUID specifically so it survives pagination, and
