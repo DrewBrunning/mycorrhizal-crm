@@ -72,7 +72,9 @@ export default function AddressHouseholdSuggestions({
         <Typography variant="body2" sx={{ marginBottom: '16px', color: 'text.secondary' }}>
           {t('household.addressSuggestionDescription')}
         </Typography>
-        <Alert severity="info">{t('household.noAddressSuggestions')}</Alert>
+        <Alert severity="info" role="status">
+          {t('household.noAddressSuggestions')}
+        </Alert>
       </Box>
     );
   }

@@ -219,7 +219,7 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
           </Button>
         </Box>
       ) : (
-        <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+        <Alert severity="info" role="status" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
           <Typography variant="body2" gutterBottom>
             {t('settings.monicaImport.connect.found', {
               contacts: t('settings.monicaImport.connect.foundContacts', {

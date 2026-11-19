@@ -72,6 +72,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Dark-mode scrollbars** ([#2363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2363)): in dark mode the navigation sidebar and page scrollbars no longer show a bright white track. Light mode is unchanged.
 - **Notes are listed by date** ([#2744](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2744)): the Notes page now orders notes by the date shown on each note, newest first, including after Load more, instead of by when they were last edited.
 - **"Today" follows your time zone** ([#2679](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2679), [#2762](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2762)): the dashboard and upcoming birthdays, occasions, gift shopping list and reminders now count from the day it is where you are, so a birthday that is today for you no longer disappears in the evening.
+- **Calmer screen reader announcements and a working section jump** ([#2682](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2682), [#2683](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2683)): informational notices no longer announce as alerts when a page loads, and choosing a section from the contact page's jump menu moves keyboard focus to that section and respects reduced motion.
 
 ### Security
 
