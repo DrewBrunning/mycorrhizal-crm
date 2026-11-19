@@ -12,8 +12,10 @@ data class Circle(
     /** Issue #1995: free text, up to [CircleColors.MAX_DESCRIPTION] chars; "" when unset. */
     val description: String = "",
     /** Issue #1995: a [CircleColors.ALL] token, or "" for no colour. */
-    val color: String = ""
-)
+    val color: String = "",
+    /** Issue #2629: set client-side when served from the offline mirror; never on the wire. */
+    @Transient override val servedFromCache: Boolean = false
+) : ServedFromCache
 
 /**
  * Issue #1995 palette tokens. Hardcoded mirror of the backend `models.CircleColors` (and the web
