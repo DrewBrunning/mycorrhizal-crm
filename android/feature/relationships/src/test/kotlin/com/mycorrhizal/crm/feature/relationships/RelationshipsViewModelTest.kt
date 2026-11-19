@@ -136,6 +136,34 @@ class RelationshipsViewModelTest {
         assertEquals("boom", vm.uiState.value.error?.message)
     }
 
+    // Issue #2629: only a failed edge load sets loadError (the screen's ErrorState + Retry); a
+    // failed mutation stays a toast-level `error`, and a reload clears it.
+    @Test
+    fun `a failed edge load sets loadError and a mutation failure does not`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubContact()
+        val offline = ApiError.Server(503, "down")
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returnsMany listOf(
+            Result.failure(offline),
+            Result.success(emptyList())
+        )
+        coEvery { edgeRepository.delete("e1") } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertEquals(offline, vm.uiState.value.loadError)
+
+        vm.load()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.loadError)
+
+        vm.delete("e1")
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.loadError)
+        assertEquals("boom", vm.uiState.value.error?.message)
+    }
+
     // --- Name resolution (test case 1 & 2 from the M21 implementation contract) ---
 
     @Test

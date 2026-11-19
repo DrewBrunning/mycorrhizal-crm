@@ -12,6 +12,8 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.HouseholdRepository
 import com.mycorrhizal.crm.model.network.AddressHouseholdSuggestion
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.Household
 import com.mycorrhizal.crm.model.network.HouseholdTypes
 import com.mycorrhizal.crm.network.ApiError
@@ -20,6 +22,7 @@ import com.mycorrhizal.crm.testing.a11y.assertNoDuplicateContentDescriptions
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -135,6 +138,90 @@ class HouseholdsScreenTest {
         assertTrue(
             composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty()
         )
+    }
+
+    // Issue #2629: a failed load is the shared ErrorState (localized reason) with a Retry that
+    // re-runs the load; the transient snackbar must not also announce it.
+    @Test
+    fun `a failed load shows the localized reason with Retry that reloads the households`() {
+        val householdRepository = mockk<HouseholdRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { householdRepository.list(any(), any()) } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(listOf(Household(id = "h1", name = "The Smiths")))
+        )
+        val viewModel = HouseholdsViewModel(householdRepository, contactRepository)
+        composeTestRule.setContent {
+            MycorrhizalTheme { HouseholdsScreen(onOpenHousehold = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.households_empty)).assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("The Smiths").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { householdRepository.list(any(), any()) }
+    }
+
+    // The ErrorState is not a toast: a mutation error while it is on screen still toasts, and the
+    // ErrorState (with its Retry) stays.
+    @Test
+    fun `a mutation error still toasts while the load error stays on screen`() {
+        val householdRepository = mockk<HouseholdRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { householdRepository.list(any(), any()) } returns
+            Result.failure(ApiError.Client(500, "down"))
+        coEvery { householdRepository.create(any(), any()) } returns
+            Result.failure(ApiError.Client(409, "name-taken"))
+        val viewModel = HouseholdsViewModel(householdRepository, contactRepository)
+        composeTestRule.setContent {
+            MycorrhizalTheme { HouseholdsScreen(onOpenHousehold = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { viewModel.create("Home", HouseholdTypes.FAMILY_UNIT) }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("name-taken").assertIsDisplayed()
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
+    // Issue #2629: a failed refresh with households already listed keeps the list and toasts.
+    @Test
+    fun `a failed refresh keeps the households and toasts the error`() {
+        val householdRepository = mockk<HouseholdRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { householdRepository.list(any(), any()) } returnsMany listOf(
+            Result.success(listOf(Household(id = "h1", name = "The Smiths"))),
+            Result.failure(ApiError.Client(500, "down"))
+        )
+        val viewModel = HouseholdsViewModel(householdRepository, contactRepository)
+        composeTestRule.setContent {
+            MycorrhizalTheme { HouseholdsScreen(onOpenHousehold = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("The Smiths").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { viewModel.load() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("The Smiths").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
     }
 
     private fun setScreenWithSuggestions(

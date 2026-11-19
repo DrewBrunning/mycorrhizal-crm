@@ -24,6 +24,8 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.GraphRepository
 import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.model.network.GraphChainStep
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
@@ -33,6 +35,7 @@ import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -583,6 +586,86 @@ class NetworkScreenTest {
         assertTrue(
             composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty()
         )
+    }
+
+    // Issue #2629: the entity overlay renders inside the list, so with the toggle on a failed
+    // traversal does not replace it with the full-screen ErrorState.
+    @Test
+    fun `a failed traversal with the entity overlay on keeps the list instead of the error state`() {
+        val graphRepository = mockk<GraphRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+        coEvery { graphRepository.selfContactVCardUid() } returns Result.success("uid-self")
+        coEvery { contactRepository.resolveByUid(listOf("uid-self")) } returns Result.success(
+            mapOf("uid-self" to ContactSummary(id = 1, uid = "uid-self", firstname = "Alice"))
+        )
+        coEvery { graphRepository.getConnections("uid-self", 2, null) } returns
+            Result.failure(ApiError.Client(500, "down"))
+        coEvery { graphRepository.entityOverlay("uid-self", 2) } returns
+            Result.failure(ApiError.Client(500, "overlay-down"))
+        val vm = NetworkViewModel(graphRepository, contactRepository, SavedStateHandle())
+        composeTestRule.setContent {
+            MycorrhizalTheme { NetworkScreen(viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { vm.setShowEntities(true) }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    // Issue #2629: a failed traversal is the shared ErrorState (localized reason) with a Retry
+    // that re-runs the load; the empty state must not show and Retry then brings the rows back.
+    @Test
+    fun `a failed traversal shows the localized reason with Retry that reloads the network`() {
+        val graphRepository = mockk<GraphRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+        coEvery { graphRepository.selfContactVCardUid() } returns Result.success("uid-self")
+        coEvery { contactRepository.resolveByUid(listOf("uid-self")) } returns Result.success(
+            mapOf("uid-self" to ContactSummary(id = 1, uid = "uid-self", firstname = "Alice"))
+        )
+        coEvery { graphRepository.getConnections("uid-self", 2, null) } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(
+                GraphConnectionsResponse(
+                    chains = listOf(
+                        chain(
+                            10,
+                            "t1",
+                            "Carol",
+                            depth = 1,
+                            steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                        )
+                    )
+                )
+            )
+        )
+        val vm = NetworkViewModel(graphRepository, contactRepository, SavedStateHandle())
+        composeTestRule.setContent {
+            MycorrhizalTheme { NetworkScreen(viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No connections yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Carol").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { graphRepository.getConnections("uid-self", 2, null) }
     }
 
     // --- Issue #2302 / ADR 0043 decision 2: the opt-in, read-only entity overlay -------------
