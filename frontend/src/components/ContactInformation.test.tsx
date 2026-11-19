@@ -631,7 +631,12 @@ test('pronouns is full-span only while editing, not in read mode (T88)', () => {
   // own Cancel button instead (unique on the page -- only one field edits
   // at a time in this test).
   const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-  expect(hasFullSpanAncestor(cancelButton, classes)).toBe(true);
+  // Re-read the stylesheet: emotion injects the full-span class lazily, the
+  // first time a component renders it. With no notes/headings in this render,
+  // the edit-state class does not exist until the click above, so the `classes`
+  // snapshot taken before it is only valid when an earlier test in the file
+  // happened to inject the same rule (shuffled order broke that, #2829).
+  expect(hasFullSpanAncestor(cancelButton, fullSpanClassNames(allStyles()))).toBe(true);
 });
 
 test('entering edit mode on pronouns does not reorder the fields above it (T88)', () => {
