@@ -3175,10 +3175,12 @@
       "kind": "Tipo",
       "kindHint": "biglietto, regalo, invito o un'etichetta personalizzata",
       "label": "Etichetta",
-      "labelHint": "es. «Biglietto di Natale», «Regalo di compleanno»",
+      "labelHint": "es. «Biglietto di Natale», «Regalo di anniversario»",
       "anchorMonth": "Mese",
       "anchorDay": "Giorno",
       "anchorDateUnset": "Non impostato",
+      "dayClamped": "{{month}} ha al massimo {{max}} giorni, quindi il giorno è stato cancellato. Scegli di nuovo un giorno.",
+      "noDate": "Nessuna data: nessun promemoria",
       "leadTimeDays": "Anticipo (giorni)",
       "leadTimeDaysHint": "Quanti giorni prima ricevere il promemoria, es. 14 per «regalo con due settimane di anticipo»",
       "leadTimeDisplay_one": "{{count}} giorno di anticipo",
@@ -3197,7 +3199,6 @@
       "empty": "Nessuna occasione ricorrente ancora. Aggiungine una per un biglietto, un regalo o un invito ricorrente.",
       "validation": {
         "labelRequired": "Inserisci un'etichetta per questa occasione.",
-        "anchorBothOrNeither": "Imposta sia il mese che il giorno, oppure lasciali entrambi vuoti.",
         "invalidLeadTime": "Inserisci un numero valido di giorni di anticipo.",
         "saveFailed": "Impossibile salvare l'occasione."
       },

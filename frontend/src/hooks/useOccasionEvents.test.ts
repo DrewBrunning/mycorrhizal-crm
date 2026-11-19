@@ -226,7 +226,8 @@ test('loadSuggestions fetches and clearSuggestions empties them', async () => {
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   await act(async () => {
-    await result.current.loadSuggestions(['c1']);
+    // #2687: resolves true once the request completed.
+    expect(await result.current.loadSuggestions(['c1'])).toBe(true);
   });
   expect(result.current.suggestions).toHaveLength(1);
 
@@ -243,12 +244,12 @@ test('loadSuggestions with no circles and a failed fetch both clear', async () =
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   await act(async () => {
-    await result.current.loadSuggestions([]);
+    expect(await result.current.loadSuggestions([])).toBe(false);
   });
   expect(getInviteeSuggestions).not.toHaveBeenCalled();
 
   await act(async () => {
-    await result.current.loadSuggestions(['c1']);
+    expect(await result.current.loadSuggestions(['c1'])).toBe(false);
   });
   expect(showError).toHaveBeenCalledWith('boom');
   expect(result.current.suggestions).toEqual([]);
@@ -499,7 +500,8 @@ test('a failed loadSuggestions notifies, logs, clears stale suggestions and stop
   const { result } = renderHook(() => useOccasionEventAttendees('ev-1', { showError }));
   await waitFor(() => expect(result.current.loading).toBe(false));
   await act(async () => {
-    await result.current.loadSuggestions(['c1']);
+    // #2687: resolves true once the request completed.
+    expect(await result.current.loadSuggestions(['c1'])).toBe(true);
   });
   expect(result.current.suggestions).toHaveLength(1);
   await act(async () => {

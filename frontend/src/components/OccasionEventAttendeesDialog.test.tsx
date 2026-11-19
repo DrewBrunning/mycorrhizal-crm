@@ -57,7 +57,7 @@ function makeHookReturn(overrides: Partial<HookReturn> = {}): HookReturn {
     handleRemove: vi.fn().mockResolvedValue(undefined),
     suggestions: [],
     suggestionsLoading: false,
-    loadSuggestions: vi.fn().mockResolvedValue(undefined),
+    loadSuggestions: vi.fn().mockResolvedValue(true),
     clearSuggestions: vi.fn(),
     ...overrides,
   };
@@ -123,7 +123,7 @@ test('removing an attendee calls handleRemove', async () => {
 });
 
 test('selecting a circle and suggesting calls loadSuggestions', async () => {
-  const loadSuggestions = vi.fn().mockResolvedValue(undefined);
+  const loadSuggestions = vi.fn().mockResolvedValue(true);
   vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn({ loadSuggestions }));
   render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
 
@@ -455,4 +455,56 @@ test('a superseded contact search that fails does not clear newer results', asyn
   await new Promise((r) => setTimeout(r, 0));
 
   expect(screen.getByRole('option', { name: 'Bob Baker' })).toBeInTheDocument();
+});
+
+// #2687: "no suggestions" is an answer to a Suggest request, not a default.
+async function selectFriends() {
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /circles/i }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Friends' }));
+}
+
+test('does not claim there are no suggestions before Suggest is pressed', async () => {
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn());
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+  await selectFriends();
+  expect(screen.queryByText('No new suggestions from those circles.')).not.toBeInTheDocument();
+});
+
+test('says there are no new suggestions once a Suggest request returned none', async () => {
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn());
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+  await selectFriends();
+  fireEvent.click(screen.getByRole('button', { name: 'Suggest' }));
+  expect(await screen.findByText('No new suggestions from those circles.')).toBeInTheDocument();
+});
+
+test('hides the no-suggestions message again when the circle selection changes', async () => {
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn());
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+  await selectFriends();
+  fireEvent.click(screen.getByRole('button', { name: 'Suggest' }));
+  await screen.findByText('No new suggestions from those circles.');
+  fireEvent.mouseDown(screen.getByRole('combobox', { name: /circles/i }));
+  fireEvent.click(await screen.findByRole('option', { name: 'Family' }));
+  await waitFor(() =>
+    expect(screen.queryByText('No new suggestions from those circles.')).not.toBeInTheDocument(),
+  );
+});
+
+test('a failed Suggest request does not claim there are no suggestions', async () => {
+  const loadSuggestions = vi.fn().mockResolvedValue(false);
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn({ loadSuggestions }));
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+  await selectFriends();
+  fireEvent.click(screen.getByRole('button', { name: 'Suggest' }));
+  await waitFor(() => expect(loadSuggestions).toHaveBeenCalled());
+  expect(screen.queryByText('No new suggestions from those circles.')).not.toBeInTheDocument();
+});
+
+test('an attendee action failure is announced as an alert', async () => {
+  const handleRemove = vi.fn().mockRejectedValue(new Error('boom'));
+  vi.mocked(useOccasionEventAttendees).mockReturnValue(makeHookReturn({ handleRemove }));
+  render(<OccasionEventAttendeesDialog open onClose={vi.fn()} event={event} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Failed to update the attendee.');
 });

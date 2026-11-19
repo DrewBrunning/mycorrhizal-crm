@@ -3175,10 +3175,12 @@
       "kind": "Type",
       "kindHint": "carte, cadeau, invitation ou votre propre libellé",
       "label": "Libellé",
-      "labelHint": "p. ex. « Carte de Noël », « Cadeau d'anniversaire »",
+      "labelHint": "p. ex. « Carte de Noël », « Cadeau d'anniversaire de mariage »",
       "anchorMonth": "Mois",
       "anchorDay": "Jour",
       "anchorDateUnset": "Non défini",
+      "dayClamped": "{{month}} compte au plus {{max}} jours ; le jour a donc été effacé. Choisissez de nouveau un jour.",
+      "noDate": "Pas de date : pas de rappel",
       "leadTimeDays": "Délai (jours)",
       "leadTimeDaysHint": "Combien de jours à l'avance être rappelé, p. ex. 14 pour « cadeau deux semaines avant »",
       "leadTimeDisplay_one": "{{count}} jour d'avance",
@@ -3197,7 +3199,6 @@
       "empty": "Aucune occasion récurrente pour le moment. Ajoutez-en une pour une carte, un cadeau ou une invitation récurrente.",
       "validation": {
         "labelRequired": "Saisissez un libellé pour cette occasion.",
-        "anchorBothOrNeither": "Renseignez à la fois le mois et le jour, ou laissez les deux vides.",
         "invalidLeadTime": "Saisissez un nombre de jours de délai valide.",
         "saveFailed": "Échec de l'enregistrement de l'occasion."
       },

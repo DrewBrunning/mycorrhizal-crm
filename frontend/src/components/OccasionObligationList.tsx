@@ -62,16 +62,16 @@ export default function OccasionObligationList({
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', flexWrap: 'wrap' }}>
                 <Chip size="small" label={t(`occasions.kinds.${o.kind}`, o.kind)} />
-                {anchorLabel(o) && (
-                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                    {anchorLabel(o)}
-                  </Typography>
-                )}
+                {/* Issue #2670: a row saved before dates were required never
+                    reminds; say so instead of showing nothing. */}
+                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                  {anchorLabel(o) ?? t('occasions.obligation.noDate')}
+                </Typography>
                 {o.lead_time_days > 0 && (
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                     {/* Issue #2681: "December 25 14 days lead time" ran together;
                         the dot separates the date from the lead time. */}
-                    {anchorLabel(o) && <span aria-hidden="true">{'· '}</span>}
+                    <span aria-hidden="true">{'· '}</span>
                     {t('occasions.obligation.leadTimeDisplay', { count: o.lead_time_days })}
                   </Typography>
                 )}
