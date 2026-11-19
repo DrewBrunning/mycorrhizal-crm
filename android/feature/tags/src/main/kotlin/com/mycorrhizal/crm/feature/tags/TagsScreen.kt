@@ -48,6 +48,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -126,13 +127,10 @@ fun TagsScreen(
                                     onAction = { showCreateDialog = true }
                                 )
 
-                            state.tags.isEmpty() && state.error != null -> {
-                                Text(
-                                    text = state.error?.localizedMessage().orEmpty(),
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
+                            state.tags.isEmpty() && state.error != null ->
+                                state.error?.let { error ->
+                                    ErrorState(error = error, onRetry = viewModel::load)
+                                }
 
                             else -> {
                                 LazyColumn(
@@ -171,7 +169,9 @@ fun TagsScreen(
         )
     }
 
-    state.error?.let { error ->
+    // With nothing listed the error is the screen's ErrorState (and its Retry); a toast that
+    // clears the error on dismissal would take that state away again.
+    state.error?.takeIf { state.tags.isNotEmpty() }?.let { error ->
         val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
