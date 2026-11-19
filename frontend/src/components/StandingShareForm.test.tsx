@@ -158,3 +158,19 @@ test('says so when the chosen sections hold nothing shareable right now', async 
     await screen.findByText(/Nothing in these sections is shared right now/),
   ).toBeInTheDocument();
 });
+
+// #2787 / #2658: SHARE_DIRECTORY_MODE=search returns no users for a short query.
+test('search mode: the recipient picker asks for at least 3 letters of the username (#2787)', async () => {
+  mockApi('get', '/users/directory', { users: [] });
+  render(
+    <DateFormatProvider>
+      <StandingShareForm
+        entityType="contact"
+        entityId="uid-1"
+        onCreated={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    </DateFormatProvider>,
+  );
+  expect(await screen.findByText('Type at least 3 letters of the username')).toBeInTheDocument();
+});

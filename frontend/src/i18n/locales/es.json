@@ -3347,9 +3347,12 @@
       "description": "Envía una copia filtrada y de un solo uso de este contacto a otro usuario de esta instancia. Esa persona decide si acepta la compartición.",
       "frozenNotice": "Una vez enviada, esta compartición no se puede retirar — el destinatario ve una instantánea del momento actual, y cualquier edición posterior a este contacto no llegará a una compartición pendiente o ya aceptada.",
       "recipient": "Destinatario",
-      "selectRecipient": "Elige un destinatario…",
       "sharing": "Compartiendo…",
       "shareButton": "Compartir"
+    },
+    "recipientPicker": {
+      "searchHint": "Escribe al menos {{min}} letras del nombre de usuario",
+      "noMatches": "No hay usuarios que coincidan."
     },
     "incoming": {
       "empty": "No hay comparticiones recibidas.",
