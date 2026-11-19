@@ -1,6 +1,5 @@
 import {
   Alert,
-  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -11,12 +10,11 @@ import {
   FormGroup,
   FormHelperText,
   FormLabel,
-  TextField,
   Typography,
 } from '@mui/material';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getUserDirectory, type UserDirectoryEntry } from '../api/contactShares';
+import type { UserDirectoryEntry } from '../api/contactShares';
 import { EXPORT_FIELD_SECTIONS } from '../api/export';
 import {
   createShareGrant,
@@ -29,6 +27,7 @@ import { getErrorMessage } from '../utils/errorHandler';
 import { describeJSContact } from '../utils/jscontactDisplay';
 import DateField from './DateField';
 import SharedContactCard from './SharedContactCard';
+import ShareRecipientPicker from './ShareRecipientPicker';
 
 interface StandingShareFormProps {
   entityType: ShareGrantEntityType;
@@ -71,7 +70,6 @@ export default function StandingShareForm({
   onDirty,
 }: StandingShareFormProps) {
   const { t } = useTranslation();
-  const [recipients, setRecipients] = useState<UserDirectoryEntry[]>([]);
   const [recipient, setRecipient] = useState<UserDirectoryEntry | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expiry, setExpiry] = useState('');
@@ -85,20 +83,6 @@ export default function StandingShareForm({
   // create instead of risking a duplicate (the backend honours Idempotency-Key).
   const idempotencyKey = useRef(newIdempotencyKey());
   const isContact = entityType === 'contact';
-
-  useEffect(() => {
-    let cancelled = false;
-    getUserDirectory()
-      .then((users) => {
-        if (!cancelled) setRecipients(users);
-      })
-      .catch((err) => {
-        if (!cancelled) setError(getErrorMessage(err));
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const sections = useMemo(() => [...selected].sort(), [selected]);
   useEffect(() => {
@@ -199,19 +183,14 @@ export default function StandingShareForm({
             </Typography>
           )}
 
-          <Autocomplete
-            options={recipients}
+          <ShareRecipientPicker
+            label={t('standingShares.form.recipient')}
             value={recipient}
-            onChange={(_e, value) => {
+            onChange={(value) => {
               onDirty?.();
               setRecipient(value);
             }}
-            getOptionLabel={(u) => u.username}
-            isOptionEqualToValue={(a, b) => a.id === b.id}
-            noOptionsText={t('standingShares.form.noRecipients')}
-            renderInput={(params) => (
-              <TextField {...params} label={t('standingShares.form.recipient')} />
-            )}
+            onError={setError}
           />
 
           {isContact ? (

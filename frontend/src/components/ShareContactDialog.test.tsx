@@ -211,3 +211,37 @@ test('the mode radios and the one-time section checkboxes are at least 44 px tal
     expect(getComputedStyle(control.closest('label') as HTMLElement).minHeight).toBe('44px');
   }
 });
+
+// #2787 / #2658: SHARE_DIRECTORY_MODE=search. The directory returns nothing for a query
+// shorter than 3 characters; the picker says so, asks the server as the user types, and the
+// share still goes to the chosen user.
+test('search mode: hints, queries the typed username, and shares with the match (#2787)', async () => {
+  const urls: string[] = [];
+  let sentBody: Record<string, unknown> | undefined;
+  mockFetchByUrl({
+    '/users/directory': (url) => {
+      urls.push(url);
+      const q = new URL(url, 'http://test.invalid').searchParams.get('q') ?? '';
+      return { users: q.length >= 3 ? [{ id: 2, username: 'bob' }] : [] };
+    },
+    '/contact-shares': (_url, init) => {
+      sentBody = JSON.parse(init?.body as string);
+      return { message: 'Share created', contact_share: { id: 'share-1' } };
+    },
+  });
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+
+  expect(await screen.findByText('Type at least 3 letters of the username')).toBeInTheDocument();
+  const input = screen.getByRole('combobox', { name: 'Recipient' });
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: 'bob' } });
+  fireEvent.click(await screen.findByRole('option', { name: 'bob' }));
+  expect(urls.some((u) => new URL(u, 'http://test.invalid').searchParams.get('q') === 'bob')).toBe(
+    true,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(sentBody?.to_user_id).toBe(2);
+});
