@@ -86,6 +86,11 @@ func UploadCSVForImport(c *gin.Context) {
 	// what keeps the warn/error log guard from flagging a negative E2E case.
 	headers, dataRows, fileDiags, err := services.ParseCSVWithDiagnostics(f)
 	if err != nil {
+		if errors.Is(err, services.ErrImportNotText) {
+			log.Info().Err(err).Msg("Rejected non-text CSV upload")
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.").WithReason(apperrors.ReasonImportCSVNotText, nil))
+			return
+		}
 		log.Info().Err(err).Msg("Failed to parse CSV")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()).WithReason(apperrors.ReasonImportFileUnreadable, map[string]any{"reason": err.Error()}))
 		return

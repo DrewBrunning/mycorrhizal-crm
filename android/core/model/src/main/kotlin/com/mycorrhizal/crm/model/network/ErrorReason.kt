@@ -442,6 +442,7 @@ object ErrorReasonCode {
     const val HOUSEHOLD_SUGGESTION_MEMBER_STALE = "household_suggestion_member_stale"
     const val HOUSEHOLD_SUGGESTION_STALE = "household_suggestion_stale"
     const val HOUSEHOLD_TYPE_INVALID = "household_type_invalid"
+    const val IMPORT_CSV_NOT_TEXT = "import_csv_not_text"
     const val IMPORT_DISK_SPACE_LOW = "import_disk_space_low"
     const val IMPORT_FIELD_MAPPING_TARGET_INVALID = "import_field_mapping_target_invalid"
     const val IMPORT_FIELD_MAPPINGS_INVALID = "import_field_mappings_invalid"
