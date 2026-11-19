@@ -100,6 +100,6 @@ test('unlink asks for confirmation then fires onUnlink', async () => {
   const onUnlink = vi.fn().mockResolvedValue(undefined);
   renderPanel({ identities: [identity], onUnlink });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   await waitFor(() => expect(onUnlink).toHaveBeenCalledWith('paperless', identity.id));
 });

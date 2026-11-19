@@ -37,6 +37,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -54,6 +55,7 @@ fun TriageScreen(
     viewModel: TriageViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val loadError = state.error
     val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
@@ -95,16 +97,11 @@ fun TriageScreen(
 
                     state.done -> DoneContent(state = state, onBack = onBack)
 
-                    state.items.isEmpty() && state.error == null ->
-                        EmptyState(title = stringResource(R.string.triage_empty))
+                    state.items.isEmpty() && loadError != null ->
+                        ErrorState(error = loadError, onRetry = viewModel::load)
 
-                    state.items.isEmpty() && state.error != null -> {
-                        Text(
-                            text = state.error?.localizedMessage().orEmpty(),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
+                    state.items.isEmpty() ->
+                        EmptyState(title = stringResource(R.string.triage_empty))
 
                     else -> ClassifyContent(
                         state = state,

@@ -78,7 +78,10 @@ test.describe('Occasions', () => {
       // --- deactivating the obligation takes it off the list ---
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
-      await page.locator('#occasions').getByRole('button', { name: 'Edit', exact: true }).click();
+      await page
+        .locator('#occasions')
+        .getByRole('button', { name: /^Edit / })
+        .click();
       const edit = page.getByRole('dialog', { name: 'Edit occasion' });
       await edit.getByRole('switch', { name: 'Active' }).uncheck();
       await edit.getByRole('button', { name: 'Save' }).click();

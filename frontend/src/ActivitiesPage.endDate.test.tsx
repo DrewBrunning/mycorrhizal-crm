@@ -96,7 +96,7 @@ test('editing keeps the end date and sends it as an instant', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Family trip')).toBeDefined());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() =>
     expect(screen.getByLabelText('End date (optional)')).toHaveValue('15.05.2026'),
   );
@@ -116,7 +116,7 @@ test('clearing the end date sends end_date null', async () => {
   renderPage();
   await waitFor(() => expect(screen.getByText('Family trip')).toBeDefined());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() =>
     expect(screen.getByLabelText('End date (optional)')).toHaveValue('15.05.2026'),
   );
@@ -145,7 +145,7 @@ test("the server's 400 on end_date shows on the end field and keeps the editor o
   renderPage();
   await waitFor(() => expect(screen.getByText('Family trip')).toBeDefined());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit Activity' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByLabelText('End date (optional)')).toBeDefined());
   await pickDate('Date', '2026-05-12', '2026-05-12').catch(() => undefined);
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));

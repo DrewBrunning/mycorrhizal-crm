@@ -68,7 +68,7 @@ test('calls onDismiss with the suggestion id and does not navigate', () => {
   const onDismiss = vi.fn();
   renderList({ suggestions: [suggestion({ id: 'suggestion-42' })], onDismiss });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Dismiss\b/ }));
 
   expect(onDismiss).toHaveBeenCalledWith('suggestion-42');
 });
@@ -105,4 +105,20 @@ test('the section header uses a lightbulb icon, not an office building (issue #1
 
   expect(screen.getByTestId('LightbulbOutlinedIcon')).toBeInTheDocument();
   expect(screen.queryByTestId('BusinessOutlinedIcon')).not.toBeInTheDocument();
+});
+
+// #2673: the dismiss button names the contact, with a fallback when it has no name.
+test('dismiss names the contact it acts on', () => {
+  renderList({
+    suggestions: [
+      suggestion(),
+      suggestion({ id: 'suggestion-2', contact_id: 9, contact_name: '' }),
+    ],
+  });
+  expect(
+    screen.getByRole('button', { name: 'Dismiss suggestion for Alice Smith' }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: 'Dismiss suggestion for Unknown contact' }),
+  ).toBeInTheDocument();
 });

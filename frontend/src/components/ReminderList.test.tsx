@@ -98,7 +98,7 @@ test('completing a reminder calls onComplete with its id', async () => {
     reminders: [reminder({ ID: 5 })],
   });
 
-  fireEvent.click(screen.getByLabelText('Complete'));
+  fireEvent.click(screen.getByLabelText(/^Complete\b/));
 
   await waitFor(() => expect(onComplete).toHaveBeenCalledWith(5));
 });
@@ -107,7 +107,7 @@ test('editing a reminder passes the whole reminder through onEdit', () => {
   const theReminder = reminder({ ID: 9, message: 'Call the plumber' });
   const { onEdit } = renderList({ reminders: [theReminder] });
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
 
   expect(onEdit).toHaveBeenCalledWith(theReminder);
 });
@@ -115,12 +115,12 @@ test('editing a reminder passes the whole reminder through onEdit', () => {
 test('deleting a reminder asks for confirmation before calling onDelete', async () => {
   const { onDelete } = renderList({ reminders: [reminder({ ID: 3 })] });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   const dialog = screen.getByRole('dialog');
   expect(within(dialog).getByText('Delete Reminder')).toBeInTheDocument();
 
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
 
   await waitFor(() => expect(onDelete).toHaveBeenCalledWith(3));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -129,7 +129,7 @@ test('deleting a reminder asks for confirmation before calling onDelete', async 
 test('cancelling the delete confirmation does not call onDelete', async () => {
   const { onDelete } = renderList({ reminders: [reminder({ ID: 4 })] });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancel' }));
 
   expect(onDelete).not.toHaveBeenCalled();
@@ -141,4 +141,14 @@ test('an overdue reminder renders a warning-styled date chip', () => {
 
   expect(screen.getByText('01.01.2020')).toBeInTheDocument();
   expect(screen.getByText('01.01.2020').closest('.MuiChip-colorWarning')).not.toBeNull();
+});
+
+// #2673: each reminder's buttons name the reminder.
+test('complete, edit and delete buttons name the reminder', () => {
+  renderList({ reminders: [reminder(), reminder({ ID: 2, message: 'Send Chen the book' })] });
+  expect(
+    screen.getByRole('button', { name: 'Complete reminder Send Chen the book' }),
+  ).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Edit Water the plants' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Delete Send Chen the book' })).toBeInTheDocument();
 });
