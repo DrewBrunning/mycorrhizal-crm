@@ -45,6 +45,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **What organisations and places add to your contacts** ([#2298](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2298)): a contact's primary organisation or place shows as an extra organisation or address in vCard, CardDAV and shares, after your own entries, and synced apps pick up changes to it. Pets never do. Nothing is written into the contact; the stricter sensitivity applies.
 - **No more duplicate circle names** ([#2362](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2362), [#2444](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2444)): creating or renaming a circle to a name you already use (any letter case) is refused, with a message under the name field. Circles are listed in name order, including right after you create or rename one. Circles that already share a name stay as they are.
 - **Tidier web menu** ([#2175](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2175)): Shares, Audit log, Data and, for admins, Users and System pages now sit under Settings in the left menu. Open them with the arrow beside Settings; every page keeps its address.
+- **German texts now consistently use the formal Sie** ([#2686](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2686)): the web app no longer mixes du and Sie, and the import report CSV now words its Status column like the on-screen report ([#2681](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2681)).
 
 ### Fixed
 
