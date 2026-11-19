@@ -18,8 +18,13 @@ import { importIssuesToCsv } from '../utils/importReportCsv';
 import { importWarningKey } from '../utils/importWarning';
 
 // Issue #2187: save the skipped/failed rows as a CSV.
-function downloadIssuesCsv(issues: ImportRowIssue[]) {
-  const blob = new Blob([importIssuesToCsv(issues)], { type: 'text/csv;charset=utf-8' });
+function downloadIssuesCsv(
+  issues: ImportRowIssue[],
+  statusLabel: (issue: ImportRowIssue) => string,
+) {
+  const blob = new Blob([importIssuesToCsv(issues, statusLabel)], {
+    type: 'text/csv;charset=utf-8',
+  });
   const url = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
@@ -78,7 +83,7 @@ export default function ImportIssuesReport({ issues }: { issues: ImportRowIssue[
         >
           {title}
         </Typography>
-        <Button size="small" onClick={() => downloadIssuesCsv(issues)}>
+        <Button size="small" onClick={() => downloadIssuesCsv(issues, statusLabel)}>
           {t('contacts.import.result.downloadCsv', 'Download as CSV')}
         </Button>
       </Box>
