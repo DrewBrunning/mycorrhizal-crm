@@ -1,5 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { delay, HttpResponse, http } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { useState } from 'react';
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
@@ -121,12 +121,18 @@ describe('mode search (inferred from an empty list for a short query)', () => {
   });
 
   test('a slow response for an older query never overwrites a newer one', async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const seen: string[] = [];
     server.use(
       http.get(`${API_BASE_URL}/users/directory`, async ({ request }) => {
         const q = new URL(request.url).searchParams.get('q') ?? '';
-        if (q === 'bob') {
-          await delay(500);
-          return HttpResponse.json({ users: [{ id: 2, username: 'bob' }] });
+        seen.push(q);
+        if (q === 'caro') {
+          await gate; // held in flight until the test releases it
+          return HttpResponse.json({ users: [{ id: 9, username: 'carol-stale' }] });
         }
         if (q === 'carol') return HttpResponse.json({ users: [{ id: 3, username: 'carol' }] });
         return HttpResponse.json({ users: [] });
@@ -135,13 +141,15 @@ describe('mode search (inferred from an empty list for a short query)', () => {
     render(<Harness />);
     const input = await box();
     await screen.findByText(HINT);
-    type(input, 'bob');
-    await settle(350); // debounce fires, bob is in flight
+    type(input, 'caro');
+    await waitFor(() => expect(seen).toContain('caro'));
     type(input, 'carol');
-    await settle(900); // bob resolves after carol
-    fireEvent.mouseDown(input);
+    await waitFor(() => expect(seen).toContain('carol'));
     expect(await screen.findByRole('option', { name: 'carol' })).toBeInTheDocument();
-    expect(screen.queryByRole('option', { name: 'bob' })).not.toBeInTheDocument();
+    release(); // the older 'caro' response now arrives after the newer one
+    await settle(100);
+    expect(screen.getByRole('option', { name: 'carol' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'carol-stale' })).not.toBeInTheDocument();
   });
 
   test('a long query with no match says there are no matching users, not the hint', async () => {
