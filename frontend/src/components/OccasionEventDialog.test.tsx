@@ -39,7 +39,11 @@ test('requires a title', async () => {
   const onSave = vi.fn();
   render(<OccasionEventDialog open onClose={vi.fn()} onSave={onSave} />);
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-  expect(await screen.findByText('Enter a title for this event.')).toBeInTheDocument();
+  // #2672: the error belongs to the Title field and focus moves there.
+  const title = screen.getByLabelText(/^Title/);
+  await waitFor(() => expect(title).toHaveAttribute('aria-invalid', 'true'));
+  expect(title).toHaveAccessibleDescription('Enter a title for this event.');
+  expect(title).toHaveFocus();
   expect(onSave).not.toHaveBeenCalled();
 });
 
@@ -47,7 +51,10 @@ test('requires a start date and time', async () => {
   render(<OccasionEventDialog open onClose={vi.fn()} onSave={vi.fn()} />);
   fireEvent.change(screen.getByLabelText(/^Title/), { target: { value: 'Party' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-  expect(await screen.findByText('Choose a start date and time.')).toBeInTheDocument();
+  const starts = screen.getByLabelText(/^Starts/);
+  await waitFor(() => expect(starts).toHaveAttribute('aria-invalid', 'true'));
+  expect(starts).toHaveAccessibleDescription('Choose a start date and time.');
+  expect(starts).toHaveFocus();
 });
 
 test('rejects an end before the start', async () => {
@@ -60,9 +67,10 @@ test('rejects an end before the start', async () => {
     target: { value: '2026-07-04T17:00' },
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-  expect(
-    await screen.findByText('The end time cannot be before the start time.'),
-  ).toBeInTheDocument();
+  const ends = screen.getByLabelText(/^Ends/);
+  await waitFor(() => expect(ends).toHaveAttribute('aria-invalid', 'true'));
+  expect(ends).toHaveAccessibleDescription('The end time cannot be before the start time.');
+  expect(ends).toHaveFocus();
 });
 
 test('saves a valid event and closes', async () => {
@@ -95,7 +103,7 @@ test('shows a save-failed message when onSave rejects', async () => {
   });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
-  expect(await screen.findByText('Failed to save event.')).toBeInTheDocument();
+  expect(await screen.findByRole('alert')).toHaveTextContent('Failed to save event.');
 });
 
 test('toDatetimeLocal / fromDatetimeLocal round-trip and handle blanks', () => {
@@ -120,4 +128,13 @@ test('changing sensitivity or notes marks the form dirty', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(screen.getByText('Discard unsaved changes?')).toBeInTheDocument();
   expect(onClose).not.toHaveBeenCalled();
+});
+
+test('typing in an invalid field clears its error', async () => {
+  render(<OccasionEventDialog open onClose={vi.fn()} onSave={vi.fn()} />);
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+  const title = screen.getByLabelText(/^Title/);
+  await waitFor(() => expect(title).toHaveAttribute('aria-invalid', 'true'));
+  fireEvent.change(title, { target: { value: 'P' } });
+  expect(title).toHaveAttribute('aria-invalid', 'false');
 });

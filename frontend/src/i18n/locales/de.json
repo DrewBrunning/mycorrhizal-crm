@@ -3074,10 +3074,12 @@
       "kind": "Art",
       "kindHint": "Karte, Geschenk, Einladung oder eigene Bezeichnung",
       "label": "Bezeichnung",
-      "labelHint": "z. B. „Weihnachtskarte“, „Geburtstagsgeschenk“",
+      "labelHint": "z. B. „Weihnachtskarte“, „Jahrestagsgeschenk“",
       "anchorMonth": "Monat",
       "anchorDay": "Tag",
       "anchorDateUnset": "Nicht festgelegt",
+      "dayClamped": "Der {{month}} hat höchstens {{max}} Tage, deshalb wurde der Tag geleert. Wählen Sie den Tag erneut aus.",
+      "noDate": "Kein Datum – keine Erinnerung",
       "leadTimeDays": "Vorlaufzeit (Tage)",
       "leadTimeDaysHint": "Wie viele Tage vorher erinnert werden soll, z. B. 14 für „Geschenk zwei Wochen vorher“",
       "leadTimeDisplay_one": "{{count}} Tag Vorlauf",
@@ -3095,7 +3097,6 @@
       "empty": "Noch keine festen Anlässe. Fügen Sie einen für eine wiederkehrende Karte, ein Geschenk oder eine Einladung hinzu.",
       "validation": {
         "labelRequired": "Geben Sie eine Bezeichnung für diesen Anlass ein.",
-        "anchorBothOrNeither": "Legen Sie entweder Monat und Tag fest oder lassen Sie beides leer.",
         "invalidLeadTime": "Geben Sie eine gültige Anzahl an Vorlauftagen ein.",
         "saveFailed": "Anlass konnte nicht gespeichert werden."
       },

@@ -3074,10 +3074,12 @@
       "kind": "Kind",
       "kindHint": "card, gift, invite, or your own label",
       "label": "Label",
-      "labelHint": "e.g. “Christmas card”, “Birthday gift”",
+      "labelHint": "e.g. “Christmas card”, “Anniversary gift”",
       "anchorMonth": "Month",
       "anchorDay": "Day",
       "anchorDateUnset": "Not set",
+      "dayClamped": "{{month}} has at most {{max}} days, so the day was cleared. Choose a day again.",
+      "noDate": "No date — no reminder",
       "leadTimeDays": "Lead time (days)",
       "leadTimeDaysHint": "How many days before the date to be reminded, e.g. 14 for “gift two weeks before”",
       "leadTimeDisplay_one": "{{count}} day lead time",
@@ -3095,7 +3097,6 @@
       "empty": "No standing occasions yet. Add one for a recurring card, gift, or invite.",
       "validation": {
         "labelRequired": "Enter a label for this occasion.",
-        "anchorBothOrNeither": "Set both a month and a day, or leave both unset.",
         "invalidLeadTime": "Enter a valid number of lead-time days.",
         "saveFailed": "Failed to save occasion."
       },

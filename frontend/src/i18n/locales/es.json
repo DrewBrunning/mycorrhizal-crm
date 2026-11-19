@@ -3175,10 +3175,12 @@
       "kind": "Tipo",
       "kindHint": "tarjeta, regalo, invitación o tu propia etiqueta",
       "label": "Etiqueta",
-      "labelHint": "p. ej. «Tarjeta de Navidad», «Regalo de cumpleaños»",
+      "labelHint": "p. ej. «Tarjeta de Navidad», «Regalo de aniversario»",
       "anchorMonth": "Mes",
       "anchorDay": "Día",
       "anchorDateUnset": "Sin definir",
+      "dayClamped": "{{month}} tiene como máximo {{max}} días, así que se borró el día. Elige un día de nuevo.",
+      "noDate": "Sin fecha: sin recordatorio",
       "leadTimeDays": "Antelación (días)",
       "leadTimeDaysHint": "Cuántos días antes recibir el recordatorio, p. ej. 14 para «regalo con dos semanas de antelación»",
       "leadTimeDisplay_one": "{{count}} día de antelación",
@@ -3197,7 +3199,6 @@
       "empty": "Aún no hay ocasiones fijas. Añade una para una tarjeta, regalo o invitación recurrente.",
       "validation": {
         "labelRequired": "Introduce una etiqueta para esta ocasión.",
-        "anchorBothOrNeither": "Define el mes y el día, o deja ambos sin definir.",
         "invalidLeadTime": "Introduce un número válido de días de antelación.",
         "saveFailed": "No se pudo guardar la ocasión."
       },
