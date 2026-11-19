@@ -59,7 +59,7 @@ test('confirm with no activity selected calls onConfirm(undefined)', async () =>
   const onConfirm = vi.fn().mockResolvedValue(undefined);
   renderDialog({ onConfirm });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Mark as discussed' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Mark .* as discussed$/ }));
 
   await vi.waitFor(() => expect(onConfirm).toHaveBeenCalledWith(undefined));
   expect(onConfirm.mock.calls[0][0]).toBeUndefined();
@@ -71,7 +71,7 @@ test('confirm with a selected activity calls onConfirm with its id', async () =>
 
   fireEvent.mouseDown(screen.getByLabelText('Recorded in (optional)'));
   fireEvent.click(screen.getByRole('option', { name: /Coffee catch-up/ }));
-  fireEvent.click(screen.getByRole('button', { name: 'Mark as discussed' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Mark .* as discussed$/ }));
 
   await vi.waitFor(() => expect(onConfirm).toHaveBeenCalledWith(7));
 });
@@ -85,7 +85,7 @@ test('shows error message when onConfirm rejects', async () => {
   const onConfirm = vi.fn().mockRejectedValue(new Error('Network error'));
   renderDialog({ onConfirm });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Mark as discussed' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Mark .* as discussed$/ }));
 
   await vi.waitFor(() => screen.getByText(/Failed to mark as discussed/i));
   expect(onConfirm).toHaveBeenCalledTimes(1);

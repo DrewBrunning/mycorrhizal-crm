@@ -392,14 +392,14 @@ export default function CalendarSyncSettings() {
                         <IconButton
                           size="small"
                           onClick={() => openEdit(cal)}
-                          aria-label={t('common.edit')}
+                          aria-label={t('common.editNamed', { name: cal.name })}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
                         <IconButton
                           size="small"
                           onClick={() => handleDeleteClick(cal)}
-                          aria-label={t('common.delete')}
+                          aria-label={t('common.deleteNamed', { name: cal.name })}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>

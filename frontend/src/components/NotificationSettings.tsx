@@ -564,7 +564,9 @@ export default function NotificationSettings() {
                             color="error"
                             onClick={() => void handleDeleteDevice(sub)}
                             title={t('notifications.settings.push.removeDevice')}
-                            aria-label={t('notifications.settings.push.removeDevice')}
+                            aria-label={t('notifications.settings.push.removeDeviceNamed', {
+                              name: sub.device_label || 'Browser',
+                            })}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
@@ -643,7 +645,9 @@ export default function NotificationSettings() {
                             color="error"
                             onClick={() => void handleDeleteMobileDevice(device)}
                             title={t('notifications.settings.push.removeDevice')}
-                            aria-label={t('notifications.settings.push.removeDevice')}
+                            aria-label={t('notifications.settings.push.removeDeviceNamed', {
+                              name: device.device_label || device.client.toUpperCase(),
+                            })}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>

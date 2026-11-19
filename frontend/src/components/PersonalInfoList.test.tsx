@@ -96,7 +96,7 @@ test('edit calls back with the exact entry', () => {
   const target = entry({ id: 'pi-9', kind: 'interest', value: 'Typography' });
   const { onEdit } = renderList([target]);
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   expect(onEdit).toHaveBeenCalledWith(target);
 });
 
@@ -106,12 +106,19 @@ test('delete asks for confirmation before calling back', () => {
   const target = entry();
   const { onDelete } = renderList([target]);
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(confirm).toHaveBeenCalled();
   expect(onDelete).not.toHaveBeenCalled();
 
   confirm.mockReturnValue(true);
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(onDelete).toHaveBeenCalledWith(target);
   vi.unstubAllGlobals();
+});
+
+// #2673: each entry's buttons name the entry.
+test('edit and delete buttons name the entry they act on', () => {
+  renderList([entry(), entry({ id: 'pi-2', value: 'Piano', kind: 'hobby' })]);
+  expect(screen.getByRole('button', { name: 'Edit Go' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Delete Piano' })).toBeInTheDocument();
 });

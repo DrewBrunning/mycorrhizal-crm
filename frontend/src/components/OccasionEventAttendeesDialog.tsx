@@ -222,7 +222,9 @@ export default function OccasionEventAttendeesDialog({
                   <IconButton
                     size="small"
                     color="error"
-                    aria-label={t('occasions.events.removeAttendee')}
+                    aria-label={t('occasions.events.removeAttendeeNamed', {
+                      name: attendee.contact_name,
+                    })}
                     onClick={() => void handleRemoveAttendee(attendee.entity_id)}
                   >
                     <DeleteIcon fontSize="small" />
@@ -306,6 +308,9 @@ export default function OccasionEventAttendeesDialog({
                     size="small"
                     startIcon={<AddIcon fontSize="small" />}
                     onClick={() => void handleAddSuggestion(suggestion.entity_id)}
+                    aria-label={t('occasions.events.addAttendeeNamed', {
+                      name: suggestion.contact_name,
+                    })}
                   >
                     {t('occasions.events.addAttendee')}
                   </Button>

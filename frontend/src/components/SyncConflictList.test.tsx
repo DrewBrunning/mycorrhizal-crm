@@ -61,10 +61,10 @@ test('restore and dismiss handlers fire with the conflict', () => {
   const onDismiss = vi.fn();
   renderList({ conflicts: [conflict()], onRestore, onDismiss });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Restore local value' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Restore local value\b/ }));
   expect(onRestore).toHaveBeenCalledWith(conflict());
 
-  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Dismiss\b/ }));
   expect(onDismiss).toHaveBeenCalledWith('conflict-1');
 });
 

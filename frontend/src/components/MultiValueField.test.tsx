@@ -52,7 +52,7 @@ test('removing a row reports the array without it', () => {
   const work = value({ type: 'work', value: 'bob@example.com' });
   const { onChange } = renderEditor({ value: [value(), work] });
 
-  fireEvent.click(screen.getAllByLabelText('Delete')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Delete\b/)[0]);
 
   expect(onChange).toHaveBeenCalledWith([work]);
 });

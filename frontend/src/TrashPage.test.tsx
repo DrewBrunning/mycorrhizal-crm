@@ -209,14 +209,14 @@ test('delete forever opens an in-app dialog and only purges when confirmed', asy
   renderPage();
   const ada = (await screen.findByText('Ada Test')).closest('li') as HTMLElement;
 
-  fireEvent.click(within(ada).getByRole('button', { name: /delete forever/i }));
+  fireEvent.click(within(ada).getByRole('button', { name: /delete .* forever/i }));
   let dialog = await screen.findByRole('dialog', { name: 'Delete forever?' });
   expect(within(dialog).getByText(/Permanently delete Ada Test\?/)).toBeTruthy();
   fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
   await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
 
-  fireEvent.click(within(ada).getByRole('button', { name: /delete forever/i }));
+  fireEvent.click(within(ada).getByRole('button', { name: /delete .* forever/i }));
   dialog = await screen.findByRole('dialog', { name: 'Delete forever?' });
   fireEvent.click(within(dialog).getByRole('button', { name: 'Delete forever' }));
   await waitFor(() => expect(screen.queryByText('Ada Test')).toBeNull());
@@ -314,7 +314,7 @@ test('entity rows have no delete-forever action; the empty-trash dialog says it 
   seedEntities();
   renderPage();
   const acme = (await screen.findByText('Acme')).closest('li') as HTMLElement;
-  expect(within(acme).queryByRole('button', { name: /delete forever/i })).toBeNull();
+  expect(within(acme).queryByRole('button', { name: /delete .* forever/i })).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: /empty trash/i }));
   const dialog = await screen.findByRole('dialog', { name: 'Empty trash?' });
   expect(within(dialog).getByText(/all 2 contacts/)).toBeTruthy();
@@ -356,4 +356,14 @@ test('only entities in the trash is not the empty state', async () => {
   await screen.findByText('Acme');
   expect(screen.queryByText(/Trash is empty/i)).toBeNull();
   expect(screen.queryByRole('button', { name: /empty trash/i })).toBeNull();
+});
+
+// #2706: each row's Restore / Delete forever button names the item.
+test('row buttons name the trashed item they act on', async () => {
+  renderPage();
+  await screen.findByText('Ada Test');
+  expect(screen.getByRole('button', { name: 'Restore Ada Test' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Restore Bob Test' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Delete Ada Test forever' })).toBeTruthy();
+  expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
 });

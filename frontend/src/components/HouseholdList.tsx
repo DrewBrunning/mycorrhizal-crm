@@ -255,7 +255,7 @@ export default function HouseholdList({
                 <IconButton
                   size="small"
                   onClick={() => onEdit(household)}
-                  aria-label={t('common.edit')}
+                  aria-label={t('common.editNamed', { name: household.name })}
                 >
                   <EditIcon fontSize="small" />
                 </IconButton>
@@ -263,7 +263,7 @@ export default function HouseholdList({
                   size="small"
                   color="error"
                   onClick={() => onDelete(household.id)}
-                  aria-label={t('common.delete')}
+                  aria-label={t('common.deleteNamed', { name: household.name })}
                 >
                   <DeleteIcon fontSize="small" />
                 </IconButton>
@@ -307,7 +307,7 @@ export default function HouseholdList({
                     size="small"
                     color="error"
                     onClick={() => onRemoveMember(household.id, member.member_vcard_uid)}
-                    aria-label={t('household.removeMember')}
+                    aria-label={t('household.removeMemberNamed', { name: memberName(member) })}
                   >
                     <DeleteIcon fontSize="small" />
                   </IconButton>

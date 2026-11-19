@@ -139,7 +139,7 @@ test('delete calls onDelete only when the confirmation is accepted', () => {
     </SnackbarProvider>,
   );
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   expect(confirmSpy).toHaveBeenCalled();
   expect(onDelete).toHaveBeenCalledTimes(1);
@@ -168,7 +168,7 @@ test('delete does nothing when the confirmation is declined', () => {
     </SnackbarProvider>,
   );
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
   expect(confirmSpy).toHaveBeenCalled();
   expect(onDelete).not.toHaveBeenCalled();

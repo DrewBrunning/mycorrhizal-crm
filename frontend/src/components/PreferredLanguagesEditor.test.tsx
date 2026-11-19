@@ -65,7 +65,7 @@ test('removing a row drops that entry and leaves the others intact', () => {
   const value: CardLanguagePref[] = [{ language: 'en' }, { language: 'de' }];
   const { onChange } = renderEditor({ value });
 
-  const deleteButtons = screen.getAllByLabelText('Delete');
+  const deleteButtons = screen.getAllByLabelText(/^Delete\b/);
   fireEvent.click(deleteButtons[0]);
 
   expect(onChange).toHaveBeenCalledWith([{ language: 'de' }]);
@@ -85,7 +85,7 @@ test('removing every row leaves the add button as the only control', () => {
   const value: CardLanguagePref[] = [{ language: 'en' }];
   const { onChange } = renderEditor({ value });
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   expect(onChange).toHaveBeenCalledWith([]);
 });

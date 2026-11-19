@@ -68,7 +68,7 @@ test('calls onDismiss with the suggestion id and does not navigate', () => {
   const onDismiss = vi.fn();
   renderList({ suggestions: [suggestion({ id: 'suggestion-42' })], onDismiss });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Dismiss\b/ }));
 
   expect(onDismiss).toHaveBeenCalledWith('suggestion-42');
 });

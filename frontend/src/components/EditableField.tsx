@@ -103,7 +103,7 @@ export default function EditableField({
                 size="small"
                 color="primary"
                 onClick={() => onEditStart(field, value)}
-                aria-label={t('common.edit')}
+                aria-label={t('common.editNamed', { name: label })}
                 // #188: the tight p:0.25 padding measured under 24x24 (2.5.8).
                 sx={{
                   ml: 0.5,

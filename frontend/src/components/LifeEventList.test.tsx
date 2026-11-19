@@ -43,8 +43,8 @@ test('renders a category chip for a categorized event', () => {
 // equivalents), which also made them untargetable by an e2e edit flow.
 test('edit and delete actions are reachable by an accessible label', () => {
   renderList([baseEvent()]);
-  expect(screen.getByLabelText('Edit')).toBeInTheDocument();
-  expect(screen.getByLabelText('Delete')).toBeInTheDocument();
+  expect(screen.getByLabelText(/^Edit\b/)).toBeInTheDocument();
+  expect(screen.getByLabelText(/^Delete\b/)).toBeInTheDocument();
 });
 
 // #196 (audit gap, N-1's sibling): revealed only on `&:hover

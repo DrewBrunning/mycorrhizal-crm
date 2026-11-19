@@ -70,6 +70,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Dark-mode scrollbars** ([#2363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2363)): in dark mode the navigation sidebar and page scrollbars no longer show a bright white track. Light mode is unchanged.
 - **Notes are listed by date** ([#2744](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2744)): the Notes page now orders notes by the date shown on each note, newest first, including after Load more, instead of by when they were last edited.
 - **"Today" follows your time zone** ([#2679](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2679), [#2762](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2762)): the dashboard and upcoming birthdays, occasions, gift shopping list and reminders now count from the day it is where you are, so a birthday that is today for you no longer disappears in the evening.
+- **Icon buttons name the item they act on** ([#2673](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2673), [#2706](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2706)): Edit, Delete, Remove, Share, Restore and similar buttons in lists now announce which item they belong to, such as "Edit Summer BBQ", so screen reader users can tell rows apart.
 
 ### Security
 

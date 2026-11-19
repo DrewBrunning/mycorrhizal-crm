@@ -219,7 +219,7 @@ test('completing a reminder refetches via the plain upcoming-reminders endpoint 
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Call Nicky')).toBeInTheDocument());
-  fireEvent.click(screen.getByRole('button', { name: 'Complete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Complete\b/ }));
 
   await waitFor(() => expect(completeReminderMock).toHaveBeenCalledWith(9));
   await waitFor(() => expect(getUpcomingRemindersMock).toHaveBeenCalledTimes(1));
@@ -259,7 +259,7 @@ test('renders a CardDAV sync conflict and can restore or dismiss it (issue #395)
   // (the caption renders "Phone: 555-0100 → —").
   expect(screen.getByText(/Phone: 555-0100/)).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Restore local value' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Restore local value\b/ }));
   await waitFor(() => expect(restoreSyncConflictMock).toHaveBeenCalledWith('conflict-1'));
   await waitFor(() => expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument());
 });
@@ -289,7 +289,7 @@ test('dismissing a sync conflict removes the notice', async () => {
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
-  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Dismiss\b/ }));
   await waitFor(() => expect(dismissSyncConflictMock).toHaveBeenCalledWith('conflict-2'));
   await waitFor(() => expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument());
 });
@@ -409,10 +409,10 @@ test('a reminder refetch after completion keeps the block capped and the total c
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Showing 25 of 60')).toBeInTheDocument());
-  fireEvent.click(screen.getAllByRole('button', { name: 'Complete' })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: /^Complete\b/ })[0]);
 
   await waitFor(() => expect(screen.getByText('Showing 25 of 59')).toBeInTheDocument());
-  expect(screen.getAllByRole('button', { name: 'Complete' })).toHaveLength(25);
+  expect(screen.getAllByRole('button', { name: /^Complete\b/ })).toHaveLength(25);
   expect(screen.queryByText('Reminder 27')).not.toBeInTheDocument();
 });
 
@@ -441,7 +441,7 @@ test('dismissing a sync conflict decrements its block total', async () => {
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Showing 2 of 30')).toBeInTheDocument());
-  fireEvent.click(screen.getAllByRole('button', { name: 'Dismiss' })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: /^Dismiss\b/ })[0]);
   await waitFor(() => expect(screen.getByText('Showing 1 of 29')).toBeInTheDocument());
 });
 
