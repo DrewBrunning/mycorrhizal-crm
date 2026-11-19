@@ -51,7 +51,7 @@ test.describe('Contact trash', () => {
       await expect(row).toBeVisible();
       await expect(row).toContainText('Deleted ');
 
-      await row.getByRole('button', { name: 'Restore' }).click();
+      await row.getByRole('button', { name: /^Restore / }).click();
       await expect(row).toHaveCount(0);
 
       // Restored to the live set, not just removed from the list.
@@ -76,7 +76,7 @@ test.describe('Contact trash', () => {
 
       const row = page.getByRole('listitem').filter({ hasText: name });
       await expect(row).toBeVisible();
-      await row.getByRole('button', { name: 'Delete forever' }).click();
+      await row.getByRole('button', { name: /^Delete forever/ }).click();
       // #2717: the confirmation is an in-app dialog, not window.confirm.
       await page.getByRole('dialog').getByRole('button', { name: 'Delete forever' }).click();
       await expect(row).toHaveCount(0);

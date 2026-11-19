@@ -3286,7 +3286,7 @@
     "restore": "Restore",
     "restoreLabel": "Restore {{name}}",
     "deleteForever": "Delete forever",
-    "deleteForeverLabel": "Delete {{name}} forever",
+    "deleteForeverLabel": "Delete forever: {{name}}",
     "restored": "Restored {{name}}.",
     "restoredWithSkipped_one": "Restored {{name}}, but {{count}} item could not be restored because what it linked to no longer exists.",
     "restoredWithSkipped_other": "Restored {{name}}, but {{count}} items could not be restored because what they linked to no longer exists.",

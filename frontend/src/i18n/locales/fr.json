@@ -3392,7 +3392,7 @@
     "restore": "Restaurer",
     "restoreLabel": "Restaurer {{name}}",
     "deleteForever": "Supprimer définitivement",
-    "deleteForeverLabel": "Supprimer {{name}} définitivement",
+    "deleteForeverLabel": "Supprimer définitivement : {{name}}",
     "restored": "{{name}} restauré.",
     "restoredWithSkipped_one": "{{name}} restauré, mais {{count}} élément n’a pas pu être restauré car ce à quoi il était lié n’existe plus.",
     "restoredWithSkipped_other": "{{name}} restauré, mais {{count}} éléments n’ont pas pu être restaurés car ce à quoi ils étaient liés n’existe plus.",
