@@ -106,7 +106,13 @@ import {
 import ActivitiesPage from './ActivitiesPage';
 import AuditPage from './AuditPage';
 import { getShareGrantNotifications } from './api/shareGrants';
-import { fetchAndCacheUserInfo, getToken, isAdmin, logoutAndRedirect } from './auth';
+import {
+  fetchAndCacheUserInfo,
+  getToken,
+  isAdmin,
+  logoutAndRedirect,
+  shouldProbeSession,
+} from './auth';
 import CirclesTagsPage from './CirclesTagsPage';
 import CircleTagTriagePage from './CircleTagTriagePage';
 import ContactDetailPage from './ContactDetailPage';
@@ -122,6 +128,7 @@ import SessionExpiredNotice from './components/SessionExpiredNotice';
 import DashboardPage from './DashboardPage';
 import DataSettingsPage from './DataSettingsPage';
 import HouseholdsPage from './HouseholdsPage';
+import { applyAccountLanguage } from './i18n/accountLanguage';
 import LoginPage from './LoginPage';
 import NetworkPage from './NetworkPage';
 import NotesPage from './NotesPage';
@@ -950,14 +957,18 @@ function App() {
   const [token, setToken] = useState(getToken());
 
   useEffect(() => {
-    // Restore session after OIDC redirect: the server sets the auth cookie but
-    // localStorage is empty, so we fetch user info once to populate it.
-    if (!getToken()) {
-      // fetchAndCacheUserInfo catches its own errors and resolves to null.
-      void fetchAndCacheUserInfo().then((info) => {
-        if (info) setToken(getToken());
-      });
-    }
+    // Refresh the account from the server at start (#2685, #2718): restores the
+    // session after an SSO redirect (the server set the auth cookie but
+    // localStorage is empty) and applies preferences changed on another device,
+    // such as the UI language. A plain signed-out visit skips the probe.
+    if (!shouldProbeSession()) return;
+    const hadSession = getToken() !== null;
+    // fetchAndCacheUserInfo catches its own errors and resolves to null.
+    void fetchAndCacheUserInfo().then((info) => {
+      if (!info) return;
+      if (!hadSession) setToken(getToken());
+      applyAccountLanguage(info.language);
+    });
   }, []);
 
   useEffect(() => {
