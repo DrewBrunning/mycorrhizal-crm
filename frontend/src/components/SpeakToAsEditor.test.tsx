@@ -58,7 +58,7 @@ test('removing a grammatical gender reports the filtered list upward', () => {
   };
   render(<SpeakToAsEditor value={value} onChange={onChange} />);
 
-  const deleteButtons = screen.getAllByLabelText('Delete');
+  const deleteButtons = screen.getAllByLabelText(/^Delete\b/);
   fireEvent.click(deleteButtons[0]);
 
   expect(onChange).toHaveBeenCalledWith({
@@ -133,7 +133,7 @@ test('removing a pronoun reports the filtered list', () => {
       onChange={onChange}
     />,
   );
-  fireEvent.click(screen.getAllByLabelText('Delete')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Delete\b/)[0]);
   expect(last(onChange)).toEqual({ pronouns: [{ pronouns: 'b' }], grammaticalGenders: [] });
 });
 

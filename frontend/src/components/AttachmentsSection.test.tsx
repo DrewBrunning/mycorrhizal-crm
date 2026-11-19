@@ -99,7 +99,7 @@ test('download link points at the API endpoint', async () => {
   renderSection();
   await screen.findByText('cv.pdf');
 
-  const download = screen.getByLabelText('Download');
+  const download = screen.getByLabelText(/^Download\b/);
   expect(download).toHaveAttribute('href', attachmentDownloadUrl(sampleAttachment.ID));
 });
 
@@ -113,7 +113,7 @@ test('delete removes the attachment after confirmation', async () => {
   renderSection();
   await screen.findByText('cv.pdf');
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   await waitFor(() => expect(deleteAttachment).toHaveBeenCalledWith(1));
   expect(screen.queryByText('cv.pdf')).not.toBeInTheDocument();
   confirmSpy.mockRestore();
@@ -128,7 +128,7 @@ test('delete without confirmation does not call the API', async () => {
   renderSection();
   await screen.findByText('cv.pdf');
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(deleteAttachment).not.toHaveBeenCalled();
   confirmSpy.mockRestore();
 });

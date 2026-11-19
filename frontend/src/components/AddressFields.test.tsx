@@ -122,7 +122,7 @@ test('the revealed state follows the row, not the index, when an earlier row is 
   expect(screen.getAllByLabelText('PO Box')).toHaveLength(1);
 
   // Remove the first row: the remaining row (B) keeps its revealed state.
-  fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: /^Delete\b/ })[0]);
   expect(last()).toEqual([addr({ street: 'B' })]);
   expect(screen.getByLabelText('Street')).toHaveValue('B');
   expect(screen.getByLabelText('PO Box')).toBeInTheDocument();
@@ -131,7 +131,7 @@ test('the revealed state follows the row, not the index, when an earlier row is 
 test('removing a row that was never revealed leaves the other row collapsed', () => {
   renderFields([addr({ street: 'A' }), addr({ street: 'B' })]);
   fireEvent.click(screen.getAllByRole('button', { name: 'Additional fields' })[0]);
-  fireEvent.click(screen.getAllByRole('button', { name: 'Delete' })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: /^Delete\b/ })[0]);
   expect(screen.getByLabelText('Street')).toHaveValue('B');
   expect(screen.queryByLabelText('PO Box')).not.toBeInTheDocument();
 });

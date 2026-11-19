@@ -117,7 +117,7 @@ test.describe('Concurrent note / reminder edit conflict', () => {
       expect(edited.ok(), await edited.text()).toBeTruthy();
 
       const row = pageB.locator('.MuiCard-root').filter({ hasText: 'Original reminder' });
-      await stableClick(row.getByRole('button', { name: 'Edit', exact: true }));
+      await stableClick(row.getByRole('button', { name: /^Edit / }));
       await pageB.getByRole('textbox', { name: /message/i }).fill('From tab B');
       await pageB.getByRole('button', { name: /save|create/i }).click();
       await expect(conflictDialog(pageB)).toBeVisible();

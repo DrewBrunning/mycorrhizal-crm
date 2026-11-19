@@ -91,9 +91,9 @@ test('confirm, edit and delete actions fire their handlers', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Confirm still current' }));
   expect(onVerify).toHaveBeenCalled();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   expect(onEdit).toHaveBeenCalledWith(policy);
 
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   expect(onDelete).toHaveBeenCalledWith(policy.id);
 });

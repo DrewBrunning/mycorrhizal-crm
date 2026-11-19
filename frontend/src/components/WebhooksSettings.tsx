@@ -319,7 +319,7 @@ export default function WebhooksSettings() {
                             onClick={() => void handleTest(wh)}
                             disabled={testing[wh.id]}
                             title={t('settings.webhooks.test')}
-                            aria-label={t('settings.webhooks.test')}
+                            aria-label={t('settings.webhooks.testNamed', { name: wh.name })}
                           >
                             <PlayArrowIcon fontSize="small" />
                           </IconButton>
@@ -327,7 +327,7 @@ export default function WebhooksSettings() {
                             size="small"
                             onClick={() => openEdit(wh)}
                             title={t('settings.webhooks.edit')}
-                            aria-label={t('settings.webhooks.edit')}
+                            aria-label={t('common.editNamed', { name: wh.name })}
                           >
                             <EditIcon fontSize="small" />
                           </IconButton>
@@ -336,7 +336,7 @@ export default function WebhooksSettings() {
                             onClick={() => handleDeleteClick(wh)}
                             color="error"
                             title={t('settings.webhooks.delete')}
-                            aria-label={t('settings.webhooks.delete')}
+                            aria-label={t('common.deleteNamed', { name: wh.name })}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>

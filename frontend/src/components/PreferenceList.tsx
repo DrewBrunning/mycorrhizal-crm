@@ -9,6 +9,7 @@ import {
   type PreferenceSection,
 } from '../api/preferences';
 import { humanizeToken } from '../utils/humanizeToken';
+import { itemLabel } from '../utils/itemLabel';
 
 interface PreferenceListProps {
   preferences: Preference[];
@@ -118,14 +119,18 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
           className="preference-actions"
           sx={{ display: 'flex', gap: 0.5, opacity: 0, transition: 'opacity 0.2s ease-in-out' }}
         >
-          <IconButton size="small" onClick={() => onEdit(pref)} aria-label={t('common.edit')}>
+          <IconButton
+            size="small"
+            onClick={() => onEdit(pref)}
+            aria-label={t('common.editNamed', { name: itemLabel(pref.value) })}
+          >
             <EditIcon fontSize="small" />
           </IconButton>
           <IconButton
             size="small"
             color="error"
             onClick={() => onDelete(pref.id)}
-            aria-label={t('common.delete')}
+            aria-label={t('common.deleteNamed', { name: itemLabel(pref.value) })}
           >
             <DeleteIcon fontSize="small" />
           </IconButton>

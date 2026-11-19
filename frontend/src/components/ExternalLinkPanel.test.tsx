@@ -99,7 +99,7 @@ test('unlink asks for confirmation then fires the handler', async () => {
   const onUnlinkImmich = vi.fn().mockResolvedValue(undefined);
   renderPanel({ identities: [identity], immichSummary: summary, onUnlinkImmich });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   await waitFor(() => expect(onUnlinkImmich).toHaveBeenCalled());
 });
 
@@ -111,7 +111,7 @@ test('a cancelled unlink does not fire the handler', async () => {
   const onUnlinkImmich = vi.fn().mockResolvedValue(undefined);
   renderPanel({ identities: [identity], immichSummary: summary, onUnlinkImmich });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   expect(onUnlinkImmich).not.toHaveBeenCalled();
 });
 

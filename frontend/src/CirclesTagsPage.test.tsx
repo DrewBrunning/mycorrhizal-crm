@@ -313,7 +313,7 @@ test('renaming a circle calls updateCircle with the id and new name', async () =
   renderPage();
   await screen.findByText('Book Club');
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   const editInput = screen.getByDisplayValue('Book Club');
   fireEvent.change(editInput, { target: { value: 'Renamed Club' } });
   fireEvent.click(screen.getByLabelText('Save'));
@@ -328,7 +328,7 @@ test('canceling a rename discards the edit without calling updateCircle', async 
   renderPage();
   await screen.findByText('Book Club');
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   fireEvent.change(screen.getByDisplayValue('Book Club'), { target: { value: 'Discarded' } });
   fireEvent.click(screen.getByLabelText('Cancel'));
 
@@ -344,7 +344,7 @@ test('deleting a circle prompts for confirmation naming the circle and calls del
   renderPage();
   await screen.findByText('Book Club');
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   await waitFor(() =>
     expect(confirmSpy).toHaveBeenCalledWith(
@@ -364,7 +364,7 @@ test('declining the delete confirmation never calls deleteCircle', async () => {
   renderPage();
   await screen.findByText('Book Club');
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   expect(deleteCircleMock).not.toHaveBeenCalled();
   confirmSpy.mockRestore();
@@ -385,7 +385,7 @@ test('deleting a circle that is in the CardDAV sync scope adds the pre-flight wa
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   await waitFor(() =>
     expect(confirmSpy).toHaveBeenCalledWith(
@@ -414,7 +414,7 @@ test('deleting a non-default circle included in the sync scope warns its contact
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   await waitFor(() =>
     expect(confirmSpy).toHaveBeenCalledWith(
@@ -439,7 +439,7 @@ test('deleting a circle outside an include scope uses the plain confirmation', a
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   await waitFor(() => expect(confirmSpy).toHaveBeenCalledWith(baseDeleteConfirm));
   confirmSpy.mockRestore();
@@ -460,7 +460,7 @@ test('deleting a circle excluded from the sync scope warns its contacts will sta
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   await waitFor(() =>
     expect(confirmSpy).toHaveBeenCalledWith(
@@ -485,7 +485,7 @@ test('deleting a circle not excluded from an exclude scope uses the plain confir
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   await waitFor(() => expect(confirmSpy).toHaveBeenCalledWith(baseDeleteConfirm));
   confirmSpy.mockRestore();
@@ -498,7 +498,7 @@ test('a failed sync-scope read falls back to the plain confirmation', async () =
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   await waitFor(() => expect(confirmSpy).toHaveBeenCalledWith(baseDeleteConfirm));
   confirmSpy.mockRestore();
@@ -547,7 +547,7 @@ test('renaming a tag calls updateTag with the id and new name', async () => {
   renderPage(['/circles-tags?tab=tags']);
   await screen.findByText('VIP');
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   fireEvent.change(screen.getByDisplayValue('VIP'), { target: { value: 'Renamed Tag' } });
   fireEvent.click(screen.getByLabelText('Save'));
 
@@ -564,7 +564,7 @@ test('deleting a tag prompts for confirmation naming the tag and calls deleteTag
   renderPage(['/circles-tags?tab=tags']);
   await screen.findByText('VIP');
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   await waitFor(() =>
     expect(confirmSpy).toHaveBeenCalledWith(
@@ -599,7 +599,7 @@ test('circle detail shows member count and an empty timeline state', async () =>
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByRole('button', { name: 'Circle details' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Details for\b/ }));
 
   expect(await screen.findByText(/No notes or activities for this circle/)).toBeInTheDocument();
   expect(getCircleTimeline).toHaveBeenCalledWith('c1', { cursor: undefined });
@@ -619,7 +619,7 @@ test('circle detail lists member timeline items and saves description and colour
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByRole('button', { name: 'Circle details' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Details for\b/ }));
 
   expect(await screen.findByText('Met for coffee')).toBeInTheDocument();
 
@@ -657,7 +657,7 @@ test('circle detail surfaces a timeline load error and can load more', async () 
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByRole('button', { name: 'Circle details' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Details for\b/ }));
   expect(await screen.findByText('Hike')).toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
@@ -675,7 +675,7 @@ test('circle detail shows an error when the timeline fails to load', async () =>
 
   renderPage();
   await screen.findByText('Book Club');
-  fireEvent.click(screen.getByRole('button', { name: 'Circle details' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Details for\b/ }));
 
   expect(await screen.findByRole('alert')).toBeInTheDocument();
 });

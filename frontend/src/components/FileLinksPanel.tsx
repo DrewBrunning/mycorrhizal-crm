@@ -156,7 +156,7 @@ export default function FileLinksPanel({
                 size="small"
                 color="error"
                 title={t('fileLinks.unlink')}
-                aria-label={t('fileLinks.unlink')}
+                aria-label={t('fileLinks.unlinkNamed', { name: identityName(identity) })}
                 onClick={() => void handleUnlink(identity.system as FileSystem, identity.id)}
               >
                 <DeleteIcon fontSize="small" />

@@ -46,6 +46,7 @@ import com.mycorrhizal.crm.feature.contacts.memberDisplayName
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -67,7 +68,12 @@ fun CircleDetailScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by rememberSaveable { mutableStateOf(false) }
     var showTextHint by remember { mutableStateOf(false) }
-    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
+    // With nothing loaded a failed load is the screen's ErrorState (and its Retry); a toast that
+    // clears the error on dismissal would take that state away again.
+    val onScreenLoadError =
+        state.loadError?.takeIf { state.members.isEmpty() && state.circle == null }
+    val errorMessage = state.errorRes?.let { stringResource(it) }
+        ?: state.error?.takeUnless { it === onScreenLoadError }?.localizedMessage()
     val context = LocalContext.current
 
     // Issue #218: numbers for the "text everyone" group SMS. Members with no
@@ -168,6 +174,9 @@ fun CircleDetailScreen(
             ) {
                 when {
                     state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
+
+                    onScreenLoadError != null ->
+                        ErrorState(error = onScreenLoadError, onRetry = viewModel::load)
 
                     state.members.isEmpty() && state.circle == null && errorMessage != null -> {
                         Text(

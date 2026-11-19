@@ -73,7 +73,11 @@ export default function CustomFieldValueRow({
           {definition.label}
         </Typography>
         {!editing && (
-          <IconButton size="small" onClick={startEdit} aria-label={t('common.edit')}>
+          <IconButton
+            size="small"
+            onClick={startEdit}
+            aria-label={t('common.editNamed', { name: definition.label })}
+          >
             <EditIcon fontSize="small" />
           </IconButton>
         )}

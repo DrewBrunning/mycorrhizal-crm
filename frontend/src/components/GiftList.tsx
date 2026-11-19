@@ -22,6 +22,7 @@ import type { Activity } from '../api/activities';
 import type { Gift, GiftStatus } from '../api/gifts';
 import type { LifeEvent } from '../api/lifeEvents';
 import { useDateFormat } from '../DateFormatProvider';
+import { itemLabel } from '../utils/itemLabel';
 import { isHttpUrlString } from '../utils/linkResolution';
 import { calendarDateOnly } from '../utils/localDate';
 
@@ -247,21 +248,25 @@ export default function GiftList({
         <IconButton
           size="small"
           onClick={() => void onMarkGiven(gift)}
-          aria-label={t('gifts.markGiven')}
+          aria-label={t('gifts.markGivenNamed', { name: itemLabel(gift.description) })}
           color="success"
           title={t('gifts.markGiven')}
         >
           <CardGiftcardIcon fontSize="small" />
         </IconButton>
       )}
-      <IconButton size="small" onClick={() => onEdit(gift)} aria-label={t('common.edit')}>
+      <IconButton
+        size="small"
+        onClick={() => onEdit(gift)}
+        aria-label={t('common.editNamed', { name: itemLabel(gift.description) })}
+      >
         <EditIcon fontSize="small" />
       </IconButton>
       <IconButton
         size="small"
         color="error"
         onClick={() => handleDeleteClick(gift.id)}
-        aria-label={t('common.delete')}
+        aria-label={t('common.deleteNamed', { name: itemLabel(gift.description) })}
       >
         <DeleteIcon fontSize="small" />
       </IconButton>

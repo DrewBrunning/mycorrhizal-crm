@@ -506,7 +506,7 @@ describe('SharedByMePage', () => {
       );
       const dialog = await screen.findByRole('dialog', { name: 'Remove this share?' });
       expect(deleted).toHaveLength(0);
-      fireEvent.click(within(dialog).getByRole('button', { name: 'Remove' }));
+      fireEvent.click(within(dialog).getByRole('button', { name: /^Remove\b/ }));
       await waitFor(() => expect(deleted).toEqual(['e1']));
       await waitFor(() => expect(screen.queryByText('Old Club')).toBeNull());
       await waitFor(() =>
@@ -552,7 +552,7 @@ describe('SharedByMePage', () => {
       await openEnded();
       fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Club/ }));
       fireEvent.click(
-        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }),
+        within(await screen.findByRole('dialog')).getByRole('button', { name: /^Remove\b/ }),
       );
       await waitFor(() =>
         expect(screen.getByRole('button', { name: /^Remove share of Old Club/ })).toBeDisabled(),
@@ -567,7 +567,7 @@ describe('SharedByMePage', () => {
       await openEnded();
       fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Club/ }));
       fireEvent.click(
-        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }),
+        within(await screen.findByRole('dialog')).getByRole('button', { name: /^Remove\b/ }),
       );
       await waitFor(() => expect(screen.queryByText('Old Club')).toBeNull());
       expect(screen.queryByRole('alert')).toBeNull();
@@ -594,7 +594,7 @@ describe('SharedByMePage', () => {
       await openEnded();
       fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Club/ }));
       fireEvent.click(
-        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove' }),
+        within(await screen.findByRole('dialog')).getByRole('button', { name: /^Remove\b/ }),
       );
       const alert = await screen.findByRole('alert');
       expect(alert).toHaveTextContent(/Only a share that has ended/);

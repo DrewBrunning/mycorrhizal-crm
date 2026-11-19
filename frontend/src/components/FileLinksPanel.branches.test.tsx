@@ -108,7 +108,7 @@ test('declining the unlink confirmation does not call onUnlink', () => {
   );
   const onUnlink = vi.fn().mockResolvedValue(undefined);
   renderPanel({ identities: [identity], onUnlink });
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   expect(onUnlink).not.toHaveBeenCalled();
 });
 
@@ -116,7 +116,7 @@ test('unlink confirmation names the system', () => {
   const confirm = vi.fn(() => false);
   vi.stubGlobal('confirm', confirm);
   renderPanel({ identities: [seafileFile], onUnlink: vi.fn() });
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   expect(confirm).toHaveBeenCalledWith('Remove this Seafile link from the contact?');
 });
 
@@ -124,7 +124,7 @@ test('without an onUnlink handler the unlink button does nothing (not even a con
   const confirm = vi.fn(() => true);
   vi.stubGlobal('confirm', confirm);
   renderPanel({ identities: [identity] });
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   expect(confirm).not.toHaveBeenCalled();
 });
 
@@ -138,9 +138,9 @@ test('an unlink failure shows the error message; a non-Error rejection shows the
     .mockRejectedValueOnce(new Error('server said no'))
     .mockRejectedValueOnce('boom');
   renderPanel({ identities: [identity], onUnlink });
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   expect(await screen.findByText('server said no')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   expect(await screen.findByText('Could not unlink.')).toBeInTheDocument();
 });
 
@@ -154,9 +154,9 @@ test('a later successful unlink clears the previous error', async () => {
     .mockRejectedValueOnce(new Error('first'))
     .mockResolvedValueOnce(undefined);
   renderPanel({ identities: [identity], onUnlink });
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   expect(await screen.findByText('first')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Unlink' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
   await waitFor(() => expect(screen.queryByText('first')).not.toBeInTheDocument());
 });
 
