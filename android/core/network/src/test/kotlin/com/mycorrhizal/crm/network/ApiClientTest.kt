@@ -1919,6 +1919,34 @@ class ApiClientTest {
             assertEquals("/api/v1/notes?scope=all", server.takeRequest().path)
         }
 
+    // Issue #2797 / backend #2813: GET /contacts/{id}/notes takes the same sort=date; its cursor is
+    // sort-specific, so the sort rides along with the resume cursor on a load-more request too.
+    @Test
+    fun `contact notes send sort=date on the first page and with the resume cursor`() =
+        runBlocking {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notes": []}"""))
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notes": []}"""))
+
+            client.listContactNotes(5, limit = 25, sort = "date")
+            client.listContactNotes(5, cursor = "c-2", limit = 25, sort = "date")
+
+            assertEquals("/api/v1/contacts/5/notes?limit=25&sort=date", server.takeRequest().path)
+            assertEquals(
+                "/api/v1/contacts/5/notes?cursor=c-2&limit=25&sort=date",
+                server.takeRequest().path
+            )
+        }
+
+    @Test
+    fun `contact notes omit sort unless asked so an older server sees the unchanged request`() =
+        runBlocking {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notes": []}"""))
+
+            client.listContactNotes(5)
+
+            assertEquals("/api/v1/contacts/5/notes", server.takeRequest().path)
+        }
+
     // Trap-#8 (`/CLAUDE.md`): GetUnassignedNotes marshals a nil Go slice as JSON `null`, not
     // `[]`, for zero unfiled notes — a different failure mode than the absent-key one below.
     @Test

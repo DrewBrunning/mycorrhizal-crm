@@ -2010,7 +2010,10 @@ class ApiClient(
 
     /**
      * GET /api/v1/contacts/{id}/notes — a contact's notes (M19: T17
-     * cursor-paginated; [search]/[fromDate]/[toDate] filter server-side).
+     * cursor-paginated; [search]/[fromDate]/[toDate] filter server-side). [sort] is `date` for the
+     * note's own date, newest first (issue #2797, backend #2813); the cursor it returns is specific
+     * to that sort, so a caller must send the same [sort] on every page of a list. An older server
+     * ignores the parameter and keeps the last-edited order.
      */
     suspend fun listContactNotes(
         contactId: Int,
@@ -2018,7 +2021,8 @@ class ApiClient(
         limit: Int? = null,
         search: String? = null,
         fromDate: String? = null,
-        toDate: String? = null
+        toDate: String? = null,
+        sort: String? = null
     ): Result<ContactNotesResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/notes".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -2026,6 +2030,7 @@ class ApiClient(
         search?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("search", it) }
         fromDate?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("fromDate", it) }
         toDate?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("toDate", it) }
+        sort?.let { urlBuilder.addQueryParameter("sort", it) }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ContactNotesResponse::class.java).fromJson(body)
         }

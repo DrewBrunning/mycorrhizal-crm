@@ -91,6 +91,7 @@ import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LabelledDropdown
@@ -223,6 +224,11 @@ internal fun EntityListScaffold(
                     when {
                         uiState.isLoading && uiState.items.isEmpty() -> item {
                             LoadingSkeleton()
+                        }
+
+                        // Issue #2629: a failed contact fetch is the real error with Retry.
+                        uiState.loadError != null -> item {
+                            ErrorState(error = uiState.loadError, onRetry = onRefresh)
                         }
 
                         uiState.items.isEmpty() && errorMessage == null -> item {

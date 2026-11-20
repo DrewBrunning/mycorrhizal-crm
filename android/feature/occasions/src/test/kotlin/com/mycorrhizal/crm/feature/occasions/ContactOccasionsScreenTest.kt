@@ -580,4 +580,40 @@ class ContactOccasionsScreenTest {
         composeTestRule.onNodeWithText("Discard changes?").assertIsDisplayed()
         composeTestRule.onNodeWithText("Edit occasion").assertIsDisplayed()
     }
+
+    // A failed contact fetch is the shared ErrorState (localized reason + Retry), not "no VCard UID".
+    @Test
+    fun `a failed contact fetch shows the localized reason with Retry`() {
+        coEvery { contacts.getContact(5) } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(ContactRecordResponse(id = 5, card = Card(uid = UID)))
+        )
+        coEvery { repository.listForContact(UID) } returns Result.success(emptyList())
+        val viewModel = ContactOccasionsViewModel(
+            repository,
+            contacts,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactOccasionsScreen(onBack = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Contact has no VCard UID").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { contacts.getContact(5) }
+    }
 }

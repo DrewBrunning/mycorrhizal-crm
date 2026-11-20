@@ -27,6 +27,7 @@ import com.mycorrhizal.crm.model.registry.PreferenceCategory
 import com.mycorrhizal.crm.model.registry.PreferenceSection
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
@@ -48,8 +49,13 @@ import kotlinx.coroutines.launch
  * invariant), shared by the four timeline-entity ViewModels.
  */
 class ContactUidResolver(private val contactRepository: ContactRepository) {
-    suspend fun resolve(contactId: Int): String? =
-        contactRepository.getContact(contactId).getOrNull()?.vcardUid
+    /**
+     * The contact's VCardUID: `success(null)` when the contact loaded without one, and a
+     * `failure` when the fetch itself failed (offline, 404, server error), which says nothing
+     * about the UID and must not be reported as "no VCard UID".
+     */
+    suspend fun resolve(contactId: Int): Result<String?> =
+        contactRepository.getContact(contactId).map { it.vcardUid }
 }
 
 data class EntityItem(
@@ -76,6 +82,8 @@ data class EntityListUiState(
     val isLoading: Boolean = false,
     val error: ApiError? = null,
     @StringRes val errorRes: Int? = null,
+    /** Issue #2629: a failed contact fetch (nothing to list): ErrorState + Retry. */
+    val loadError: ApiError? = null,
     val deletingId: String? = null,
     /** ADR 0008 (issue #1665): a life-event write was rejected with 412 (changed elsewhere). */
     val conflict: EntityConflict? = null
@@ -202,8 +210,20 @@ class LifeEventsViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
-            val uid = resolver.resolve(contactId)
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
+            }
+            val resolved = resolver.resolve(contactId)
+            resolved.exceptionOrNull()?.let { failure ->
+                _uiState.update { it.copy(isLoading = false, loadError = failure.toApiError()) }
+                return@launch
+            }
+            val uid = resolved.getOrNull()
             if (uid.isNullOrBlank()) {
                 _uiState.update {
                     it.copy(
@@ -448,8 +468,20 @@ class GiftsViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
-            val uid = resolver.resolve(contactId)
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
+            }
+            val resolved = resolver.resolve(contactId)
+            resolved.exceptionOrNull()?.let { failure ->
+                _uiState.update { it.copy(isLoading = false, loadError = failure.toApiError()) }
+                return@launch
+            }
+            val uid = resolved.getOrNull()
             if (uid.isNullOrBlank()) {
                 _uiState.update {
                     it.copy(
@@ -732,8 +764,20 @@ class PreferencesViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
-            val uid = resolver.resolve(contactId)
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
+            }
+            val resolved = resolver.resolve(contactId)
+            resolved.exceptionOrNull()?.let { failure ->
+                _uiState.update { it.copy(isLoading = false, loadError = failure.toApiError()) }
+                return@launch
+            }
+            val uid = resolved.getOrNull()
             if (uid.isNullOrBlank()) {
                 _uiState.update {
                     it.copy(
@@ -924,8 +968,20 @@ class ConversationAgendaViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
-            val uid = resolver.resolve(contactId)
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
+            }
+            val resolved = resolver.resolve(contactId)
+            resolved.exceptionOrNull()?.let { failure ->
+                _uiState.update { it.copy(isLoading = false, loadError = failure.toApiError()) }
+                return@launch
+            }
+            val uid = resolved.getOrNull()
             if (uid.isNullOrBlank()) {
                 _uiState.update {
                     it.copy(

@@ -188,6 +188,12 @@ fun NetworkScreenContent(
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     LoadingSkeleton()
                 }
+            } else if (!uiState.hasFrom && uiState.error != null) {
+                // Issue #2629: the starting contact failed to load (offline, 404, server error):
+                // the real reason with Retry, not "no VCard UID" and not the bare picker prompt.
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    ErrorState(error = uiState.error, onRetry = onRefresh)
+                }
             } else if (!uiState.hasFrom) {
                 // No starting contact yet (drawer entry without a self contact)
                 // — or a hard start error like "no VCard UID", which is shown

@@ -67,6 +67,7 @@ import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LabelledDropdown
@@ -98,6 +99,7 @@ fun ContactOccasionsScreen(
     val currentOnErrorShown = rememberUpdatedState(viewModel::onErrorShown)
     // A rejected anchor date is shown on its own Month/Day field (inside the form), not as a toast.
     val anchorError = state.error?.takeIf { it.anchorDateField() != null }
+    val loadError = state.loadError
     val errorMessage = state.errorRes?.let { stringResource(it) }
         ?: state.error?.takeIf { anchorError == null }?.localizedMessage()
 
@@ -181,6 +183,11 @@ fun ContactOccasionsScreen(
             ) {
                 when {
                     state.isLoading && state.items.isEmpty() -> item { LoadingSkeleton() }
+
+                    // Issue #2629: a failed contact fetch is the real error with Retry.
+                    loadError != null -> item {
+                        ErrorState(error = loadError, onRetry = viewModel::load)
+                    }
 
                     state.items.isEmpty() && errorMessage == null -> item {
                         EmptyState(

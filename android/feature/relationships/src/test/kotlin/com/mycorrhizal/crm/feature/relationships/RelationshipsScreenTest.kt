@@ -339,6 +339,49 @@ class RelationshipsScreenTest {
         coVerify(exactly = 2) { edgeRepository.listForContact("u-viewed", null, null) }
     }
 
+    // A failed CONTACT fetch (not a missing UID) is the same ErrorState: the real localized reason
+    // with a Retry that re-runs the whole load, never the "no VCard UID" message.
+    @Test
+    fun `a failed contact fetch shows the localized reason with Retry and not the no-uid message`() {
+        val edgeRepository = mockk<RelationshipEdgeRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { contactRepository.getContact(5) } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(ContactRecordResponse(id = 5, card = Card(uid = "u-viewed")))
+        )
+        coEvery { edgeRepository.listForContact("u-viewed", null, null) } returns
+            Result.success(emptyList())
+        val vm = RelationshipsViewModel(
+            edgeRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                RelationshipsScreen(onBack = {}, onNavigateToContact = {}, viewModel = vm)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.relationships_error_no_vcard_uid))
+            .assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { contactRepository.getContact(5) }
+    }
+
     // The ErrorState is not a toast: a mutation error while it is on screen still toasts, and the
     // ErrorState (with its Retry) stays.
     @Test
