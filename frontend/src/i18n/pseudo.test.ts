@@ -15,12 +15,14 @@ import { pseudoLocalize, pseudoResources } from './pseudo';
 
 type Translations = Record<string, unknown>;
 
-/** Flattens a nested translation object to dotted leaf paths. */
+/** Flattens a nested translation object to dotted leaf paths, indexing array elements. */
 function flatten(obj: Translations, prefix = ''): Map<string, string> {
   const out = new Map<string, string>();
   for (const [key, value] of Object.entries(obj)) {
     const path = prefix ? `${prefix}.${key}` : key;
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    // Arrays recurse by index, matching pseudoResources: an array's elements are
+    // leaves, not the array itself, so a shape change would be visible here too.
+    if (value !== null && typeof value === 'object') {
       for (const [k, v] of flatten(value as Translations, path)) out.set(k, v);
     } else {
       out.set(path, String(value));
@@ -84,6 +86,18 @@ describe('pseudoResources', () => {
     const pseudoLeaves = flatten(pseudoResources(en as object) as Translations);
     const value = pseudoLeaves.get(pluralKey as string);
     expect(value).toBe(pseudoLocalize(enLeaves.get(pluralKey as string) as string));
+  });
+
+  test('preserves arrays and pseudo-localizes their elements', () => {
+    // Synthetic: en.json has no array values today, but i18next supports them
+    // for `returnObjects` keys. Treating an array as a keyed object would turn
+    // it into `{ "0": ... }`, which renders as "[object Object]".
+    const resources = { list: ['Add', 'Save'] };
+    const out = pseudoResources(resources) as { list: unknown };
+
+    expect(Array.isArray(out.list)).toBe(true);
+    expect(out.list).toHaveLength(2);
+    expect(out.list).toEqual([pseudoLocalize('Add'), pseudoLocalize('Save')]);
   });
 });
 

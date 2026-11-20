@@ -53,13 +53,17 @@ export function pseudoLocalize(value: string): string {
   return `${OPEN}${body}${'~'.repeat(Math.ceil(body.length * PAD_RATIO))}${CLOSE}`;
 }
 
+/** Recursively transforms strings, arrays (preserved as arrays) and keyed objects. */
+function pseudoValue(value: unknown): unknown {
+  if (typeof value === 'string') return pseudoLocalize(value);
+  if (Array.isArray(value)) return value.map(pseudoValue);
+  if (value !== null && typeof value === 'object') return pseudoResources(value);
+  return value;
+}
+
 /** Applies pseudoLocalize recursively to every leaf string, plural-suffix keys included. */
 export function pseudoResources(en: object): object {
   const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(en)) {
-    if (typeof value === 'string') out[key] = pseudoLocalize(value);
-    else if (value !== null && typeof value === 'object') out[key] = pseudoResources(value);
-    else out[key] = value;
-  }
+  for (const [key, value] of Object.entries(en)) out[key] = pseudoValue(value);
   return out;
 }
