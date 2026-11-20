@@ -221,4 +221,15 @@ func TestGetOccasionCardListSummaryReportsDatabaseFailure(t *testing.T) {
 
 	w := doCardListGET(router, cardListSummaryPath)
 	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+
+	var env struct {
+		Error struct {
+			Code       string `json:"code"`
+			ReasonCode string `json:"reason_code"`
+		} `json:"error"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &env), w.Body.String())
+	assert.Equal(t, "DATABASE_ERROR", env.Error.Code)
+	assert.Equal(t, "common_database_error", env.Error.ReasonCode,
+		"a database failure must carry the shared reason, not a bare 500")
 }

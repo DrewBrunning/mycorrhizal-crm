@@ -292,6 +292,9 @@ func TestGetGraph_ScopeLookupFailuresUseErrorEnvelope(t *testing.T) {
 // (empty) graph, not an error.
 func TestGetGraph_MissingUserRowFallsBackToFull(t *testing.T) {
 	db := dbtest.New(t)
+	require.NoError(t, db.Create(&models.Contact{UserID: 424242, Firstname: "Grace"}).Error)
+	require.NoError(t, db.Create(&models.Contact{UserID: 424242, Firstname: "Ada"}).Error)
+
 	router := gin.New()
 	router.Use(func(c *gin.Context) {
 		c.Set("db", db)
@@ -301,7 +304,11 @@ func TestGetGraph_MissingUserRowFallsBackToFull(t *testing.T) {
 	router.GET("/graph", GetGraph)
 	resp := getGraphResp(t, router, "/graph?full=false", http.StatusOK)
 	assert.False(t, resp.Scoped)
-	assert.Empty(t, resp.Nodes)
+	// Seeding rows makes this non-vacuous: an empty response without querying
+	// (the old assertion) would no longer pass.
+	assert.Len(t, resp.Nodes, 2)
+	names := []string{resp.Nodes[0].Label, resp.Nodes[1].Label}
+	assert.ElementsMatch(t, []string{"Grace", "Ada"}, names)
 }
 
 func TestGetGraphConnections_TooDeepAndBlankName(t *testing.T) {

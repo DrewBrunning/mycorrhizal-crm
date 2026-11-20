@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -63,7 +64,16 @@ func TestImportReasonCodes_CSVUpload(t *testing.T) {
 		for name, body := range map[string][]byte{"win1252": win1252, "bom": bom} {
 			w := httptest.NewRecorder()
 			router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", name+".csv", body))
-			assert.Equal(t, http.StatusOK, w.Code, "%s: %s", name, w.Body.String())
+			require.Equal(t, http.StatusOK, w.Code, "%s: %s", name, w.Body.String())
+			var resp models.ImportUploadResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp), name)
+			assert.NotEmpty(t, resp.SessionID, "%s must create a real session", name)
+			assert.Equal(t, 1, resp.RowCount, "%s must parse the data row", name)
+			assert.Equal(t, []string{"First Name", "Last Name", "Email"}, resp.Headers)
+			if name == "win1252" {
+				assert.Contains(t, resp.SampleData, []string{"José", "Müller", "j@example.com"},
+					"the Windows-1252 bytes must decode to their characters, not replacement glyphs")
+			}
 		}
 	})
 	t.Run("parser error carries the wrapper reason", func(t *testing.T) {

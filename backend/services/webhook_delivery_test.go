@@ -568,9 +568,9 @@ func TestTriggerWebhooksFansOutToSubscribedActiveWebhooksOnly(t *testing.T) {
 		return atomic.LoadInt32(&hits) >= 1
 	}, 3*time.Second, 10*time.Millisecond, "the subscribed active webhook must be delivered to")
 
-	// Give any accidental extra deliveries a moment to land, then confirm
-	// exactly one delivery was made and it's attributed to the right webhook.
-	time.Sleep(150 * time.Millisecond)
+	// Drain every webhook goroutine, then confirm exactly one delivery was
+	// made and it's attributed to the right webhook.
+	WaitForWebhookGoroutines()
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits), "only the subscribed, active, non-deleted webhook for this user must fire")
 
 	var deliveries []models.WebhookDelivery
@@ -592,7 +592,7 @@ func TestTriggerWebhooksNoActiveSubscriptionsDeliversNothing(t *testing.T) {
 		TriggerWebhooks(context.Background(), db, cfg, 999, "contact.created", map[string]string{"x": "y"})
 	})
 
-	time.Sleep(50 * time.Millisecond)
+	WaitForWebhookGoroutines()
 	var deliveries []models.WebhookDelivery
 	require.NoError(t, db.Find(&deliveries).Error)
 	assert.Empty(t, deliveries)
@@ -637,7 +637,7 @@ func TestTriggerWebhooksPayloadMarshalFailureIsNoop(t *testing.T) {
 		TriggerWebhooks(context.Background(), db, config.Config{}, userID, "contact.created", unmarshalable)
 	})
 
-	time.Sleep(150 * time.Millisecond)
+	WaitForWebhookGoroutines()
 	assert.Equal(t, int32(0), atomic.LoadInt32(&hits), "a payload that fails to marshal must never reach a webhook")
 
 	var deliveries []models.WebhookDelivery

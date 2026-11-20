@@ -76,8 +76,12 @@ func TestRateLimitMiddleware_AllowsRequests(t *testing.T) {
 }
 
 func TestRateLimitMiddleware_BlocksExcessiveRequests(t *testing.T) {
-	// Create a strict limiter (2 requests per second, burst of 2)
-	limiter := NewIPRateLimiter(rate.Every(500*time.Millisecond), 2)
+	// Create a strict limiter (burst of 2, no refill within the test). A
+	// sub-second refill interval made the exact counts depend on runner load:
+	// a token could refill between requests and turn a correct 8-blocked run
+	// into 7. An hour-scale interval keeps the assertion deterministic while
+	// still exercising the burst-then-block path.
+	limiter := NewIPRateLimiter(rate.Every(time.Hour), 2)
 
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
