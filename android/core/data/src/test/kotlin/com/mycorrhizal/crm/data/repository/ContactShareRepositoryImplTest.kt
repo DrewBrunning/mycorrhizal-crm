@@ -107,11 +107,11 @@ class ContactShareRepositoryImplTest {
 
     @Test
     fun `userDirectory returns the directory list`() = runTest {
-        coEvery { apiClient.getUserDirectory() } returns Result.success(
+        coEvery { apiClient.getUserDirectory("ali") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
 
-        val result = repository.userDirectory()
+        val result = repository.userDirectory("ali")
 
         assertTrue(result.isSuccess)
         assertEquals(listOf("alice"), result.getOrThrow().map { it.username })

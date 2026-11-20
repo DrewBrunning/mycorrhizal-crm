@@ -3960,6 +3960,27 @@ class ApiClientTest {
         assertEquals("/api/v1/users/directory", request.path)
     }
 
+    // Issues #2787 / #2658: SHARE_DIRECTORY_MODE=search takes the typed username prefix as `q`.
+    @Test
+    fun `get user directory sends the trimmed query as q`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"users": []}"""))
+
+        val result = client.getUserDirectory("  ali&x=1 ")
+
+        assertTrue(result.isSuccess)
+        assertEquals("/api/v1/users/directory?q=ali%26x%3D1", server.takeRequest().path)
+    }
+
+    // An older server never reads `q`, and an empty query adds no parameter at all.
+    @Test
+    fun `get user directory sends no q for a blank query`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"users": []}"""))
+
+        client.getUserDirectory("   ")
+
+        assertEquals("/api/v1/users/directory", server.takeRequest().path)
+    }
+
     // --- M25: settings surfaces (profile prefs, webhooks, notification channels) ---
 
     @Test

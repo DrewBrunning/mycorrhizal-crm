@@ -36,7 +36,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.ShareGrantEntityTypes
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
-import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -90,10 +89,7 @@ fun StandingShareScreen(
             when {
                 state.isLoading && state.recipients.isEmpty() -> LoadingSkeleton()
 
-                state.recipients.isEmpty() && state.error == null && !state.isLoading ->
-                    EmptyState(title = stringResource(R.string.shares_no_recipients))
-
-                state.recipients.isEmpty() && state.error != null ->
+                state.recipients.isEmpty() && state.error != null && !state.recipientSearchMode ->
                     state.error?.let { error ->
                         ErrorState(error = error, onRetry = viewModel::load)
                     }
@@ -116,9 +112,16 @@ fun StandingShareScreen(
                     )
                     RecipientField(
                         recipients = state.recipients.map { it.username },
-                        selectedRecipient = state.selectedRecipientId?.let { selectedId ->
-                            state.recipients.firstOrNull { it.id == selectedId }?.username
-                        },
+                        selectedRecipient = state.selectedRecipient?.username,
+                        searchMode = state.recipientSearchMode,
+                        query = state.recipientQuery,
+                        onQueryChange = viewModel::setRecipientQuery,
+                        supportingText = recipientSupportingText(
+                            state.recipientSearchMode,
+                            state.recipientQuery,
+                            state.recipientSearchSettled,
+                            state.recipients.isNotEmpty()
+                        ),
                         expanded = recipientExpanded,
                         onExpandedChange = { recipientExpanded = it },
                         onSelect = { username ->

@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -13,6 +14,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
@@ -61,7 +63,7 @@ class StandingShareScreenTest {
         ),
         onShared: () -> Unit = {}
     ): StandingShareViewModel {
-        coEvery { directory.userDirectory() } returns Result.success(recipients)
+        coEvery { directory.userDirectory("") } returns Result.success(recipients)
         val vm = StandingShareViewModel(
             directory,
             grants,
@@ -173,9 +175,40 @@ class StandingShareScreenTest {
     }
 
     @Test
-    fun `an empty directory explains there is nobody to share with`() {
+    fun `an empty first answer shows the type-3-letters hint, not an empty state`() {
         mount(ShareGrantEntityTypes.NOTE, recipients = emptyList())
-        composeTestRule.onNodeWithText(str(R.string.shares_no_recipients)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_no_match))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `typing 3 letters searches and a miss shows no matching users`() {
+        mount(ShareGrantEntityTypes.NOTE, recipients = emptyList())
+        coEvery { directory.userDirectory("zzz") } returns Result.success(emptyList())
+
+        composeTestRule.onNode(hasSetTextAction()).performTextInput("zz")
+        Thread.sleep(500) // longer than the 250 ms debounce, on the real clock
+        composeTestRule.waitForIdle()
+        coVerify(exactly = 0) { directory.userDirectory("zz") }
+
+        composeTestRule.onNode(hasSetTextAction()).performTextInput("z")
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            composeTestRule.onAllNodesWithText(str(R.string.shares_recipient_no_match))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        coVerify(exactly = 1) { directory.userDirectory("zzz") }
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `all mode shows neither hint nor a text input`() {
+        mount(ShareGrantEntityTypes.NOTE)
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertDoesNotExist()
+        composeTestRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
     }
 
     @Test
@@ -208,7 +241,7 @@ class StandingShareScreenTest {
 
     @Test
     fun `a failed directory load is worded from its reason code, never the server text`() {
-        coEvery { directory.userDirectory() } returns Result.failure(
+        coEvery { directory.userDirectory("") } returns Result.failure(
             ApiError.Client(
                 409,
                 "RAW SERVER TEXT",
@@ -239,7 +272,7 @@ class StandingShareScreenTest {
 
     @Test
     fun `a failed directory load offers Retry that reloads the recipients`() {
-        coEvery { directory.userDirectory() } returnsMany listOf(
+        coEvery { directory.userDirectory("") } returnsMany listOf(
             Result.failure(ApiError.Network(java.io.IOException("offline"))),
             Result.success(listOf(UserDirectoryEntry(id = 1, username = "alice")))
         )
@@ -261,6 +294,6 @@ class StandingShareScreenTest {
 
         composeTestRule.onAllNodesWithText(str(R.string.error_client_network))
             .assertCountEquals(0)
-        coVerify(exactly = 2) { directory.userDirectory() }
+        coVerify(exactly = 2) { directory.userDirectory("") }
     }
 }

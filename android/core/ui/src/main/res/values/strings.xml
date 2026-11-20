@@ -1535,7 +1535,8 @@
     <string name="shares_share_dialog_title">Share contact</string>
     <string name="shares_share_dialog_description">Send a filtered, one-time copy of this contact to another user on this instance. They choose whether to accept it.</string>
     <string name="shares_recipient">Recipient</string>
-    <string name="shares_no_recipients">There are no other users on this instance to share with</string>
+    <string name="shares_recipient_search_hint">Type at least 3 letters of the username</string>
+    <string name="shares_recipient_no_match">No matching users</string>
     <string name="shares_error_no_vcard_uid">This contact has no VCard UID — it can\'t be shared.</string>
     <string name="shares_share_button">Share</string>
     <string name="shares_sharing">Sharing…</string>

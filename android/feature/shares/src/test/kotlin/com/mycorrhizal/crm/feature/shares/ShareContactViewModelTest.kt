@@ -34,7 +34,7 @@ class ShareContactViewModelTest {
     private val grantRepository = mockk<ShareGrantRepository>()
 
     private fun viewModel(uid: String = "uid-5"): ShareContactViewModel {
-        coEvery { shareRepository.userDirectory() } returns Result.success(
+        coEvery { shareRepository.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 9, username = "casey"))
         )
         coEvery { grantRepository.previewContact(any(), any()) } returns
@@ -194,7 +194,7 @@ class ShareContactViewModelTest {
 
     @Test
     fun `directory load failure surfaces the error`() = runTest(mainDispatcherRule.testDispatcher) {
-        coEvery { shareRepository.userDirectory() } returns Result.failure(
+        coEvery { shareRepository.userDirectory("") } returns Result.failure(
             ApiError.Client(500, "boom")
         )
         val vm = ShareContactViewModel(
@@ -484,4 +484,93 @@ class ShareContactViewModelTest {
         coVerify(exactly = 0) { grantRepository.previewContact(any(), any()) }
         assertEquals(StandingPreview.Idle, vm.uiState.value.preview)
     }
+
+    // Issues #2787 / #2658: SHARE_DIRECTORY_MODE=search.
+    @Test
+    fun `an empty first answer switches the picker to search mode`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = searchVm()
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.recipientSearchMode)
+        assertTrue(vm.uiState.value.recipients.isEmpty())
+        assertFalse(vm.uiState.value.isLoading)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `typing sends the query and editing the text after a pick drops the pick`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = searchVm()
+        advanceUntilIdle()
+
+        vm.setRecipientQuery("ali")
+        advanceUntilIdle()
+        assertEquals(listOf("alice", "alina"), vm.uiState.value.recipients.map { it.username })
+        vm.selectRecipient(1)
+        assertTrue(vm.uiState.value.canShareRecipient())
+        assertEquals("alice", vm.uiState.value.recipientQuery)
+
+        vm.setRecipientQuery("alice")
+        advanceUntilIdle()
+        assertEquals("the same text keeps the pick", 1L, vm.uiState.value.selectedRecipientId)
+        coEvery { repo.userDirectory("alin") } returns Result.success(
+            listOf(UserDirectoryEntry(2, "alina"))
+        )
+        vm.setRecipientQuery("alin")
+        advanceUntilIdle()
+        assertEquals(listOf("alina"), vm.uiState.value.recipients.map { it.username })
+        assertNull("editing the text drops the old pick", vm.uiState.value.selectedRecipient)
+    }
+
+    @Test
+    fun `picking a recipient does not send another request`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = searchVm()
+        advanceUntilIdle()
+        vm.setRecipientQuery("ali")
+        advanceUntilIdle()
+        vm.selectRecipient(1)
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repo.userDirectory("ali") }
+        coVerify(exactly = 0) { repo.userDirectory("alice") }
+        assertEquals(1L, vm.uiState.value.selectedRecipientId)
+    }
+
+    @Test
+    fun `a search failure surfaces the error for localizedMessage`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val vm = searchVm()
+        advanceUntilIdle()
+        coEvery { repo.userDirectory("ali") } returns Result.failure(ApiError.Client(404, "gone"))
+        vm.setRecipientQuery("ali")
+        advanceUntilIdle()
+
+        val error = vm.uiState.value.error
+        assertTrue(error is ApiError.Client && error.code == 404)
+    }
+
+    private val repo get() = shareRepository
+
+    private fun searchVm(): ShareContactViewModel {
+        coEvery { shareRepository.userDirectory("") } returns Result.success(emptyList())
+        coEvery { shareRepository.userDirectory("ali") } returns Result.success(
+            listOf(UserDirectoryEntry(1, "alice"), UserDirectoryEntry(2, "alina"))
+        )
+        coEvery { shareRepository.userDirectory("alice") } returns Result.success(
+            listOf(UserDirectoryEntry(1, "alice"))
+        )
+        return ShareContactViewModel(
+            shareRepository,
+            grantRepository,
+            SavedStateHandle(mapOf("uid" to "uid-5"))
+        )
+    }
+
+    private fun ShareContactUiState.canShareRecipient() = selectedRecipientId != null
 }
