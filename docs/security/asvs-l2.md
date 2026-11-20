@@ -353,7 +353,7 @@ into the distributed `mycorrhizal` binary invokes an external command, and no HT
 MCP or background-job path passes request or user input to a process. That is the invariant ASVS
 5.3.8, 12.3.5 and 12.3.6 rely on.
 
-Three non-test packages outside that boundary execute local tools. All are build/test/developer
+Six non-test packages outside that boundary execute local tools. All are build/test/developer
 tooling; none ships in, nor serves requests from, the server binary:
 
 - **`backend/internal/notices`** — imported only by `backend/cmd/gennotices`, a CI/release-time
@@ -375,6 +375,15 @@ tooling; none ships in, nor serves requests from, the server binary:
   `rev-parse`, `add -N`) with the repository directory and base ref supplied by the developer, and
   passes file names NUL-delimited on stdin rather than through a shell. It never ships in the server
   binary and takes no request input.
+- **`backend/internal/gittest`** — a test helper that runs fixed `git` argv. Test-only in practice;
+  it is a non-test file, so it is listed here rather than under the `*_test.go` exemption.
+- **`backend/internal/agenteval`** — the agent-evaluation harness (`cmd/agenteval`, scheduled
+  workflows). `run.go#Run` executes `bash -lc <command>` where the command comes from a
+  reviewed task spec in `testdata/agent-eval/`, and the other files run fixed `git` argv against a
+  validated commit SHA. It never ships in the server binary and takes no request input.
+- **`backend/cmd/prepr`** — the developer pre-PR command. It shells out through `internal/gitchanges`
+  and the configured formatters/linters; fixed command names, developer-supplied paths, no request
+  input.
 
 Test files that use `os/exec` (for example `backend/database/backup_test.go`) are likewise outside
 the server binary.
@@ -385,12 +394,13 @@ stdin to the references is fixed test data, and their output is parsed as JSON o
 The worst case is a local developer/CI process running a tool it already controls, at the same trust
 level as `go test` or `go run`. Stating the exception explicitly is safer than an absolute claim that
 is false: a new `os/exec` now has a review question — server-surface change (reject) versus tooling
-in one of these three packages (review against this position).
+in one of the packages listed above (review against this position).
 
-- **Invariant:** the only non-test `os/exec` imports are the three packages above; everything else is
+- **Invariant:** the only non-test `os/exec` imports are the six packages above; everything else is
   `*_test.go`.
-- **Revisit when:** the notice generator becomes reachable from a request or job, a fourth non-test
-  package starts a process, or the differential checkers stop being test-only.
+- **Revisit when:** the notice generator or agent-eval harness becomes reachable from a request or
+  job, a seventh non-test package starts a process, or the differential checkers stop being
+  test-only.
 
 ---
 
@@ -599,7 +609,7 @@ L3-only, out of scope: none in this chapter (5.4 is L2).
 | 5.3.5 | Contextual encoding where no parameterization | satisfied | No non-parameterized SQL paths; identifier interpolation is compile-time constants only (`export_controller.go#groupingNamesByContact`) |
 | 5.3.6 | JSON injection / JSON eval | satisfied | Responses via `encoding/json`; frontend uses `fetch().json()` (JSON.parse), never eval |
 | 5.3.7 | LDAP injection | not-applicable | No LDAP |
-| 5.3.8 | OS command injection | satisfied | No `os/exec` on any server or request path: the runtime binary starts no process and no handler passes request input to one. Three build/test/developer-tooling packages are the scoped exception (P12): `backend/internal/notices/collect.go#CollectGo` / `backend/internal/notices/collect.go#CollectNPM` (CI/release generator), `backend/differential/harness.go#NewPyRef` / `backend/differential/harness.go#NewCalcardRef` (tests only), and `backend/internal/gitchanges/gitchanges.go#ChangedFiles` (developer pre-PR tooling only), all with fixed or operator-controlled commands/arguments and no request input; parameterized everything |
+| 5.3.8 | OS command injection | satisfied | No `os/exec` on any server or request path: the runtime binary starts no process and no handler passes request input to one. The scoped exception (P12) is six build/test/developer-tooling packages: `backend/internal/notices/collect.go#CollectGo` / `backend/internal/notices/collect.go#CollectNPM` (CI/release generator), `backend/differential/harness.go#NewPyRef` / `backend/differential/harness.go#NewCalcardRef` (tests only), `backend/internal/gitchanges/gitchanges.go#ChangedFiles` and `backend/cmd/prepr` (developer pre-PR tooling), `backend/internal/gittest#Run` (test helper), and `backend/internal/agenteval/run.go#Run` (reviewed agent-eval task commands), all with fixed or operator-controlled commands/arguments and no request input; parameterized everything |
 | 5.3.9 | LFI/RFI | satisfied | Server-generated UUID filenames (`photo_controller.go#processAndSavePhoto`, `attachments/attachments.go#Save`); traversal guards reject `..`/absolute (`photo_controller.go#GetProfilePicture`, `attachments.go#StoredPath`) |
 | 5.3.10 | XPath/XML injection | not-applicable | No XML parsing of untrusted input (CardDAV is text/vCard) |
 | 5.4.1–5.4.3 | Memory safety / format strings / integer overflow | not-applicable | Go is memory-safe (runtime bounds checks); `unsafe` unused in app code; `go vet` in CI |
