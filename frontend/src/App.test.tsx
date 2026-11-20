@@ -140,9 +140,9 @@ test.each([
   expect(await screen.findByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
 });
 
-test('renders app component', () => {
-  const { container } = renderApp();
-  expect(container).toBeTruthy();
+test('renders the signed-out app shell', () => {
+  renderApp();
+  expect(screen.getByRole('heading', { level: 1, name: 'Login' })).toBeInTheDocument();
 });
 
 test('a non-admin user does not see the System status nav entry', () => {

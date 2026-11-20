@@ -33,7 +33,7 @@ setup (#2364). `backend-dev` serves on :8080, matching the default.
 
 ## Adding a New Page
 
-1. Create `src/pages/FooPage.tsx`.
+1. Create `src/FooPage.tsx`.
 2. Add a route in the router (typically in `App.tsx`).
 3. Add a custom hook in `src/hooks/useFoo.ts` for data fetching (see pattern below).
 4. Add an API module in `src/api/foo.ts` if needed.

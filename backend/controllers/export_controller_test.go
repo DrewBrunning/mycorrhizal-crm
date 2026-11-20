@@ -1166,6 +1166,55 @@ func TestExportContactsAsVCF_SectionsFilter(t *testing.T) {
 	assert.Contains(t, body, "Alice", "identity data is always exported")
 }
 
+// An older web single-contact export sent one repeated ?sections= parameter
+// per token. c.Query reads only the first value, which silently narrowed the
+// export to emails. The server must accept that shape too, so an already
+// deployed client gets its full selection after a server upgrade.
+func TestExportContactsAsVCF_RepeatedSectionsParamsKeepEveryValue(t *testing.T) {
+	db, router := setupRouter(t)
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	require.NoError(t, db.Create(&models.Contact{
+		UserID: user.ID, Firstname: "Alice", Lastname: "Anderson",
+		Email: "alice@example.com", Phone: "555-0100",
+	}).Error)
+
+	req, _ := http.NewRequest("GET", "/export/vcf?sections=emails&sections=phones", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	body := w.Body.String()
+	assert.Contains(t, body, "EMAIL", "the first repeated sections value must not be the only one applied")
+	assert.Contains(t, body, "TEL", "the second repeated sections value must also be applied")
+}
+
+// The contact-page single-contact export must keep every requested section.
+func TestExportContactsAsVCF_SingleContactKeepsCommaJoinedSections(t *testing.T) {
+	db, router := setupRouter(t)
+	registerVCFRoute(router, "")
+
+	var user models.User
+	db.First(&user)
+	contact := models.Contact{
+		UserID: user.ID, Firstname: "Alice", Lastname: "Anderson",
+		Email: "alice@example.com", Phone: "555-0100",
+	}
+	require.NoError(t, db.Create(&contact).Error)
+
+	req, _ := http.NewRequest("GET", "/export/vcf?vcard_uid="+contact.VCardUID+"&sections=emails,phones", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	body := w.Body.String()
+	assert.Contains(t, body, "EMAIL")
+	assert.Contains(t, body, "TEL")
+	assert.Equal(t, 1, strings.Count(body, "BEGIN:VCARD"))
+}
+
 // An unknown section token is an explicit 400, not a silent narrowing.
 func TestExportContactsAsVCF_UnknownSection_BadRequest(t *testing.T) {
 	db, router := setupRouter(t)

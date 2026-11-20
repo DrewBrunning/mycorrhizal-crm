@@ -255,9 +255,10 @@ export async function exportContact(
 
   const params = new URLSearchParams();
   params.set('vcard_uid', vcardUID);
-  sections.forEach((s) => {
-    params.append('sections', s);
-  });
+  // The backend reads ?sections= with c.Query, which returns only the first
+  // occurrence of a repeated key. Send the comma-joined shape the all-contacts
+  // export already uses; one `sections=` parameter, never one per token.
+  params.set('sections', sections.join(','));
   if (includeSensitive) {
     params.set('include_sensitive', 'true');
   }

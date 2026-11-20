@@ -218,7 +218,13 @@ describe('exportContact', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/api/v1/export/vcf?');
     expect(url).toContain('vcard_uid=uid-1');
-    expect((url.match(/sections=/g) || []).length).toBe(EXPORT_FIELD_SECTIONS.length);
+    // One comma-joined sections parameter: the backend's c.Query reads only
+    // the first occurrence of a repeated key, so one-per-token would silently
+    // export only emails.
+    const parsed = new URLSearchParams((url as string).split('?')[1]);
+    expect(parsed.getAll('sections')).toEqual([
+      EXPORT_FIELD_SECTIONS.map((s) => s.token).join(','),
+    ]);
     expect(url).not.toContain('include_sensitive');
     expect(init.method).toBe('GET');
     expect(capturedLink?.download).toBe('uid-1.vcf');

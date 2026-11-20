@@ -164,7 +164,14 @@ test('applying a relation filter sends it as a query param', async () => {
   fireEvent.change(screen.getByLabelText('Relation filter'), { target: { value: 'brother' } });
   fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
   await waitFor(() => {
-    expect(requested.some((u) => u.includes('relation=brother'))).toBe(true);
+    expect(requested.filter((u) => u.includes('relation=brother'))).toHaveLength(1);
+  });
+
+  // Re-applying the same value has no state change to drive the effect, so
+  // the handler must refresh explicitly.
+  fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+  await waitFor(() => {
+    expect(requested.filter((u) => u.includes('relation=brother'))).toHaveLength(2);
   });
 });
 
