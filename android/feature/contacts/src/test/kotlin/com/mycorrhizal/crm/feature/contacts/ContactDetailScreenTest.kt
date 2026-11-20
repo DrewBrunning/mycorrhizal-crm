@@ -3,6 +3,10 @@ package com.mycorrhizal.crm.feature.contacts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -817,17 +821,23 @@ class ContactDetailScreenTest {
 
     @Test
     fun `the add-a-field menu reveals a hidden empty field`() {
-        var revealed: ContactFieldKey? = null
-        setContent(
-            ContactDetailUiState(
-                contact = ContactRecordResponse(
-                    id = 5,
-                    card = Card(name = Name(full = "Dana White"))
-                ),
-                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PHONES
-            ),
-            onRevealField = { revealed = it }
-        )
+        composeTestRule.setContent {
+            var revealedFields by remember { mutableStateOf(emptySet<ContactFieldKey>()) }
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    dateFormat = null,
+                    accountEnabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PHONES,
+                    hideEmpty = true,
+                    revealedFields = revealedFields,
+                    onRevealField = { revealedFields = revealedFields + it },
+                    onCustomizeFields = {}
+                )
+            }
+        }
 
         composeTestRule.onNodeWithText("Add a field")
             .performScrollTo()
@@ -835,8 +845,12 @@ class ContactDetailScreenTest {
             .performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Phone", useUnmergedTree = true).performClick()
+        composeTestRule.waitForIdle()
 
-        assertEquals(ContactFieldKey.PHONES, revealed)
+        // The field must actually render once the state loop feeds the revealed
+        // set back into ContactDetailContent; asserting only the callback would
+        // pass if the screen never displayed it.
+        composeTestRule.onNodeWithText("Phone").assertExists()
     }
 
     @Test

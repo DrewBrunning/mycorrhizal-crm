@@ -21,6 +21,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -178,7 +179,7 @@ class ApiTokensScreenTest {
         composeTestRule.onNodeWithText("Active").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Rotate Sync script").performClick()
         composeTestRule.onNodeWithContentDescription("Revoke Sync script").performClick()
-        assert(rotated && revoked)
+        assertTrue(rotated && revoked)
     }
 
     @Test
@@ -370,7 +371,7 @@ class ApiTokensScreenTest {
         }
 
         composeTestRule.onNodeWithText("Done, I saved it").performClick()
-        assert(dismissed)
+        assertTrue(dismissed)
     }
 
     // --- Issue #1775: destructive Revoke all moved out of the top bar ---

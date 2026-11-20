@@ -29,6 +29,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.CompletableDeferred
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -314,7 +315,7 @@ class AttachToRemoteScreenTest {
         composeTestRule.onNodeWithTag("attach-done").performClick()
         // Done: leaving must NOT cancel a run that has already completed.
         coVerify(exactly = 0) { coordinator.cancel() }
-        assert(backCount == 1)
+        assertTrue(backCount == 1)
     }
 
     @Test
@@ -342,7 +343,7 @@ class AttachToRemoteScreenTest {
         composeTestRule.waitForIdle()
 
         coVerify { coordinator.cancel() }
-        assert(backCount == 1)
+        assertTrue(backCount == 1)
     }
 
     private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.onNodeWithContentDescriptionBack() =

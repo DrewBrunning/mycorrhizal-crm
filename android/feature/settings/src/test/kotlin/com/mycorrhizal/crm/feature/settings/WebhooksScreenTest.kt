@@ -176,7 +176,7 @@ class WebhooksScreenTest {
         composeTestRule.onNodeWithContentDescription("Test Hook A").performClick()
         composeTestRule.onNodeWithContentDescription("Edit Hook A").performClick()
         composeTestRule.onNodeWithContentDescription("Delete Hook A").performClick()
-        assert(tested && edited && deleted)
+        assertTrue(tested && edited && deleted)
     }
 
     @Test

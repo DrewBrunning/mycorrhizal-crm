@@ -47,14 +47,11 @@ on:
   workflow_dispatch:
   workflow_call:
 
-# Branch-scoped cancellation: a force-push to an open PR cancels this
-# workflow's own still-running superseded run instead of paying for the old
-# matrix to finish. The group is event-partitioned so `schedule` and
-# `push:main` runs never share a group (which would serialize them) and are
-# never cancelled by a PR; only `pull_request` events cancel in progress.
+# Event/ref-scoped cancellation: schedule and push:main runs never share a
+# group (which would serialize them), and there is no PR tier to cancel.
 concurrency:
   group: schemathesis-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -103,9 +100,9 @@ jobs:
       contents: read
     name: Run Schemathesis fuzzing + BOLA sweep
     runs-on: ubuntu-latest
-    # The 3-example PR smoke finishes in minutes; the deep nightly run
-    # (SCHEMA_MAX_EXAMPLES=100) is allowed hours, mirroring unit-tests.yml's
-    # tiered timeout.
+    # There is no PR tier (see the trigger header): a push-to-main run uses
+    # the bounded 30-example budget and the deep nightly run
+    # (SCHEMA_MAX_EXAMPLES=100) is allowed hours.
     timeout-minutes: ${{ github.event_name == 'schedule' && 180 || 30 }}
     needs: changes
     # Fires when the API contract, the handlers, or the deployed artifact
@@ -117,10 +114,10 @@ jobs:
 
     env:
       # Per-operation example budget, tiered by trigger (rapid's RAPID_CHECKS
-      # pattern, issue #435): 3 on PR/push (bounded smoke), 30 on a push to
-      # main (i.e. a merge), 100 on the nightly deep run. seed 1 + deterministic
-      # generation stays pinned on every tier so a finding is reproducible.
-      SCHEMA_MAX_EXAMPLES: ${{ github.event_name == 'pull_request' && '3' || (github.event_name == 'push' && '30' || '100') }}
+      # pattern, issue #435): 30 on a push to main (i.e. a merge), 100 on the
+      # nightly deep run. seed 1 + deterministic generation stays pinned so a
+      # finding is reproducible. There is deliberately no PR tier.
+      SCHEMA_MAX_EXAMPLES: ${{ github.event_name == 'push' && '30' || '100' }}
 
     steps:
       - name: Checkout repository

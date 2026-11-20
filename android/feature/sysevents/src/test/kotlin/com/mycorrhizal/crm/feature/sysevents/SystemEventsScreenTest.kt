@@ -297,7 +297,7 @@ class SystemEventsScreenTest {
             }
         }
         composeTestRule.onNodeWithTag("sysevents-clear-filters").assertIsEnabled().performClick()
-        assert(cleared)
+        assertTrue(cleared)
     }
 
     @Test

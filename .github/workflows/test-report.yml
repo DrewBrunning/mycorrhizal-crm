@@ -24,6 +24,12 @@ name: Test Report
 # correct. The head's own run still reports its own results, so flake
 # reporting via retained failures is unaffected.
 #
+# Only pull_request-triggered Unit Tests runs produce a report: a push to main
+# has no PR diff to annotate, and dorny resolves a PR head SHA from its context
+# even then, which can leave a stale in-progress check on whichever PR happens
+# to share that SHA (seen on #2863). Fork PRs still match: their workflow_run
+# event is pull_request even when pull_requests[] is empty.
+#
 # Each suite job uploads its JUnit XML (+ flake reports) as a named artifact;
 # each report step below fetches its own artifact directly (dorny/test-
 # reporter's `artifact:` input, not a separate download step) and creates one
@@ -70,6 +76,7 @@ jobs:
   report:
     name: Test Report
     if: >-
+      github.event.workflow_run.event == 'pull_request' &&
       github.event.workflow_run.conclusion != 'cancelled' &&
       (github.event.workflow_run.pull_requests[0].head.sha == null ||
       github.event.workflow_run.pull_requests[0].head.sha == github.event.workflow_run.head_sha)

@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.shares
 
 import android.content.Context
+import android.os.Looper
 import androidx.annotation.StringRes
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
@@ -32,12 +33,14 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import java.time.Duration
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -189,7 +192,7 @@ class StandingShareScreenTest {
         coEvery { directory.userDirectory("zzz") } returns Result.success(emptyList())
 
         composeTestRule.onNode(hasSetTextAction()).performTextInput("zz")
-        Thread.sleep(500) // longer than the 250 ms debounce, on the real clock
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(300))
         composeTestRule.waitForIdle()
         coVerify(exactly = 0) { directory.userDirectory("zz") }
 
