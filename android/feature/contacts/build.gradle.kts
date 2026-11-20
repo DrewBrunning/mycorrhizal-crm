@@ -2,6 +2,17 @@ plugins {
     id("mycorrhizal.android.library")
     id("mycorrhizal.android.hilt")
     id("org.jetbrains.kotlin.plugin.compose")
+    // Issue #2534: record/verify Compose screenshot goldens on the Robolectric
+    // stack (recordRoborazziDebug / verifyRoborazziDebug).
+    alias(libs.plugins.roborazzi)
+}
+
+// Issue #2534: goldens are committed next to the tests, not in build/, so a
+// review sees the changed pixels. A failing verify writes
+// `<golden>_actual`/`<golden>_compare` under build/outputs/roborazzi/, which the
+// android-unit CI job uploads on failure.
+roborazzi {
+    outputDir.set(file("src/test/screenshots"))
 }
 
 android {
@@ -34,6 +45,12 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.androidx.compose.ui.test.junit4)
+    // Issue #2534: Compose screenshot regression. The capture extensions we use
+    // (SemanticsNodeInteraction.captureRoboImage + RobolectricDeviceQualifiers)
+    // ship in `roborazzi` itself, so only that artifact is on the module's test
+    // classpath; `roborazzi-compose` is the rule-free capture API and stays in
+    // the catalog (see the comment there) without being a declared dependency.
+    testImplementation(libs.roborazzi)
     // Issue #214: the shared Compose semantics a11y-sweep assertion helper.
     testImplementation(project(":core:testing"))
 }
