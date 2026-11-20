@@ -182,27 +182,35 @@ jobs:
       # --warning-mode=fail on the Gradle steps of this job: a Gradle
       # deprecation (the class #1868 cleaned up by hand) fails the build
       # instead of scrolling past in a log nobody reads.
+      # Issue #2534: the Compose screenshot goldens (11 PNGs in
+      # android/feature/contacts/src/test/screenshots/) are verified inside this
+      # same test pass via `-Proborazzi.test.verify=true`, NOT by a separate
+      # `verifyRoborazziDebug` step. Measured on :feature:contacts with
+      # `--rerun` (so compilation is excluded from both): 35.75 s without
+      # verify vs 35.98 s with it -- capture + compare of every golden costs
+      # ~0.2 s. A separate step would re-run the module's full suite (1006 tests
+      # locally) a second time (~2 min) inside an already 13.2-min job, and that
+      # duplicate run is what pushed this leg past the detekt/dependency-analysis
+      # leg; folding the verification in adds no wall-clock time.
+      #
+      # A diff fails THIS step, surfacing as "Unit + integration tests" rather
+      # than a screenshot-named step; the `android-roborazzi-diffs` artifact
+      # below carries the `_actual`/`_compare` images that name the golden.
+      #
+      # gradle-retry-transient.sh does not retry a diff: it retries only
+      # transport signatures (HTTP 429/5xx, reset connections, TLS failures),
+      # and a golden mismatch is a deterministic test failure, so it fails on
+      # the first attempt.
       - name: Unit + integration tests (incl. Robolectric)
         working-directory: android
         env:
           RERUN_FLAG: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest -Proborazzi.test.verify=true
 
-      # Issue #2534: Compose screenshot regression. `verifyRoborazziDebug`
-      # re-runs the module's Robolectric tests with the capture task in verify
-      # mode and fails on a pixel diff against the committed goldens in
-      # android/feature/contacts/src/test/screenshots/. A diff writes
-      # <golden>_actual.png and <golden>_compare.png under
-      # build/outputs/roborazzi/, uploaded on failure below for review. Only
-      # :feature:contacts has goldens today; a later module adds its own
-      # module-scoped verify here (a root aggregate task would also run
-      # `record`-less modules).
-      - name: Compose screenshot goldens (Roborazzi)
-        working-directory: android
-        env:
-          RERUN_FLAG: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} :feature:contacts:verifyRoborazziDebug
-
+      # Issue #2534: the goldens are verified by the unit-test step above; this
+      # keeps the diff images for diagnosis when it fails. `if: failure()` so it
+      # also runs when an unrelated test in the same step fails (the directory
+      # is simply empty then, hence if-no-files-found: ignore).
       - name: Upload Roborazzi diffs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

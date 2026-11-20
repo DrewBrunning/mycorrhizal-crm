@@ -349,9 +349,14 @@ time-based rule.
   Hilt, a network call, `Clock.System.now()` or a generated ID: a screenshot
   test renders a stateless `*Content` composable from a hand-built state so a
   diff can only be a visual change.
-- **Runs via** `./gradlew :feature:contacts:verifyRoborazziDebug` (the module's
-  Robolectric tests re-run with capture in verify mode; CI `android-tests.yml`
-  `android-unit` job, right after the unit-test step). Goldens live in
+- **Runs via** `./gradlew :feature:contacts:verifyRoborazziDebug` locally. CI
+  `android-tests.yml` has **no separate screenshot step**: the `android-unit`
+  job's existing "Unit + integration tests (incl. Robolectric)" step passes
+  `-Proborazzi.test.verify=true`, so the goldens are captured and compared
+  during the test pass that already happens. Measured on this module with
+  `--rerun` (compilation excluded from both): 35.75 s without verify vs 35.98 s
+  with it, i.e. the whole matrix costs ~0.2 s — a separate verify step would
+  re-run the module's full suite for ~2 min. Goldens live in
   `android/feature/contacts/src/test/screenshots/` (`roborazzi { outputDir }` in
   the module's `build.gradle.kts`), one file per
   `<Screen>_<theme>_<fontScale>[_tablet].png` in the matrix light/dark x font
