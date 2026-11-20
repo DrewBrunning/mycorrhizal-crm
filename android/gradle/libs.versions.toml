@@ -29,6 +29,12 @@ turbine = "1.2.1"
 mockk = "1.14.9"
 junit = "4.13.2"
 robolectric = "4.16.1"
+# Issue #2534: Compose screenshot regression on the Robolectric stack this repo
+# already uses (Paparazzi would add a second layoutlib renderer and Compose
+# harness). 1.79.0 is the current stable; it needs Kotlin >= 2.3, which this
+# toolchain has. The Gradle plugin, the capture runtime and the rule-free
+# compose artifact share this version.
+roborazzi = "1.79.0"
 androidxTest = "1.6.1"
 androidxTestExtJunit = "1.2.1"
 mockwebserver = "4.12.0"
@@ -110,6 +116,7 @@ google-services = { id = "com.google.gms.google-services", version.ref = "google
 detekt = { id = "dev.detekt", version.ref = "detekt" }
 about-libraries = { id = "com.mikepenz.aboutlibraries.plugin.android", version.ref = "aboutLibraries" }
 dependency-analysis = { id = "com.autonomousapps.dependency-analysis", version.ref = "dependencyAnalysis" }
+roborazzi = { id = "io.github.takahirom.roborazzi", version.ref = "roborazzi" }
 
 [libraries]
 # Issue #1901: detekt's ktlint wrapper supplies the formatting rule set through
@@ -228,6 +235,16 @@ androidx-test-runner = { group = "androidx.test", name = "runner", version.ref =
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
+# Issue #2534: the screenshot runtime. It also carries the Compose capture
+# extensions (`SemanticsNodeInteraction.captureRoboImage`) and the device
+# qualifiers the matrix uses, so `:feature:contacts` declares this one artifact.
+roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
+# Issue #2534: the rule-free `captureRoboImage { content }` API. Deliberately
+# NOT a declared dependency yet: it launches its own activity and captures
+# without waiting for Compose idle, which flaked (sub-pixel text/layout diffs
+# between otherwise identical runs). Keep it here for a future module that can
+# prove it deterministic; the compose-rule capture above is the stable path.
+roborazzi-compose = { group = "io.github.takahirom.roborazzi", name = "roborazzi-compose", version.ref = "roborazzi" }
 # Issue #263: macrobenchmark harness (:macrobenchmark module only).
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmark" }
 androidx-test-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "uiautomator" }
