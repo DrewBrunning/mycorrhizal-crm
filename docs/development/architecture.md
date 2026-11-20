@@ -8,7 +8,7 @@ nav_order: 1
 
 ## Overview
 
-Two codebases: a Go API (`backend/`) and a React SPA (`frontend/`). They communicate over HTTP, the frontend calls `/api/v1/*` endpoints. In production they are bundled into a single all-in-one Docker image where nginx serves the SPA and proxies `/api/` to the backend on `127.0.0.1:8080`; only the nginx port is published.
+Two codebases: a Go API (`backend/`) and a React SPA (`frontend/`). They communicate over HTTP, the frontend calls `/api/v1/*` endpoints. In production they are bundled into a single all-in-one Docker image where nginx serves the SPA and proxies `/api/` to the backend on `127.0.0.1:8081`; only the nginx port is published.
 
 ## Backend
 
@@ -34,14 +34,14 @@ backend/
 Controllers return `*apperrors.AppError`. The error handler middleware at the top of the stack catches these and writes a structured JSON response. Unhandled panics are also caught.
 
 ```go
-return nil, apperrors.New(http.StatusNotFound, "CONTACT_NOT_FOUND", "contact not found")
+return nil, apperrors.NewError("NOT_FOUND", "contact not found", http.StatusNotFound)
 ```
 
 ### Database Layer
 
 SQLite via GORM. All SQL migrations live in `database/migrations/` as embedded files and run automatically on startup in version order. Use `make migrate-create NAME=xxx` to add a new migration.
 
-Every table includes `user_id` for multi-tenant isolation and all queries must filter by it.
+User-scoped tables carry a `user_id` (or `from_user_id`/`to_user_id` for shares); graph rows are scoped through `Contact.VCardUID`. Every query must filter by its owner, and every new access path needs regression coverage (backend trap #5).
 
 ## Frontend
 
@@ -52,9 +52,9 @@ frontend/src/
   api/          # One module per resource (contacts, activities, …) + client.ts
   hooks/        # Data-fetching hooks (useContacts, useActivities, …)
   components/   # Reusable dialog and display components
-  pages/        # Top-level route components (one per page)
+  *Page.tsx     # Top-level route components (e.g. ContactsPage.tsx)
   types/        # Shared TypeScript types
-  i18n/locales/ # en.json, de.json
+  i18n/locales/ # en, de, es, fr, it
 ```
 
 ### State Management
@@ -67,7 +67,7 @@ React Router. Each page component maps to a route. Protected routes redirect to 
 
 ### Internationalization
 
-`i18next` with `react-i18next`. All UI strings live in `i18n/locales/en.json` and `de.json`. Use the `useTranslation()` hook. The user's language preference is stored server-side and applied to backend email notifications too.
+`i18next` with `react-i18next`. All UI strings live in `i18n/locales/en.json`, `de.json`, `es.json`, `fr.json` and `it.json`. Use the `useTranslation()` hook. The user's language preference is stored server-side and applied to backend email notifications too.
 
 ## Security
 

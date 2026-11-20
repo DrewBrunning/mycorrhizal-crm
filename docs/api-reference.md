@@ -100,8 +100,12 @@ These routes, and everything else under `/webauthn/*`, are absent from an embedd
 | `PATCH` | `/users/language` | Update UI language preference |
 | `PATCH` | `/users/date-format` | Update date format preference |
 | `PATCH` | `/users/time-format` | Update time format (auto/12h/24h) preference |
-| `GET` | `/users/custom-fields` | Get custom field names |
-| `PATCH` | `/users/custom-fields` | Update custom field names |
+| `GET` | `/field-definitions` | List custom field definitions |
+| `POST` | `/field-definitions` | Create a custom field definition |
+| `GET` | `/field-definitions/:id` | Get one custom field definition |
+| `PUT` | `/field-definitions/:id` | Update a custom field definition |
+| `PUT` | `/field-definitions/reorder` | Reorder custom field definitions |
+| `DELETE` | `/field-definitions/:id` | Delete a custom field definition |
 
 ### Contacts
 
@@ -128,11 +132,13 @@ These routes, and everything else under `/webauthn/*`, are absent from an embedd
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/contacts/:id/relationships` | List outgoing relationships |
-| `GET` | `/contacts/:id/incoming-relationships` | List incoming relationships |
-| `POST` | `/contacts/:id/relationships` | Create a relationship |
-| `PUT` | `/contacts/:id/relationships/:rid` | Update a relationship |
-| `DELETE` | `/contacts/:id/relationships/:rid` | Delete a relationship |
+| `GET` | `/relationship-edges` | List relationship edges, filtered by contact, status or type |
+| `POST` | `/relationship-edges` | Create a relationship edge |
+| `POST` | `/relationship-edges/suggest` | Suggest relationship edges from graph inference |
+| `GET` | `/relationship-edges/:id` | Get one relationship edge |
+| `PUT` | `/relationship-edges/:id` | Update a relationship edge |
+| `DELETE` | `/relationship-edges/:id` | Delete a relationship edge |
+| `PATCH` | `/relationship-edges/:id/accept` | Accept a suggested relationship edge |
 
 ### Notes
 
