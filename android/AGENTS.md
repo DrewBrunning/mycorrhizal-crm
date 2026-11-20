@@ -39,6 +39,20 @@ anything mirrored across clients; the Kotlin-specific rules are here.
   There is deliberately no `lint-baseline.xml`: a new exemption needs a reasoned per-check `ignore`
   and, when it is deferred work, a linked follow-up issue.
 
+## Screenshot goldens
+
+Issue #2534: Compose visual regression runs on the same Robolectric stack via
+Roborazzi, in `:feature:contacts` (`src/test/kotlin/.../screenshot/`, goldens in
+`src/test/screenshots/`). Each test renders a stateless `*Content` composable from
+a hand-built state across light/dark x font scale 1.0/2.0 on a Pixel 7, plus one
+`RobolectricDeviceQualifiers.MediumTablet` run; never feed a golden a ViewModel,
+Hilt, network, clock or generated ID. Verify with
+`./gradlew :feature:contacts:verifyRoborazziDebug`; after an intentional visual
+change regenerate with `./gradlew :feature:contacts:recordRoborazziDebug` and
+commit the PNG diff (the diff is the review). Diffs land in
+`build/outputs/roborazzi/`. Record on Linux, CI's platform — never hand-edit or
+delete a golden to turn a build green.
+
 ## Instrumented E2E
 
 The suite in `android/app/src/androidTest` drives the real app against the real

@@ -339,6 +339,35 @@ time-based rule.
   fake parse step, so `onReceive` is driven directly without booting the whole
   Hilt graph.
 
+### Android visual regression (Roborazzi)
+
+- **Responsible for** Compose layout, theme (light/dark) and font-scale
+  regressions on Android — the client half of the web's `visual.spec.ts`
+  (issue #2534, the #1794 Paparazzi-vs-Roborazzi decision).
+- **Must not be used for** behaviour assertions (use the semantics assertions
+  in the Robolectric screen tests), or for anything driven by a ViewModel,
+  Hilt, a network call, `Clock.System.now()` or a generated ID: a screenshot
+  test renders a stateless `*Content` composable from a hand-built state so a
+  diff can only be a visual change.
+- **Runs via** `./gradlew :feature:contacts:verifyRoborazziDebug` (the module's
+  Robolectric tests re-run with capture in verify mode; CI `android-tests.yml`
+  `android-unit` job, right after the unit-test step). Goldens live in
+  `android/feature/contacts/src/test/screenshots/` (`roborazzi { outputDir }` in
+  the module's `build.gradle.kts`), one file per
+  `<Screen>_<theme>_<fontScale>[_tablet].png` in the matrix light/dark x font
+  scale 1.0/2.0 on a Pixel 7, plus one `RobolectricDeviceQualifiers.MediumTablet`
+  run.
+- **Regenerating is a review action.** After an intentional visual change run
+  `cd android && ./gradlew :feature:contacts:recordRoborazziDebug` and commit
+  the changed PNGs with the code; the diff is the review. A verify failure
+  writes `<golden>_actual.png`/`<golden>_compare.png` under
+  `build/outputs/roborazzi/` (uploaded as `android-roborazzi-diffs`).
+- **Determinism** is a requirement, not a nicety: goldens are recorded on Linux
+  (the CI runner's platform) and two consecutive `verifyRoborazziDebug` runs
+  must produce no diffs. A flaky golden is a defect in the test (a non-fixed
+  input, a font that is not bundled, an animation), not a reason to widen the
+  threshold.
+
 ### E2E Android (instrumented)
 
 - **Responsible for** the real app on an emulator/device against the **real**
@@ -873,6 +902,7 @@ gap to file, never something to silently absorb.
 | Backup/restore/cross-version restore failure | DB/integration (`backup_test.go`, restore tests) + release/install smoke | v0.6.6 |
 | Component/hook state bugs, i18n key/placeholder drift, format-provider bugs | Frontend unit | v0.6.11 |
 | Android view-model/editor/offline/local-migration bugs | Android unit/Robolectric | v0.6.7, v0.6.10 |
+| Android layout/theme/font-scale regressions | Android unit/Robolectric (Roborazzi goldens, `android/feature/contacts/src/test/screenshots/`) | #2534 |
 | Whole-user-flow breakage (register→create→search→export), shipped-artifact boot | E2E web | v0.6.3, v0.6.6 |
 | Layout/theme regressions (a CSS refactor shifting a card or breaking a dialog) | E2E web (`visual.spec.ts`) | v0.6.3 (#258) |
 | Service-worker lifecycle, stale-cache stranding | E2E web (`serviceWorker.spec.ts`) | v0.6.10 |

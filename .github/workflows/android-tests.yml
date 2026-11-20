@@ -188,6 +188,30 @@ jobs:
           RERUN_FLAG: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
         run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
 
+      # Issue #2534: Compose screenshot regression. `verifyRoborazziDebug`
+      # re-runs the module's Robolectric tests with the capture task in verify
+      # mode and fails on a pixel diff against the committed goldens in
+      # android/feature/contacts/src/test/screenshots/. A diff writes
+      # <golden>_actual.png and <golden>_compare.png under
+      # build/outputs/roborazzi/, uploaded on failure below for review. Only
+      # :feature:contacts has goldens today; a later module adds its own
+      # module-scoped verify here (a root aggregate task would also run
+      # `record`-less modules).
+      - name: Compose screenshot goldens (Roborazzi)
+        working-directory: android
+        env:
+          RERUN_FLAG: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} :feature:contacts:verifyRoborazziDebug
+
+      - name: Upload Roborazzi diffs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-roborazzi-diffs
+          path: android/**/build/outputs/roborazzi/
+          if-no-files-found: ignore
+          retention-days: 7
+
       # Issue #268: the test-retry plugin reruns a failed Robolectric test
       # once; Gradle retains the failed attempt in the XML even when the
       # retry passed, so a SUCCEEDED task with a remaining <failure>/<error>
