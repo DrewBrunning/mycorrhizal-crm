@@ -620,23 +620,20 @@ function hasFullSpanAncestor(el: Element, fullSpanClasses: Set<string>, maxDepth
 
 test('pronouns is full-span only while editing, not in read mode (T88)', () => {
   renderInformation({ speakToAs: { pronouns: [{ pronouns: 'she/her' }], grammaticalGenders: [] } });
-  const classes = fullSpanClassNames(allStyles());
 
+  // Enter edit mode first so emotion has injected the full-span rule. If the
+  // class set were empty, both assertions below would be vacuous (the
+  // shuffled-order failure #2829 was the positive half of this).
+  fireEvent.click(within(fieldRow('Pronouns & Grammatical Gender')).getByLabelText(/^Edit\b/));
+  const classes = fullSpanClassNames(allStyles());
+  expect(classes.size).toBeGreaterThan(0);
+
+  const cancelButton = screen.getByRole('button', { name: 'Cancel' });
+  expect(hasFullSpanAncestor(cancelButton, classes)).toBe(true);
+
+  fireEvent.click(cancelButton);
   const readLabel = screen.getByText('Pronouns & Grammatical Gender');
   expect(hasFullSpanAncestor(readLabel, classes)).toBe(false);
-
-  fireEvent.click(within(fieldRow('Pronouns & Grammatical Gender')).getByLabelText(/^Edit\b/));
-
-  // The read-mode label is gone once editing starts; anchor on the editor's
-  // own Cancel button instead (unique on the page -- only one field edits
-  // at a time in this test).
-  const cancelButton = screen.getByRole('button', { name: 'Cancel' });
-  // Re-read the stylesheet: emotion injects the full-span class lazily, the
-  // first time a component renders it. With no notes/headings in this render,
-  // the edit-state class does not exist until the click above, so the `classes`
-  // snapshot taken before it is only valid when an earlier test in the file
-  // happened to inject the same rule (shuffled order broke that, #2829).
-  expect(hasFullSpanAncestor(cancelButton, fullSpanClassNames(allStyles()))).toBe(true);
 });
 
 test('entering edit mode on pronouns does not reorder the fields above it (T88)', () => {

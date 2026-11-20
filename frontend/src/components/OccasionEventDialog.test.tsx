@@ -43,7 +43,7 @@ test('requires a title', async () => {
   const title = screen.getByLabelText(/^Title/);
   await waitFor(() => expect(title).toHaveAttribute('aria-invalid', 'true'));
   expect(title).toHaveAccessibleDescription('Enter a title for this event.');
-  expect(title).toHaveFocus();
+  await vi.waitFor(() => expect(title).toHaveFocus());
   expect(onSave).not.toHaveBeenCalled();
 });
 
@@ -54,7 +54,7 @@ test('requires a start date and time', async () => {
   const starts = screen.getByLabelText(/^Starts/);
   await waitFor(() => expect(starts).toHaveAttribute('aria-invalid', 'true'));
   expect(starts).toHaveAccessibleDescription('Choose a start date and time.');
-  expect(starts).toHaveFocus();
+  await vi.waitFor(() => expect(starts).toHaveFocus());
 });
 
 test('rejects an end before the start', async () => {
@@ -70,7 +70,7 @@ test('rejects an end before the start', async () => {
   const ends = screen.getByLabelText(/^Ends/);
   await waitFor(() => expect(ends).toHaveAttribute('aria-invalid', 'true'));
   expect(ends).toHaveAccessibleDescription('The end time cannot be before the start time.');
-  expect(ends).toHaveFocus();
+  await vi.waitFor(() => expect(ends).toHaveFocus());
 });
 
 test('saves a valid event and closes', async () => {
