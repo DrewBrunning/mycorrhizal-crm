@@ -41,6 +41,7 @@ threat-process-memory | tldts | Generated public-suffix data table, not process-
 
 # Minified/bundled distributions contain long embedded strings and unicode
 # data tables; GuardDog reads the density as obfuscation/homoglyphs.
+threat-runtime-obfuscation* | @vitest/browser | Matches the unicode combining-mark range table in its minified browser-client bundle (CodeMirror's identifier escaping), not packed/obfuscated code (issue #2539).
 threat-runtime-obfuscation* | d3-scale-chromatic | Generated color-scale data table, not packed/obfuscated code.
 threat-runtime-obfuscation* | jiti | Bundled Babel distribution embeds the standard unicode identifier table.
 threat-runtime-obfuscation* | knip | The delta symbol in a performance table, not a homoglyph obfuscation.
@@ -58,6 +59,7 @@ threat-filesystem-read | jiti | Babel transform replaces import.meta.env; no cre
 threat-filesystem-read | knip | Its .env plugin enumerates .env files to report unused keys.
 threat-filesystem-read | playwright-core | Test runner loads playwright.env/.env and documents file paths.
 threat-filesystem-read | vite | Dev server/build tool transforms import.meta.env and reads project env files.
+threat-filesystem-read | @vitest/browser | Matches the literal "import.meta.env" its Vite plugin substitutes at build time and the generated browser shim that rejects dynamic access to it; no file is opened (issue #2539).
 threat-filesystem-read | vitest | Test runner rewrites define["process.env"] in the Vite config it owns.
 threat-runtime-environment-read | playwright-core | Reads documented PLAYWRIGHT_* test configuration variables.
 threat-runtime-environment-read | yaml | Opt-in LOG_TOKENS debug flag in the YAML parser.

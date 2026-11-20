@@ -34,6 +34,7 @@ orthogonal mechanism; this page is about *which layer a test belongs to*, not
 | Import/export interop | vCard 3/4, JSContact, CSV, iCal/CalDAV against the RFC golden fixtures; round-trip semantics | Neutral-model logic, persistence | `backend/{vcard3,vcard4,jscontact,correspondence}/`, `internal/rfctest/`, `docs/golden-fixtures/` | `go test ./...` | `backend-tests`/`backend-checks` (fuzz) / `backend` |
 | Migration | Schema evolution: up/down pairs, version/dirty tracking, data preservation, interrupted-migration recovery | Current-schema app behavior; deploy sequencing | `backend/database/migrations/`, `backend/database/migrate_*_test.go` | `go test ./...` | `backend-tests` (`rest` leg) / `backend` |
 | Frontend unit | Component state/rendering, hooks, i18n key parity, contract-fixture parsing (vitest) | Real network, end-to-end flows | `frontend/src/**/*.test.ts(x)`, `frontend/viteConfig.test.ts` | `npx vitest run` + `npx tsc --noEmit` | `frontend` job / `frontend` |
+| Frontend component (browser) | Real layout in one component: media queries, `ResizeObserver`/`IntersectionObserver`, scrolling, image measurement (vitest browser mode, Chromium) | Anything jsdom can already prove; multi-page flows (that is E2E web) | `frontend/src/**/*.browser.test.tsx` | `npm run test:browser` | `frontend` job / `frontend` |
 | Android unit/Robolectric | View models, editors, screens, network parsing, offline/local-DB logic | Emulator/device flows, real backend | `android/**/src/test/` | `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest` | `test` job / `android` |
 | E2E web | Complete user flows through the **shipped** artifact (image + compose + nginx + backend) | Anything reachable in a lower layer | `frontend/e2e/` | `npx playwright test` | `e2e` job / `frontend`+`openapi`+`infra` |
 | E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedObtainiumDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
@@ -317,6 +318,28 @@ time-based rule.
   required field's accessible label; don't nest `<Chip>` in `<Typography>`.
 - **Runs via** `npx vitest run` + `npx tsc --noEmit`; CI `unit-tests.yml`
   `frontend` job (`yarn test:coverage`, type check, lint).
+
+### Frontend component (browser, vitest browser mode)
+
+- **Responsible for** the failure classes jsdom fakes: whether the layout really
+  has the responsive branch a media query selects, whether an observer fires,
+  whether a `scrollIntoView`/anchor jump actually moves the section under the
+  sticky header, and whether an image/crop area measures non-zero. Real
+  Chromium, one component at a time (issue #2539).
+- **Must not be used for** anything jsdom can already prove — component state,
+  hooks, request shapes, i18n parity stay in the row above — or multi-page
+  flows, which are E2E web. A browser test that mocks `window.matchMedia`, or
+  spies on `scrollIntoView`, is a jsdom test in the wrong tier.
+- **Lives in** `frontend/src/**/*.browser.test.tsx`, run by
+  `frontend/vitest.browser.config.ts` (Chromium, headless). The config's
+  `@testdata` resolver and `setupFiles` must stay identical to
+  `vitest.config.ts`, and those files are excluded from the jsdom run
+  (`vitest.config.ts`'s `exclude`) so `npx vitest run` never collects them
+  (`vitest/browser` throws outside browser mode).
+- **Runs via** `npm run test:browser`; CI `unit-tests.yml` `frontend` job
+  (`Vitest browser mode` step) after the jsdom run. The browser comes from the
+  same Playwright cache/retry script as the e2e jobs. Stryker mutates the jsdom
+  config only.
 
 ## Android layers
 

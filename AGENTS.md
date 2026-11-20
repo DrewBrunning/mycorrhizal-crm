@@ -51,6 +51,10 @@ cd frontend && npx tsc --noEmit && npx vitest run
 ```
 
 ```bash
+cd frontend && npm run test:browser
+```
+
+```bash
 scripts/pre-pr.sh --fast          # touched areas: lint/build/drift + docs gates
 scripts/pre-pr.sh --focused       # + tests, coverage, per-file ratchets (recommended pre-PR)
 scripts/pre-pr.sh --focused --fix # write-mode formatters/linters first
