@@ -144,10 +144,21 @@ jobs:
       # (I18N-02/#485 shipped exactly that: 18.json was v17's dump copied
       # verbatim). --rerun forces the export to run since a plain build
       # leaves a stale file untouched; the diff must then be empty.
+      #
+      # Issue #2854: every Gradle call in this workflow's JVM legs goes through
+      # .github/scripts/gradle-retry-transient.sh, which retries ONCE and only
+      # when the failure is a transient artifact download (HTTP 429/5xx from
+      # Maven Central, a reset connection, a TLS handshake failure) and never on
+      # `schedule` (the nightly is the zero-retry flake signal). A 429 burst
+      # from shared runner IPs reddened main on 2026-11-20 while every sibling
+      # Android job was green; a compile error, a failing test or a missing
+      # artifact still fails on the first attempt. The emulator-driven legs are
+      # deliberately not wrapped: each already re-runs on a fresh emulator, so
+      # a retry there would double that attempt instead of adding one.
       - name: Room schema dumps are current
         working-directory: android
         run: |
-          ./gradlew :core:data:kspDebugKotlin --rerun
+          bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" :core:data:kspDebugKotlin --rerun
           # --porcelain also catches an uncommitted *new* dump, not just edits.
           if [ -n "$(git status --porcelain -- core/data/schemas)" ]; then
             git status --porcelain -- core/data/schemas
@@ -175,7 +186,7 @@ jobs:
         working-directory: android
         env:
           RERUN_FLAG: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
-        run: ./gradlew --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
 
       # Issue #268: the test-retry plugin reruns a failed Robolectric test
       # once; Gradle retains the failed attempt in the XML even when the
@@ -199,7 +210,7 @@ jobs:
       # `feature/*` modules at 0% despite local reports showing ~70%.
       - name: Coverage report (JaCoCo, aggregated)
         working-directory: android
-        run: ./gradlew --warning-mode=fail jacocoTestReportAggregated
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail jacocoTestReportAggregated
 
       # Issue #1627: the Android half of the per-file no-regression ratchet
       # (backend cmd/coverageratchet; frontend check-coverage-ratchet.mjs).
@@ -320,7 +331,7 @@ jobs:
 
       - name: Lint
         working-directory: android
-        run: ./gradlew --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug
 
   android-analysis:
     permissions:
@@ -373,7 +384,7 @@ jobs:
       # downgrade is needed anymore.
       - name: detekt
         working-directory: android
-        run: ./gradlew --warning-mode=fail detekt
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail detekt
 
       # Issue #1908: dependency hygiene (unused / misdeclared dependencies).
       # A hard gate: `onAny { severity("fail") }` in android/build.gradle.kts
@@ -384,7 +395,7 @@ jobs:
         working-directory: android
         run: |
           status=0
-          ./gradlew --console=plain buildHealth || status=$?
+          bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --console=plain buildHealth || status=$?
           if [ -f build/reports/dependency-analysis/build-health-report.txt ]; then
             cat build/reports/dependency-analysis/build-health-report.txt >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -442,7 +453,7 @@ jobs:
       - name: Build the embedded server binary and assert it is packaged
         working-directory: android
         run: |
-          ./gradlew :app:assembleObtainiumDebug -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
+          bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" :app:assembleObtainiumDebug -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
           apk="app/build/outputs/apk/obtainium/debug/app-obtainium-debug.apk"
           unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
             || { echo "::error::$apk does not contain the embedded server binary"; exit 1; }
@@ -452,7 +463,7 @@ jobs:
       # Issue #1200: play too, for its restricted-permission carve-out below.
       - name: Assemble debug APKs (obtainium + foss + play)
         working-directory: android
-        run: ./gradlew --warning-mode=fail :app:assembleObtainiumDebug :app:assembleFossDebug :app:assemblePlayDebug
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail :app:assembleObtainiumDebug :app:assembleFossDebug :app:assemblePlayDebug
 
       # Issue #1133: F-Droid requires the FOSS APK carry no Firebase/GMS
       # code. obtainium is checked for the opposite, so this can't pass by
@@ -962,7 +973,7 @@ jobs:
 
       - name: Assemble debug APK
         working-directory: android
-        run: ./gradlew :app:assembleObtainiumDebug
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" :app:assembleObtainiumDebug
 
       - name: Enable KVM
         run: |
