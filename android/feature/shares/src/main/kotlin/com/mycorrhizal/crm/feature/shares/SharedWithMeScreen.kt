@@ -155,6 +155,28 @@ fun SharedWithMeScreen(
                             )
                         }
                     }
+                    if (state.nextCursor != null) {
+                        item(key = "load-more") {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                state.loadMoreError?.let { error ->
+                                    Text(
+                                        text = error.localizedMessage(),
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                TextButton(
+                                    onClick = viewModel::loadMore,
+                                    enabled = !state.loadingMore
+                                ) {
+                                    Text(stringResource(R.string.action_load_more))
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

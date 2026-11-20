@@ -84,6 +84,45 @@ class ContactSharesScreenTest {
     }
 
     @Test
+    fun `Load more appends the next page and clears the affordance`() {
+        val older = incomingShare.copy(id = "s2", contactDisplayName = "Older Share")
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                ContactSharesPage(contactShares = listOf(incomingShare), nextCursor = "c1")
+            ),
+            Result.success(ContactSharesPage(contactShares = listOf(older), nextCursor = ""))
+        )
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+        screen()
+
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Older Share").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Load more").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed Load more shows the reason and keeps the loaded rows`() {
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                ContactSharesPage(contactShares = listOf(incomingShare), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Client(500, "load-more-boom"))
+        )
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+        screen()
+
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("load-more-boom").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
+    }
+
+    @Test
     fun `tapping decline opens the confirmation dialog and does not call the repository`() {
         coEvery { repository.listIncoming(any(), any()) } returns Result.success(
             ContactSharesPage(contactShares = listOf(incomingShare))

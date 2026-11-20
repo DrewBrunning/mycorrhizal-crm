@@ -76,6 +76,51 @@ class SharedByMeViewModelTest {
     }
 
     @Test
+    fun `loadMore appends the next page and follows its cursor`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val older = contactGrant.copy(id = "g4", label = "Older")
+        coEvery { repository.listOutgoing(any(), any()) } returnsMany listOf(
+            Result.success(
+                OutgoingShareGrantsPage(shareGrants = listOf(contactGrant), nextCursor = "c1")
+            ),
+            Result.success(OutgoingShareGrantsPage(shareGrants = listOf(older), nextCursor = ""))
+        )
+        val vm = newVm()
+        advanceUntilIdle()
+        assertEquals("c1", vm.uiState.value.nextCursor)
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("g1", "g4"), vm.uiState.value.grants.map { it.id })
+        assertNull(vm.uiState.value.nextCursor)
+        assertFalse(vm.uiState.value.loadingMore)
+        coVerify(exactly = 1) { repository.listOutgoing("c1", 100) }
+    }
+
+    @Test
+    fun `a failed loadMore keeps the loaded rows and exposes a retry error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.listOutgoing(any(), any()) } returnsMany listOf(
+            Result.success(
+                OutgoingShareGrantsPage(shareGrants = listOf(contactGrant), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Server(500, "boom"))
+        )
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("g1"), vm.uiState.value.grants.map { it.id })
+        assertNotNull(vm.uiState.value.loadMoreError)
+        assertFalse(vm.uiState.value.loadingMore)
+    }
+
+    @Test
     fun `a failed load shows a retryable error and no rows`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {

@@ -49,6 +49,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Android share and network fixes**: shared lists load every page instead of stopping at 100, private or secret addresses survive when you reveal sensitive items, a failed network load keeps its reason and Retry beside the organisation/place/pet overlay, and an existing "moved out" life event is a known type, not a custom one.
 - **Clearer import history and contact types** ([#2681](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2681)): import history now says "Skipped in review" and "Failed on import", and a private email or phone type shows in your language instead of the raw word "private".
 - **Clearer Monica connection errors** ([#2680](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2680)): an unreachable Monica now names the address that could not be reached, and a bad Monica address is flagged on the address field itself.
 - **Import and merge polish** ([#2688](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2688)): the import dialog fills a phone screen, unselected Keep and Skip labels are easier to read, matches with nothing to merge no longer count as updates, and merging contacts ends with a message naming the one kept and moves focus to it.

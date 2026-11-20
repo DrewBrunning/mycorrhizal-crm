@@ -72,6 +72,53 @@ class SharedWithMeViewModelTest {
     }
 
     @Test
+    fun `loadMore appends the next page and follows its cursor`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val older = pending.copy(id = "g3", label = "Older")
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                IncomingShareGrantsPage(shareGrants = listOf(pending), nextCursor = "c1")
+            ),
+            Result.success(IncomingShareGrantsPage(shareGrants = listOf(older), nextCursor = ""))
+        )
+        coEvery { repository.blocks() } returns Result.success(emptyList())
+        val vm = SharedWithMeViewModel(repository)
+        advanceUntilIdle()
+        assertEquals("c1", vm.uiState.value.nextCursor)
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("g1", "g3"), vm.uiState.value.grants.map { it.id })
+        assertNull(vm.uiState.value.nextCursor)
+        assertFalse(vm.uiState.value.loadingMore)
+        coVerify(exactly = 1) { repository.listIncoming("c1", 100) }
+    }
+
+    @Test
+    fun `a failed loadMore keeps the loaded rows and exposes a retry error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                IncomingShareGrantsPage(shareGrants = listOf(pending), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Client(500, "boom"))
+        )
+        coEvery { repository.blocks() } returns Result.success(emptyList())
+        val vm = SharedWithMeViewModel(repository)
+        advanceUntilIdle()
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("g1"), vm.uiState.value.grants.map { it.id })
+        assertNotNull(vm.uiState.value.loadMoreError)
+        assertFalse(vm.uiState.value.loadingMore)
+    }
+
+    @Test
     fun `a failed load shows a retryable error and keeps no stale rows`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {

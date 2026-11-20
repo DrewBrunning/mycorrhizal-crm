@@ -12555,8 +12555,8 @@ paths:
           in: query
           description: >
             Explicit opt-in override : when true, private/secret
-            items in the selected sensitivity-bearing sections (related_to,
-            personal_info, custom_fields) are included in this one export.
+            items in the selected sensitivity-bearing sections (addresses,
+            related_to, personal_info, custom_fields) are included in this one export.
             Defaults to false.
           schema: { type: boolean, default: false }
       responses:
@@ -12607,8 +12607,8 @@ paths:
           in: query
           description: >
             Explicit opt-in override : when true, private/secret
-            items in the selected sensitivity-bearing sections (related_to,
-            personal_info, custom_fields) are included in this one export.
+            items in the selected sensitivity-bearing sections (addresses,
+            related_to, personal_info, custom_fields) are included in this one export.
             Defaults to false.
           schema: { type: boolean, default: false }
       responses:

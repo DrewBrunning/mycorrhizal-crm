@@ -68,11 +68,15 @@ class ContactShareRepositoryImplTest {
             apiClient.acceptContactShare(
                 "s1"
             )
-        } returns Result.success(ImportPreviewResponse())
+        } returns Result.success(
+            ImportPreviewResponse(sessionId = "sess-1", totalRows = 2, validRows = 2)
+        )
 
         val result = repository.accept("s1")
 
         assertTrue(result.isSuccess)
+        assertEquals("sess-1", result.getOrThrow().sessionId)
+        assertEquals(2, result.getOrThrow().totalRows)
     }
 
     @Test
@@ -103,6 +107,7 @@ class ContactShareRepositoryImplTest {
         val result = repository.decline("s1")
 
         assertTrue(result.isSuccess)
+        coVerify(exactly = 1) { apiClient.declineContactShare("s1") }
     }
 
     @Test

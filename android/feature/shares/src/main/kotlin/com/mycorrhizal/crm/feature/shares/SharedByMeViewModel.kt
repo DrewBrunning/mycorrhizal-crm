@@ -81,7 +81,11 @@ data class SharedByMeUiState(
     val edit: ShareGrantEditState? = null,
     val busy: Boolean = false,
     val reconfirmCounts: Map<String, Int> = emptyMap(),
-    val openContactId: Int? = null
+    val openContactId: Int? = null,
+    /** Non-null while the server has another page of grants. */
+    val nextCursor: String? = null,
+    val loadingMore: Boolean = false,
+    val loadMoreError: ApiError? = null
 )
 
 /**
@@ -122,10 +126,37 @@ class SharedByMeViewModel @Inject constructor(
                     it.copy(
                         isLoading = false,
                         grants = result.getOrNull()?.shareGrants.orEmpty(),
-                        loadError = result.exceptionOrNull()?.toApiError()
+                        loadError = result.exceptionOrNull()?.toApiError(),
+                        nextCursor = result.getOrNull()?.nextCursor?.takeIf { cursor ->
+                            cursor.isNotBlank()
+                        },
+                        loadMoreError = null
                     )
                 }
             } while (reloadPending)
+        }
+    }
+
+    /** Appends the next page of grants; the backend caps a page at 100. */
+    fun loadMore() {
+        if (_uiState.value.isLoading || _uiState.value.loadingMore) return
+        val cursor = _uiState.value.nextCursor ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(loadingMore = true, loadMoreError = null) }
+            repository.listOutgoing(cursor).foldApiError(
+                onSuccess = { page ->
+                    _uiState.update {
+                        it.copy(
+                            loadingMore = false,
+                            grants = it.grants + page.shareGrants,
+                            nextCursor = page.nextCursor?.takeIf { next -> next.isNotBlank() }
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(loadingMore = false, loadMoreError = error) }
+                }
+            )
         }
     }
 

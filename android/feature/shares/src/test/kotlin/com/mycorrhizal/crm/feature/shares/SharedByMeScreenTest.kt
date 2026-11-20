@@ -95,6 +95,24 @@ class SharedByMeScreenTest {
     }
 
     @Test
+    fun `Load more appends the next page and clears the affordance`() {
+        val older = contactGrant.copy(id = "g4", label = "Older Share")
+        coEvery { repository.listOutgoing(any(), any()) } returnsMany listOf(
+            Result.success(
+                OutgoingShareGrantsPage(shareGrants = listOf(contactGrant), nextCursor = "c1")
+            ),
+            Result.success(OutgoingShareGrantsPage(shareGrants = listOf(older), nextCursor = ""))
+        )
+        screen()
+
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Older Share").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Load more").assertDoesNotExist()
+    }
+
+    @Test
     fun `rows show a status chip, one recipient-and-expiry line and the live circle member count`() {
         stub(contactGrant, circleGrant, revoked)
         screen()

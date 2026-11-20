@@ -41,7 +41,11 @@ data class SharedWithMeUiState(
     /** A failed action, shown once as a snackbar. */
     val actionError: ApiError? = null,
     val prompt: SharedWithMePrompt? = null,
-    val busy: Boolean = false
+    val busy: Boolean = false,
+    /** Non-null while the server has another page of grants. */
+    val nextCursor: String? = null,
+    val loadingMore: Boolean = false,
+    val loadMoreError: ApiError? = null
 )
 
 /**
@@ -82,10 +86,37 @@ class SharedWithMeViewModel @Inject constructor(
                         grants = incoming.getOrNull()?.shareGrants.orEmpty().inDisplayOrder(),
                         blocks = blocks.getOrNull().orEmpty(),
                         loadError =
-                            (incoming.exceptionOrNull() ?: blocks.exceptionOrNull())?.toApiError()
+                            (incoming.exceptionOrNull() ?: blocks.exceptionOrNull())?.toApiError(),
+                        nextCursor = incoming.getOrNull()?.nextCursor?.takeIf { cursor ->
+                            cursor.isNotBlank()
+                        },
+                        loadMoreError = null
                     )
                 }
             } while (reloadPending)
+        }
+    }
+
+    /** Appends the next page of grants; the backend caps a page at 100. */
+    fun loadMore() {
+        if (_uiState.value.isLoading || _uiState.value.loadingMore) return
+        val cursor = _uiState.value.nextCursor ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(loadingMore = true, loadMoreError = null) }
+            repository.listIncoming(cursor).foldApiError(
+                onSuccess = { page ->
+                    _uiState.update {
+                        it.copy(
+                            loadingMore = false,
+                            grants = (it.grants + page.shareGrants).inDisplayOrder(),
+                            nextCursor = page.nextCursor?.takeIf { next -> next.isNotBlank() }
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(loadingMore = false, loadMoreError = error) }
+                }
+            )
         }
     }
 

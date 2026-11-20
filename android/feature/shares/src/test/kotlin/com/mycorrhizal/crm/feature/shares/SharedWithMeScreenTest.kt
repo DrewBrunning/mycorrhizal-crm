@@ -95,6 +95,43 @@ class SharedWithMeScreenTest {
     }
 
     @Test
+    fun `Load more appends the next page and clears the affordance`() {
+        val older = pending.copy(id = "g3", label = "Older Share")
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                IncomingShareGrantsPage(shareGrants = listOf(pending), nextCursor = "c1")
+            ),
+            Result.success(IncomingShareGrantsPage(shareGrants = listOf(older), nextCursor = ""))
+        )
+        coEvery { repository.blocks() } returns Result.success(emptyList())
+        screen()
+
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Older Share").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Load more").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed Load more shows the reason and keeps the loaded rows`() {
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                IncomingShareGrantsPage(shareGrants = listOf(pending), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Client(500, "load-more-boom"))
+        )
+        coEvery { repository.blocks() } returns Result.success(emptyList())
+        screen()
+
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("load-more-boom").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
+    }
+
+    @Test
     fun `accept calls the repository`() {
         stub(listOf(pending))
         coEvery { repository.accept("g1") } returns Result.success(pending.copy(status = "active"))

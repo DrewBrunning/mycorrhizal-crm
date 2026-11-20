@@ -658,7 +658,10 @@ class NetworkScreenTest {
         composeTestRule.runOnIdle { vm.setShowEntities(true) }
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        // The overlay stays visible, but the traversal failure must not go
+        // silent: its reason and Retry stay reachable inline.
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
     }
 
     // Issue #2629: a failed traversal is the shared ErrorState (localized reason) with a Retry
