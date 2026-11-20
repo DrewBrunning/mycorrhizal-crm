@@ -10,6 +10,13 @@
 # Issue #268: JUnit XML emitted by vitest's junit reporter in CI (uploaded as
 # an artifact, never committed)
 /junit.xml
+# Issue #2539: vitest browser mode writes a failure screenshot beside a failed
+# test and any attachments to .vitest-attachments/. Local debugging artifacts;
+# the repo's visual-regression baselines are Playwright's (e2e/**-snapshots/).
+# A future browser test that adopts toMatchScreenshot must commit its baseline
+# deliberately (add a negation for that path then).
+/.vitest-attachments/
+__screenshots__/
 
 # production
 /build

@@ -55,6 +55,15 @@ This file is the frontend contract. Android shares the trap IDs below.
 - **Shared repo-root fixtures go through `@testdata/...`, never `../../../testdata/...`.** Stryker
   runs vitest from a sandbox copy of `frontend/`, where the relative path resolves to nothing;
   `vitest.config.ts` resolves the alias by walking up, and `src/testdataAlias.test.ts` enforces it.
+- **Real-browser component tests are a separate tier (issue #2539).** `src/**/*.browser.test.tsx`
+  runs under Chromium via vitest browser mode (`cd frontend && npm run test:browser`, config
+  `vitest.browser.config.ts`) for behaviour jsdom cannot prove: real media queries, observers,
+  scrolling/anchor jumps, image measurement. They are excluded from the jsdom run
+  (`vitest.config.ts`'s `exclude`); keep that config's `@testdata` resolver and
+  `setupFiles` identical to `vitest.config.ts`. Do not
+  use this tier for anything jsdom can already prove (mock `matchMedia`/`scrollIntoView` there
+  instead of moving the test here) or for multi-page flows (that is E2E). Stryker mutates the jsdom
+  config only. Layer policy: `docs/development/testing.md`.
 - Generated TS types: `src/generated/openapi.ts` is generated from `openapi.yaml` by
   `cd backend && go run ./cmd/gentsapi` — never hand-edited. The hand-written types in `src/api/*.ts`
   are pinned to it by `src/api/contractConformance.ts` (types only; imported by nothing): `tsc` fails
