@@ -13,6 +13,7 @@ import com.mycorrhizal.crm.model.network.GraphEntitiesResponse
 import com.mycorrhizal.crm.model.network.GraphEntityNode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -166,7 +167,14 @@ class NetworkViewModel @Inject constructor(
      * error rather than firing a doomed traversal.
      */
     private suspend fun resolveInitialContact(id: Int): FromContact? {
-        val record = contactRepository.getContact(id).getOrNull()
+        val result = contactRepository.getContact(id)
+        // A FAILED fetch says nothing about the UID: surface the real error (the screen's
+        // ErrorState + Retry) instead of "no VCard UID".
+        result.exceptionOrNull()?.let { failure ->
+            _uiState.update { it.copy(isLoading = false, error = failure.toApiError()) }
+            return null
+        }
+        val record = result.getOrNull()
         // vcardUid prefers the top-level uid (the canonical field); reading
         // card.uid directly was the issue #693 bug — the create response of an
         // Android-created contact carried a card without a UID.

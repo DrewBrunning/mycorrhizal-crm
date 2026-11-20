@@ -12,6 +12,8 @@ import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ConversationAgenda
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.Gift
 import com.mycorrhizal.crm.model.network.GiftStatuses
 import com.mycorrhizal.crm.model.network.LifeEvent
@@ -34,6 +36,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TestWatcher
@@ -1351,5 +1354,143 @@ class GiftDateHelpersTest {
         com.mycorrhizal.crm.model.registry.PreferenceCategory.CONFIG.forEach {
             assertNotNull(it.category, preferenceCategoryLabelRes(it.category))
         }
+    }
+}
+
+/**
+ * A FAILED contact fetch (offline, 404, server error) says nothing about the contact's VCard UID,
+ * so each of the four screens that resolve the UID first shows the real reason-coded error with a
+ * Retry (`loadError`), never "Contact has no VCard UID" -- that message is only for a contact that
+ * loaded with a blank UID (the last test).
+ */
+class ContactFetchFailureTest {
+    @get:Rule val mainDispatcherRule = MainDispatcherRule()
+    private val contacts = mockk<ContactRepository>()
+    private val failure = ApiError.Client(
+        409,
+        "raw-body-not-shown",
+        ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+    )
+
+    private fun failThenSucceed() {
+        coEvery { contacts.getContact(5) } returnsMany listOf(
+            Result.failure(failure),
+            Result.success(ContactRecordResponse(id = 5, card = Card(uid = UID)))
+        )
+    }
+
+    private fun assertLoadError(state: EntityListUiState) {
+        assertFalse(state.isLoading)
+        assertNull(state.errorRes)
+        assertEquals(failure, state.loadError)
+        assertTrue(state.items.isEmpty())
+    }
+
+    @Test fun `life events show the fetch error and Retry reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val repo = mockk<LifeEventRepository>()
+        coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+        failThenSucceed()
+        val vm = LifeEventsViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+        advanceUntilIdle()
+        assertLoadError(vm.uiState.value)
+        coVerify(exactly = 0) { repo.listForContact(any()) }
+
+        vm.load()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.loadError)
+        assertEquals(UID, vm.uiState.value.entityId)
+        coVerify(exactly = 2) { contacts.getContact(5) }
+    }
+
+    @Test fun `gifts show the fetch error and Retry reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val repo = mockk<GiftRepository>()
+        val lifeEventRepo = mockk<LifeEventRepository>()
+        val activityRepo = mockk<ActivityRepository>()
+        val preferenceRepo = mockk<PreferenceRepository>()
+        coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+        coEvery { lifeEventRepo.listForContact(UID) } returns Result.success(emptyList())
+        coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
+            Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
+        coEvery { preferenceRepo.listForContact(UID) } returns Result.success(emptyList())
+        failThenSucceed()
+        val vm = GiftsViewModel(
+            repo,
+            lifeEventRepo,
+            activityRepo,
+            preferenceRepo,
+            contacts,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        advanceUntilIdle()
+        assertLoadError(vm.uiState.value)
+        coVerify(exactly = 0) { repo.listForContact(any()) }
+
+        vm.load()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.loadError)
+        coVerify(exactly = 2) { contacts.getContact(5) }
+    }
+
+    @Test fun `preferences show the fetch error and Retry reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val repo = mockk<PreferenceRepository>()
+        coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+        failThenSucceed()
+        val vm = PreferencesViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+        advanceUntilIdle()
+        assertLoadError(vm.uiState.value)
+        coVerify(exactly = 0) { repo.listForContact(any()) }
+
+        vm.load()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.loadError)
+        coVerify(exactly = 2) { contacts.getContact(5) }
+    }
+
+    @Test fun `conversation agenda shows the fetch error and Retry reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val repo = mockk<ConversationAgendaRepository>()
+        val activityRepo = mockk<ActivityRepository>()
+        coEvery { repo.listForContact(UID) } returns Result.success(emptyList())
+        coEvery { activityRepo.listForContact(5, any(), any(), any(), any(), any()) } returns
+            Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
+        failThenSucceed()
+        val vm = ConversationAgendaViewModel(
+            repo,
+            activityRepo,
+            contacts,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        advanceUntilIdle()
+        assertLoadError(vm.uiState.value)
+        coVerify(exactly = 0) { repo.listForContact(any()) }
+
+        vm.load()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.loadError)
+        coVerify(exactly = 2) { contacts.getContact(5) }
+    }
+
+    @Test fun `a contact that loaded without a uid keeps the no-vcard-uid message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val repo = mockk<LifeEventRepository>()
+        coEvery { contacts.getContact(5) } returns Result.success(
+            ContactRecordResponse(id = 5, card = Card(uid = null, name = Name(full = "No Uid")))
+        )
+        val vm = LifeEventsViewModel(repo, contacts, SavedStateHandle(mapOf("contactId" to 5)))
+        advanceUntilIdle()
+        assertEquals(
+            com.mycorrhizal.crm.ui.R.string.entities_error_no_vcard_uid,
+            vm.uiState.value.errorRes
+        )
+        assertNull(vm.uiState.value.loadError)
+        coVerify(exactly = 0) { repo.listForContact(any()) }
     }
 }

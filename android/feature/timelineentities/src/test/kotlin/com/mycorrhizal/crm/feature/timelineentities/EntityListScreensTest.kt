@@ -108,6 +108,47 @@ class EntityListScaffoldTest {
         assertEquals(1, added)
     }
 
+    // A failed contact fetch (loadError) is the shared ErrorState: the localized reason plus a
+    // Retry that re-runs the load; the empty-state "add the first one" prompt must not show.
+    @Test
+    fun `a load error with nothing listed shows the localized reason and Retry`() {
+        var refreshed = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                EntityListScaffold(
+                    title = "Life events",
+                    addLabel = "New life event",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
+                    uiState = EntityListUiState(
+                        loadError = ApiError.Client(
+                            409,
+                            "raw-body-not-shown",
+                            com.mycorrhizal.crm.model.network.ErrorReason(
+                                com.mycorrhizal.crm.model.network.ErrorReasonCode.FEED_LIMIT_REACHED,
+                                mapOf("max" to 50.0)
+                            )
+                        )
+                    ),
+                    onAdd = {},
+                    onItemClick = {},
+                    onDelete = {},
+                    onErrorShown = {},
+                    onBack = {},
+                    onRefresh = { refreshed++ },
+                    dialog = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No items yet").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Retry").performClick()
+        assertEquals(1, refreshed)
+    }
+
     @Test
     fun `tapping a row invokes onItemClick`() {
         var clickedId: String? = null
