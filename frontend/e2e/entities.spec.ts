@@ -1,4 +1,11 @@
-import { createTestContact, deleteTestContact, expect, test } from './fixtures';
+import {
+  createTestContact,
+  deleteTestContact,
+  expect,
+  searchEntity,
+  stableClick,
+  test,
+} from './fixtures';
 import { API_BASE_URL } from './global-setup';
 
 // Issue #2301 (ADR 0043): reusable organisations, places and pets. The
@@ -26,8 +33,8 @@ test.describe('Entities', () => {
       await expect(
         page.getByRole('heading', { level: 1, name: 'Organisations, places & pets' }),
       ).toBeVisible();
-      await page.getByLabel('Search by name').fill(`Acme ${suffix}`);
-      await page.getByRole('link', { name: new RegExp(name) }).click();
+      await searchEntity(page, `Acme ${suffix}`);
+      await stableClick(page.getByRole('link', { name: new RegExp(name) }));
       await expect(page.getByRole('heading', { level: 1, name })).toBeVisible();
 
       // Link the contact to it, as the primary organisation, from the contact page.
