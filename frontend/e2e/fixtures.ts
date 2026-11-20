@@ -692,6 +692,41 @@ export async function searchContact(page: Page, query: string): Promise<void> {
   await waitForLoading(page);
 }
 
+/**
+ * Types a query into the entities list's "Search by name" box and waits for
+ * the *debounced* request it fires to be served before returning.
+ *
+ * Same class of race as `searchContact` (#1911), and found the same way: the
+ * 2026-11-20 nightly (#2856) failed `entities.spec.ts`'s "link a contact as
+ * primary..." with the page still sitting on `/entities` -- no
+ * `GET /api/v1/entities/<id>` ever reached the backend, so the click on the
+ * freshly listed row simply never navigated. EntitiesPage debounces the box
+ * into `useEntityList`'s `q` after 350 ms, and `useEntityList` empties the
+ * list while the new query loads (`setEntities([])` in its effect): filling
+ * and clicking straight away lets the click land in that window, the row is
+ * unmounted between mousedown and mouseup, and the click lands on nothing.
+ * Waiting for the request the debounce fires means the list under the cursor
+ * is the query's own result set, not one that is about to be replaced;
+ * callers still assert whatever they need is visible (`stableClick` covers
+ * any residual settle).
+ */
+export async function searchEntity(page: Page, query: string): Promise<void> {
+  const searchInput = page.getByLabel('Search by name');
+  const term = query.trim();
+  const responsePromise = page.waitForResponse(
+    (response) => {
+      if (response.request().method() !== 'GET') return false;
+      const url = new URL(response.url());
+      return url.pathname.endsWith('/entities') && url.searchParams.get('q') === term;
+    },
+    { timeout: 15000 },
+  );
+
+  await searchInput.fill(query);
+  await responsePromise;
+  await waitForLoading(page);
+}
+
 // ---------------------------------------------------------------------------
 // API helpers — used to set up and tear down data without driving the UI.
 // ---------------------------------------------------------------------------
