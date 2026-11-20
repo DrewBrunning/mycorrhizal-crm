@@ -27,6 +27,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -63,9 +64,9 @@ func TestWebDAVClient_Propfind_InternalEntityXXE_RejectedNotExpanded(t *testing.
 }
 
 func TestWebDAVClient_Propfind_ExternalDTDReference_NeverFetched(t *testing.T) {
-	var dtdServerHit bool
+	var dtdServerHit atomic.Bool
 	dtdServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		dtdServerHit = true
+		dtdServerHit.Store(true)
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer dtdServer.Close()
@@ -96,5 +97,5 @@ func TestWebDAVClient_Propfind_ExternalDTDReference_NeverFetched(t *testing.T) {
 	// without acting on it) or errors doesn't matter for this test -- what
 	// matters is that the external DTD URL is never requested.
 	_ = client.Ping(context.Background())
-	assert.False(t, dtdServerHit, "an external DTD reference must never be fetched")
+	assert.False(t, dtdServerHit.Load(), "an external DTD reference must never be fetched")
 }

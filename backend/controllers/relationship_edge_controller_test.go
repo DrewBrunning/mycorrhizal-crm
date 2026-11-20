@@ -297,7 +297,13 @@ func TestGetRelationshipEdge(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
-	assert.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var resp models.RelationshipEdge
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, edge.ID, resp.ID)
+	assert.Equal(t, alice.VCardUID, resp.SourceID)
+	assert.Equal(t, bob.VCardUID, resp.TargetID)
+	assert.Equal(t, "friend_of", resp.Type)
 }
 
 func TestGetRelationshipEdge_NotFound(t *testing.T) {

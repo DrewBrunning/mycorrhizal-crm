@@ -80,6 +80,10 @@ func ListApiTokens(c *gin.Context) {
 	var tokens []models.ApiToken
 	if err := db.Where("user_id = ?", userID).
 		Order("created_at DESC").
+		// Two tokens created in the same timestamp tick otherwise have an
+		// unspecified SQLite order. Newest id first is a deterministic
+		// tiebreak and matches the creation order.
+		Order("id DESC").
 		Find(&tokens).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("query"))
 		return

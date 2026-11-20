@@ -150,17 +150,22 @@ func TestGetNotesForContactSortDateOwnershipIsolation(t *testing.T) {
 	require.NoError(t, db.Create(&theirs).Error)
 	require.NoError(t, db.Create(&models.Note{UserID: other.ID, ContactID: &theirs.ID, Content: "secret", Date: time.Now()}).Error)
 
-	code, _, foreignBody := getContactNotesPage(t, router, theirs.ID, "sort=date")
+	code, foreignPage, foreignBody := getContactNotesPage(t, router, theirs.ID, "sort=date")
 	assert.Equal(t, http.StatusNotFound, code)
 	assert.NotContains(t, foreignBody, "secret")
+	assert.Empty(t, foreignPage.Notes, "a foreign contact must never leak notes")
 	unknownCode, _, unknownBody := getContactNotesPage(t, router, 999999, "sort=date")
 	assert.Equal(t, http.StatusNotFound, unknownCode)
-	var a, b map[string]any
+
+	var a, b struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
 	require.NoError(t, json.Unmarshal([]byte(foreignBody), &a))
 	require.NoError(t, json.Unmarshal([]byte(unknownBody), &b))
-	if ea, ok := a["error"].(map[string]any); ok {
-		eb, _ := b["error"].(map[string]any)
-		assert.Equal(t, ea["code"], eb["code"])
-		assert.Equal(t, ea["message"], eb["message"])
-	}
+	assert.Equal(t, a.Error.Code, b.Error.Code)
+	assert.Equal(t, a.Error.Message, b.Error.Message)
+	assert.NotEmpty(t, a.Error.Code, "the 404 must carry the error envelope, not an empty body")
 }

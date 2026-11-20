@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"mycorrhizal/config"
+	"mycorrhizal/models"
 	"mycorrhizal/services"
 
 	"github.com/gin-gonic/gin"
@@ -79,6 +80,35 @@ func TestLogoutUser_NoOIDC(t *testing.T) {
 	authCookie := findCookie(w.Result().Cookies(), "auth_token")
 	require.NotNil(t, authCookie)
 	assert.Equal(t, -1, authCookie.MaxAge)
+}
+
+// Issue #866: logout revokes the server-side session row carried by the
+// auth_token cookie, so a copied cookie stops working immediately. The other
+// logout tests attach no auth_token at all, which lets the revocation branch
+// be deleted silently.
+func TestLogoutUser_RevokesSessionFromAuthCookie(t *testing.T) {
+	cfg := &config.Config{JWTSecretKey: testJWTSecret, JWTExpiryHours: 24}
+	db, router := setupRouter(t)
+	router.POST("/logout", func(c *gin.Context) {
+		LogoutUser(c, cfg, nil)
+	})
+
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	token, err := services.IssueSession(db, user, cfg, "test-agent", "192.0.2.1")
+	require.NoError(t, err)
+	sid := services.SessionIDFromToken(token, cfg)
+	require.NotEmpty(t, sid)
+
+	req, _ := http.NewRequest("POST", "/logout", nil)
+	req.AddCookie(&http.Cookie{Name: "auth_token", Value: token})
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+
+	var session models.Session
+	require.NoError(t, db.First(&session, "id = ?", sid).Error)
+	require.NotNil(t, session.RevokedAt, "logout must revoke the cookie's server-side session")
 }
 
 func TestLogoutUser_OIDCEnabledButLocalPasswordLogin(t *testing.T) {
