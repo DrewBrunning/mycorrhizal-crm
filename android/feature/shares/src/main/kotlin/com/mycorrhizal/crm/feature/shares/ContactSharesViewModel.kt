@@ -40,7 +40,12 @@ data class ContactSharesUiState(
     // --- Decline confirmation gate ---
     /** The pending share awaiting the user's decline confirmation; null when no dialog is up. */
     val declinePendingId: String? = null,
-    val declining: Boolean = false
+    val declining: Boolean = false,
+    /** Non-null while the selected tab has another page. */
+    val incomingNextCursor: String? = null,
+    val outgoingNextCursor: String? = null,
+    val loadingMore: Boolean = false,
+    val loadMoreError: ApiError? = null
 ) {
     val row: ImportRowPreview? get() = preview?.rows?.firstOrNull()
 }
@@ -84,14 +89,69 @@ class ContactSharesViewModel @Inject constructor(
                     incoming = incoming?.contactShares ?: emptyList(),
                     outgoing = outgoing?.contactShares ?: emptyList(),
                     usernames = mergeUsernames(incoming?.usernames, outgoing?.usernames),
-                    error = errorMessage
+                    error = errorMessage,
+                    incomingNextCursor = incoming?.nextCursor?.takeIf { it.isNotBlank() },
+                    outgoingNextCursor = outgoing?.nextCursor?.takeIf { it.isNotBlank() },
+                    loadMoreError = null
                 )
             }
         }
     }
 
+    /** Appends the next page of the currently selected tab; the backend caps a page at 100. */
+    fun loadMore() {
+        if (_uiState.value.isLoading || _uiState.value.loadingMore) return
+        val tab = _uiState.value.selectedTab
+        val cursor =
+            if (tab == SharesTab.INCOMING) {
+                _uiState.value.incomingNextCursor
+            } else {
+                _uiState.value.outgoingNextCursor
+            }
+        if (cursor == null) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(loadingMore = true, loadMoreError = null) }
+            val result =
+                if (tab == SharesTab.INCOMING) {
+                    contactShareRepository.listIncoming(cursor)
+                } else {
+                    contactShareRepository.listOutgoing(cursor)
+                }
+            result.foldApiError(
+                onSuccess = { page ->
+                    _uiState.update {
+                        if (tab == SharesTab.INCOMING) {
+                            it.copy(
+                                loadingMore = false,
+                                incoming = it.incoming + page.contactShares,
+                                usernames = mergeUsernames(it.usernames, page.usernames),
+                                incomingNextCursor = page.nextCursor?.takeIf { next ->
+                                    next.isNotBlank()
+                                }
+                            )
+                        } else {
+                            it.copy(
+                                loadingMore = false,
+                                outgoing = it.outgoing + page.contactShares,
+                                usernames = mergeUsernames(it.usernames, page.usernames),
+                                outgoingNextCursor = page.nextCursor?.takeIf { next ->
+                                    next.isNotBlank()
+                                }
+                            )
+                        }
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(loadingMore = false, loadMoreError = error) }
+                }
+            )
+        }
+    }
+
     fun selectTab(tab: SharesTab) {
-        _uiState.update { it.copy(selectedTab = tab) }
+        // A load-more failure belongs to the tab it happened on; don't carry
+        // its message onto the other tab's list.
+        _uiState.update { it.copy(selectedTab = tab, loadMoreError = null) }
     }
 
     // --- Accept flow ---

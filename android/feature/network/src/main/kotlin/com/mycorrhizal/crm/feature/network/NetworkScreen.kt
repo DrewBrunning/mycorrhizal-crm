@@ -258,6 +258,7 @@ fun NetworkScreenContent(
 
                             else -> NetworkList(
                                 uiState = uiState,
+                                onRefresh = onRefresh,
                                 onOpenContact = onOpenContact,
                                 onOpenEntity = onOpenEntity
                             )
@@ -268,10 +269,10 @@ fun NetworkScreenContent(
         }
     }
 
-    // The snackbar is for fetch failures that leave stale content on screen
-    // (an empty result already shows the error inline below the controls) —
-    // presenting both for an empty failure would double-announce it.
-    if (uiState.groupedChains.isNotEmpty()) {
+    // The snackbar is for fetch failures that leave non-empty rows on screen.
+    // With the entity overlay on, NetworkList renders a compact inline error
+    // (the overlay must stay visible), so don't also announce it in a snackbar.
+    if (!uiState.showEntities && uiState.groupedChains.isNotEmpty()) {
         uiState.error?.let { error ->
             val message = error.localizedMessage()
             LaunchedEffect(message) {
@@ -447,10 +448,36 @@ private fun CircleFilter(uiState: NetworkUiState, onCircleSelect: (String?) -> U
 @Composable
 private fun NetworkList(
     uiState: NetworkUiState,
+    onRefresh: () -> Unit,
     onOpenContact: (Int) -> Unit,
     onOpenEntity: (String) -> Unit
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        // With the entity overlay on, a failed traversal cannot take over the
+        // whole screen (that would hide the overlay), and the snackbar is
+        // suppressed for this branch. Keep the failure reason and Retry inline
+        // above the rows the user can still see.
+        if (uiState.showEntities) {
+            uiState.error?.let { error ->
+                item(key = "traversal-error") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(
+                            horizontal = 16.dp,
+                            vertical = 8.dp
+                        )
+                    ) {
+                        Text(
+                            text = error.localizedMessage(),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        TextButton(onClick = onRefresh) {
+                            Text(stringResource(R.string.action_retry))
+                        }
+                    }
+                }
+            }
+        }
         DEPTHS.forEach { depth ->
             val chains = uiState.groupedChains[depth].orEmpty()
             if (chains.isNotEmpty()) {

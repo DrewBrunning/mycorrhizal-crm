@@ -13,7 +13,7 @@ object ShareFieldSections {
     val ALL: List<Section> = listOf(
         Section("emails", sensitive = false),
         Section("phones", sensitive = false),
-        Section("addresses", sensitive = false),
+        Section("addresses", sensitive = true),
         Section("organizations", sensitive = false),
         Section("anniversaries", sensitive = false),
         Section("media", sensitive = false),
