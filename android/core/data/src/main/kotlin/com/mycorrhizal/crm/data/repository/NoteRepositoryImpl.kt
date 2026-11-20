@@ -13,8 +13,9 @@ import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
 /**
- * The Notes list orders by the note's own date (issue #2616, backend #2744). Its cursors are
- * sort-specific, so every page of a list must send this same value.
+ * The Notes list (issue #2616, backend #2744) and a contact's notes (issue #2797, backend #2813)
+ * order by the note's own date. Their cursors are sort-specific, so every page of a list must send
+ * this same value.
  */
 private const val NOTES_SORT_DATE = "date"
 
@@ -35,7 +36,15 @@ class NoteRepositoryImpl @Inject constructor(
         fromDate: String?,
         toDate: String?
     ): Result<ContactNotesPage> {
-        val result = apiClient.listContactNotes(contactId, cursor, limit, search, fromDate, toDate)
+        val result = apiClient.listContactNotes(
+            contactId,
+            cursor,
+            limit,
+            search,
+            fromDate,
+            toDate,
+            NOTES_SORT_DATE
+        )
         val response = result.getOrNull()
         if (response != null) {
             dao.upsertAll(response.notes.map { it.toCached() })
