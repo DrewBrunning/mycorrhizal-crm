@@ -19,6 +19,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.MutableStateFlow
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -134,7 +135,7 @@ class ServersScreenTest {
 
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
         composeTestRule.onNodeWithText("Use on this device only").assertIsDisplayed().performClick()
-        assert(localOnlyClicks == 1)
+        assertTrue(localOnlyClicks == 1)
     }
 
     @Test
@@ -144,7 +145,7 @@ class ServersScreenTest {
         setScreen(localModeEnabled = true)
 
         composeTestRule.onNodeWithText("Use on this device only").assertIsDisplayed().performClick()
-        assert(localOnlyClicks == 1)
+        assertTrue(localOnlyClicks == 1)
     }
 
     @Test
@@ -185,7 +186,7 @@ class ServersScreenTest {
         composeTestRule.onNodeWithTag("server-attach-loc").assertIsDisplayed()
         composeTestRule.onNodeWithTag("server-attach-loc").performClick()
 
-        assert(attachClicks == 1)
+        assertTrue(attachClicks == 1)
     }
 
     @Test

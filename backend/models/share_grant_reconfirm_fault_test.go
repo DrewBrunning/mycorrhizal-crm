@@ -113,15 +113,16 @@ func TestReconfirmHooks_SingleStatementFailuresFailTheWrite(t *testing.T) {
 					return
 				}
 				// The audit trail is deliberately best-effort (an audit failure never
-				// rolls back the audited write), so only the hooks' own statements
-				// and the write itself must propagate.
-				if strings.Contains(inj.hitSQL, "audit_events") {
+				// rolls back the audited write), so it is the only explicit
+				// exception. Every other statement -- including the priorSensitivity
+				// lookup, which the old substring allowlist missed -- must propagate.
+				if strings.Contains(inj.hitSQL, "audit_events") ||
+					// auditBeforeSave's best-effort pre-update snapshot: a failed
+					// re-query is logged and leaves before="", never rolls back.
+					strings.Contains(inj.hitSQL, "SELECT * FROM `contacts`") {
 					continue
 				}
-				if inj.hitSQL == "" || strings.Contains(inj.hitSQL, "share_grants") || strings.Contains(inj.hitSQL, "sensitivity") ||
-					strings.Contains(inj.hitSQL, "addresses") || strings.Contains(inj.hitSQL, "UPDATE") {
-					assert.Error(t, err, "statement %d (%q) failing must fail the write, not be swallowed", n, inj.hitSQL)
-				}
+				assert.Error(t, err, "statement %d (%q) failing must fail the write, not be swallowed", n, inj.hitSQL)
 			}
 			t.Fatal("write still issuing statements after 39")
 		})

@@ -148,3 +148,57 @@ test('refetches when refreshKey changes (issue #1735: crm.ambient toggled)', asy
   rerender({ key: true });
   await waitFor(() => expect(getContactScore).toHaveBeenCalledTimes(2));
 });
+
+test('a stale score for the previous contact cannot overwrite the current one', async () => {
+  let releaseOld!: (v: ContactScoreResponse) => void;
+  let releaseNew!: (v: ContactScoreResponse) => void;
+  const oldRequest = new Promise<ContactScoreResponse>((resolve) => {
+    releaseOld = resolve;
+  });
+  const newRequest = new Promise<ContactScoreResponse>((resolve) => {
+    releaseNew = resolve;
+  });
+  vi.mocked(getContactScore).mockReturnValueOnce(oldRequest).mockReturnValueOnce(newRequest);
+
+  const { result, rerender } = renderHook(({ id }) => useContactScore(id), {
+    initialProps: { id: 1 },
+  });
+  await waitFor(() => expect(getContactScore).toHaveBeenCalledWith(1));
+
+  rerender({ id: 2 });
+  await waitFor(() => expect(getContactScore).toHaveBeenCalledWith(2));
+
+  await act(async () => {
+    releaseNew({ ...score, contact_id: 2, score: 2 });
+    await newRequest;
+  });
+  await act(async () => {
+    releaseOld({ ...score, contact_id: 1, score: 1 });
+    await oldRequest;
+  });
+
+  expect(result.current.score?.contact_id).toBe(2);
+  expect(result.current.score?.score).toBe(2);
+});
+
+test('changing contact clears the previous score before the new request settles', async () => {
+  let release!: (v: ContactScoreResponse) => void;
+  const pending = new Promise<ContactScoreResponse>((resolve) => {
+    release = resolve;
+  });
+  vi.mocked(getContactScore).mockResolvedValue(score);
+  const { result, rerender } = renderHook(({ id }) => useContactScore(id), {
+    initialProps: { id: 1 },
+  });
+  await waitFor(() => expect(result.current.score?.contact_id).toBe(1));
+
+  vi.mocked(getContactScore).mockReturnValueOnce(pending);
+  rerender({ id: 2 });
+  expect(result.current.score).toBeNull();
+
+  await act(async () => {
+    release({ ...score, contact_id: 2 });
+    await pending;
+  });
+  expect(result.current.score?.contact_id).toBe(2);
+});

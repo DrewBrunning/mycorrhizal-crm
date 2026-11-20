@@ -465,6 +465,14 @@ jobs:
         working-directory: android
         run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail :app:assembleObtainiumDebug :app:assembleFossDebug :app:assemblePlayDebug
 
+      # The debug variants do not run R8/resource shrinking. The benchmark
+      # variant inherits the release R8/shrinker config but is debug-signed, so
+      # a keep-rule or shrinker break is caught on the PR that causes it
+      # instead of at release cut (the release keystore is CI-env only).
+      - name: Assemble the R8/minified benchmark variant
+        working-directory: android
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail :app:assembleObtainiumBenchmark
+
       # Issue #1133: F-Droid requires the FOSS APK carry no Firebase/GMS
       # code. obtainium is checked for the opposite, so this can't pass by
       # FCM having been dropped from the project entirely.

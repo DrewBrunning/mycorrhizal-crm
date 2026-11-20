@@ -49,6 +49,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Contact health score stays with the right person**: moving between contacts no longer shows the previous contact's health score while the new one loads.
 - **Contact export and connection refresh fixes**: exporting a single contact now includes every selected field instead of only email addresses, and changing a contact's connection depth or relation filter no longer shows a stale result or collapses the expanded list.
 - **Clearer import history and contact types** ([#2681](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2681)): import history now says "Skipped in review" and "Failed on import", and a private email or phone type shows in your language instead of the raw word "private".
 - **Clearer Monica connection errors** ([#2680](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2680)): an unreachable Monica now names the address that could not be reached, and a bad Monica address is flagged on the address field itself.
