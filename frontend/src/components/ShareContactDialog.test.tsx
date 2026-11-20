@@ -164,19 +164,20 @@ test('unchecking a section removes it from what is shared', async () => {
   fireEvent.mouseDown(await screen.findByLabelText('Recipient'));
   fireEvent.click(await screen.findByText('bob'));
 
-  const section = EXPORT_FIELD_SECTIONS.find((s) => !s.sensitive);
-  if (!section) throw new Error('no non-sensitive section');
-  const box = screen.getAllByRole('checkbox').find((c) => !c.hasAttribute('disabled'));
-  if (!box) throw new Error('no enabled checkbox');
-  const wasChecked = (box as HTMLInputElement).checked;
+  const section = EXPORT_FIELD_SECTIONS.find((s) => s.token === 'emails');
+  if (!section) throw new Error('emails section missing');
+  const expectedSections = EXPORT_FIELD_SECTIONS.filter((s) => !s.sensitive)
+    .map((s) => s.token)
+    .filter((token) => token !== section.token);
+  const box = screen.getByRole('checkbox', { name: /Emails/i });
+  expect((box as HTMLInputElement).checked).toBe(true);
   fireEvent.click(box);
-  expect((box as HTMLInputElement).checked).toBe(!wasChecked);
-  fireEvent.click(box);
-  expect((box as HTMLInputElement).checked).toBe(wasChecked);
+  expect((box as HTMLInputElement).checked).toBe(false);
 
   fireEvent.click(screen.getByRole('button', { name: 'Share' }));
   await waitFor(() => expect(onClose).toHaveBeenCalled());
-  expect(sentBody?.sections).toBeDefined();
+  expect(sentBody?.sections).toEqual(expectedSections);
+  expect(sentBody?.sections).not.toContain(section.token);
 });
 
 test('a failed share shows the error and keeps the dialog open', async () => {

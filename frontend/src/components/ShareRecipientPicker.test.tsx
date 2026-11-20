@@ -97,8 +97,15 @@ describe('mode search (inferred from an empty list for a short query)', () => {
     render(<Harness onPick={onPick} />);
     const input = await box();
     expect(await screen.findByText(HINT)).toBeInTheDocument();
+    // Advance the 250 ms debounce on fake timers, rather than sleeping on the
+    // real clock, so "no request for a 2-letter query" is a deterministic
+    // assertion instead of a race with an under-scheduled timer.
+    vi.useFakeTimers();
     type(input, 'bo');
-    await settle();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300);
+    });
+    vi.useRealTimers();
     expect(calls).toEqual(['']); // no request for a 2-letter query once search mode is known
     type(input, 'bob');
     await waitFor(() => expect(calls).toEqual(['', 'bob']));
@@ -116,8 +123,7 @@ describe('mode search (inferred from an empty list for a short query)', () => {
     type(input, 'car');
     type(input, 'caro');
     type(input, 'carol');
-    await settle();
-    expect(calls).toEqual(['', 'carol']);
+    await waitFor(() => expect(calls).toEqual(['', 'carol']));
   });
 
   test('a slow response for an older query never overwrites a newer one', async () => {
@@ -158,7 +164,6 @@ describe('mode search (inferred from an empty list for a short query)', () => {
     const input = await box();
     await screen.findByText(HINT);
     type(input, 'zzz');
-    await settle();
     fireEvent.mouseDown(input);
     expect(await screen.findByText('No matching users.')).toBeInTheDocument();
   });

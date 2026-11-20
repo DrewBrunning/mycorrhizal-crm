@@ -147,7 +147,7 @@ test("the server's 400 on end_date shows on the end field and keeps the editor o
 
   fireEvent.click(screen.getByRole('button', { name: /^Edit activity\b/i }));
   await waitFor(() => expect(screen.getByLabelText('End date (optional)')).toBeDefined());
-  await pickDate('Date', '2026-05-12', '2026-05-12').catch(() => undefined);
+  await pickDate('Date', '2026-05-12', '2026-05-12');
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
   expect(await screen.findByText('The end date cannot be before the start date')).toBeDefined();

@@ -107,8 +107,14 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
   }, [contactUid, depth, appliedRelation]);
 
   const handleApplyRelation = () => {
-    setAppliedRelation(relation.trim());
-    void refresh({ depth, relation: relation.trim() || undefined, overrideUid: contactUid });
+    const next = relation.trim();
+    if (next === appliedRelation) {
+      // The effect below only runs when appliedRelation changes; an explicit
+      // re-apply of the same value still needs its refresh.
+      void refresh({ depth, relation: next || undefined, overrideUid: contactUid });
+      return;
+    }
+    setAppliedRelation(next);
   };
 
   const renderChain = (chain: GraphChain) => (
