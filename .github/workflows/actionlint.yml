@@ -198,6 +198,13 @@ jobs:
       - name: Test go-test-retry-failed script
         run: bash .github/scripts/tests/go-test-retry-failed.test.sh
 
+      # Issue #2854: pins the Gradle artifact-retry wrapper -- a transient
+      # artifact-host failure (429/5xx/reset) is retried once and the leg
+      # passes loudly, while a compile error, a missing artifact, a repeat
+      # failure and the zero-retry nightly tier all still fail.
+      - name: Test gradle-retry-transient script
+        run: bash .github/scripts/tests/gradle-retry-transient.test.sh
+
       # Issue #1486: pins the manual-gate facts script -- an attested commit that
       # is not an ancestor of the release commit (diverged branch, or unknown to
       # the checkout) must read as a non-ancestor so the attestation fails
