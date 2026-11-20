@@ -5,6 +5,8 @@ import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.OccasionObligationRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.model.network.OccasionObligationInput
@@ -85,18 +87,57 @@ class ContactOccasionsViewModelTest {
             assertTrue(vm.uiState.value.items.isEmpty())
         }
 
+    // This test used to pin the no-vcard-uid message for a FAILED contact fetch (a 404), which was
+    // wrong: the fetch failing says nothing about the UID. It is the load error now (with Retry);
+    // the genuine message is kept for a contact that loaded with a blank UID (next test).
     @Test
-    fun `a contact without a vcard uid reports the missing-uid error and never lists`() =
+    fun `a failed contact fetch is the load error, not the no-vcard-uid message, and load retries`() =
         runTest(mainDispatcherRule.testDispatcher) {
-            coEvery { contacts.getContact(0) } returns Result.failure(ApiError.Client(404, "gone"))
+            val failure = ApiError.Client(
+                409,
+                "raw-body-not-shown",
+                ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+            )
+            coEvery { contacts.getContact(5) } returnsMany listOf(
+                Result.failure(failure),
+                Result.success(ContactRecordResponse(id = 5, card = Card(uid = UID)))
+            )
+            coEvery { repository.listForContact(UID) } returns Result.success(listOf(ob()))
             val vm = ContactOccasionsViewModel(
                 repository,
                 contacts,
-                SavedStateHandle(mapOf("contactId" to 0))
+                SavedStateHandle(mapOf("contactId" to 5))
+            )
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.errorRes)
+            assertEquals(failure, vm.uiState.value.loadError)
+            assertFalse(vm.uiState.value.isLoading)
+            coVerify(exactly = 0) { repository.listForContact(any()) }
+
+            vm.load()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.loadError)
+            assertEquals(listOf("o1"), vm.uiState.value.items.map { it.id })
+            coVerify(exactly = 2) { contacts.getContact(5) }
+        }
+
+    @Test
+    fun `a contact that loaded without a vcard uid reports the missing-uid error and never lists`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { contacts.getContact(5) } returns Result.success(
+                ContactRecordResponse(id = 5, card = Card(uid = null, name = Name(full = "No Uid")))
+            )
+            val vm = ContactOccasionsViewModel(
+                repository,
+                contacts,
+                SavedStateHandle(mapOf("contactId" to 5))
             )
             advanceUntilIdle()
 
             assertEquals(R.string.entities_error_no_vcard_uid, vm.uiState.value.errorRes)
+            assertNull(vm.uiState.value.loadError)
             coVerify(exactly = 0) { repository.listForContact(any()) }
         }
 

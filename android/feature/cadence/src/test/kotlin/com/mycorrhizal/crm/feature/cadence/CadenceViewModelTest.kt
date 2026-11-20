@@ -10,6 +10,8 @@ import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.CadencePolicyInput
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.registry.CadenceQualifyingType
 import com.mycorrhizal.crm.network.ApiError
@@ -125,6 +127,49 @@ class CadenceViewModelTest {
         advanceUntilIdle()
 
         assertEquals(R.string.cadence_error_no_vcard_uid, vm.uiState.value.errorRes)
+    }
+
+    // The no-uid message is for a contact that LOADED without a UID; a failed fetch (offline, 404,
+    // server error) says nothing about the UID and must show the real reason with a Retry.
+    @Test
+    fun `a failed contact fetch is the load error, not the no-vcard-uid message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val failure = ApiError.Client(
+            409,
+            "raw-body-not-shown",
+            ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.failure(failure)
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertFalse(vm.uiState.value.isLoading)
+        assertNull(vm.uiState.value.errorRes)
+        assertEquals(failure, vm.uiState.value.loadError)
+    }
+
+    @Test
+    fun `load after a failed contact fetch retries and recovers`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.getContact(5) } returnsMany listOf(
+            Result.failure(ApiError.Client(404, "gone")),
+            Result.success(ContactRecordResponse(id = 5, card = Card(uid = uid)))
+        )
+        coEvery { policyRepository.listForContact(uid) } returns Result.success(listOf(policy()))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.loadError != null)
+
+        vm.load()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.loadError)
+        assertEquals("p1", vm.uiState.value.policy?.id)
+        coVerify(exactly = 2) { contactRepository.getContact(5) }
     }
 
     @Test

@@ -429,6 +429,51 @@ class NetworkScreenTest {
         composeTestRule.onNodeWithText("Choose contact").assertIsDisplayed()
     }
 
+    // A failed start-contact fetch is the shared ErrorState (real reason + Retry), not the
+    // "no VCard UID" message or the bare picker prompt.
+    @Test
+    fun `a failed start-contact fetch shows the localized reason with Retry`() {
+        var refreshed = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NetworkScreenContent(
+                    uiState = NetworkUiState(
+                        fromContactId = 1,
+                        error = com.mycorrhizal.crm.network.ApiError.Client(
+                            409,
+                            "raw-body-not-shown",
+                            com.mycorrhizal.crm.model.network.ErrorReason(
+                                com.mycorrhizal.crm.model.network.ErrorReasonCode.FEED_LIMIT_REACHED,
+                                mapOf("max" to 50.0)
+                            )
+                        )
+                    ),
+                    showMenu = false,
+                    onBack = {},
+                    onMenuClick = {},
+                    onOpenContact = {},
+                    onDepthChange = {},
+                    onRelationInputChange = {},
+                    onRelationApply = {},
+                    onCircleSelect = {},
+                    onOpenPicker = {},
+                    onClosePicker = {},
+                    onSearchContacts = {},
+                    onSelectFrom = {},
+                    onErrorShown = {},
+                    onRefresh = { refreshed++ }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Contact has no VCard UID").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Retry").performClick()
+        assertEquals(1, refreshed)
+    }
+
     @Test
     fun `typing in the picker searches and selecting a result invokes onSelectFrom`() {
         var searched: String? = null

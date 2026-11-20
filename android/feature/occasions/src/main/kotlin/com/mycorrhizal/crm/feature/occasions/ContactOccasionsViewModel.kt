@@ -13,6 +13,7 @@ import com.mycorrhizal.crm.model.network.OccasionObligationKinds
 import com.mycorrhizal.crm.model.registry.OccasionSensitivity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -46,6 +47,8 @@ data class ContactOccasionsUiState(
     /** Set after a successful create/update so the screen can close the form; see [ContactOccasionsViewModel.onSavedHandled]. */
     val saved: Boolean = false,
     @StringRes val errorRes: Int? = null,
+    /** Issue #2629: a failed contact fetch (nothing to list): ErrorState + Retry. */
+    val loadError: ApiError? = null,
     val error: ApiError? = null
 )
 
@@ -71,8 +74,22 @@ class ContactOccasionsViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
-            val uid = contactRepository.getContact(contactId).getOrNull()?.vcardUid
+            _uiState.update {
+                it.copy(
+                isLoading = true,
+                error = null,
+                errorRes = null,
+                loadError = null
+            )
+            }
+            val contact = contactRepository.getContact(contactId)
+            // A FAILED fetch says nothing about the UID: show the real error with Retry.
+            contact.exceptionOrNull()?.let { failure ->
+                val error = failure.toApiError()
+                _uiState.update { it.copy(isLoading = false, loadError = error) }
+                return@launch
+            }
+            val uid = contact.getOrNull()?.vcardUid
             if (uid.isNullOrBlank()) {
                 _uiState.update {
                     it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid)

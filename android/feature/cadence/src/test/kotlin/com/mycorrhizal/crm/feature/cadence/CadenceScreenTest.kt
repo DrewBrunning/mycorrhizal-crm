@@ -23,7 +23,10 @@ import com.mycorrhizal.crm.model.network.CadenceHealth
 import com.mycorrhizal.crm.model.network.CadencePolicy
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -470,5 +473,46 @@ class CadenceScreenTest {
         // heading navigation found nothing inside this dialog.
         composeTestRule.onNodeWithText("Qualifying interactions")
             .assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    // A failed contact fetch is the shared ErrorState (localized reason + Retry), not "no VCard UID".
+    @Test
+    fun `a failed contact fetch shows the localized reason with Retry`() {
+        val policyRepository = mockk<CadencePolicyRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        val authRepository = mockk<AuthRepository>()
+        coEvery { contactRepository.getContact(5) } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(ContactRecordResponse(id = 5, card = Card(uid = uid)))
+        )
+        coEvery { policyRepository.listForContact(uid) } returns Result.success(emptyList())
+        coEvery { authRepository.observeSession() } returns flowOf(SessionState())
+        val viewModel = CadenceViewModel(
+            policyRepository,
+            contactRepository,
+            authRepository,
+            SavedStateHandle(mapOf("contactId" to 5))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { CadenceScreen(onBack = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Contact has no VCard UID").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { contactRepository.getContact(5) }
     }
 }
