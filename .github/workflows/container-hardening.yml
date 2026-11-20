@@ -194,9 +194,24 @@ jobs:
           sarif_file: 'trivy-config-results.sarif'
           category: 'trivy-config'
 
-      # Backstop behind the gitleaks pre-commit hook, not a replacement.
-      # Hard gate (#578): the committed tree is secret-clean, so any finding
-      # here is a real regression.
+  # Backstop behind the gitleaks pre-commit hook, not a replacement.
+  # Hard gate (#578): the committed tree is secret-clean, so any finding here
+  # is a real regression. This must run on every PR, not only infra changes:
+  # a credential committed under backend/ or frontend/ is exactly the case the
+  # path-gated hardening job would miss. It does not need the built image.
+  secret-scan:
+    name: Secret scan (working tree)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Trivy filesystem secret scan
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -209,7 +224,9 @@ jobs:
           trivyignores: '.trivyignore'
 
       - name: Upload Trivy secret-scan results to GitHub Security tab
-        if: always() && github.event_name != 'workflow_call'
+        # A fork PR's GITHUB_TOKEN is read-only, so the SARIF upload would 403;
+        # the scan itself still runs and fails the job on a finding.
+        if: always() && github.event_name != 'workflow_call' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
         with:
           sarif_file: 'trivy-secret-results.sarif'

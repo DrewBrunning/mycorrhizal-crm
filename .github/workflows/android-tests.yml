@@ -282,7 +282,7 @@ jobs:
           flags: android
           name: android-lcov
           disable_search: true
-          fail_ci_if_error: false
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
       # The original JaCoCo XML, under the non-gating `android-jacoco` flag
       # (no patch status in codecov.yml): once Codecov processes JaCoCo
@@ -445,7 +445,10 @@ jobs:
     # it the test-retry plugin's maxRetries=0-on-schedule tier would never
     # fire on a normal night (paths-filter is usually false with no
     # android/** change).
-    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+    # backend/** is included because the embedded server binary is
+    # cross-compiled from backend/ here; a backend-only change can break the
+    # GOOS=android build and must not merge untested (#1262).
+    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository

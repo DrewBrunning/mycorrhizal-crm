@@ -59,6 +59,9 @@ registry disagree, so the branch-protection list can never drift from the gate l
 | `Android scan (mobsfscan)` | `sast.yml` |
 | `Scan workflows (zizmor)` | `zizmor.yml` |
 | `CIS container hardening scan` | `container-hardening.yml` |
+| `Changelog note for operator-visible change` | `unit-tests.yml` (path-gated to migrations/config/.env.example; reports success when the filter does not match) |
+| `Migration Tests` | `migration-tests.yml` (aggregate over every per-PR migration leg) |
+| `Secret scan (working tree)` | `container-hardening.yml` (unconditional Trivy filesystem secret scan) |
 | `Docs & security-doc citations` | `unit-tests.yml` (typos + citecheck + depexceptions + deprecations + docscheck + releasegatecheck + governancecheck; app-token full-history gitleaks scan (rule-only base config, #1877); path-gated third-party notices drift on dependency changes, #1944) |
 | `Go server binary is byte-reproducible` | `reproducibility.yml` |
 | `codecov/patch/backend` | Codecov |
