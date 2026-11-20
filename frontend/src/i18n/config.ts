@@ -1,4 +1,4 @@
-import i18n from 'i18next';
+import i18n, { type Resource } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 // The `with` attribute keeps these JSON imports loadable by Playwright's native
@@ -9,6 +9,7 @@ import enTranslations from './locales/en.json' with { type: 'json' };
 import esTranslations from './locales/es.json' with { type: 'json' };
 import frTranslations from './locales/fr.json' with { type: 'json' };
 import itTranslations from './locales/it.json' with { type: 'json' };
+import { pseudoResources } from './pseudo';
 
 // #211: keep <html lang> in sync with the active i18next language so
 // assistive tech announces the page in the right language. `load:
@@ -26,27 +27,47 @@ i18n.on('languageChanged', syncHtmlLang);
 const noop = () => {};
 const origLog = console.log;
 console.log = noop;
+
+// #2536: `qps` is a runtime-only pseudo-locale, not a shipped language: it is
+// added only when the browser already asks for it, so a normal visitor does
+// not pay to generate ~4k pseudo strings. `load: 'languageOnly'` leaves the
+// bare `qps` code intact, so the same shipped bundle can be tested as-is.
+const resources: Resource = {
+  en: {
+    translation: enTranslations,
+  },
+  de: {
+    translation: deTranslations,
+  },
+  it: {
+    translation: itTranslations,
+  },
+  es: {
+    translation: esTranslations,
+  },
+  fr: {
+    translation: frTranslations,
+  },
+};
+
+const wantsPseudoLocale = (() => {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('i18nextLng') === 'qps';
+  } catch {
+    // Storage can throw when it is disabled or partitioned; treat that as
+    // "not requested" rather than failing app startup.
+    return false;
+  }
+})();
+if (wantsPseudoLocale) {
+  resources.qps = { translation: pseudoResources(enTranslations) };
+}
+
 void i18n
   .use(LanguageDetector)
   .use(initReactI18next)
   .init({
-    resources: {
-      en: {
-        translation: enTranslations,
-      },
-      de: {
-        translation: deTranslations,
-      },
-      it: {
-        translation: itTranslations,
-      },
-      es: {
-        translation: esTranslations,
-      },
-      fr: {
-        translation: frTranslations,
-      },
-    },
+    resources,
     fallbackLng: 'en',
     load: 'languageOnly',
     debug: false,
