@@ -334,10 +334,6 @@ time-based rule.
   :app:lintFossDebug`; `--auto-correct` fixes formatting. detekt 2.x supports the JDK 25 build JVM,
   so no downgrade is needed; do it for any Kotlin or resource change before pushing.
   `android/lint.xml` holds the reasoned lint exemptions (no `lint-baseline.xml`).
-- `SmsReceiver` is covered by `SmsReceiverTest` (issue #327): the receiver is
-  constructed through its internal constructor with mocked repositories and a
-  fake parse step, so `onReceive` is driven directly without booting the whole
-  Hilt graph.
 
 ### E2E Android (instrumented)
 
