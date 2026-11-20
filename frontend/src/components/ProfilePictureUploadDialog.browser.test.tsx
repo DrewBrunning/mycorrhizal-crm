@@ -4,12 +4,6 @@ import { userEvent } from 'vitest/browser';
 import '../i18n/config';
 import ProfilePictureUploadDialog from './ProfilePictureUploadDialog';
 
-// An existing committed repo image, reused instead of adding a binary fixture.
-// It is square (512x512), which is what the dialog's aspect={1} cropper expects.
-// Referenced by its served public path: importing from public/ makes Vite warn
-// on every run ("assets in the public directory are served at the root path").
-const AVATAR_URL = '/android-chrome-512x512.png';
-
 // Real-browser tier (issue #2539). ProfilePictureUploadDialog.test.tsx (jsdom)
 // documents its crop path as an explicit gap: the crop library depends on real
 // image measurement / ResizeObserver machinery jsdom does not drive, so
@@ -19,20 +13,37 @@ const AVATAR_URL = '/android-chrome-512x512.png';
 // frontend/AGENTS.md trap 1: explicit cleanup, no globals.
 afterEach(cleanup);
 
-async function avatarFile(): Promise<File> {
-  const response = await fetch(AVATAR_URL);
-  // A 404 would otherwise surface as a confusing "cropper never rendered".
-  expect(response.ok).toBe(true);
-  const blob = await response.blob();
-  return new File([blob], 'avatar.png', { type: 'image/png' });
+// Generated in the browser rather than committed as a binary fixture. 3:2 is
+// deliberately NOT the dialog's crop aspect: a square fixture makes "the crop
+// matches the image aspect" true by construction, so it cannot tell a working
+// cropper from one that ignores `aspect` or swaps axes.
+async function wideImageFile(): Promise<File> {
+  const canvas = document.createElement('canvas');
+  canvas.width = 600;
+  canvas.height = 400;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('2d canvas context unavailable');
+  ctx.fillStyle = '#3366cc';
+  ctx.fillRect(0, 0, 600, 400);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(40, 40, 220, 140);
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillRect(360, 210, 180, 120);
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (produced) => (produced ? resolve(produced) : reject(new Error('canvas.toBlob was empty'))),
+      'image/png',
+    );
+  });
+  return new File([blob], 'wide.png', { type: 'image/png' });
 }
 
-test('a loaded image gives the cropper a real, image-shaped crop area', async () => {
+test('a 3:2 image is measured, then cropped to the dialog’s square aspect', async () => {
   render(<ProfilePictureUploadDialog open onClose={() => {}} onUpload={async () => {}} />);
 
   // userEvent.upload drives the real file input; the dialog converts it to a
   // data URL and swaps to the crop view.
-  await userEvent.upload(screen.getByLabelText('Select an image'), await avatarFile());
+  await userEvent.upload(screen.getByLabelText('Select an image'), await wideImageFile());
 
   // AppDialog renders into a portal, so query the document, not render()'s
   // container element.
@@ -45,22 +56,33 @@ test('a loaded image gives the cropper a real, image-shaped crop area', async ()
     { timeout: 8000 },
   )) as HTMLElement;
 
-  // The cropper only renders once the browser reports natural dimensions.
+  // The cropper only renders once the browser reports natural dimensions;
+  // 600x400 proves it measured the real decoded image, non-trivially.
   const image = document.querySelector<HTMLImageElement>('.reactEasyCrop_Image');
   expect(image).not.toBeNull();
-  await waitFor(() => expect(image?.naturalWidth).toBe(512));
-  expect(image?.naturalHeight).toBe(512);
+  await waitFor(() => expect(image?.naturalWidth).toBe(600));
+  expect(image?.naturalHeight).toBe(400);
 
-  // The rendered image has a real box (the measurement jsdom cannot do)...
+  // The rendered image has a real box (the measurement jsdom cannot do), and
+  // it was scaled into the 350px-tall container rather than drawn at 600x400.
   const rendered = (image as HTMLImageElement).getBoundingClientRect();
   expect(rendered.width).toBeGreaterThan(0);
   expect(rendered.height).toBeGreaterThan(0);
+  expect(rendered.width).toBeLessThan(600);
+  expect(rendered.height).toBeLessThan(400);
 
-  // ...and the crop area is non-zero and matches the image's aspect ratio.
   await waitFor(() => expect(cropArea.getBoundingClientRect().width).toBeGreaterThan(0));
   const crop = cropArea.getBoundingClientRect();
-  const imageAspect =
-    (image as HTMLImageElement).naturalWidth / (image as HTMLImageElement).naturalHeight;
   expect(crop.height).toBeGreaterThan(0);
-  expect(crop.width / crop.height).toBeCloseTo(imageAspect, 2);
+
+  // Square because the DIALOG configures aspect={1}
+  // (ProfilePictureUploadDialog.tsx), not because the image is square: this
+  // fixture is 3:2. A cropper that used the image's aspect, or swapped axes,
+  // produces a 1.5 (or 0.67) ratio here and fails.
+  expect(crop.width / crop.height).toBeCloseTo(1, 2);
+
+  // The 3:2 image is wider than the square crop box: react-easy-crop fitted
+  // the image past the crop horizontally instead of shrinking the crop to the
+  // image's own shape.
+  expect(rendered.width).toBeGreaterThan(crop.width);
 });
