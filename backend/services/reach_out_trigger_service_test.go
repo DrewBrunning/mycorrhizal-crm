@@ -83,7 +83,7 @@ func TestDetectReachOutSuggestions_OrganizationChange(t *testing.T) {
 	require.Eventually(t, func() bool {
 		return atomic.LoadInt32(&hits) >= 1
 	}, 3*time.Second, 10*time.Millisecond, "the org change must trigger a reach_out_suggested webhook")
-	time.Sleep(150 * time.Millisecond)
+	WaitForWebhookGoroutines()
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits))
 
 	var deliveries []models.WebhookDelivery

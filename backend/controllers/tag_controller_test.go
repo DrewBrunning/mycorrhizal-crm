@@ -26,6 +26,19 @@ func TestCreateTag(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
+	var resp struct {
+		Tag models.Tag `json:"tag"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	assert.Equal(t, "poly", resp.Tag.Name)
+	assert.NotEmpty(t, resp.Tag.ID)
+	var user models.User
+	require.NoError(t, db.First(&user).Error)
+	// UserID is deliberately json:"-", so ownership is asserted on the stored row.
+	var stored models.Tag
+	require.NoError(t, db.First(&stored, "id = ?", resp.Tag.ID).Error)
+	assert.Equal(t, user.ID, stored.UserID, "a created tag must belong to the caller")
+
 	var count int64
 	db.Model(&models.Tag{}).Count(&count)
 	assert.EqualValues(t, 1, count)

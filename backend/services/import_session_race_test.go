@@ -47,16 +47,21 @@ func TestImportSessionPreviewAndConfirmShareSynchronization(t *testing.T) {
 			defer wg.Done()
 			<-start
 			for i := 0; i < 2; i++ {
+				// A concurrent confirm may legitimately retire the session,
+				// so these previews are allowed to fail; the race detector is
+				// what this half checks.
 				_, _ = m.PreviewCSV(db, 1, models.ImportPreviewRequest{SessionID: id, Mappings: csvMappings()})
 			}
 		}()
+		var confirmErr *apperrors.AppError
 		go func() {
 			defer wg.Done()
 			<-start
-			_, _ = m.Confirm(db, 1, models.ImportConfirmRequest{SessionID: id, Actions: actions}, log)
+			_, confirmErr = m.Confirm(db, 1, models.ImportConfirmRequest{SessionID: id, Actions: actions}, log)
 		}()
 		close(start)
 		wg.Wait()
+		require.Nil(t, confirmErr, "the confirm racing with previews must still import the session")
 	}
 	fireandforget.Wait()
 }
