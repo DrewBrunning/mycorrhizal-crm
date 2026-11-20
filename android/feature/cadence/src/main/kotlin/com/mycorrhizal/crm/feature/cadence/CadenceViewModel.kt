@@ -78,11 +78,11 @@ class CadenceViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                isLoading = true,
-                error = null,
-                errorRes = null,
-                loadError = null
-            )
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
             }
             // The policy's entity_id is the contact's VCardUID, so resolve it
             // from the record before listing. vcardUid prefers the top-level

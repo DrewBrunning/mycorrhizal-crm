@@ -76,11 +76,11 @@ class ContactOccasionsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                isLoading = true,
-                error = null,
-                errorRes = null,
-                loadError = null
-            )
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
             }
             val contact = contactRepository.getContact(contactId)
             // A FAILED fetch says nothing about the UID: show the real error with Retry.

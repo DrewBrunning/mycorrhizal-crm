@@ -212,11 +212,11 @@ class LifeEventsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                isLoading = true,
-                error = null,
-                errorRes = null,
-                loadError = null
-            )
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
             }
             val resolved = resolver.resolve(contactId)
             resolved.exceptionOrNull()?.let { failure ->
@@ -470,11 +470,11 @@ class GiftsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                isLoading = true,
-                error = null,
-                errorRes = null,
-                loadError = null
-            )
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
             }
             val resolved = resolver.resolve(contactId)
             resolved.exceptionOrNull()?.let { failure ->
@@ -766,11 +766,11 @@ class PreferencesViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                isLoading = true,
-                error = null,
-                errorRes = null,
-                loadError = null
-            )
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
             }
             val resolved = resolver.resolve(contactId)
             resolved.exceptionOrNull()?.let { failure ->
@@ -970,11 +970,11 @@ class ConversationAgendaViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
-                isLoading = true,
-                error = null,
-                errorRes = null,
-                loadError = null
-            )
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
             }
             val resolved = resolver.resolve(contactId)
             resolved.exceptionOrNull()?.let { failure ->
