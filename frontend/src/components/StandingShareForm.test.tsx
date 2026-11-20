@@ -1,8 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { API_BASE_URL } from '../api/client';
 import '../i18n/config';
 import { DateFormatProvider } from '../DateFormatProvider';
-import { errorEnvelope, mockApi, setupMswServer } from '../test/mswServer';
+import { errorEnvelope, mockApi, server, setupMswServer } from '../test/mswServer';
 import StandingShareForm from './StandingShareForm';
 
 setupMswServer();
@@ -99,6 +101,35 @@ describe('StandingShareForm', () => {
       sections: ['emails'],
     });
     expect(create[0].headers.get('Idempotency-Key')).toBeTruthy();
+  });
+
+  test('a retry after a failed create replays the same Idempotency-Key', async () => {
+    const keys: string[] = [];
+    let attempt = 0;
+    mockApi('get', '/export/jscontact', []);
+    server.use(
+      http.post(`${API_BASE_URL}/share-grants`, ({ request }) => {
+        keys.push(request.headers.get('Idempotency-Key') ?? '');
+        attempt += 1;
+        return attempt === 1
+          ? errorEnvelope(500, 'INTERNAL_ERROR', 'temporary failure')
+          : HttpResponse.json(ownerView());
+      }),
+    );
+    const { onCreated } = setup();
+    await pickRecipient('bob');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Emails' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    await waitFor(() => expect(keys).toHaveLength(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share' })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1));
+
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBe(keys[0]);
   });
 
   test('sends the chosen expiry as an end-of-day instant', async () => {

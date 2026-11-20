@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { act, cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
@@ -49,7 +49,9 @@ function renderApp() {
 // #2718
 test('a signed-out visit with empty storage never probes /users/me', async () => {
   renderApp();
-  await new Promise((r) => setTimeout(r, 20));
+  // Flush mount effects and their microtasks deterministically. A wall-clock
+  // sleep can miss a probe deferred past the sleep, or false-pass on a hang.
+  await act(async () => {});
   expect(fetchMock).not.toHaveBeenCalled();
 });
 

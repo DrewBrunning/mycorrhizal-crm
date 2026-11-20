@@ -91,6 +91,78 @@ test('a relation passed without depth or override uses the defaults; a blank-aft
   });
 });
 
+test('a stale response that settles after a newer one does not clobber the network', async () => {
+  let releaseOld!: (v: unknown) => void;
+  let releaseNew!: (v: unknown) => void;
+  const oldResponse = new Promise((resolve) => {
+    releaseOld = resolve;
+  });
+  const newResponse = new Promise((resolve) => {
+    releaseNew = resolve;
+  });
+  vi.mocked(getConnections)
+    .mockReturnValueOnce(oldResponse as never)
+    .mockReturnValueOnce(newResponse as never);
+
+  const { result } = renderHook(() => useConnections('alice-uid'));
+  act(() => {
+    void result.current.refresh({ depth: 1 });
+  });
+  act(() => {
+    void result.current.refresh({ depth: 2 });
+  });
+
+  await act(async () => {
+    releaseNew({ chains: [{ target_vcard_uid: 'new' }] });
+    await newResponse;
+  });
+  await act(async () => {
+    releaseOld({ chains: [{ target_vcard_uid: 'old' }] });
+    await oldResponse;
+  });
+
+  expect(
+    (result.current.connections as unknown as { chains: { target_vcard_uid: string }[] }).chains[0]
+      .target_vcard_uid,
+  ).toBe('new');
+});
+
+test('a stale failure that settles after a newer success does not overwrite the newer state', async () => {
+  let rejectOld!: (e: Error) => void;
+  let releaseNew!: (v: unknown) => void;
+  const oldResponse = new Promise((_resolve, reject) => {
+    rejectOld = reject;
+  });
+  const newResponse = new Promise((resolve) => {
+    releaseNew = resolve;
+  });
+  vi.mocked(getConnections)
+    .mockReturnValueOnce(oldResponse as never)
+    .mockReturnValueOnce(newResponse as never);
+
+  const { result } = renderHook(() => useConnections('alice-uid'));
+  act(() => {
+    void result.current.refresh({ depth: 1 });
+  });
+  act(() => {
+    void result.current.refresh({ depth: 2 });
+  });
+  await act(async () => {
+    releaseNew({ chains: [{ target_vcard_uid: 'new' }] });
+    await newResponse;
+  });
+  await act(async () => {
+    rejectOld(new Error('stale failure'));
+    await oldResponse.catch(() => {});
+  });
+
+  expect(result.current.error).toBeNull();
+  expect(
+    (result.current.connections as unknown as { chains: { target_vcard_uid: string }[] }).chains[0]
+      .target_vcard_uid,
+  ).toBe('new');
+});
+
 test('refresh follows the starting contact when it changes', async () => {
   const { result, rerender } = renderHook(({ uid }) => useConnections(uid), {
     initialProps: { uid: 'alice-uid' as string | undefined },
