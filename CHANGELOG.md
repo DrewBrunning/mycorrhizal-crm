@@ -49,6 +49,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Android announces whether an activity is selected**: in the "Add to activities" dialog a screen reader now says whether each row is checked, instead of only "checkbox".
 - **Long translated labels no longer clip or scroll** ([#2874](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2874)): at narrow widths the header keeps the Logout button readable and shortens the app name instead, and long unbroken text in an alert wraps rather than scrolling sideways.
 - **Android share and network fixes**: shared lists load every page instead of stopping at 100, private or secret addresses survive when you reveal sensitive items, a failed network load keeps its reason and Retry beside the organisation/place/pet overlay, and an existing "moved out" life event is a known type, not a custom one.
 - **Contact health score stays with the right person**: moving between contacts no longer shows the previous contact's health score while the new one loads.

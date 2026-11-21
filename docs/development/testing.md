@@ -348,6 +348,12 @@ time-based rule.
 - **Responsible for** view models, editors (`MultiValueEditor`, `AddressEditor`),
   screens, network parsing (`ContractFixtureTest.kt`), and offline/local-DB logic,
   all on the JVM via Robolectric.
+- **Screen a11y sweep.** `core:testing`'s `assertAccessibleSemantics` walks the
+  rendered semantics tree (every window, so an open dialog is covered too) and
+  asserts accessible names, 48dp icon-only touch targets, `onLongClickLabel`s,
+  no duplicate announcements, checkable roles announcing their state, and no
+  zero-size interactive nodes. Feature screen tests call it; it is the Compose
+  analogue of the web's axe route sweep.
 - **Must not be used for** real device/emulator flows (instrumented) or a real
   backend.
 - **Runs via** `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest`; CI `android-tests.yml` `test` job

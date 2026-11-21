@@ -21,4 +21,11 @@ dependencies {
     // Issue #1483: AssumeOrFailInCi uses JUnit's Assume and reads the instrumentation arguments.
     implementation(libs.junit)
     implementation(libs.androidx.test.runner)
+    // `createComposeRule()` needs the ComponentActivity from the test manifest,
+    // and this module's own `test` source set now exercises the sweep helper
+    // with real clickable/toggleable composables.
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.foundation)
+    testImplementation(libs.androidx.compose.material3)
 }
