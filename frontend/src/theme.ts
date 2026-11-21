@@ -132,6 +132,19 @@ export const lightTheme = createTheme({
       },
     },
 
+    MuiAlert: {
+      styleOverrides: {
+        // #2874: MUI gives `.MuiAlert-message` `overflow: auto`. A long
+        // unbreakable run (a URL, a pasted token, or the pseudo-locale's `~`
+        // padding) therefore turns the message into a scroll container with
+        // no focusable child, which axe reports as `scrollable-region-
+        // focusable` at narrow widths. Break long words instead of scrolling.
+        message: {
+          overflowWrap: 'anywhere',
+        },
+      },
+    },
+
     MuiChip: {
       styleOverrides: {
         root: {
@@ -305,6 +318,16 @@ export const darkTheme = createTheme({
         root: {
           backgroundImage: 'none',
           border: '1px solid #45423B', // hypha
+        },
+      },
+    },
+
+    // #2874: see lightTheme's matching MuiAlert comment -- both createTheme
+    // calls are independent, so the override must exist in each.
+    MuiAlert: {
+      styleOverrides: {
+        message: {
+          overflowWrap: 'anywhere',
         },
       },
     },
