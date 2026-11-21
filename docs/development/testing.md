@@ -1507,15 +1507,24 @@ criterion.**
     (7,660 mutants; `src/api` 89.41%, `src/hooks` 66.35%); **`src/utils`
     measured 2026-10-12: 85.07%** (701 mutants). Static mutants are ignored
     (`ignoreStatic`: 6% of mutants but 58% of the run time). The ~1h45m
-    figure was a 16-core dev box; on the 4-vCPU CI runner the api+hooks scope
+    figure was a 16-core dev box; on the 4-vCPU CI runner the whole scope
     projects to ~5h (issue #1571: the first nightly at this scope was
-    cancelled by the old 180-minute timeout at 53%), so the workflow runs
-    three parallel legs, `api`, `hooks` and `utils`, each with a 240-minute
-    timeout (api ~4.4k mutants, hooks ~3.3k, utils 701). Each leg derives its
-    config from `stryker.conf.json` with `jq` and carries its own `break` in
-    the workflow matrix (`api` 83, `hooks` 93, `utils` 79 — ~6 points under
-    each half's measured score); `stryker.conf.json` itself stays the combined
-    local-run config. Issue #1624 §3 added the first tests for the largest
+    cancelled by the old 180-minute timeout at 53%), so the workflow runs five
+    parallel legs, each with a 300-minute timeout: `api-a` (~2.8k mutants),
+    `api-b` (~2.8k), `hooks-a` (~1.9k), `hooks-b` (~1.9k) and `utils` (~2.9k).
+    The two halves of `api` and `hooks` are a partition by the first letter of
+    the file name after the scope's stem (`[a-eA-E]` / `[^a-eA-E]`, and
+    `use[a-gA-G]` / `use[^a-gA-G]`), so a new module lands in exactly one leg
+    with no registry to maintain, and each leg's derive step fails if its glob
+    matches no file. Issue #2857 split `api` and `hooks` again after the hooks
+    leg was cancelled at 240 minutes with only 2795/3709 mutants done: the
+    per-leg rate varies ~2x between nights (12-34 mutants/min observed), so leg
+    size is the lever, not just the timeout. Each leg derives its config from
+    `stryker.conf.json` with `jq` and carries its own `break` in the workflow
+    matrix (`api-a`/`api-b` 83, `hooks-a`/`hooks-b` 93, `utils` 79 — the
+    whole-leg scores measured 2026-11-19 were 86.56%, 90.27%, 96.39%, 96.86%
+    and 80.44%); `stryker.conf.json` itself stays the combined local-run
+    config. Issue #1624 §3 added the first tests for the largest
     untested hooks (`useContactMerge`, `useSystemEvents`, `useAudit`,
     `useSeafile`, `useImmich`), killing 121 survivors and lifting the hooks
     half from 66.35% to **70.12%** (2026-10-13, 2277 killed / 785 survived /

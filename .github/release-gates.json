@@ -435,7 +435,7 @@
       "tier": "advisory",
       "mandatory": false,
       "release_gate": false,
-      "criterion": "frontend/stryker.conf.json's thresholds.break fails the nightly run itself on a mutation-score drop below the ratchet (issue #915); still nightly-only and not release-blocking, so tier stays advisory."
+      "criterion": "each leg's thresholds.break in stryker.yml's matrix fails the nightly run itself on a mutation-score drop below its ratchet (issue #915); still nightly-only and not release-blocking, so tier stays advisory."
     },
     {
       "name": "Go mutation testing",

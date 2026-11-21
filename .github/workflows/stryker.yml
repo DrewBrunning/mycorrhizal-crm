@@ -13,30 +13,52 @@ name: Mutation Testing (Stryker)
 # vitest-runner's `related` mode narrows each mutant to the tests that touch
 # it.
 #
-# Three parallel legs (issues #1571, #1624). The ~7.7k-mutant api+hooks scope
-# measured ~1h45m on a 16-core dev box, but the first nightly at that scope on
-# a 4-vCPU ubuntu-latest runner was still at 53% (4942/7662, Stryker's own
-# estimate ~5h15m total) when the old single job's 180-minute timeout cancelled
-# it, and a single job leaves no headroom under GitHub's 6h job cap. The scope
-# splits into api (~4.4k mutants, ~2.5h at the observed ~29 mutants/min), hooks
-# (~3.3k, ~2h) and utils (701 mutants, ~10m); the 240-minute timeout leaves
-# ~1.5x margin on the larger leg. Each leg derives its config from
-# stryker.conf.json with jq (one source for everything but the file subset and
-# the break threshold), so the combined config still serves a local full run.
+# Parallel legs (issues #1571, #1624, #2857). The scope is ~12.4k mutants on
+# the 4-vCPU ubuntu-latest runner, where a leg's wall clock is dominated by
+# per-mutant test startup, not by CPU. The first split (#1571) cut one 180-min
+# job into api/hooks/utils legs at 240 minutes; by 2026-11-21 that was no
+# longer enough: the hooks leg reached only 2795/3709 mutants in 3h49m
+# (~12 mutants/min, ~5h projected) and the 240-minute timeout cancelled it,
+# while the api leg did 5630 mutants in 165 minutes (~34/min) the same night.
+# Per-leg rates are noisy (hooks measured ~19/min on 2026-11-19), so the fix
+# is more, smaller legs rather than a bigger timeout alone:
 #
-# Threshold-gated (issue #915): each leg's `break` is set ~6 points under the
-# score measured for its half (docs/development/testing.md: api 89.41%, hooks
-# 66.35% on 2026-10-06, 70.18% on 2026-10-13 after the #1624 §3 tests, then an
-# estimated 99.18% after the #1662 survivor pass and its disable audit
-# (per-file re-measure substituted into the CI hooks report);
-# utils 85.07% on 2026-10-12; combined against
-# stryker.conf.json's 74), so `npx stryker run` itself exits non-zero — and
-# this job goes red — on a mutation-score drop below it, rather than the score
-# being printed and ignored. Splitting the gate makes it stricter for api and
-# stops a strong api score masking a hooks/utils regression. The HTML report
-# still uploads as an artifact either way. Still advisory at release time
-# (docs/development/release-gates.md): nightly-only, so a regression is
-# caught by morning rather than blocking the PR that introduced it.
+#   leg      glob                        mutants  score
+#   api-a    src/api/[a-eA-E]*.ts         2838   86.56%
+#   api-b    src/api/[^a-eA-E]*.ts        2827   90.27%
+#   hooks-a  src/hooks/use[a-gA-G]*.ts    1949   96.39%
+#   hooks-b  src/hooks/use[^a-gA-G]*.ts   1852   96.86%
+#   utils    src/utils/*.ts               2923   80.44%
+#
+# (Mutant counts measured on 2026-11-21; the scores are the same file subsets
+# of the 2026-11-19 CI report, the last run that produced a full one.)
+#
+# The two halves of a scope are a partition by construction -- a character is
+# either in [a-eA-E] or not -- so a new src/api/*.ts or src/hooks/use*.ts file
+# lands in exactly one leg with no registry to update, and the leg's `compgen`
+# guard fails the job if a pattern matches nothing. At the slowest rate
+# observed per leg (12-25 mutants/min) the split projects ~125-175 minutes per
+# leg, so the 300-minute timeout leaves ~1.7x margin on the worst leg and ~2.4x
+# on api. Each leg derives its config from stryker.conf.json with jq -- the
+# leg's glob replaces its scope entry, the exclusions come from the committed
+# config unchanged -- so the combined config still serves a local full run.
+#
+# Threshold-gated (issue #915): each leg's `break` stays at its scope's value
+# (docs/development/testing.md), so the split changes which mutants a number
+# covers, never the number: api 83 against 86.56/90.27 measured (the [a-eA-E]
+# half includes contacts.ts and errorHandling.ts, the two weaker api modules,
+# so its margin is ~3.5 points rather than the old ~6), hooks 93 against
+# 96.39/96.86 (the 99.18% estimate below was a per-file re-measure substituted
+# into the CI report; the whole-leg number is what a leg's break can be
+# measured against), utils 79 against 80.44 -- the thinnest margin here,
+# carried over unchanged from the pre-split gate. `npx stryker run` itself
+# exits non-zero — and this job goes red — on a mutation-score drop below the
+# leg's break, rather than the score being printed and ignored. Splitting the
+# gate makes it stricter for api and stops a strong api score masking a
+# hooks/utils regression. The HTML report still uploads as an artifact either
+# way. Still advisory at release time (docs/development/release-gates.md):
+# nightly-only, so a regression is caught by morning rather than blocking the
+# PR that introduced it.
 #
 # `Mutation test (core modules)` is kept as a small aggregate job so the check
 # name .github/release-gates.json registers still exists.
@@ -53,13 +75,21 @@ jobs:
   stryker:
     name: Stryker leg (${{ matrix.leg }})
     runs-on: ubuntu-latest
-    timeout-minutes: 240
+    timeout-minutes: 300
     strategy:
       fail-fast: false
       matrix:
         include:
-          - leg: api
-            prefix: src/api/
+          # SCOPES: the two halves of each scope are a partition -- a file's
+          # first letter after the scope's stem is either in [a-eA-E] (api) /
+          # [a-gA-G] (hooks) or not. Keep that shape if you re-tune a
+          # boundary; a plain [f-z] half would silently drop a file whose name
+          # starts with an underscore or a digit.
+          - leg: api-a
+            glob: 'src/api/[a-eA-E]*.ts'
+            break: 83
+          - leg: api-b
+            glob: 'src/api/[^a-eA-E]*.ts'
             break: 83
           # Issue #1624 §3: baseline 2026-10-12 measured 66.40% (3261 mutants,
           # 865 survivors); 70.18% on 2026-10-13. Issue #1662 classified the
@@ -70,18 +100,27 @@ jobs:
           # (first-render loading state, never-clear/never-truncate branches,
           # empty-id create guards) and killed them with tests: per-file
           # re-measure estimate 99.18% (3134 killed / 3160 valid; 26 known
-          # survivors, 88 disable comments left, was 113). Break stays ~6
-          # points under, rounded to 93.
-          - leg: hooks
-            prefix: src/hooks/
+          # survivors, 88 disable comments left, was 113). Break stays at the
+          # pre-split 93; the two halves measured 96.39% and 96.86% whole-leg
+          # on 2026-11-19.
+          - leg: hooks-a
+            glob: 'src/hooks/use[a-gA-G]*.ts'
+            break: 93
+          - leg: hooks-b
+            glob: 'src/hooks/use[^a-gA-G]*.ts'
             break: 93
           # Issue #1624 §3: pure src/utils/*.ts helpers (date/cadence
           # formatting, the graph budget, CSV/vCard helpers) are cheap,
           # high-yield Stryker targets. Measured 2026-10-12 at 85.07%
-          # (587 killed / 92 survived / 11 no-coverage, 9m12s on 16 cores);
-          # break sits ~6 points under, matching api/hooks.
+          # (587 killed / 92 survived / 11 no-coverage, 9m12s on 16 cores) on
+          # the then-701 mutant scope; the modules added since (markdown.ts,
+          # jscontactDisplay.ts) are weaker, so the 2026-11-19 whole-leg score
+          # is 80.44% against this unchanged 79 break. Not split: it is the
+          # shortest leg (~2h20m worst observed) and its two halves straddle
+          # the break (84.73% / 76.88%), so splitting would need a per-leg
+          # threshold change rather than a pure capacity change.
           - leg: utils
-            prefix: src/utils/
+            glob: 'src/utils/*.ts'
             break: 79
 
     steps:
@@ -106,11 +145,17 @@ jobs:
       - name: Derive this leg's Stryker config
         working-directory: frontend
         env:
-          PREFIX: ${{ matrix.prefix }}
+          GLOB: ${{ matrix.glob }}
           BREAK: ${{ matrix.break }}
         run: |
-          jq --arg prefix "$PREFIX" --argjson brk "$BREAK" '
-            .mutate |= map(select(startswith("!") or startswith($prefix)))
+          # A leg whose glob matches nothing would mutate zero files and go
+          # green. Stryker only warns about that; fail closed instead.
+          if ! compgen -G "$GLOB" > /dev/null; then
+            echo "::error::leg glob matched no files: $GLOB"
+            exit 1
+          fi
+          jq --arg glob "$GLOB" --argjson brk "$BREAK" '
+            .mutate = ([$glob] + [.mutate[] | select(startswith("!"))])
             | .thresholds.break = $brk
             | .htmlReporter.fileName = "reports/mutation/index.html"
           ' stryker.conf.json > stryker.leg.conf.json
