@@ -223,19 +223,44 @@ Continuing what is already in place (#315):
 
 ## Applying and verifying
 
-Apply the branch rulesets (find each `<id>` with `gh api /repos/DrewBrunning/mycorrhizal-crm/rulesets`):
+All four rulesets already exist on the repository, so applying a committed change is a `PUT`
+against the existing id. Resolve the ids first (`main-hard-checks`, `main-protection`,
+`release-branch-protection`, `v-tag-protection`):
 
 ```sh
-# assumes: GitHub CLI, admin on the repo
-gh api --method PUT /repos/DrewBrunning/mycorrhizal-crm/rulesets/<main-protection-id> \
-  --input .github/rulesets/main-protection.json
-gh api --method PUT /repos/DrewBrunning/mycorrhizal-crm/rulesets/<main-hard-checks-id> \
-  --input .github/rulesets/main-hard-checks.json
-# tags-v and release-branches do not exist yet -- create them:
-gh api --method POST /repos/DrewBrunning/mycorrhizal-crm/rulesets \
-  --input .github/rulesets/tags-v.json
-gh api --method POST /repos/DrewBrunning/mycorrhizal-crm/rulesets \
-  --input .github/rulesets/release-branches.json
+gh api /repos/DrewBrunning/mycorrhizal-crm/rulesets --jq '.[] | [.id, .name] | @tsv'
+```
+
+Then apply every file with `PUT`. Strip the documentation-only `_comment` key first: the API
+never echoes it back, `rulesetdrift` normalises it away, and the payload should be exactly what
+round-trips.
+
+```sh
+# assumes: GitHub CLI with admin on the repo
+apply() {  # apply <ruleset-id> <committed-file>
+  jq 'del(._comment)' "$2" > /tmp/ruleset-payload.json
+  gh api --method PUT "/repos/DrewBrunning/mycorrhizal-crm/rulesets/$1" \
+    --input /tmp/ruleset-payload.json
+}
+apply <main-hard-checks-id>          .github/rulesets/main-hard-checks.json
+apply <main-protection-id>           .github/rulesets/main-protection.json
+apply <release-branch-protection-id> .github/rulesets/release-branches.json
+apply <v-tag-protection-id>          .github/rulesets/tags-v.json
+```
+
+`POST /repos/DrewBrunning/mycorrhizal-crm/rulesets` is only for a ruleset file with **no** live
+counterpart. It cannot update an existing ruleset, and a duplicate name makes the drift check's
+name-to-id lookup ambiguous — so never `POST` a file that already appears in the list above.
+
+Apply before opening a PR, not after: a newly required context is enforced on every open PR the
+moment it goes live, including heads cut before the job that produces that context existed.
+
+Applying is not finished until the live state matches the files. Dispatch the standing alarm and
+require it to pass (it also runs on the Monday schedule):
+
+```sh
+gh workflow run governance-drift.yml --ref main
+gh run list --workflow 'Governance drift' --limit 1   # must be success
 ```
 
 Then verify the protections actually hold (#508 action 7) — each of these must be **refused**:
