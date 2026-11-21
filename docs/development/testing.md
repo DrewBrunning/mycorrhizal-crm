@@ -372,21 +372,31 @@ time-based rule.
   Hilt, a network call, `Clock.System.now()` or a generated ID: a screenshot
   test renders a stateless `*Content` composable from a hand-built state so a
   diff can only be a visual change.
-- **Runs via** `./gradlew :feature:contacts:verifyRoborazziDebug` locally. CI
-  `android-tests.yml` has **no separate screenshot step**: the `android-unit`
-  job's existing "Unit + integration tests (incl. Robolectric)" step passes
-  `-Proborazzi.test.verify=true`, so the goldens are captured and compared
-  during the test pass that already happens. Measured on this module with
-  `--rerun` (compilation excluded from both): 35.75 s without verify vs 35.98 s
-  with it, i.e. the whole matrix costs ~0.2 s — a separate verify step would
-  re-run the module's full suite for ~2 min. Goldens live in
-  `android/feature/contacts/src/test/screenshots/` (`roborazzi { outputDir }` in
-  the module's `build.gradle.kts`), one file per
+- **Runs via** `./gradlew :feature:contacts:verifyRoborazziDebug
+  :feature:auth:verifyRoborazziDebug :feature:settings:verifyRoborazziDebug`
+  locally. CI `android-tests.yml` has **no separate screenshot step**: the
+  `android-unit` job's existing "Unit + integration tests (incl. Robolectric)"
+  step passes `-Proborazzi.test.verify=true`, so the goldens in every module are
+  captured and compared during the test pass that already happens. Measured on
+  `:feature:contacts` with `--rerun` (compilation excluded from both): 35.75 s
+  without verify vs 35.98 s with it, i.e. the whole matrix costs ~0.2 s — a
+  separate verify step would re-run the module's full suite for ~2 min.
+  Goldens live per module in `android/feature/<module>/src/test/screenshots/`
+  (`roborazzi { outputDir }` in the module's `build.gradle.kts`), one file per
   `<Screen>_<theme>_<fontScale>[_tablet].png` in the matrix light/dark x font
   scale 1.0/2.0 on a Pixel 7, plus one `RobolectricDeviceQualifiers.MediumTablet`
-  run.
+  run. Three modules have goldens today:
+  - `:feature:contacts` — `ContactListScreenContent` (five contacts and the
+    empty state) and `ContactDetailContent` (one fully populated contact).
+  - `:feature:auth` — `LoginScreenContent` (credentials mode, light and dark;
+    the invalid-credentials error state in light). No tablet cell: the screen
+    has no size-class branch to pin.
+  - `:feature:settings` — `SettingsRootContent` (light/dark at 1.0, light at
+    2.0, tablet at 1.0; dark at 2.0 is skipped because the rows' geometry is
+    theme-independent).
 - **Regenerating is a review action.** After an intentional visual change run
-  `cd android && ./gradlew :feature:contacts:recordRoborazziDebug` and commit
+  e.g. `cd android && ./gradlew :feature:contacts:recordRoborazziDebug`
+  (`recordRoborazziDebug` in the module that changed) and commit
   the changed PNGs with the code; the diff is the review. A verify failure
   writes `<golden>_actual.png`/`<golden>_compare.png` under
   `build/outputs/roborazzi/` (uploaded as `android-roborazzi-diffs`).
@@ -930,7 +940,7 @@ gap to file, never something to silently absorb.
 | Backup/restore/cross-version restore failure | DB/integration (`backup_test.go`, restore tests) + release/install smoke | v0.6.6 |
 | Component/hook state bugs, i18n key/placeholder drift, format-provider bugs | Frontend unit | v0.6.11 |
 | Android view-model/editor/offline/local-migration bugs | Android unit/Robolectric | v0.6.7, v0.6.10 |
-| Android layout/theme/font-scale regressions | Android unit/Robolectric (Roborazzi goldens, `android/feature/contacts/src/test/screenshots/`) | #2534 |
+| Android layout/theme/font-scale regressions | Android unit/Robolectric (Roborazzi goldens, `android/feature/*/src/test/screenshots/`) | #2534 |
 | Whole-user-flow breakage (register→create→search→export), shipped-artifact boot | E2E web | v0.6.3, v0.6.6 |
 | Layout/theme regressions (a CSS refactor shifting a card or breaking a dialog) | E2E web (`visual.spec.ts`) | v0.6.3 (#258) |
 | Service-worker lifecycle, stale-cache stranding | E2E web (`serviceWorker.spec.ts`) | v0.6.10 |

@@ -42,19 +42,23 @@ anything mirrored across clients; the Kotlin-specific rules are here.
 ## Screenshot goldens
 
 Issue #2534: Compose visual regression runs on the same Robolectric stack via
-Roborazzi, in `:feature:contacts` (`src/test/kotlin/.../screenshot/`, goldens in
-`src/test/screenshots/`). Each test renders a stateless `*Content` composable from
-a hand-built state across light/dark x font scale 1.0/2.0 on a Pixel 7, plus one
-`RobolectricDeviceQualifiers.MediumTablet` run; never feed a golden a ViewModel,
-Hilt, network, clock or generated ID. Verify with
-`./gradlew :feature:contacts:verifyRoborazziDebug` locally; CI does not run a
-separate screenshot step — the `android-unit` job's unit-test step passes
-`-Proborazzi.test.verify=true`, so the goldens verify inside the test pass that
-already happens (~0.2 s for the whole matrix, not a second module run). After an
-intentional visual change regenerate with
-`./gradlew :feature:contacts:recordRoborazziDebug` and commit the PNG diff (the
-diff is the review). Diffs land in `build/outputs/roborazzi/`. Record on Linux,
-CI's platform — never hand-edit or delete a golden to turn a build green.
+Roborazzi, in `:feature:contacts`, `:feature:auth` and `:feature:settings`
+(`src/test/kotlin/.../screenshot/`, goldens in `src/test/screenshots/`). Each
+test renders a stateless `*Content` composable from a hand-built state across
+light/dark x font scale 1.0/2.0 on a Pixel 7, plus one
+`RobolectricDeviceQualifiers.MediumTablet` run where the screen has a layout
+branch worth pinning; never feed a golden a ViewModel, Hilt, network, clock or
+generated ID. Verify with
+`./gradlew :feature:contacts:verifyRoborazziDebug
+:feature:auth:verifyRoborazziDebug :feature:settings:verifyRoborazziDebug`
+locally; CI does not run a separate screenshot step — the `android-unit` job's
+unit-test step passes `-Proborazzi.test.verify=true`, so the goldens verify
+inside the test pass that already happens (~0.2 s for the whole matrix, not a
+second module run). After an intentional visual change regenerate with
+`./gradlew :feature:contacts:recordRoborazziDebug` (or the module that changed)
+and commit the PNG diff (the diff is the review). Diffs land in
+`build/outputs/roborazzi/`. Record on Linux, CI's platform — never hand-edit or
+delete a golden to turn a build green.
 
 ## Instrumented E2E
 
