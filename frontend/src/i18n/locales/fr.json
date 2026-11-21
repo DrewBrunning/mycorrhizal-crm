@@ -1272,6 +1272,15 @@
     "offlineMessage": "Vous êtes hors ligne. Vérifiez votre connexion et réessayez.",
     "networkError": "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez."
   },
+  "dateFormat": {
+    "placeholder": {
+      "eu": "JJ.MM.AAAA",
+      "us": "MM/JJ/AAAA",
+      "iso": "AAAA-MM-JJ",
+      "ca": "JJ/MM/AAAA",
+      "euHyphen": "JJ-MM-AAAA"
+    }
+  },
   "externalLinks": {
     "title": "Liens externes",
     "otherLinks": "Autres intégrations",

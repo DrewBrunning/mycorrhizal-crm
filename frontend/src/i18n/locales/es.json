@@ -1272,6 +1272,15 @@
     "offlineMessage": "Estás sin conexión. Comprueba tu conexión e inténtalo de nuevo.",
     "networkError": "No se puede conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo."
   },
+  "dateFormat": {
+    "placeholder": {
+      "eu": "DD.MM.AAAA",
+      "us": "MM/DD/AAAA",
+      "iso": "AAAA-MM-DD",
+      "ca": "DD/MM/AAAA",
+      "euHyphen": "DD-MM-AAAA"
+    }
+  },
   "externalLinks": {
     "title": "Enlaces externos",
     "otherLinks": "Otras integraciones",

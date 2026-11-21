@@ -1,5 +1,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
+// The provider resolves its date masks through i18next now (#2536), so this
+// hook test needs the app's i18n instance registered before it renders.
+import './i18n/config';
 import {
   autoFormatBirthdayInputWithFormat,
   calculateAgeFromBirthday,

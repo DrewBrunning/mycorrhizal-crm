@@ -308,13 +308,14 @@ export default function ContactInformation({
                       variant="body2"
                       component="a"
                       href={buildTelLink(r.value)}
+                      data-user-content
                       sx={{ color: 'inherit' }}
                     >
                       {r.value}
                       {r.type ? ` (${typeLabel(r.type)})` : ''}
                     </Typography>
                   ) : (
-                    <Typography variant="body2">
+                    <Typography variant="body2" data-user-content>
                       {r.value}
                       {r.type ? ` (${typeLabel(r.type)})` : ''}
                     </Typography>
@@ -386,6 +387,7 @@ export default function ContactInformation({
                   variant="body2"
                   component="a"
                   href={buildMailtoLink(r.value)}
+                  data-user-content
                   sx={{ color: 'inherit' }}
                 >
                   {r.value}
@@ -450,13 +452,14 @@ export default function ContactInformation({
                       href={r.value}
                       target="_blank"
                       rel="noopener noreferrer"
+                      data-user-content
                       sx={{ color: 'inherit', wordBreak: 'break-all' }}
                     >
                       {r.value}
                       {r.type ? ` (${typeLabel(r.type)})` : ''}
                     </Typography>
                   ) : (
-                    <Typography variant="body2" sx={{ wordBreak: 'break-all' }}>
+                    <Typography variant="body2" data-user-content sx={{ wordBreak: 'break-all' }}>
                       {r.value}
                       {r.type ? ` (${typeLabel(r.type)})` : ''}
                     </Typography>
@@ -510,13 +513,14 @@ export default function ContactInformation({
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
+                    data-user-content
                     sx={{ color: 'inherit' }}
                   >
                     {formatted}
                     {suffix}
                   </Typography>
                 ) : (
-                  <Typography variant="body2">
+                  <Typography variant="body2" data-user-content>
                     {formatted}
                     {suffix}
                   </Typography>

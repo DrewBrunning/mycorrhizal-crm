@@ -148,6 +148,7 @@ export default function NextcloudSettings() {
               fullWidth
               size="small"
               placeholder="https://nextcloud.example.com"
+              slotProps={{ htmlInput: { translate: 'no' } }}
             />
 
             <TextField

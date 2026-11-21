@@ -599,6 +599,68 @@ with fixed payloads (the dashboard's "Stay in Touch" column is server-random).
 Only add a view here that you are willing to regenerate when the design
 changes.
 
+### Pseudo-localization (issue #2536)
+
+`frontend/e2e/pseudoLocale.spec.ts` renders the UI under `qps`, the conventional
+pseudo-locale, and fails on two defect classes that key-parity tests cannot see:
+**hardcoded strings** (they have no key, so `locales.test.ts` is blind to them)
+and **text expansion** (German/French run 30–40% longer than English, so a
+button, chip, table header or dialog label can stop fitting).
+
+The mechanism is runtime-only: `frontend/src/i18n/pseudo.ts` accents every vowel
+and pads each translated string by 40%, wrapping it in `⟦…⟧`;
+`frontend/src/i18n/config.ts` adds the `qps` resource only when the browser's
+`localStorage.i18nextLng` asks for it, so nothing ships to ordinary users. The
+brackets are the delimiter the spec uses to tell translated text from literals,
+which is why the spec is strict: any run of 3+ consecutive ASCII letters on
+screen *outside* `⟦…⟧` is reported.
+
+The spec visits the dashboard, contacts list, contact detail (a spec-owned
+contact), Settings and the Add Reminder dialog, and on each one:
+
+- collects **text nodes** (not `innerText`, so a translated label and an
+  adjacent user-supplied name in the same parent stay distinguishable) and the
+  `aria-label`/`placeholder`/`title`/`alt` attributes, which are rendered by
+  assistive tech and tooltips rather than on the page;
+- measures `<button>`, `[role="tab"]`, `th` and `.MuiChip-label`, failing when
+  `scrollWidth > clientWidth + 1` unless the element has
+  `text-overflow: ellipsis`.
+
+Two markup contracts keep that rule strict without false positives:
+
+- **`data-user-content`** marks content owned by the data layer, never by the
+  translation catalog: user-entered records (contact names, emails, phones,
+  addresses, notes, reminder messages), server-provided values (link field type
+  names and protocol templates) and environment-derived descriptions
+  (user-agent device descriptions, build versions). Add it to the element that
+  renders the value, not a container that also holds UI copy. A render site
+  without it fails the spec, so the exemption cannot rot silently.
+- **`translate="no"`** marks a literal machine value that must never be
+  translated, such as an example URL in a placeholder. It is the standard HTML
+  attribute, so translation tooling honours it too.
+
+MUI's own built-in control labels (Autocomplete's Clear/Open, …) are exempt:
+they come from `@mui/material/locale` via `i18n/muiLocale.ts`, which has no
+`qps` entry by design, so they are not i18next keys and cannot be
+pseudo-localized. When adding a surface, extend the spec's `MUI_BUILTIN_LABELS`
+selector rather than reporting them as app copy.
+
+Fonts and the clock are pinned by `e2e/pinnedEnvironment.ts` — the same
+committed IBM Plex Sans woff2 route interception and frozen clock as the visual
+baselines — because `scrollWidth` varies with whatever fallback font the runner
+has installed. Layout is allowed to settle before measuring; do not add
+tolerance to the assertion, since an intermittent overflow is a harness bug.
+
+```sh
+docker compose -f docker-compose.test.yml up -d --build --wait
+cd frontend
+npx playwright test pseudoLocale.spec.ts
+```
+
+The spec runs in the normal `e2e` job with the rest of `frontend/e2e/`; no
+separate CI job exists. It is desktop-viewport (1280×720) only, matching the
+visual baselines.
+
 ### Service-worker upgrade suite (issue #476)
 
 `playwright.sw.config.ts` runs a **separate** Playwright config (specs under
@@ -933,6 +995,7 @@ gap to file, never something to silently absorb.
 | Android layout/theme/font-scale regressions | Android unit/Robolectric (Roborazzi goldens, `android/feature/contacts/src/test/screenshots/`) | #2534 |
 | Whole-user-flow breakage (register→create→search→export), shipped-artifact boot | E2E web | v0.6.3, v0.6.6 |
 | Layout/theme regressions (a CSS refactor shifting a card or breaking a dialog) | E2E web (`visual.spec.ts`) | v0.6.3 (#258) |
+| Untranslated UI text (a hardcoded literal) and text expansion overflowing a control | E2E web (`pseudoLocale.spec.ts`, `qps`) | #2536 |
 | Service-worker lifecycle, stale-cache stranding | E2E web (`serviceWorker.spec.ts`) | v0.6.10 |
 | Interrupted deploy — asset skew (stale index.html referencing chunks the new build deleted → blank boot) | E2E web (`e2e/sw-upgrade/assetSkew.spec.ts`, client half in `public/asset-skew.js`) | v0.6.10 (#477) |
 | Interrupted deploy — backend up but not ready (wall of failed requests while the server migrates) | E2E web (`e2e/sw-upgrade/readiness.spec.ts`, client half in `ServerStartingGate`) | v0.6.10 (#477) |

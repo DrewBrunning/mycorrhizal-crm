@@ -79,6 +79,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Icon buttons name the item they act on** ([#2673](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2673), [#2706](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2706)): Edit, Delete, Remove, Share, Restore and similar buttons in lists now announce which item they belong to, such as "Edit Summer BBQ", so screen reader users can tell rows apart.
 - **Sign-in fields and language on load** ([#2675](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2675), [#2718](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2718), [#2685](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2685)): password managers now fill the sign-in and password forms, a signed-out visit no longer triggers a failed request, and a language change on one device reaches your other signed-in browsers on their next load.
 - **Calmer screen reader announcements and a working section jump** ([#2682](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2682), [#2683](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2683)): informational notices no longer announce as alerts when a page loads, and choosing a section from the contact page's jump menu moves keyboard focus to that section and respects reduced motion.
+- **Date-field hints in your language** ([#2536](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2536)): the date and birthday fields now show the day/month/year mask in your language, such as TT.MM.JJJJ in German, instead of always using English D/M/Y letters.
 
 ### Security
 

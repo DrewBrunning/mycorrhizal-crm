@@ -52,9 +52,6 @@
 // The automatic per-test a11y scan (fixtures.ts) still runs after each shot,
 // so these views stay double-gated: pixel-identical *and* axe-clean.
 
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import type { Page } from '@playwright/test';
 import type { Circle, CircleMember } from '../src/api/circles';
 import type { Birthday, Contact, ContactSummaryDTO } from '../src/api/contacts';
 import type { DashboardReminder, DashboardResponse } from '../src/api/dashboard';
@@ -66,80 +63,9 @@ import {
   test,
   waitForLoading,
 } from './fixtures';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-// ---------------------------------------------------------------------------
-// Pinned rendering environment
-// ---------------------------------------------------------------------------
-
-// All UI-visible dates below are chosen relative to this instant so age text,
-// reminder dates and the dialog's default date render identically forever.
-const FROZEN_TIME = new Date('2026-08-15T12:00:00Z');
-
-// The app's aria-live announcer (App.tsx #211) is visually hidden with
-// `clip: inset(50%)`, but its layout box (a full viewport tall) still counts
-// toward document height, so a fullPage screenshot would be padded by a big
-// blank region. Normalize it to a 1px fixed box for the capture — it stays in
-// the a11y tree, it just stops inflating the shot. Must come after the
-// @font-face (same injected <style>).
-const PINNED_CSS = `
-@font-face {
-  font-family: 'IBM Plex Sans';
-  font-style: normal;
-  font-weight: 100 700;
-  font-display: block;
-  src: url('/__visual_fonts__/ibm-plex-sans-latin.woff2') format('woff2');
-}
-@font-face {
-  font-family: 'IBM Plex Sans';
-  font-style: italic;
-  font-weight: 100 700;
-  font-display: block;
-  src: url('/__visual_fonts__/ibm-plex-sans-latin-italic.woff2') format('woff2');
-}
-[aria-live="polite"] {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-}
-`;
-
-/**
- * Routes the pinned webfont files and freezes the page clock. Must run before
- * page.goto(); call `awaitPinFonts(page)` after the page has loaded so the
- * @font-face is registered (and the font fetched) before any snapshot.
- */
-async function pinVisualEnvironment(page: Page): Promise<void> {
-  await page.route('**/__visual_fonts__/ibm-plex-sans-latin.woff2', (route) =>
-    route.fulfill({
-      path: path.join(__dirname, 'fixtures', 'fonts', 'ibm-plex-sans-latin.woff2'),
-      contentType: 'font/woff2',
-    }),
-  );
-  await page.route('**/__visual_fonts__/ibm-plex-sans-latin-italic.woff2', (route) =>
-    route.fulfill({
-      path: path.join(__dirname, 'fixtures', 'fonts', 'ibm-plex-sans-latin-italic.woff2'),
-      contentType: 'font/woff2',
-    }),
-  );
-  await page.clock.setFixedTime(FROZEN_TIME);
-}
-
-/** Registers the pinned @font-face and waits until it has actually loaded. */
-async function awaitPinFonts(page: Page): Promise<void> {
-  await page.addStyleTag({ content: PINNED_CSS });
-  await page.evaluate(() => document.fonts.ready);
-  const loaded = await page.evaluate(() => document.fonts.check('16px "IBM Plex Sans"'));
-  expect(
-    loaded,
-    'the pinned IBM Plex Sans webfont must load before a visual snapshot — check ' +
-      'that the __visual_fonts__ route is registered before page.goto()',
-  ).toBe(true);
-}
+// The pinned fonts/clock harness is shared with pseudoLocale.spec.ts — see its
+// header for why both layout-sensitive specs need it.
+import { awaitPinFonts, pinRenderingEnvironment } from './pinnedEnvironment';
 
 // ---------------------------------------------------------------------------
 // Fixed wire responses — the views' data, decoupled from shared test-user
@@ -390,7 +316,7 @@ test.describe('Visual regression (desktop)', () => {
   test.use({ viewport: { width: 1280, height: 720 } });
 
   test('dashboard', async ({ page }) => {
-    await pinVisualEnvironment(page);
+    await pinRenderingEnvironment(page);
     await interceptCircles(page);
     await page.route(
       (url) => url.pathname === '/api/v1/dashboard',
@@ -406,7 +332,7 @@ test.describe('Visual regression (desktop)', () => {
   });
 
   test('contacts list', async ({ page }) => {
-    await pinVisualEnvironment(page);
+    await pinRenderingEnvironment(page);
     await interceptCircles(page);
     await interceptContactsList(page);
 
@@ -420,7 +346,7 @@ test.describe('Visual regression (desktop)', () => {
   });
 
   test('contact detail', async ({ page }) => {
-    await pinVisualEnvironment(page);
+    await pinRenderingEnvironment(page);
     const contact = await createTestContact(page.request, {
       firstname: 'E2EFixtureVera',
       lastname: 'Visual',
@@ -443,7 +369,7 @@ test.describe('Visual regression (desktop)', () => {
   });
 
   test('add reminder dialog', async ({ page }) => {
-    await pinVisualEnvironment(page);
+    await pinRenderingEnvironment(page);
     const contact = await createTestContact(page.request, {
       firstname: 'E2EFixtureVera',
       lastname: 'Visual',
@@ -473,7 +399,7 @@ test.describe('Visual regression (mobile)', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test('dashboard', async ({ page }) => {
-    await pinVisualEnvironment(page);
+    await pinRenderingEnvironment(page);
     await interceptCircles(page);
     await page.route(
       (url) => url.pathname === '/api/v1/dashboard',
@@ -489,7 +415,7 @@ test.describe('Visual regression (mobile)', () => {
   });
 
   test('contact detail', async ({ page }) => {
-    await pinVisualEnvironment(page);
+    await pinRenderingEnvironment(page);
     const contact = await createTestContact(page.request, {
       firstname: 'E2EFixtureVera',
       lastname: 'Visual',

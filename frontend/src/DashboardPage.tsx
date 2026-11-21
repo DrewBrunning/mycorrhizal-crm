@@ -527,8 +527,12 @@ function DashboardPage() {
                         {contact.firstname.charAt(0)}
                       </Avatar>
                       <Box sx={{ flexGrow: 1 }}>
+                        {/* #2536: a contact's name is data, not UI copy — the
+                            pseudo-locale pass would otherwise read it as a
+                            hardcoded English string. */}
                         <Typography
                           variant="body2"
+                          data-user-content
                           sx={{
                             fontWeight: 500,
                           }}
@@ -642,6 +646,7 @@ function DashboardPage() {
                             variant="body2"
                             noWrap
                             title={birthday.name}
+                            data-user-content
                             sx={{
                               fontWeight: 500,
                             }}
@@ -735,12 +740,13 @@ function DashboardPage() {
                     <CardContent sx={{ py: 1.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          <Typography variant="body2" data-user-content sx={{ fontWeight: 500 }}>
                             {reminder.message}
                           </Typography>
                           {reminder.contact_name && (
                             <Typography
                               variant="caption"
+                              data-user-content
                               sx={{
                                 color: 'text.secondary',
                               }}
@@ -914,6 +920,7 @@ function DashboardPage() {
                       <Box sx={{ flexGrow: 1 }}>
                         <Typography
                           variant="body2"
+                          data-user-content
                           sx={{
                             fontWeight: 500,
                           }}

@@ -1284,6 +1284,15 @@
     "offlineMessage": "You're offline. Check your connection and try again.",
     "networkError": "Couldn't reach the server. Check your connection and try again."
   },
+  "dateFormat": {
+    "placeholder": {
+      "eu": "DD.MM.YYYY",
+      "us": "MM/DD/YYYY",
+      "iso": "YYYY-MM-DD",
+      "ca": "DD/MM/YYYY",
+      "euHyphen": "DD-MM-YYYY"
+    }
+  },
   "externalLinks": {
     "title": "External Links",
     "otherLinks": "Other integrations",

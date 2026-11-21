@@ -1272,6 +1272,15 @@
     "offlineMessage": "Sei offline. Controlla la connessione e riprova.",
     "networkError": "Impossibile raggiungere il server. Controlla la connessione e riprova."
   },
+  "dateFormat": {
+    "placeholder": {
+      "eu": "GG.MM.AAAA",
+      "us": "MM/GG/AAAA",
+      "iso": "AAAA-MM-GG",
+      "ca": "GG/MM/AAAA",
+      "euHyphen": "GG-MM-AAAA"
+    }
+  },
   "externalLinks": {
     "title": "Collegamenti esterni",
     "otherLinks": "Altre integrazioni",
