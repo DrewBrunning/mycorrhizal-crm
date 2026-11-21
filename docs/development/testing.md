@@ -689,8 +689,19 @@ npx playwright test pseudoLocale.spec.ts
 ```
 
 The spec runs in the normal `e2e` job with the rest of `frontend/e2e/`; no
-separate CI job exists. It is desktop-viewport (1280×720) only, matching the
-visual baselines.
+separate CI job exists. Every surface is scanned at two pinned viewports:
+
+- **desktop 1280×720**, matching the visual baselines and the layout a
+  translator's screenshots would come from;
+- **narrow 600×800**, the narrowest width that still renders the shell's
+  text-bearing AppBar. `compactNav` switches on at
+  `theme.breakpoints.down('sm')` (strictly below 600px), so at 375px the
+  labelled Logout button moves into the account menu and the pass would never
+  see the label overflow that prompted the second viewport (issue #2874).
+
+Only width drives the horizontal overflow scan; the height keeps the page
+realistic. Both passes share one surface list and one assertion body, so a new
+surface is added once.
 
 ### Service-worker upgrade suite (issue #476)
 
