@@ -381,7 +381,7 @@ time-based rule.
   `:feature:contacts` with `--rerun` (compilation excluded from both): 35.75 s
   without verify vs 35.98 s with it, i.e. the whole matrix costs ~0.2 s — a
   separate verify step would re-run the module's full suite for ~2 min.
-  Goldens live per module in `android/feature/<module>/src/test/screenshots/`
+  Base goldens live per module in `android/feature/<module>/src/test/screenshots/`
   (`roborazzi { outputDir }` in the module's `build.gradle.kts`), one file per
   `<Screen>_<theme>_<fontScale>[_tablet].png` in the matrix light/dark x font
   scale 1.0/2.0 on a Pixel 7, plus one `RobolectricDeviceQualifiers.MediumTablet`
@@ -394,6 +394,19 @@ time-based rule.
   - `:feature:settings` — `SettingsRootContent` (light/dark at 1.0, light at
     2.0, tablet at 1.0; dark at 2.0 is skipped because the rows' geometry is
     theme-independent).
+- **Pseudo-locale (en-XA) coverage** (issue #2535) is the one exception to the
+  module-local rule and lives in `:app`
+  (`android/app/src/testObtainiumDebug/`, goldens
+  `android/app/src/test/screenshots/<Screen>_pseudo.png`, light at font scale
+  1.0 only). aapt2 generates `values-en-rXA` only at the app's link step: a
+  library module's test resource APK carries zero `(en-rXA)` entries, so a test
+  there would render plain English and pass silently. The variant source set is
+  deliberate — obtainium is the superset flavor (foss/play only strip features)
+  and the pseudo resources are debug-only, so running the tests per flavor would
+  capture the same golden paths twice. The same pass runs
+  `PseudoLocaleHardcodedStringTest`, which fails on unbracketed UI text that is
+  not explicitly listed fixture user content, naming the literal. Do not move
+  either golden set.
 - **Regenerating is a review action.** After an intentional visual change run
   e.g. `cd android && ./gradlew :feature:contacts:recordRoborazziDebug`
   (`recordRoborazziDebug` in the module that changed) and commit
