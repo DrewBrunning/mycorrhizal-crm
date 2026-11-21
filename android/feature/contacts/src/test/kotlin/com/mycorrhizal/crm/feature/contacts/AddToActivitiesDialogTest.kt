@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.mycorrhizal.crm.model.network.Activity
+import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -88,5 +89,20 @@ class AddToActivitiesDialogTest {
         )
 
         composeTestRule.onNodeWithText("Not added (activity not found):").assertIsDisplayed()
+    }
+
+    // Issue #214: the rows are selectable activities; each must announce
+    // checked/unchecked to TalkBack, not just the word "checkbox".
+    @Test
+    fun `passes the accessibility sweep`() {
+        show(
+            AddToActivitiesUiState(
+                activities = activities,
+                isLoading = false,
+                selected = setOf(1)
+            )
+        )
+
+        composeTestRule.assertAccessibleSemantics()
     }
 }
