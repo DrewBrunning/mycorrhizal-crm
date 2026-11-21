@@ -348,6 +348,12 @@ time-based rule.
 - **Responsible for** view models, editors (`MultiValueEditor`, `AddressEditor`),
   screens, network parsing (`ContractFixtureTest.kt`), and offline/local-DB logic,
   all on the JVM via Robolectric.
+- **Screen a11y sweep.** `core:testing`'s `assertAccessibleSemantics` walks the
+  rendered semantics tree (every window, so an open dialog is covered too) and
+  asserts accessible names, 48dp icon-only touch targets, `onLongClickLabel`s,
+  no duplicate announcements, checkable roles announcing their state, and no
+  zero-size interactive nodes. Feature screen tests call it; it is the Compose
+  analogue of the web's axe route sweep.
 - **Must not be used for** real device/emulator flows (instrumented) or a real
   backend.
 - **Runs via** `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest`; CI `android-tests.yml` `test` job
@@ -629,6 +635,28 @@ never depends on host fonts, and the dashboard/list responses are intercepted
 with fixed payloads (the dashboard's "Stay in Touch" column is server-random).
 Only add a view here that you are willing to regenerate when the design
 changes.
+
+### Keyboard focus
+
+`frontend/e2e/accessibility.spec.ts` also presses Tab through the real app
+shell. axe reads the static DOM, so a keyboard trap, a focus point lost between
+controls, a positive `tabindex` and a control that takes keyboard focus without
+a `:focus-visible` indicator all pass its scan; these specs catch them. The
+rules live in `frontend/e2e/focusOrder.ts` (unit-tested in
+`focusOrder.vitest.ts`), the Playwright glue in `focusWalk.ts`.
+
+- the skip link is the first tab stop and moves focus into `#main-content`;
+- on the dashboard and settings pages, Tab visits every control, returns to the
+  first stop (no trap) and follows document order inside `main`;
+- no element sets a positive `tabindex`;
+- the add-contact dialog traps Tab and restores focus to its trigger on Escape.
+
+Document order is compared with `compareDocumentPosition` against a marker on
+the previous stop, never an absolute index: a list that re-renders mid-walk (or
+a toast that disappears elsewhere) shifts every index but leaves relative order
+intact. The order rule compares only consecutive stops that are both inside
+`main` and outside a dialog — the app bar and drawer legitimately precede `main`
+in the DOM, and a dialog portal is focus-trapped, so its internal order may wrap.
 
 ### Pseudo-localization (issue #2536)
 

@@ -1,9 +1,11 @@
 package com.mycorrhizal.crm.testing.a11y
 
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.junit4.ComposeTestRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.unit.dp
@@ -47,6 +49,14 @@ import androidx.compose.ui.unit.dp
  *     decorative is authorial intent a tree walk cannot know, so that
  *     general claim is NOT asserted here — only this concrete duplicate-
  *     announcement pattern is.
+ *  5. every control that claims a checkable role (`Checkbox`, `Switch`,
+ *     `RadioButton`, `Tab`) announces its state — `ToggleableState` or
+ *     `Selected`. `Modifier.clickable(role = Role.Checkbox)` gives TalkBack
+ *     the word "checkbox" and never "checked"/"not checked", so a tree walk
+ *     can flag it even though the click handler is fine; `Modifier.toggleable`
+ *     and `Modifier.selectable` set the state for you.
+ *  6. every interactive node has a non-zero rendered box. A clickable node
+ *     sized to nothing is focusable by TalkBack but invisible on screen.
  *
  * Every violation is collected before failing — one `AssertionError` listing
  * all of them — mirroring `assertNoBlockingViolations`'s reporting style on
@@ -58,7 +68,10 @@ import androidx.compose.ui.unit.dp
  * once instrumented UI tests exist) rather than a static tree walk.
  */
 fun ComposeTestRule.assertAccessibleSemantics() {
-    assertAccessibleSemantics(onRoot().fetchSemanticsNode())
+    // A Dialog (AlertDialog included) is its own window with its own semantics
+    // root, so a screen with a dialog open has two. Sweep each window; a
+    // one-root screen behaves exactly as before.
+    onAllNodes(isRoot()).fetchSemanticsNodes().forEach { assertAccessibleSemantics(it) }
 }
 
 /**
@@ -123,6 +136,32 @@ fun assertAccessibleSemantics(root: SemanticsNode) {
         if (!hasCD && !hasText) {
             violations += "${describe(node)} is clickable/long-clickable but has no accessible " +
                 "name (no contentDescription and no text)"
+        }
+
+        // Invariant 5: a control that claims a checkable role must announce its
+        // state. `Modifier.clickable(role = Role.Checkbox)` gives TalkBack the
+        // word "checkbox" and never "checked"/"not checked", so the user cannot
+        // tell what the control currently is.
+        val role = node.config.getOrNull(SemanticsProperties.Role)
+        if (role == Role.Checkbox || role == Role.Switch || role == Role.RadioButton) {
+            val announcesState =
+                node.config.contains(SemanticsProperties.ToggleableState) ||
+                    node.config.contains(SemanticsProperties.Selected)
+            if (!announcesState) {
+                violations +=
+                    "${describe(node)} has role $role but announces no checked/selected state " +
+                    "(use Modifier.toggleable/selectable, or set toggleableState/selected)"
+            }
+        }
+        if (role == Role.Tab && !node.config.contains(SemanticsProperties.Selected)) {
+            violations += "${describe(node)} has role Tab but announces no selected state"
+        }
+
+        // Invariant 6: an interactive node with no rendered box cannot be seen
+        // or reached visually, even though TalkBack can focus it.
+        if (node.size.width <= 0 || node.size.height <= 0) {
+            violations += "${describe(node)} is clickable but has a " +
+                "${node.size.width}x${node.size.height}px box (not rendered)"
         }
 
         // See invariant 2's doc comment: only icon-only controls (name from
