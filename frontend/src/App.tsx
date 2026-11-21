@@ -542,8 +542,16 @@ function AppContent({
             component={Link}
             to="/"
             onClick={() => {}}
+            noWrap
             sx={{
               flexGrow: 1,
+              // #2874: the title is branding, not an action. Below `md` the
+              // AppBar also holds the search box and the labelled Logout
+              // button; under a 40%-expanded locale (~German/French) the row
+              // is a couple of pixels too tight at the `sm` edge, and without
+              // `minWidth: 0` the flex row squeezes Logout below its content
+              // width instead of ellipsizing the brand.
+              minWidth: 0,
               display: { xs: 'none', sm: 'block' },
               textDecoration: 'none',
               color: 'inherit',
@@ -625,6 +633,10 @@ function AppContent({
                 color="inherit"
                 startIcon={<LogoutIcon />}
                 onClick={() => void handleLogout()}
+                // #2874: never shrink the action label to fit; the branding
+                // title ellipsizes instead (see above). Truncating "Logout"
+                // would hide the action, not just brand chrome.
+                sx={{ flexShrink: 0 }}
               >
                 {t('app.logout')}
               </Button>

@@ -15,8 +15,9 @@
 //
 // This spec drives the shipped artifact like every other e2e spec. It sets
 // `i18nextLng = 'qps'` in localStorage before the app bundle runs (that is the
-// only switch `config.ts` reads), visits the five surfaces the issue names,
-// and asserts both properties on each.
+// only switch `config.ts` reads), visits the five surfaces the issue names at
+// both a desktop and a narrow viewport (issue #2874 — expansion that fits at
+// 1280px can still overflow at 600px), and asserts both properties on each.
 //
 // Two things make the assertions deterministic rather than probabilistic:
 //
@@ -280,10 +281,27 @@ async function expectPseudoClean(page: Page, surface: string): Promise<void> {
   ).toEqual([]);
 }
 
-// A fixed viewport keeps the overflow measurement comparable between runs (and
-// with visual.spec.ts's desktop baselines). The 1280x720 desktop layout is the
-// one a translator's screenshots would come from.
-test.use({ viewport: { width: 1280, height: 720 } });
+// Two viewports, one assertion body (issue #2874). `qps` pads every translated
+// string by 40% — roughly the German/French expansion the pass exists to
+// simulate — and a label that fits at 1280px can still overflow on a narrow
+// screen, which a single pinned width is structurally blind to.
+//
+// * desktop 1280x720 matches visual.spec.ts's baselines and the layout a
+//   translator's screenshots would come from.
+// * narrow 600x800 is the narrowest width that still renders the shell's
+//   *text-bearing* AppBar. `compactNav` is `theme.breakpoints.down('sm')`,
+//   i.e. strictly below 600px, so at 375px the labelled Logout button moves
+//   into the account menu and the pass would never see the regression this
+//   issue reports. 600px is where the desktop-style toolbar is at its
+//   tightest, so it is the worst case for that layout (and it reproduces the
+//   113px-in-111px Logout overflow).
+const VIEWPORTS: ReadonlyArray<{
+  label: string;
+  viewport: { width: number; height: number };
+}> = [
+  { label: 'desktop', viewport: { width: 1280, height: 720 } },
+  { label: 'narrow', viewport: { width: 600, height: 800 } },
+];
 
 // Layout metrics are engine-sensitive: the pinned webfont fixes the glyphs,
 // but each engine still measures and rounds text its own way, so the same
@@ -301,99 +319,127 @@ test.beforeEach(({ browserName }) => {
 // Surfaces
 // ---------------------------------------------------------------------------
 
-test.describe('Pseudo-localization (qps)', () => {
-  test('dashboard renders only translated text and does not overflow', async ({ page }) => {
-    await enterPseudoLocale(page);
-    await page.goto('/');
-    await awaitPinFonts(page);
-    await waitForLoading(page);
+/** Navigates, pins fonts and waits for the loading overlay — every surface. */
+async function openPinned(page: Page, path: string): Promise<void> {
+  await page.goto(path);
+  await awaitPinFonts(page);
+  await waitForLoading(page);
+}
 
-    // The h1 is translated, so locate it structurally rather than by its
-    // (now accented) English name.
-    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await expectPseudoLocaleActive(page);
-    await expectPseudoClean(page, 'Dashboard');
-  });
+const noCleanup = async (): Promise<void> => {};
 
-  test('contacts list renders only translated text and does not overflow', async ({ page }) => {
-    await enterPseudoLocale(page);
-    await page.goto('/contacts');
-    await awaitPinFonts(page);
-    await waitForLoading(page);
+/**
+ * A surface rendered for the shared assertion body. `prepare` owns any
+ * spec-owned fixture and returns the navigation/cleanup pair, so a failure at
+ * either the open or the assertion still deletes the fixture.
+ */
+interface Surface {
+  name: string;
+  prepare: (page: Page) => Promise<{ open: () => Promise<void>; cleanup: () => Promise<void> }>;
+}
 
-    await expectPseudoLocaleActive(page);
-    // The seeded sample contact proves the list (and its user-content markers)
-    // actually rendered; the name itself is user content, not translatable.
-    await expect(page.getByText('Alice Johnson').first()).toBeVisible();
-    await expectPseudoClean(page, 'Contacts list');
-  });
-
-  test('contact detail renders only translated text and does not overflow', async ({ page }) => {
-    await enterPseudoLocale(page);
+const SURFACES: readonly Surface[] = [
+  {
+    name: 'Dashboard',
+    prepare: async (page) => ({
+      open: async () => {
+        await openPinned(page, '/');
+        // The h1 is translated, so locate it structurally rather than by its
+        // (now accented) English name.
+        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+      },
+      cleanup: noCleanup,
+    }),
+  },
+  {
+    name: 'Contacts list',
+    prepare: async (page) => ({
+      open: async () => {
+        await openPinned(page, '/contacts');
+        // The seeded sample contact proves the list (and its user-content
+        // markers) actually rendered; the name itself is user content, not
+        // translatable.
+        await expect(page.getByText('Alice Johnson').first()).toBeVisible();
+      },
+      cleanup: noCleanup,
+    }),
+  },
+  {
+    name: 'Contact detail',
     // A spec-owned contact with fixed names: the detail page renders user
     // content (name, email, notes, org) that must be exempted, and a name that
     // varies per run would make the exemption impossible to review.
-    const contact = await createTestContact(page.request, {
-      firstname: 'E2EFixtureVera',
-      lastname: 'Pseudo',
-      emails: [{ type: 'home', value: 'vera.pseudo@example.com' }],
-      phones: [{ type: 'mobile', value: '+1 555-0199' }],
-      birthday: '1988-05-20',
-      notes: 'Noted while reviewing the pseudo-locale pass.',
-      circles: ['Friends'],
-    });
-
-    try {
-      await page.goto(`/contacts/${contact.ID}`);
-      await awaitPinFonts(page);
-      await waitForLoading(page);
-
-      await expectPseudoLocaleActive(page);
-      await expect(page.getByText('E2EFixtureVera Pseudo').first()).toBeVisible();
-      await expectPseudoClean(page, 'Contact detail');
-    } finally {
-      await deleteTestContact(page.request, contact.ID);
-    }
-  });
-
-  test('settings renders only translated text and does not overflow', async ({ page }) => {
-    await enterPseudoLocale(page);
-    await page.goto('/settings');
-    await awaitPinFonts(page);
-    await waitForLoading(page);
-
-    await expectPseudoLocaleActive(page);
-    await expectPseudoClean(page, 'Settings');
-  });
-
-  test('add reminder dialog renders only translated text and does not overflow', async ({
-    page,
-  }) => {
-    await enterPseudoLocale(page);
-    const contact = await createTestContact(page.request, {
-      firstname: 'E2EFixtureVera',
-      lastname: 'Pseudo',
-    });
-
-    try {
-      await page.goto(`/contacts/${contact.ID}`);
-      await awaitPinFonts(page);
-      await waitForLoading(page);
-
-      // The trigger's accessible name is translated too, so find it by the
-      // Reminders panel's translated heading rather than an English regex.
-      const remindersCard = page.locator('.MuiCard-root').filter({
-        has: page.getByRole('heading', { name: pseudo('reminders.title'), exact: true }),
+    prepare: async (page) => {
+      const contact = await createTestContact(page.request, {
+        firstname: 'E2EFixtureVera',
+        lastname: 'Pseudo',
+        emails: [{ type: 'home', value: 'vera.pseudo@example.com' }],
+        phones: [{ type: 'mobile', value: '+1 555-0199' }],
+        birthday: '1988-05-20',
+        notes: 'Noted while reviewing the pseudo-locale pass.',
+        circles: ['Friends'],
       });
-      await stableClick(remindersCard.getByRole('button', { name: pseudo('reminders.add') }));
+      return {
+        open: async () => {
+          await openPinned(page, `/contacts/${contact.ID}`);
+          await expect(page.getByText('E2EFixtureVera Pseudo').first()).toBeVisible();
+        },
+        cleanup: () => deleteTestContact(page.request, contact.ID),
+      };
+    },
+  },
+  {
+    name: 'Settings',
+    prepare: async (page) => ({
+      open: () => openPinned(page, '/settings'),
+      cleanup: noCleanup,
+    }),
+  },
+  {
+    name: 'Add reminder dialog',
+    prepare: async (page) => {
+      const contact = await createTestContact(page.request, {
+        firstname: 'E2EFixtureVera',
+        lastname: 'Pseudo',
+      });
+      return {
+        open: async () => {
+          await openPinned(page, `/contacts/${contact.ID}`);
+          // The trigger's accessible name is translated too, so find it by the
+          // Reminders panel's translated heading rather than an English regex.
+          const remindersCard = page.locator('.MuiCard-root').filter({
+            has: page.getByRole('heading', { name: pseudo('reminders.title'), exact: true }),
+          });
+          await stableClick(remindersCard.getByRole('button', { name: pseudo('reminders.add') }));
 
-      await expectPseudoLocaleActive(page);
-      const dialog = page.getByRole('dialog');
-      await expect(dialog).toBeVisible();
-      await expect(dialog.getByRole('heading')).toContainText(pseudo('reminders.addReminder'));
-      await expectPseudoClean(page, 'Add reminder dialog');
-    } finally {
-      await deleteTestContact(page.request, contact.ID);
+          const dialog = page.getByRole('dialog');
+          await expect(dialog).toBeVisible();
+          await expect(dialog.getByRole('heading')).toContainText(pseudo('reminders.addReminder'));
+        },
+        cleanup: () => deleteTestContact(page.request, contact.ID),
+      };
+    },
+  },
+];
+
+for (const { label, viewport } of VIEWPORTS) {
+  test.describe(`Pseudo-localization (qps, ${label} ${viewport.width}px)`, () => {
+    test.use({ viewport });
+
+    for (const surface of SURFACES) {
+      test(`${surface.name} renders only translated text and does not overflow`, async ({
+        page,
+      }) => {
+        await enterPseudoLocale(page);
+        const scene = await surface.prepare(page);
+        try {
+          await scene.open();
+          await expectPseudoLocaleActive(page);
+          await expectPseudoClean(page, `${surface.name} (${label} ${viewport.width}px)`);
+        } finally {
+          await scene.cleanup();
+        }
+      });
     }
   });
-});
+}
