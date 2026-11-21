@@ -1167,9 +1167,10 @@ jobs:
             echo "file=coverage.out" >> "$GITHUB_OUTPUT"
           fi
 
-      # Issue #294: informational only -- a failed upload must not fail the
-      # build (fail_ci_if_error: false). disable_search so only the selected
-      # profile is sent, not the per-leg parts alongside it (#639).
+      # Issue #294: a same-repo PR must fail if the upload fails (see the
+      # fail_ci_if_error expression); the fork path keeps the old retry-and-
+      # stub behavior. disable_search so only the selected profile is sent,
+      # not the per-leg parts alongside it (#639).
       - name: Upload coverage to Codecov
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
@@ -1178,7 +1179,11 @@ jobs:
           files: backend/${{ steps.covprofile.outputs.file }}
           disable_search: true
           flags: backend
-          fail_ci_if_error: false
+          # A same-repo PR must not go green when the upload failed: no report
+          # plus flag_coverage_not_uploaded_behavior=pass would make the
+          # required codecov/patch/backend check succeed with new files
+          # unmeasured. Fork PRs keep the retry-and-stub path.
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
       # !cancelled() + the cross step having run: judge the (possibly partial)
       # profile even when its tests failed, so both signals show up.
@@ -1325,15 +1330,15 @@ jobs:
         working-directory: frontend
         run: yarn coverage:ratchet
 
-      # Issue #294: see the backend job's identical step for why
-      # fail_ci_if_error is false.
+      # Issue #294: see the backend job's identical step for the
+      # same-repo-PR fail-closed expression.
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: frontend/coverage/lcov.info
           flags: frontend
-          fail_ci_if_error: false
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
       - name: Type check
         working-directory: frontend

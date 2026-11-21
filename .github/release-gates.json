@@ -65,7 +65,7 @@
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": true,
-      "criterion": "the instrumented suite passes against the docker-compose.test.yml backend on an API-35 emulator."
+      "criterion": "the instrumented suite passes against the docker-compose.test.yml backend on an API-35 emulator. The job deliberately does not run on pull_request (#578), so on a PR this required context is satisfied by a skipped job; the real signal is push to main, nightly and release composition."
     },
     {
       "name": "Android scan (mobsfscan)",
@@ -95,7 +95,17 @@
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": true,
-      "criterion": "the all-in-one image passes docker/cis-hardening.sh and the Trivy misconfig/secret scan with no CRITICAL/HIGH."
+      "criterion": "the all-in-one image passes docker/cis-hardening.sh and the Trivy misconfiguration scan with no CRITICAL/HIGH."
+    },
+    {
+      "name": "Secret scan (working tree)",
+      "workflow": "container-hardening.yml",
+      "check_context": "Secret scan (working tree)",
+      "check_kind": "check_run",
+      "tier": "per-pr",
+      "mandatory": true,
+      "release_gate": true,
+      "criterion": "the Trivy filesystem secret scanner finds no committed credential in the working tree. Runs on every PR (not path-gated), complementing the gitleaks pre-commit hook and the history-only TruffleHog nightly."
     },
     {
       "name": "codecov/patch/backend",
@@ -138,6 +148,16 @@
       "criterion": "the shared path-filter job completes; always green (structural). Required so path-skipped suites can be required checks (#264)."
     },
     {
+      "name": "Changelog note for operator-visible change",
+      "workflow": "unit-tests.yml",
+      "check_context": "Changelog note for operator-visible change",
+      "check_kind": "check_run",
+      "tier": "per-pr",
+      "mandatory": true,
+      "release_gate": false,
+      "criterion": "a PR touching a migration, backend/config/config.go or .env.example changes CHANGELOG.md [Unreleased] or carries `no-changelog: <reason>` in its description. Runs only when the path filter matches; on any other PR the required context is satisfied by a skipped job."
+    },
+    {
       "name": "Docs & security-doc citations",
       "workflow": "unit-tests.yml",
       "check_context": "Docs & security-doc citations",
@@ -150,12 +170,12 @@
     {
       "name": "Migration Tests",
       "workflow": "migration-tests.yml",
-      "check_context": null,
+      "check_context": "Migration Tests",
       "check_kind": "check_run",
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": false,
-      "criterion": "every supported-release upgrade leg, adjacent hop, and down round-trip passes. Per-leg check names make polling impractical; the release commit only adds a frozen schema dump, which schema-fixture-gate verifies, and the push:main run covers the chain."
+      "criterion": "the aggregate `Migration Tests` job reports success when no migration-relevant path changed (all legs skipped). Once any leg runs, every per-PR leg (supported-release upgrade matrix, adjacent hops, down round-trip, schema-fixture suite, full-install upgrade) must succeed; a skipped or failed leg then fails the aggregate."
     },
     {
       "name": "Go binary reproducible",

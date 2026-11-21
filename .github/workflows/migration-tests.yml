@@ -404,6 +404,55 @@ jobs:
   # Gated behind MYCORRHIZAL_LARGE_TESTS=1, SKIPPED in the default Go suite
   # (minutes under -race per PR is too expensive); runs on main merge and
   # nightly instead.
+  # The merge-blocking context. Every per-PR leg above is a matrix job with a
+  # release-specific name, so none of them can be a stable required context;
+  # this aggregate is what branch protection requires. It runs even when a leg
+  # was skipped: a skipped leg means the change did not reach it, not that the
+  # migration passed.
+  migration-tests:
+    permissions:
+      contents: read
+    name: Migration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - release-matrix
+      - upgrade-matrix
+      - adjacent-hops
+      - down-direction
+      - schemafixture-suite
+      - full-install-upgrade
+    if: always()
+    steps:
+      - name: Require every per-PR migration leg to succeed
+        run: |
+          # This aggregate is the stable required context, so it must report
+          # success on a PR that didn't touch backend/workflows (all legs
+          # skipped), while still failing if one leg ran and another was
+          # skipped or failed.
+          results=(
+            "${{ needs.release-matrix.result }}"
+            "${{ needs.upgrade-matrix.result }}"
+            "${{ needs.adjacent-hops.result }}"
+            "${{ needs.down-direction.result }}"
+            "${{ needs.schemafixture-suite.result }}"
+            "${{ needs.full-install-upgrade.result }}"
+          )
+          non_skipped=0
+          failed=0
+          for r in "${results[@]}"; do
+            if [ "$r" != "skipped" ]; then non_skipped=$((non_skipped + 1)); fi
+            if [ "$r" != "success" ] && [ "$r" != "skipped" ]; then
+              echo "::error::a migration leg ended '$r', expected success"
+              failed=1
+            fi
+          done
+          if [ "$non_skipped" -eq 0 ]; then
+            echo "No migration-relevant paths changed; all legs skipped."
+            exit 0
+          fi
+          exit "$failed"
+
   large-dataset:
     permissions:
       contents: read

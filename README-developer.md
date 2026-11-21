@@ -208,8 +208,8 @@
 **CI: path-gated checks (issue #264)**
 - Every suite is **path-gated**: a PR runs only the suites relevant to the files it changes. The mapping from paths to checks lives in one place, [.github/filters.yaml](.github/filters.yaml) — change it there, not per-workflow. Each gated workflow has a `Detect Changes` job (`dorny/paths-filter`) whose boolean outputs the suite jobs `if:` on.
   - `backend/**` → Go fmt/vet/test, govulncheck, gosec, CodeQL(go), backend image build.
-  - `frontend/**` → vitest, tsc, eslint, Playwright e2e, CodeQL(js/ts), frontend image build.
-  - `android/**` → Android unit/lint/assemble, instrumented e2e, CodeQL(java).
+  - `frontend/**` (plus the shared `testdata/contract-fixtures`, `testdata/deep-links` and `testdata/geo-uri-fixtures.json` it reads) → vitest, tsc, eslint, Playwright e2e, CodeQL(js/ts), frontend image build.
+  - `android/**` (plus the shared `testdata/contract-fixtures`, `deep-links`, `geo-uri-fixtures.json` and `phonekey-vectors` it reads) → Android unit/lint/assemble, instrumented e2e, CodeQL(java).
   - `backend/openapi.yaml` → backend + frontend + Android (the API contract).
   - `Dockerfile`, `docker-compose*.yml`, `docker/**` (nginx.conf etc.) → the e2e suites, which build and run the deployed artifact.
   - `.github/**` → everything (a workflow change can affect any check; this includes `filters.yaml` itself).

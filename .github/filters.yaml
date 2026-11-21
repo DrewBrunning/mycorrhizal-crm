@@ -122,9 +122,20 @@ backend:
 
 frontend:
   - 'frontend/**'
+  # Shared repo-root fixtures consumed by vitest through `@testdata`:
+  # contract fixtures, the deep-link vectors and the geo: URI parity fixture.
+  - 'testdata/contract-fixtures/**'
+  - 'testdata/deep-links/**'
+  - 'testdata/geo-uri-fixtures.json'
 
 android:
   - 'android/**'
+  # The Android JVM tests stage these same shared fixtures as resources
+  # (core:network, core:model, core:data and app).
+  - 'testdata/contract-fixtures/**'
+  - 'testdata/deep-links/**'
+  - 'testdata/geo-uri-fixtures.json'
+  - 'testdata/phonekey-vectors/**'
 
 openapi:
   - 'backend/openapi.yaml'

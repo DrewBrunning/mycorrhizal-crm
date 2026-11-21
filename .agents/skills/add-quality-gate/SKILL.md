@@ -31,6 +31,9 @@ fails on drift and intentionally excludes mandatory gates with
 - `Android scan (mobsfscan)`
 - `Scan workflows (zizmor)`
 - `CIS container hardening scan`
+- `Secret scan (working tree)`
+- `Changelog note for operator-visible change`
+- `Migration Tests`
 - `Docs & security-doc citations`
 - `Go server binary is byte-reproducible`
 - `codecov/patch/backend`
