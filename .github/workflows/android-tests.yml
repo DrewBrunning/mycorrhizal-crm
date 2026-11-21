@@ -182,10 +182,11 @@ jobs:
       # --warning-mode=fail on the Gradle steps of this job: a Gradle
       # deprecation (the class #1868 cleaned up by hand) fails the build
       # instead of scrolling past in a log nobody reads.
-      # Issue #2534: the Compose screenshot goldens (11 PNGs in
-      # android/feature/contacts/src/test/screenshots/) are verified inside this
-      # same test pass via `-Proborazzi.test.verify=true`, NOT by a separate
-      # `verifyRoborazziDebug` step. Measured on :feature:contacts with
+      # Issue #2534: the Compose screenshot goldens (18 PNGs under
+      # android/feature/{contacts,auth,settings}/src/test/screenshots/) are
+      # verified inside this same test pass via `-Proborazzi.test.verify=true`,
+      # NOT by a separate `verifyRoborazziDebug` step. Measured on
+      # :feature:contacts with
       # `--rerun` (so compilation is excluded from both): 35.75 s without
       # verify vs 35.98 s with it -- capture + compare of every golden costs
       # ~0.2 s. A separate step would re-run the module's full suite (1006 tests
