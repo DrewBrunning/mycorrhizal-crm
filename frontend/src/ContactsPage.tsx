@@ -960,7 +960,10 @@ export default function ContactsPage() {
                 </Avatar>
                 <Box sx={{ flex: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {/* #2536: names and contact details are data the user
+                        entered; the pseudo-locale pass must not read them as
+                        hardcoded English UI copy. */}
+                    <Typography variant="body1" data-user-content sx={{ fontWeight: 500 }}>
                       {[
                         contact.firstname,
                         contact.nickname && `"${contact.nickname}"`,
@@ -984,6 +987,7 @@ export default function ContactsPage() {
                     <Typography
                       variant="body2"
                       noWrap
+                      data-user-content
                       sx={{
                         display: { xs: 'none', md: 'block' },
                         color: 'text.secondary',

@@ -134,6 +134,7 @@ export default function GeoPulseSettings() {
               fullWidth
               size="small"
               placeholder="http://geopulse:8080"
+              slotProps={{ htmlInput: { translate: 'no' } }}
             />
 
             <TextField

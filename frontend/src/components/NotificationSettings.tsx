@@ -343,6 +343,7 @@ export default function NotificationSettings() {
                   fullWidth
                   size="small"
                   placeholder="https://ntfy.sh"
+                  slotProps={{ htmlInput: { translate: 'no' } }}
                   helperText={t('notifications.settings.ntfy.urlHint')}
                 />
                 <TextField
@@ -356,6 +357,7 @@ export default function NotificationSettings() {
                   fullWidth
                   size="small"
                   placeholder="my-reminders"
+                  slotProps={{ htmlInput: { translate: 'no' } }}
                 />
                 <TextField
                   label={t('notifications.settings.ntfy.token')}
@@ -441,6 +443,7 @@ export default function NotificationSettings() {
                   fullWidth
                   size="small"
                   placeholder="http://gotify:8080"
+                  slotProps={{ htmlInput: { translate: 'no' } }}
                   helperText={t('notifications.settings.gotify.urlHint')}
                 />
                 <TextField

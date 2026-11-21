@@ -66,6 +66,9 @@ test('renders the connect form when nothing is configured', async () => {
   await waitFor(() => {
     expect(screen.getByLabelText('Base URL')).toBeInTheDocument();
   });
+  // #2536: the example URL placeholder is a literal, not copy -- the standard
+  // translate="no" marker keeps translation tooling (and the qps scan) off it.
+  expect(screen.getByLabelText('Base URL')).toHaveAttribute('translate', 'no');
   expect(screen.getByLabelText('API Key')).toBeInTheDocument();
 });
 

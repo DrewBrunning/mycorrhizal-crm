@@ -1244,6 +1244,15 @@
     "offlineMessage": "Sie sind offline. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
     "networkError": "Der Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
   },
+  "dateFormat": {
+    "placeholder": {
+      "eu": "TT.MM.JJJJ",
+      "us": "MM/TT/JJJJ",
+      "iso": "JJJJ-MM-TT",
+      "ca": "TT/MM/JJJJ",
+      "euHyphen": "TT-MM-JJJJ"
+    }
+  },
   "externalLinks": {
     "title": "Externe Verknüpfungen",
     "otherLinks": "Andere Integrationen",

@@ -739,9 +739,13 @@ export default function ContactHeader({
                         pr: 5,
                       }}
                     >
+                      {/* #2536: the contact's name is user content, never UI
+                          copy — mark it so the pseudo-locale pass does not
+                          report it as an untranslated string. */}
                       <Typography
                         variant="h5"
                         component="h1"
+                        data-user-content
                         sx={{
                           fontWeight: 500,
                           lineHeight: 1.2,
@@ -925,9 +929,13 @@ export default function ContactHeader({
                         rowGap: 0.5,
                       }}
                     >
+                      {/* #2536: the contact's name is user content, never UI
+                          copy — mark it so the pseudo-locale pass does not
+                          report it as an untranslated string. */}
                       <Typography
                         variant="h5"
                         component="h1"
+                        data-user-content
                         sx={{
                           fontWeight: 500,
                           lineHeight: 1.2,

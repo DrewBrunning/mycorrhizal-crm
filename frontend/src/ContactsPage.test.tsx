@@ -1191,6 +1191,8 @@ test('renders a filled star for a favorite and an outline star otherwise', async
   const bobStar = screen.getByRole('button', { name: 'Mark Bob as favorite' });
   expect(aliceStar).toBeInTheDocument();
   expect(bobStar).toBeInTheDocument();
+  // #2536: the row's name is data; the marker is the e2e scan's contract.
+  expect(screen.getByText('Alice')).toHaveAttribute('data-user-content');
 });
 
 test('clicking the star on a non-favorite POSTs to favorite and fills the star', async () => {

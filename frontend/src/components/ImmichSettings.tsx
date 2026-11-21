@@ -147,6 +147,7 @@ export default function ImmichSettings() {
               fullWidth
               size="small"
               placeholder="http://immich:2283"
+              slotProps={{ htmlInput: { translate: 'no' } }}
             />
 
             <TextField

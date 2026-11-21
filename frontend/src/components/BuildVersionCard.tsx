@@ -112,7 +112,8 @@ export default function BuildVersionCard() {
           >
             {t('settings.about.version')}
           </Typography>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
+          {/* #2536: a version/commit string is build metadata, not copy. */}
+          <Typography variant="body2" data-user-content sx={{ fontFamily: 'monospace' }}>
             {versionText}
           </Typography>
           {updateAvailable && (

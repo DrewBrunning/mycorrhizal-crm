@@ -137,6 +137,7 @@ export default function SeafileSettings() {
               fullWidth
               size="small"
               placeholder="https://seafile.example.com"
+              slotProps={{ htmlInput: { translate: 'no' } }}
             />
 
             <TextField

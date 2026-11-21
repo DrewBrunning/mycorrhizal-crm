@@ -17,9 +17,16 @@ import { pseudoResources } from './pseudo';
 // `de-DE`) -- already a valid BCP-47 tag, no further mapping needed.
 // Guarded: this module is also loaded by Node (Playwright's e2e fixtures reach
 // it via api/client.ts), where there is no document to sync.
+// `qps` is a private-use BCP-47 tag, but axe's html-lang-valid rule (and some
+// assistive tech) do not accept it -- and the pseudo-locale's content is
+// accented English anyway. Report English as the document language under the
+// pseudo-locale so the e2e a11y gate keeps checking the real contract instead
+// of failing on the test locale itself (#2536).
+const htmlLangFor = (lng: string) => (lng === 'qps' ? 'en' : lng);
+
 const syncHtmlLang = (lng: string) => {
   if (typeof document === 'undefined') return;
-  document.documentElement.lang = lng;
+  document.documentElement.lang = htmlLangFor(lng);
 };
 i18n.on('languageChanged', syncHtmlLang);
 

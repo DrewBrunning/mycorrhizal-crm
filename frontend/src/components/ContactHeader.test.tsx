@@ -158,8 +158,11 @@ function renderHeader(props: Partial<React.ComponentProps<typeof ContactHeader>>
 }
 
 test('view mode labels the contact by its CRM kind (T27)', () => {
-  renderHeader();
+  const { container } = renderHeader();
   expect(screen.getByText('Animal')).toBeInTheDocument();
+  // #2536: the contact's name is user content, not UI copy; both responsive
+  // h1 renderings carry the marker the pseudo-locale e2e scan relies on.
+  expect(container.querySelectorAll('h1[data-user-content]').length).toBeGreaterThan(0);
 });
 
 test('view mode does not label a human-kind contact', () => {

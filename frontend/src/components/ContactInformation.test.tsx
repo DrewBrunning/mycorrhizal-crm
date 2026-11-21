@@ -303,6 +303,8 @@ test('an email is itself a mailto: link, plus a copy action', () => {
   const row = fieldRow('Email');
   const link = within(row).getByText(/alice@example\.com/);
   expect(link.closest('a')).toHaveAttribute('href', 'mailto:alice@example.com');
+  // #2536: the address itself is data, not translated copy.
+  expect(link).toHaveAttribute('data-user-content');
   expect(within(row).getByLabelText(/^Copy Email /)).toBeInTheDocument();
 });
 
