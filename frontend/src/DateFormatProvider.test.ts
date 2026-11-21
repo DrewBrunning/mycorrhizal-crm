@@ -1,11 +1,9 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
-// The provider resolves its date masks through i18next now (#2536), so this
-// hook test needs the app's i18n instance registered before it renders.
-import './i18n/config';
 import {
   autoFormatBirthdayInputWithFormat,
   calculateAgeFromBirthday,
+  type DateFormat,
   DateFormatProvider,
   formatBirthdayForInputWithFormat,
   formatBirthdayWithFormat,
@@ -17,6 +15,9 @@ import {
   subscribeDateFormat,
   useDateFormat,
 } from './DateFormatProvider';
+// The provider resolves its date masks through i18next now (#2536), so this
+// hook test needs the app's i18n instance registered before it renders.
+import i18n from './i18n/config';
 import { useTimeZone } from './testSupport/timeZone';
 
 describe('formatDateWithFormat', () => {
@@ -385,5 +386,50 @@ describe('the module-level date preference', () => {
     act(() => result.current.setDateFormat('iso'));
     expect(getDateFormat()).toBe('iso');
     expect(result.current.formatDate('2026-01-15')).toBe('2026-01-15');
+  });
+});
+
+// #2536: both placeholder getters switch on the format preference, and the
+// mask letters are language, not format (a German UI shows TT.MM.JJJJ for the
+// same `eu` preference). Existing tests only ever exercised the default `eu`
+// branches, so the pseudo-locale work's `iso`/`ca`/`eu-hyphen`/`us` branches
+// landed uncovered -- exactly what codecov's frontend patch gate flagged.
+describe('date placeholders (#2536)', () => {
+  afterEach(async () => {
+    window.localStorage.clear();
+    setDateFormatPreference('eu');
+    await i18n.changeLanguage('en');
+  });
+
+  const MASKS: Array<[DateFormat, string]> = [
+    ['eu', 'DD.MM.YYYY'],
+    ['eu-mmm', 'DD.MM.YYYY'],
+    ['eu-mmmm', 'DD.MM.YYYY'],
+    ['us', 'MM/DD/YYYY'],
+    ['us-mmm', 'MM/DD/YYYY'],
+    ['us-mmmm', 'MM/DD/YYYY'],
+    ['iso', 'YYYY-MM-DD'],
+    ['ca', 'DD/MM/YYYY'],
+    ['eu-hyphen', 'DD-MM-YYYY'],
+  ];
+
+  test.each(MASKS)('%s is both the birthday and the date placeholder', (format, mask) => {
+    const { result } = renderHook(() => useDateFormat(), { wrapper: DateFormatProvider });
+    act(() => result.current.setDateFormat(format));
+
+    expect(result.current.getBirthdayPlaceholder()).toBe(mask);
+    expect(result.current.getDatePlaceholder()).toBe(mask);
+  });
+
+  test('the mask letters follow the UI language, not the format', async () => {
+    await i18n.changeLanguage('de');
+    const { result } = renderHook(() => useDateFormat(), { wrapper: DateFormatProvider });
+
+    act(() => result.current.setDateFormat('eu'));
+    expect(result.current.getBirthdayPlaceholder()).toBe('TT.MM.JJJJ');
+
+    act(() => result.current.setDateFormat('ca'));
+    expect(result.current.getBirthdayPlaceholder()).toBe('TT/MM/JJJJ');
+    expect(result.current.getDatePlaceholder()).toBe('TT/MM/JJJJ');
   });
 });

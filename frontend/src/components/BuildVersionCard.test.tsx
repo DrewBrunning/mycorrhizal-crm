@@ -57,6 +57,8 @@ test('shows the running build version and commit', async () => {
   renderCard();
 
   await waitFor(() => expect(screen.getByText('v0.2.0-alpha2 (abc1234)')).toBeInTheDocument());
+  // #2536: build metadata is data, not copy the translator may change.
+  expect(screen.getByText('v0.2.0-alpha2 (abc1234)')).toHaveAttribute('data-user-content');
   expect(screen.getByText('Include this when reporting a problem.')).toBeInTheDocument();
 });
 

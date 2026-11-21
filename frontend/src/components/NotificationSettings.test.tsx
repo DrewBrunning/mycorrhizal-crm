@@ -93,6 +93,9 @@ test('saving posts the channel config and per-user toggles', async () => {
   );
 
   await waitFor(() => expect(screen.getByLabelText('ntfy server URL')).toBeInTheDocument());
+  // #2536: example URLs and the example topic are literals, not copy.
+  expect(screen.getByLabelText('ntfy server URL')).toHaveAttribute('translate', 'no');
+  expect(screen.getByLabelText('Topic')).toHaveAttribute('translate', 'no');
   fireEvent.change(screen.getByLabelText('ntfy server URL'), {
     target: { value: 'https://ntfy.example.com' },
   });

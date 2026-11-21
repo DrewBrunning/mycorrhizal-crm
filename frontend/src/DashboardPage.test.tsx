@@ -169,6 +169,13 @@ test('fetches the dashboard composite once and renders all four blocks', async (
   // The reminder's contact_name is embedded server-side (M3 design decision
   // 2) -- no separate per-reminder contact fetch happens.
   expect(screen.getByText('Nicky Name')).toBeInTheDocument();
+  // #2536: every user-supplied name on the dashboard carries the marker the
+  // pseudo-locale e2e scan uses to tell data from hardcoded copy. The birthday
+  // name also carries it on its `title` attribute.
+  for (const name of ['Bea Birthday', 'Randy Contact', 'Fay Vorite', 'Nicky Name', 'Call Nicky']) {
+    expect(screen.getByText(name)).toHaveAttribute('data-user-content');
+  }
+  expect(screen.getByText('Bea Birthday')).toHaveAttribute('title', 'Bea Birthday');
   expect(getDashboardMock).toHaveBeenCalledTimes(1);
 });
 
