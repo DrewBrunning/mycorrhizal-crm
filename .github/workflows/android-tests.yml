@@ -439,7 +439,8 @@ jobs:
       contents: read
     name: Android APK assembly + packaging checks
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
-    # Embedded-server packaging and the flavor APK assertions.
+    # Embedded-server packaging (debug and release-shaped) and the flavor APK
+    # assertions.
     timeout-minutes: 30
     needs: changes
     # Issue #974: was the one job here with no schedule exemption -- without
@@ -494,20 +495,39 @@ jobs:
           unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
             || { echo "::error::$apk does not contain the embedded server binary"; exit 1; }
 
+      # Issue #2875: the packaging invariant above is asserted against *release*
+      # shapes too, not only debug. #1390 shipped an APK with no local mode
+      # because the packaging task silently skips without the property, and
+      # every assertion of that invariant lived on a dispatch/release workflow:
+      # a PR that broke the R8 + resource-shrinking path stayed green until
+      # someone dispatched a release build or cut a release.
+      #
+      # The `benchmark` build type, not `release`, is the release shape here: it
+      # is `initWith(release)` (R8 + resource shrinking, non-debuggable) but
+      # debug-signed, so it builds on a fork PR without the release keystore
+      # (which is CI-env only). Assembling it also means a keep-rule or shrinker
+      # break is caught on the PR that causes it instead of at release cut.
+      # The mapping.txt assertion keeps "release-shaped" honest: if minification
+      # were ever disabled for this type, the APK would be a debug build wearing
+      # a release hat and the packaging assertion would pass vacuously.
+      - name: Assemble the release-shaped benchmark APK and assert its packaging
+        working-directory: android
+        run: |
+          bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail :app:assembleObtainiumBenchmark -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
+          apk="app/build/outputs/apk/obtainium/benchmark/app-obtainium-benchmark.apk"
+          unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
+            || { echo "::error::$apk does not contain lib/arm64-v8a/libmycorrhizal.so (issue #1390): a release-shaped build would ship without local mode."; exit 1; }
+          mapping="app/build/outputs/mapping/obtainiumBenchmark/mapping.txt"
+          [ -s "$mapping" ] \
+            || { echo "::error::$mapping is missing or empty: the benchmark variant is no longer R8-minified, so this is not a release-shaped artifact (issue #2875)."; exit 1; }
+          echo "ok: $apk packages lib/arm64-v8a/libmycorrhizal.so; $mapping has $(wc -l < "$mapping") lines"
+
       # Issue #1133: obtainium (gold-standard) + foss (proves the
       # Firebase-free flavor builds end to end, the F-Droid precondition).
       # Issue #1200: play too, for its restricted-permission carve-out below.
       - name: Assemble debug APKs (obtainium + foss + play)
         working-directory: android
         run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail :app:assembleObtainiumDebug :app:assembleFossDebug :app:assemblePlayDebug
-
-      # The debug variants do not run R8/resource shrinking. The benchmark
-      # variant inherits the release R8/shrinker config but is debug-signed, so
-      # a keep-rule or shrinker break is caught on the PR that causes it
-      # instead of at release cut (the release keystore is CI-env only).
-      - name: Assemble the R8/minified benchmark variant
-        working-directory: android
-        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail :app:assembleObtainiumBenchmark
 
       # Issue #1133: F-Droid requires the FOSS APK carry no Firebase/GMS
       # code. obtainium is checked for the opposite, so this can't pass by

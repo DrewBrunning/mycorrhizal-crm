@@ -230,8 +230,10 @@ android {
         //   - non-debuggable + `isProfileable`, so macrobenchmark can read
         //     startup and frame timing (a debuggable build is rejected /
         //     warns, and JIT/debug overhead pollutes the numbers).
-        // Never distributed — no CI job assembles it except the macrobenchmark
-        // one, and the GitHub Release APK is still the `release` variant.
+        // Never distributed — CI assembles it only for the
+        // `android-macrobenchmark` job and `android-assemble`'s
+        // release-packaging check (issue #2875); the GitHub Release APK is still
+        // the `release` variant.
         create("benchmark") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
