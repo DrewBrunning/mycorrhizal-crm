@@ -36,6 +36,11 @@ mockwebserver = "4.12.0"
 # web's maplibre-gl).
 maplibre = "13.6.1"
 espresso = "3.7.0"
+# ATF 3.1.2 is the version espresso-accessibility 3.7.0 depends on.
+accessibilityTestFramework = "3.1.2"
+# ATF's public hierarchy-check API returns Guava's ImmutableSet, so Guava is a
+# compile-time requirement even though ATF declares it implementation-scoped.
+guava = "28.2-android"
 # Issue #263: the :macrobenchmark module — androidx.benchmark.macro
 # (MacrobenchmarkRule) for cold/warm/hot startup + dashboard frame timing,
 # plus uiautomator to drive the login flow before the dashboard scenario.
@@ -227,6 +232,11 @@ androidx-test-core = { group = "androidx.test", name = "core", version.ref = "an
 androidx-test-runner = { group = "androidx.test", name = "runner", version.ref = "androidxTest" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version.ref = "androidxTestExtJunit" }
 androidx-test-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espresso" }
+# Google Accessibility Test Framework (the Accessibility Scanner's engine).
+# Used directly (not via espresso-accessibility) because the hierarchy API is
+# what sees Compose's virtual accessibility nodes; on-demand scan only.
+accessibility-test-framework = { module = "com.google.android.apps.common.testing.accessibility.framework:accessibility-test-framework", version.ref = "accessibilityTestFramework" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 # Issue #263: macrobenchmark harness (:macrobenchmark module only).
 androidx-benchmark-macro-junit4 = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "benchmark" }
