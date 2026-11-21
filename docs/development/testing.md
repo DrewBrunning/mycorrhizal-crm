@@ -454,13 +454,21 @@ time-based rule.
     the job summary. `androidskipcheck -static` runs on every PR (`docs-citations`
     job, pre-commit hook) and fails if an entry no longer names a real test method.
     Do **not** allowlist a test because its dependency is flaky -- use `assumeOrFailInCi`.
-- **Known gap, accepted:** this suite (and every other instrumented job) runs
-  the **debug** build only. Neither a release/R8-minified APK nor an
-  install-release-N-then-install-N+1 upgrade is ever driven by an instrumented
-  test — `RoomMigrationEncryptedTest` (issue #480,
+- **Known gap, accepted (behaviour, not packaging):** this suite (and every other
+  instrumented job) runs the **debug** build only. No release/R8-minified APK is
+  ever *driven* by an instrumented test, and no
+  install-release-N-then-install-N+1 upgrade is performed —
+  `RoomMigrationEncryptedTest` (issue #480,
   [PR #804](https://github.com/DrewBrunning/mycorrhizal-crm/pull/804)) proves the
   Room migration chain in isolation on the debug variant, not through a real
-  two-APK install of the shipped artifact. Accepted, not built: see
+  two-APK install of the shipped artifact. The release-shaped artifact's
+  **packaging** is no longer part of this gap: `android-assemble` assembles
+  `:app:assembleObtainiumBenchmark` (release's R8 + resource shrinking,
+  debug-signed so fork PRs need no keystore) with
+  `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` and asserts the APK carries
+  `lib/arm64-v8a/libmycorrhizal.so` and that `mapping.txt` is non-empty, so the
+  #1390 "shipped without local mode" failure is caught on the PR that causes it
+  (issue #2875). What remains accepted is the two-APK upgrade: see
   [`release-gates.md`](release-gates.md#the-android-decision-issue-527) — issue
   #994.
 

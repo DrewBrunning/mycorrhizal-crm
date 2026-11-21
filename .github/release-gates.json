@@ -55,7 +55,7 @@
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": true,
-      "criterion": "`testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug` with warnings treated as errors (shared `android/lint.xml` exemptions carry reasons), `detekt`, the Compose screenshot goldens match (Roborazzi, `-Proborazzi.test.verify=true` inside the unit-test step, #2534), and the flavor-qualified debug assembles all pass."
+      "criterion": "`testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug` with warnings treated as errors (shared `android/lint.xml` exemptions carry reasons), `detekt`, the Compose screenshot goldens match (Roborazzi, `-Proborazzi.test.verify=true` inside the unit-test step, #2534), the flavor-qualified debug assembles all pass, and the release-shaped `benchmark` variant assembles with the embedded server packaged and `mapping.txt` non-empty (#2875)."
     },
     {
       "name": "Android E2E (emulator)",

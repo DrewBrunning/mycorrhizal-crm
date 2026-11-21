@@ -320,10 +320,15 @@ reverses the earlier "a signing problem here shouldn't block the Docker images" 
   working. It does not install anything.
 - asserts `app-obtainium-release.apk` and `mycorrhizal-apk.sigstore.json` are present on the Release.
 
-**Known gap, accepted (issue #994):** no gate here, or anywhere in CI, drives the
-release-signed/R8-minified APK through an instrumented test, and none installs release N then
-N+1 over it to confirm the offline mirror survives — the "full emulator test" #480 originally
-named. [#480](https://github.com/DrewBrunning/mycorrhizal-crm/issues/480) (ANDROID-03) landed
+**Known gap, accepted (issue #994), packaging excluded since #2875:** no gate here, or anywhere
+in CI, drives the release-signed/R8-minified APK through an instrumented *functional* test, and
+none installs release N then N+1 over it to confirm the offline mirror survives — the "full
+emulator test" #480 originally named. The release-shaped artifact's **packaging** is verified on
+the PR path: `android-tests.yml`'s `android-assemble` leg assembles the debug-signed `benchmark`
+variant (release's R8 + resource shrinking) with `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true`, then
+asserts `lib/arm64-v8a/libmycorrhizal.so` is inside the APK and `mapping.txt` is non-empty, so the
+#1390 packaging failure is caught before release cut (issue #2875).
+[#480](https://github.com/DrewBrunning/mycorrhizal-crm/issues/480) (ANDROID-03) landed
 `RoomMigrationEncryptedTest`, which proves the Room migration chain against a real
 SQLCipher-encrypted file, and `MigrationVersionCoverageTest`, which guards that every version
 pair has a registered migration or a recorded destructive-fallback decision — but both run on
@@ -332,9 +337,9 @@ performs a real two-APK install. [PR #804](https://github.com/DrewBrunning/mycor
 deliberately did not build the literal install-N-then-install-N+1 harness: `versionCode` monotonicity
 (asserted above) is what makes Android accept the install, which is orthogonal to whether the
 database migrates correctly once the new code runs — the thing the JVM/instrumented migration
-suite already proves directly. Disposition: accept, not built — see the "E2E Android
-(instrumented)" section of [`testing.md`](testing.md#e2e-android-instrumented) for where this is
-tracked.
+suite already proves directly. Disposition: accept the two-APK upgrade, not built — see the "E2E
+Android (instrumented)" section of [`testing.md`](testing.md#e2e-android-instrumented) for where
+this is tracked.
 
 **Known gap, accepted, with a manual gate (issue #1339): Android local-only mode.** The embedded
 server ships arm64-only, so `LocalOnlyModeE2eTest` (the only end-to-end proof of `LocalServerHost`:
@@ -351,6 +356,11 @@ new silent skip cannot hide behind this accepted one. Things that cover local mo
   the no-arg exec fails, and pins the Kotlin `EMBEDDED_HOST_ARG` to the Go `embeddedHostArg`. This
   is the `Backend (Go)` job, so it is merge-blocking. It proves the binary's contract, not the
   Android host or seccomp behaviour.
+- **Automated, per-PR (issue #2875):** `android-tests.yml`'s `android-assemble` leg builds the
+  release-shaped `benchmark` variant with the same property and asserts the same
+  `lib/arm64-v8a/libmycorrhizal.so` path plus a non-empty `mapping.txt`, so a PR that breaks
+  release packaging (the #1390 failure mode) no longer waits for a dispatched build or a release
+  cut to be caught.
 - **Automated, per release build (issue #1390):** the embedded server is only packaged when
   Gradle gets `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` with Go on the builder, and a build
   without it silently hides local mode. So `docker-publish.yml` (signed release APK),
@@ -493,7 +503,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Frontend (Vitest)` | per-pr | yes | `tsc --noEmit` and `vitest run` both pass. | `unit-tests.yml` |
 | `Frontend bundle-size budget` | per-pr | yes | `yarn build && yarn budget` passes: no emitted chunk grows past frontend/bundle-budget.json's tolerance (#556). Merge-time only; path-gated like the other unit-tests.yml required contexts. | `unit-tests.yml` |
 | `Run E2E Tests` | per-pr | yes | the route-stubbed Playwright suite (including @perf specs) passes. Path-gated to frontend/openapi/infra/workflows; a backend-only PR is covered by the Go suites and by deploy-smoke at release time, not by this browser suite. | `e2e-tests.yml` |
-| `Android (Gradle)` | per-pr | yes | `testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug` with warnings treated as errors (shared `android/lint.xml` exemptions carry reasons), `detekt`, the Compose screenshot goldens match (Roborazzi, `-Proborazzi.test.verify=true` inside the unit-test step, #2534), and the flavor-qualified debug assembles all pass, plus the `buildHealth` dependency-analysis gate. Runs as four parallel legs (`android-unit`, `android-lint`, `android-analysis`, `android-assemble`); the required `Android (Gradle)` context is an aggregator job that fails if any leg fails. | `android-tests.yml` |
+| `Android (Gradle)` | per-pr | yes | `testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug` with warnings treated as errors (shared `android/lint.xml` exemptions carry reasons), `detekt`, the Compose screenshot goldens match (Roborazzi, `-Proborazzi.test.verify=true` inside the unit-test step, #2534), and the flavor-qualified debug assembles all pass, plus the release-shaped `benchmark` variant assembles with the embedded server packaged and `mapping.txt` non-empty (#2875) and the `buildHealth` dependency-analysis gate. Runs as four parallel legs (`android-unit`, `android-lint`, `android-analysis`, `android-assemble`); the required `Android (Gradle)` context is an aggregator job that fails if any leg fails. | `android-tests.yml` |
 | `Android E2E (emulator)` | per-pr | yes | the instrumented suite passes against the docker-compose.test.yml backend on an API-35 emulator. The job deliberately does not run on `pull_request` (#578), so on a PR this required context is satisfied by a skipped job; the real signal is push to main, nightly and release composition. | `android-tests.yml` |
 | `Android scan (mobsfscan)` | per-pr | yes | mobsfscan reports no new high-severity finding on the Android sources. | `sast.yml` |
 | `Scan workflows (zizmor)` | per-pr | yes | zizmor exits 0 — no finding above what zizmor.yml's ignore list accepts. | `zizmor.yml` |
