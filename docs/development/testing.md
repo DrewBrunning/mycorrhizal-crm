@@ -636,6 +636,28 @@ with fixed payloads (the dashboard's "Stay in Touch" column is server-random).
 Only add a view here that you are willing to regenerate when the design
 changes.
 
+### Keyboard focus
+
+`frontend/e2e/accessibility.spec.ts` also presses Tab through the real app
+shell. axe reads the static DOM, so a keyboard trap, a focus point lost between
+controls, a positive `tabindex` and a control that takes keyboard focus without
+a `:focus-visible` indicator all pass its scan; these specs catch them. The
+rules live in `frontend/e2e/focusOrder.ts` (unit-tested in
+`focusOrder.vitest.ts`), the Playwright glue in `focusWalk.ts`.
+
+- the skip link is the first tab stop and moves focus into `#main-content`;
+- on the dashboard and settings pages, Tab visits every control, returns to the
+  first stop (no trap) and follows document order inside `main`;
+- no element sets a positive `tabindex`;
+- the add-contact dialog traps Tab and restores focus to its trigger on Escape.
+
+Document order is compared with `compareDocumentPosition` against a marker on
+the previous stop, never an absolute index: a list that re-renders mid-walk (or
+a toast that disappears elsewhere) shifts every index but leaves relative order
+intact. The order rule compares only consecutive stops that are both inside
+`main` and outside a dialog — the app bar and drawer legitimately precede `main`
+in the DOM, and a dialog portal is focus-trapped, so its internal order may wrap.
+
 ### Pseudo-localization (issue #2536)
 
 `frontend/e2e/pseudoLocale.spec.ts` renders the UI under `qps`, the conventional
