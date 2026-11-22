@@ -824,7 +824,13 @@ export default function SettingsPage() {
                   ) : (
                     tokens.map((token) => (
                       <TableRow key={token.id}>
-                        <TableCell sx={{ overflowWrap: 'anywhere' }}>{token.name}</TableCell>
+                        {/* The token description is user-entered text, so it is
+                            exempt from the pseudo-locale scan (issue #2883);
+                            without the marker a token created by a parallel
+                            spec fails pseudoLocale.spec.ts. */}
+                        <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
+                          {token.name}
+                        </TableCell>
                         <TableCell>
                           <Stack direction="row" spacing={0.5} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
                             {[...new Set(tokenScopes(token).map(scopeLabel))].map((label) => (
