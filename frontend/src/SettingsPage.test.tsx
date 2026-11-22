@@ -319,6 +319,9 @@ test('lists an existing token with its scope and status', async () => {
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Sync script')).toBeInTheDocument());
+  // The token description is user content, so the pseudo-locale scan must be
+  // able to exempt it (issue #2883).
+  expect(screen.getByText('Sync script')).toHaveAttribute('data-user-content');
   expect(screen.getByText('Contacts sync (CardDAV)')).toBeInTheDocument();
   expect(screen.getByText('Active')).toBeInTheDocument();
 });
