@@ -22,6 +22,8 @@ import {
   downloadOccasionCardListCSV,
   type GiftShoppingItem,
   getGiftShoppingList,
+  getOccasionCardListSummary,
+  type OccasionCardListSummary,
 } from './api/occasionObligations';
 import LoadError from './components/LoadError';
 import OccasionEventAttendeesDialog from './components/OccasionEventAttendeesDialog';
@@ -30,6 +32,12 @@ import OccasionEventList from './components/OccasionEventList';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useOccasionEvents } from './hooks/useOccasionEvents';
 import { handleError, handleFetchError } from './utils/errorHandler';
+import { localDaysUntil } from './utils/localDate';
+
+// The card list CSV's query: the page offers no kind or sensitivity control, so
+// the summary and the download always ask for the same thing.
+const cardListKind = 'card';
+const cardListIncludeSensitive = false;
 
 // The Occasions surface's two derived views (ADR 0024 parts 4-5, issue
 // #387): the sensitivity-filtered card-list export and the gift shopping
@@ -43,6 +51,36 @@ export default function OccasionsPage() {
 
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState('');
+
+  // The card list's recipient counts (issue #2676): fetched for the same query
+  // the CSV uses, so "included" is exactly the number of rows in the download.
+  const [cardSummary, setCardSummary] = useState<OccasionCardListSummary | null>(null);
+  const [cardSummaryLoading, setCardSummaryLoading] = useState(true);
+  const [cardSummaryError, setCardSummaryError] = useState('');
+
+  const loadCardSummary = useCallback(async () => {
+    setCardSummaryLoading(true);
+    setCardSummaryError('');
+    try {
+      setCardSummary(
+        await getOccasionCardListSummary({
+          kind: cardListKind,
+          includeSensitive: cardListIncludeSensitive,
+        }),
+      );
+    } catch (err) {
+      // The server's localized reason (and request ref on a 5xx), as every
+      // other failed load on this page.
+      setCardSummary(null);
+      setCardSummaryError(handleFetchError(err, 'fetching card list summary'));
+    } finally {
+      setCardSummaryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadCardSummary();
+  }, [loadCardSummary]);
 
   const [days, setDays] = useState<30 | 90>(30);
   const [items, setItems] = useState<GiftShoppingItem[]>([]);
@@ -95,13 +133,34 @@ export default function OccasionsPage() {
     setDownloading(true);
     setDownloadError('');
     try {
-      await downloadOccasionCardListCSV({ kind: 'card' });
+      await downloadOccasionCardListCSV({ kind: cardListKind });
     } catch (err) {
       handleError(err, { operation: 'downloading card list' });
       setDownloadError(t('occasions.cardList.downloadFailed'));
     } finally {
       setDownloading(false);
     }
+  };
+
+  // "N recipients" or "N recipients; M skipped (no postal address: a, private
+  // address only: b)", naming only the skip reasons that apply.
+  const cardListSummaryLine = (summary: OccasionCardListSummary): string => {
+    const reasons = [
+      summary.skipped_reasons.no_address > 0 &&
+        t('occasions.cardList.skippedNoAddress', { n: summary.skipped_reasons.no_address }),
+      summary.skipped_reasons.private_address_only > 0 &&
+        t('occasions.cardList.skippedPrivateAddress', {
+          n: summary.skipped_reasons.private_address_only,
+        }),
+    ].filter(Boolean);
+    if (summary.skipped === 0) {
+      return t('occasions.cardList.summary', { count: summary.included });
+    }
+    return t('occasions.cardList.summarySkipped', {
+      count: summary.included,
+      skipped: summary.skipped,
+      reasons: reasons.join(', '),
+    });
   };
 
   return (
@@ -124,14 +183,46 @@ export default function OccasionsPage() {
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
             {t('occasions.cardList.description')}
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<DownloadIcon />}
-            onClick={() => void handleDownloadCardList()}
-            disabled={downloading}
-          >
-            {t('occasions.cardList.download')}
-          </Button>
+          {/* aria-live status: the counts arrive after the page renders, so a
+              screen reader hears them without moving focus. */}
+          <Box role="status" sx={{ mb: cardSummaryLoading || cardSummary ? 2 : 0 }}>
+            {cardSummaryLoading && (
+              <Typography variant="body2">{t('occasions.cardList.summaryChecking')}</Typography>
+            )}
+            {!cardSummaryLoading && cardSummary && (
+              <>
+                {cardSummary.total === 0 ? (
+                  <Typography variant="body2">{t('occasions.cardList.noObligations')}</Typography>
+                ) : (
+                  <>
+                    {cardSummary.included === 0 && (
+                      <Typography variant="body2">
+                        {t('occasions.cardList.noRecipients')}
+                      </Typography>
+                    )}
+                    <Typography variant="body2">{cardListSummaryLine(cardSummary)}</Typography>
+                  </>
+                )}
+              </>
+            )}
+          </Box>
+          {cardSummaryError && (
+            <LoadError
+              message={cardSummaryError}
+              onRetry={() => void loadCardSummary()}
+              sx={{ mb: 2 }}
+            />
+          )}
+          {!(cardSummary && cardSummary.included === 0) && (
+            <Button
+              variant="contained"
+              startIcon={<DownloadIcon />}
+              onClick={() => void handleDownloadCardList()}
+              disabled={downloading}
+            >
+              {t('occasions.cardList.download')}
+            </Button>
+          )}
           {downloadError && (
             <Typography variant="body2" color="error" sx={{ mt: 1 }}>
               {downloadError}
@@ -199,9 +290,9 @@ export default function OccasionsPage() {
                       {item.contact_name} — {item.label}
                     </Typography>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {item.days_until === 0
+                      {localDaysUntil(item.date) === 0
                         ? t('occasions.widget.today')
-                        : t('occasions.widget.inDays', { count: item.days_until })}
+                        : t('occasions.widget.inDays', { count: localDaysUntil(item.date) })}
                     </Typography>
                   </Box>
                   <Chip

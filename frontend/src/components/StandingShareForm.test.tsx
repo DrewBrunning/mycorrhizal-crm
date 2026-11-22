@@ -1,8 +1,10 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { HttpResponse, http } from 'msw';
 import { afterEach, describe, expect, test, vi } from 'vitest';
+import { API_BASE_URL } from '../api/client';
 import '../i18n/config';
 import { DateFormatProvider } from '../DateFormatProvider';
-import { errorEnvelope, mockApi, setupMswServer } from '../test/mswServer';
+import { errorEnvelope, mockApi, server, setupMswServer } from '../test/mswServer';
 import StandingShareForm from './StandingShareForm';
 
 setupMswServer();
@@ -43,6 +45,16 @@ async function pickRecipient(name: string) {
 }
 
 describe('StandingShareForm', () => {
+  test('section checkbox rows are at least 44 px tall (#2716)', async () => {
+    setup();
+    await screen.findByRole('combobox', { name: 'Recipient' });
+    const boxes = screen.getAllByRole('checkbox');
+    expect(boxes.length).toBeGreaterThan(3);
+    for (const box of boxes) {
+      expect(getComputedStyle(box.closest('label') as HTMLElement).minHeight).toBe('44px');
+    }
+  });
+
   test('a contact grant starts with NO sections selected and cannot be created until one is chosen', async () => {
     setup();
     await pickRecipient('bob');
@@ -89,6 +101,35 @@ describe('StandingShareForm', () => {
       sections: ['emails'],
     });
     expect(create[0].headers.get('Idempotency-Key')).toBeTruthy();
+  });
+
+  test('a retry after a failed create replays the same Idempotency-Key', async () => {
+    const keys: string[] = [];
+    let attempt = 0;
+    mockApi('get', '/export/jscontact', []);
+    server.use(
+      http.post(`${API_BASE_URL}/share-grants`, ({ request }) => {
+        keys.push(request.headers.get('Idempotency-Key') ?? '');
+        attempt += 1;
+        return attempt === 1
+          ? errorEnvelope(500, 'INTERNAL_ERROR', 'temporary failure')
+          : HttpResponse.json(ownerView());
+      }),
+    );
+    const { onCreated } = setup();
+    await pickRecipient('bob');
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Emails' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    await waitFor(() => expect(keys).toHaveLength(1));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Share' })).toBeEnabled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+    await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1));
+
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).toBeTruthy();
+    expect(keys[1]).toBe(keys[0]);
   });
 
   test('sends the chosen expiry as an end-of-day instant', async () => {
@@ -147,4 +188,20 @@ test('says so when the chosen sections hold nothing shareable right now', async 
   expect(
     await screen.findByText(/Nothing in these sections is shared right now/),
   ).toBeInTheDocument();
+});
+
+// #2787 / #2658: SHARE_DIRECTORY_MODE=search returns no users for a short query.
+test('search mode: the recipient picker asks for at least 3 letters of the username (#2787)', async () => {
+  mockApi('get', '/users/directory', { users: [] });
+  render(
+    <DateFormatProvider>
+      <StandingShareForm
+        entityType="contact"
+        entityId="uid-1"
+        onCreated={vi.fn()}
+        onCancel={vi.fn()}
+      />
+    </DateFormatProvider>,
+  );
+  expect(await screen.findByText('Type at least 3 letters of the username')).toBeInTheDocument();
 });

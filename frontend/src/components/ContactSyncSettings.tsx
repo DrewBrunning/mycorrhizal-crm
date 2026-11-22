@@ -320,7 +320,7 @@ export default function ContactSyncSettings() {
                         <IconButton
                           size="small"
                           onClick={() => openEdit(sub)}
-                          aria-label={t('common.edit')}
+                          aria-label={t('common.editNamed', { name: sub.name })}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
@@ -330,7 +330,7 @@ export default function ContactSyncSettings() {
                             setToDelete(sub);
                             setDeleteDialogOpen(true);
                           }}
-                          aria-label={t('common.delete')}
+                          aria-label={t('common.deleteNamed', { name: sub.name })}
                         >
                           <DeleteIcon fontSize="small" />
                         </IconButton>
@@ -394,7 +394,7 @@ export default function ContactSyncSettings() {
         </DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <Alert severity="info" sx={{ py: 0.5 }}>
+            <Alert severity="info" role="status" sx={{ py: 0.5 }}>
               {t('settings.contactSync.dialogInfo')}
             </Alert>
             <TextField

@@ -49,6 +49,7 @@ class NotesInboxScreenTest {
         onErrorShown: () -> Unit = {},
         onScopeChange: (NotesScope) -> Unit = {},
         onContactClick: (Int) -> Unit = {},
+        onRefresh: () -> Unit = {},
         darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
@@ -60,7 +61,8 @@ class NotesInboxScreenTest {
                     onCreateNote = onCreateNote,
                     onErrorShown = onErrorShown,
                     onScopeChange = onScopeChange,
-                    onContactClick = onContactClick
+                    onContactClick = onContactClick,
+                    onRefresh = onRefresh
                 )
             }
         }
@@ -427,5 +429,35 @@ class NotesInboxScreenTest {
 
         composeTestRule.onNodeWithContentDescription("Note photo").assertIsDisplayed()
         composeTestRule.onNodeWithText("Private").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty list with an error offers Retry that refreshes`() {
+        var refreshes = 0
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = emptyList(),
+                error = ApiError.Client(400, "boom")
+            ),
+            onRefresh = { refreshes += 1 }
+        )
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+
+        org.junit.Assert.assertEquals(1, refreshes)
+    }
+
+    @Test
+    fun `a populated list shows no Retry state`() {
+        setContent(
+            NotesInboxUiState(
+                isLoading = false,
+                notes = listOf(Note(id = 1, content = "Call Dana")),
+                error = null
+            )
+        )
+
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
     }
 }

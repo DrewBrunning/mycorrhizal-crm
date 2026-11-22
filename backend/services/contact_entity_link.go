@@ -86,3 +86,34 @@ func DeleteContactEntityLink(db *gorm.DB, link *models.ContactEntityLink) error 
 		return trackLinkProjection(tx, link, func() error { return tx.Delete(link).Error })
 	})
 }
+
+// EntityLinkCounts returns, for each of entityIDs, how many distinct live
+// contacts of userID are linked to it through a live link (issue #2743): the
+// "Linked to N contacts" definition, where a contact holding several roles
+// counts once and a link whose contact was deleted counts for nothing. An
+// entity with no links is absent from the map (read as 0). It is one grouped
+// query regardless of how many ids it is given, so a list or a suggestions
+// page never issues one count per entity. Scoped by user_id on both tables.
+func EntityLinkCounts(db *gorm.DB, userID uint, entityIDs []string) (map[string]int, error) {
+	counts := make(map[string]int, len(entityIDs))
+	if len(entityIDs) == 0 {
+		return counts, nil
+	}
+	var rows []struct {
+		EntityID string
+		N        int
+	}
+	err := db.Table("contact_entity_links AS l").
+		Select("l.entity_id AS entity_id, COUNT(DISTINCT l.contact_vcard_uid) AS n").
+		Joins("JOIN contacts c ON c.user_id = l.user_id AND c.vcard_uid = l.contact_vcard_uid AND c.deleted_at IS NULL").
+		Where("l.user_id = ? AND l.deleted_at IS NULL AND l.entity_id IN ?", userID, entityIDs).
+		Group("l.entity_id").
+		Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		counts[r.EntityID] = r.N
+	}
+	return counts, nil
+}

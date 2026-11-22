@@ -16,6 +16,7 @@ import i18n from './i18n/config';
 // no auto-cleanup (CLAUDE.md frontend trap #1).
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.clearAllMocks();
 });
@@ -168,6 +169,13 @@ test('fetches the dashboard composite once and renders all four blocks', async (
   // The reminder's contact_name is embedded server-side (M3 design decision
   // 2) -- no separate per-reminder contact fetch happens.
   expect(screen.getByText('Nicky Name')).toBeInTheDocument();
+  // #2536: every user-supplied name on the dashboard carries the marker the
+  // pseudo-locale e2e scan uses to tell data from hardcoded copy. The birthday
+  // name also carries it on its `title` attribute.
+  for (const name of ['Bea Birthday', 'Randy Contact', 'Fay Vorite', 'Nicky Name', 'Call Nicky']) {
+    expect(screen.getByText(name)).toHaveAttribute('data-user-content');
+  }
+  expect(screen.getByText('Bea Birthday')).toHaveAttribute('title', 'Bea Birthday');
   expect(getDashboardMock).toHaveBeenCalledTimes(1);
 });
 
@@ -218,7 +226,7 @@ test('completing a reminder refetches via the plain upcoming-reminders endpoint 
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Call Nicky')).toBeInTheDocument());
-  fireEvent.click(screen.getByRole('button', { name: 'Complete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Complete\b/ }));
 
   await waitFor(() => expect(completeReminderMock).toHaveBeenCalledWith(9));
   await waitFor(() => expect(getUpcomingRemindersMock).toHaveBeenCalledTimes(1));
@@ -258,7 +266,7 @@ test('renders a CardDAV sync conflict and can restore or dismiss it (issue #395)
   // (the caption renders "Phone: 555-0100 → —").
   expect(screen.getByText(/Phone: 555-0100/)).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Restore local value' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Restore local value\b/ }));
   await waitFor(() => expect(restoreSyncConflictMock).toHaveBeenCalledWith('conflict-1'));
   await waitFor(() => expect(screen.queryByText('Grace Hopper')).not.toBeInTheDocument());
 });
@@ -288,7 +296,7 @@ test('dismissing a sync conflict removes the notice', async () => {
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Ada Lovelace')).toBeInTheDocument());
-  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Dismiss\b/ }));
   await waitFor(() => expect(dismissSyncConflictMock).toHaveBeenCalledWith('conflict-2'));
   await waitFor(() => expect(screen.queryByText('Ada Lovelace')).not.toBeInTheDocument());
 });
@@ -408,10 +416,10 @@ test('a reminder refetch after completion keeps the block capped and the total c
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Showing 25 of 60')).toBeInTheDocument());
-  fireEvent.click(screen.getAllByRole('button', { name: 'Complete' })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: /^Complete\b/ })[0]);
 
   await waitFor(() => expect(screen.getByText('Showing 25 of 59')).toBeInTheDocument());
-  expect(screen.getAllByRole('button', { name: 'Complete' })).toHaveLength(25);
+  expect(screen.getAllByRole('button', { name: /^Complete\b/ })).toHaveLength(25);
   expect(screen.queryByText('Reminder 27')).not.toBeInTheDocument();
 });
 
@@ -440,7 +448,7 @@ test('dismissing a sync conflict decrements its block total', async () => {
   renderPage();
 
   await waitFor(() => expect(screen.getByText('Showing 2 of 30')).toBeInTheDocument());
-  fireEvent.click(screen.getAllByRole('button', { name: 'Dismiss' })[0]);
+  fireEvent.click(screen.getAllByRole('button', { name: /^Dismiss\b/ })[0]);
   await waitFor(() => expect(screen.getByText('Showing 1 of 29')).toBeInTheDocument());
 });
 
@@ -548,4 +556,25 @@ test('an offline dashboard load shows the offline message, not the raw fetch err
   } finally {
     if (original) Object.defineProperty(window.navigator, 'onLine', original);
   }
+});
+
+// Issue #2681: an upcoming birthday said "(41 years old)" for the age they have
+// not reached yet. It is the age they will turn; only today's reads as "years old".
+test('an upcoming birthday says it turns the new age, not "years old"', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date(2026, 10, 17, 12, 0));
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    birthdays: [
+      { type: 'contact', name: 'Ahead Person', birthday: '1985-11-21', contact_id: 1 },
+      { type: 'contact', name: 'Today Person', birthday: '1985-11-17', contact_id: 2 },
+    ],
+    birthdays_total: 2,
+  });
+
+  renderPage();
+
+  await screen.findByText('Ahead Person');
+  expect(screen.getByText(/\(turns 41\)/)).toBeInTheDocument();
+  expect(screen.getByText(/\(41 years old\)/)).toBeInTheDocument();
 });

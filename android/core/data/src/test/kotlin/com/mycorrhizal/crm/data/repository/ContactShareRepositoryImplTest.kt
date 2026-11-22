@@ -68,11 +68,15 @@ class ContactShareRepositoryImplTest {
             apiClient.acceptContactShare(
                 "s1"
             )
-        } returns Result.success(ImportPreviewResponse())
+        } returns Result.success(
+            ImportPreviewResponse(sessionId = "sess-1", totalRows = 2, validRows = 2)
+        )
 
         val result = repository.accept("s1")
 
         assertTrue(result.isSuccess)
+        assertEquals("sess-1", result.getOrThrow().sessionId)
+        assertEquals(2, result.getOrThrow().totalRows)
     }
 
     @Test
@@ -103,15 +107,16 @@ class ContactShareRepositoryImplTest {
         val result = repository.decline("s1")
 
         assertTrue(result.isSuccess)
+        coVerify(exactly = 1) { apiClient.declineContactShare("s1") }
     }
 
     @Test
     fun `userDirectory returns the directory list`() = runTest {
-        coEvery { apiClient.getUserDirectory() } returns Result.success(
+        coEvery { apiClient.getUserDirectory("ali") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
 
-        val result = repository.userDirectory()
+        val result = repository.userDirectory("ali")
 
         assertTrue(result.isSuccess)
         assertEquals(listOf("alice"), result.getOrThrow().map { it.username })

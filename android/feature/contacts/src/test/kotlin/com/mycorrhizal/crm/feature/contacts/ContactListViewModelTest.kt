@@ -695,6 +695,78 @@ class ContactListViewModelTest {
     }
 
     @Test
+    fun `serving cached rows after a failed refresh raises the saved data flag`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val (viewModel, contactRepository, _) = newViewModel()
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 50,
+                search = null,
+                sort = "name",
+                order = "asc"
+            )
+        } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        coEvery { contactRepository.searchLocal("") } returns
+            listOf(ContactSummary(id = 1, fn = "David Smith"))
+
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.showingSavedData)
+    }
+
+    @Test
+    fun `a failed refresh with nothing cached does not claim to show saved data`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val (viewModel, contactRepository, _) = newViewModel()
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 50,
+                search = null,
+                sort = "name",
+                order = "asc"
+            )
+        } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showingSavedData)
+    }
+
+    @Test
+    fun `a successful refresh clears the saved data flag`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val (viewModel, contactRepository, _) = newViewModel()
+        coEvery {
+            contactRepository.listContacts(
+                cursor = null,
+                limit = 50,
+                search = null,
+                sort = "name",
+                order = "asc"
+            )
+        } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(page(ContactSummary(id = 1, fn = "Alice")))
+        )
+        coEvery { contactRepository.searchLocal("") } returns
+            listOf(ContactSummary(id = 1, fn = "Alice"))
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.showingSavedData)
+
+        viewModel.refresh()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.showingSavedData)
+    }
+
+    @Test
     fun `offline fallback applies the circle archived and favorites filters`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {

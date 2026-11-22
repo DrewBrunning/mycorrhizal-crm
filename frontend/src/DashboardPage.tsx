@@ -51,8 +51,10 @@ import UpcomingOccasionsWidget from './components/UpcomingOccasionsWidget';
 import { useDateFormat } from './DateFormatProvider';
 import { useCircles } from './hooks/useCircles';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { upcomingBirthdayAge } from './utils/birthdayAge';
 import { dashboardGridSx } from './utils/dashboardGrid';
 import { handleError, handleFetchError } from './utils/errorHandler';
+import { itemLabel } from './utils/itemLabel';
 import { calendarDateOnly, isBeforeLocalToday } from './utils/localDate';
 
 // Mirrors backend controllers.DashboardSectionLimit (issue #1791) -- keep in
@@ -320,11 +322,14 @@ function DashboardPage() {
       if (parts.length === 3 && parts[0].length === 4) {
         const birthYear = parseInt(parts[0], 10);
         if (!Number.isNaN(birthYear)) {
-          const currentYear = new Date().getFullYear();
-          const age = currentYear - birthYear;
+          // Issue #2681: this card lists the NEXT occurrence, so a birthday
+          // still ahead is the age they will turn ("turns 41"), not the age
+          // they are now, and one that wrapped into next year counts from that
+          // year. Only a birthday that is today reads "(41 years old)".
+          const { age, isToday } = upcomingBirthdayAge(birthYear, parts[1], parts[2]);
           // Remove the year from the formatted date for dashboard display (just show DD.MM. or MM/DD)
           const dateWithoutYear = formatBirthdayDate(`--${parts[1]}-${parts[2]}`);
-          return `${dateWithoutYear} ${t('dashboard.yearsOld', { age })}`;
+          return `${dateWithoutYear} ${t(isToday ? 'dashboard.yearsOld' : 'dashboard.turnsAge', { age })}`;
         }
       }
     }
@@ -464,7 +469,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setFavoritesInfoAnchor(e.currentTarget)}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('dashboard.favorites') })}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -522,8 +527,12 @@ function DashboardPage() {
                         {contact.firstname.charAt(0)}
                       </Avatar>
                       <Box sx={{ flexGrow: 1 }}>
+                        {/* #2536: a contact's name is data, not UI copy — the
+                            pseudo-locale pass would otherwise read it as a
+                            hardcoded English string. */}
                         <Typography
                           variant="body2"
+                          data-user-content
                           sx={{
                             fontWeight: 500,
                           }}
@@ -571,7 +580,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setBirthdaysInfoAnchor(e.currentTarget)}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('dashboard.upcomingBirthdays') })}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -632,9 +641,12 @@ function DashboardPage() {
                         >
                           {birthday.name.charAt(0)}
                         </Avatar>
-                        <Box sx={{ flexGrow: 1 }}>
+                        <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                           <Typography
                             variant="body2"
+                            noWrap
+                            title={birthday.name}
+                            data-user-content
                             sx={{
                               fontWeight: 500,
                             }}
@@ -676,7 +688,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setRemindersInfoAnchor(e.currentTarget)}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('dashboard.upcomingReminders') })}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -728,12 +740,13 @@ function DashboardPage() {
                     <CardContent sx={{ py: 1.5 }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                         <Box sx={{ flexGrow: 1 }}>
-                          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                          <Typography variant="body2" data-user-content sx={{ fontWeight: 500 }}>
                             {reminder.message}
                           </Typography>
                           {reminder.contact_name && (
                             <Typography
                               variant="caption"
+                              data-user-content
                               sx={{
                                 color: 'text.secondary',
                               }}
@@ -786,7 +799,9 @@ function DashboardPage() {
                                 e.stopPropagation();
                                 void handleSkipReminder(reminder.ID);
                               }}
-                              aria-label={t('reminders.skip')}
+                              aria-label={t('reminders.skipNamed', {
+                                title: itemLabel(reminder.message),
+                              })}
                               sx={{
                                 transition: 'transform 0.15s ease-in-out',
                                 '&:hover': {
@@ -805,7 +820,9 @@ function DashboardPage() {
                                 e.stopPropagation();
                                 void handleCompleteReminder(reminder.ID);
                               }}
-                              aria-label={t('reminders.complete')}
+                              aria-label={t('reminders.completeNamed', {
+                                title: itemLabel(reminder.message),
+                              })}
                               sx={{
                                 transition:
                                   'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
@@ -845,7 +862,7 @@ function DashboardPage() {
             <IconButton
               size="small"
               onClick={(e) => setStayInTouchInfoAnchor(e.currentTarget)}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('dashboard.randomContacts') })}
             >
               <InfoOutlinedIcon fontSize="small" />
             </IconButton>
@@ -903,6 +920,7 @@ function DashboardPage() {
                       <Box sx={{ flexGrow: 1 }}>
                         <Typography
                           variant="body2"
+                          data-user-content
                           sx={{
                             fontWeight: 500,
                           }}

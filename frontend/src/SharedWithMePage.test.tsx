@@ -1,8 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import './i18n/config';
 import { AnnouncerProvider } from './context/AnnouncerContext';
+import { PendingSharesContext } from './context/PendingSharesContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import SharedWithMePage from './SharedWithMePage';
 import { errorEnvelope, mockApi, server, setupMswServer } from './test/mswServer';
@@ -89,6 +90,25 @@ describe('SharedWithMePage', () => {
     expect(within(row).queryByRole('button', { name: /^Block/ })).not.toBeInTheDocument();
   });
 
+  // WCAG 2.5.3 (#2700): voice control says the visible text, so every accessible
+  // name must contain it (axe label-content-name-mismatch).
+  test('every action button name contains its visible text', async () => {
+    setup(
+      [pending, active],
+      [{ user_id: 7, username: 'dave', created_at: '2026-01-01T00:00:00Z' }],
+    );
+    renderPage();
+    await rowFor('Alice Anderson');
+    await screen.findByRole('button', { name: 'Unblock dave' });
+    const buttons = screen.getAllByRole('button').filter((b) => b.hasAttribute('aria-label'));
+    expect(buttons.length).toBeGreaterThan(4);
+    for (const b of buttons) {
+      const visible = (b.textContent ?? '').trim().toLowerCase();
+      const name = (b.getAttribute('aria-label') ?? '').toLowerCase();
+      expect(name, `aria-label "${name}" must contain "${visible}"`).toContain(visible);
+    }
+  });
+
   test('accepting posts accept, moves the row to active and announces it', async () => {
     setup([pending]);
     const accept = mockApi('post', '/share-grants/p1/accept', {
@@ -131,7 +151,7 @@ describe('SharedWithMePage', () => {
       share_grant: { ...pending, status: 'declined' },
     });
     renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: 'Block bob' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Block sender bob' }));
     const dialog = await screen.findByRole('dialog', { name: 'Block this sender?' });
     expect(within(dialog).getByText(/not told that you blocked them/i)).toBeInTheDocument();
     expect(decline).toHaveLength(0); // nothing sent until confirmed
@@ -147,7 +167,7 @@ describe('SharedWithMePage', () => {
     setup([pending]);
     const decline = mockApi('post', '/share-grants/p1/decline', {});
     renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: 'Block bob' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Block sender bob' }));
     const dialog = await screen.findByRole('dialog', { name: 'Block this sender?' });
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
@@ -221,6 +241,39 @@ describe('SharedWithMePage', () => {
     expect(await screen.findByText('Hikers')).toBeInTheDocument();
     expect(screen.getByText('Book Club')).toBeInTheDocument();
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe('SharedWithMePage failure states', () => {
+  test('a blocked-senders load failure shows a retry that re-reads the list', async () => {
+    mockApi('get', '/share-grants/incoming', page([]));
+    const failing = mockApi('get', '/share-grants/blocks', errorEnvelope(500, 'INTERNAL', 'boom'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(failing.length).toBeGreaterThan(1));
+  });
+
+  test('a failed unblock shows a dismissible error and keeps the sender listed', async () => {
+    setup([], [{ user_id: 7, username: 'bob', created_at: '2026-01-01T00:00:00Z' }]);
+    mockApi('delete', '/share-grants/blocks/7', errorEnvelope(500, 'INTERNAL', 'nope'));
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Unblock bob' }));
+    const alert = await screen.findByRole('alert');
+    expect(screen.getByRole('button', { name: 'Unblock bob' })).toBeInTheDocument();
+    fireEvent.click(within(alert).getByRole('button', { name: /close/i }));
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
+  });
+
+  test('retrying a failed grant load re-reads the grants', async () => {
+    const failing = mockApi(
+      'get',
+      '/share-grants/incoming',
+      errorEnvelope(500, 'INTERNAL', 'boom'),
+    );
+    mockApi('get', '/share-grants/blocks', { blocks: [] });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(failing.length).toBeGreaterThan(1));
   });
 });
 
@@ -340,5 +393,111 @@ describe('SharedWithMePage read view', () => {
     expect(
       await within(dialog).findByText('This share is no longer available.'),
     ).toBeInTheDocument();
+  });
+});
+
+// #2691: answering a share does not navigate, so the app shell's nav badge is
+// told to re-read the pending count after every mutation that can change it.
+describe('SharedWithMePage pending-count refresh signal', () => {
+  function renderWithSignal() {
+    const refreshPendingShares = vi.fn();
+    render(
+      <MemoryRouter>
+        <PendingSharesContext.Provider value={{ refreshPendingShares }}>
+          <AnnouncerProvider>
+            <DateFormatProvider>
+              <SharedWithMePage />
+            </DateFormatProvider>
+          </AnnouncerProvider>
+        </PendingSharesContext.Provider>
+      </MemoryRouter>,
+    );
+    return refreshPendingShares;
+  }
+
+  test('accept refreshes once', async () => {
+    setup([pending]);
+    mockApi('post', '/share-grants/p1/accept', { share_grant: { ...pending, status: 'active' } });
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: /^Accept Alice Anderson/ }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('decline refreshes once', async () => {
+    setup([pending]);
+    mockApi('post', '/share-grants/p1/decline', {
+      share_grant: { ...pending, status: 'declined' },
+    });
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: /^Decline Alice Anderson/ }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('leave refreshes once', async () => {
+    setup([active]);
+    mockApi('post', '/share-grants/a1/leave', { share_grant: { ...active, status: 'declined' } });
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: /^Stop receiving Book Club/ }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Stop receiving' }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('block refreshes once', async () => {
+    setup([pending]);
+    mockApi('post', '/share-grants/p1/decline', {
+      share_grant: { ...pending, status: 'declined' },
+    });
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: 'Block sender bob' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Block bob' }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('unblock refreshes once', async () => {
+    setup([], [{ user_id: 7, username: 'bob', created_at: '2026-01-01T00:00:00Z' }]);
+    mockApi('delete', '/share-grants/blocks/7', new Response(null, { status: 204 }));
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: 'Unblock bob' }));
+    await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  test('a failed accept does not refresh', async () => {
+    setup([pending]);
+    mockApi('post', '/share-grants/p1/accept', errorEnvelope(409, 'CONFLICT', 'nope'));
+    const refresh = renderWithSignal();
+    fireEvent.click(await screen.findByRole('button', { name: /^Accept Alice Anderson/ }));
+    await screen.findByRole('alert');
+    expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+// #2744: the server labels a note grant with the note's first line once it is active; a
+// pending one stays the generic "Note" (the recipient must accept before seeing content).
+// The row title and every action's accessible name come straight from `label`.
+describe('SharedWithMePage note grant labels (#2744)', () => {
+  const pendingNote = { ...pending, id: 'n1', entity_type: 'note', label: 'Note', sections: [] };
+  const activeNote = {
+    ...active,
+    id: 'n2',
+    entity_type: 'note',
+    label: 'Call the plumber about the leak\u2026',
+    sections: [],
+  };
+
+  test('a pending note shows the generic label, an active note shows its first line', async () => {
+    setup([pendingNote, activeNote]);
+    renderPage();
+    const acceptBtn = await screen.findByRole('button', { name: /^Accept Note from bob/ });
+    const pendingRow = acceptBtn.closest('li') as HTMLElement;
+    expect(within(pendingRow).getAllByText('Note')).toHaveLength(2); // title + type chip
+    const activeRow = await rowFor('Call the plumber about the leak\u2026');
+    expect(within(activeRow).getByText('Note')).toBeInTheDocument(); // the type chip only
+    expect(
+      within(activeRow).getByRole('button', {
+        name: /^View Call the plumber about the leak\u2026/,
+      }),
+    ).toBeVisible();
   });
 });

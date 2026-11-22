@@ -62,6 +62,7 @@ import com.mycorrhizal.crm.model.network.ContactSummary
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -91,7 +92,8 @@ fun AuditScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     // Local copy so the delegated `state.error` can be smart-cast/sent to
     // suspend APIs (a delegated property's getter defeats Kotlin's smart cast).
-    val loadError = state.error?.localizedMessage()
+    val stateError = state.error
+    val loadError = stateError?.localizedMessage()
 
     // Mirrors web's debounced entity-id field: the input echoes keystrokes
     // immediately while the applied (server-side) filter follows 350ms later.
@@ -189,14 +191,8 @@ fun AuditScreen(
                         state.isLoading && state.events.isEmpty() ->
                             LoadingSkeleton(modifier = Modifier.testTag("audit-loading"))
 
-                        state.events.isEmpty() && loadError != null ->
-                            Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                Text(
-                                    text = loadError,
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
+                        state.events.isEmpty() && stateError != null ->
+                            ErrorState(error = stateError, onRetry = viewModel::load)
 
                         state.events.isEmpty() ->
                             EmptyState(

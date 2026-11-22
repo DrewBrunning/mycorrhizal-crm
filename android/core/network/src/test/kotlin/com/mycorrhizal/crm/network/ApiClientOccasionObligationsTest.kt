@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.network
 
 import com.mycorrhizal.crm.model.MoshiProvider
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.OccasionObligationInput
 import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
@@ -158,6 +159,50 @@ class ApiClientOccasionObligationsTest {
     fun `card list csv failure is reported not swallowed`() = runBlocking {
         enqueue("""{"error":"boom"}""", 500)
         assertTrue(client.exportOccasionCardListCsv(kind = "card").isFailure)
+    }
+
+    @Test
+    fun `card list summary requests the kind and parses the counts`() = runBlocking {
+        enqueue(
+            """{"total":12,"included":9,"skipped":3,
+            "skipped_reasons":{"no_address":2,"private_address_only":1},"future":"x"}"""
+        )
+        val summary = client.getOccasionCardListSummary(kind = "card").getOrThrow()
+        val request = server.takeRequest()
+        assertEquals(
+            "/api/v1/occasion-obligations/card-list/summary",
+            request.requestUrl?.encodedPath
+        )
+        assertEquals("card", request.requestUrl?.queryParameter("kind"))
+        assertNull(request.requestUrl?.queryParameter("include_sensitive"))
+        assertEquals(12, summary.total)
+        assertEquals(9, summary.included)
+        assertEquals(3, summary.skipped)
+        assertEquals(2, summary.skippedReasons.noAddress)
+        assertEquals(1, summary.skippedReasons.privateAddressOnly)
+    }
+
+    @Test
+    fun `card list summary counts default to zero when absent`() = runBlocking {
+        enqueue("{}")
+        val summary = client.getOccasionCardListSummary(kind = "card").getOrThrow()
+        assertEquals(0, summary.total)
+        assertEquals(0, summary.included)
+        assertEquals(0, summary.skipped)
+        assertEquals(0, summary.skippedReasons.noAddress)
+        assertEquals(0, summary.skippedReasons.privateAddressOnly)
+    }
+
+    @Test
+    fun `card list summary keeps the reason code of a rejected kind`() = runBlocking {
+        enqueue(
+            """{"error":{"code":"VALIDATION_ERROR","message":"bad kind","reason_code":"occasion_kind_invalid","reason_params":{}},"request_id":"r1"}""",
+            400
+        )
+        val error = client.getOccasionCardListSummary(kind = "ca\u0000rd").exceptionOrNull()
+        val api = error as ApiError.Client
+        assertEquals(400, api.code)
+        assertEquals(ErrorReasonCode.OCCASION_KIND_INVALID, api.reason?.code)
     }
 
     @Test

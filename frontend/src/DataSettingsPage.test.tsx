@@ -2,8 +2,14 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import './i18n/config';
+import { ApiError } from './api/client';
 import { suggestContactAddresses } from './api/dataSuggestions';
-import { exportContacts, exportContactsAsVcf, exportDataAsCsv } from './api/export';
+import {
+  exportAccountBundle,
+  exportContacts,
+  exportContactsAsVcf,
+  exportDataAsCsv,
+} from './api/export';
 import { getImportHistory, getImportRun } from './api/import';
 import { suggestRelationshipEdges } from './api/relationshipEdges';
 import DataSettingsPage from './DataSettingsPage';
@@ -122,6 +128,7 @@ vi.mock('./api/export', async (importOriginal) => {
     exportDataAsCsv: vi.fn(),
     exportContactsAsVcf: vi.fn(),
     exportContacts: vi.fn(),
+    exportAccountBundle: vi.fn(),
   };
 });
 
@@ -132,6 +139,7 @@ const suggestAddressesMock = vi.mocked(suggestContactAddresses);
 const exportCsvMock = vi.mocked(exportDataAsCsv);
 const exportVcfMock = vi.mocked(exportContactsAsVcf);
 const exportCustomMock = vi.mocked(exportContacts);
+const exportBundleMock = vi.mocked(exportAccountBundle);
 
 beforeEach(() => {
   historyMock.mockReset();
@@ -142,6 +150,7 @@ beforeEach(() => {
   exportCsvMock.mockReset();
   exportVcfMock.mockReset();
   exportCustomMock.mockReset();
+  exportBundleMock.mockReset();
 });
 
 function renderPage() {
@@ -557,4 +566,160 @@ test('Escape closes the itemized report dialog', async () => {
   const dialog = await screen.findByRole('dialog');
   fireEvent.keyDown(dialog, { key: 'Escape' });
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+
+// Issue #2678: a web-only user had no way to produce the bundle the "Import
+// account bundle" help text tells them to export.
+test('Export account bundle asks for confirmation that it is full fidelity before downloading', async () => {
+  exportBundleMock.mockResolvedValue(undefined);
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Export account bundle' }));
+
+  const dialog = await screen.findByRole('dialog');
+  // Nothing is downloaded until the user confirms.
+  expect(exportBundleMock).not.toHaveBeenCalled();
+  expect(within(dialog).getByText(/private or secret/i)).toBeInTheDocument();
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Download bundle' }));
+
+  expect(await screen.findByText('Account bundle downloaded.')).toBeInTheDocument();
+  expect(exportBundleMock).toHaveBeenCalledTimes(1);
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+});
+
+test('cancelling the account bundle confirmation downloads nothing', async () => {
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Export account bundle' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(exportBundleMock).not.toHaveBeenCalled();
+});
+
+test('the account bundle button shows a loading state and cannot be pressed twice', async () => {
+  let finish: () => void = () => {};
+  exportBundleMock.mockReturnValue(new Promise<void>((resolve) => (finish = resolve)));
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Export account bundle' }));
+  fireEvent.click(
+    within(await screen.findByRole('dialog')).getByRole('button', { name: 'Download bundle' }),
+  );
+
+  const busy = await screen.findByRole('button', { name: 'Exporting…' });
+  expect(busy).toBeDisabled();
+  finish();
+  expect(await screen.findByText('Account bundle downloaded.')).toBeInTheDocument();
+  expect(exportBundleMock).toHaveBeenCalledTimes(1);
+});
+
+test('a bundle over the size limit shows the localized reason, not a generic failure', async () => {
+  exportBundleMock.mockRejectedValue(
+    new ApiError(
+      'too big',
+      'INSUFFICIENT_STORAGE',
+      507,
+      undefined,
+      undefined,
+      'bundle_export_too_large',
+      { used: '70.0', max: 64 },
+    ),
+  );
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Export account bundle' }));
+  fireEvent.click(
+    within(await screen.findByRole('dialog')).getByRole('button', { name: 'Download bundle' }),
+  );
+
+  expect(await screen.findByText(/70\.0 MiB.*64 MiB/)).toBeInTheDocument();
+  expect(screen.queryByText('Account bundle downloaded.')).not.toBeInTheDocument();
+});
+
+test('a failed bundle export says so and the button comes back', async () => {
+  exportBundleMock.mockRejectedValue('offline');
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Export account bundle' }));
+  fireEvent.click(
+    within(await screen.findByRole('dialog')).getByRole('button', { name: 'Download bundle' }),
+  );
+
+  expect(
+    await screen.findByText('The account bundle could not be exported. Please try again.'),
+  ).toBeInTheDocument();
+  // (the confirmation dialog is still fading out, so wait for the page to be exposed)
+  expect(await screen.findByRole('button', { name: 'Export account bundle' })).toBeEnabled();
+});
+
+test('Escape dismisses the account bundle confirmation without downloading', async () => {
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Export account bundle' }));
+  fireEvent.keyDown(await screen.findByRole('dialog'), { key: 'Escape' });
+
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  expect(exportBundleMock).not.toHaveBeenCalled();
+});
+
+// #2681 (maintainer decision): the history counts keep their meaning, but the
+// labels say which stage they count: rows skipped in the review step vs rows
+// that failed while importing.
+test('the history columns say Skipped in review and Failed on import', async () => {
+  historyMock.mockResolvedValue([runWithIssues]);
+  renderPage();
+
+  await screen.findByText('CSV');
+  expect(screen.getByRole('columnheader', { name: 'Skipped in review' })).toBeInTheDocument();
+  expect(screen.getByRole('columnheader', { name: 'Failed on import' })).toBeInTheDocument();
+  expect(screen.queryByRole('columnheader', { name: 'Skipped' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('columnheader', { name: 'Errors' })).not.toBeInTheDocument();
+});
+
+// #2741: a stored warning row shows in the history report, labelled and
+// explained by its concept.
+test('View report lists a warning row as Warning with its explanation', async () => {
+  historyMock.mockResolvedValue([runWithIssues]);
+  runMock.mockResolvedValue({
+    ...runWithIssues,
+    issues: [
+      {
+        row: 4,
+        name: 'Ada',
+        email: '',
+        phone: '',
+        status: 'warning',
+        concept: 'birthday',
+        reason: 'birthday not imported: invalid value',
+      },
+    ],
+  });
+  renderPage();
+
+  fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
+  const dialog = await screen.findByRole('dialog');
+  expect(await within(dialog).findByText('Warning')).toBeInTheDocument();
+  expect(within(dialog).getByText('Birthday not imported: invalid value')).toBeInTheDocument();
+  expect(within(dialog).queryByText('Skipped')).not.toBeInTheDocument();
+});
+
+// #2683: informational notices must not announce as alerts when the page loads.
+test('static informational notices are status regions, not alerts, on load', async () => {
+  historyMock.mockResolvedValue([]);
+  renderPage();
+
+  const notice = await screen.findByText(/private or secret/i);
+  expect(notice.closest('[role="status"]')).not.toBeNull();
+  expect(notice.closest('[role="alert"]')).toBeNull();
+  expect(screen.queryAllByRole('alert')).toHaveLength(0);
+});
+
+test('a real error is still announced as an alert', async () => {
+  historyMock.mockRejectedValue(new Error('history down'));
+  renderPage();
+
+  expect(await screen.findByRole('alert')).toHaveTextContent('history down');
 });

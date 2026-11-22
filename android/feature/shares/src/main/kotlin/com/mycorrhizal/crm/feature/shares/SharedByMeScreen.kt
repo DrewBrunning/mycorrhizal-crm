@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -61,7 +63,11 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SharedByMeScreen(onBack: () -> Unit, viewModel: SharedByMeViewModel = hiltViewModel()) {
+fun SharedByMeScreen(
+    onBack: () -> Unit,
+    onOpenContact: (Int) -> Unit = {},
+    viewModel: SharedByMeViewModel = hiltViewModel()
+) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -117,8 +123,31 @@ fun SharedByMeScreen(onBack: () -> Unit, viewModel: SharedByMeViewModel = hiltVi
                             busy = state.busy,
                             onEdit = { viewModel.openEdit(grant) },
                             onRevoke = { viewModel.requestRevoke(grant) },
+                            onRemove = { viewModel.requestRemove(grant) },
                             onReconfirm = { viewModel.requestReconfirm(grant) }
                         )
+                    }
+                    if (state.nextCursor != null) {
+                        item(key = "load-more") {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                state.loadMoreError?.let { error ->
+                                    Text(
+                                        text = error.localizedMessage(),
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                TextButton(
+                                    onClick = viewModel::loadMore,
+                                    enabled = !state.loadingMore
+                                ) {
+                                    Text(stringResource(R.string.action_load_more))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -133,12 +162,22 @@ fun SharedByMeScreen(onBack: () -> Unit, viewModel: SharedByMeViewModel = hiltVi
         }
     }
 
+    state.openContactId?.let { contactId ->
+        val openContact by rememberUpdatedState(onOpenContact)
+        LaunchedEffect(contactId) {
+            viewModel.onContactOpened()
+            openContact(contactId)
+        }
+    }
+
     state.prompt?.let { prompt ->
         OwnerPromptDialog(
             prompt = prompt,
             busy = state.busy,
+            reconfirmCounts = state.reconfirmCounts,
             onDismiss = viewModel::dismissPrompt,
-            onConfirm = viewModel::confirmPrompt
+            onConfirm = viewModel::confirmPrompt,
+            onOpenContact = { viewModel.openContact(prompt.grant) }
         )
     }
     state.edit?.let { edit ->
@@ -156,11 +195,19 @@ fun SharedByMeScreen(onBack: () -> Unit, viewModel: SharedByMeViewModel = hiltVi
 private fun OwnerPromptDialog(
     prompt: SharedByMePrompt,
     busy: Boolean,
+    reconfirmCounts: Map<String, Int>,
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: () -> Unit,
+    onOpenContact: () -> Unit
 ) {
     val grant = prompt.grant
     val (title, message, confirm) = when (prompt) {
+        is SharedByMePrompt.Remove -> Triple(
+            stringResource(R.string.shares_grant_remove_title),
+            stringResource(R.string.shares_grant_remove_message, grant.toUsername),
+            stringResource(R.string.shares_grant_remove)
+        )
+
         is SharedByMePrompt.Revoke -> Triple(
             stringResource(R.string.shares_grant_revoke_title),
             stringResource(R.string.shares_grant_revoke_message, grant.toUsername),
@@ -169,22 +216,50 @@ private fun OwnerPromptDialog(
 
         is SharedByMePrompt.Reconfirm -> Triple(
             stringResource(R.string.shares_grant_reconfirm_title),
-            stringResource(
-                R.string.shares_grant_reconfirm_message,
-                grant.toUsername,
-                grant.reconfirmSections.map {
-                    stringResource(
-                        sectionLabelRes(it)
-                    )
-                }.joinToString(", ")
-            ),
+            stringResource(R.string.shares_grant_reconfirm_message, grant.toUsername),
             stringResource(R.string.shares_grant_reconfirm_confirm)
         )
     }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
-        text = { Text(message) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text(message)
+                if (prompt is SharedByMePrompt.Reconfirm) {
+                    // Issue #2659: what is withheld, with what each section holds today.
+                    grant.reconfirmSections.forEach { token ->
+                        val name = stringResource(sectionLabelRes(token))
+                        val count = reconfirmCounts[token]?.takeIf { it > 0 }
+                        Text(
+                            text = if (count == null) {
+                                name
+                            } else {
+                                pluralStringResource(
+                                    R.plurals.shares_reconfirm_item_count,
+                                    count,
+                                    name,
+                                    count
+                                )
+                            },
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                    if (grant.entityType == ShareGrantEntityTypes.CONTACT) {
+                        TextButton(
+                            onClick = onOpenContact,
+                            enabled = !busy,
+                            modifier = Modifier.testTag("grant-prompt-open-contact")
+                        ) {
+                            Text(stringResource(R.string.shares_open_contact))
+                        }
+                    }
+                }
+            }
+        },
         confirmButton = {
             TextButton(
                 onClick = onConfirm,
@@ -208,8 +283,10 @@ private fun OutgoingGrantRow(
     busy: Boolean,
     onEdit: () -> Unit,
     onRevoke: () -> Unit,
+    onRemove: () -> Unit,
     onReconfirm: () -> Unit
 ) {
+    val title = grantTitle(grant.label, grant.entityType)
     val needsReconfirm = grant.isLive && grant.reconfirmSections.isNotEmpty()
     Row(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
@@ -218,18 +295,33 @@ private fun OutgoingGrantRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = grant.label.ifBlank { stringResource(entityTypeLabelRes(grant.entityType)) },
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             GrantCaption(stringResource(entityTypeLabelRes(grant.entityType)))
-            GrantCaption(stringResource(R.string.shares_to, grant.toUsername))
-            GrantCaption(stringResource(grantStatusLabelRes(grant.status)))
+            GrantStatusChip(
+                status = grant.status,
+                modifier = Modifier.padding(vertical = 4.dp).testTag("grant-status-${grant.id}")
+            )
+            // Issue #2627: recipient and expiry share one line. A finished grant has no expiry.
+            val to = stringResource(R.string.shares_to, grant.toUsername)
+            GrantCaption(
+                if (grant.isLive) {
+                    stringResource(
+                        R.string.shares_grant_meta_join,
+                        to,
+                        expiryText(grant.expiresAt)
+                            ?: stringResource(R.string.shares_grant_no_expiry)
+                    )
+                } else {
+                    to
+                }
+            )
             if (grant.isLive) {
-                GrantCaption(
-                    expiryText(grant.expiresAt) ?: stringResource(R.string.shares_grant_no_expiry)
-                )
+                sectionsSummary(grant.sections, R.string.shares_sections_shared)
+                    ?.let { GrantCaption(it) }
             }
             grant.memberCount?.takeIf { grant.entityType == ShareGrantEntityTypes.CIRCLE }?.let {
                 GrantCaption(pluralStringResource(R.plurals.shares_content_members, it, it))
@@ -250,10 +342,22 @@ private fun OutgoingGrantRow(
             val editLabel = stringResource(R.string.shares_grant_edit)
             val revokeLabel = stringResource(R.string.shares_grant_revoke)
             RowOverflowMenu(
-                rowName = grant.label,
+                rowName = title,
                 actions = listOf(
                     RowAction(editLabel, onEdit),
                     RowAction(revokeLabel, onRevoke, destructive = true)
+                )
+            )
+        } else if (grant.isEnded) {
+            // Issue #2627: an ended grant can only be dismissed from the list.
+            RowOverflowMenu(
+                rowName = title,
+                actions = listOf(
+                    RowAction(
+                        stringResource(R.string.shares_grant_remove),
+                        onRemove,
+                        destructive = true
+                    )
                 )
             )
         }
@@ -288,10 +392,7 @@ private fun EditGrantDialog(
         onDismissRequest = onClose,
         title = { Text(stringResource(R.string.shares_edit_title)) },
         text = {
-            Column(
-                modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                 Text(
                     text = stringResource(R.string.shares_edit_hint),
                     style = MaterialTheme.typography.bodyMedium
@@ -300,8 +401,10 @@ private fun EditGrantDialog(
                     val checked = token in edit.sections
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(OptionControlGap),
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(min = MinOptionRowHeight)
                             .toggleable(
                                 value = checked,
                                 onValueChange = { onToggleSection(token, it) },
@@ -360,8 +463,10 @@ private fun EditGrantDialog(
 internal fun ExpiryOption(label: String, selected: Boolean, onSelect: () -> Unit) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(OptionControlGap),
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = MinOptionRowHeight)
             .selectable(selected = selected, onClick = onSelect, role = Role.RadioButton)
     ) {
         RadioButton(selected = selected, onClick = null)

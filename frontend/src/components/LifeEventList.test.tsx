@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { LifeEvent } from '../api/lifeEvents';
+import { DateFormatProvider, setDateFormatPreference } from '../DateFormatProvider';
 import LifeEventList from './LifeEventList';
 
 afterEach(cleanup);
@@ -42,8 +43,8 @@ test('renders a category chip for a categorized event', () => {
 // equivalents), which also made them untargetable by an e2e edit flow.
 test('edit and delete actions are reachable by an accessible label', () => {
   renderList([baseEvent()]);
-  expect(screen.getByLabelText('Edit')).toBeInTheDocument();
-  expect(screen.getByLabelText('Delete')).toBeInTheDocument();
+  expect(screen.getByLabelText(/^Edit\b/)).toBeInTheDocument();
+  expect(screen.getByLabelText(/^Delete\b/)).toBeInTheDocument();
 });
 
 // #196 (audit gap, N-1's sibling): revealed only on `&:hover
@@ -65,4 +66,22 @@ test('omits the category chip for an uncategorized (pre-T36) event', () => {
   // label, should render — there is simply no chip for a missing category.
   expect(screen.queryByText('Family & Relationships')).not.toBeInTheDocument();
   expect(screen.queryByText('Other / Uncategorized')).not.toBeInTheDocument();
+});
+
+// Issue #2681: the date chip showed the stored ISO date to a user who picked
+// the EU format.
+test('shows the event date in the user date format, not ISO', () => {
+  setDateFormatPreference('eu');
+  render(
+    <DateFormatProvider>
+      <LifeEventList
+        events={[baseEvent({ date: { year: 2026, month: 11, day: 1 } })]}
+        contactsByUid={new Map()}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />
+    </DateFormatProvider>,
+  );
+  expect(screen.getByText('01.11.2026')).toBeInTheDocument();
+  expect(screen.queryByText('2026-11-01')).not.toBeInTheDocument();
 });

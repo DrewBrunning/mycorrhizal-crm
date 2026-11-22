@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.domain.repository.GraphRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.model.network.GraphChainStep
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
@@ -348,6 +350,40 @@ class NetworkViewModelTest {
             assertTrue(vm.uiState.value.errorRes != null)
             assertTrue(vm.uiState.value.hasFrom.not())
             coVerify(exactly = 0) { graphRepository.getConnections(any(), any(), any()) }
+        }
+
+    // A failed contact fetch (offline, 404, server error) says nothing about the UID: it is the
+    // reason-coded error with a retry, never the "no VCard UID" message.
+    @Test
+    fun `a failed contact fetch is the error, not the no-vcard-uid message, and load retries`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val failure = ApiError.Client(
+                409,
+                "raw-body-not-shown",
+                ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+            )
+            coEvery { contactRepository.getContact(1) } returnsMany listOf(
+                Result.failure(failure),
+                Result.success(record(1, "uid-1", "Alice"))
+            )
+            coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+            stubConnections()
+
+            val vm = viewModel(contactId = 1)
+            advanceUntilIdle()
+
+            assertFalse(vm.uiState.value.isLoading)
+            assertNull(vm.uiState.value.errorRes)
+            assertEquals(failure, vm.uiState.value.error)
+            assertFalse(vm.uiState.value.hasFrom)
+            coVerify(exactly = 0) { graphRepository.getConnections(any(), any(), any()) }
+
+            vm.load()
+            advanceUntilIdle()
+
+            assertNull(vm.uiState.value.error)
+            assertEquals("uid-1", vm.uiState.value.fromVCardUid)
+            coVerify(exactly = 2) { contactRepository.getContact(1) }
         }
 
     @Test

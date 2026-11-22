@@ -1,16 +1,23 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import android.view.View
+import android.view.ViewGroup
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertContentDescriptionEquals
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasNoClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -19,12 +26,17 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
+import androidx.core.graphics.Insets
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AuthRepository
 import com.mycorrhizal.crm.domain.repository.BulkOperationRepository
@@ -35,7 +47,10 @@ import com.mycorrhizal.crm.domain.repository.SessionState
 import com.mycorrhizal.crm.domain.repository.TagRepository
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.SearchActivityHit
+import com.mycorrhizal.crm.model.network.SearchContactHit
 import com.mycorrhizal.crm.model.network.SearchEntityHit
 import com.mycorrhizal.crm.model.network.SearchNoteHit
 import com.mycorrhizal.crm.model.network.SearchResult
@@ -65,6 +80,8 @@ class ContactListScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
+    private var hostView: View? = null
+
     private fun setContent(
         uiState: ContactListUiState,
         onContactClick: (Int) -> Unit = {},
@@ -85,6 +102,7 @@ class ContactListScreenTest {
         darkTheme: Boolean = false
     ) {
         composeTestRule.setContent {
+            hostView = LocalView.current
             MycorrhizalTheme(darkTheme = darkTheme) {
                 ContactListScreenContent(
                     uiState = uiState,
@@ -121,6 +139,61 @@ class ContactListScreenTest {
     fun `shows empty state when no contacts`() {
         setContent(ContactListUiState(isLoading = false, contacts = emptyList()))
         composeTestRule.onNodeWithText("No contacts yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a search with no matches says so instead of the onboarding empty state`() {
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList(), searchQuery = "Zed")
+        )
+
+        composeTestRule.onNodeWithText("No contacts match \u201CZed\u201D").assertIsDisplayed()
+        composeTestRule.onNodeWithText("No contacts yet").assertDoesNotExist()
+        composeTestRule.onNodeWithText("New contact").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Import").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the no-match state has a clear search action that empties the query`() {
+        var query: String? = null
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList(), searchQuery = "Zed"),
+            onSearchQueryChange = { query = it }
+        )
+
+        composeTestRule.onNodeWithTag("contact-search").assertTextContains("Zed")
+        composeTestRule.onNodeWithText("Clear search").performClick()
+
+        assertEquals("", query)
+        composeTestRule.onNodeWithTag("contact-search").assert(!hasText("Zed", substring = true))
+    }
+
+    @Test
+    fun `a blank query keeps the onboarding empty state`() {
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList(), searchQuery = "  ")
+        )
+
+        composeTestRule.onNodeWithText("No contacts yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Clear search").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the search field shows a 48dp clear button only while it has text`() {
+        var query: String? = null
+        setContent(
+            ContactListUiState(isLoading = false, contacts = emptyList()),
+            onSearchQueryChange = { query = it }
+        )
+        composeTestRule.onNodeWithContentDescription("Clear search").assertDoesNotExist()
+
+        composeTestRule.onNodeWithTag("contact-search").performTextInput("ali")
+        composeTestRule.onNodeWithContentDescription("Clear search")
+            .assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+            .performClick()
+
+        assertEquals("", query)
+        composeTestRule.onNodeWithContentDescription("Clear search").assertDoesNotExist()
     }
 
     @Test
@@ -387,11 +460,92 @@ class ContactListScreenTest {
 
         composeTestRule.onNodeWithTag("contact-list")
             .performScrollToNode(hasText("Acme Corp"))
-        composeTestRule.onNodeWithText("Organisations, places and pets").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisations, places & pets").assertIsDisplayed()
         composeTestRule.onNodeWithText("Organisation").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Pet").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Acme Rex").performScrollTo().performClick()
         assertEquals("e2", opened)
+    }
+
+    private fun matchedOnState(
+        searchQuery: String = "zebracorp",
+        resultQuery: String? = "zebracorp",
+        hits: List<SearchContactHit>
+    ) = ContactListUiState(
+        isLoading = false,
+        searchQuery = searchQuery,
+        contacts = listOf(
+            ContactSummary(id = 7, fn = "Beatrix Marlow", firstname = "Beatrix"),
+            ContactSummary(id = 8, fn = "Fenn Zebracorp", firstname = "Fenn"),
+            ContactSummary(id = 9, fn = "Older Server", firstname = "Older")
+        ),
+        searchResult = SearchResult(query = resultQuery, contacts = hits)
+    )
+
+    @Test
+    fun `a contact hit says which of its fields the search matched`() {
+        setContent(
+            matchedOnState(
+                hits = listOf(
+                    SearchContactHit(id = 7, matchedOn = listOf("organization")),
+                    SearchContactHit(id = 8, matchedOn = listOf("name", "email"))
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("Matched on organisation").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Matched on name, email").assertIsDisplayed()
+        // A row the search did not report on (older server, beyond the page) stays plain.
+        composeTestRule.onAllNodesWithText("Matched on", substring = true).assertCountEquals(2)
+    }
+
+    @Test
+    fun `an unknown matched_on token is dropped and a line of only unknown tokens is hidden`() {
+        setContent(
+            matchedOnState(
+                hits = listOf(
+                    SearchContactHit(id = 7, matchedOn = listOf("entity", "phone")),
+                    SearchContactHit(id = 8, matchedOn = listOf("entity"))
+                )
+            )
+        )
+        composeTestRule.onNodeWithText("Matched on phone").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Matched on", substring = true).assertCountEquals(1)
+    }
+
+    @Test
+    fun `reasons from a superseded query are not shown against the new query`() {
+        setContent(
+            matchedOnState(
+                searchQuery = "zebracorp holdings",
+                resultQuery = "zebracorp",
+                hits = listOf(SearchContactHit(id = 7, matchedOn = listOf("organization")))
+            )
+        )
+        composeTestRule.onAllNodesWithText("Matched on", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    fun `an entity hit says it matched on its name when the server reports it`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = emptyList(),
+                searchResult = SearchResult(
+                    entities = listOf(
+                        SearchEntityHit(
+                            id = "e1",
+                            kind = "organisation",
+                            name = "Acme Corp",
+                            matchedOn = listOf("name")
+                        ),
+                        SearchEntityHit(id = "e2", kind = "pet", name = "Acme Rex")
+                    )
+                )
+            )
+        )
+        composeTestRule.onNodeWithTag("contact-list").performScrollToNode(hasText("Acme Corp"))
+        composeTestRule.onNodeWithText("Matched on name").performScrollTo().assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Matched on", substring = true).assertCountEquals(1)
     }
 
     @Test
@@ -817,6 +971,50 @@ class ContactListScreenTest {
         assertEquals(null, ran?.third)
     }
 
+    // --- Issue #2605: bulk bar must clear the system navigation bar ----------
+
+    private fun dispatchNavigationBarInsets(bottomPx: Int) {
+        val insets = WindowInsetsCompat.Builder()
+            .setInsets(WindowInsetsCompat.Type.navigationBars(), Insets.of(0, 0, 0, bottomPx))
+            .setVisible(WindowInsetsCompat.Type.navigationBars(), true)
+            .build()
+        fun dispatch(view: View) {
+            ViewCompat.dispatchApplyWindowInsets(view, insets)
+            if (view is ViewGroup) {
+                for (i in 0 until view.childCount) dispatch(view.getChildAt(i))
+            }
+        }
+        composeTestRule.runOnUiThread { dispatch(hostView!!.rootView) }
+        composeTestRule.waitForIdle()
+    }
+
+    @Test
+    fun `bulk action bar sits above the navigation bar inset`() {
+        setContent(
+            ContactListUiState(
+                isLoading = false,
+                contacts = listOf(
+                    ContactSummary(id = 1, uid = "u1", fn = "Alice", firstname = "Alice")
+                ),
+                selected = setOf(1)
+            )
+        )
+        composeTestRule.onNodeWithTag("enter-select-mode").performClick()
+        val navBarPx = 144
+        dispatchNavigationBarInsets(navBarPx)
+
+        val density = composeTestRule.density
+        val navBarDp = with(density) { navBarPx.toDp() }
+        val rootHeight = composeTestRule.onRoot().getUnclippedBoundsInRoot().bottom
+        val archiveBottom = composeTestRule.onNodeWithTag("bulk-archive")
+            .getUnclippedBoundsInRoot().bottom
+
+        assertTrue(
+            "bulk action bottom $archiveBottom must clear the nav bar (root $rootHeight - $navBarDp)",
+            archiveBottom <= rootHeight - navBarDp
+        )
+    }
+
     // --- Issue #2212: merge several selected contacts ------------------------
 
     private fun openMergeDialog(
@@ -1127,6 +1325,159 @@ class ContactListScreenTest {
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
     }
 
+    // Issue #2629: a failed first load with nothing to show is the shared ErrorState (localized
+    // reason) whose Retry re-runs the load; the onboarding empty state must not show instead.
+    @Test
+    fun `a failed first load shows the localized reason and Retry wired to refresh`() {
+        var refreshes = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = emptyList(),
+                        error = ApiError.Client(
+                            409,
+                            "raw-body-not-shown",
+                            ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                        )
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {},
+                    onRefresh = { refreshes += 1 }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No contacts yet").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Retry").performClick()
+
+        assertEquals(1, refreshes)
+    }
+
+    // The saved-data fallback (#2748) is unchanged: cached rows plus the banner, never the
+    // no-data ErrorState, so Retry appears once (the banner's).
+    @Test
+    fun `cached rows with a failed refresh keep the saved data banner and no error state`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = listOf(ContactSummary(id = 1, fn = "Alice")),
+                        showingSavedData = true,
+                        error = ApiError.Network(java.io.IOException("offline"))
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Showing saved data").assertExists()
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Retry").assertCountEquals(1)
+    }
+
+    // With rows still listed a failed refresh keeps its toast (there is no ErrorState to show).
+    @Test
+    fun `a failed refresh with rows still listed toasts the error and shows no error state`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = listOf(ContactSummary(id = 1, fn = "Alice")),
+                        error = ApiError.Client(500, "refresh-failed")
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {}
+                )
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("refresh-failed").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    // The error must survive on screen: the snackbar path clears the error when dismissed, which
+    // would turn the state back into the onboarding empty state (so it is skipped while empty).
+    @Test
+    fun `the top-level screen retries a failed first load and then lists the contacts`() {
+        val repository = mockk<ContactRepository>()
+        coEvery { repository.observeContacts() } returns emptyFlow()
+        coEvery { repository.searchLocal(any()) } returns emptyList()
+        coEvery { repository.syncContacts() } returns Result.success(Unit)
+        // The screen also reloads on resume, so count the calls instead of scripting a sequence.
+        var recovered = false
+        var loads = 0
+        coEvery {
+            repository.listContacts(any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } coAnswers {
+            loads += 1
+            if (recovered) {
+                Result.success(
+                    ContactsPage(
+                        contacts = listOf(
+                            ContactSummary(id = 1, fn = "Alice", firstname = "Alice")
+                        ),
+                        nextCursor = null,
+                        limit = 50,
+                        sync = null
+                    )
+                )
+            } else {
+                Result.failure(
+                    ApiError.Client(
+                        409,
+                        "raw-body-not-shown",
+                        ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                    )
+                )
+            }
+        }
+        val apiClient = mockk<ApiClient>()
+        coEvery { apiClient.search(any(), any(), any()) } returns Result.success(SearchResult())
+        val circleRepository = mockk<CircleRepository>()
+        coEvery { circleRepository.list() } returns Result.success(emptyList())
+        val tagRepository = mockk<TagRepository>()
+        coEvery { tagRepository.list() } returns Result.success(emptyList())
+        val authRepository = mockk<AuthRepository>()
+        every { authRepository.observeSession() } returns flowOf(SessionState())
+        val appSettingsRepository = mockk<AppSettingsRepository>()
+        every { appSettingsRepository.contactSortPreference() } returns flowOf(
+            AppSettingsRepository.CONTACT_SORT_NAME
+        )
+        val viewModel = ContactListViewModel(
+            repository,
+            apiClient,
+            circleRepository,
+            mockk<BulkOperationRepository>(),
+            tagRepository,
+            authRepository,
+            appSettingsRepository
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactListScreen(onContactClick = {}, viewModel = viewModel) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("No contacts yet").assertDoesNotExist()
+
+        val loadsBeforeRetry = loads
+        recovered = true
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(loadsBeforeRetry + 1, loads)
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
     // ADR 0029 §6 (issue #1271): the "Share to…" single-select picker mode.
     private fun setPickerContent(
         onContactClick: (Int) -> Unit = {},
@@ -1181,5 +1532,47 @@ class ContactListScreenTest {
     fun `picker mode hides the import shortcut on an empty list`() {
         setPickerContent(contacts = emptyList())
         composeTestRule.onNodeWithText("Import contacts").assertDoesNotExist()
+    }
+
+    // --- Issue #2629: saved-data banner ---
+
+    @Test
+    fun `saved data banner shows with retry wired to refresh when serving cached rows`() {
+        var refreshes = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = listOf(ContactSummary(id = 1, fn = "Alice")),
+                        showingSavedData = true
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {},
+                    onRefresh = { refreshes += 1 }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Showing saved data").assertExists()
+        composeTestRule.onNodeWithText("Retry").performClick()
+
+        assertEquals(1, refreshes)
+    }
+
+    @Test
+    fun `no saved data banner on a live list`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactListScreenContent(
+                    uiState = ContactListUiState(
+                        contacts = listOf(ContactSummary(id = 1, fn = "Alice"))
+                    ),
+                    onSearchQueryChange = {},
+                    onContactClick = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Showing saved data").assertDoesNotExist()
     }
 }

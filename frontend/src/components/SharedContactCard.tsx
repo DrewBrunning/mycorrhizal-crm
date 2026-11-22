@@ -20,7 +20,7 @@ export default function SharedContactCard({ card }: SharedContactCardProps) {
       </Typography>
       {sections.map((section) => (
         <Box key={section.token}>
-          <Typography variant="subtitle2" component="h4">
+          <Typography variant="subtitle2" component="h3">
             {t(`settings.exportFieldPicker.sections.${section.token}`)}
           </Typography>
           <Box component="ul" sx={{ m: 0, pl: 2.5 }}>

@@ -54,6 +54,7 @@ const (
 	ReasonImportTagsNotFound         ReasonCode = "import_tags_not_found"
 	ReasonValidationCursorMalformed  ReasonCode = "validation_cursor_malformed"
 	ReasonValidationActivityIDsRange ReasonCode = "validation_activity_ids_range"
+	ReasonValidationTimezoneInvalid  ReasonCode = "validation_timezone_invalid"
 
 	// Struct-tag validation (issue #2105): one code per middleware validator
 	// tag, plus validation_invalid for the default branch.
@@ -115,6 +116,8 @@ const (
 	ReasonMeerkatSignInInputMissing    ReasonCode = "meerkat_sign_in_input_missing"
 	ReasonMeerkatRemoteTooManyContacts ReasonCode = "meerkat_remote_too_many_contacts"
 	ReasonMeerkatVersionUntested       ReasonCode = "meerkat_version_untested"
+	ReasonMeerkatFetchUnreachable      ReasonCode = "meerkat_fetch_unreachable"
+	ReasonMeerkatFetchUnreadable       ReasonCode = "meerkat_fetch_unreadable"
 	// Constructor defaults (issue #2099).
 	ReasonCommonDatabaseError            ReasonCode = "common_database_error"
 	ReasonCommonDatabaseBusy             ReasonCode = "common_database_busy"
@@ -182,6 +185,7 @@ const (
 	// case so the response is identical.
 	ReasonShareGrantNotFound                        ReasonCode = "share_grant_not_found"
 	ReasonShareGrantStateConflict                   ReasonCode = "share_grant_state_conflict"
+	ReasonShareGrantNotEnded                        ReasonCode = "share_grant_not_ended"
 	ReasonShareGrantWideningRefused                 ReasonCode = "share_grant_widening_refused"
 	ReasonShareGrantAlreadyExists                   ReasonCode = "share_grant_already_exists"
 	ReasonShareGrantPendingLimit                    ReasonCode = "share_grant_pending_limit"
@@ -501,6 +505,7 @@ const (
 	ReasonHouseholdSuggestionMemberStale        ReasonCode = "household_suggestion_member_stale"
 	ReasonHouseholdSuggestionStale              ReasonCode = "household_suggestion_stale"
 	ReasonHouseholdTypeInvalid                  ReasonCode = "household_type_invalid"
+	ReasonImportCSVNotText                      ReasonCode = "import_csv_not_text"
 	ReasonImportDiskSpaceLow                    ReasonCode = "import_disk_space_low"
 	ReasonImportFieldMappingTargetInvalid       ReasonCode = "import_field_mapping_target_invalid"
 	ReasonImportFieldMappingsInvalid            ReasonCode = "import_field_mappings_invalid"
@@ -508,6 +513,8 @@ const (
 	ReasonIntegrationRequestBodyInvalid         ReasonCode = "integration_request_body_invalid"
 	ReasonIntegrationSaveFailed                 ReasonCode = "integration_save_failed"
 	ReasonOccasionAnchorDateIncomplete          ReasonCode = "occasion_anchor_date_incomplete"
+	ReasonOccasionAnchorDateInvalid             ReasonCode = "occasion_anchor_date_invalid"
+	ReasonOccasionAnchorDateRequired            ReasonCode = "occasion_anchor_date_required"
 	ReasonOccasionDaysInvalid                   ReasonCode = "occasion_days_invalid"
 	ReasonOccasionEventCirclesRequired          ReasonCode = "occasion_event_circles_required"
 	ReasonOccasionEventEndBeforeStart           ReasonCode = "occasion_event_end_before_start"
@@ -547,6 +554,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonImportTagsNotFound:         {Template: "One or more tags were not found"},
 	ReasonValidationCursorMalformed:  {Template: "The cursor id is malformed"},
 	ReasonValidationActivityIDsRange: {Template: "Must contain between 1 and 100 ids"},
+	ReasonValidationTimezoneInvalid:  {Template: "tz must be an IANA time zone name such as Europe/Berlin"},
 
 	// Struct-tag validation (issue #2105). The template is the English that
 	// middleware.formatValidationError produced, with the field name (and
@@ -607,10 +615,12 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonMeerkatSignInInputMissing:    {Template: "Enter a Meerkat API token, or a username and password"},
 	ReasonMeerkatRemoteTooManyContacts: {Template: "Contacts on this Meerkat account: {total}. The import supports at most {max}", Params: []string{"total", "max"}},
 	ReasonMeerkatVersionUntested:       {Template: "This Meerkat version is not tested with the importer. Confirm to try anyway; nothing is written until you review the preview."},
+	ReasonMeerkatFetchUnreachable:      {Template: "The Meerkat instance could not be reached"},
+	ReasonMeerkatFetchUnreadable:       {Template: "The Meerkat server sent a response the importer could not read. Check the URL"},
 	// Constructor defaults (issue #2099).
 	ReasonCommonDatabaseError:                           {Template: "Something went wrong while saving or loading your data"},
 	ReasonCommonDatabaseBusy:                            {Template: "The server is busy. Try again in a moment"},
-	ReasonAuthInvalidCredentials:                        {Template: "Invalid email or password"},
+	ReasonAuthInvalidCredentials:                        {Template: "Invalid username, email or password"},
 	ReasonAuthTokenExpired:                              {Template: "Your session has expired. Sign in again"},
 	ReasonAuthTokenInvalid:                              {Template: "Your session is no longer valid. Sign in again"},
 	ReasonCommonClientNotSupported:                      {Template: "This app version is no longer supported. Update to {required_version} or later", Params: []string{"required_version"}},
@@ -633,17 +643,17 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonImageLimitReached:                             {Template: "This item already has the maximum of {limit} images", Params: []string{"limit"}},
 	ReasonImageProcessingBusy:                           {Template: "Image processing is busy; try again shortly"},
 	ReasonImageNotFound:                                 {Template: "Image not found"},
-	ReasonEntityNotFound:                                {Template: "Entity not found"},
+	ReasonEntityNotFound:                                {Template: "Organisation, place or pet not found"},
 	ReasonEntityKindRequired:                            {Template: "kind is required and must be organisation, place or pet"},
-	ReasonEntityKindImmutable:                           {Template: "An entity's kind cannot be changed; delete it and create a new one"},
+	ReasonEntityKindImmutable:                           {Template: "The kind cannot be changed; delete it and create a new one"},
 	ReasonEntityCoreInvalid:                             {Template: "{reason}", Params: []string{"reason"}},
-	ReasonEntitySnapshotUnsupported:                     {Template: "This entity's deletion snapshot is not supported by this version"},
-	ReasonEntityMergeSameEntity:                         {Template: "An entity cannot be merged into itself"},
-	ReasonEntityMergeKindMismatch:                       {Template: "Only entities of the same kind can be merged"},
+	ReasonEntitySnapshotUnsupported:                     {Template: "This item's deletion snapshot is not supported by this version"},
+	ReasonEntityMergeSameEntity:                         {Template: "An organisation, place or pet cannot be merged into itself"},
+	ReasonEntityMergeKindMismatch:                       {Template: "Only items of the same kind can be merged"},
 	ReasonEntityMergeResolutionInvalid:                  {Template: "{reason}", Params: []string{"reason"}},
-	ReasonEntityLinkNotFound:                            {Template: "Entity link not found"},
-	ReasonEntityLinkRoleInvalid:                         {Template: "That role is not valid for this kind of entity"},
-	ReasonEntityLinkKindNotAdoptable:                    {Template: "This entity has no organisation or address value to adopt into the contact"},
+	ReasonEntityLinkNotFound:                            {Template: "Link to organisation, place or pet not found"},
+	ReasonEntityLinkRoleInvalid:                         {Template: "That role is not valid for this kind"},
+	ReasonEntityLinkKindNotAdoptable:                    {Template: "This item has no organisation or address value to adopt into the contact"},
 	ReasonEntityLinkSourceNotFound:                      {Template: "The contact has no such organisation or address"},
 	ReasonEntityLinkPrimaryConflict:                     {Template: "Another change to this contact's primary link happened at the same time; try again"},
 	ReasonContactFieldDefinitionTargetImmutable:         {Template: "A field definition's target cannot be changed"},
@@ -662,6 +672,7 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonCircleAlreadyExists:                       {Template: "A circle with this name already exists"},
 	ReasonShareGrantNotFound:                        {Template: "Share grant not found"},
 	ReasonShareGrantStateConflict:                   {Template: "This share can no longer be changed that way"},
+	ReasonShareGrantNotEnded:                        {Template: "Only a share that has ended (declined, expired or revoked) can be removed; revoke it first"},
 	ReasonShareGrantWideningRefused:                 {Template: "A share can only be narrowed; create a new share to grant more"},
 	ReasonShareGrantAlreadyExists:                   {Template: "That is already shared with this person"},
 	ReasonShareGrantPendingLimit:                    {Template: "Too many shares are waiting for a response"},
@@ -980,13 +991,16 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonHouseholdSuggestionMemberStale:        {Template: "The contact is no longer a member of this household", Params: nil},
 	ReasonHouseholdSuggestionStale:              {Template: "The suggested members no longer share an address — re-run the suggestion scan", Params: nil},
 	ReasonHouseholdTypeInvalid:                  {Template: "type must be one of family_unit, roommates, other", Params: nil},
+	ReasonImportCSVNotText:                      {Template: "This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.", Params: nil},
 	ReasonImportDiskSpaceLow:                    {Template: "not enough disk space to import {total} contacts: {reason}", Params: []string{"total", "reason"}},
 	ReasonImportFieldMappingTargetInvalid:       {Template: "An imported value can only go into a custom field that applies to contacts", Params: nil},
 	ReasonImportFieldMappingsInvalid:            {Template: "{reason}", Params: []string{"reason"}},
 	ReasonImportFileUnreadable:                  {Template: "{reason}", Params: []string{"reason"}},
 	ReasonIntegrationRequestBodyInvalid:         {Template: "{reason}", Params: []string{"reason"}},
 	ReasonIntegrationSaveFailed:                 {Template: "{reason}", Params: []string{"reason"}},
-	ReasonOccasionAnchorDateIncomplete:          {Template: "An occasion anchor date requires both a month and a day, or neither", Params: nil},
+	ReasonOccasionAnchorDateIncomplete:          {Template: "An occasion anchor date requires both a month and a day", Params: nil},
+	ReasonOccasionAnchorDateInvalid:             {Template: "That month and day do not exist together, for example February 30", Params: nil},
+	ReasonOccasionAnchorDateRequired:            {Template: "An occasion needs a month and a day so it can remind you", Params: nil},
 	ReasonOccasionDaysInvalid:                   {Template: "days must be 30 or 90", Params: nil},
 	ReasonOccasionEventCirclesRequired:          {Template: "circle_ids is required", Params: nil},
 	ReasonOccasionEventEndBeforeStart:           {Template: "Event end time cannot be before its start time", Params: nil},
@@ -1019,67 +1033,67 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 // reason code. A resource not listed (including one passed as a variable) gets
 // no code: that is the fallback, not a bug (issue #2099).
 var notFoundReasons = map[string]ReasonCode{
-	"API token":                ReasonAccountApiTokenNotFound,
-	"Activity":                 ReasonActivityNotFound,
-	"Address":                  ReasonContactAddressNotFound,
-	"Image":                    ReasonImageNotFound,
-	"Entity":                   ReasonEntityNotFound,
-	"Entity link":              ReasonEntityLinkNotFound,
-	"Attachment":               ReasonAttachmentNotFound,
-	"Attachment file":          ReasonAttachmentFileNotFound,
-	"Audit event":              ReasonAdminAuditEventNotFound,
-	"Cadence policy":           ReasonContactCadencePolicyNotFound,
-	"Calendar subscription":    ReasonCalendarSubscriptionNotFound,
-	"Circle":                   ReasonCircleNotFound,
-	"Circle membership":        ReasonCircleMembershipNotFound,
-	"Contact":                  ReasonContactNotFound,
-	"Contact share":            ReasonContactShareNotFound,
-	"Share grant":              ReasonShareGrantNotFound,
-	"Contact subscription":     ReasonContactSubscriptionNotFound,
-	"Conversation agenda item": ReasonContactConversationAgendaItemNotFound,
-	"Data decay policy":        ReasonContactDataDecayPolicyNotFound,
-	"Device grant":             ReasonAuthDeviceGrantNotFound,
-	"Device registration":      ReasonNotificationDeviceRegistrationNotFound,
-	"Event attendee":           ReasonOccasionEventAttendeeNotFound,
-	"External activity":        ReasonContactExternalActivityNotFound,
-	"External identity":        ReasonIntegrationExternalIdentityNotFound,
-	"Feed":                     ReasonFeedNotFound,
-	"Field definition":         ReasonContactFieldDefinitionNotFound,
-	"GeoPulse resource":        ReasonGeopulseResourceNotFound,
-	"Gift":                     ReasonContactGiftNotFound,
-	"Household":                ReasonHouseholdNotFound,
-	"Household membership":     ReasonHouseholdMembershipNotFound,
-	"Immich link":              ReasonImmichLinkNotFound,
-	"Immich person":            ReasonImmichPersonNotFound,
-	"Life event":               ReasonContactLifeEventNotFound,
-	"Link field type":          ReasonContactLinkFieldTypeNotFound,
-	"Member":                   ReasonCommonMemberNotFound,
-	"Nextcloud file or folder": ReasonNextcloudFileOrFolderNotFound,
-	"Nextcloud link":           ReasonNextcloudLinkNotFound,
-	"Note":                     ReasonContactNoteNotFound,
-	"Occasion event":           ReasonOccasionEventNotFound,
-	"Occasion obligation":      ReasonOccasionObligationNotFound,
-	"One or more contacts":     ReasonContactSomeNotFound,
-	"Paperless document":       ReasonPaperlessDocumentNotFound,
-	"Paperless link":           ReasonPaperlessLinkNotFound,
-	"Passkey":                  ReasonAuthPasskeyNotFound,
-	"Photo":                    ReasonPhotoNotFound,
-	"Preference":               ReasonAccountPreferenceNotFound,
-	"Push subscription":        ReasonNotificationPushSubscriptionNotFound,
-	"Reach-out suggestion":     ReasonContactReachOutSuggestionNotFound,
-	"Recipient user":           ReasonAccountRecipientUserNotFound,
-	"Relationship edge":        ReasonRelationshipEdgeNotFound,
-	"Reminder":                 ReasonContactReminderNotFound,
-	"Reminder completion":      ReasonContactReminderCompletionNotFound,
-	"Seafile library or file":  ReasonSeafileLibraryOrFileNotFound,
-	"Seafile link":             ReasonSeafileLinkNotFound,
-	"Sync conflict":            ReasonCommonSyncConflictNotFound,
-	"Tag":                      ReasonContactTagNotFound,
-	"Tagging":                  ReasonContactTaggingNotFound,
-	"Thumbnail":                ReasonPhotoThumbnailNotFound,
-	"User":                     ReasonAccountUserNotFound,
-	"Webhook":                  ReasonIntegrationWebhookNotFound,
-	"session":                  ReasonAuthSessionNotFound,
+	"API token":                          ReasonAccountApiTokenNotFound,
+	"Activity":                           ReasonActivityNotFound,
+	"Address":                            ReasonContactAddressNotFound,
+	"Image":                              ReasonImageNotFound,
+	"Organisation, place or pet":         ReasonEntityNotFound,
+	"Link to organisation, place or pet": ReasonEntityLinkNotFound,
+	"Attachment":                         ReasonAttachmentNotFound,
+	"Attachment file":                    ReasonAttachmentFileNotFound,
+	"Audit event":                        ReasonAdminAuditEventNotFound,
+	"Cadence policy":                     ReasonContactCadencePolicyNotFound,
+	"Calendar subscription":              ReasonCalendarSubscriptionNotFound,
+	"Circle":                             ReasonCircleNotFound,
+	"Circle membership":                  ReasonCircleMembershipNotFound,
+	"Contact":                            ReasonContactNotFound,
+	"Contact share":                      ReasonContactShareNotFound,
+	"Share grant":                        ReasonShareGrantNotFound,
+	"Contact subscription":               ReasonContactSubscriptionNotFound,
+	"Conversation agenda item":           ReasonContactConversationAgendaItemNotFound,
+	"Data decay policy":                  ReasonContactDataDecayPolicyNotFound,
+	"Device grant":                       ReasonAuthDeviceGrantNotFound,
+	"Device registration":                ReasonNotificationDeviceRegistrationNotFound,
+	"Event attendee":                     ReasonOccasionEventAttendeeNotFound,
+	"External activity":                  ReasonContactExternalActivityNotFound,
+	"External identity":                  ReasonIntegrationExternalIdentityNotFound,
+	"Feed":                               ReasonFeedNotFound,
+	"Field definition":                   ReasonContactFieldDefinitionNotFound,
+	"GeoPulse resource":                  ReasonGeopulseResourceNotFound,
+	"Gift":                               ReasonContactGiftNotFound,
+	"Household":                          ReasonHouseholdNotFound,
+	"Household membership":               ReasonHouseholdMembershipNotFound,
+	"Immich link":                        ReasonImmichLinkNotFound,
+	"Immich person":                      ReasonImmichPersonNotFound,
+	"Life event":                         ReasonContactLifeEventNotFound,
+	"Link field type":                    ReasonContactLinkFieldTypeNotFound,
+	"Member":                             ReasonCommonMemberNotFound,
+	"Nextcloud file or folder":           ReasonNextcloudFileOrFolderNotFound,
+	"Nextcloud link":                     ReasonNextcloudLinkNotFound,
+	"Note":                               ReasonContactNoteNotFound,
+	"Occasion event":                     ReasonOccasionEventNotFound,
+	"Occasion obligation":                ReasonOccasionObligationNotFound,
+	"One or more contacts":               ReasonContactSomeNotFound,
+	"Paperless document":                 ReasonPaperlessDocumentNotFound,
+	"Paperless link":                     ReasonPaperlessLinkNotFound,
+	"Passkey":                            ReasonAuthPasskeyNotFound,
+	"Photo":                              ReasonPhotoNotFound,
+	"Preference":                         ReasonAccountPreferenceNotFound,
+	"Push subscription":                  ReasonNotificationPushSubscriptionNotFound,
+	"Reach-out suggestion":               ReasonContactReachOutSuggestionNotFound,
+	"Recipient user":                     ReasonAccountRecipientUserNotFound,
+	"Relationship edge":                  ReasonRelationshipEdgeNotFound,
+	"Reminder":                           ReasonContactReminderNotFound,
+	"Reminder completion":                ReasonContactReminderCompletionNotFound,
+	"Seafile library or file":            ReasonSeafileLibraryOrFileNotFound,
+	"Seafile link":                       ReasonSeafileLinkNotFound,
+	"Sync conflict":                      ReasonCommonSyncConflictNotFound,
+	"Tag":                                ReasonContactTagNotFound,
+	"Tagging":                            ReasonContactTaggingNotFound,
+	"Thumbnail":                          ReasonPhotoThumbnailNotFound,
+	"User":                               ReasonAccountUserNotFound,
+	"Webhook":                            ReasonIntegrationWebhookNotFound,
+	"session":                            ReasonAuthSessionNotFound,
 }
 
 // alreadyExistsReasons is notFoundReasons for ErrAlreadyExists.

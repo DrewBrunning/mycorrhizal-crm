@@ -20,6 +20,14 @@
     <issue id="GradleDynamicVersion" severity="ignore" />
 
     <!--
+      AGP 9.5's lint rejects lifecycle-runtime 2.8.7's bundled lint checks as
+      referencing invalid APIs and reports that as an error; the checks are
+      skipped either way. Drop this once lifecycle is bumped past a release whose
+      lint jar targets the current lint API.
+    -->
+    <issue id="ObsoleteLintCustomCheck" severity="ignore" />
+
+    <!--
       This app logs through android.util.Log and has no Timber dependency.
       These four call sites are OS/boundary error paths, not app-wide logging.
     -->

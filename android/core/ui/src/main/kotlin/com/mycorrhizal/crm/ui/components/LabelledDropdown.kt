@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
@@ -39,7 +40,8 @@ import androidx.compose.ui.unit.dp
  * description carries both, and its role is [Role.DropdownList].
  *
  * [valueText] is what the closed field shows (the selected option's label, or a
- * placeholder such as "None"). A disabled field shows the same text greyed out.
+ * placeholder such as "None"). A disabled field shows the same text greyed out. [errorText]
+ * marks the field invalid and shows the message under it.
  */
 // The caller's modifier belongs on the interactive anchor Box (the root-most
 // layout that carries the test tag, drop-down role, description and focus),
@@ -54,10 +56,24 @@ fun <T> LabelledDropdown(
     options: List<DropdownOption<T>>,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    // What a screen reader says for the field; defaults to the visible [label]. A caller with a
+    // short visible label can name the item here ("Role for Acme").
+    accessibleLabel: String = label,
+    // A validation message: the field draws its error outline and shows the text under it, and
+    // a screen reader hears it as the field's error. A non-null blank string marks the field
+    // invalid without text of its own (its pair carries the message).
+    errorText: String? = null,
+    // Neutral guidance shown under the field while there is no [errorText].
+    helperText: String? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
     val open = expanded && enabled
+    // The error wins; a blank error marks the field invalid but speaks through its pair.
+    val supportingMessage = when {
+        errorText == null -> helperText
+        else -> errorText.takeIf { it.isNotBlank() }
+    }
     ExposedDropdownMenuBox(
         expanded = open,
         onExpandedChange = { expanded = it && enabled },
@@ -88,7 +104,8 @@ fun <T> LabelledDropdown(
                 .focusable(enabled)
                 .semantics(mergeDescendants = true) {
                     role = Role.DropdownList
-                    contentDescription = "$label, $valueText"
+                    contentDescription = "$accessibleLabel, $valueText"
+                    errorText?.takeIf { it.isNotBlank() }?.let { error(it) }
                     if (!enabled) disabled()
                 },
             // The decoration box sizes to its content; stretch it to the field width
@@ -115,7 +132,9 @@ fun <T> LabelledDropdown(
                 visualTransformation = VisualTransformation.None,
                 interactionSource = remember { MutableInteractionSource() },
                 label = { Text(label) },
-                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) }
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
+                isError = errorText != null,
+                supportingText = supportingMessage?.let { { Text(it) } }
             )
         }
         ExposedDropdownMenu(expanded = open, onDismissRequest = { expanded = false }) {

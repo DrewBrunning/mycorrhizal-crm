@@ -1,18 +1,23 @@
 package com.mycorrhizal.crm.feature.shares
 
 import android.content.Context
+import android.os.Looper
 import androidx.annotation.StringRes
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.lifecycle.SavedStateHandle
 import androidx.test.core.app.ApplicationProvider
 import com.mycorrhizal.crm.domain.repository.ContactShareRepository
@@ -26,12 +31,14 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import java.time.Duration
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
@@ -68,7 +75,7 @@ class ShareContactScreenTest {
     @Test
     fun `renders the recipient picker and sections once the directory loads`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -85,7 +92,7 @@ class ShareContactScreenTest {
     @Test
     fun `a failed directory load shows the localized error`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.failure(ApiError.Client(404, "gone"))
+        coEvery { repo.userDirectory("") } returns Result.failure(ApiError.Client(404, "gone"))
         screen(repo)
 
         composeTestRule.onAllNodesWithText("Not found").assertCountEquals(2)
@@ -94,7 +101,7 @@ class ShareContactScreenTest {
     @Test
     fun `share is disabled until a recipient is selected`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -104,19 +111,96 @@ class ShareContactScreenTest {
             .assertIsNotEnabled()
     }
 
+    // Issues #2787 / #2658: an empty answer to the empty query means the server only searches.
     @Test
-    fun `an empty directory shows the no-recipients explanation`() {
+    fun `an empty first answer shows the type-3-letters hint, not an empty state`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(emptyList())
+        coEvery { repo.userDirectory(any()) } returns Result.success(emptyList())
         screen(repo)
 
-        composeTestRule.onNodeWithText(str(R.string.shares_no_recipients)).assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_no_match))
+            .assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.shares_share_button))
+            .performScrollTo()
+            .assertIsNotEnabled()
+    }
+
+    @Test
+    fun `typing 3 letters searches and a miss shows no matching users`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory(any()) } returns Result.success(emptyList())
+        screen(repo)
+
+        composeTestRule.onNode(hasSetTextAction()).performTextInput("zz")
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(300))
+        composeTestRule.waitForIdle()
+        coVerify(exactly = 0) { repo.userDirectory("zz") }
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertIsDisplayed()
+
+        composeTestRule.onNode(hasSetTextAction()).performTextInput("z")
+        waitFor { composeTestRule.onAllNodesWithText(str(R.string.shares_recipient_no_match)) }
+
+        coVerify(exactly = 1) { repo.userDirectory("zzz") }
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertDoesNotExist()
+    }
+
+    @Test
+    fun `search mode lists the matches and picking one enables sharing`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory("") } returns Result.success(emptyList())
+        coEvery { repo.userDirectory("ali") } returns Result.success(
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
+        )
+        screen(repo)
+
+        composeTestRule.onNode(hasSetTextAction()).performTextInput("ali")
+        waitFor { composeTestRule.onAllNodesWithText("alice") }
+        composeTestRule.onNodeWithText("alice").performClick()
+
+        composeTestRule.onNodeWithText(str(R.string.shares_share_button))
+            .performScrollTo()
+            .assertIsEnabled()
+    }
+
+    @Test
+    fun `all mode shows neither hint nor a text input`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory(any()) } returns Result.success(
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
+        )
+        screen(repo)
+
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_search_hint))
+            .assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient_no_match))
+            .assertDoesNotExist()
+        composeTestRule.onAllNodes(hasSetTextAction()).assertCountEquals(0)
+    }
+
+    @Test
+    fun `the search-mode screen has no accessibility violations`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory(any()) } returns Result.success(emptyList())
+        screen(repo)
+
+        composeTestRule.assertAccessibleSemantics()
+    }
+
+    /** The debounce runs on the real clock under Robolectric; poll until the node appears. */
+    private fun waitFor(nodes: () -> androidx.compose.ui.test.SemanticsNodeInteractionCollection) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+            nodes().fetchSemanticsNodes().isNotEmpty()
+        }
     }
 
     @Test
     fun `share screen has no accessibility violations`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -127,7 +211,7 @@ class ShareContactScreenTest {
     @Test
     fun `the reveal button opens the sensitive confirmation dialog`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -143,7 +227,7 @@ class ShareContactScreenTest {
     @Test
     fun `sharing with a selected recipient calls the repository`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         coEvery { repo.create(any()) } returns Result.success(
@@ -161,6 +245,26 @@ class ShareContactScreenTest {
             .performClick()
 
         coVerify(exactly = 1) { repo.create(any()) }
+    }
+
+    // Issue #2609: the field checkboxes and the mode/expiry radios are 48dp touch targets.
+    @Test
+    fun `section, mode and expiry rows are at least 48dp tall`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory("") } returns Result.success(
+            listOf(UserDirectoryEntry(id = 1, username = "alice"))
+        )
+        val grants = mockk<ShareGrantRepository>()
+        coEvery { grants.previewContact(any(), any()) } returns Result.success(emptyMap())
+        standingScreen(repo, grants)
+        composeTestRule.onNodeWithText(str(R.string.shares_mode_standing)).performClick()
+
+        composeTestRule.assertRowsAtLeast48dp(
+            isToggleable(),
+            expectedCount = ShareFieldSections.ALL.size
+        )
+        // Two modes, "no expiry" and the four presets.
+        composeTestRule.assertRowsAtLeast48dp(isSelectable(), expectedCount = 7)
     }
 
     // --- Issue #2293: the one-time vs standing choice ---
@@ -182,7 +286,7 @@ class ShareContactScreenTest {
     @Test
     fun `one-time is the default mode and keeps the existing description`() {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         screen(repo)
@@ -200,7 +304,7 @@ class ShareContactScreenTest {
         val repo = mockk<ContactShareRepository>()
         val grants = mockk<ShareGrantRepository>()
         coEvery { grants.previewContact(any(), any()) } returns Result.success(emptyMap())
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         coEvery { grants.create(any()) } returns Result.success(
@@ -230,7 +334,7 @@ class ShareContactScreenTest {
         val repo = mockk<ContactShareRepository>()
         val grants = mockk<ShareGrantRepository>()
         coEvery { grants.previewContact(any(), any()) } returns Result.success(emptyMap())
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         coEvery { grants.create(any()) } returns Result.failure(
@@ -279,7 +383,7 @@ class ShareContactScreenTest {
         }
     ): ShareContactViewModel {
         val repo = mockk<ContactShareRepository>()
-        coEvery { repo.userDirectory() } returns Result.success(
+        coEvery { repo.userDirectory("") } returns Result.success(
             listOf(UserDirectoryEntry(id = 1, username = "alice"))
         )
         return standingScreen(repo, grants)
@@ -448,8 +552,26 @@ class ShareContactScreenTest {
         previewScreen(grants)
         chooseStanding()
 
-        composeTestRule.onNodeWithText("birthday: 17.05.1990").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("wedding: 01.06.").performScrollTo().assertIsDisplayed()
-        composeTestRule.onNodeWithText("other: 1985").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday: 17.05.1990").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Wedding: 01.06.").performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("Other: 1985").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
+    fun `a failed directory load offers Retry that reloads the recipients`() {
+        val repo = mockk<ContactShareRepository>()
+        coEvery { repo.userDirectory("") } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(UserDirectoryEntry(id = 1, username = "alice")))
+        )
+        screen(repo)
+
+        composeTestRule.onAllNodesWithText(str(R.string.error_client_network)).onFirst()
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText(str(R.string.action_retry)).performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(str(R.string.shares_recipient)).assertIsDisplayed()
+        coVerify(exactly = 2) { repo.userDirectory("") }
     }
 }

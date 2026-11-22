@@ -158,14 +158,52 @@ test('edit and delete call their handlers', () => {
 
   render(<PreferenceList preferences={[pref]} onEdit={onEdit} onDelete={onDelete} />);
 
-  fireEvent.click(screen.getByLabelText('Edit'));
+  fireEvent.click(screen.getByLabelText(/^Edit\b/));
   expect(onEdit).toHaveBeenCalledWith(pref);
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
   expect(onDelete).toHaveBeenCalledWith('p1');
 });
 
 test('shows the empty state', () => {
   render(<PreferenceList preferences={[]} onEdit={vi.fn()} onDelete={vi.fn()} />);
   expect(screen.getByText('No preferences yet')).toBeInTheDocument();
+});
+
+// Issue #2681: a legacy/unknown category rendered its raw token ("gift") as the
+// chip label.
+test('an unknown category chip is humanized, not shown as the raw token', () => {
+  render(
+    <PreferenceList
+      preferences={[preference({ category: 'gift', value: 'Scarf' })]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('Gift')).toBeInTheDocument();
+  expect(screen.queryByText('gift')).not.toBeInTheDocument();
+});
+
+test('a custom snake_case category reads as words', () => {
+  render(
+    <PreferenceList
+      preferences={[preference({ category: 'board_games', value: 'Catan' })]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('Board games')).toBeInTheDocument();
+});
+
+// #2673: every row's Edit/Delete icon button names its item.
+test('edit and delete buttons name the preference they act on', () => {
+  render(
+    <PreferenceList
+      preferences={[preference(), preference({ id: 'p2', value: 'Tea' })]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByRole('button', { name: 'Edit Vegetarian' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Delete Tea' })).toBeInTheDocument();
 });

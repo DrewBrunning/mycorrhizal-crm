@@ -76,7 +76,7 @@ class DeviceGrantManager @Inject constructor(
         val revoke = if (id != null) {
             api.revokeDeviceGrant(id)
         } else {
-            api.revokeAllDeviceGrants().map { Unit }
+            api.revokeAllDeviceGrants().map {}
         }
         return revoke.fold(
             onSuccess = {
@@ -129,8 +129,7 @@ class DeviceGrantManager @Inject constructor(
         return exchangeIntoSession(token, generation).isSuccess
     }
 
-    override suspend fun revokeAllDeviceGrants(): Result<Unit> =
-        api.revokeAllDeviceGrants().map { Unit }
+    override suspend fun revokeAllDeviceGrants(): Result<Unit> = api.revokeAllDeviceGrants().map {}
 
     /** The profile whose credential every per-profile grant operation targets. */
     private suspend fun activeProfileId(): String? = sessionManager.activeProfileId()

@@ -10,11 +10,12 @@ import {
   ListItemText,
   Typography,
 } from '@mui/material';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from './api/client';
 import type { TrashedContact, TrashedEntity } from './api/trash';
 import LoadError from './components/LoadError';
+import ShareConfirmDialog from './components/ShareConfirmDialog';
 import { useSnackbar } from './context/SnackbarContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useTrash } from './hooks/useTrash';
@@ -48,6 +49,11 @@ export default function TrashPage() {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // #2717: in-app, translated confirmations instead of window.confirm.
+  const [confirm, setConfirm] = useState<
+    { kind: 'purge'; item: TrashedContact } | { kind: 'empty' } | null
+  >(null);
 
   const handleRestore = async (item: TrashedContact) => {
     try {
@@ -85,7 +91,6 @@ export default function TrashPage() {
   };
 
   const handlePurge = async (item: TrashedContact) => {
-    if (!window.confirm(t('trash.purgeConfirm', { name: displayName(item) }))) return;
     try {
       await purge(item.contact.id);
       showSuccess(t('trash.purged', { name: displayName(item) }));
@@ -95,7 +100,6 @@ export default function TrashPage() {
   };
 
   const handleEmpty = async () => {
-    if (!window.confirm(t('trash.emptyConfirm', { count: items.length }))) return;
     try {
       const n = await empty();
       showSuccess(t('trash.emptied', { count: n }));
@@ -118,7 +122,7 @@ export default function TrashPage() {
           {t('trash.title')}
         </Typography>
         {items.length > 0 && (
-          <Button color="error" variant="outlined" onClick={() => void handleEmpty()}>
+          <Button color="error" variant="outlined" onClick={() => setConfirm({ kind: 'empty' })}>
             {t('trash.empty')}
           </Button>
         )}
@@ -164,10 +168,20 @@ export default function TrashPage() {
                   .join(' · ')}
               />
               <Box sx={{ display: 'flex', gap: 1 }}>
-                <Button size="small" variant="contained" onClick={() => void handleRestore(item)}>
+                <Button
+                  size="small"
+                  variant="contained"
+                  aria-label={t('trash.restoreLabel', { name: displayName(item) })}
+                  onClick={() => void handleRestore(item)}
+                >
                   {t('trash.restore')}
                 </Button>
-                <Button size="small" color="error" onClick={() => void handlePurge(item)}>
+                <Button
+                  size="small"
+                  color="error"
+                  aria-label={t('trash.deleteForeverLabel', { name: displayName(item) })}
+                  onClick={() => setConfirm({ kind: 'purge', item })}
+                >
                   {t('trash.deleteForever')}
                 </Button>
               </Box>
@@ -208,6 +222,7 @@ export default function TrashPage() {
               <Button
                 size="small"
                 variant="contained"
+                aria-label={t('trash.restoreLabel', { name: item.entity.name })}
                 onClick={() => void handleRestoreEntity(item)}
               >
                 {t('trash.restore')}
@@ -216,6 +231,29 @@ export default function TrashPage() {
           ))}
         </List>
       )}
+      {entities.length > 0 && retentionDays > 0 && (
+        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
+          {t('trash.entityRetentionNote', { count: retentionDays })}
+        </Typography>
+      )}
+
+      <ShareConfirmDialog
+        open={confirm !== null}
+        title={confirm?.kind === 'purge' ? t('trash.purgeTitle') : t('trash.emptyTitle')}
+        body={
+          confirm?.kind === 'purge'
+            ? t('trash.purgeConfirm', { name: displayName(confirm.item) })
+            : `${t('trash.emptyConfirm', { count: items.length })} ${t('trash.emptyScope')}`
+        }
+        confirmLabel={confirm?.kind === 'purge' ? t('trash.deleteForever') : t('trash.empty')}
+        onCancel={() => setConfirm(null)}
+        onConfirm={() => {
+          const c = confirm;
+          setConfirm(null);
+          if (c?.kind === 'purge') void handlePurge(c.item);
+          else if (c?.kind === 'empty') void handleEmpty();
+        }}
+      />
     </Box>
   );
 }

@@ -1,4 +1,8 @@
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -11,7 +15,9 @@ import {
 import type { TFunction } from 'i18next';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ApiError } from './api/client';
 import {
+  deleteShareGrant,
   listOutgoingShareGrants,
   reconfirmShareGrant,
   revokeShareGrant,
@@ -22,12 +28,15 @@ import LoadError from './components/LoadError';
 import PageHeader from './components/PageHeader';
 import ShareConfirmDialog from './components/ShareConfirmDialog';
 import { useAnnouncer } from './context/AnnouncerContext';
+import { usePendingShares } from './context/PendingSharesContext';
 import { useDateFormat } from './DateFormatProvider';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useShareGrantList } from './hooks/useShareGrantList';
 import { getErrorMessage } from './utils/errorHandler';
 
-type Confirm = { kind: 'revoke' | 'reconfirm'; grant: ShareGrantOwnerView };
+type Confirm = { kind: 'revoke' | 'reconfirm' | 'remove'; grant: ShareGrantOwnerView };
+
+const isLive = (g: ShareGrantOwnerView) => g.status === 'pending' || g.status === 'active';
 
 const sectionLabel = (t: TFunction, s: string) =>
   t(`settings.exportFieldPicker.sections.${s}`, { defaultValue: s });
@@ -43,7 +52,8 @@ export default function SharedByMePage() {
   useDocumentTitle(t('standingShares.byMe.title'));
   const { announce } = useAnnouncer();
   const { formatDate } = useDateFormat();
-  const { items, nextCursor, loading, error, refresh, loadMore, replace } =
+  const { refreshPendingShares } = usePendingShares();
+  const { items, nextCursor, loading, error, refresh, loadMore, replace, remove } =
     useShareGrantList<ShareGrantOwnerView>(listOutgoingShareGrants);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [actionError, setActionError] = useState('');
@@ -56,6 +66,21 @@ export default function SharedByMePage() {
 
   const params = (g: ShareGrantOwnerView) => ({ label: g.label, username: g.to_username });
 
+  // Remove (#2742): a 404 means the grant is already gone (removed elsewhere), so it
+  // counts as done. Either way the row leaves the list and the list and the
+  // pending badge are re-read.
+  const dismissGrant = async (grant: ShareGrantOwnerView) => {
+    try {
+      await deleteShareGrant(grant.id);
+    } catch (err) {
+      if (!(err instanceof ApiError && err.status === 404)) throw err;
+    }
+    remove(grant.id);
+    announce(t('standingShares.byMe.removed', params(grant)));
+    refreshPendingShares();
+    void refresh();
+  };
+
   const handleConfirm = async () => {
     if (!confirm) return;
     const { kind, grant } = confirm;
@@ -66,6 +91,8 @@ export default function SharedByMePage() {
       if (kind === 'revoke') {
         replace(await revokeShareGrant(grant.id));
         announce(t('standingShares.byMe.revoked', params(grant)));
+      } else if (kind === 'remove') {
+        await dismissGrant(grant);
       } else {
         replace(await reconfirmShareGrant(grant.id));
         announce(t('standingShares.byMe.reconfirmed', params(grant)));
@@ -77,8 +104,24 @@ export default function SharedByMePage() {
     }
   };
 
+  // A 412 means the grant changed elsewhere. Reload, then re-point the open dialog
+  // at the fresh grant: the dialog is keyed by id, so the owner's edits stay and
+  // its revision (the next If-Match) updates. A grant that is no longer live closes it.
+  const handleStale = async () => {
+    const id = editing?.id;
+    const fresh = await refresh();
+    if (!id || fresh === null) return;
+    const next = fresh.find((g) => g.id === id);
+    if (next && isLive(next)) {
+      setEditing(next);
+    } else {
+      setEditing(null);
+      setActionError(t('standingShares.byMe.editGone'));
+    }
+  };
+
   const renderRow = (g: ShareGrantOwnerView) => {
-    const live = g.status === 'pending' || g.status === 'active';
+    const live = isLive(g);
     const busy = busyId === g.id;
     const p = params(g);
     return (
@@ -104,7 +147,8 @@ export default function SharedByMePage() {
             })}
           </Typography>
         )}
-        {g.entity_type === 'circle' && g.member_count !== null && (
+        {/* The member count is present-tense ("right now"), so only a live grant shows it. */}
+        {live && g.entity_type === 'circle' && g.member_count !== null && (
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
             {t('standingShares.byMe.members', { count: g.member_count })}
           </Typography>
@@ -126,6 +170,19 @@ export default function SharedByMePage() {
               sections: g.reconfirm_sections.map((s) => sectionLabel(t, s)).join(', '),
             })}
           </Alert>
+        )}
+        {!live && (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+            <Button
+              size="small"
+              color="error"
+              disabled={busy}
+              aria-label={t('standingShares.byMe.removeLabel', p)}
+              onClick={() => setConfirm({ kind: 'remove', grant: g })}
+            >
+              {t('standingShares.byMe.remove')}
+            </Button>
+          </Box>
         )}
         {live && (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
@@ -163,8 +220,11 @@ export default function SharedByMePage() {
     );
   };
 
+  const liveItems = items.filter(isLive);
+  const endedItems = items.filter((g) => !isLive(g));
   const empty = !loading && !error && items.length === 0;
   const reconfirm = confirm?.kind === 'reconfirm';
+  const removing = confirm?.kind === 'remove';
 
   return (
     <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: 2, pb: 2 }}>
@@ -184,7 +244,29 @@ export default function SharedByMePage() {
           {t('standingShares.byMe.empty')}
         </Typography>
       )}
-      {items.length > 0 && <List>{items.map(renderRow)}</List>}
+      {liveItems.length > 0 && (
+        <>
+          <Typography variant="h6" component="h2" sx={{ mt: 1 }}>
+            {t('standingShares.byMe.liveHeading')}
+          </Typography>
+          <List>{liveItems.map(renderRow)}</List>
+        </>
+      )}
+      {endedItems.length > 0 && (
+        <Accordion
+          disableGutters
+          variant="outlined"
+          slotProps={{ heading: { component: 'h2' }, transition: { unmountOnExit: true } }}
+          sx={{ mt: 2 }}
+        >
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            {t('standingShares.byMe.endedHeading')} ({endedItems.length})
+          </AccordionSummary>
+          <AccordionDetails sx={{ p: 0 }}>
+            <List>{endedItems.map(renderRow)}</List>
+          </AccordionDetails>
+        </Accordion>
+      )}
       {nextCursor && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
           <Button variant="outlined" onClick={() => void loadMore()} disabled={loading}>
@@ -195,22 +277,32 @@ export default function SharedByMePage() {
       <ShareConfirmDialog
         open={confirm !== null}
         title={
-          reconfirm ? t('standingShares.byMe.reconfirmTitle') : t('standingShares.byMe.revokeTitle')
+          removing
+            ? t('standingShares.byMe.removeTitle')
+            : reconfirm
+              ? t('standingShares.byMe.reconfirmTitle')
+              : t('standingShares.byMe.revokeTitle')
         }
         body={
           confirm
-            ? reconfirm
-              ? t('standingShares.byMe.reconfirmBody', {
-                  username: confirm.grant.to_username,
-                  sections: confirm.grant.reconfirm_sections
-                    .map((s) => sectionLabel(t, s))
-                    .join(', '),
-                })
-              : t('standingShares.byMe.revokeBody', { username: confirm.grant.to_username })
+            ? removing
+              ? t('standingShares.byMe.removeBody', params(confirm.grant))
+              : reconfirm
+                ? t('standingShares.byMe.reconfirmBody', {
+                    username: confirm.grant.to_username,
+                    sections: confirm.grant.reconfirm_sections
+                      .map((s) => sectionLabel(t, s))
+                      .join(', '),
+                  })
+                : t('standingShares.byMe.revokeBody', { username: confirm.grant.to_username })
             : ''
         }
         confirmLabel={
-          reconfirm ? t('standingShares.byMe.reconfirmConfirm') : t('standingShares.byMe.revoke')
+          removing
+            ? t('standingShares.byMe.remove')
+            : reconfirm
+              ? t('standingShares.byMe.reconfirmConfirm')
+              : t('standingShares.byMe.revoke')
         }
         onConfirm={() => void handleConfirm()}
         onCancel={() => setConfirm(null)}
@@ -223,7 +315,7 @@ export default function SharedByMePage() {
           setEditing(null);
           announce(t('standingShares.byMe.saved', { username: g.to_username }));
         }}
-        onStale={() => void refresh()}
+        onStale={() => void handleStale()}
       />
     </Box>
   );

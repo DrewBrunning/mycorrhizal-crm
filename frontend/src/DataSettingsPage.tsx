@@ -23,10 +23,12 @@ import {
 } from '@mui/material';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ApiError } from './api/client';
 import { suggestContactAddresses } from './api/dataSuggestions';
 import {
   type ExportFormat,
   type ExportSelection,
+  exportAccountBundle,
   exportContacts,
   exportContactsAsVcf,
   exportDataAsCsv,
@@ -48,7 +50,7 @@ import MycorrhizalImportDialog from './components/MycorrhizalImportDialog';
 import RelationshipSuggestionsInbox from './components/RelationshipSuggestionsInbox';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { formatDateTime as formatLocalDateTime } from './timeFormat';
-import { handleFetchError } from './utils/errorHandler';
+import { getErrorMessage, handleFetchError } from './utils/errorHandler';
 
 export default function DataSettingsPage() {
   const { t } = useTranslation();
@@ -59,6 +61,11 @@ export default function DataSettingsPage() {
   const [exportingVcf, setExportingVcf] = useState(false);
   const [exportVcfError, setExportVcfError] = useState('');
   const [exportVcfSuccess, setExportVcfSuccess] = useState('');
+  // Issue #2678: the full-fidelity account bundle, behind a confirmation.
+  const [bundleConfirmOpen, setBundleConfirmOpen] = useState(false);
+  const [exportingBundle, setExportingBundle] = useState(false);
+  const [exportBundleError, setExportBundleError] = useState('');
+  const [exportBundleSuccess, setExportBundleSuccess] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [customExporting, setCustomExporting] = useState(false);
   const [customExportError, setCustomExportError] = useState('');
@@ -189,6 +196,28 @@ export default function DataSettingsPage() {
     }
   };
 
+  const handleExportBundle = async () => {
+    setExportBundleError('');
+    setExportBundleSuccess('');
+    setExportingBundle(true);
+    setBundleConfirmOpen(false);
+
+    try {
+      await exportAccountBundle();
+      setExportBundleSuccess(t('settings.export.bundleSuccess'));
+    } catch (error) {
+      // A too-large bundle carries its own localized reason (used/max MiB);
+      // anything else -- including a bare network failure -- reads generically.
+      setExportBundleError(
+        error instanceof ApiError && error.reasonCode
+          ? getErrorMessage(error)
+          : t('settings.export.bundleError'),
+      );
+    } finally {
+      setExportingBundle(false);
+    }
+  };
+
   const handleExportVcf = async () => {
     setExportVcfError('');
     setExportVcfSuccess('');
@@ -290,7 +319,7 @@ export default function DataSettingsPage() {
               </Alert>
             )}
             {relationshipSuggestMessage && (
-              <Alert severity="info" sx={{ py: 0 }}>
+              <Alert severity="info" role="status" sx={{ py: 0 }}>
                 {relationshipSuggestMessage}
               </Alert>
             )}
@@ -300,7 +329,7 @@ export default function DataSettingsPage() {
               </Alert>
             )}
             {addressSuggestMessage && (
-              <Alert severity="info" sx={{ py: 0 }}>
+              <Alert severity="info" role="status" sx={{ py: 0 }}>
                 {addressSuggestMessage}
               </Alert>
             )}
@@ -373,7 +402,12 @@ export default function DataSettingsPage() {
                 {t('settings.data.import.history.empty')}
               </Typography>
             ) : (
-              <Box sx={{ overflowX: 'auto' }}>
+              <Box
+                sx={{ overflowX: 'auto' }}
+                tabIndex={0}
+                role="region"
+                aria-label={t('settings.data.import.history.title')}
+              >
                 <Table size="small">
                   <TableHead>
                     <TableRow>
@@ -454,6 +488,24 @@ export default function DataSettingsPage() {
         </DialogActions>
       </AppDialog>
 
+      <AppDialog
+        open={bundleConfirmOpen}
+        onClose={() => setBundleConfirmOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>{t('settings.export.bundleConfirmTitle')}</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">{t('settings.export.bundleConfirmMessage')}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBundleConfirmOpen(false)}>{t('common.cancel')}</Button>
+          <Button variant="contained" onClick={() => void handleExportBundle()}>
+            {t('settings.export.bundleConfirmAction')}
+          </Button>
+        </DialogActions>
+      </AppDialog>
+
       <Card sx={{ mb: 2 }}>
         <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
@@ -481,7 +533,7 @@ export default function DataSettingsPage() {
               and a user who assumes it also means "not in my backup file"
               would hand out more than they meant to.
             */}
-            <Alert severity="info" sx={{ py: 0 }}>
+            <Alert severity="info" role="status" sx={{ py: 0 }}>
               {t('settings.export.sensitivityNotice')}
             </Alert>
             {exportError && (
@@ -505,6 +557,39 @@ export default function DataSettingsPage() {
             >
               {exporting ? t('settings.export.exporting') : t('settings.export.downloadButton')}
             </Button>
+            <Divider />
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {t('settings.export.bundleDescription')}
+            </Typography>
+            {exportBundleError && (
+              <Alert severity="error" sx={{ py: 0 }}>
+                {exportBundleError}
+              </Alert>
+            )}
+            {exportBundleSuccess && (
+              <Alert severity="success" sx={{ py: 0 }}>
+                {exportBundleSuccess}
+              </Alert>
+            )}
+            <Box>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={
+                  exportingBundle ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <DownloadIcon />
+                  )
+                }
+                onClick={() => setBundleConfirmOpen(true)}
+                disabled={exportingBundle}
+              >
+                {exportingBundle
+                  ? t('settings.export.bundleExporting')
+                  : t('settings.export.bundleButton')}
+              </Button>
+            </Box>
           </Stack>
         </CardContent>
       </Card>

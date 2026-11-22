@@ -12,6 +12,7 @@ import com.mycorrhizal.crm.domain.repository.ContactFieldVisibilityRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ContactScoreRepository
 import com.mycorrhizal.crm.domain.repository.ConversationAgendaRepository
+import com.mycorrhizal.crm.domain.repository.EntityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalActivityRepository
 import com.mycorrhizal.crm.domain.repository.ExternalIdentityRepository
 import com.mycorrhizal.crm.domain.repository.FieldDefinitionRepository
@@ -49,7 +50,9 @@ import com.mycorrhizal.crm.model.network.SeafileLibrary
 import com.mycorrhizal.crm.model.network.SeafileLinkRequest
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.WebDAVItem
+import com.mycorrhizal.crm.model.network.isProjectedElementId
 import com.mycorrhizal.crm.model.network.resolveEnabledFields
+import com.mycorrhizal.crm.model.registry.PreferenceCategory
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.ui.R
@@ -193,12 +196,20 @@ data class ContactDetailUiState(
      */
     val lifeEventCount: Int? = null,
     val giftCount: Int? = null,
+    /**
+     * Issue #2607: clothing sizes plus the gift-tab preferences (jewelry, flowers, ...,
+     * gift-avoid). The Preferences screen hides these and the Gifts screen shows them,
+     * so the Gifts row counts them and [preferenceCount] does not.
+     */
+    val giftShoppingNotesCount: Int = 0,
     val preferenceCount: Int? = null,
     val agendaCount: Int? = null,
     val relationshipCount: Int? = null,
     val attachmentCount: Int? = null,
     /** 0 or 1 — a contact has at most one cadence policy. */
     val cadenceCount: Int? = null,
+    /** Link id -> entity name for the projected (`ent-<linkId>`) rows (#2646). */
+    val projectedEntityNames: Map<String, String> = emptyMap(),
     /**
      * Issue #1997: the per-contact field visibility resolved by the server.
      * Null until the fetch lands (or if it fails), in which case the detail
@@ -216,6 +227,10 @@ data class ContactDetailUiState(
             ?.mapNotNull { ContactFieldKey.fromWireKey(it) }
             ?.toSet()
             ?: enabledFields
+
+    /** Gifts row count: gifts plus the shopping notes shown on the Gifts screen (#2607); null until gifts load. */
+    val giftRowCount: Int?
+        get() = giftCount?.plus(giftShoppingNotesCount)
 
     /** Whether this contact's detail view suppresses fields with no value. */
     val resolvedHideEmpty: Boolean
@@ -273,6 +288,7 @@ class ContactDetailViewModel @Inject constructor(
     private val relationshipEdgeRepository: RelationshipEdgeRepository,
     private val attachmentRepository: AttachmentRepository,
     private val cadencePolicyRepository: CadencePolicyRepository,
+    private val entityRepository: EntityRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -328,6 +344,7 @@ class ContactDetailViewModel @Inject constructor(
                     loadCirclesAndTags(contact)
                     loadExternalLinks(contact)
                     loadCounts(contact)
+                    loadProjectedEntityNames(contact)
                 },
                 onError = { error ->
                     _uiState.update { it.copy(isLoading = false, error = error) }
@@ -660,11 +677,37 @@ class ContactDetailViewModel @Inject constructor(
     }
 
     /**
+     * Issue #2646: a projected `ent-<linkId>` address or organization names the linked entity it
+     * comes from. The names come from the contact's own links; only asked for when the record
+     * actually carries a projected entry, and a failure leaves the generic "from a linked entity"
+     * chip (never an error).
+     */
+    private fun loadProjectedEntityNames(contact: ContactRecordResponse) {
+        val card = contact.card
+        val hasProjected = card?.addresses.orEmpty().any { isProjectedElementId(it.id) } ||
+            card?.organizations.orEmpty().any { isProjectedElementId(it.id) }
+        if (!hasProjected || contact.id == 0) return
+        viewModelScope.launch {
+            entityRepository.linksForContact(contact.id).foldApiError(
+                onSuccess = { links ->
+                    _uiState.update { state ->
+                        state.copy(
+                            projectedEntityNames = links.associate { it.id to it.entityName }
+                        )
+                    }
+                },
+                onError = {}
+            )
+        }
+    }
+
+    /**
      * Issue #1763: fetch the drill-down row counts. Each load is independent and
      * best-effort, exactly like the optional panels above — a failure leaves its
      * count null (the row still renders, just without a number) rather than
      * surfacing an error. Activities/notes/reminders are already on [contact].
      */
+
     private fun loadCounts(contact: ContactRecordResponse) {
         val uid = contact.vcardUid
         if (!uid.isNullOrBlank()) {
@@ -689,9 +732,15 @@ class ContactDetailViewModel @Inject constructor(
             viewModelScope.launch {
                 preferenceRepository.listForContact(uid).foldApiError(
                     onSuccess = { items ->
+                        // Count only what the Preferences screen lists (#2607).
+                        val onGiftsScreen = items.count {
+                            it.category == PreferenceCategory.CLOTHING_SIZE ||
+                                PreferenceCategory.isGiftsTabCategory(it.category)
+                        }
                         _uiState.update {
                             it.copy(
-                                preferenceCount = items.size
+                                preferenceCount = items.size - onGiftsScreen,
+                                giftShoppingNotesCount = onGiftsScreen
                             )
                         }
                     },

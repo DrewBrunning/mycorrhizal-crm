@@ -153,10 +153,21 @@ jobs:
       # (I18N-02/#485 shipped exactly that: 18.json was v17's dump copied
       # verbatim). --rerun forces the export to run since a plain build
       # leaves a stale file untouched; the diff must then be empty.
+      #
+      # Issue #2854: every Gradle call in this workflow's JVM legs goes through
+      # .github/scripts/gradle-retry-transient.sh, which retries ONCE and only
+      # when the failure is a transient artifact download (HTTP 429/5xx from
+      # Maven Central, a reset connection, a TLS handshake failure) and never on
+      # `schedule` (the nightly is the zero-retry flake signal). A 429 burst
+      # from shared runner IPs reddened main on 2026-11-20 while every sibling
+      # Android job was green; a compile error, a failing test or a missing
+      # artifact still fails on the first attempt. The emulator-driven legs are
+      # deliberately not wrapped: each already re-runs on a fresh emulator, so
+      # a retry there would double that attempt instead of adding one.
       - name: Room schema dumps are current
         working-directory: android
         run: |
-          ./gradlew :core:data:kspDebugKotlin --rerun
+          bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" :core:data:kspDebugKotlin --rerun
           # --porcelain also catches an uncommitted *new* dump, not just edits.
           if [ -n "$(git status --porcelain -- core/data/schemas)" ]; then
             git status --porcelain -- core/data/schemas
@@ -180,11 +191,44 @@ jobs:
       # --warning-mode=fail on the Gradle steps of this job: a Gradle
       # deprecation (the class #1868 cleaned up by hand) fails the build
       # instead of scrolling past in a log nobody reads.
+      # Issue #2534: the Compose screenshot goldens (18 PNGs under
+      # android/feature/{contacts,auth,settings}/src/test/screenshots/) are
+      # verified inside this same test pass via `-Proborazzi.test.verify=true`,
+      # NOT by a separate `verifyRoborazziDebug` step. Measured on
+      # :feature:contacts with
+      # `--rerun` (so compilation is excluded from both): 35.75 s without
+      # verify vs 35.98 s with it -- capture + compare of every golden costs
+      # ~0.2 s. A separate step would re-run the module's full suite (1006 tests
+      # locally) a second time (~2 min) inside an already 13.2-min job, and that
+      # duplicate run is what pushed this leg past the detekt/dependency-analysis
+      # leg; folding the verification in adds no wall-clock time.
+      #
+      # A diff fails THIS step, surfacing as "Unit + integration tests" rather
+      # than a screenshot-named step; the `android-roborazzi-diffs` artifact
+      # below carries the `_actual`/`_compare` images that name the golden.
+      #
+      # gradle-retry-transient.sh does not retry a diff: it retries only
+      # transport signatures (HTTP 429/5xx, reset connections, TLS failures),
+      # and a golden mismatch is a deterministic test failure, so it fails on
+      # the first attempt.
       - name: Unit + integration tests (incl. Robolectric)
         working-directory: android
         env:
           RERUN_FLAG: ${{ github.event_name == 'schedule' && '--rerun-tasks' || '' }}
-        run: ./gradlew --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail ${RERUN_FLAG:+"$RERUN_FLAG"} testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest -Proborazzi.test.verify=true
+
+      # Issue #2534: the goldens are verified by the unit-test step above; this
+      # keeps the diff images for diagnosis when it fails. `if: failure()` so it
+      # also runs when an unrelated test in the same step fails (the directory
+      # is simply empty then, hence if-no-files-found: ignore).
+      - name: Upload Roborazzi diffs
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-roborazzi-diffs
+          path: android/**/build/outputs/roborazzi/
+          if-no-files-found: ignore
+          retention-days: 7
 
       # Issue #268: the test-retry plugin reruns a failed Robolectric test
       # once; Gradle retains the failed attempt in the XML even when the
@@ -208,7 +252,7 @@ jobs:
       # `feature/*` modules at 0% despite local reports showing ~70%.
       - name: Coverage report (JaCoCo, aggregated)
         working-directory: android
-        run: ./gradlew --warning-mode=fail jacocoTestReportAggregated
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail jacocoTestReportAggregated
 
       # Issue #1627: the Android half of the per-file no-regression ratchet
       # (backend cmd/coverageratchet; frontend check-coverage-ratchet.mjs).
@@ -248,7 +292,7 @@ jobs:
           flags: android
           name: android-lcov
           disable_search: true
-          fail_ci_if_error: false
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
       # The original JaCoCo XML, under the non-gating `android-jacoco` flag
       # (no patch status in codecov.yml): once Codecov processes JaCoCo
@@ -329,7 +373,7 @@ jobs:
 
       - name: Lint
         working-directory: android
-        run: ./gradlew --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail lintDebug :app:lintObtainiumDebug :app:lintFossDebug
 
   android-analysis:
     permissions:
@@ -382,7 +426,7 @@ jobs:
       # downgrade is needed anymore.
       - name: detekt
         working-directory: android
-        run: ./gradlew --warning-mode=fail detekt
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail detekt
 
       # Issue #1908: dependency hygiene (unused / misdeclared dependencies).
       # A hard gate: `onAny { severity("fail") }` in android/build.gradle.kts
@@ -393,7 +437,7 @@ jobs:
         working-directory: android
         run: |
           status=0
-          ./gradlew --console=plain buildHealth || status=$?
+          bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --console=plain buildHealth || status=$?
           if [ -f build/reports/dependency-analysis/build-health-report.txt ]; then
             cat build/reports/dependency-analysis/build-health-report.txt >> "$GITHUB_STEP_SUMMARY"
           fi
@@ -404,14 +448,18 @@ jobs:
       contents: read
     name: Android APK assembly + packaging checks
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
-    # Embedded-server packaging and the flavor APK assertions.
+    # Embedded-server packaging (debug and release-shaped) and the flavor APK
+    # assertions.
     timeout-minutes: 30
     needs: changes
     # Issue #974: was the one job here with no schedule exemption -- without
     # it the test-retry plugin's maxRetries=0-on-schedule tier would never
     # fire on a normal night (paths-filter is usually false with no
     # android/** change).
-    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+    # backend/** is included because the embedded server binary is
+    # cross-compiled from backend/ here; a backend-only change can break the
+    # GOOS=android build and must not merge untested (#1262).
+    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
 
     steps:
       - name: Checkout repository
@@ -451,17 +499,44 @@ jobs:
       - name: Build the embedded server binary and assert it is packaged
         working-directory: android
         run: |
-          ./gradlew :app:assembleObtainiumDebug -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
+          bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" :app:assembleObtainiumDebug -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
           apk="app/build/outputs/apk/obtainium/debug/app-obtainium-debug.apk"
           unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
             || { echo "::error::$apk does not contain the embedded server binary"; exit 1; }
+
+      # Issue #2875: the packaging invariant above is asserted against *release*
+      # shapes too, not only debug. #1390 shipped an APK with no local mode
+      # because the packaging task silently skips without the property, and
+      # every assertion of that invariant lived on a dispatch/release workflow:
+      # a PR that broke the R8 + resource-shrinking path stayed green until
+      # someone dispatched a release build or cut a release.
+      #
+      # The `benchmark` build type, not `release`, is the release shape here: it
+      # is `initWith(release)` (R8 + resource shrinking, non-debuggable) but
+      # debug-signed, so it builds on a fork PR without the release keystore
+      # (which is CI-env only). Assembling it also means a keep-rule or shrinker
+      # break is caught on the PR that causes it instead of at release cut.
+      # The mapping.txt assertion keeps "release-shaped" honest: if minification
+      # were ever disabled for this type, the APK would be a debug build wearing
+      # a release hat and the packaging assertion would pass vacuously.
+      - name: Assemble the release-shaped benchmark APK and assert its packaging
+        working-directory: android
+        run: |
+          bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail :app:assembleObtainiumBenchmark -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true
+          apk="app/build/outputs/apk/obtainium/benchmark/app-obtainium-benchmark.apk"
+          unzip -Z1 "$apk" | grep -qx 'lib/arm64-v8a/libmycorrhizal.so' \
+            || { echo "::error::$apk does not contain lib/arm64-v8a/libmycorrhizal.so (issue #1390): a release-shaped build would ship without local mode."; exit 1; }
+          mapping="app/build/outputs/mapping/obtainiumBenchmark/mapping.txt"
+          [ -s "$mapping" ] \
+            || { echo "::error::$mapping is missing or empty: the benchmark variant is no longer R8-minified, so this is not a release-shaped artifact (issue #2875)."; exit 1; }
+          echo "ok: $apk packages lib/arm64-v8a/libmycorrhizal.so; $mapping has $(wc -l < "$mapping") lines"
 
       # Issue #1133: obtainium (gold-standard) + foss (proves the
       # Firebase-free flavor builds end to end, the F-Droid precondition).
       # Issue #1200: play too, for its restricted-permission carve-out below.
       - name: Assemble debug APKs (obtainium + foss + play)
         working-directory: android
-        run: ./gradlew --warning-mode=fail :app:assembleObtainiumDebug :app:assembleFossDebug :app:assemblePlayDebug
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" --warning-mode=fail :app:assembleObtainiumDebug :app:assembleFossDebug :app:assemblePlayDebug
 
       # Issue #1133: F-Droid requires the FOSS APK carry no Firebase/GMS
       # code. obtainium is checked for the opposite, so this can't pass by
@@ -971,7 +1046,7 @@ jobs:
 
       - name: Assemble debug APK
         working-directory: android
-        run: ./gradlew :app:assembleObtainiumDebug
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" :app:assembleObtainiumDebug
 
       - name: Enable KVM
         run: |

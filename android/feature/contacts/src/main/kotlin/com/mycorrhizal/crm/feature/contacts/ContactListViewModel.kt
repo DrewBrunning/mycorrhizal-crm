@@ -71,6 +71,11 @@ data class ContactListUiState(
     val contacts: List<ContactSummary> = emptyList(),
     val isLoading: Boolean = false,
     val error: ApiError? = null,
+    /**
+     * Issue #2629: the rows on screen are the offline mirror, served after the refresh failed
+     * (cleared by the next successful load). Drives the shared "Showing saved data" banner.
+     */
+    val showingSavedData: Boolean = false,
     val searchQuery: String = "",
     val pagination: PaginationState = PaginationState(),
     /**
@@ -104,7 +109,19 @@ data class ContactListUiState(
     val bulkResult: BulkOperationResult? = null,
     /** Issue #1762: name (default), recently contacted, or recently added. */
     val sort: ContactSort = ContactSort.NAME
-)
+) {
+    /**
+     * #2630: why each row matched the search (contact id -> reported fields), from the same
+     * `GET /search` response as [searchResult]. Empty unless that response answers the query now
+     * in the box: while a new query is debouncing the previous result is still held, and its
+     * reasons would be wrong for the rows the new query returns.
+     */
+    fun matchedOnByContact(): Map<Int, List<String>> {
+        val result = searchResult ?: return emptyMap()
+        if (result.query?.trim() != searchQuery.trim()) return emptyMap()
+        return result.matchedOnByContactId()
+    }
+}
 
 sealed interface ContactListEvent {
     data class NavigateToContact(val contactId: Int) : ContactListEvent
@@ -262,6 +279,7 @@ class ContactListViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
+                            showingSavedData = false,
                             contacts = result.contacts,
                             pagination = it.pagination.copy(
                                 nextCursor = result.nextCursor,
@@ -295,8 +313,12 @@ class ContactListViewModel @Inject constructor(
                 // load cancels it and a stale fallback can never overwrite a newer result.
                 val cached = contactRepository.searchLocal(request.searchQuery)
                     .filter { it.matchesOfflineFilters(request) }
-                if (cached.isNotEmpty()) {
-                    _uiState.update { it.copy(contacts = cached) }
+                _uiState.update {
+                    if (cached.isNotEmpty()) {
+                        it.copy(contacts = cached, showingSavedData = true)
+                    } else {
+                        it.copy(showingSavedData = false)
+                    }
                 }
             }
         }

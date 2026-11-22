@@ -1,10 +1,16 @@
 package com.mycorrhizal.crm.feature.occasions
 
+import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.CircleRepository
 import com.mycorrhizal.crm.domain.repository.ContactRepository
@@ -16,6 +22,7 @@ import com.mycorrhizal.crm.model.network.OccasionEventAttendee
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
 import com.mycorrhizal.crm.model.network.OccasionEventDetail
+import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -39,7 +46,10 @@ class OccasionAttendeesScreenTest {
     private val circleRepository = mockk<CircleRepository>()
     private val contactRepository = mockk<ContactRepository>()
 
-    private fun render(attendees: List<OccasionEventAttendeeView> = listOf(attendee())) {
+    private fun render(
+        attendees: List<OccasionEventAttendeeView> = listOf(attendee()),
+        circles: List<Circle> = listOf(Circle(id = "c1", name = "Friends"))
+    ) {
         coEvery { occasionRepository.get("e1") } returns Result.success(
             OccasionEventDetail(
                 occasionEvent = OccasionEvent(
@@ -50,9 +60,7 @@ class OccasionAttendeesScreenTest {
                 attendees = attendees
             )
         )
-        coEvery { circleRepository.list(any(), any()) } returns Result.success(
-            listOf(Circle(id = "c1", name = "Friends"))
-        )
+        coEvery { circleRepository.list(any(), any()) } returns Result.success(circles)
         coEvery { occasionRepository.suggestInvitees(listOf("c1"), "e1") } returns Result.success(
             listOf(InviteeSuggestion(contactId = 5, contactName = "Bob", entityId = "uid-5"))
         )
@@ -96,10 +104,28 @@ class OccasionAttendeesScreenTest {
     }
 
     @Test
+    fun `the remove action names the attendee and is a 48dp target`() {
+        render(
+            listOf(
+                attendee(),
+                attendee().copy(id = "a2", entityId = "uid-2", contactName = "Chen Wei")
+            )
+        )
+        listOf("Alice", "Chen Wei").forEach { name ->
+            composeTestRule.onNodeWithContentDescription("Remove attendee $name")
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        }
+        composeTestRule.onAllNodesWithContentDescription("Remove attendee").assertCountEquals(0)
+    }
+
+    @Test
     fun `the remove action opens a confirmation`() {
         render()
-        composeTestRule.onNodeWithContentDescription("Remove attendee").performClick()
+        composeTestRule.onNodeWithContentDescription("Remove attendee Alice").performClick()
         composeTestRule.onNodeWithText("Remove Alice from this event?").assertIsDisplayed()
+        // Removing an attendee is not deleting data: the confirm button says "Remove".
+        composeTestRule.onNodeWithText("Remove").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Delete").assertDoesNotExist()
     }
 
     @Test
@@ -140,5 +166,58 @@ class OccasionAttendeesScreenTest {
         composeTestRule.onNodeWithText("Suggest").performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Add everyone (1)").assertIsDisplayed()
+    }
+
+    @Test
+    fun `every circle chip is reachable when one circle has a very long name`() {
+        val longName = "Long ".repeat(24).trim() // 119 characters
+        val names = listOf(longName, "Book club", "Family", "Work friends")
+        render(circles = names.mapIndexed { i, n -> Circle(id = "c$i", name = n) })
+
+        names.forEach { name ->
+            composeTestRule.onNodeWithText(name).performScrollTo().assertIsDisplayed()
+        }
+    }
+
+    @Test
+    fun `a failed load shows the server message with Retry that reloads the attendees`() {
+        coEvery { occasionRepository.get("e1") } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(
+                OccasionEventDetail(
+                    occasionEvent = OccasionEvent(
+                        id = "e1",
+                        title = "BBQ",
+                        startsAt = "2026-07-04T15:00:00Z"
+                    ),
+                    attendees = listOf(attendee())
+                )
+            )
+        )
+        coEvery { circleRepository.list(any(), any()) } returns Result.success(emptyList())
+        val viewModel = OccasionAttendeesViewModel(
+            occasionRepository,
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("eventId" to "e1"))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                OccasionAttendeesScreen(onBack = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("No one invited yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { occasionRepository.get("e1") }
     }
 }

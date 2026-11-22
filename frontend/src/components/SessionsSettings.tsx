@@ -130,9 +130,16 @@ export default function SessionsSettings() {
                           <Box
                             sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
                           >
+                            {/* #2536: the device description is derived from
+                                the stored user-agent, and the Tooltip copies
+                                the raw UA into the child's aria-label — data,
+                                not UI copy. (With a UA we cannot parse, the
+                                visible fallback is a translated string; it is
+                                still exempt here because the raw UA shares the
+                                element as aria-label.) */}
                             {session.user_agent ? (
                               <Tooltip title={session.user_agent}>
-                                <span>{deviceLabel}</span>
+                                <span data-user-content>{deviceLabel}</span>
                               </Tooltip>
                             ) : (
                               <span>{deviceLabel}</span>

@@ -20,6 +20,9 @@ const zoomFn = vi.fn(() => 1);
 const centerAtFn = vi.fn(() => ({ x: 0, y: 0 }));
 const zoomToFitFn = vi.fn();
 const d3ForceFn = vi.fn(() => ({ strength: vi.fn() }));
+// Undefined by default (the fit falls through to zoomToFit); tests set a bbox.
+let graphBbox: { x: [number, number]; y: [number, number] } | undefined;
+const getGraphBboxFn = vi.fn(() => graphBbox);
 
 type NodeCanvasObjectFn = (
   node: GraphNode,
@@ -46,6 +49,7 @@ vi.mock('react-force-graph-2d', () => ({
       zoom: zoomFn,
       centerAt: centerAtFn,
       zoomToFit: zoomToFitFn,
+      getGraphBbox: getGraphBboxFn,
       d3Force: d3ForceFn,
     }));
     capturedNodeCanvasObject = props.nodeCanvasObject;
@@ -510,4 +514,101 @@ test('entity nodes count against the render ceiling, so they can tip a graph int
     />,
   );
   expect(screen.getByTestId('graph-over-budget')).toBeInTheDocument();
+});
+
+// jsdom measures every element as 0x0; give the canvas container a real size.
+function stubCanvasSize() {
+  return vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+    width: 800,
+    height: 600,
+    x: 0,
+    y: 0,
+    top: 0,
+    left: 0,
+    right: 800,
+    bottom: 600,
+    toJSON: () => ({}),
+  });
+}
+
+// #2713: a tiny graph (one node) must not be fitted to the whole canvas.
+test('fit-to-view never zooms in past 1.5x for a tiny graph (#2713)', () => {
+  mockMatchMedia(false);
+  const sizeSpy = stubCanvasSize();
+  graphBbox = { x: [-5, 5], y: [-5, 5] }; // 10x10 units in an 800x600 canvas => k ~ 6
+  zoomToFitFn.mockClear();
+  zoomFn.mockClear();
+  centerAtFn.mockClear();
+  vi.useFakeTimers();
+  try {
+    render(
+      <NetworkGraph
+        data={sampleData()}
+        onNodeClick={vi.fn()}
+        showRelationships
+        showActivities
+        showCircles={false}
+      />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(zoomToFitFn).not.toHaveBeenCalled();
+    expect(zoomFn).toHaveBeenLastCalledWith(1.5, 400);
+    expect(centerAtFn).toHaveBeenCalledWith(0, 0, 400);
+  } finally {
+    graphBbox = undefined;
+    sizeSpy.mockRestore();
+    vi.useRealTimers();
+  }
+});
+
+test('a graph that already fits below 1.5x still uses zoomToFit (#2713)', () => {
+  mockMatchMedia(false);
+  const sizeSpy = stubCanvasSize();
+  graphBbox = { x: [-1000, 1000], y: [-1000, 1000] }; // k well below 1.5
+  zoomToFitFn.mockClear();
+  vi.useFakeTimers();
+  try {
+    render(
+      <NetworkGraph
+        data={sampleData()}
+        onNodeClick={vi.fn()}
+        showRelationships
+        showActivities
+        showCircles={false}
+      />,
+    );
+    act(() => {
+      vi.advanceTimersByTime(500);
+    });
+    expect(zoomToFitFn).toHaveBeenLastCalledWith(400, 80);
+  } finally {
+    graphBbox = undefined;
+    sizeSpy.mockRestore();
+    vi.useRealTimers();
+  }
+});
+
+test('Reset view also respects the zoom cap (#2713)', () => {
+  mockMatchMedia(false);
+  const sizeSpy = stubCanvasSize();
+  graphBbox = { x: [-5, 5], y: [-5, 5] };
+  zoomFn.mockClear();
+  try {
+    render(
+      <NetworkGraph
+        data={sampleData()}
+        onNodeClick={vi.fn()}
+        showRelationships
+        showActivities
+        showCircles={false}
+      />,
+    );
+    screen.getByRole('button', { name: 'Reset view' }).click();
+    expect(zoomFn).toHaveBeenLastCalledWith(1.5, 400);
+  } finally {
+    graphBbox = undefined;
+    sizeSpy.mockRestore();
+  }
 });

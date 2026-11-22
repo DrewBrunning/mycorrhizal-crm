@@ -8,6 +8,8 @@ import {
   type Preference,
   type PreferenceSection,
 } from '../api/preferences';
+import { humanizeToken } from '../utils/humanizeToken';
+import { itemLabel } from '../utils/itemLabel';
 
 interface PreferenceListProps {
   preferences: Preference[];
@@ -81,7 +83,10 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Box sx={{ flex: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5, flexWrap: 'wrap' }}>
-            <Chip label={t(`preference.categories.${pref.category}`, pref.category)} size="small" />
+            <Chip
+              label={t(`preference.categories.${pref.category}`, humanizeToken(pref.category))}
+              size="small"
+            />
             {pref.key && <Chip label={t(`preference.keys.${pref.key}`, pref.key)} size="small" />}
             {pref.level && (
               <Chip label={t(`preference.levels.${pref.level}`, pref.level)} size="small" />
@@ -114,14 +119,18 @@ export default function PreferenceList({ preferences, onEdit, onDelete }: Prefer
           className="preference-actions"
           sx={{ display: 'flex', gap: 0.5, opacity: 0, transition: 'opacity 0.2s ease-in-out' }}
         >
-          <IconButton size="small" onClick={() => onEdit(pref)} aria-label={t('common.edit')}>
+          <IconButton
+            size="small"
+            onClick={() => onEdit(pref)}
+            aria-label={t('common.editNamed', { name: itemLabel(pref.value) })}
+          >
             <EditIcon fontSize="small" />
           </IconButton>
           <IconButton
             size="small"
             color="error"
             onClick={() => onDelete(pref.id)}
-            aria-label={t('common.delete')}
+            aria-label={t('common.deleteNamed', { name: itemLabel(pref.value) })}
           >
             <DeleteIcon fontSize="small" />
           </IconButton>

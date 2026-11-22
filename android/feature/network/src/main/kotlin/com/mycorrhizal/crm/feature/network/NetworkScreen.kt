@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -64,6 +65,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.DeceasedDot
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.HealthScoreDot
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -85,6 +87,8 @@ fun NetworkScreen(
     // Issue #150: null hides the hamburger — there is no drawer at Expanded.
     onMenuClick: (() -> Unit)? = {},
     onOpenContact: (Int) -> Unit = {},
+    // Issue #2651: the entity overlay rows open the entity page.
+    onOpenEntity: (String) -> Unit = {},
     viewModel: NetworkViewModel = hiltViewModel()
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -105,7 +109,8 @@ fun NetworkScreen(
         onSelectFrom = viewModel::selectFrom,
         onErrorShown = viewModel::onErrorShown,
         onRefresh = viewModel::load,
-        onToggleEntities = viewModel::setShowEntities
+        onToggleEntities = viewModel::setShowEntities,
+        onOpenEntity = onOpenEntity
     )
 }
 
@@ -130,7 +135,9 @@ fun NetworkScreenContent(
     modifier: Modifier = Modifier,
     onRefresh: () -> Unit = {},
     // Issue #2302: the opt-in entity overlay toggle.
-    onToggleEntities: (Boolean) -> Unit = {}
+    onToggleEntities: (Boolean) -> Unit = {},
+    // Issue #2651: tapping an overlay row opens the entity page.
+    onOpenEntity: (String) -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
@@ -180,6 +187,12 @@ fun NetworkScreenContent(
                 // flash while the self contact / initial record is resolving.
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     LoadingSkeleton()
+                }
+            } else if (!uiState.hasFrom && uiState.error != null) {
+                // Issue #2629: the starting contact failed to load (offline, 404, server error):
+                // the real reason with Retry, not "no VCard UID" and not the bare picker prompt.
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    ErrorState(error = uiState.error, onRetry = onRefresh)
                 }
             } else if (!uiState.hasFrom) {
                 // No starting contact yet (drawer entry without a self contact)
@@ -240,17 +253,14 @@ fun NetworkScreenContent(
                                 )
 
                             uiState.groupedChains.isEmpty() && uiState.error != null &&
-                                !uiState.showEntities -> {
-                                Text(
-                                    text = uiState.error.localizedMessage(),
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
+                                !uiState.showEntities ->
+                                ErrorState(error = uiState.error, onRetry = onRefresh)
 
                             else -> NetworkList(
                                 uiState = uiState,
-                                onOpenContact = onOpenContact
+                                onRefresh = onRefresh,
+                                onOpenContact = onOpenContact,
+                                onOpenEntity = onOpenEntity
                             )
                         }
                     }
@@ -259,10 +269,10 @@ fun NetworkScreenContent(
         }
     }
 
-    // The snackbar is for fetch failures that leave stale content on screen
-    // (an empty result already shows the error inline below the controls) —
-    // presenting both for an empty failure would double-announce it.
-    if (uiState.groupedChains.isNotEmpty()) {
+    // The snackbar is for fetch failures that leave non-empty rows on screen.
+    // With the entity overlay on, NetworkList renders a compact inline error
+    // (the overlay must stay visible), so don't also announce it in a snackbar.
+    if (!uiState.showEntities && uiState.groupedChains.isNotEmpty()) {
         uiState.error?.let { error ->
             val message = error.localizedMessage()
             LaunchedEffect(message) {
@@ -436,8 +446,38 @@ private fun CircleFilter(uiState: NetworkUiState, onCircleSelect: (String?) -> U
 }
 
 @Composable
-private fun NetworkList(uiState: NetworkUiState, onOpenContact: (Int) -> Unit) {
+private fun NetworkList(
+    uiState: NetworkUiState,
+    onRefresh: () -> Unit,
+    onOpenContact: (Int) -> Unit,
+    onOpenEntity: (String) -> Unit
+) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        // With the entity overlay on, a failed traversal cannot take over the
+        // whole screen (that would hide the overlay), and the snackbar is
+        // suppressed for this branch. Keep the failure reason and Retry inline
+        // above the rows the user can still see.
+        if (uiState.showEntities) {
+            uiState.error?.let { error ->
+                item(key = "traversal-error") {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(
+                            horizontal = 16.dp,
+                            vertical = 8.dp
+                        )
+                    ) {
+                        Text(
+                            text = error.localizedMessage(),
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        TextButton(onClick = onRefresh) {
+                            Text(stringResource(R.string.action_retry))
+                        }
+                    }
+                }
+            }
+        }
         DEPTHS.forEach { depth ->
             val chains = uiState.groupedChains[depth].orEmpty()
             if (chains.isNotEmpty()) {
@@ -461,17 +501,17 @@ private fun NetworkList(uiState: NetworkUiState, onOpenContact: (Int) -> Unit) {
                 }
             }
         }
-        if (uiState.showEntities) entityOverlayItems(uiState)
+        if (uiState.showEntities) entityOverlayItems(uiState, onOpenEntity)
     }
 }
 
 /**
- * The read-only entity section: a square (not round) icon tile, no click action and no edit
- * affordance (entities are edited from the contact or the entity page), listing the in-scope
- * contacts each one is linked to.
+ * The entity section: a square (not round) icon tile, listing the in-scope contacts each one is
+ * linked to. A row opens the entity's page (#2651); nothing is edited from the graph.
  */
 private fun androidx.compose.foundation.lazy.LazyListScope.entityOverlayItems(
-    uiState: NetworkUiState
+    uiState: NetworkUiState,
+    onOpenEntity: (String) -> Unit
 ) {
     item(key = "entities-header") {
         Text(
@@ -505,13 +545,13 @@ private fun androidx.compose.foundation.lazy.LazyListScope.entityOverlayItems(
         }
 
         else -> items(uiState.entityOverlay, key = { it.node.id }) { row ->
-            EntityOverlayRowView(row)
+            EntityOverlayRowView(row) { onOpenEntity(row.node.id.removePrefix("e-")) }
         }
     }
 }
 
 @Composable
-private fun EntityOverlayRowView(row: EntityOverlayRow) {
+private fun EntityOverlayRowView(row: EntityOverlayRow, onOpen: () -> Unit) {
     val kindLabel = stringResource(
         when (row.node.kind) {
             "place" -> R.string.shared_entities_kind_one_place
@@ -519,9 +559,19 @@ private fun EntityOverlayRowView(row: EntityOverlayRow) {
             else -> R.string.shared_entities_kind_one_organisation
         }
     )
-    val description = stringResource(R.string.network_entities_read_only, row.node.label, kindLabel)
+    val description = stringResource(
+        R.string.network_entities_description,
+        row.node.label,
+        kindLabel
+    )
     Row(
         modifier = Modifier.fillMaxWidth()
+            .clickable(
+                onClickLabel = stringResource(R.string.shared_entities_open, row.node.label),
+                role = Role.Button,
+                onClick = onOpen
+            )
+            .heightIn(min = 48.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .semantics(mergeDescendants = true) { contentDescription = description }
             .testTag("network-entity-${row.node.id}"),
@@ -673,12 +723,17 @@ internal fun ContactPickerDialog(
                 } else {
                     Column {
                         uiState.contactSearchResults.forEach { contact ->
-                            TextButton(
-                                onClick = { onSelect(contact) },
+                            // Left-aligned, full-width rows (a TextButton centres its label).
+                            Box(
                                 modifier = Modifier.fillMaxWidth()
+                                    .heightIn(min = 48.dp)
+                                    .clickable(role = Role.Button) { onSelect(contact) }
+                                    .testTag("picker-result-${contact.id}"),
+                                contentAlignment = Alignment.CenterStart
                             ) {
                                 Text(
                                     text = contact.displayName,
+                                    style = MaterialTheme.typography.bodyLarge,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -688,9 +743,8 @@ internal fun ContactPickerDialog(
                 }
             }
         },
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
-        },
+        // One dismiss action only: the dialog has nothing to confirm (a tap on a result selects).
+        confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel)) }
         }

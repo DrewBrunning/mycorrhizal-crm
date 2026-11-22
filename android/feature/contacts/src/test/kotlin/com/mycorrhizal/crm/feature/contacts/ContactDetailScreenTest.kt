@@ -1,19 +1,28 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertAny
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isFocused
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -28,6 +37,7 @@ import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.Activity
 import com.mycorrhizal.crm.model.network.Anniversary
@@ -811,17 +821,23 @@ class ContactDetailScreenTest {
 
     @Test
     fun `the add-a-field menu reveals a hidden empty field`() {
-        var revealed: ContactFieldKey? = null
-        setContent(
-            ContactDetailUiState(
-                contact = ContactRecordResponse(
-                    id = 5,
-                    card = Card(name = Name(full = "Dana White"))
-                ),
-                enabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PHONES
-            ),
-            onRevealField = { revealed = it }
-        )
+        composeTestRule.setContent {
+            var revealedFields by remember { mutableStateOf(emptySet<ContactFieldKey>()) }
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = ContactRecordResponse(
+                        id = 5,
+                        card = Card(name = Name(full = "Dana White"))
+                    ),
+                    dateFormat = null,
+                    accountEnabledFields = DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.PHONES,
+                    hideEmpty = true,
+                    revealedFields = revealedFields,
+                    onRevealField = { revealedFields = revealedFields + it },
+                    onCustomizeFields = {}
+                )
+            }
+        }
 
         composeTestRule.onNodeWithText("Add a field")
             .performScrollTo()
@@ -829,8 +845,12 @@ class ContactDetailScreenTest {
             .performClick()
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Phone", useUnmergedTree = true).performClick()
+        composeTestRule.waitForIdle()
 
-        assertEquals(ContactFieldKey.PHONES, revealed)
+        // The field must actually render once the state loop feeds the revealed
+        // set back into ContactDetailContent; asserting only the callback would
+        // pass if the screen never displayed it.
+        composeTestRule.onNodeWithText("Phone").assertExists()
     }
 
     @Test
@@ -1208,6 +1228,57 @@ class ContactDetailScreenTest {
     }
 
     @Test
+    fun `work count only counts what the Work screen can show`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Ada Lovelace"),
+                organizations = listOf(
+                    com.mycorrhizal.crm.model.network.Organization(id = "o1", name = "Analytical"),
+                    com.mycorrhizal.crm.model.network.Organization(id = "o2", name = "Babbage")
+                )
+            ),
+            crm = CRMEnvelope(workInformation = "Engineer")
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                // Organizations are off in the default set, so the Work screen lists none.
+                ContactDetailContent(contact = contact)
+            }
+        }
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-work"))
+        composeTestRule.onNodeWithTag("drill-down-work").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Work · 1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Work · 3").assertDoesNotExist()
+    }
+
+    @Test
+    fun `work count includes organizations when they are enabled`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Ada Lovelace"),
+                organizations = listOf(
+                    com.mycorrhizal.crm.model.network.Organization(id = "o1", name = "Analytical")
+                )
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    accountEnabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ORGANIZATIONS
+                )
+            }
+        }
+        composeTestRule.onNodeWithTag("contact-detail-list")
+            .performScrollToNode(hasTestTag("drill-down-work"))
+        composeTestRule.onNodeWithText("Work · 1").assertIsDisplayed()
+    }
+
+    @Test
     fun `entities drill-down opens the contact's links`() {
         var opened = -1
         composeTestRule.setContent {
@@ -1310,6 +1381,61 @@ class ContactDetailScreenTest {
         }
         scrollTo("1 High St").assertIsDisplayed()
         composeTestRule.onAllNodesWithTag("projected-from-chip").assertCountEquals(1)
+    }
+
+    @Test
+    fun `a projected address names the place it comes from`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                addresses = listOf(
+                    com.mycorrhizal.crm.model.network.Address(id = "ent-l2", full = "1 High St")
+                )
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    accountEnabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ADDRESSES,
+                    projectedEntityNames = mapOf("l2" to "Lakeside Cabin")
+                )
+            }
+        }
+        scrollTo("1 High St").assertIsDisplayed()
+        composeTestRule.onNodeWithText("from Lakeside Cabin").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Shown from Lakeside Cabin, read-only")
+            .assertExists()
+        composeTestRule.onAllNodesWithText(
+            "from a linked organisation or place"
+        ).assertCountEquals(0)
+    }
+
+    @Test
+    fun `a projected address with an unresolved link falls back to the generic chip`() {
+        val contact = ContactRecordResponse(
+            id = 5,
+            card = Card(
+                name = Name(full = "Dana White"),
+                addresses = listOf(
+                    com.mycorrhizal.crm.model.network.Address(id = "ent-l2", full = "1 High St")
+                )
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailContent(
+                    contact = contact,
+                    accountEnabledFields =
+                        DEFAULT_ENABLED_CONTACT_FIELDS + ContactFieldKey.ADDRESSES,
+                    projectedEntityNames = mapOf("other" to "Elsewhere")
+                )
+            }
+        }
+        scrollTo("1 High St").assertIsDisplayed()
+        composeTestRule.onNodeWithText("from a linked organisation or place").assertIsDisplayed()
     }
 
     @Test
@@ -2887,5 +3013,132 @@ class ContactDetailScreenTest {
         composeTestRule.onNodeWithText("Export vCard 3.0").performClick()
 
         verify { viewModel.exportVcf(version = 3) }
+    }
+
+    // --- #2624: circle/tag chips are buttons, not checked toggles ---
+
+    @Test
+    fun `an applied circle chip is a named 48dp remove button, not a checked toggle`() {
+        var removed: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ChipEditorRow(
+                    items = listOf("Family"),
+                    allItems = listOf("Family", "Work"),
+                    label = { it },
+                    isApplied = { it == "Family" },
+                    onAdd = {},
+                    onRemove = { removed = it },
+                    emptyText = "No circles yet",
+                    addLabel = "Add circle"
+                )
+            }
+        }
+
+        val chip = composeTestRule.onNodeWithContentDescription("Remove Family")
+        chip.assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        val config = chip.fetchSemanticsNode().config
+        assertEquals(Role.Button, config[SemanticsProperties.Role])
+        assertFalse(SemanticsProperties.ToggleableState in config)
+        assertFalse(SemanticsProperties.Selected in config)
+        composeTestRule.onAllNodes(isToggleable()).assertCountEquals(0)
+        composeTestRule.onAllNodes(isSelectable()).assertCountEquals(0)
+
+        chip.performClick()
+        assertEquals("Family", removed)
+    }
+
+    @Test
+    fun `the add chip of the circle editor is at least 48dp tall`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ChipEditorRow(
+                    items = emptyList<String>(),
+                    allItems = listOf("Family"),
+                    label = { it },
+                    isApplied = { false },
+                    onAdd = {},
+                    onRemove = {},
+                    emptyText = "No circles yet",
+                    addLabel = "Add circle"
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Add circle").assertHeightIsAtLeast(48.dp)
+    }
+
+    // --- #2625: labelled placeholders and padded empty rows ---
+
+    @Test
+    fun `an empty gender and birthday are labelled, not a bare Not set`() {
+        setContent(
+            ContactDetailUiState(
+                contact = ContactRecordResponse(
+                    id = 5,
+                    card = Card(name = Name(full = "Dana White"))
+                )
+            ),
+            hideEmpty = false
+        )
+
+        composeTestRule.onNodeWithText("Gender: Not set").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Birthday: Not set").assertIsDisplayed()
+    }
+
+    @Test
+    fun `an empty field row is inset by the same 16dp as a filled row`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme { Box { EmptyFieldRow(onAdd = {}) } }
+        }
+
+        val left = composeTestRule.onNodeWithText("Not set").getUnclippedBoundsInRoot().left
+        assertEquals(16f, left.value, 0.5f)
+    }
+
+    // --- Issue #2629: saved-data banner ---
+
+    private fun detailScreenFor(contact: ContactRecordResponse): ContactDetailViewModel {
+        val viewModel = mockk<ContactDetailViewModel>(relaxed = true)
+        every { viewModel.uiState } returns MutableStateFlow(
+            ContactDetailUiState(contact = contact)
+        )
+        every { viewModel.events } returns MutableStateFlow<ContactDetailEvent?>(null)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactDetailScreen(onBack = {}, onShareContact = {}, viewModel = viewModel)
+            }
+        }
+        return viewModel
+    }
+
+    @Test
+    fun `a contact served from the cache shows the saved data banner and retry reloads`() {
+        val viewModel = detailScreenFor(
+            ContactRecordResponse(
+                id = 5,
+                uid = "uid-5",
+                card = Card(name = Name(full = "Dana White")),
+                servedFromCache = true
+            )
+        )
+
+        composeTestRule.onNodeWithText("Showing saved data").assertExists()
+        composeTestRule.onNodeWithText("Retry").performClick()
+
+        verify { viewModel.load() }
+    }
+
+    @Test
+    fun `a live contact shows no saved data banner`() {
+        detailScreenFor(
+            ContactRecordResponse(
+                id = 5,
+                uid = "uid-5",
+                card = Card(name = Name(full = "Dana White"))
+            )
+        )
+
+        composeTestRule.onNodeWithText("Showing saved data").assertDoesNotExist()
     }
 }

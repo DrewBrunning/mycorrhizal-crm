@@ -47,36 +47,53 @@ type VCFContactData struct {
 	PhotoURL       string // URL to fetch photo from (if not embedded)
 }
 
-// ParseCSV reads and parses a CSV file, returning headers and data rows
+// ParseCSV reads and parses a CSV file, returning headers and data rows.
+// It decodes through DecodeImportText (BOM strip, Windows-1252 fallback); use
+// ParseCSVWithDiagnostics to also receive the encoding warning.
 func ParseCSV(reader io.Reader) (headers []string, rows [][]string, err error) {
-	csvReader := csv.NewReader(reader)
+	headers, rows, _, err = ParseCSVWithDiagnostics(reader)
+	return headers, rows, err
+}
+
+// ParseCSVWithDiagnostics is ParseCSV plus the file-level diagnostics of the
+// decoding step (the "read as Windows-1252" warning, issue #2669).
+func ParseCSVWithDiagnostics(reader io.Reader) (headers []string, rows [][]string, diags []contactmodel.Diagnostic, err error) {
+	raw, readErr := io.ReadAll(reader)
+	if readErr != nil {
+		return nil, nil, nil, fmt.Errorf("invalid CSV format: %w", readErr)
+	}
+	if sniffErr := SniffImportText(raw); sniffErr != nil {
+		return nil, nil, nil, sniffErr
+	}
+	text, diags := DecodeImportText(raw)
+	csvReader := csv.NewReader(bytes.NewReader(text))
 	csvReader.FieldsPerRecord = -1 // Allow variable number of fields
 	csvReader.LazyQuotes = true    // Be lenient with quotes
 
 	records, err := csvReader.ReadAll()
 	if err != nil {
-		return nil, nil, fmt.Errorf("invalid CSV format: %w", err)
+		return nil, nil, nil, fmt.Errorf("invalid CSV format: %w", err)
 	}
 
 	if len(records) == 0 {
-		return nil, nil, fmt.Errorf("CSV file is empty")
+		return nil, nil, nil, fmt.Errorf("CSV file is empty")
 	}
 
 	headers = records[0]
 	if len(headers) == 0 {
-		return nil, nil, fmt.Errorf("CSV file has no headers")
+		return nil, nil, nil, fmt.Errorf("CSV file has no headers")
 	}
 
 	rows = records[1:]
 	if len(rows) == 0 {
-		return nil, nil, fmt.Errorf("CSV file has no data rows")
+		return nil, nil, nil, fmt.Errorf("CSV file has no data rows")
 	}
 
 	if len(rows) > MaxCSVRows {
-		return nil, nil, fmt.Errorf("too many rows: maximum is %d rows", MaxCSVRows)
+		return nil, nil, nil, fmt.Errorf("too many rows: maximum is %d rows", MaxCSVRows)
 	}
 
-	return headers, rows, nil
+	return headers, rows, diags, nil
 }
 
 // splitVCardBlocks splits raw multi-contact VCF bytes into individual
@@ -261,14 +278,23 @@ func ImportVCardBlock(block []byte) (*contactmodel.Record, []contactmodel.Diagno
 // ValidateImportedContact are all unchanged: they already operate on the
 // resulting flat Contact fields, which ApplyRecordToContact populates.
 func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContactData, previews []models.ImportRowPreview, stats ImportStats, err error) {
-	data, readErr := io.ReadAll(reader)
-	if readErr != nil {
-		return nil, nil, stats, fmt.Errorf("failed to read VCF file: %w", readErr)
-	}
+	contacts, previews, stats, _, err = ParseVCFWithDiagnostics(reader, db, userID)
+	return contacts, previews, stats, err
+}
 
-	blocks := splitVCardBlocks(stripUTF8BOM(data))
+// ParseVCFWithDiagnostics is ParseVCF plus the file-level diagnostics of the
+// decoding step (BOM strip is silent; a non-UTF-8 file read as Windows-1252
+// yields a warning, issue #2669).
+func ParseVCFWithDiagnostics(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContactData, previews []models.ImportRowPreview, stats ImportStats, fileDiags []contactmodel.Diagnostic, err error) {
+	raw, readErr := io.ReadAll(reader)
+	if readErr != nil {
+		return nil, nil, stats, nil, fmt.Errorf("failed to read VCF file: %w", readErr)
+	}
+	data, fileDiags := DecodeImportText(raw)
+
+	blocks := splitVCardBlocks(data)
 	if len(blocks) == 0 {
-		return nil, nil, stats, fmt.Errorf("VCF file contains no valid vCards")
+		return nil, nil, stats, nil, fmt.Errorf("VCF file contains no valid vCards")
 	}
 
 	// T96: prior rows' flat contacts, for within-batch duplicate detection.
@@ -276,7 +302,7 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 
 	for rowIdx, block := range blocks {
 		if rowIdx >= MaxVCFContacts {
-			return nil, nil, stats, fmt.Errorf("too many contacts: maximum is %d contacts", MaxVCFContacts)
+			return nil, nil, stats, nil, fmt.Errorf("too many contacts: maximum is %d contacts", MaxVCFContacts)
 		}
 
 		record, diags, importErr := ImportVCardBlock(block)
@@ -291,6 +317,10 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 			stats.ErrorCount++
 			continue
 		}
+
+		// Option C (#2631/#2653): an impossible/unparseable birthday or
+		// anniversary is dropped with a row warning, never a row error.
+		diags = append(diags, DropInvalidRecordDates(record)...)
 
 		contact := &models.Contact{}
 		// photoDir is deliberately "" here: this is only a preview, not yet
@@ -323,10 +353,10 @@ func ParseVCF(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFContact
 	}
 
 	if len(contacts) == 0 {
-		return nil, nil, stats, fmt.Errorf("VCF file contains no valid contacts")
+		return nil, nil, stats, nil, fmt.Errorf("VCF file contains no valid contacts")
 	}
 
-	return contacts, previews, stats, nil
+	return contacts, previews, stats, fileDiags, nil
 }
 
 // ParseJSContact reads and parses a JSContact JSON import (
@@ -372,6 +402,10 @@ func ParseJSContact(reader io.Reader, db *gorm.DB, userID uint) (contacts []VCFC
 			stats.ErrorCount++
 			continue
 		}
+
+		// Option C (#2631/#2653): an impossible/unparseable birthday or
+		// anniversary is dropped with a row warning, never a row error.
+		diags = append(diags, DropInvalidRecordDates(record)...)
 
 		contact := &models.Contact{}
 		// photoDir is deliberately "" here: this is only a preview, not yet
@@ -1527,6 +1561,10 @@ func BuildImportRowPreview(
 	// the format validators below never have to reason about hostile bytes.
 	diags = append(diags, SanitizeImportedContact(contact)...)
 
+	// CSV rows carry their dates only as flat strings; an impossible or
+	// unparseable one is cleared and warned about (#2631), not rejected.
+	diags = append(diags, dropInvalidFlatDates(contact)...)
+
 	// Issue #2186: a contact with no name but an email or phone is named
 	// after it instead of being rejected.
 	if applyImportNameFallback(contact) {
@@ -1658,10 +1696,13 @@ func CreateMergeNote(db *gorm.DB, userID uint, contactID uint, original *models.
 
 	content := fmt.Sprintf("%s Import updated this contact.\n\nChanges made:\n%s", importType, strings.Join(changes, "\n"))
 
+	// Dated at import time from the injected clock (issue #2663): a zero Date
+	// saved as 0001-01-01, sorting the note last on every timeline.
 	note := models.Note{
 		UserID:    userID,
 		ContactID: &contactID,
 		Content:   content,
+		Date:      Now().UTC(),
 	}
 
 	return db.Create(&note).Error

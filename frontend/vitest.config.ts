@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 
 // The repo-root testdata/ fixtures are shared with the Go and Android suites.
 // Tests import them through `@testdata/...` instead of `../../../testdata/...`
@@ -9,6 +9,11 @@ import { defineConfig } from 'vitest/config';
 // .stryker-tmp/sandbox-*/, where the relative path points at nothing (10.0.0
 // silently dropped those test files; 10.1.0 fails the dry run). Walking up from
 // this config's directory finds the real testdata/ from both locations.
+//
+// MUST stay identical to findTestdataDir in vitest.browser.config.ts. It is
+// duplicated rather than shared because a local import without a file
+// extension makes Vite warn about its future native config loader on every
+// run, and `import './x.ts'` is not type-checkable under the node tsconfig.
 function findTestdataDir(): string {
   for (let dir = import.meta.dirname; ; dir = dirname(dir)) {
     const candidate = join(dir, 'testdata');
@@ -30,6 +35,11 @@ export default defineConfig({
     // is included explicitly because it lives outside src/. scripts/*.test.mjs
     // covers build-tooling scripts (the bundle-size budget, issue #556) the
     // same way -- outside src/, node env via the file's own pragma.
+    // *.browser.test.tsx needs a real browser (issue #2539) and is run by
+    // vitest.browser.config.ts via `yarn test:browser`; vitest/browser throws
+    // outside browser mode, so it must never be collected here. Uses exclude
+    // (spreading configDefaults.exclude) rather than a `!` include entry: a
+    // negated include silently collapses v8 coverage to zero files.
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
       'viteConfig.test.ts',
@@ -37,6 +47,7 @@ export default defineConfig({
       'scripts/*.test.mjs',
       'e2e/*.vitest.ts',
     ],
+    exclude: [...configDefaults.exclude, 'src/**/*.browser.test.{ts,tsx}'],
     // Node >= 22 ships its own experimental localStorage global, which is
     // undefined without --localstorage-file and shadows jsdom's working one
     // Vitest 4 removed `poolOptions` (it only logged a DEPRECATED notice and

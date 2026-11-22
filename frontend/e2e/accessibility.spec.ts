@@ -13,6 +13,8 @@ import {
   test,
   waitForLoading,
 } from './fixtures';
+import { keyboardFocusViolations, positiveTabindexViolations } from './focusOrder';
+import { collectTabindexEntries, describeActiveStop, walkTabOrder } from './focusWalk';
 import { API_BASE_URL } from './global-setup';
 
 /**
@@ -31,7 +33,8 @@ import { API_BASE_URL } from './global-setup';
  * `assertNoBlockingA11yViolations` call (scoped to a route, theme, or dialog
  * subtree) -- fixtures.ts's automatic per-test scan (issue #259) would just
  * re-scan the exact same final page state a second time for zero added
- * coverage, so this whole file opts out of it.
+ * coverage, so this whole file opts out of it. The keyboard-focus block at the
+ * end asserts browser behaviour axe cannot see, so it scans nothing.
  */
 
 // ---------------------------------------------------------------------------
@@ -195,6 +198,24 @@ test.describe('accessibility dialog scans', {
       await gotoWithTheme(page, '/contacts', theme);
       await page.getByRole('button', { name: /import/i }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
+      await assertNoBlockingViolations(page, '[role="dialog"]');
+    });
+
+    // Issue #2661/#2674: the upload step must be keyboard-startable and every
+    // "Maps To" select must carry an accessible name.
+    test(`import mapping step (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
+      await gotoWithTheme(page, '/contacts', theme);
+      await page.getByRole('button', { name: /import/i }).click();
+      const dialog = page.getByRole('dialog');
+      await expect(dialog.getByRole('button', { name: /choose file/i })).toBeVisible();
+      await dialog.locator('#import-file-input').setInputFiles({
+        name: 'a11y.csv',
+        mimeType: 'text/csv',
+        buffer: Buffer.from('First Name,Last Name,Email\nAda,Lovelace,ada@example.com\n'),
+      });
+      await expect(dialog.getByRole('combobox', { name: 'Map column Email to' })).toBeVisible();
       await assertNoBlockingViolations(page, '[role="dialog"]');
     });
 
@@ -496,4 +517,133 @@ test.describe('audit log at narrow widths (#1788, #1792)', {
       await assertNoBlockingViolations(page);
     });
   }
+});
+
+// #2695: the open top-bar search dropdown had invalid listbox/group ARIA
+// (aria-required-children / aria-required-parent) and an unnamed input.
+test.describe('global search dropdown (#2695)', {
+  annotation: { type: SKIP_A11Y_SCAN, description: 'scans the open dropdown explicitly' },
+}, () => {
+  for (const theme of THEMES) {
+    test(`open dropdown (${theme}) has no critical or serious a11y violations`, async ({
+      page,
+    }) => {
+      await gotoWithTheme(page, '/', theme);
+      const box = page.getByRole('combobox', { name: 'Search everything' });
+      await box.fill('Alice');
+      await expect(page.getByRole('listbox')).toBeVisible();
+      await assertNoBlockingViolations(page);
+      await assertNoAxeRuleViolations(page, [
+        'aria-required-children',
+        'aria-required-parent',
+        'list',
+        'aria-input-field-name',
+      ]);
+    });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Keyboard focus
+// ---------------------------------------------------------------------------
+// axe reads the static DOM, so none of the defects below can appear in its
+// report: a keyboard trap, a focus point lost between controls, a positive
+// tabindex that overrides document order, and a control that takes keyboard
+// focus without a `:focus-visible` indicator. These specs press Tab through the
+// real app shell and assert the invariants in focusOrder.ts (unit-tested in
+// focusOrder.vitest.ts). Browser/theme-independent, so light only -- the
+// tab order is not a colour decision.
+test.describe('keyboard focus', {
+  annotation: { type: SKIP_A11Y_SCAN, description: 'presses Tab; the page state is unchanged' },
+}, () => {
+  // Deliberately not every route: each walk is one Tab press plus one DOM probe
+  // per stop, and a table-heavy page (contacts, audit) has hundreds. These two
+  // cover the three regions the app shell composes -- skip link, app bar,
+  // drawer navigation and the main landmark -- plus a form-heavy page.
+  const KEYBOARD_ROUTES: Array<[string, string]> = [
+    ['dashboard', '/'],
+    ['settings', '/settings'],
+  ];
+
+  // /settings carries the integrations list (each row has move/edit/delete), so
+  // its tab order is long; the cap only bounds a genuine trap.
+  const MAX_TAB_STEPS = 400;
+
+  test('the skip link is the first tab stop and moves focus into main', async ({ page }) => {
+    await gotoWithTheme(page, '/', 'light');
+
+    await page.keyboard.press('Tab');
+    const skipLink = page.locator('a[href="#main-content"]');
+    await expect(skipLink).toBeFocused();
+    // The link is off-screen until focused (left: -9999px -> 0), so a focused
+    // link must be on screen: keyboard users have to see where they are.
+    const box = await skipLink.boundingBox();
+    expect(box, 'the focused skip link must have a box').not.toBeNull();
+    expect(box?.x ?? -1).toBeGreaterThanOrEqual(0);
+    await expect(skipLink).toHaveText(/\S/);
+
+    await page.keyboard.press('Enter');
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const main = document.getElementById('main-content');
+          return (
+            !!main && (document.activeElement === main || main.contains(document.activeElement))
+          );
+        }),
+      )
+      .toBe(true);
+  });
+
+  for (const [name, route] of KEYBOARD_ROUTES) {
+    test(`${name}: Tab reaches every control, in document order, with no trap`, async ({
+      page,
+    }) => {
+      await gotoWithTheme(page, route, 'light');
+      const walk = await walkTabOrder(page, MAX_TAB_STEPS);
+
+      const violations = keyboardFocusViolations(walk);
+      // The stop labels make a failure diagnosable without a trace download;
+      // the tail is elided because /settings has hundreds of stops.
+      const shown = walk.stops.map((s) => s.label);
+      const tabStops = [
+        ...shown.slice(0, 60),
+        ...(shown.length > 60 ? [`…${shown.length - 60} more`] : []),
+      ];
+      expect(violations, `tab stops:\n${tabStops.join('\n')}`).toEqual([]);
+    });
+
+    test(`${name}: no control overrides the tab order with a positive tabindex`, async ({
+      page,
+    }) => {
+      await gotoWithTheme(page, route, 'light');
+      expect(positiveTabindexViolations(await collectTabindexEntries(page))).toEqual([]);
+    });
+  }
+
+  test('the add-contact dialog traps Tab and returns focus to its trigger on Escape', async ({
+    page,
+  }) => {
+    await gotoWithTheme(page, '/contacts', 'light');
+    const trigger = page.getByRole('button', { name: /add/i });
+    await trigger.click();
+
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    // MUI moves focus into the dialog on open; a dialog that leaves focus on
+    // the page behind it is a trap in reverse (Tab walks the hidden page).
+    await expect.poll(async () => (await describeActiveStop(page)).inDialog).toBe(true);
+
+    for (let press = 1; press <= 12; press++) {
+      await page.keyboard.press('Tab');
+      const stop = await describeActiveStop(page);
+      expect(stop.inDialog, `Tab press ${press} left the dialog at ${stop.label}`).toBe(true);
+    }
+
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    // Restoring focus is what lets a keyboard user carry on from where they
+    // opened the dialog; losing it drops them at the top of the document.
+    await expect(trigger).toBeFocused();
+  });
 });

@@ -32,6 +32,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.domain.compat.ServerFeature
+import com.mycorrhizal.crm.model.network.ImportDiagnostic
 import com.mycorrhizal.crm.model.network.ImportMergeDiff
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
@@ -56,7 +57,8 @@ fun ImportReviewStep(
     onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
     rowEdits: Map<Int, ImportRowEdit> = emptyMap(),
-    onRowEditSave: ((ImportRowEdit) -> Unit)? = null
+    onRowEditSave: ((ImportRowEdit) -> Unit)? = null,
+    fileDiagnostics: List<ImportDiagnostic> = emptyList()
 ) {
     var filter by rememberSaveable { mutableStateOf<ImportReviewFilter?>(null) }
     val conflictsRemaining = rows.count { row ->
@@ -65,7 +67,7 @@ fun ImportReviewStep(
             (rowActions[row.rowIndex] ?: row.suggestedAction) == row.suggestedAction
     }
     val decisions = rows.count { it.validationErrors.isEmpty() || it.rowIndex in rowEdits }
-    val visibleRows = rows.filter { it.matches(filter) }
+    val visibleRows = rows.filter { it.matches(filter, rowEdits) }
     // Issue #2551: a server older than v1.7.0 ignores `row_edits` and imports the original
     // invalid row when its action is "add". Offer no fix form there, so errored rows stay
     // forced to skip.
@@ -86,11 +88,16 @@ fun ImportReviewStep(
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
-        TextButton(onClick = onResolveAll, modifier = Modifier.padding(horizontal = 8.dp)) {
-            Text(stringResource(R.string.import_resolve_all))
+        FileDiagnosticsNotice(fileDiagnostics)
+        // Nothing to resolve without a duplicate row (issue #2630).
+        if (rows.any { it.duplicateMatch != null || it.batchDuplicateOf != null }) {
+            TextButton(onClick = onResolveAll, modifier = Modifier.padding(horizontal = 8.dp)) {
+                Text(stringResource(R.string.import_resolve_all))
+            }
         }
         FilterChips(
             rows = rows,
+            rowEdits = rowEdits,
             selected = filter,
             onSelect = { picked -> filter = if (filter == picked) null else picked }
         )
@@ -114,10 +121,34 @@ fun ImportReviewStep(
     }
 }
 
+/** Issue #2731: file-level notices (such as "read as Windows-1252") above the row list. */
+@Composable
+private fun FileDiagnosticsNotice(diagnostics: List<ImportDiagnostic>) {
+    if (diagnostics.isEmpty()) return
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            .testTag("import-file-diagnostic")
+    ) {
+        diagnostics.forEach { diagnostic ->
+            Text(
+                text = diagnostic.localizedText(),
+                style = MaterialTheme.typography.bodySmall,
+                color = if (diagnostic.severity == DIAGNOSTIC_WARN) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        }
+    }
+}
+
 /** Issue #2184: tapping a chip filters the list to that group; tapping it again clears it. */
 @Composable
 private fun FilterChips(
     rows: List<ImportRowPreview>,
+    rowEdits: Map<Int, ImportRowEdit>,
     selected: ImportReviewFilter?,
     onSelect: (ImportReviewFilter) -> Unit
 ) {
@@ -138,7 +169,9 @@ private fun FilterChips(
             FilterChip(
                 selected = selected == filter,
                 onClick = { onSelect(filter) },
-                label = { Text(stringResource(label, rows.count { it.matches(filter) })) },
+                label = {
+                    Text(stringResource(label, rows.count { it.matches(filter, rowEdits) }))
+                },
                 modifier = Modifier.testTag(tag)
             )
         }
@@ -156,15 +189,19 @@ private fun ImportRowCard(
     val hasErrors = row.validationErrors.isNotEmpty()
     // Issue #2186: a saved fix re-enables the decision chips for an errored row.
     val fixed = hasErrors && edit != null
+    // Issue #2610: no form for an error it cannot fix (birthday, unparseable card).
+    val unfixable = hasErrors && !fixed && row.hasUnfixableError()
     // Local copies so the `when` branches can smart-cast (public API property
     // from another module cannot be smart-cast directly).
     val duplicateMatch = row.duplicateMatch
     val batchDuplicateOf = row.batchDuplicateOf
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
-        Text(row.displayName(), style = MaterialTheme.typography.bodyLarge)
+        // Issue #2611: once a fix is saved the card shows the edited values.
+        val shown = if (fixed) row.withEdit(edit) else row
+        Text(shown.displayName(), style = MaterialTheme.typography.bodyLarge)
         val sub = listOfNotNull(
-            row.parsedContact["email"] as? String,
-            row.parsedContact["phone"] as? String
+            shown.parsedContact["email"] as? String,
+            shown.parsedContact["phone"] as? String
         )
             .filter { it.isNotBlank() }
             .joinToString(" · ")
@@ -176,6 +213,10 @@ private fun ImportRowCard(
             )
         }
         when {
+            // Issue #2611: the stale error is hidden once fixed; "Fix saved" below says it is
+            // checked again on import.
+            fixed -> Unit
+
             hasErrors -> row.validationErrors.forEach { error ->
                 Text(
                     text = error,
@@ -217,7 +258,29 @@ private fun ImportRowCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        if (hasErrors && onEditSave != null) {
+        row.diagnostics?.forEach { diagnostic ->
+            // Issue #2641: adapter notes (e.g. "name taken from email"). A warning (issue #2653:
+            // an invalid birthday was dropped, the row still imports) is localized by concept and
+            // is not an error, so it gets the tertiary colour; info is a plain note. Not live:
+            // the row's own status line carries the announcement.
+            Text(
+                text = diagnostic.localizedText(),
+                style = MaterialTheme.typography.labelMedium,
+                color = if (diagnostic.severity == DIAGNOSTIC_WARN) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.testTag("import-row-diagnostic")
+            )
+        }
+        if (unfixable) {
+            Text(
+                text = stringResource(R.string.import_row_unfixable),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        } else if (hasErrors && onEditSave != null) {
             RowFixSection(row = row, edit = edit, onSave = onEditSave)
         }
         row.mergeDiff?.let { MergeDiffSummary(it) }

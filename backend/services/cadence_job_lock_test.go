@@ -67,7 +67,7 @@ func TestProcessOverdueCadencesSkipsWhenLocked(t *testing.T) {
 
 	require.NotPanics(t, func() { ProcessOverdueCadences(db, cfg) })
 
-	time.Sleep(150 * time.Millisecond)
+	WaitForWebhookGoroutines()
 	assert.Equal(t, int32(0), atomic.LoadInt32(&hits), "the locked job must not emit any webhook")
 	var deliveries int64
 	require.NoError(t, db.Model(&models.WebhookDelivery{}).Count(&deliveries).Error)
@@ -116,7 +116,7 @@ func TestProcessOverdueCadencesEmitsWebhookForOverduePolicy(t *testing.T) {
 		return atomic.LoadInt32(&hits) >= 1
 	}, 3*time.Second, 10*time.Millisecond, "the overdue policy must trigger a cadence.overdue webhook")
 
-	time.Sleep(150 * time.Millisecond)
+	WaitForWebhookGoroutines()
 	assert.Equal(t, int32(1), atomic.LoadInt32(&hits), "exactly one emission (only the overdue policy)")
 
 	// The delivery row is recorded after the receiver has answered, so the
@@ -198,7 +198,7 @@ func TestProcessOverdueCadencesSkipsDeceasedContact(t *testing.T) {
 
 	require.NotPanics(t, func() { ProcessOverdueCadences(db, cfg) })
 
-	time.Sleep(150 * time.Millisecond)
+	WaitForWebhookGoroutines()
 	assert.Equal(t, int32(0), atomic.LoadInt32(&hits), "a deceased contact's overdue policy must not emit a webhook")
 	var deliveries int64
 	require.NoError(t, db.Model(&models.WebhookDelivery{}).Count(&deliveries).Error)
@@ -306,7 +306,7 @@ func TestProcessOverdueCadencesSkipsSelfContact(t *testing.T) {
 	require.NoError(t, err)
 	assert.Zero(t, emitted)
 
-	time.Sleep(150 * time.Millisecond)
+	WaitForWebhookGoroutines()
 	assert.Zero(t, atomic.LoadInt32(&hits), "the self contact must not trigger a cadence.overdue webhook")
 	var deliveries int64
 	require.NoError(t, db.Model(&models.WebhookDelivery{}).Count(&deliveries).Error)

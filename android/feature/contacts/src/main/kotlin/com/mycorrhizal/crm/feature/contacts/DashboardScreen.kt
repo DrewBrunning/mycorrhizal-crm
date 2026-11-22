@@ -73,7 +73,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -94,6 +96,7 @@ import com.mycorrhizal.crm.model.network.ReminderRecurrence
 import com.mycorrhizal.crm.model.network.UpcomingOccasion
 import com.mycorrhizal.crm.model.network.UpcomingOccasionSources
 import com.mycorrhizal.crm.model.network.contactDisplayName
+import com.mycorrhizal.crm.model.network.daysUntilOn
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.model.util.DateFormat.display
 import com.mycorrhizal.crm.ui.R
@@ -104,6 +107,7 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.targetTierLabel
+import com.mycorrhizal.crm.ui.currentToday
 import com.mycorrhizal.crm.ui.theme.LocalWarningColors
 import java.time.Instant
 import java.time.LocalDate
@@ -1269,9 +1273,14 @@ private fun OccasionWindowChips(days: Int, onDaysChange: (Int) -> Unit) {
 private fun UpcomingOccasionRow(occasion: UpcomingOccasion, onClick: () -> Unit) {
     val named = occasion.source != UpcomingOccasionSources.BIRTHDAY &&
         occasion.source != UpcomingOccasionSources.ANNIVERSARY
+    // Issue #2617: count from the device's day, so the label agrees with the date shown elsewhere.
+    val daysUntil = occasion.daysUntilOn(currentToday)
+    // #2623 addendum: the whole card is one tap target, announced as a button (Card(onClick)
+    // alone carries a click action but no role, and a bare Modifier.clickable neither).
     Card(
-        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        border = if (occasion.daysUntil == 0) {
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth().semantics { role = Role.Button },
+        border = if (daysUntil == 0) {
             BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
         } else {
             null
@@ -1297,14 +1306,10 @@ private fun UpcomingOccasionRow(occasion: UpcomingOccasion, onClick: () -> Unit)
                 style = MaterialTheme.typography.bodyLarge
             )
             Text(
-                if (occasion.daysUntil == 0) {
+                if (daysUntil == 0) {
                     stringResource(R.string.occasion_today)
                 } else {
-                    pluralStringResource(
-                        R.plurals.occasion_in_days,
-                        occasion.daysUntil,
-                        occasion.daysUntil
-                    )
+                    pluralStringResource(R.plurals.occasion_in_days, daysUntil, daysUntil)
                 },
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant

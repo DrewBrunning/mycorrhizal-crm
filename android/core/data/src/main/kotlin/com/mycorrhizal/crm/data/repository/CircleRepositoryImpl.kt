@@ -12,12 +12,16 @@ import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CircleMemberInput
 import com.mycorrhizal.crm.model.network.CircleTimelinePage
 import com.mycorrhizal.crm.network.ApiClient
+import com.mycorrhizal.crm.network.canServeSavedData
+import com.mycorrhizal.crm.network.toApiErrorOrUnknown
 import javax.inject.Inject
 
 /**
  * Online-first circle access. Writes go to the server; successful responses
  * are mirrored into the Room cache. Membership join rows hard-delete (a join
- * row *is* its endpoints), so removal deletes the cached row outright.
+ * row *is* its endpoints), so removal deletes the cached row outright. The circle list falls
+ * back to the mirror when the server cannot be reached (issue #2629), flagged
+ * `servedFromCache`.
  */
 class CircleRepositoryImpl @Inject constructor(
     private val apiClient: ApiClient,
@@ -30,8 +34,23 @@ class CircleRepositoryImpl @Inject constructor(
         val page = result.getOrNull()
         if (page != null) {
             circleDao.upsertAll(page.circles.map { it.toCached() })
+            // A complete first page is the whole set: drop the rows it does not contain so a
+            // circle deleted elsewhere is not served from the mirror later. A partial page only
+            // adds to it. Upsert first, prune second: a failure part-way never leaves the
+            // mirror emptier than it was.
+            if (cursor == null && page.nextCursor == null) {
+                circleDao.deleteAllExcept(page.circles.map { it.id })
+            }
+            return Result.success(page.circles)
         }
-        return result.map { page -> page.circles }
+        val error = result.exceptionOrNull().toApiErrorOrUnknown()
+        // Issue #2629: serve the saved copy (flagged, so the screen says so) when the server
+        // cannot be reached. Only the first page: a saved first page is not a later page.
+        if (cursor == null && error.canServeSavedData()) {
+            val saved = circleDao.getAll().map { it.toCircle() }
+            if (saved.isNotEmpty()) return Result.success(saved)
+        }
+        return Result.failure(error)
     }
 
     override suspend fun circlesForContact(vcardUid: String): Result<List<Circle>> {
@@ -135,7 +154,18 @@ class CircleRepositoryImpl @Inject constructor(
     private fun Circle.toCached(): CachedCircle = CachedCircle(
         id = id,
         name = name,
-        updatedAt = updatedAt
+        updatedAt = updatedAt,
+        description = description,
+        color = color
+    )
+
+    private fun CachedCircle.toCircle(): Circle = Circle(
+        id = id,
+        name = name,
+        updatedAt = updatedAt,
+        description = description,
+        color = color,
+        servedFromCache = true
     )
 
     private fun CircleMember.toCached(): CachedCircleMember = CachedCircleMember(

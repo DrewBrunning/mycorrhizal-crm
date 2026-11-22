@@ -11,15 +11,29 @@ function cell(value: string): string {
   return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 }
 
-export function importIssuesToCsv(issues: ImportRowIssue[]): string {
+// `statusLabel` supplies the wording for the Status column (the screen report
+// uses the user's language); without it the raw status token is written.
+export function importIssuesToCsv(
+  issues: ImportRowIssue[],
+  statusLabel: (issue: ImportRowIssue) => string = (issue) => issue.status,
+): string {
+  // The Concept column (#2741) appears only when a warning carries one, so a
+  // report of skipped/failed rows keeps its original six columns.
+  const withConcept = issues.some((i) => i.concept);
   const header = ['Row', 'Name', 'Email', 'Phone', 'Status', 'Reason'];
+  if (withConcept) header.push('Concept');
   const lines = [header.join(',')];
   for (const i of issues) {
-    lines.push(
-      [String(i.row), cell(i.name), cell(i.email), cell(i.phone), i.status, cell(i.reason)].join(
-        ',',
-      ),
-    );
+    const fields = [
+      String(i.row),
+      cell(i.name),
+      cell(i.email),
+      cell(i.phone),
+      cell(statusLabel(i)),
+      cell(i.reason),
+    ];
+    if (withConcept) fields.push(cell(i.concept ?? ''));
+    lines.push(fields.join(','));
   }
   return `${lines.join('\r\n')}\r\n`;
 }

@@ -124,6 +124,35 @@ class FieldDefinitionFormScreenTest {
     }
 
     @Test
+    fun `a disabled Applies to explains why, like the key does`() {
+        setContent(FieldDefinitionFormState(fieldDefinitionId = "d1", target = "place"))
+        composeTestRule.onNodeWithText("Applies to").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Cannot be changed after creation.").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a new field offers Applies to without the read-only explanation`() {
+        setContent(FieldDefinitionFormState(fieldDefinitionId = null))
+        composeTestRule.onNodeWithText("Cannot be changed after creation.").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the group hint says where the fields are shown for the chosen target`() {
+        setContent(FieldDefinitionFormState(target = "pet"))
+        composeTestRule.onNodeWithText(
+            "Optional. Fields with the same group are shown together on the page."
+        ).assertExists()
+    }
+
+    @Test
+    fun `the contact group hint keeps saying contact`() {
+        setContent(FieldDefinitionFormState(target = "contact"))
+        composeTestRule.onNodeWithText(
+            "Optional. Fields with the same group are shown together on a contact."
+        ).assertExists()
+    }
+
+    @Test
     fun `the key field is disabled when editing`() {
         setContent(FieldDefinitionFormState(fieldDefinitionId = "d1", key = "coffee_order"))
 

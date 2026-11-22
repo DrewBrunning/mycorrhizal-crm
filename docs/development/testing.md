@@ -34,6 +34,7 @@ orthogonal mechanism; this page is about *which layer a test belongs to*, not
 | Import/export interop | vCard 3/4, JSContact, CSV, iCal/CalDAV against the RFC golden fixtures; round-trip semantics | Neutral-model logic, persistence | `backend/{vcard3,vcard4,jscontact,correspondence}/`, `internal/rfctest/`, `docs/golden-fixtures/` | `go test ./...` | `backend-tests`/`backend-checks` (fuzz) / `backend` |
 | Migration | Schema evolution: up/down pairs, version/dirty tracking, data preservation, interrupted-migration recovery | Current-schema app behavior; deploy sequencing | `backend/database/migrations/`, `backend/database/migrate_*_test.go` | `go test ./...` | `backend-tests` (`rest` leg) / `backend` |
 | Frontend unit | Component state/rendering, hooks, i18n key parity, contract-fixture parsing (vitest) | Real network, end-to-end flows | `frontend/src/**/*.test.ts(x)`, `frontend/viteConfig.test.ts` | `npx vitest run` + `npx tsc --noEmit` | `frontend` job / `frontend` |
+| Frontend component (browser) | Real layout in one component: media queries, `ResizeObserver`/`IntersectionObserver`, scrolling, image measurement (vitest browser mode, Chromium) | Anything jsdom can already prove; multi-page flows (that is E2E web) | `frontend/src/**/*.browser.test.tsx` | `npm run test:browser` | `frontend` job / `frontend` |
 | Android unit/Robolectric | View models, editors, screens, network parsing, offline/local-DB logic | Emulator/device flows, real backend | `android/**/src/test/` | `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest` | `test` job / `android` |
 | E2E web | Complete user flows through the **shipped** artifact (image + compose + nginx + backend) | Anything reachable in a lower layer | `frontend/e2e/` | `npx playwright test` | `e2e` job / `frontend`+`openapi`+`infra` |
 | E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedObtainiumDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
@@ -318,6 +319,28 @@ time-based rule.
 - **Runs via** `npx vitest run` + `npx tsc --noEmit`; CI `unit-tests.yml`
   `frontend` job (`yarn test:coverage`, type check, lint).
 
+### Frontend component (browser, vitest browser mode)
+
+- **Responsible for** the failure classes jsdom fakes: whether the layout really
+  has the responsive branch a media query selects, whether an observer fires,
+  whether a `scrollIntoView`/anchor jump actually moves the section under the
+  sticky header, and whether an image/crop area measures non-zero. Real
+  Chromium, one component at a time (issue #2539).
+- **Must not be used for** anything jsdom can already prove — component state,
+  hooks, request shapes, i18n parity stay in the row above — or multi-page
+  flows, which are E2E web. A browser test that mocks `window.matchMedia`, or
+  spies on `scrollIntoView`, is a jsdom test in the wrong tier.
+- **Lives in** `frontend/src/**/*.browser.test.tsx`, run by
+  `frontend/vitest.browser.config.ts` (Chromium, headless). The config's
+  `@testdata` resolver and `setupFiles` must stay identical to
+  `vitest.config.ts`, and those files are excluded from the jsdom run
+  (`vitest.config.ts`'s `exclude`) so `npx vitest run` never collects them
+  (`vitest/browser` throws outside browser mode).
+- **Runs via** `npm run test:browser`; CI `unit-tests.yml` `frontend` job
+  (`Vitest browser mode` step) after the jsdom run. The browser comes from the
+  same Playwright cache/retry script as the e2e jobs. Stryker mutates the jsdom
+  config only.
+
 ## Android layers
 
 ### Android unit / Robolectric
@@ -325,6 +348,12 @@ time-based rule.
 - **Responsible for** view models, editors (`MultiValueEditor`, `AddressEditor`),
   screens, network parsing (`ContractFixtureTest.kt`), and offline/local-DB logic,
   all on the JVM via Robolectric.
+- **Screen a11y sweep.** `core:testing`'s `assertAccessibleSemantics` walks the
+  rendered semantics tree (every window, so an open dialog is covered too) and
+  asserts accessible names, 48dp icon-only touch targets, `onLongClickLabel`s,
+  no duplicate announcements, checkable roles announcing their state, and no
+  zero-size interactive nodes. Feature screen tests call it; it is the Compose
+  analogue of the web's axe route sweep.
 - **Must not be used for** real device/emulator flows (instrumented) or a real
   backend.
 - **Runs via** `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest`; CI `android-tests.yml` `test` job
@@ -334,8 +363,67 @@ time-based rule.
   :app:lintFossDebug`; `--auto-correct` fixes formatting. detekt 2.x supports the JDK 25 build JVM,
   so no downgrade is needed; do it for any Kotlin or resource change before pushing.
   `android/lint.xml` holds the reasoned lint exemptions (no `lint-baseline.xml`).
-- **Known gap, filed:** `SmsReceiver` is untestable under the current Hilt
-  whole-app-graph test component — issue #327.
+- `SmsReceiver` is covered by `SmsReceiverTest` (issue #327): the receiver is
+  constructed through its internal constructor with mocked repositories and a
+  fake parse step, so `onReceive` is driven directly without booting the whole
+  Hilt graph.
+
+### Android visual regression (Roborazzi)
+
+- **Responsible for** Compose layout, theme (light/dark) and font-scale
+  regressions on Android — the client half of the web's `visual.spec.ts`
+  (issue #2534, the #1794 Paparazzi-vs-Roborazzi decision).
+- **Must not be used for** behaviour assertions (use the semantics assertions
+  in the Robolectric screen tests), or for anything driven by a ViewModel,
+  Hilt, a network call, `Clock.System.now()` or a generated ID: a screenshot
+  test renders a stateless `*Content` composable from a hand-built state so a
+  diff can only be a visual change.
+- **Runs via** `./gradlew :feature:contacts:verifyRoborazziDebug
+  :feature:auth:verifyRoborazziDebug :feature:settings:verifyRoborazziDebug`
+  locally. CI `android-tests.yml` has **no separate screenshot step**: the
+  `android-unit` job's existing "Unit + integration tests (incl. Robolectric)"
+  step passes `-Proborazzi.test.verify=true`, so the goldens in every module are
+  captured and compared during the test pass that already happens. Measured on
+  `:feature:contacts` with `--rerun` (compilation excluded from both): 35.75 s
+  without verify vs 35.98 s with it, i.e. the whole matrix costs ~0.2 s — a
+  separate verify step would re-run the module's full suite for ~2 min.
+  Base goldens live per module in `android/feature/<module>/src/test/screenshots/`
+  (`roborazzi { outputDir }` in the module's `build.gradle.kts`), one file per
+  `<Screen>_<theme>_<fontScale>[_tablet].png` in the matrix light/dark x font
+  scale 1.0/2.0 on a Pixel 7, plus one `RobolectricDeviceQualifiers.MediumTablet`
+  run. Three modules have goldens today:
+  - `:feature:contacts` — `ContactListScreenContent` (five contacts and the
+    empty state) and `ContactDetailContent` (one fully populated contact).
+  - `:feature:auth` — `LoginScreenContent` (credentials mode, light and dark;
+    the invalid-credentials error state in light). No tablet cell: the screen
+    has no size-class branch to pin.
+  - `:feature:settings` — `SettingsRootContent` (light/dark at 1.0, light at
+    2.0, tablet at 1.0; dark at 2.0 is skipped because the rows' geometry is
+    theme-independent).
+- **Pseudo-locale (en-XA) coverage** (issue #2535) is the one exception to the
+  module-local rule and lives in `:app`
+  (`android/app/src/testObtainiumDebug/`, goldens
+  `android/app/src/test/screenshots/<Screen>_pseudo.png`, light at font scale
+  1.0 only). aapt2 generates `values-en-rXA` only at the app's link step: a
+  library module's test resource APK carries zero `(en-rXA)` entries, so a test
+  there would render plain English and pass silently. The variant source set is
+  deliberate — obtainium is the superset flavor (foss/play only strip features)
+  and the pseudo resources are debug-only, so running the tests per flavor would
+  capture the same golden paths twice. The same pass runs
+  `PseudoLocaleHardcodedStringTest`, which fails on unbracketed UI text that is
+  not explicitly listed fixture user content, naming the literal. Do not move
+  either golden set.
+- **Regenerating is a review action.** After an intentional visual change run
+  e.g. `cd android && ./gradlew :feature:contacts:recordRoborazziDebug`
+  (`recordRoborazziDebug` in the module that changed) and commit
+  the changed PNGs with the code; the diff is the review. A verify failure
+  writes `<golden>_actual.png`/`<golden>_compare.png` under
+  `build/outputs/roborazzi/` (uploaded as `android-roborazzi-diffs`).
+- **Determinism** is a requirement, not a nicety: goldens are recorded on Linux
+  (the CI runner's platform) and two consecutive `verifyRoborazziDebug` runs
+  must produce no diffs. A flaky golden is a defect in the test (a non-fixed
+  input, a font that is not bundled, an animation), not a reason to widen the
+  threshold.
 
 ### E2E Android (instrumented)
 
@@ -372,13 +460,21 @@ time-based rule.
     the job summary. `androidskipcheck -static` runs on every PR (`docs-citations`
     job, pre-commit hook) and fails if an entry no longer names a real test method.
     Do **not** allowlist a test because its dependency is flaky -- use `assumeOrFailInCi`.
-- **Known gap, accepted:** this suite (and every other instrumented job) runs
-  the **debug** build only. Neither a release/R8-minified APK nor an
-  install-release-N-then-install-N+1 upgrade is ever driven by an instrumented
-  test — `RoomMigrationEncryptedTest` (issue #480,
+- **Known gap, accepted (behaviour, not packaging):** this suite (and every other
+  instrumented job) runs the **debug** build only. No release/R8-minified APK is
+  ever *driven* by an instrumented test, and no
+  install-release-N-then-install-N+1 upgrade is performed —
+  `RoomMigrationEncryptedTest` (issue #480,
   [PR #804](https://github.com/DrewBrunning/mycorrhizal-crm/pull/804)) proves the
   Room migration chain in isolation on the debug variant, not through a real
-  two-APK install of the shipped artifact. Accepted, not built: see
+  two-APK install of the shipped artifact. The release-shaped artifact's
+  **packaging** is no longer part of this gap: `android-assemble` assembles
+  `:app:assembleObtainiumBenchmark` (release's R8 + resource shrinking,
+  debug-signed so fork PRs need no keystore) with
+  `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` and asserts the APK carries
+  `lib/arm64-v8a/libmycorrhizal.so` and that `mapping.txt` is non-empty, so the
+  #1390 "shipped without local mode" failure is caught on the PR that causes it
+  (issue #2875). What remains accepted is the two-APK upgrade: see
   [`release-gates.md`](release-gates.md#the-android-decision-issue-527) — issue
   #994.
 
@@ -576,6 +672,101 @@ never depends on host fonts, and the dashboard/list responses are intercepted
 with fixed payloads (the dashboard's "Stay in Touch" column is server-random).
 Only add a view here that you are willing to regenerate when the design
 changes.
+
+### Keyboard focus
+
+`frontend/e2e/accessibility.spec.ts` also presses Tab through the real app
+shell. axe reads the static DOM, so a keyboard trap, a focus point lost between
+controls, a positive `tabindex` and a control that takes keyboard focus without
+a `:focus-visible` indicator all pass its scan; these specs catch them. The
+rules live in `frontend/e2e/focusOrder.ts` (unit-tested in
+`focusOrder.vitest.ts`), the Playwright glue in `focusWalk.ts`.
+
+- the skip link is the first tab stop and moves focus into `#main-content`;
+- on the dashboard and settings pages, Tab visits every control, returns to the
+  first stop (no trap) and follows document order inside `main`;
+- no element sets a positive `tabindex`;
+- the add-contact dialog traps Tab and restores focus to its trigger on Escape.
+
+Document order is compared with `compareDocumentPosition` against a marker on
+the previous stop, never an absolute index: a list that re-renders mid-walk (or
+a toast that disappears elsewhere) shifts every index but leaves relative order
+intact. The order rule compares only consecutive stops that are both inside
+`main` and outside a dialog — the app bar and drawer legitimately precede `main`
+in the DOM, and a dialog portal is focus-trapped, so its internal order may wrap.
+
+### Pseudo-localization (issue #2536)
+
+`frontend/e2e/pseudoLocale.spec.ts` renders the UI under `qps`, the conventional
+pseudo-locale, and fails on two defect classes that key-parity tests cannot see:
+**hardcoded strings** (they have no key, so `locales.test.ts` is blind to them)
+and **text expansion** (German/French run 30–40% longer than English, so a
+button, chip, table header or dialog label can stop fitting).
+
+The mechanism is runtime-only: `frontend/src/i18n/pseudo.ts` accents every vowel
+and pads each translated string by 40%, wrapping it in `⟦…⟧`;
+`frontend/src/i18n/config.ts` adds the `qps` resource only when the browser's
+`localStorage.i18nextLng` asks for it, so nothing ships to ordinary users. The
+brackets are the delimiter the spec uses to tell translated text from literals,
+which is why the spec is strict: any run of 3+ consecutive ASCII letters on
+screen *outside* `⟦…⟧` is reported.
+
+The spec visits the dashboard, contacts list, contact detail (a spec-owned
+contact), Settings and the Add Reminder dialog, and on each one:
+
+- collects **text nodes** (not `innerText`, so a translated label and an
+  adjacent user-supplied name in the same parent stay distinguishable) and the
+  `aria-label`/`placeholder`/`title`/`alt` attributes, which are rendered by
+  assistive tech and tooltips rather than on the page;
+- measures `<button>`, `[role="tab"]`, `th` and `.MuiChip-label`, failing when
+  `scrollWidth > clientWidth + 1` unless the element has
+  `text-overflow: ellipsis`.
+
+Two markup contracts keep that rule strict without false positives:
+
+- **`data-user-content`** marks content owned by the data layer, never by the
+  translation catalog: user-entered records (contact names, emails, phones,
+  addresses, notes, reminder messages), server-provided values (link field type
+  names and protocol templates) and environment-derived descriptions
+  (user-agent device descriptions, build versions). Add it to the element that
+  renders the value, not a container that also holds UI copy. A render site
+  without it fails the spec, so the exemption cannot rot silently.
+- **`translate="no"`** marks a literal machine value that must never be
+  translated, such as an example URL in a placeholder. It is the standard HTML
+  attribute, so translation tooling honours it too.
+
+MUI's own built-in control labels (Autocomplete's Clear/Open, …) are exempt:
+they come from `@mui/material/locale` via `i18n/muiLocale.ts`, which has no
+`qps` entry by design, so they are not i18next keys and cannot be
+pseudo-localized. When adding a surface, extend the spec's `MUI_BUILTIN_LABELS`
+selector rather than reporting them as app copy.
+
+Fonts and the clock are pinned by `e2e/pinnedEnvironment.ts` — the same
+committed IBM Plex Sans woff2 route interception and frozen clock as the visual
+baselines — because `scrollWidth` varies with whatever fallback font the runner
+has installed. Layout is allowed to settle before measuring; do not add
+tolerance to the assertion, since an intermittent overflow is a harness bug.
+
+```sh
+docker compose -f docker-compose.test.yml up -d --build --wait
+cd frontend
+npx playwright test pseudoLocale.spec.ts
+```
+
+The spec runs in the normal `e2e` job with the rest of `frontend/e2e/`; no
+separate CI job exists. Every surface is scanned at two pinned viewports:
+
+- **desktop 1280×720**, matching the visual baselines and the layout a
+  translator's screenshots would come from;
+- **narrow 600×800**, the narrowest width that still renders the shell's
+  text-bearing AppBar. `compactNav` switches on at
+  `theme.breakpoints.down('sm')` (strictly below 600px), so at 375px the
+  labelled Logout button moves into the account menu and the pass would never
+  see the label overflow that prompted the second viewport (issue #2874).
+
+Only width drives the horizontal overflow scan; the height keeps the page
+realistic. Both passes share one surface list and one assertion body, so a new
+surface is added once.
 
 ### Service-worker upgrade suite (issue #476)
 
@@ -908,8 +1099,10 @@ gap to file, never something to silently absorb.
 | Backup/restore/cross-version restore failure | DB/integration (`backup_test.go`, restore tests) + release/install smoke | v0.6.6 |
 | Component/hook state bugs, i18n key/placeholder drift, format-provider bugs | Frontend unit | v0.6.11 |
 | Android view-model/editor/offline/local-migration bugs | Android unit/Robolectric | v0.6.7, v0.6.10 |
+| Android layout/theme/font-scale regressions | Android unit/Robolectric (Roborazzi goldens, `android/feature/*/src/test/screenshots/`) | #2534 |
 | Whole-user-flow breakage (register→create→search→export), shipped-artifact boot | E2E web | v0.6.3, v0.6.6 |
 | Layout/theme regressions (a CSS refactor shifting a card or breaking a dialog) | E2E web (`visual.spec.ts`) | v0.6.3 (#258) |
+| Untranslated UI text (a hardcoded literal) and text expansion overflowing a control | E2E web (`pseudoLocale.spec.ts`, `qps`) | #2536 |
 | Service-worker lifecycle, stale-cache stranding | E2E web (`serviceWorker.spec.ts`) | v0.6.10 |
 | Interrupted deploy — asset skew (stale index.html referencing chunks the new build deleted → blank boot) | E2E web (`e2e/sw-upgrade/assetSkew.spec.ts`, client half in `public/asset-skew.js`) | v0.6.10 (#477) |
 | Interrupted deploy — backend up but not ready (wall of failed requests while the server migrates) | E2E web (`e2e/sw-upgrade/readiness.spec.ts`, client half in `ServerStartingGate`) | v0.6.10 (#477) |
@@ -1379,15 +1572,24 @@ criterion.**
     (7,660 mutants; `src/api` 89.41%, `src/hooks` 66.35%); **`src/utils`
     measured 2026-10-12: 85.07%** (701 mutants). Static mutants are ignored
     (`ignoreStatic`: 6% of mutants but 58% of the run time). The ~1h45m
-    figure was a 16-core dev box; on the 4-vCPU CI runner the api+hooks scope
+    figure was a 16-core dev box; on the 4-vCPU CI runner the whole scope
     projects to ~5h (issue #1571: the first nightly at this scope was
-    cancelled by the old 180-minute timeout at 53%), so the workflow runs
-    three parallel legs, `api`, `hooks` and `utils`, each with a 240-minute
-    timeout (api ~4.4k mutants, hooks ~3.3k, utils 701). Each leg derives its
-    config from `stryker.conf.json` with `jq` and carries its own `break` in
-    the workflow matrix (`api` 83, `hooks` 93, `utils` 79 — ~6 points under
-    each half's measured score); `stryker.conf.json` itself stays the combined
-    local-run config. Issue #1624 §3 added the first tests for the largest
+    cancelled by the old 180-minute timeout at 53%), so the workflow runs five
+    parallel legs, each with a 300-minute timeout: `api-a` (~2.8k mutants),
+    `api-b` (~2.8k), `hooks-a` (~1.9k), `hooks-b` (~1.9k) and `utils` (~2.9k).
+    The two halves of `api` and `hooks` are a partition by the first letter of
+    the file name after the scope's stem (`[a-eA-E]` / `[^a-eA-E]`, and
+    `use[a-gA-G]` / `use[^a-gA-G]`), so a new module lands in exactly one leg
+    with no registry to maintain, and each leg's derive step fails if its glob
+    matches no file. Issue #2857 split `api` and `hooks` again after the hooks
+    leg was cancelled at 240 minutes with only 2795/3709 mutants done: the
+    per-leg rate varies ~2x between nights (12-34 mutants/min observed), so leg
+    size is the lever, not just the timeout. Each leg derives its config from
+    `stryker.conf.json` with `jq` and carries its own `break` in the workflow
+    matrix (`api-a`/`api-b` 83, `hooks-a`/`hooks-b` 93, `utils` 79 — the
+    whole-leg scores measured 2026-11-19 were 86.56%, 90.27%, 96.39%, 96.86%
+    and 80.44%); `stryker.conf.json` itself stays the combined local-run
+    config. Issue #1624 §3 added the first tests for the largest
     untested hooks (`useContactMerge`, `useSystemEvents`, `useAudit`,
     `useSeafile`, `useImmich`), killing 121 survivors and lifting the hooks
     half from 66.35% to **70.12%** (2026-10-13, 2277 killed / 785 survived /

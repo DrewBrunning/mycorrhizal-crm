@@ -21,7 +21,10 @@ add a second key list.
    file in the same change. Missing keys and orphan keys fail; the only exception
    is `_many`, which `es`/`fr`/`it` may carry without an `en` key because `en`
    does not use the CLDR `many` category.
-2. Translate the value for each locale. Do not copy English or truncate a longer
+2. Translate the value for each locale. German addresses the user with the
+   formal `Sie`/`Ihr` and `Sie` imperatives (maintainer decision, #2686);
+   `src/i18n/germanFormality.test.ts` and Android's `GermanFormalityTest` (`android/core/ui/src/test/`)
+   fail on `du`/`dein` and informal imperatives. Do not copy English or truncate a longer
    translation to fit; adjust the component layout instead.
 3. For a count-bearing string, use a real i18next plural family (`_one`,
    `_other`, plus `_many` for `es`/`fr`/`it` where CLDR defines it). Never write

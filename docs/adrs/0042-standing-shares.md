@@ -127,6 +127,14 @@ What a pending recipient sees: the sender's username, the entity type, and a sho
 row. This is the least that lets a person decide, and is the same disclosure the one-time share's
 `ContactDisplayName` already makes.
 
+**Amended 2026-11-17 (issue #2744):** a note grant's label is the first non-blank line of the note, whitespace
+collapsed and capped at 80 runes (a cut ends in an ellipsis), so rows in the lists are told apart. The sender sees it
+on every outgoing row (their own note). The recipient sees it only while the grant is effectively **active** (the same
+condition as the content endpoint, so it discloses nothing they cannot already read); a pending, expired, declined or
+blocked note grant keeps the generic "Note", preserving this decision's "no content before acceptance". It is derived
+from `Content` alone, in one batched owner-scoped query per list, never stored, and still absent from notifications
+and audit trails.
+
 ### 8. Blocking a sender
 
 A new tiny table `share_blocks (blocker_user_id, blocked_user_id, created_at)` with a composite primary key, hard
@@ -216,6 +224,7 @@ or webhooks).
 | `PATCH /share-grants/{id}` | owner | only `expires_at` and narrowing `sections`; widening is `409` (create a new grant). Optimistic concurrency per ADR 0008. |
 | `POST /share-grants/{id}/accept`, `/decline`, `/leave` | recipient | |
 | `POST /share-grants/{id}/revoke`, `/reconfirm` | owner | |
+| `DELETE /share-grants/{id}` | owner | dismiss an ended (`declined`, `expired`, `revoked`) grant; see the 2026-11-17 amendment |
 | `GET /share-grants/{id}/content` | recipient | the one recipient read route; resolves the grant and the source per request |
 | `GET /share-grants/blocks`, `DELETE /share-grants/blocks/{user_id}` | recipient | |
 
@@ -317,3 +326,31 @@ symmetric down migration test and a populated-database upgrade check.
    the label (contact display name, circle name, activity title; a note shows only "Note") before accepting. A
    mis-addressed recipient can therefore see a contact's display name; the maintainer accepted this, and the
    mitigation is that the recipient must accept before any content is visible.
+
+## Amendment, 2026-11-17 (owner dismiss of ended grants, issue #2742)
+
+Decision 10 kept terminal rows only so the owner could see the outcome, and offered no way to clear one early: the
+only owner action on an ended grant was to wait for the retention purge. The maintainer approved an owner-only
+dismiss. This changes the **lifecycle/retention** decision only; the model still has no `deleted_at`.
+
+- **Route.** `DELETE /share-grants/{id}` (owner; session or `api:write` token, `Cache-Control: no-store` like the
+  rest of the surface). Success is `204` with no body.
+- **Which grants.** Those the owner sees as `declined`, `expired` or `revoked`, using the same effective status as
+  the owner's list (`EffectiveStatus`, owner view), so a pending or active grant whose time has run out but whose row
+  the lifecycle job has not moved yet is dismissable, as the list already shows it as expired. A `pending`,
+  `active` or blocked-and-unexpired grant (a blocked grant reads as pending to its sender, decision 8) is
+  `409` with the new reason code `share_grant_not_ended` (area `share_grant`, ADR 0038); the owner revokes first.
+- **Hard delete.** The sender's row is removed. This is the same hard delete the retention purge performs earlier
+  than its window: no content is destroyed (a row holds identities, a section list and timestamps), nothing
+  references the row, and recipients never list ended grants, so their views are unaffected. The retention job
+  finds nothing to purge for a dismissed row. It writes one owner-trail `delete` audit event (grant id and fields,
+  no content); the recipient's trail is not written.
+- **Scoping and enumeration (decision 12).** The lookup is `id AND from_user_id` in one `WHERE`, so another user's
+  grant (including as its recipient), an unknown id and an already-dismissed id are all the one
+  `404 share_grant_not_found`, with no state-dependent difference (the `409` is only reachable by the owner). The
+  delete re-checks the status it authorized on, so a concurrent transition is a `404`, not a deleted live grant.
+- **Idempotency.** A dismissed id is indistinguishable from an unknown one (there is no tombstone, by the
+  enumeration rule above), so repeating the call is the same `404`; a client treats `404` after Remove as already
+  done. It is a natural-idempotent DELETE with no `If-Match` (the row is terminal and never changes again).
+- **No cascade change.** No table references `share_grants.id`, so `deleteUserCascade` and the cascade registries
+  need no new step; the user-delete path already removes every grant for either party.

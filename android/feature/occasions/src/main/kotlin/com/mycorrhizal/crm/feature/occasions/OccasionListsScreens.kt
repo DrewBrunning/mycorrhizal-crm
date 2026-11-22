@@ -42,17 +42,25 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.GiftShoppingItem
 import com.mycorrhizal.crm.model.network.GiftShoppingStatuses
+import com.mycorrhizal.crm.model.network.OccasionCardListSummary
+import com.mycorrhizal.crm.model.network.daysUntilOn
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.currentToday
+import com.mycorrhizal.crm.ui.isServerFeatureSupported
 import java.io.File
 
 private const val CARD_LIST_FILE_NAME = "mycorrhizal-card-list.csv"
@@ -71,6 +79,10 @@ fun OccasionListsActions(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    val summarySupported = isServerFeatureSupported(ServerFeature.CARD_LIST_SUMMARY)
+    LaunchedEffect(summarySupported) {
+        if (summarySupported) viewModel.loadSummary()
+    }
     val share = onShareCsv ?: { bytes -> shareCardListCsv(context, bytes) }
     val currentShare = rememberUpdatedState(share)
     state.csv?.let { csv ->
@@ -104,11 +116,21 @@ fun OccasionListsActions(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Button(
-                    onClick = viewModel::download,
-                    enabled = !state.isDownloading,
-                    modifier = Modifier.testTag("occasion-card-list-share")
-                ) { Text(stringResource(R.string.occasion_card_list_share)) }
+                if (summarySupported) {
+                    CardListSummaryLine(
+                        state = state,
+                        onRetry = viewModel::loadSummary
+                    )
+                }
+                // A summary that proves the file would hold no rows replaces the share action;
+                // while it loads or after it failed, the share stays available.
+                if (!(summarySupported && state.summary?.included == 0)) {
+                    Button(
+                        onClick = viewModel::download,
+                        enabled = !state.isDownloading,
+                        modifier = Modifier.testTag("occasion-card-list-share")
+                    ) { Text(stringResource(R.string.occasion_card_list_share)) }
+                }
                 state.error?.let { error ->
                     Text(
                         error.localizedMessage(),
@@ -143,6 +165,76 @@ fun OccasionListsActions(
             }
         }
     }
+}
+
+/**
+ * The card list's "who is on it" line (issue #2786): a checking line while loading, the counts
+ * with the skip reasons that apply, a note when the file would be empty, or the localized error
+ * with Retry. The text is a polite live region so a screen reader announces the result.
+ */
+@Composable
+private fun CardListSummaryLine(state: OccasionCardListUiState, onRetry: () -> Unit) {
+    val summary = state.summary
+    val error = state.summaryError
+    val liveRegion = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+    when {
+        summary != null -> Text(
+            text = cardListSummaryText(summary),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = liveRegion.testTag("occasion-card-list-summary")
+        )
+
+        error != null -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = liveRegion
+        ) {
+            Text(
+                error.localizedMessage(),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            TextButton(onClick = onRetry) { Text(stringResource(R.string.action_retry)) }
+        }
+
+        state.isSummaryLoading -> Text(
+            stringResource(R.string.occasion_card_list_summary_checking),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = liveRegion
+        )
+    }
+}
+
+@Composable
+private fun cardListSummaryText(summary: OccasionCardListSummary): String {
+    if (summary.total == 0) return stringResource(R.string.occasion_card_list_no_obligations)
+    if (summary.included == 0) return stringResource(R.string.occasion_card_list_no_recipients)
+    if (summary.skipped == 0) {
+        return pluralStringResource(
+            R.plurals.occasion_card_list_summary,
+            summary.included,
+            summary.included
+        )
+    }
+    val reasons = buildList {
+        val noAddress = summary.skippedReasons.noAddress
+        if (noAddress > 0) {
+            add(stringResource(R.string.occasion_card_list_skipped_no_address, noAddress))
+        }
+        val privateOnly = summary.skippedReasons.privateAddressOnly
+        if (privateOnly > 0) {
+            add(stringResource(R.string.occasion_card_list_skipped_private_address, privateOnly))
+        }
+    }.joinToString(stringResource(R.string.occasion_card_list_reasons_separator))
+    return pluralStringResource(
+        R.plurals.occasion_card_list_summary_skipped,
+        summary.included,
+        summary.included,
+        summary.skipped,
+        reasons
+    )
 }
 
 /** Writes the CSV to the cache `exports/` directory the app's FileProvider already grants. */
@@ -280,7 +372,7 @@ private fun GiftShoppingRow(item: GiftShoppingItem, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyLarge
                 )
                 Text(
-                    occasionCountdown(item.daysUntil),
+                    occasionCountdown(item.daysUntilOn(currentToday)),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

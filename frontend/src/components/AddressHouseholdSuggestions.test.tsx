@@ -56,8 +56,8 @@ test('renders member names and the formatted shared address', async () => {
 
   expect(await screen.findByText('Alice Anderson · Bob Brown')).toBeInTheDocument();
   expect(screen.getByText('123 Main St, Springfield, IL, 62704')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Accept' })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Accept\b/ })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Dismiss\b/ })).toBeInTheDocument();
   vi.unstubAllGlobals();
 });
 
@@ -66,7 +66,7 @@ test('accept calls onAccept with the suggestion and disables while pending', asy
   const onAccept = vi.fn().mockResolvedValue(undefined);
   renderSuggestions({ onAccept });
 
-  const acceptButton = await screen.findByRole('button', { name: 'Accept' });
+  const acceptButton = await screen.findByRole('button', { name: /^Accept\b/ });
   fireEvent.click(acceptButton);
 
   expect(onAccept).toHaveBeenCalledWith(suggestion);
@@ -78,7 +78,7 @@ test('dismiss calls onDismiss with the suggestion', async () => {
   const onDismiss = vi.fn().mockResolvedValue(undefined);
   renderSuggestions({ onDismiss });
 
-  const dismissButton = await screen.findByRole('button', { name: 'Dismiss' });
+  const dismissButton = await screen.findByRole('button', { name: /^Dismiss\b/ });
   fireEvent.click(dismissButton);
 
   expect(onDismiss).toHaveBeenCalledWith(suggestion);

@@ -333,14 +333,7 @@ func AcceptContactShare(c *gin.Context) {
 	// Issue #415: an accept is a session creation like any other import — a
 	// burst of accepts (or accepts stacked on ordinary imports) must not push
 	// the in-memory session store without bound.
-	if importSessions.CountActive(userID) >= services.MaxImportSessionsPerUser {
-		apperrors.AbortWithError(c, apperrors.NewError(
-			apperrors.ErrCodeRateLimitExceeded,
-			fmt.Sprintf("Too many in-progress imports. Maximum is %d concurrent import sessions; confirm or wait for an existing one to expire before starting another.", services.MaxImportSessionsPerUser),
-			http.StatusTooManyRequests,
-		))
-		return
-	}
+	importSessions.MakeRoomForSession(userID) // #2664: evict the oldest unconfirmed session instead of a 429 lockout
 
 	contacts, previews, stats, err := services.ParseJSContact(strings.NewReader(share.Payload), db, userID)
 	if err != nil {
@@ -352,12 +345,13 @@ func AcceptContactShare(c *gin.Context) {
 	sessionID := importSessions.CreateVCFSessionForShare(userID, share.ID, contacts, previews)
 
 	c.JSON(http.StatusOK, models.ImportPreviewResponse{
-		SessionID:      sessionID,
-		Rows:           previews,
-		TotalRows:      len(previews),
-		ValidRows:      stats.ValidCount,
-		DuplicateCount: stats.DuplicateCount,
-		ErrorCount:     stats.ErrorCount,
+		SessionID:       sessionID,
+		Rows:            previews,
+		TotalRows:       len(previews),
+		ValidRows:       stats.ValidCount,
+		DuplicateCount:  stats.DuplicateCount,
+		ErrorCount:      stats.ErrorCount,
+		FileDiagnostics: models.DiagnosticsOrEmpty(nil),
 	})
 }
 

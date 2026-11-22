@@ -1,6 +1,7 @@
 # This is a Gradle generated file for dependency locking.
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
+# To regenerate this file, run: ./gradlew :feature:circles:dependencies --write-locks
 androidx.activity:activity-compose:1.9.3=releaseCompileClasspath,releaseRuntimeClasspath
 androidx.activity:activity-ktx:1.9.3=releaseCompileClasspath,releaseRuntimeClasspath
 androidx.activity:activity:1.9.3=releaseCompileClasspath,releaseRuntimeClasspath
@@ -111,11 +112,11 @@ androidx.navigation:navigation-runtime-ktx:2.5.1=releaseCompileClasspath,release
 androidx.navigation:navigation-runtime:2.5.1=releaseCompileClasspath,releaseRuntimeClasspath
 androidx.profileinstaller:profileinstaller:1.4.1=releaseRuntimeClasspath
 androidx.resourceinspection:resourceinspection-annotation:1.0.1=releaseRuntimeClasspath
-androidx.room:room-common-jvm:2.8.4=releaseCompileClasspath,releaseRuntimeClasspath
-androidx.room:room-common:2.8.4=releaseCompileClasspath,releaseRuntimeClasspath
-androidx.room:room-ktx:2.8.4=releaseRuntimeClasspath
-androidx.room:room-runtime-android:2.8.4=releaseCompileClasspath,releaseRuntimeClasspath
-androidx.room:room-runtime:2.8.4=releaseCompileClasspath,releaseRuntimeClasspath
+androidx.room:room-common-jvm:2.8.5=releaseCompileClasspath,releaseRuntimeClasspath
+androidx.room:room-common:2.8.5=releaseCompileClasspath,releaseRuntimeClasspath
+androidx.room:room-ktx:2.8.5=releaseRuntimeClasspath
+androidx.room:room-runtime-android:2.8.5=releaseCompileClasspath,releaseRuntimeClasspath
+androidx.room:room-runtime:2.8.5=releaseCompileClasspath,releaseRuntimeClasspath
 androidx.savedstate:savedstate-android:1.3.2=releaseCompileClasspath,releaseRuntimeClasspath
 androidx.savedstate:savedstate-compose-android:1.3.2=releaseCompileClasspath,releaseRuntimeClasspath
 androidx.savedstate:savedstate-compose:1.3.2=releaseCompileClasspath,releaseRuntimeClasspath
@@ -173,10 +174,10 @@ org.jetbrains.compose.foundation:foundation:1.6.11=releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-android-extensions-runtime:1.9.22=releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-parcelize-runtime:1.9.22=releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-reflect:1.8.21=releaseRuntimeClasspath
-org.jetbrains.kotlin:kotlin-stdlib-common:2.3.21=releaseRuntimeClasspath
+org.jetbrains.kotlin:kotlin-stdlib-common:2.4.21=releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.21=releaseCompileClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.8.21=releaseCompileClasspath,releaseRuntimeClasspath
-org.jetbrains.kotlin:kotlin-stdlib:2.3.21=releaseCompileClasspath,releaseRuntimeClasspath
+org.jetbrains.kotlin:kotlin-stdlib:2.4.21=releaseCompileClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0=releaseCompileClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.9.0=releaseCompileClasspath,releaseRuntimeClasspath
 org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.9.0=releaseCompileClasspath,releaseRuntimeClasspath

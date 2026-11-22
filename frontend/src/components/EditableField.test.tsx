@@ -50,7 +50,7 @@ describe('EditableField display mode', () => {
   test('a formatted display value replaces the raw value in the text only', () => {
     const h = setup({ value: '1990-05-04', formattedDisplayValue: 'May 4, 1990' });
     expect(screen.getByText('May 4, 1990')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
     expect(h.onEditStart).toHaveBeenCalledWith('nickname', '1990-05-04');
   });
 
@@ -65,7 +65,7 @@ describe('EditableField display mode', () => {
 
   test('the Edit pencil starts editing with the field name and the raw value', () => {
     const h = setup();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+    fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
     expect(h.onEditStart).toHaveBeenCalledWith('nickname', 'Ali');
   });
 
@@ -81,7 +81,7 @@ describe('EditableField display mode', () => {
 describe('EditableField edit mode', () => {
   test('hides the pencil/copy and shows a text box that reports changes', () => {
     const h = setup({ isEditing: true, editValue: 'Al' });
-    expect(screen.queryByRole('button', { name: 'Edit' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Edit\b/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /copy/i })).not.toBeInTheDocument();
     const input = screen.getByDisplayValue('Al');
     fireEvent.change(input, { target: { value: 'Alex' } });

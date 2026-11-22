@@ -8,7 +8,9 @@ import androidx.room.PrimaryKey
 data class CachedCircle(
     @PrimaryKey val id: String,
     val name: String = "",
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    val description: String = "",
+    val color: String = ""
 )
 
 /**

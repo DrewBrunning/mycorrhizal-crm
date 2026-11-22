@@ -72,6 +72,53 @@ class SharedWithMeViewModelTest {
     }
 
     @Test
+    fun `loadMore appends the next page and follows its cursor`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val older = pending.copy(id = "g3", label = "Older")
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                IncomingShareGrantsPage(shareGrants = listOf(pending), nextCursor = "c1")
+            ),
+            Result.success(IncomingShareGrantsPage(shareGrants = listOf(older), nextCursor = ""))
+        )
+        coEvery { repository.blocks() } returns Result.success(emptyList())
+        val vm = SharedWithMeViewModel(repository)
+        advanceUntilIdle()
+        assertEquals("c1", vm.uiState.value.nextCursor)
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("g1", "g3"), vm.uiState.value.grants.map { it.id })
+        assertNull(vm.uiState.value.nextCursor)
+        assertFalse(vm.uiState.value.loadingMore)
+        coVerify(exactly = 1) { repository.listIncoming("c1", 100) }
+    }
+
+    @Test
+    fun `a failed loadMore keeps the loaded rows and exposes a retry error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                IncomingShareGrantsPage(shareGrants = listOf(pending), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Client(500, "boom"))
+        )
+        coEvery { repository.blocks() } returns Result.success(emptyList())
+        val vm = SharedWithMeViewModel(repository)
+        advanceUntilIdle()
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("g1"), vm.uiState.value.grants.map { it.id })
+        assertNotNull(vm.uiState.value.loadMoreError)
+        assertFalse(vm.uiState.value.loadingMore)
+    }
+
+    @Test
     fun `a failed load shows a retryable error and keeps no stale rows`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
@@ -357,4 +404,36 @@ class SharedWithMeViewModelTest {
         assertTrue(vm.uiState.value.blocks.isEmpty())
         assertNotNull(vm.uiState.value.loadError)
     }
+
+    // --- Issue #2656: one deterministic order ---
+
+    @Test
+    fun `grants are ordered pending first, then newest first, regardless of server order`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val activeOld = activeGrant("a-old", "2026-01-01T00:00:00Z")
+            val activeNew = activeGrant("a-new", "2026-03-01T00:00:00Z")
+            val pendingOld = pending.copy(id = "p-old", createdAt = "2026-02-01T00:00:00Z")
+            val pendingNew = pending.copy(id = "p-new", createdAt = "2026-02-15T12:00:00.500Z")
+            val undated = pending.copy(id = "p-undated", createdAt = null)
+            coEvery { repository.listIncoming(any(), any()) } returns Result.success(
+                IncomingShareGrantsPage(
+                    shareGrants = listOf(activeOld, pendingOld, activeNew, undated, pendingNew)
+                )
+            )
+            coEvery { repository.blocks() } returns Result.success(emptyList())
+
+            val vm = SharedWithMeViewModel(repository)
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("p-new", "p-old", "p-undated", "a-new", "a-old"),
+                vm.uiState.value.grants.map { it.id }
+            )
+        }
+
+    private fun activeGrant(id: String, createdAt: String?) = pending.copy(
+        id = id,
+        status = "active",
+        createdAt = createdAt
+    )
 }

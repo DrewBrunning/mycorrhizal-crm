@@ -88,7 +88,20 @@ func (r ImportRun) Detail() ImportRunDetail {
 // (issue #2563). The Row number still locates the row.
 func storedImportIssues(issues []ImportRowIssue) []ImportRowIssue {
 	if len(issues) > MaxImportRunIssues {
-		issues = issues[:MaxImportRunIssues]
+		// Warnings (a row that imported with a dropped date, #2741) yield to
+		// skipped/failed rows when the cap bites.
+		ordered := make([]ImportRowIssue, 0, len(issues))
+		for _, iss := range issues {
+			if iss.Status != "warning" {
+				ordered = append(ordered, iss)
+			}
+		}
+		for _, iss := range issues {
+			if iss.Status == "warning" {
+				ordered = append(ordered, iss)
+			}
+		}
+		issues = ordered[:MaxImportRunIssues]
 	}
 	out := make([]ImportRowIssue, len(issues))
 	for i, iss := range issues {

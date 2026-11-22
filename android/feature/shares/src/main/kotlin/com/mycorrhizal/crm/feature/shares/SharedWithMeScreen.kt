@@ -112,6 +112,18 @@ fun SharedWithMeScreen(
                     EmptyState(title = stringResource(R.string.shares_with_me_empty))
 
                 else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    if (state.grants.isEmpty()) {
+                        // Issue #2656: only blocked senders are left; say there are no shares
+                        // instead of showing a bare "Blocked senders" header.
+                        item(key = "no-grants") {
+                            Text(
+                                text = stringResource(R.string.shares_with_me_empty),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
+                            )
+                        }
+                    }
                     items(state.grants, key = { it.id }) { grant ->
                         IncomingGrantRow(
                             grant = grant,
@@ -141,6 +153,28 @@ fun SharedWithMeScreen(
                                 busy = state.busy,
                                 onUnblock = { viewModel.unblock(block) }
                             )
+                        }
+                    }
+                    if (state.nextCursor != null) {
+                        item(key = "load-more") {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                state.loadMoreError?.let { error ->
+                                    Text(
+                                        text = error.localizedMessage(),
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                TextButton(
+                                    onClick = viewModel::loadMore,
+                                    enabled = !state.loadingMore
+                                ) {
+                                    Text(stringResource(R.string.action_load_more))
+                                }
+                            }
                         }
                     }
                 }
@@ -174,10 +208,11 @@ private fun RecipientPromptDialog(
     onConfirm: () -> Unit
 ) {
     val grant = prompt.grant
+    val label = grantTitle(grant.label, grant.entityType)
     val (title, message, confirm) = when (prompt) {
         is SharedWithMePrompt.Decline -> Triple(
             stringResource(R.string.shares_decline_confirm_title),
-            stringResource(R.string.shares_grant_decline_message, grant.label, grant.fromUsername),
+            stringResource(R.string.shares_grant_decline_message, label, grant.fromUsername),
             stringResource(R.string.shares_decline)
         )
 
@@ -189,7 +224,7 @@ private fun RecipientPromptDialog(
 
         is SharedWithMePrompt.Leave -> Triple(
             stringResource(R.string.shares_grant_leave_title),
-            stringResource(R.string.shares_grant_leave_message, grant.label, grant.fromUsername),
+            stringResource(R.string.shares_grant_leave_message, label, grant.fromUsername),
             stringResource(R.string.shares_grant_leave)
         )
     }
@@ -225,6 +260,7 @@ private fun IncomingGrantRow(
     onOpen: () -> Unit
 ) {
     val pending = grant.status == ShareGrantStatuses.PENDING
+    val title = grantTitle(grant.label, grant.entityType)
     val leaveLabel = stringResource(R.string.shares_grant_leave)
     val blockLabel = stringResource(R.string.shares_grant_block)
     val actions = if (pending) {
@@ -239,13 +275,16 @@ private fun IncomingGrantRow(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = grant.label.ifBlank { stringResource(entityTypeLabelRes(grant.entityType)) },
+                text = title,
                 style = MaterialTheme.typography.bodyLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
             GrantCaption(stringResource(entityTypeLabelRes(grant.entityType)))
             GrantCaption(stringResource(R.string.shares_from, grant.fromUsername))
+            // Issue #2643: say what is on offer so the recipient can decide.
+            sectionsSummary(grant.sections, R.string.shares_sections_offers)
+                ?.let { GrantCaption(it) }
             if (pending) {
                 GrantCaption(stringResource(R.string.shares_with_me_pending_hint))
             } else {
@@ -269,7 +308,7 @@ private fun IncomingGrantRow(
                 }
             }
         }
-        RowOverflowMenu(rowName = grant.label, actions = actions)
+        RowOverflowMenu(rowName = title, actions = actions)
     }
 }
 

@@ -162,7 +162,9 @@ test.describe('Bulk merge from the contacts list', () => {
       await expect(mergeDialog).not.toBeVisible({ timeout: 10000 });
       await expect(selectedText(page, /\d+ selected/)).not.toBeVisible();
       await expect(page.getByText(`${loserName} Scan`)).not.toBeVisible({ timeout: 10000 });
-      await expect(page.getByText(`${keeperName} Scan`)).toBeVisible();
+      // The success alert also names the survivor ("Merged 2 contacts into
+      // ..."), so match the list row's exact text rather than a substring.
+      await expect(page.getByText(`${keeperName} Scan`, { exact: true })).toBeVisible();
 
       // The loser must no longer be retrievable. The merge commit and a
       // follow-up GET can race through SQLite's pooled connections (a WAL

@@ -4,17 +4,22 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.ShareGrantEntityTypes
 import com.mycorrhizal.crm.model.network.ShareGrantStatuses
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.typeOptionLabelText
 
 /** The human name of a grant's entity type. An unknown type (a newer server) reads as a generic share. */
 @StringRes
@@ -26,14 +31,83 @@ internal fun entityTypeLabelRes(entityType: String): Int = when (entityType) {
     else -> R.string.shares_title
 }
 
+/**
+ * The name a share row, its overflow menu and its dialogs call a grant. The server computes
+ * `label` per request (a note's is its first line once the grant is active, issue #2626); only an
+ * absent one falls back to the generic type name.
+ */
+@Composable
+internal fun grantTitle(label: String, entityType: String): String =
+    label.ifBlank { stringResource(entityTypeLabelRes(entityType)) }
+
 /** The label of an owner-visible grant status. */
 @StringRes
 internal fun grantStatusLabelRes(status: String): Int = when (status) {
     ShareGrantStatuses.ACTIVE -> R.string.shares_status_active
-    ShareGrantStatuses.DECLINED -> R.string.shares_status_declined
+    ShareGrantStatuses.DECLINED -> R.string.shares_status_declined_by_recipient
     ShareGrantStatuses.REVOKED -> R.string.shares_status_revoked
     ShareGrantStatuses.EXPIRED -> R.string.shares_status_expired
     else -> R.string.shares_status_pending
+}
+
+/** Issue #2609: the touch-target floor of every option row (WCAG 2.5.8 / Material 48dp). */
+internal val MinOptionRowHeight = 48.dp
+
+/** Issue #2609: the gap between a radio/checkbox glyph and its label. */
+internal val OptionControlGap = 12.dp
+
+/** How many section names a row lists before it collapses the rest into "and N more". */
+private const val SECTIONS_SHOWN = 3
+
+/**
+ * Issue #2643: "<prefix>: Emails, Phones, Addresses and 2 more" for a grant's sections, or null
+ * when it has none (a note, activity or circle grant, or a contact grant with no sections).
+ */
+@Composable
+internal fun sectionsSummary(sections: List<String>, @StringRes prefixRes: Int): String? {
+    if (sections.isEmpty()) return null
+    val shown = sections.take(SECTIONS_SHOWN)
+        .map { stringResource(sectionLabelRes(it)) }
+        .joinToString(", ")
+    val rest = sections.size - SECTIONS_SHOWN
+    val list = if (rest > 0) {
+        pluralStringResource(R.plurals.shares_sections_more, rest, shown, rest)
+    } else {
+        shown
+    }
+    return stringResource(prefixRes, list)
+}
+
+/**
+ * Issue #2627: the owner-visible status as a chip, so Active / Pending / Declined / Revoked /
+ * Expired read at a glance instead of as one more grey caption. The label is the text, never
+ * colour alone.
+ */
+@Composable
+internal fun GrantStatusChip(status: String, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val (container, content) = when (status) {
+        ShareGrantStatuses.ACTIVE -> colors.tertiaryContainer to colors.onTertiaryContainer
+
+        ShareGrantStatuses.DECLINED,
+        ShareGrantStatuses.REVOKED -> colors.errorContainer to colors.onErrorContainer
+
+        ShareGrantStatuses.EXPIRED -> colors.surfaceVariant to colors.onSurfaceVariant
+
+        else -> colors.secondaryContainer to colors.onSecondaryContainer
+    }
+    Surface(
+        color = container,
+        contentColor = content,
+        shape = MaterialTheme.shapes.small,
+        modifier = modifier.semantics(mergeDescendants = true) {}
+    ) {
+        Text(
+            text = stringResource(grantStatusLabelRes(status)),
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+        )
+    }
 }
 
 /** The expiry presets of the standing-share editor, in days. */
@@ -74,6 +148,13 @@ internal fun rememberGrantDateFormatter(): (Int?, Int?, Int?) -> String {
             }
         }
     }
+}
+
+/** Localized label for an anniversary or personal-info kind token (read view and preview). */
+@Composable
+internal fun rememberGrantKindLabel(): (String) -> String {
+    val context = LocalContext.current
+    return remember(context) { { token -> typeOptionLabelText(context, token) } }
 }
 
 /** A titled block of lines; used by the read view. */

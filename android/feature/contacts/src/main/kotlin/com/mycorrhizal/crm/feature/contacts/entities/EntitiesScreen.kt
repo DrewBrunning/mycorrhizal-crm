@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -24,8 +25,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -54,6 +57,7 @@ import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityCore
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntitySensitivity
+import com.mycorrhizal.crm.model.network.EntitySuggestionEntity
 import com.mycorrhizal.crm.model.network.EntitySuggestionPair
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.R
@@ -151,8 +155,8 @@ fun EntitiesScreen(
         }
     }
 
-    // The merge is announced once; Restore lives on the merged-away entity's page (it opens the
-    // same banner as a merge started there).
+    // The merge is announced once, with an Undo that restores the merged-away entity (the same
+    // call as the Restore on its page).
     val merged = state.mergeDone
     if (merged != null) {
         val message = stringResource(
@@ -160,9 +164,15 @@ fun EntitiesScreen(
             merged.loser.name,
             merged.survivor.name
         )
+        val undoLabel = stringResource(R.string.shared_entities_merge_undo_action)
         LaunchedEffect(merged) {
-            snackbar.showSnackbar(message)
+            val result = snackbar.showSnackbar(
+                message = message,
+                actionLabel = undoLabel,
+                duration = SnackbarDuration.Long
+            )
             viewModel.onMergeDoneShown()
+            if (result == SnackbarResult.ActionPerformed) viewModel.undoMerge(merged)
         }
     }
 
@@ -226,6 +236,20 @@ internal fun EntitiesContent(
             onValueChange = onQueryChange,
             label = { Text(stringResource(R.string.shared_entities_search)) },
             singleLine = true,
+            trailingIcon = if (state.query.isNotEmpty()) {
+                {
+                    AccessibleIconButton(onClick = { onQueryChange("") }) {
+                        Icon(
+                            Icons.Outlined.Close,
+                            contentDescription = stringResource(
+                                R.string.shared_entities_search_clear
+                            )
+                        )
+                    }
+                }
+            } else {
+                null
+            },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)
                 .testTag("entities-search")
         )
@@ -438,21 +462,13 @@ private fun SuggestionRow(
                 onClick = { onOpen(pair.a.id) },
                 modifier = Modifier.testTag("suggestion-open-a-${pair.a.id}")
             ) {
-                Text(
-                    stringResource(R.string.shared_entities_suggestions_open, pair.a.name),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                SuggestionSideLabel(pair.a)
             }
             TextButton(
                 onClick = { onOpen(pair.b.id) },
                 modifier = Modifier.testTag("suggestion-open-b-${pair.b.id}")
             ) {
-                Text(
-                    stringResource(R.string.shared_entities_suggestions_open, pair.b.name),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                SuggestionSideLabel(pair.b)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -466,6 +482,28 @@ private fun SuggestionRow(
                 Text(stringResource(R.string.shared_entities_suggestions_dismiss))
             }
         }
+    }
+}
+
+/**
+ * The Open button's label for one side of a pair: the name plus the kind, linked-contact count
+ * and last update, so two same-named records are told apart on screen and, since the button's
+ * text is its accessibility label, by TalkBack too.
+ */
+@Composable
+private fun SuggestionSideLabel(side: EntitySuggestionEntity) {
+    Column(horizontalAlignment = Alignment.Start) {
+        Text(
+            stringResource(R.string.shared_entities_suggestions_open, side.name),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            entityDetailLine(side.kind, side.linkCount, side.updatedAt),
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 

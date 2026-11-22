@@ -1,7 +1,9 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { ApiError } from '../api/client';
 import { getFieldDefinitions } from '../api/fieldDefinitions';
 import {
+  cancelImportSession,
   confirmImport,
   confirmVCFImport,
   type DuplicateMatch,
@@ -23,6 +25,7 @@ vi.mock('../api/import', async (importOriginal) => {
     ...actual,
     uploadCSVForImport: vi.fn(),
     uploadVCFForImport: vi.fn(),
+    cancelImportSession: vi.fn().mockResolvedValue(undefined),
     getImportPreview: vi.fn(),
     confirmImport: vi.fn(),
     confirmVCFImport: vi.fn(),
@@ -58,6 +61,8 @@ beforeEach(() => {
   vi.mocked(getImportPreview).mockReset();
   vi.mocked(confirmImport).mockReset();
   vi.mocked(confirmVCFImport).mockReset();
+  vi.mocked(cancelImportSession).mockReset();
+  vi.mocked(cancelImportSession).mockResolvedValue(undefined);
   vi.mocked(getFieldDefinitions).mockReset();
   vi.mocked(getFieldDefinitions).mockResolvedValue({
     field_definitions: [],
@@ -465,7 +470,7 @@ test('resolving every conflict zeroes the remaining count', async () => {
         existing_email: 'bob@example.com',
       }),
       suggested_action: 'update',
-      merge_diff: { updated: [], added: [] },
+      merge_diff: { updated: [{ field: 'job', label: 'Job', old: 'A', new: 'B' }], added: [] },
     }),
   ]);
   expect(screen.getByText('Resolve Conflict (1 remaining)')).toBeInTheDocument();
@@ -510,6 +515,33 @@ test('an upload failure surfaces the error without advancing the step', async ()
 
   await waitFor(() => expect(screen.getByText('server exploded')).toBeInTheDocument());
   // Still on the upload step — the dropzone is still showing.
+  expect(screen.getByText(/drag and drop a csv or vcf file/i)).toBeInTheDocument();
+});
+
+// #2688 / backend #2814: a binary file renamed .csv is refused with the reason
+// import_csv_not_text; the dialog shows the localized sentence, not the server's English.
+test('a non-text file renamed .csv shows the localized import_csv_not_text message', async () => {
+  vi.mocked(uploadCSVForImport).mockRejectedValue(
+    new ApiError(
+      'file is not a text CSV',
+      'INVALID_INPUT',
+      400,
+      undefined,
+      'req-1',
+      'import_csv_not_text',
+    ),
+  );
+
+  renderDialog();
+  selectFile(new File([new Uint8Array([137, 80, 78, 71, 0, 1])], 'contacts.csv'));
+
+  expect(
+    await screen.findByText(
+      'This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.',
+    ),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('file is not a text CSV')).not.toBeInTheDocument();
+  // Still on the upload step.
   expect(screen.getByText(/drag and drop a csv or vcf file/i)).toBeInTheDocument();
 });
 
@@ -1230,4 +1262,564 @@ test('a CSV just under 20MB but over 5MB is not rejected as too large', async ()
   renderDialog();
   selectFile(oversizeFile('contacts.csv', 6 * 1024 * 1024));
   await waitFor(() => expect(uploadCSVForImport).toHaveBeenCalledTimes(1));
+});
+
+// --- Issue #2661: keyboard-reachable file picker -------------------------
+
+test('the upload step has a real, focusable "Choose file" button that opens the picker', () => {
+  renderDialog();
+  const choose = screen.getByRole('button', { name: /choose file/i });
+  // A native <button> is in the tab order and activates on Enter/Space.
+  expect(choose.tagName).toBe('BUTTON');
+  expect(choose.tabIndex).toBeGreaterThanOrEqual(0);
+  choose.focus();
+  expect(document.activeElement).toBe(choose);
+
+  const input = document.getElementById('import-file-input') as HTMLInputElement;
+  const clicked = vi.spyOn(input, 'click');
+  fireEvent.click(choose);
+  // One picker opening, not two (the click must not also reach the drop zone).
+  expect(clicked).toHaveBeenCalledTimes(1);
+});
+
+test('the Choose file button points at the supported-format instructions', () => {
+  renderDialog();
+  const choose = screen.getByRole('button', { name: /choose file/i });
+  const describedBy = choose.getAttribute('aria-describedby');
+  expect(describedBy).toBeTruthy();
+  expect(document.getElementById(describedBy as string)?.textContent).toMatch(/CSV/);
+});
+
+test('drag and drop onto the zone still uploads', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-d',
+    rows: [row({ parsed_contact: { firstname: 'Ada' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  renderDialog();
+  const zone = screen.getByText(/drag and drop a csv or vcf file/i).parentElement as HTMLElement;
+  const file = new File(['BEGIN:VCARD\nEND:VCARD'], 'a.vcf', { type: 'text/vcard' });
+  fireEvent.drop(zone, { dataTransfer: { files: [file] } });
+  await waitFor(() => expect(uploadVCFForImport).toHaveBeenCalledWith(file));
+});
+
+// --- Issue #2674: named mapping selects ----------------------------------
+
+async function loadMapping() {
+  vi.mocked(uploadCSVForImport).mockResolvedValue({
+    session_id: 'sess-1',
+    headers: ['First Name', 'Email'],
+    suggested_mappings: [
+      { csv_column: 'First Name', contact_field: 'firstname', group: 0 },
+      { csv_column: 'Email', contact_field: 'email', group: 0 },
+    ],
+    row_count: 1,
+    sample_data: [['Ada', 'ada@example.com']],
+  });
+  const view = renderDialog();
+  selectFile(new File(['First Name,Email\nAda,ada@example.com'], 'c.csv', { type: 'text/csv' }));
+  await waitFor(() => expect(screen.getByText('Sample')).toBeInTheDocument());
+  return view;
+}
+
+test('every "Maps To" select is named after its CSV column', async () => {
+  await loadMapping();
+  expect(screen.getByRole('combobox', { name: 'Map column First Name to' })).toBeInTheDocument();
+  expect(screen.getByRole('combobox', { name: 'Map column Email to' })).toBeInTheDocument();
+});
+
+// --- Issue #2664: release the server session -----------------------------
+
+test('Cancel on the mapping step releases the upload session', async () => {
+  await loadMapping();
+  fireEvent.click(screen.getByRole('button', { name: /^close$/i }));
+  expect(cancelImportSession).toHaveBeenCalledTimes(1);
+  expect(cancelImportSession).toHaveBeenCalledWith('sess-1');
+});
+
+test('Back from the mapping step to upload releases the session, and Close then does not repeat it', async () => {
+  await loadMapping();
+  fireEvent.click(screen.getByRole('button', { name: /^back$/i }));
+  expect(cancelImportSession).toHaveBeenCalledWith('sess-1');
+  expect(screen.getByRole('button', { name: /choose file/i })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+  expect(cancelImportSession).toHaveBeenCalledTimes(1);
+});
+
+test('closing the upload step with no session makes no cancel call', () => {
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+  fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+  expect(onClose).toHaveBeenCalled();
+  expect(cancelImportSession).not.toHaveBeenCalled();
+});
+
+test('a failed upload (no session id) makes no cancel call on close', async () => {
+  vi.mocked(uploadCSVForImport).mockRejectedValue(new Error('bad file'));
+  renderDialog();
+  selectFile(new File(['x'], 'bad.csv', { type: 'text/csv' }));
+  await waitFor(() => expect(uploadCSVForImport).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+  expect(cancelImportSession).not.toHaveBeenCalled();
+});
+
+test('unmounting with a live session releases it', async () => {
+  const { unmount } = await loadMapping();
+  unmount();
+  expect(cancelImportSession).toHaveBeenCalledWith('sess-1');
+});
+
+test('a confirmed import is not cancelled on Done', async () => {
+  vi.mocked(confirmVCFImport).mockResolvedValue({
+    total_processed: 1,
+    created: 1,
+    updated: 0,
+    skipped: 0,
+    errors: [],
+    issues: [],
+  });
+  await loadPreview([row({ parsed_contact: { firstname: 'Ada' } })]);
+  fireEvent.click(screen.getByRole('button', { name: /apply decision/i }));
+  fireEvent.click(await screen.findByRole('button', { name: /^done$/i }));
+  expect(cancelImportSession).not.toHaveBeenCalled();
+});
+
+// --- Issue #2665: discard guard ------------------------------------------
+
+test('Escape on the clean upload step closes without a prompt', () => {
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  expect(onClose).toHaveBeenCalled();
+  expect(screen.queryByRole('heading', { name: /unsaved changes/i })).not.toBeInTheDocument();
+});
+
+test('Escape on the review step asks before discarding; Keep editing keeps everything', async () => {
+  const onClose = vi.fn();
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-test',
+    rows: [row({ parsed_contact: { firstname: 'Ada' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  renderDialog({ onClose });
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await screen.findByText('Resolve all as merged');
+
+  fireEvent.keyDown(screen.getAllByRole('dialog')[0], { key: 'Escape' });
+  expect(await screen.findByRole('heading', { name: /unsaved changes/i })).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+  expect(cancelImportSession).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: /keep editing/i }));
+  await waitFor(() =>
+    expect(screen.queryByRole('heading', { name: /unsaved changes/i })).not.toBeInTheDocument(),
+  );
+  expect(onClose).not.toHaveBeenCalled();
+  expect(screen.getByText('Resolve all as merged')).toBeInTheDocument();
+});
+
+test('Discard on the review step closes the dialog and releases the session', async () => {
+  const onClose = vi.fn();
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-test',
+    rows: [row({ parsed_contact: { firstname: 'Ada' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+  });
+  renderDialog({ onClose });
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await screen.findByText('Resolve all as merged');
+
+  fireEvent.click(screen.getByRole('button', { name: /^close$/i }));
+  fireEvent.click(await screen.findByRole('button', { name: /^discard$/i }));
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(cancelImportSession).toHaveBeenCalledWith('sess-test');
+});
+
+test('Escape inside the fix-row form closes only the form, not the import dialog', async () => {
+  const onClose = vi.fn();
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-test',
+    rows: [row({ parsed_contact: { firstname: 'Ada' }, validation_errors: ['email invalid'] })],
+    total_rows: 1,
+    valid_rows: 0,
+    duplicate_count: 0,
+    error_count: 1,
+  });
+  renderDialog({ onClose });
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  fireEvent.click(await screen.findByRole('button', { name: /fix this row/i }));
+  const field = screen.getByLabelText('First name');
+  fireEvent.keyDown(field, { key: 'Escape' });
+
+  expect(screen.queryByLabelText('First name')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /fix this row/i })).toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+  expect(screen.queryByRole('heading', { name: /unsaved changes/i })).not.toBeInTheDocument();
+});
+
+// --- W7a: import review behaviour (#2667 #2668 #2688) ------------------------
+
+const BIRTHDAY_ERROR = 'Invalid birthday format (expected YYYY-MM-DD or --MM-DD)';
+
+// #2667 (option B): the fix form edits name, email and phone only. An error it
+// cannot repair says so and the row stays skip-only.
+test('an error the fix form cannot repair says so and offers no form', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Ada', lastname: 'Lovelace' },
+      validation_errors: [BIRTHDAY_ERROR],
+      suggested_action: 'skip',
+    }),
+    row({
+      row_index: 1,
+      parsed_contact: { firstname: '' },
+      validation_errors: ['Failed to parse vCard: unexpected end'],
+      suggested_action: 'skip',
+    }),
+  ]);
+
+  expect(screen.queryByRole('button', { name: 'Fix this row' })).not.toBeInTheDocument();
+  expect(
+    screen.getAllByText(
+      "This error can't be fixed here — skip the row or edit the contact after import",
+    ),
+  ).toHaveLength(2);
+  for (const button of screen.getAllByRole('button', { name: 'Keep' })) {
+    expect(button).toBeDisabled();
+  }
+  for (const button of screen.getAllByRole('button', { name: 'Skip' })) {
+    expect(button).toBeDisabled();
+  }
+});
+
+test('a name, email or phone error still offers the fix form', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Ada', email: 'nope' },
+      validation_errors: ['Invalid email format'],
+      suggested_action: 'skip',
+    }),
+  ]);
+  expect(screen.getByRole('button', { name: 'Fix this row' })).toBeInTheDocument();
+  expect(screen.queryByText(/can't be fixed here/)).not.toBeInTheDocument();
+});
+
+// #2668: after a saved fix the card shows the edited values, replaces the stale
+// error with a neutral note, and the Errors chip no longer counts the row.
+test('a saved fix shows the edited value, hides the stale error and leaves the Errors count', async () => {
+  await loadPreview([
+    row({
+      row_index: 0,
+      parsed_contact: { firstname: 'Imp', lastname: 'Beta', email: 'not-an-email' },
+      validation_errors: ['Invalid email format'],
+      suggested_action: 'skip',
+    }),
+    row({
+      row_index: 1,
+      parsed_contact: { firstname: 'Imp', lastname: 'Gamma', email: 'also-bad' },
+      validation_errors: ['Invalid email format'],
+      suggested_action: 'skip',
+    }),
+  ]);
+  expect(screen.getByText('2 with errors')).toBeInTheDocument();
+
+  fireEvent.click(screen.getAllByRole('button', { name: 'Fix this row' })[0]);
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'beta@example.com' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save fix' }));
+
+  const card = screen.getByRole('group', { name: 'Imp Beta' });
+  expect(within(card).getByText('beta@example.com')).toBeInTheDocument();
+  expect(within(card).queryByText('not-an-email')).not.toBeInTheDocument();
+  expect(within(card).queryByText('Invalid email format')).not.toBeInTheDocument();
+  expect(within(card).getByText('Will be re-checked on import')).toBeInTheDocument();
+  // The other row keeps its error.
+  const other = screen.getByRole('group', { name: 'Imp Gamma' });
+  expect(within(other).getByText('Invalid email format')).toBeInTheDocument();
+
+  expect(screen.getByText('1 with an error')).toBeInTheDocument();
+  expect(screen.queryByText('2 with errors')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText('1 with an error'));
+  expect(screen.queryByRole('group', { name: 'Imp Beta' })).not.toBeInTheDocument();
+  expect(screen.getByRole('group', { name: 'Imp Gamma' })).toBeInTheDocument();
+});
+
+test('the Errors chip disappears once the only error row is fixed', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Imp', lastname: 'Beta', email: 'not-an-email' },
+      validation_errors: ['Invalid email format'],
+      suggested_action: 'skip',
+    }),
+  ]);
+  fireEvent.click(screen.getByRole('button', { name: 'Fix this row' }));
+  fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'beta@example.com' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Save fix' }));
+  expect(screen.queryByText(/with an? errors?/)).not.toBeInTheDocument();
+});
+
+// #2688: a match whose merge_diff is empty is not an update and not a conflict
+// that still needs resolving.
+test('a no-op match is not counted as an update or a remaining conflict', async () => {
+  await loadPreview([
+    row({
+      row_index: 0,
+      parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith' }),
+      suggested_action: 'update',
+      merge_diff: { updated: [], added: [] },
+    }),
+    row({
+      row_index: 1,
+      parsed_contact: { firstname: 'Cy', lastname: 'Jones', email: 'cy@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Cy', existing_lastname: 'Jones' }),
+      suggested_action: 'update',
+      merge_diff: { updated: [{ field: 'job', label: 'Job', old: 'A', new: 'B' }], added: [] },
+    }),
+  ]);
+
+  expect(screen.getByText('1 to update')).toBeInTheDocument();
+  expect(screen.getByText('1 to skip')).toBeInTheDocument();
+  expect(screen.getByText('Resolve Conflict (1 remaining)')).toBeInTheDocument();
+  // The update filter agrees with its chip.
+  fireEvent.click(screen.getByText('1 to update'));
+  expect(screen.getByRole('group', { name: 'Cy Jones' })).toBeInTheDocument();
+  expect(screen.queryByRole('group', { name: 'Bob Smith' })).not.toBeInTheDocument();
+});
+
+test('a lone no-op match leaves nothing to resolve', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Bob', lastname: 'Smith', email: 'bob@example.com' },
+      duplicate_match: dupMatch({ existing_firstname: 'Bob', existing_lastname: 'Smith' }),
+      suggested_action: 'update',
+      merge_diff: { updated: [], added: [] },
+    }),
+  ]);
+  expect(screen.getByText('0 to update')).toBeInTheDocument();
+  expect(screen.queryByText(/Resolve Conflict/)).not.toBeInTheDocument();
+  expect(screen.getByText(/all conflicts resolved/i)).toBeInTheDocument();
+});
+
+// #2688: below `sm` the dialog is full screen and the stepper wraps its labels
+// under the icons so "Done" is not clipped.
+test('the dialog is full screen on a phone viewport', async () => {
+  window.matchMedia = ((query: string) => ({
+    matches: query.includes('max-width'),
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  })) as unknown as typeof window.matchMedia;
+  try {
+    renderDialog();
+    expect(screen.getByRole('dialog')).toHaveClass('MuiDialog-paperFullScreen');
+    expect(document.querySelector('.MuiStepper-alternativeLabel')).not.toBeNull();
+  } finally {
+    // @ts-expect-error -- restore jsdom's "no matchMedia" default
+    delete window.matchMedia;
+  }
+});
+
+// #2688: unselected Keep/Skip labels used text.secondary (4.37:1 on the review
+// card); they use the primary text colour, like the rest of the card body.
+test('an unselected decision button uses the primary text colour', async () => {
+  await loadPreview([row({ parsed_contact: { firstname: 'Ada', lastname: 'Lovelace' } })]);
+  const skip = screen.getByRole('button', { name: 'Skip' });
+  expect(skip).toHaveAttribute('aria-pressed', 'false');
+  const unselected = getComputedStyle(skip).color;
+  const body = getComputedStyle(screen.getByText('Ada Lovelace')).color;
+  expect(unselected).not.toBe('');
+  expect(unselected).toBe(body);
+});
+
+// #2668: an emptied field in a saved fix removes the value from the card, the
+// way the server removes the offending entry.
+test('a saved fix that empties the phone drops it from the card', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Imp', lastname: 'Delta', phone: 'abc' },
+      validation_errors: ['Invalid phone format'],
+      suggested_action: 'skip',
+    }),
+  ]);
+  const card = screen.getByRole('group', { name: 'Imp Delta' });
+  expect(within(card).getByText('abc')).toBeInTheDocument();
+  fireEvent.click(within(card).getByRole('button', { name: 'Fix this row' }));
+  fireEvent.change(within(card).getByLabelText('Phone'), { target: { value: '' } });
+  fireEvent.click(within(card).getByRole('button', { name: 'Save fix' }));
+  expect(within(card).queryByText('abc')).not.toBeInTheDocument();
+  expect(within(card).getByText('Will be re-checked on import')).toBeInTheDocument();
+  expect(within(card).getByRole('button', { name: 'Edit fix' })).toBeInTheDocument();
+});
+
+// --- W7b: diagnostics and file diagnostics (#2631 #2653 #2669) -----------------
+
+const BDAY_DIAG = {
+  severity: 'warn' as const,
+  concept: 'birthday',
+  message: 'birthday not imported: invalid value',
+};
+
+// #2653 (option C): an invalid birthday/anniversary does not fail the row; the
+// contact imports without it and the review warns, keyed on the concept.
+test('a birthday warning shows beside a valid row, localized by concept', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Ada', lastname: 'Lovelace' },
+      diagnostics: [BDAY_DIAG, { ...BDAY_DIAG, concept: 'anniversary' }],
+    }),
+  ]);
+  const card = screen.getByRole('group', { name: 'Ada Lovelace' });
+  expect(within(card).getByText('Birthday not imported: invalid value')).toBeInTheDocument();
+  expect(within(card).getByText('Anniversary not imported: invalid value')).toBeInTheDocument();
+  // Not an error: the row is still decidable and no Errors chip appears.
+  expect(within(card).getByRole('button', { name: 'Keep' })).toBeEnabled();
+  expect(within(card).getByRole('button', { name: 'Keep' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  expect(screen.queryByText(/with an? errors?/)).not.toBeInTheDocument();
+});
+
+test('the warning text follows the language, not the English server message', async () => {
+  await i18n.changeLanguage('de');
+  try {
+    vi.mocked(uploadVCFForImport).mockResolvedValue({
+      session_id: 'sess-de',
+      rows: [row({ parsed_contact: { firstname: 'Ada' }, diagnostics: [BDAY_DIAG] })],
+      total_rows: 1,
+      valid_rows: 1,
+      duplicate_count: 0,
+      error_count: 0,
+      file_diagnostics: [],
+    });
+    renderDialog();
+    selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+    expect(
+      await screen.findByText('Geburtstag nicht importiert: ungültiger Wert'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('birthday not imported: invalid value')).not.toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
+
+test('a diagnostic with another concept shows its own message', async () => {
+  await loadPreview([
+    row({
+      parsed_contact: { firstname: 'Cy' },
+      diagnostics: [
+        { severity: 'info', concept: 'name', message: 'name taken from email' },
+        { severity: 'warn', message: 'card has no name' },
+      ],
+    }),
+  ]);
+  expect(screen.getByText('name taken from email')).toBeInTheDocument();
+  expect(screen.getByText('card has no name')).toBeInTheDocument();
+});
+
+// #2669: file_diagnostics is always present; an encoding notice becomes a
+// banner on the review step.
+test('an encoding file diagnostic shows a localized banner on the review step', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-enc',
+    rows: [row({ parsed_contact: { firstname: 'Zoë' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    file_diagnostics: [
+      {
+        severity: 'warn',
+        concept: 'encoding',
+        message: 'file was not UTF-8; read as Windows-1252',
+      },
+    ],
+  });
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  const banner = await screen.findByText(/This file isn't UTF-8, so it was read as Windows-1252/);
+  expect(banner.closest('[role="alert"], [role="status"]')).not.toBeNull();
+  expect(screen.queryByText('file was not UTF-8; read as Windows-1252')).not.toBeInTheDocument();
+});
+
+test('an empty file_diagnostics shows no banner', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-ok',
+    rows: [row({ parsed_contact: { firstname: 'Zoe' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    file_diagnostics: [],
+  });
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  await screen.findByText('Resolve all as merged');
+  expect(screen.queryByText(/Windows-1252/)).not.toBeInTheDocument();
+});
+
+test('a CSV preview shows the encoding banner from the upload response', async () => {
+  vi.mocked(uploadCSVForImport).mockResolvedValue({
+    session_id: 'sess-csv',
+    headers: ['First'],
+    suggested_mappings: [{ csv_column: 'First', contact_field: 'firstname', group: 0 }],
+    row_count: 1,
+    sample_data: [['Zoë']],
+    file_diagnostics: [
+      {
+        severity: 'warn',
+        concept: 'encoding',
+        message: 'file was not UTF-8; read as Windows-1252',
+      },
+    ],
+  });
+  vi.mocked(getImportPreview).mockResolvedValue({
+    session_id: 'sess-csv',
+    rows: [row({ parsed_contact: { firstname: 'Zoë' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    // The same notice on both responses is shown once.
+    file_diagnostics: [
+      {
+        severity: 'warn',
+        concept: 'encoding',
+        message: 'file was not UTF-8; read as Windows-1252',
+      },
+    ],
+  });
+  renderDialog();
+  selectFile(new File(['First\nZoë'], 'c.csv', { type: 'text/csv' }));
+  fireEvent.click(await screen.findByRole('button', { name: /continue/i }));
+  expect(await screen.findByText(/read as Windows-1252/)).toBeInTheDocument();
+  expect(screen.getAllByText(/read as Windows-1252/)).toHaveLength(1);
+});
+
+test('a file diagnostic with no known concept shows its own message', async () => {
+  vi.mocked(uploadVCFForImport).mockResolvedValue({
+    session_id: 'sess-info',
+    rows: [row({ parsed_contact: { firstname: 'Zoe' } })],
+    total_rows: 1,
+    valid_rows: 1,
+    duplicate_count: 0,
+    error_count: 0,
+    file_diagnostics: [{ severity: 'info', message: 'Header row skipped' }],
+  });
+  renderDialog();
+  selectFile(new File(['BEGIN:VCARD\nEND:VCARD'], 'contact.vcf', { type: 'text/vcard' }));
+  expect(await screen.findByText('Header row skipped')).toBeInTheDocument();
 });

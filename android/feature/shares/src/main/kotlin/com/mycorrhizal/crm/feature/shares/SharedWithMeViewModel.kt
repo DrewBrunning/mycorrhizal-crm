@@ -5,10 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.IncomingShareGrant
 import com.mycorrhizal.crm.model.network.ShareBlock
+import com.mycorrhizal.crm.model.network.ShareGrantStatuses
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.time.Instant
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +41,11 @@ data class SharedWithMeUiState(
     /** A failed action, shown once as a snackbar. */
     val actionError: ApiError? = null,
     val prompt: SharedWithMePrompt? = null,
-    val busy: Boolean = false
+    val busy: Boolean = false,
+    /** Non-null while the server has another page of grants. */
+    val nextCursor: String? = null,
+    val loadingMore: Boolean = false,
+    val loadMoreError: ApiError? = null
 )
 
 /**
@@ -77,13 +83,40 @@ class SharedWithMeViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        grants = incoming.getOrNull()?.shareGrants.orEmpty(),
+                        grants = incoming.getOrNull()?.shareGrants.orEmpty().inDisplayOrder(),
                         blocks = blocks.getOrNull().orEmpty(),
                         loadError =
-                            (incoming.exceptionOrNull() ?: blocks.exceptionOrNull())?.toApiError()
+                            (incoming.exceptionOrNull() ?: blocks.exceptionOrNull())?.toApiError(),
+                        nextCursor = incoming.getOrNull()?.nextCursor?.takeIf { cursor ->
+                            cursor.isNotBlank()
+                        },
+                        loadMoreError = null
                     )
                 }
             } while (reloadPending)
+        }
+    }
+
+    /** Appends the next page of grants; the backend caps a page at 100. */
+    fun loadMore() {
+        if (_uiState.value.isLoading || _uiState.value.loadingMore) return
+        val cursor = _uiState.value.nextCursor ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(loadingMore = true, loadMoreError = null) }
+            repository.listIncoming(cursor).foldApiError(
+                onSuccess = { page ->
+                    _uiState.update {
+                        it.copy(
+                            loadingMore = false,
+                            grants = (it.grants + page.shareGrants).inDisplayOrder(),
+                            nextCursor = page.nextCursor?.takeIf { next -> next.isNotBlank() }
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(loadingMore = false, loadMoreError = error) }
+                }
+            )
         }
     }
 
@@ -147,3 +180,17 @@ class SharedWithMeViewModel @Inject constructor(
         }
     }
 }
+
+/**
+ * Issue #2656: one deterministic order whatever order the server returns — pending first (they
+ * need a decision), then newest first, with the id as the final tie-break so two loads of the
+ * same data never reshuffle. An unparseable or missing date sorts as the oldest.
+ */
+internal fun List<IncomingShareGrant>.inDisplayOrder(): List<IncomingShareGrant> = sortedWith(
+    compareBy<IncomingShareGrant> { it.status != ShareGrantStatuses.PENDING }
+        .thenByDescending { grant ->
+            grant.createdAt?.let { runCatching { Instant.parse(it) }.getOrNull() }
+                ?: Instant.EPOCH
+        }
+        .thenBy { it.id }
+)

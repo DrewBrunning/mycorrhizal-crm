@@ -26,8 +26,11 @@
           { "context": "Android scan (mobsfscan)" },
           { "context": "Scan workflows (zizmor)" },
           { "context": "CIS container hardening scan" },
+          { "context": "Secret scan (working tree)" },
+          { "context": "Changelog note for operator-visible change" },
           { "context": "Docs & security-doc citations" },
           { "context": "Go server binary is byte-reproducible" },
+          { "context": "Migration Tests" },
           { "context": "codecov/patch/backend" },
           { "context": "codecov/patch/frontend" },
           { "context": "codecov/patch/android" }

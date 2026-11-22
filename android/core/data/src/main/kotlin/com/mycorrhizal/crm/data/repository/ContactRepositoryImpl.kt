@@ -16,7 +16,9 @@ import com.mycorrhizal.crm.model.network.ContactsPage as NetworkContactsPage
 import com.mycorrhizal.crm.model.network.withoutProjectedEntries
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.network.canServeSavedData
 import com.mycorrhizal.crm.network.toApiError
+import com.mycorrhizal.crm.network.toApiErrorOrUnknown
 import javax.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -231,17 +233,14 @@ class ContactRepositoryImpl @Inject constructor(
                 // Only fall back to the cache for connectivity-class failures.
                 // A 404 means the contact is gone server-side; serving stale
                 // cached data for a deleted contact would be misleading.
-                val shouldUseCache = error is ApiError.Network ||
-                    error is ApiError.Timeout ||
-                    error is ApiError.Unknown ||
-                    error is ApiError.Server
-                if (!shouldUseCache) {
+                if (!error.toApiErrorOrUnknown().canServeSavedData()) {
                     return@fold Result.failure(error)
                 }
                 val cached = dao.getById(id)
                 val fromCache = cached?.let { it.toRecord() }
                 if (fromCache != null) {
-                    Result.success(fromCache)
+                    // #2629: tell the screen this is saved data, not a fresh read.
+                    Result.success(fromCache.copy(servedFromCache = true))
                 } else {
                     Result.failure(error)
                 }

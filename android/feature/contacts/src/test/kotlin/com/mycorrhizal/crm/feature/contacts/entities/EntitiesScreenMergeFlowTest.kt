@@ -13,12 +13,14 @@ import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityKind
 import com.mycorrhizal.crm.model.network.EntityListResponse
 import com.mycorrhizal.crm.model.network.EntityMergeResponse
+import com.mycorrhizal.crm.model.network.EntityRestoreResponse
 import com.mycorrhizal.crm.model.network.EntitySuggestionEntity
 import com.mycorrhizal.crm.model.network.EntitySuggestionPair
 import com.mycorrhizal.crm.model.network.EntitySuggestionsResponse
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import org.junit.Rule
 import org.junit.Test
@@ -105,6 +107,50 @@ class EntitiesScreenMergeFlowTest {
 
         composeTestRule.onNodeWithText("Merged ACME into Acme.").assertIsDisplayed()
         composeTestRule.onAllNodesWithTag("entity-merge-dialog").assertCountEquals(0)
+    }
+
+    private fun mergeThroughScreen() {
+        stubList()
+        coEvery { repository.get("id-Acme") } returns Result.success(full("Acme"))
+        coEvery { repository.get("id-ACME") } returns Result.success(full("ACME"))
+        coEvery { repository.merge("id-ACME", any()) } returns Result.success(
+            EntityMergeResponse(survivor = full("Acme"), loserId = "id-ACME", linksRepointed = 2)
+        )
+        show()
+        composeTestRule.onNodeWithText("Find duplicates").performClick()
+        composeTestRule.waitForIdle()
+        clickMerge()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("entity-merge-confirm").performClick()
+        composeTestRule.waitForIdle()
+    }
+
+    @Test
+    fun `the merge snackbar offers Undo that restores the merged-away entity`() {
+        mergeThroughScreen()
+        coEvery { repository.restore("id-ACME") } returns Result.success(
+            EntityRestoreResponse(entity = full("ACME"), mergedInto = "id-Acme")
+        )
+
+        composeTestRule.onNodeWithText("Merged ACME into Acme.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Undo").assertIsDisplayed().performClick()
+        composeTestRule.waitForIdle()
+
+        coVerify(exactly = 1) { repository.restore("id-ACME") }
+        // The list and the duplicate scan are re-read so the restored entity and its pair return.
+        coVerify(atLeast = 2) { repository.suggestions(any()) }
+    }
+
+    @Test
+    fun `a failed Undo shows the error on the duplicates card`() {
+        mergeThroughScreen()
+        coEvery { repository.restore("id-ACME") } returns
+            Result.failure(java.io.IOException("offline"))
+
+        composeTestRule.onNodeWithText("Undo").performClick()
+        composeTestRule.waitForIdle()
+
+        assertMergeErrorShown()
     }
 
     @Test

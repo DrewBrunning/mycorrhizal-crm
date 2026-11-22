@@ -341,6 +341,8 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.POST("/contacts/import/upload", middleware.BodySizeLimitMiddleware(services.MaxCSVSize), controllers.UploadCSVForImport)
 			protected.POST("/contacts/import/preview", middleware.ValidateJSONMiddleware(&models.ImportPreviewRequest{}), controllers.PreviewImport)
 			protected.POST("/contacts/import/confirm", middleware.ValidateJSONMiddleware(&models.ImportConfirmRequest{}), controllers.ConfirmImport)
+			// Discard an unconfirmed CSV/VCF/JSContact/records session (issue #2664).
+			protected.POST("/contacts/import/cancel", middleware.ValidateJSONMiddleware(&models.ImportCancelRequest{}), controllers.CancelImportSession)
 
 			// Contact import routes (VCF). Same body-size-limit override as
 			// the CSV route above, sized to services.MaxVCFSize instead.
@@ -458,6 +460,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 				shareGrants.POST("/notifications/read", controllers.MarkShareGrantNotificationsRead)
 				shareGrants.GET("/blocks", controllers.ListShareBlocks)
 				shareGrants.DELETE("/blocks/:user_id", controllers.DeleteShareBlock)
+				shareGrants.DELETE("/:id", controllers.DeleteShareGrant)
 				shareGrants.PATCH("/:id", middleware.ValidateJSONMiddleware(&models.ShareGrantPatchInput{}), controllers.UpdateShareGrant)
 				shareGrants.POST("/:id/accept", controllers.AcceptShareGrant)
 				shareGrants.POST("/:id/decline", controllers.DeclineShareGrant)
@@ -677,6 +680,7 @@ func RegisterRoutes(router *gin.Engine, cfg *config.Config, db *gorm.DB, oidcPro
 			protected.DELETE("/occasion-obligations/:id", controllers.DeleteOccasionObligation)
 			protected.GET("/occasions/upcoming", controllers.GetUpcomingOccasions)
 			protected.GET("/occasion-obligations/card-list", controllers.GetOccasionCardListCSV)
+			protected.GET("/occasion-obligations/card-list/summary", controllers.GetOccasionCardListSummary)
 			protected.GET("/occasion-obligations/gift-shopping-list", controllers.GetGiftShoppingList)
 
 			// OccasionEvent routes (docs/adrs/0026-occasions-events.md, issue

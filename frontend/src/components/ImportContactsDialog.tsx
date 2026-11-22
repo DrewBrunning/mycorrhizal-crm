@@ -2,6 +2,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import ErrorIcon from '@mui/icons-material/Error';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import WarningIcon from '@mui/icons-material/Warning';
 import {
   Alert,
@@ -34,18 +35,23 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
-import { useCallback, useMemo, useState } from 'react';
+import type { TFunction } from 'i18next';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FIELD_TYPES } from '../api/fieldDefinitions';
 import {
   CONTACT_FIELD_LABELS,
   type ColumnMapping,
+  cancelImportSession,
   confirmImport,
   confirmVCFImport,
   type DiscoveredCustomProperty,
   getImportPreview,
   IMPORTABLE_CONTACT_FIELDS,
+  type ImportDiagnostic,
   type ImportFieldMapping,
   type ImportMergeDiff,
   type ImportPreviewResponse,
@@ -59,12 +65,15 @@ import {
   uploadVCFForImport,
 } from '../api/import';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useDiscardGuard } from '../hooks/useDiscardGuard';
 import { useFieldDefinitions } from '../hooks/useFieldDefinitions';
 import { isContactPickerSupported, pickContactsAsVCardFile } from '../utils/contactPicker';
 import { EMPTY_VALUE } from '../utils/emptyValue';
 import { getErrorMessage } from '../utils/errorHandler';
 import { MAX_CSV_IMPORT_MB, MAX_VCF_IMPORT_MB } from '../utils/importLimits';
+import { importWarningKey } from '../utils/importWarning';
 import AppDialog from './AppDialog';
+import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 import ImportFixedAssignmentPicker from './ImportFixedAssignmentPicker';
 import ImportIssuesReport from './ImportIssuesReport';
 
@@ -94,6 +103,10 @@ export default function ImportContactsDialog({
   onImportComplete,
 }: ImportContactsDialogProps) {
   const { t } = useTranslation();
+  const theme = useTheme();
+  // Below `sm` the dialog goes full screen and the stepper stacks its labels
+  // under the icons so the last step ("Done") is not clipped (#2688).
+  const phone = useMediaQuery(theme.breakpoints.down('sm'));
   const { showSuccess } = useSnackbar();
   const { definitions: allFieldDefinitions, refresh: refreshFieldDefinitions } =
     useFieldDefinitions();
@@ -167,10 +180,46 @@ export default function ImportContactsDialog({
     setDragOver(false);
   }, []);
 
+  // Issue #2664: the live server-side upload session, if any. Mirrored into a
+  // ref so the unmount cleanup and every exit path release the same id exactly
+  // once; a confirmed import (result step) has consumed its session.
+  const sessionIdRef = useRef<string | null>(null);
+  sessionIdRef.current = importResult
+    ? null
+    : (previewResponse?.session_id ?? uploadResponse?.session_id ?? null);
+  const releaseSession = useCallback(() => {
+    const id = sessionIdRef.current;
+    sessionIdRef.current = null;
+    if (id) void cancelImportSession(id);
+  }, []);
+  // Closing the dialog by any route (including the host unmounting it) must
+  // not leave the session counting toward the server's per-user cap.
+  useEffect(() => releaseSession, [releaseSession]);
+
   // Handle dialog close
   const handleClose = () => {
+    releaseSession();
     resetDialog();
     onClose();
+  };
+
+  // Issue #2665: from the review step on (or once a row fix is saved) the
+  // user's Keep/Skip/Merge decisions would be lost, so Escape, the X and Cancel
+  // confirm first. The result step is finished work, not unsaved work.
+  const dirty = step === 'customFields' || step === 'preview' || rowEdits.size > 0;
+  const { guardedClose, confirmDialogProps, navigationGuardElement } = useDiscardGuard(
+    dirty && step !== 'result',
+    { onNavigationDiscard: handleClose },
+  );
+  const requestClose = () => guardedClose(handleClose);
+
+  // Back to the upload step abandons the uploaded file, so its session goes too.
+  const backToUpload = () => {
+    releaseSession();
+    setUploadResponse(null);
+    setPreviewResponse(null);
+    setStep('upload');
+    setActiveStep(0);
   };
 
   // Handle file upload
@@ -428,9 +477,14 @@ export default function ImportContactsDialog({
     let toUpdate = 0;
     let toSkip = 0;
 
-    rowActions.forEach((action) => {
-      if (action === 'add') toCreate++;
-      else if (action === 'update') toUpdate++;
+    const byIndex = new Map((previewResponse?.rows ?? []).map((r) => [r.row_index, r]));
+    rowActions.forEach((action, rowIndex) => {
+      const row = byIndex.get(rowIndex);
+      // A match with nothing to merge changes nothing: it counts with the
+      // skipped rows, the same way its filter does (#2688).
+      const effective = row ? effectiveAction(row, action) : action;
+      if (effective === 'add') toCreate++;
+      else if (effective === 'update') toUpdate++;
       else toSkip++;
     });
 
@@ -449,6 +503,11 @@ export default function ImportContactsDialog({
     }
   };
 
+  // Opens the native file picker. The input stays out of the tab order and the
+  // accessibility tree (display:none); the visible "Choose file" button is the
+  // keyboard- and screen-reader-reachable control (issue #2661).
+  const openFilePicker = () => document.getElementById('import-file-input')?.click();
+
   // Render upload step
   const renderUploadStep = () => (
     <Box sx={{ py: 4 }}>
@@ -466,7 +525,7 @@ export default function ImportContactsDialog({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
-        onClick={() => document.getElementById('import-file-input')?.click()}
+        onClick={openFilePicker}
       >
         <input
           id="import-file-input"
@@ -475,15 +534,32 @@ export default function ImportContactsDialog({
           style={{ display: 'none' }}
           aria-label={t('contacts.import.upload.dragDrop')}
           onChange={handleFileInputChange}
+          // The programmatic click would otherwise bubble to the drop zone.
+          onClick={(e) => e.stopPropagation()}
         />
-        <CloudUploadIcon sx={{ fontSize: 48, color: 'grey.500', mb: 2 }} />
+        <CloudUploadIcon aria-hidden sx={{ fontSize: 48, color: 'grey.500', mb: 2 }} />
         <Typography variant="h6" gutterBottom>
           {t(
             'contacts.import.upload.dragDrop',
             'Drag and drop a CSV or VCF file here, or click to select',
           )}
         </Typography>
+        <Button
+          variant="contained"
+          startIcon={<FolderOpenIcon aria-hidden />}
+          aria-describedby="import-file-formats"
+          onClick={(e) => {
+            // The drop zone's own click opens the picker for mouse users;
+            // stop here so one press does not open it twice.
+            e.stopPropagation();
+            openFilePicker();
+          }}
+          sx={{ mb: 2 }}
+        >
+          {t('contacts.import.upload.chooseFile')}
+        </Button>
         <Typography
+          id="import-file-formats"
           variant="body2"
           sx={{
             color: 'text.secondary',
@@ -617,6 +693,11 @@ export default function ImportContactsDialog({
                           value={mapping.contact_field}
                           onChange={(e) => handleMappingChange(index, e.target.value)}
                           displayEmpty
+                          inputProps={{
+                            'aria-label': t('contacts.import.mapping.mapsToFor', {
+                              column: mapping.csv_column,
+                            }),
+                          }}
                         >
                           <MenuItem value="">
                             <em>{t('contacts.import.mapping.ignore', '-- Ignore --')}</em>
@@ -838,7 +919,9 @@ export default function ImportContactsDialog({
     if (!previewResponse) return null;
 
     const { toCreate, toUpdate, toSkip } = getSummaryCounts();
-    const errorCount = previewResponse.rows.filter((r) => r.validation_errors.length > 0).length;
+    // A row with a saved fix is not an open error any more: the server
+    // re-checks it on import (#2668).
+    const errorCount = previewResponse.rows.filter((r) => hasOpenErrors(r, rowEdits)).length;
 
     // T96: how many duplicate/within-batch rows still sit on their seeded
     // default action, i.e. how many conflicts remain to be consciously
@@ -846,15 +929,23 @@ export default function ImportContactsDialog({
     const conflictRows = previewResponse.rows.filter(
       (r) => r.validation_errors.length === 0 && isConflictRow(r),
     );
+    // A no-op match has nothing to resolve (#2688).
     const conflictsRemaining = conflictRows.filter(
-      (r) => (rowActions.get(r.row_index) ?? r.suggested_action) === r.suggested_action,
+      (r) =>
+        !isNoopMatch(r) &&
+        (rowActions.get(r.row_index) ?? r.suggested_action) === r.suggested_action,
     ).length;
 
     // T56: client-side page of the preview rows. Rows whose index lands on
     // the current page are the only ones mounted, so a full address-book
     // import never mounts hundreds of cards at once.
     const filteredRows = previewResponse.rows.filter((r) =>
-      rowMatchesFilter(r, rowActions.get(r.row_index) ?? r.suggested_action, previewFilter),
+      rowMatchesFilter(
+        r,
+        rowActions.get(r.row_index) ?? r.suggested_action,
+        previewFilter,
+        rowEdits,
+      ),
     );
     const pageStart = previewPage * PREVIEW_PAGE_SIZE;
     const pageRows = filteredRows.slice(pageStart, pageStart + PREVIEW_PAGE_SIZE);
@@ -869,8 +960,14 @@ export default function ImportContactsDialog({
 
     return (
       <Box>
+        <FileDiagnosticsBanner
+          diagnostics={[
+            ...(previewResponse.file_diagnostics ?? []),
+            ...(uploadResponse?.file_diagnostics ?? []),
+          ]}
+        />
         {previewResponse.fixed_assignment && (
-          <Alert severity="info" sx={{ mb: 2 }}>
+          <Alert severity="info" role="status" sx={{ mb: 2 }}>
             {t(
               'contacts.import.fixedAssignment.summary',
               'Every imported contact will be added to: {{groups}}. Up to {{count}} memberships will be added.',
@@ -1076,18 +1173,11 @@ export default function ImportContactsDialog({
   const renderActions = () => {
     switch (step) {
       case 'upload':
-        return <Button onClick={handleClose}>{t('common.cancel', 'Cancel')}</Button>;
+        return <Button onClick={requestClose}>{t('common.cancel', 'Cancel')}</Button>;
       case 'mapping':
         return (
           <>
-            <Button
-              onClick={() => {
-                setStep('upload');
-                setActiveStep(0);
-              }}
-            >
-              {t('common.back', 'Back')}
-            </Button>
+            <Button onClick={backToUpload}>{t('common.back', 'Back')}</Button>
             <Button
               variant="contained"
               onClick={() => void handleGeneratePreview()}
@@ -1102,9 +1192,7 @@ export default function ImportContactsDialog({
           <>
             <Button
               onClick={() => {
-                setStep('upload');
-                setActiveStep(0);
-                setPreviewResponse(null);
+                backToUpload();
                 setRowActions(new Map());
                 setPreviewPage(0);
                 setPreviewFilter(null);
@@ -1137,8 +1225,7 @@ export default function ImportContactsDialog({
                     setActiveStep(1);
                   } else {
                     // VCF without candidates goes back to upload.
-                    setStep('upload');
-                    setActiveStep(0);
+                    backToUpload();
                   }
                 } else {
                   // CSV goes back to mapping
@@ -1150,7 +1237,7 @@ export default function ImportContactsDialog({
             >
               {t('common.back', 'Back')}
             </Button>
-            <Button onClick={handleClose} disabled={loading}>
+            <Button onClick={requestClose} disabled={loading}>
               {t('common.cancel', 'Cancel')}
             </Button>
             <Button
@@ -1182,11 +1269,13 @@ export default function ImportContactsDialog({
   };
 
   return (
-    <AppDialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <AppDialog open={open} onClose={requestClose} maxWidth="md" fullWidth fullScreen={phone}>
+      {navigationGuardElement}
+      <ConfirmDiscardDialog {...confirmDialogProps} />
       <DialogTitle>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {t('contacts.import.title', 'Import Contacts')}
-          <IconButton onClick={handleClose} size="small" aria-label={t('common.close')}>
+          <IconButton onClick={requestClose} size="small" aria-label={t('common.close')}>
             <CloseIcon />
           </IconButton>
         </Box>
@@ -1195,7 +1284,7 @@ export default function ImportContactsDialog({
       <DialogContent dividers>
         {/* Stepper - different steps for CSV vs VCF; VCF gains a custom-fields
             step only when the file carried X-* properties (issue #514). */}
-        <Stepper activeStep={activeStep} sx={{ mb: 3 }}>
+        <Stepper activeStep={activeStep} alternativeLabel={phone} sx={{ mb: 3 }}>
           {(importType === 'vcf'
             ? customFieldCandidates.length > 0
               ? VCF_WITH_CUSTOM_FIELDS_STEP_KEYS
@@ -1238,11 +1327,51 @@ function rowMatchesFilter(
   row: ImportRowPreview,
   action: string,
   filter: PreviewFilter | null,
+  edits: Map<number, ImportRowEdit>,
 ): boolean {
   if (filter === null) return true;
-  if (filter === 'errors') return row.validation_errors.length > 0;
-  if (filter === 'skip') return action !== 'add' && action !== 'update';
-  return action === filter;
+  if (filter === 'errors') return hasOpenErrors(row, edits);
+  const effective = effectiveAction(row, action);
+  if (filter === 'skip') return effective !== 'add' && effective !== 'update';
+  return effective === filter;
+}
+
+// hasOpenErrors: a validation error the user has not answered with a saved fix.
+function hasOpenErrors(row: ImportRowPreview, edits: Map<number, ImportRowEdit>): boolean {
+  return row.validation_errors.length > 0 && !edits.has(row.row_index);
+}
+
+// isNoopMatch: the row matched an existing record and Merge would change
+// nothing ("No changes — the records already match").
+function isNoopMatch(row: ImportRowPreview): boolean {
+  return (
+    !!row.duplicate_match &&
+    !!row.merge_diff &&
+    (row.merge_diff.updated ?? []).length === 0 &&
+    (row.merge_diff.added ?? []).length === 0
+  );
+}
+
+// effectiveAction: the action the summary counts and filters use. A no-op
+// "update" is counted with the skipped rows.
+function effectiveAction(row: ImportRowPreview, action: string): string {
+  return action === 'update' && isNoopMatch(row) ? 'skip' : action;
+}
+
+// The fix form edits name, email and phone only. Any other validation error
+// (a birthday or anniversary written as a row error by an older server, an
+// unparseable card) can never be made valid there, so the form is not offered
+// and the row says what to do instead (#2667, mirrors Android #2610). The
+// messages are the backend's ValidateImportedContact / parse failures; the
+// fixable ones name a name, email or phone.
+function hasUnfixableError(row: ImportRowPreview): boolean {
+  return row.validation_errors.some((error) => {
+    const text = error.toLowerCase();
+    return (
+      text.startsWith('failed to parse') ||
+      !['name', 'email', 'phone'].some((w) => text.includes(w))
+    );
+  });
 }
 
 // isConflictRow reports whether a row needs a conscious decision: it matches an
@@ -1367,6 +1496,63 @@ function ImportMergeDiffSummary({ diff }: { diff: ImportMergeDiff }) {
   );
 }
 
+// applyEdit overlays a saved fix on the parsed contact the card summarises.
+function applyEdit(
+  parsed: ImportRowPreview['parsed_contact'],
+  edit: ImportRowEdit | undefined,
+): ImportRowPreview['parsed_contact'] {
+  if (!edit) return parsed;
+  const merged = { ...parsed };
+  for (const key of ['firstname', 'lastname', 'email', 'phone'] as const) {
+    const value = edit[key];
+    if (value === undefined) continue;
+    if (value === '') delete merged[key];
+    else merged[key] = value;
+  }
+  return merged;
+}
+
+// diagnosticText: the localized text for a known concept (issue #2653: an
+// invalid birthday/anniversary is dropped, the contact still imports), else the
+// adapter's own message (an unknown concept is still worth showing).
+function diagnosticText(t: TFunction, d: ImportDiagnostic): string {
+  const key = importWarningKey(d.concept);
+  return key ? t(key) : d.message;
+}
+
+// FileDiagnosticsBanner shows the file-level notices of the upload (issue
+// #2669: concept 'encoding' when a CSV that was not UTF-8 was read as
+// Windows-1252). The same notice can arrive on both the upload and preview
+// responses, so it is shown once.
+function FileDiagnosticsBanner({ diagnostics }: { diagnostics: ImportDiagnostic[] }) {
+  const { t } = useTranslation();
+  const seen = new Set<string>();
+  const unique = diagnostics.filter((d) => {
+    const key = `${d.concept ?? ''}|${d.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return (
+    <>
+      {unique.map((d) => (
+        <Alert
+          key={`${d.concept ?? ''}|${d.message}`}
+          severity={d.severity === 'warn' ? 'warning' : 'info'}
+          sx={{ mb: 2 }}
+        >
+          {d.concept === 'encoding'
+            ? t(
+                'contacts.import.fileDiagnostic.encoding',
+                "This file isn't UTF-8, so it was read as Windows-1252. Check that accented characters look right before you import.",
+              )
+            : d.message}
+        </Alert>
+      ))}
+    </>
+  );
+}
+
 // ImportRowCard is one contact's decision card in the review step: name,
 // match/diff summary, and the Merge / Keep Both / Discard New choice. Merge is
 // only offered when the row matched an EXISTING record — a within-batch
@@ -1388,6 +1574,7 @@ function ImportRowCard({
   const hasErrors = row.validation_errors.length > 0;
   // Issue #2186: a saved fix re-enables the row's decision buttons.
   const fixed = hasErrors && !!edit;
+  const unfixable = hasErrors && !fixed && hasUnfixableError(row);
   const [fixing, setFixing] = useState(false);
   const [draft, setDraft] = useState({
     firstname: edit?.firstname ?? row.parsed_contact.firstname ?? '',
@@ -1395,10 +1582,13 @@ function ImportRowCard({
     email: edit?.email ?? row.parsed_contact.email ?? '',
     phone: edit?.phone ?? row.parsed_contact.phone ?? '',
   });
+  // #2668: once a fix is saved the card summarises the edited values (an
+  // empty edit removes the value, as the server does).
+  const shown = fixed ? applyEdit(row.parsed_contact, edit) : row.parsed_contact;
   const name =
-    [row.parsed_contact.firstname, row.parsed_contact.lastname].filter(Boolean).join(' ').trim() ||
+    [shown.firstname, shown.lastname].filter(Boolean).join(' ').trim() ||
     t('contacts.import.preview.unnamed', 'Unnamed');
-  const sub = row.parsed_contact.email || row.parsed_contact.phone || '';
+  const sub = shown.email || shown.phone || '';
   const canMerge = !hasErrors && !!row.duplicate_match;
   // #2185: Keep both / Discard new only make sense against a duplicate; a
   // plain new row is just Keep or Skip. Same underlying add/skip values.
@@ -1433,7 +1623,7 @@ function ImportRowCard({
         <Avatar
           sx={{ width: 36, height: 36, bgcolor: 'primary.main', fontSize: '1rem', flexShrink: 0 }}
         >
-          {(row.parsed_contact.firstname || '?').charAt(0)}
+          {(shown.firstname || '?').charAt(0)}
         </Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
           <Typography variant="body2" sx={{ fontWeight: 500 }}>
@@ -1450,7 +1640,11 @@ function ImportRowCard({
             </Typography>
           )}
 
-          {hasErrors ? (
+          {fixed ? (
+            <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
+              {t('contacts.import.preview.willRecheck', 'Will be re-checked on import')}
+            </Typography>
+          ) : hasErrors ? (
             <Box>
               {row.validation_errors.map((e, i) => (
                 <Typography
@@ -1513,24 +1707,53 @@ function ImportRowCard({
             </Typography>
           )}
 
+          {(row.diagnostics ?? []).map((d) => (
+            <Typography
+              key={`${d.concept ?? ''}|${d.message}`}
+              variant="caption"
+              sx={{
+                display: 'block',
+                color: d.severity === 'warn' ? 'warning.dark' : 'text.secondary',
+              }}
+            >
+              {diagnosticText(t, d)}
+            </Typography>
+          ))}
+
           {!hasErrors && row.merge_diff && <ImportMergeDiffSummary diff={row.merge_diff} />}
 
-          {hasErrors && !fixing && (
+          {unfixable && (
+            <Typography
+              variant="caption"
+              sx={{ display: 'block', color: 'text.secondary', mt: 0.5 }}
+            >
+              {t(
+                'contacts.import.preview.cannotFixHere',
+                "This error can't be fixed here — skip the row or edit the contact after import",
+              )}
+            </Typography>
+          )}
+          {hasErrors && !unfixable && !fixing && (
             <Box sx={{ mt: 0.5, display: 'flex', gap: 1, alignItems: 'center' }}>
               <Button size="small" onClick={() => setFixing(true)}>
                 {fixed
                   ? t('contacts.import.preview.editFix', 'Edit fix')
                   : t('contacts.import.preview.fixRow', 'Fix this row')}
               </Button>
-              {fixed && (
-                <Typography variant="caption" sx={{ color: 'success.main' }}>
-                  {t('contacts.import.preview.fixSaved', 'Fix saved — checked again on import')}
-                </Typography>
-              )}
             </Box>
           )}
-          {hasErrors && fixing && (
-            <Box sx={{ mt: 1, display: 'grid', gap: 1, gridTemplateColumns: { sm: '1fr 1fr' } }}>
+          {hasErrors && !unfixable && fixing && (
+            <Box
+              sx={{ mt: 1, display: 'grid', gap: 1, gridTemplateColumns: { sm: '1fr 1fr' } }}
+              // Issue #2665: Escape abandons just this form; it must not reach
+              // the dialog, whose Escape handler would close the whole import.
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  e.stopPropagation();
+                  setFixing(false);
+                }
+              }}
+            >
               {(
                 [
                   ['firstname', t('contacts.import.preview.fixFirstName', 'First name')],
@@ -1591,6 +1814,11 @@ function ImportRowCard({
             fontWeight: 600,
           },
           '& .MuiToggleButton-root.Mui-selected:hover': { bgcolor: 'primary.dark' },
+          // Unselected labels default to text.secondary, 4.37:1 on the review
+          // card (axe color-contrast, #2688); primary text clears 4.5:1.
+          '& .MuiToggleButton-root:not(.Mui-selected):not(.Mui-disabled)': {
+            color: 'text.primary',
+          },
         }}
       >
         <ToggleButton value="add" disabled={hasErrors && !fixed}>

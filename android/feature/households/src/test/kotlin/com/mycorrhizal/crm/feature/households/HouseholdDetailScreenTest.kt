@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.households
 import android.content.Context
 import androidx.annotation.StringRes
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -190,14 +191,17 @@ class HouseholdDetailScreenTest {
             }
         }
 
-        // With fewer than two members the suggestion action is disabled and the
-        // "text everyone" action (needs >= 2 resolved phones) is disabled too.
+        // With fewer than two members the suggestion action is disabled. "Text everyone" (needs
+        // >= 2 resolved phones) stays tappable and says why it cannot send (issue #2630).
         composeTestRule.onNodeWithContentDescription(
             str(R.string.households_suggest_relationships)
         ).assertIsNotEnabled()
         composeTestRule.onNodeWithContentDescription(
             str(R.string.households_text_everyone)
-        ).assertIsNotEnabled()
+        ).assertIsEnabled().performClick()
+        composeTestRule.onNodeWithText(
+            "To text everyone, at least two members need a phone number."
+        ).assertIsDisplayed()
     }
 
     @Test

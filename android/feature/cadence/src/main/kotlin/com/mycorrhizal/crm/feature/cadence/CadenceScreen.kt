@@ -67,6 +67,7 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AmbientExplanation
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListBottomPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
@@ -93,6 +94,7 @@ fun CadenceScreen(
     // transient server failure (a failed load or write) and is toasted.
     val fatalError = state.errorRes?.let { stringResource(it) }
     val transientError = state.error?.localizedMessage()
+    val loadError = state.loadError
 
     Scaffold(
         modifier = modifier,
@@ -124,7 +126,9 @@ fun CadenceScreen(
         // the add affordance only exists in the empty (no-policy) state, like web.
         // Hidden on the fatal error state (a "no VCardUID" contact can't be created).
         floatingActionButton = {
-            if (state.policy == null && !state.isLoading && fatalError == null) {
+            if (state.policy == null && !state.isLoading && fatalError == null &&
+                state.loadError == null
+            ) {
                 BrandFab(onClick = { showDialog = true }) {
                     Icon(
                         Icons.Outlined.Add,
@@ -138,6 +142,10 @@ fun CadenceScreen(
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when {
                 state.isLoading -> LoadingSkeleton()
+
+                // Issue #2629: a failed contact fetch is the real error with Retry.
+                state.policy == null && loadError != null ->
+                    ErrorState(error = loadError, onRetry = viewModel::load)
 
                 state.policy == null && fatalError != null ->
                     EmptyState(title = fatalError)

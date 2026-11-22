@@ -6,12 +6,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.OccasionObligationRepository
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.model.network.OccasionObligationInput
 import com.mycorrhizal.crm.model.network.OccasionObligationKinds
 import com.mycorrhizal.crm.model.registry.OccasionSensitivity
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -45,6 +47,8 @@ data class ContactOccasionsUiState(
     /** Set after a successful create/update so the screen can close the form; see [ContactOccasionsViewModel.onSavedHandled]. */
     val saved: Boolean = false,
     @StringRes val errorRes: Int? = null,
+    /** Issue #2629: a failed contact fetch (nothing to list): ErrorState + Retry. */
+    val loadError: ApiError? = null,
     val error: ApiError? = null
 )
 
@@ -70,8 +74,22 @@ class ContactOccasionsViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
-            val uid = contactRepository.getContact(contactId).getOrNull()?.vcardUid
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    error = null,
+                    errorRes = null,
+                    loadError = null
+                )
+            }
+            val contact = contactRepository.getContact(contactId)
+            // A FAILED fetch says nothing about the UID: show the real error with Retry.
+            contact.exceptionOrNull()?.let { failure ->
+                val error = failure.toApiError()
+                _uiState.update { it.copy(isLoading = false, loadError = error) }
+                return@launch
+            }
+            val uid = contact.getOrNull()?.vcardUid
             if (uid.isNullOrBlank()) {
                 _uiState.update {
                     it.copy(isLoading = false, errorRes = R.string.entities_error_no_vcard_uid)
@@ -96,7 +114,7 @@ class ContactOccasionsViewModel @Inject constructor(
     fun save(original: OccasionObligation?, form: OccasionObligationFormData) {
         val state = _uiState.value
         if (state.isSaving || state.entityId.isBlank()) return
-        val leadTime = validate(form) ?: return
+        val leadTime = validate(original, form) ?: return
         val input = OccasionObligationInput(
             entityId = state.entityId,
             kind = form.kind.trim().ifEmpty { OccasionObligationKinds.CARD },
@@ -128,26 +146,14 @@ class ContactOccasionsViewModel @Inject constructor(
         }
     }
 
-    /** Returns the parsed lead time, or null after posting the validation error. */
-    private fun validate(form: OccasionObligationFormData): Int? {
-        val leadTime = form.leadTimeText.trim().ifEmpty { "0" }.toIntOrNull()
-        val errorRes = when {
-            form.label.isBlank() -> R.string.occasion_ob_validation_label_required
-
-            // The backend's "both or neither" anchor rule (ADR 0024), checked up front.
-            (form.anchorMonth == null) != (form.anchorDay == null) ->
-                R.string.occasion_ob_validation_anchor_both
-
-            leadTime == null || leadTime !in 0..MAX_LEAD_TIME_DAYS ->
-                R.string.occasion_ob_validation_lead_time
-
-            else -> null
-        }
-        if (errorRes != null) {
-            _uiState.update { it.copy(errorRes = errorRes, error = null) }
+    /** Returns the parsed lead time, or null after posting the first validation error. */
+    private fun validate(original: OccasionObligation?, form: OccasionObligationFormData): Int? {
+        val errors = validateOccasionForm(form, original)
+        if (errors.any) {
+            _uiState.update { it.copy(errorRes = errors.firstMessage, error = null) }
             return null
         }
-        return leadTime
+        return parseLeadTime(form.leadTimeText)
     }
 
     fun delete(id: String) {
@@ -172,5 +178,95 @@ class ContactOccasionsViewModel @Inject constructor(
 
     fun onErrorShown() {
         _uiState.update { it.copy(error = null, errorRes = null) }
+    }
+}
+
+/**
+ * The longest [month] gets in a yearly recurrence; February is 29 so a leap-day anchor stays
+ * expressible, and no month yet (null) allows 31. Mirrors the backend's `occasionMaxDay` table
+ * (controllers/occasion_obligation_controller.go) -- keep the two in sync.
+ */
+internal fun daysInMonth(month: Int?): Int = when (month) {
+    2 -> 29
+    4, 6, 9, 11 -> 30
+    else -> 31
+}
+
+/** Per-field validation results for the obligation form; a null field is valid. */
+internal data class OccasionFormErrors(
+    @StringRes val label: Int? = null,
+    @StringRes val month: Int? = null,
+    @StringRes val day: Int? = null,
+    /** Marks the Day field invalid without text of its own (the Month field carries it). */
+    val dayFlagged: Boolean = false,
+    @StringRes val leadTime: Int? = null
+) {
+    val any: Boolean get() = firstMessage != null
+
+    @get:StringRes
+    val firstMessage: Int? get() = label ?: month ?: day ?: leadTime
+}
+
+/** The anchor-date rule shared with the server (ADR 0024; issues #2648 #2670 #2671). */
+internal fun validateOccasionForm(
+    form: OccasionObligationFormData,
+    original: OccasionObligation?
+): OccasionFormErrors {
+    val month = form.anchorMonth
+    val day = form.anchorDay
+    // A row saved before dates were required may still be retired (saved inactive, still
+    // dateless); anything else needs a real month and day, as the server decides.
+    val legacyRetire = original != null && original.anchorMonth == null &&
+        original.anchorDay == null && !form.active
+    var errors = OccasionFormErrors(
+        label = R.string.occasion_ob_validation_label_required.takeIf { form.label.isBlank() },
+        leadTime = R.string.occasion_ob_validation_lead_time
+            .takeIf { parseLeadTime(form.leadTimeText) == null }
+    )
+    errors = when {
+        month == null && day == null ->
+            if (legacyRetire) {
+                errors
+            } else {
+                errors.copy(
+                    month = R.string.error_reason_occasion_anchor_date_required,
+                    dayFlagged = true
+                )
+            }
+
+        month == null ->
+            errors.copy(month = R.string.error_reason_occasion_anchor_date_incomplete)
+
+        day == null ->
+            errors.copy(day = R.string.error_reason_occasion_anchor_date_incomplete)
+
+        day > daysInMonth(month) ->
+            errors.copy(day = R.string.error_reason_occasion_anchor_date_invalid)
+
+        else -> errors
+    }
+    return errors
+}
+
+/** The lead time in days (blank means 0), or null when it is not a whole number from 0 to 365. */
+internal fun parseLeadTime(text: String): Int? =
+    text.trim().ifEmpty { "0" }.toIntOrNull()?.takeIf { it in 0..MAX_LEAD_TIME_DAYS }
+
+/** Which form field a server anchor-date rejection belongs on (mirrors the web dialog). */
+internal enum class AnchorField { MONTH, DAY }
+
+internal fun ApiError.anchorDateField(): AnchorField? {
+    val code = when (this) {
+        is ApiError.Client -> reason?.code
+        is ApiError.Server -> reason?.code
+        else -> null
+    }
+    return when (code) {
+        ErrorReasonCode.OCCASION_ANCHOR_DATE_REQUIRED -> AnchorField.MONTH
+
+        ErrorReasonCode.OCCASION_ANCHOR_DATE_INCOMPLETE,
+        ErrorReasonCode.OCCASION_ANCHOR_DATE_INVALID -> AnchorField.DAY
+
+        else -> null
     }
 }

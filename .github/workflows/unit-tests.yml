@@ -148,7 +148,7 @@ jobs:
       # that covers code, docs, and the English UI strings alike. The action
       # is pinned by commit SHA; _typos.toml owns the excludes and allowlist.
       - name: Check spelling (typos)
-        uses: crate-ci/typos@4c8b7f51ca60df14e3c5ca82770dfbbe6c3dae85 # v1.52.0
+        uses: crate-ci/typos@276087d9a4f06398b3e04825487805e2d7375888 # v1.52.2
         with:
           config: ./_typos.toml
 
@@ -1167,9 +1167,10 @@ jobs:
             echo "file=coverage.out" >> "$GITHUB_OUTPUT"
           fi
 
-      # Issue #294: informational only -- a failed upload must not fail the
-      # build (fail_ci_if_error: false). disable_search so only the selected
-      # profile is sent, not the per-leg parts alongside it (#639).
+      # Issue #294: a same-repo PR must fail if the upload fails (see the
+      # fail_ci_if_error expression); the fork path keeps the old retry-and-
+      # stub behavior. disable_search so only the selected profile is sent,
+      # not the per-leg parts alongside it (#639).
       - name: Upload coverage to Codecov
         if: needs.backend-tests.result == 'success' && steps.merge.outputs.ok == 'true'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
@@ -1178,7 +1179,11 @@ jobs:
           files: backend/${{ steps.covprofile.outputs.file }}
           disable_search: true
           flags: backend
-          fail_ci_if_error: false
+          # A same-repo PR must not go green when the upload failed: no report
+          # plus flag_coverage_not_uploaded_behavior=pass would make the
+          # required codecov/patch/backend check succeed with new files
+          # unmeasured. Fork PRs keep the retry-and-stub path.
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
       # !cancelled() + the cross step having run: judge the (possibly partial)
       # profile even when its tests failed, so both signals show up.
@@ -1225,7 +1230,10 @@ jobs:
       contents: read
     name: Frontend (Vitest)
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
-    timeout-minutes: 15
+    # Issue #2539: includes the real-browser tier, whose Playwright install is
+    # bounded at 16 min on a cold apt/browser cache (same budget as the e2e
+    # jobs), plus the jsdom suite, type check, lint and knip.
+    timeout-minutes: 30
     needs: changes
     # Scheduled runs must always run the full suite (there is no diff to gate
     # on) — same exemption pattern as zizmor.yml/sast.yml.
@@ -1264,6 +1272,56 @@ jobs:
           CI: true
           VITE_API_URL: http://localhost:8080
 
+      # Issue #2539: the real-browser component tier (vitest browser mode).
+      # *.browser.test.tsx is excluded from the jsdom run above and needs a
+      # real Chromium layout engine (media queries, scrolling, image
+      # measurement). The browser install deliberately reuses e2e-tests.yml's
+      # cache keys and hardened retry script instead of `npx playwright
+      # install`: the cache entries are the same ones the e2e jobs and
+      # playwright-cache-warm.yml keep warm, and backend/internal/e2einstall
+      # pins the script's timeout budget (issue #1549).
+      - name: Detect runner image
+        id: image
+        run: |
+          echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+          echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache apt packages for Playwright
+        id: apt-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+
+      - name: Install Playwright browsers
+        # Bounded and retried (issue #1549), same script and budget as the e2e
+        # chromium job; 16 min covers its computed worst case.
+        timeout-minutes: 16
+        working-directory: frontend
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium
+
+      - name: Save apt packages for Playwright
+        # Saved even when the install step fails or times out (issue #2826) so
+        # a slow Ubuntu mirror does not throw away every .deb it fetched --
+        # same reason and condition as e2e-tests.yml.
+        if: ${{ always() && steps.apt-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+
+      - name: Vitest browser mode
+        working-directory: frontend
+        run: npm run test:browser
+
       # Per-file no-regression ratchet (backend counterpart:
       # cmd/coverageratchet). Compares coverage/coverage-summary.json
       # against frontend/coverage-baseline.json. Regenerate via
@@ -1272,15 +1330,15 @@ jobs:
         working-directory: frontend
         run: yarn coverage:ratchet
 
-      # Issue #294: see the backend job's identical step for why
-      # fail_ci_if_error is false.
+      # Issue #294: see the backend job's identical step for the
+      # same-repo-PR fail-closed expression.
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: frontend/coverage/lcov.info
           flags: frontend
-          fail_ci_if_error: false
+          fail_ci_if_error: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
 
       - name: Type check
         working-directory: frontend

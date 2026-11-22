@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"mycorrhizal/config"
+	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
 	"mycorrhizal/internal/faults"
 	"mycorrhizal/models"
 	"mycorrhizal/photostore"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -48,6 +50,11 @@ type importSessionData struct {
 	importType  string           // "csv", "vcf", or "records" — what Confirm/ConfirmVCF dispatch on
 	vcfContacts []VCFContactData // VCF parsed contacts (nil for CSV imports)
 	csvContacts []models.Contact // CSV contacts built during preview (nil for VCF imports)
+
+	// fileDiagnostics are the upload's file-level notices (e.g. the
+	// Windows-1252 fallback warning, issue #2669), echoed on the preview
+	// response of a CSV session.
+	fileDiagnostics []contactmodel.Diagnostic
 
 	// sourceFormat is the true origin of the data for the persisted
 	// import_runs history (issue #651): "csv" | "vcf" | "jscontact" |
@@ -248,6 +255,12 @@ func (m *ImportSessionManager) CountActive(userID uint) int {
 
 // CreateCSVSession stores a freshly parsed CSV upload and returns its session ID.
 func (m *ImportSessionManager) CreateCSVSession(userID uint, headers []string, rows [][]string) string {
+	return m.CreateCSVSessionWithDiagnostics(userID, headers, rows, nil)
+}
+
+// CreateCSVSessionWithDiagnostics is CreateCSVSession carrying the upload's
+// file-level diagnostics so the later preview response can repeat them.
+func (m *ImportSessionManager) CreateCSVSessionWithDiagnostics(userID uint, headers []string, rows [][]string, fileDiags []contactmodel.Diagnostic) string {
 	sessionID := generateSessionID()
 	now := Now()
 
@@ -261,9 +274,10 @@ func (m *ImportSessionManager) CreateCSVSession(userID uint, headers []string, r
 			CreatedAt: now,
 			ExpiresAt: now.Add(sessionExpiry),
 		},
-		rows:         rows,
-		importType:   "csv",
-		sourceFormat: models.ImportFormatCSV,
+		rows:            rows,
+		importType:      "csv",
+		sourceFormat:    models.ImportFormatCSV,
+		fileDiagnostics: fileDiags,
 	}
 	m.mu.Unlock()
 
@@ -399,6 +413,7 @@ func (m *ImportSessionManager) PreviewCSV(db *gorm.DB, userID uint, req models.I
 		DuplicateCount: stats.DuplicateCount,
 		ErrorCount:     stats.ErrorCount,
 
+		FileDiagnostics: models.DiagnosticsOrEmpty(sessionData.fileDiagnostics),
 		FixedAssignment: BuildImportFixedAssignmentPreview(fixed, previews),
 	}, nil
 }
@@ -534,6 +549,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Created++
+					reportImportWarnings(&result, preview)
 					if isVCFImport {
 						vcfContacts[preview.RowIndex].Contact.ID = contact.ID
 					}
@@ -581,6 +597,7 @@ func (m *ImportSessionManager) Confirm(db *gorm.DB, userID uint, req models.Impo
 						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Updated++
+					reportImportWarnings(&result, preview)
 					if isVCFImport {
 						vcfContacts[preview.RowIndex].Contact.ID = existing.ID
 					}
@@ -753,6 +770,7 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Created++
+					reportImportWarnings(&result, preview)
 					// Queue photo processing (either embedded data or URL)
 					if len(vcfData.PhotoData) > 0 || vcfData.PhotoURL != "" {
 						photoTasks = append(photoTasks, photoTask{
@@ -803,6 +821,7 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 						reportRowFailure(log, &result, preview, "apply fixed circles/tags", err)
 					}
 					result.Updated++
+					reportImportWarnings(&result, preview)
 					// Queue photo processing only if contact doesn't already have a photo
 					if existing.Photo == "" && (len(vcfData.PhotoData) > 0 || vcfData.PhotoURL != "") {
 						photoTasks = append(photoTasks, photoTask{
@@ -921,4 +940,70 @@ func logImportedFieldPromotionNotes(log *zerolog.Logger, notes []string) {
 	for _, n := range notes {
 		log.Warn().Msgf("Import custom-field promotion: %s", n)
 	}
+}
+
+// Cancel discards the caller's own CSV/VCF/JSContact/records session without
+// importing anything (issue #2664). Idempotent: it reports whether a live
+// session was removed, and an unknown, expired, already-confirmed or foreign
+// session is simply "nothing to do" (false), never an error, so a client can
+// call it on every dialog close without caring about the session's state and
+// cannot probe another user's session ids. A confirmed session's replay
+// tombstone is deliberately left alone.
+func (m *ImportSessionManager) Cancel(userID uint, sessionID string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sd, ok := m.sessions[sessionID]
+	if !ok || sd.session.UserID != userID {
+		return false
+	}
+	delete(m.sessions, sessionID)
+	return true
+}
+
+// MakeRoomForSession frees capacity for one new session for userID (issue
+// #2664): the user's expired sessions are dropped, then, if they still hold
+// MaxImportSessionsPerUser or more, the OLDEST are evicted until one slot is
+// free. The per-user memory bound of issue #415 is kept (a user never holds
+// more than the cap), but abandoned sessions -- a closed dialog, a rejected
+// file -- no longer lock the user out until they expire. A session whose
+// confirm is running is never evicted. Returns how many live sessions were
+// evicted. Upload handlers call this immediately before creating a session.
+func (m *ImportSessionManager) MakeRoomForSession(userID uint) int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	now := Now()
+	var live []*importSessionData
+	for id, sd := range m.sessions {
+		if sd.session.UserID != userID {
+			continue
+		}
+		if now.After(sd.session.ExpiresAt) {
+			delete(m.sessions, id)
+			continue
+		}
+		live = append(live, sd)
+	}
+	sort.Slice(live, func(i, j int) bool {
+		if !live[i].session.CreatedAt.Equal(live[j].session.CreatedAt) {
+			return live[i].session.CreatedAt.Before(live[j].session.CreatedAt)
+		}
+		return live[i].session.ID < live[j].session.ID
+	})
+
+	evicted := 0
+	remaining := len(live)
+	for _, sd := range live {
+		if remaining < MaxImportSessionsPerUser {
+			break
+		}
+		if !sd.confirmMu.TryLock() {
+			continue // a confirm is committing this session right now
+		}
+		sd.confirmMu.Unlock()
+		delete(m.sessions, sd.session.ID)
+		remaining--
+		evicted++
+	}
+	return evicted
 }

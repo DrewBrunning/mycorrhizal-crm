@@ -58,7 +58,9 @@ export default function ShareTargetPage() {
       <Box
         sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'flex-start' }}
       >
-        <Alert severity="info">{t('shareTarget.missing')}</Alert>
+        <Alert severity="info" role="status">
+          {t('shareTarget.missing')}
+        </Alert>
         <Button variant="outlined" onClick={() => void navigate('/', { replace: true })}>
           {t('shareTarget.backHome')}
         </Button>

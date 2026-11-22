@@ -1,15 +1,20 @@
+import SearchIcon from '@mui/icons-material/Search';
 import {
   Box,
   Chip,
+  IconButton,
+  InputAdornment,
   List,
+  ListItem,
   ListItemButton,
   ListItemText,
   Paper,
   Tab,
   Tabs,
+  TextField,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useSearchParams } from 'react-router';
 import { type SearchResult, searchAll } from './api/search';
@@ -26,6 +31,7 @@ import {
   noteHref,
   type SearchTab,
 } from './utils/searchLinks';
+import { matchReason } from './utils/searchMatch';
 
 // #2174: the full results page behind the top-bar search — one tab per
 // category. It asks for the server's maximum page (50) per category; when a
@@ -34,8 +40,8 @@ const PAGE_LIMIT = 50;
 const MIN_QUERY_LENGTH = 2;
 const TABS: SearchTab[] = ['contacts', 'notes', 'activities', 'entities'];
 
-function parseTab(raw: string | null): SearchTab {
-  return TABS.includes(raw as SearchTab) ? (raw as SearchTab) : 'contacts';
+function explicitTab(raw: string | null): SearchTab | null {
+  return TABS.includes(raw as SearchTab) ? (raw as SearchTab) : null;
 }
 
 export default function SearchResultsPage() {
@@ -44,7 +50,7 @@ export default function SearchResultsPage() {
   const { formatDate } = useDateFormat();
   const [searchParams, setSearchParams] = useSearchParams();
   const query = (searchParams.get('q') || '').trim();
-  const tab = parseTab(searchParams.get('tab'));
+  const requestedTab = explicitTab(searchParams.get('tab'));
   const tooShort = [...query].length < MIN_QUERY_LENGTH;
 
   const [result, setResult] = useState<SearchResult | null>(null);
@@ -86,6 +92,23 @@ export default function SearchResultsPage() {
     entities: result?.entities.length ?? 0,
   };
 
+  // #2698: with no explicit tab, open the first category that has hits (an
+  // explicit ?tab= is always honoured; all-empty falls back to Contacts).
+  const tab: SearchTab = requestedTab ?? TABS.find((k) => counts[k] > 0) ?? 'contacts';
+
+  // #2692: the AppBar search is absent on phones, so the page has its own field.
+  const [draft, setDraft] = useState(query);
+  useEffect(() => setDraft(query), [query]);
+  const fieldRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!query) fieldRef.current?.focus();
+  }, [query]);
+  const submitDraft = (e: FormEvent) => {
+    e.preventDefault();
+    const term = draft.trim();
+    if (term) setSearchParams({ q: term });
+  };
+
   const categoryName = (k: SearchTab) =>
     k === 'contacts'
       ? t('globalSearch.groupContacts')
@@ -119,17 +142,34 @@ export default function SearchResultsPage() {
     primary: string,
     secondary?: string,
     chip?: string,
+    // Issue #2744: why the hit matched, on its own line so a narrow screen keeps the title wide.
+    reason?: string,
   ) => (
-    <ListItemButton key={key} component={RouterLink} to={to}>
-      <ListItemText
-        primary={primary}
-        secondary={secondary}
-        slotProps={{
-          primary: { sx: { overflowWrap: 'anywhere' } },
-        }}
-      />
-      {chip && <Chip size="small" variant="outlined" label={chip} sx={{ ml: 2, flexShrink: 0 }} />}
-    </ListItemButton>
+    <ListItem key={key} disablePadding>
+      <ListItemButton component={RouterLink} to={to}>
+        <ListItemText
+          primary={primary}
+          secondary={
+            secondary || reason ? (
+              <>
+                {secondary}
+                {reason && (
+                  <Box component="span" sx={{ display: 'block', fontStyle: 'italic' }}>
+                    {reason}
+                  </Box>
+                )}
+              </>
+            ) : undefined
+          }
+          slotProps={{
+            primary: { sx: { overflowWrap: 'anywhere' } },
+          }}
+        />
+        {chip && (
+          <Chip size="small" variant="outlined" label={chip} sx={{ ml: 2, flexShrink: 0 }} />
+        )}
+      </ListItemButton>
+    </ListItem>
   );
 
   const renderTab = () => {
@@ -145,6 +185,8 @@ export default function SearchResultsPage() {
                 contactHref(c.id),
                 `${c.firstname} ${c.lastname}`.trim() || c.fn || '',
                 [c.org, c.primary_email].filter(Boolean).join(' · ') || undefined,
+                undefined,
+                matchReason(t, c.matched_on),
               ),
             )}
           {tab === 'notes' &&
@@ -193,11 +235,29 @@ export default function SearchResultsPage() {
       <Typography variant="h5" component="h1" gutterBottom>
         {t('globalSearch.pageTitle')}
       </Typography>
-      {query && (
-        <Typography sx={{ color: 'text.secondary', mb: 2, overflowWrap: 'anywhere' }}>
-          “{query}”
-        </Typography>
-      )}
+      <Box component="form" role="search" onSubmit={submitDraft} sx={{ mb: 2 }}>
+        <TextField
+          type="search"
+          fullWidth
+          size="small"
+          label={t('globalSearch.label')}
+          placeholder={t('globalSearch.placeholder')}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          inputRef={fieldRef}
+          slotProps={{
+            input: {
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton type="submit" size="small" aria-label={t('app.submitSearch')}>
+                    <SearchIcon />
+                  </IconButton>
+                </InputAdornment>
+              ),
+            },
+          }}
+        />
+      </Box>
       {tooShort ? (
         <Typography sx={{ color: 'text.secondary' }}>
           {t('contacts.searchMinLengthHint')}
@@ -208,12 +268,13 @@ export default function SearchResultsPage() {
             value={tab}
             onChange={(_, v: SearchTab) => {
               const next = new URLSearchParams(searchParams);
-              if (v === 'contacts') next.delete('tab');
-              else next.set('tab', v);
+              next.set('tab', v); // always explicit: Contacts may be the empty tab
               setSearchParams(next, { replace: true });
             }}
             aria-label={t('globalSearch.tabsLabel')}
             variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{ mb: 2 }}
           >
             {TABS.map((k) => (

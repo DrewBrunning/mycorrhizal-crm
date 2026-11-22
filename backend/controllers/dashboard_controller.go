@@ -33,7 +33,10 @@ func GetDashboard(c *gin.Context) {
 		return
 	}
 
-	now := reminderNow(c)
+	now, ok := viewerNow(c)
+	if !ok {
+		return
+	}
 
 	birthdays, err := services.GetUpcomingBirthdays(db, userID, now)
 	if err != nil {

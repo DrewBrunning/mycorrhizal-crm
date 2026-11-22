@@ -16,7 +16,9 @@ data class ImportUploadResponse(
     val headers: List<String> = emptyList(),
     @Json(name = "suggested_mappings") val suggestedMappings: List<ColumnMapping> = emptyList(),
     @Json(name = "row_count") val rowCount: Int = 0,
-    @Json(name = "sample_data") val sampleData: List<List<String>> = emptyList()
+    @Json(name = "sample_data") val sampleData: List<List<String>> = emptyList(),
+    /** Issue #2731: file-level notices (e.g. read as Windows-1252); `[]` or absent when none. */
+    @Json(name = "file_diagnostics") val fileDiagnostics: List<ImportDiagnostic> = emptyList()
 )
 
 /**
@@ -67,6 +69,19 @@ data class ImportMergeDiff(
     val added: List<ImportAddedValue> = emptyList()
 )
 
+/**
+ * Issue #2641: one adapter event on an import row — mirrors backend
+ * `contactmodel.Diagnostic`. [severity] is `warn` or `info`; [concept] is a
+ * correspondence concept id and is omitted by the server when empty; [message]
+ * is server-side English text (e.g. the name was taken from the email).
+ */
+@JsonClass(generateAdapter = true)
+data class ImportDiagnostic(
+    val severity: String = "",
+    val concept: String = "",
+    val message: String = ""
+)
+
 @JsonClass(generateAdapter = true)
 data class ImportRowPreview(
     @Json(name = "row_index") val rowIndex: Int = 0,
@@ -74,7 +89,7 @@ data class ImportRowPreview(
     @Json(name = "validation_errors") val validationErrors: List<String> = emptyList(),
     @Json(name = "duplicate_match") val duplicateMatch: DuplicateMatch? = null,
     @Json(name = "suggested_action") val suggestedAction: String = "add",
-    val diagnostics: List<String>? = null,
+    val diagnostics: List<ImportDiagnostic>? = null,
     @Json(name = "merge_diff") val mergeDiff: ImportMergeDiff? = null,
     @Json(name = "batch_duplicate_of") val batchDuplicateOf: Int? = null,
     /**
@@ -142,7 +157,9 @@ data class ImportPreviewResponse(
     @Json(name = "valid_rows") val validRows: Int = 0,
     @Json(name = "duplicate_count") val duplicateCount: Int = 0,
     @Json(name = "error_count") val errorCount: Int = 0,
-    @Json(name = "fixed_assignment") val fixedAssignment: ImportFixedAssignment? = null
+    @Json(name = "fixed_assignment") val fixedAssignment: ImportFixedAssignment? = null,
+    /** Issue #2731: the upload's file-level notices, echoed on the preview; `[]` when none. */
+    @Json(name = "file_diagnostics") val fileDiagnostics: List<ImportDiagnostic> = emptyList()
 )
 
 @JsonClass(generateAdapter = true)
@@ -173,6 +190,14 @@ data class ImportRowEdit(
     val phone: String? = null
 )
 
+/**
+ * Issue #2664 / #2734: body of `POST /contacts/import/cancel`, which discards the caller's own
+ * unconfirmed CSV / VCF / JSContact / records import session. The server always answers 200
+ * `{"status":"cancelled"}`, so the response is not modelled.
+ */
+@JsonClass(generateAdapter = true)
+data class ImportCancelRequest(@Json(name = "session_id") val sessionId: String)
+
 /** T96: request body for the records-import endpoint (device-contacts path). */
 @JsonClass(generateAdapter = true)
 data class ImportRecordsRequest(val records: List<ContactRecordInput>)
@@ -190,7 +215,10 @@ data class ImportResult(
 
 /**
  * Issue #2187: one row that was not (fully) imported. Mirrors backend `models.ImportRowIssue`;
- * [row] is 1-based and [status] is `"skipped"` or `"failed"`.
+ * [row] is 1-based. [status] is `"skipped"`, `"failed"` or (issue #2746) `"warning"`: a row that
+ * DID import but lost a value, with [concept] (`birthday` | `anniversary`) naming what. It is a
+ * plain string so a status a newer server adds decodes instead of throwing; see
+ * [ImportIssueStatus].
  */
 @JsonClass(generateAdapter = true)
 data class ImportRowIssue(
@@ -199,8 +227,17 @@ data class ImportRowIssue(
     val email: String = "",
     val phone: String = "",
     val status: String = "skipped",
-    val reason: String = ""
+    val reason: String = "",
+    /** Issue #2746: the stable key to localize a `warning` by; omitted by the server otherwise. */
+    val concept: String = ""
 )
+
+/** [ImportRowIssue.status] tokens this client knows; anything else is shown as a neutral note. */
+object ImportIssueStatus {
+    const val SKIPPED = "skipped"
+    const val FAILED = "failed"
+    const val WARNING = "warning"
+}
 
 /**
  * One persisted import outcome (issue #651), returned newest-first by
@@ -316,8 +353,20 @@ data class SourceImportStatus(
     @Json(name = "phase_done") val phaseDone: Int = 0,
     @Json(name = "phase_total") val phaseTotal: Int = 0,
     val error: String? = null,
+    /**
+     * Issue #2735 / #2727, ADR 0038: the #2093 reason code of a failed Meerkat fetch
+     * (`meerkat_fetch_unreachable`, `meerkat_fetch_unreadable`, `meerkat_api_error`); present
+     * only when [phase] is `failed` and the cause is coded. [error] stays the English fallback.
+     */
+    @Json(name = "error_reason_code") val errorReasonCode: String? = null,
+    @Json(name = "error_reason_params") val errorReasonParams: Map<String, Any?>? = null,
     val result: SourceImportResult? = null
 ) {
+    /** The coded failure, or null when the server sent none (or a blank code). */
+    val errorReason: ErrorReason?
+        get() = errorReasonCode?.takeIf { it.isNotBlank() }
+            ?.let { ErrorReason(it, errorReasonParams.orEmpty()) }
+
     val isReady: Boolean get() = phase == "ready"
     val isDone: Boolean get() = phase == "done"
     val isFailed: Boolean get() = phase == "failed" || phase == "cancelled"

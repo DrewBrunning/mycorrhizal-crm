@@ -10,6 +10,8 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.google.services) apply false
     alias(libs.plugins.about.libraries) apply false
+    // Issue #2534: Compose screenshot regression (record/verify goldens).
+    alias(libs.plugins.roborazzi) apply false
     // Issue #1908: root-side aggregate tasks (buildHealth), applied from
     // build-logic's classpath so AGP is visible to the analyzer.
     id("mycorrhizal.dependency-analysis")

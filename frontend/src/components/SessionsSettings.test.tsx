@@ -76,6 +76,9 @@ test('shows a human-readable device name with the raw user-agent in a tooltip', 
   );
 
   const label = await screen.findByText('Chrome 153 on Linux');
+  // #2536: the device description is derived from the user-agent, which the
+  // Tooltip also copies into aria-label -- data, never translatable copy.
+  expect(label).toHaveAttribute('data-user-content');
   expect(screen.queryByText(/Mozilla\/5\.0/)).not.toBeInTheDocument();
   fireEvent.mouseOver(label);
   const tooltip = await screen.findByRole('tooltip');

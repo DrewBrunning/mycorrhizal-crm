@@ -36,13 +36,21 @@ data class StandingShareUiState(
     val error: ApiError? = null,
     @StringRes val errorRes: Int? = null,
     val recipients: List<UserDirectoryEntry> = emptyList(),
-    val selectedRecipientId: Long? = null,
+    /** True when the server only searches by username (inferred); see [RecipientDirectorySearch]. */
+    val recipientSearchMode: Boolean = false,
+    /** The text typed into the recipient field (search mode only). */
+    val recipientQuery: String = "",
+    /** The newest directory request for [recipientQuery] has answered. */
+    val recipientSearchSettled: Boolean = false,
+    /** The chosen recipient, kept even when a later search no longer lists them. */
+    val selectedRecipient: UserDirectoryEntry? = null,
     /** Days until the grant expires, or null for no expiry. */
     val expiryDays: Int? = null,
     val isSharing: Boolean = false,
     /** Set when the grant was created; the screen navigates to "Shared by me". */
     val shared: Boolean = false
 ) {
+    val selectedRecipientId: Long? get() = selectedRecipient?.id
     val canShare: Boolean get() = selectedRecipientId != null && !isSharing
 }
 
@@ -68,27 +76,48 @@ class StandingShareViewModel @Inject constructor(
     /** The clock for "N days from now"; tests replace it. */
     internal var now: () -> Instant = { Instant.now() }
 
+    fun load() {
+        if (_uiState.value.isLoading) return
+        _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
+        search.load()
+    }
+
+    /** Search mode: the text typed into the recipient field (debounced, newest answer wins). */
+    fun setRecipientQuery(query: String) {
+        _uiState.update { state ->
+            // Editing the text after a pick means the user is choosing someone else.
+            val keep = state.selectedRecipient?.takeIf { it.username == query.trim() }
+            state.copy(selectedRecipient = keep)
+        }
+        search.setQuery(query)
+    }
+
+    private val search = RecipientDirectorySearch(
+        scope = viewModelScope,
+        repository = contactShareRepository,
+        onState = { s ->
+            _uiState.update {
+                it.copy(
+                    isLoading = s.isLoading,
+                    recipients = s.recipients,
+                    recipientSearchMode = s.searchMode,
+                    recipientQuery = s.query,
+                    recipientSearchSettled = s.settled
+                )
+            }
+        },
+        onError = { error -> _uiState.update { it.copy(error = error) } }
+    )
+
     init {
         load()
     }
 
-    fun load() {
-        if (_uiState.value.isLoading) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
-            contactShareRepository.userDirectory().foldApiError(
-                onSuccess = { recipients ->
-                    _uiState.update { it.copy(isLoading = false, recipients = recipients) }
-                },
-                onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
-                }
-            )
-        }
-    }
-
     fun selectRecipient(id: Long?) {
-        _uiState.update { it.copy(selectedRecipientId = id) }
+        val picked = id?.let { wanted -> _uiState.value.recipients.firstOrNull { it.id == wanted } }
+        _uiState.update { it.copy(selectedRecipient = picked) }
+        // In search mode the field shows the picked name; that must not trigger a search.
+        if (picked != null && _uiState.value.recipientSearchMode) search.showQuery(picked.username)
     }
 
     fun setExpiryDays(days: Int?) {

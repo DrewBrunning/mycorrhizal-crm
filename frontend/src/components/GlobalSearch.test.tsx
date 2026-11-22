@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
@@ -36,7 +36,7 @@ function renderSearch() {
 }
 
 async function type(value: string) {
-  const box = screen.getByPlaceholderText('Search contacts, notes, activities…');
+  const box = screen.getByPlaceholderText('Search contacts, notes, activities, places…');
   fireEvent.focus(box);
   fireEvent.change(box, { target: { value } });
   await act(async () => {
@@ -153,7 +153,9 @@ test('shows a no-results row when nothing matches, still linking to the results 
   vi.mocked(searchAll).mockResolvedValue(result());
   renderSearch();
   await type('zzz');
-  expect(screen.getByText('No results for "zzz".')).toBeInTheDocument();
+  expect(
+    within(screen.getByRole('listbox')).getByText('No results for "zzz".'),
+  ).toBeInTheDocument();
 });
 
 test('a failed search leaves the dropdown empty instead of throwing', async () => {
@@ -187,7 +189,7 @@ test('entities get their own group with the kind (and a non-normal sensitivity) 
   vi.mocked(searchAll).mockResolvedValue(full);
   renderSearch();
   await type('ali');
-  expect(screen.getByText('Entities')).toBeInTheDocument();
+  expect(screen.getByText('Organisations, places & pets')).toBeInTheDocument();
   expect(screen.getByText('Alice Holdings')).toBeInTheDocument();
   expect(screen.getByText('Organisation')).toBeInTheDocument();
   expect(screen.getByText('Alice the cat')).toBeInTheDocument();
@@ -207,7 +209,150 @@ test('an entities-only result is a result: no "no results" row, and see-all is o
   vi.mocked(searchAll).mockResolvedValue(result({ entities: full.entities }));
   renderSearch();
   await type('ali');
-  expect(screen.getByText('Entities')).toBeInTheDocument();
+  expect(screen.getByText('Organisations, places & pets')).toBeInTheDocument();
   expect(screen.queryByText(/No results for/)).not.toBeInTheDocument();
   expect(screen.getByText('See all results for "ali"')).toBeInTheDocument();
+});
+
+// #2695: valid combobox/listbox ARIA with a named input and announced counts.
+test('the input is a named combobox (#2695)', () => {
+  renderSearch();
+  expect(screen.getByRole('combobox', { name: 'Search everything' })).toBeInTheDocument();
+});
+
+test('the open dropdown is a valid listbox: presentation wrappers, named groups, options inside groups (#2695)', async () => {
+  vi.mocked(searchAll).mockResolvedValue(full);
+  renderSearch();
+  await type('ali');
+  const listbox = screen.getByRole('listbox', { name: 'Search everything' });
+  expect(listbox).not.toHaveAttribute('aria-labelledby');
+  // aria-required-children: a listbox may only own options and groups.
+  for (const child of Array.from(listbox.children)) {
+    expect(child.getAttribute('role')).toBe('presentation');
+  }
+  for (const name of ['Contacts', 'Notes', 'Activities', 'Organisations, places & pets']) {
+    expect(within(listbox).getByRole('group', { name })).toBeInTheDocument();
+  }
+  // aria-required-parent: every option sits in a group (or the listbox itself).
+  for (const option of within(listbox).getAllByRole('option')) {
+    expect(option.parentElement?.getAttribute('role')).toBe('group');
+  }
+  // No bare <ul> left between the wrappers and the options.
+  expect(listbox.querySelectorAll('ul:not([role])')).toHaveLength(0);
+});
+
+test('announces the number of results after each response (#2695)', async () => {
+  vi.mocked(searchAll).mockResolvedValue(full);
+  renderSearch();
+  await type('ali');
+  expect(screen.getByText('6 results').closest('[role="status"]')).toBeInTheDocument();
+  vi.mocked(searchAll).mockResolvedValue(result());
+  await type('zzz');
+  // The live region and the "no results" row both carry the text.
+  const none = screen.getAllByText('No results for "zzz".');
+  expect(none.some((el) => el.closest('[role="status"]'))).toBe(true);
+});
+
+// #2697: Escape leaves a stale highlight that made Enter a no-op.
+test('Enter submits again after a highlight was dismissed with Escape (#2697)', async () => {
+  vi.mocked(searchAll).mockResolvedValue(full);
+  renderSearch();
+  const box = await type('gre');
+  fireEvent.keyDown(box, { key: 'ArrowDown' });
+  fireEvent.keyDown(box, { key: 'Escape' });
+  await type('');
+  await type('zzqqxx');
+  fireEvent.keyDown(box, { key: 'Enter' });
+  expect(screen.getByTestId('where')).toHaveTextContent('/search?q=zzqqxx');
+});
+
+// #2710: a failed request used to leave an empty, silent popup.
+test('a failed search shows an error row that opens the results page (#2710)', async () => {
+  const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  vi.mocked(searchAll).mockRejectedValue(new Error('boom'));
+  renderSearch();
+  await type('ali');
+  const row = within(screen.getByRole('listbox')).getByText(
+    "Couldn't search right now. Press Enter to open the results page.",
+  );
+  fireEvent.click(row);
+  expect(screen.getByTestId('where')).toHaveTextContent('/search?q=ali');
+  spy.mockRestore();
+});
+
+test('falls back to the formatted name and the description for sparse hits', async () => {
+  vi.mocked(searchAll).mockResolvedValue(
+    result({
+      contacts: [{ id: 4, uid: 'u4', firstname: '', lastname: '', fn: 'Dr Who' }],
+      activities: [{ id: 8, title: '', description: 'Quiet walk', date: '2026-02-01T00:00:00Z' }],
+    }),
+  );
+  renderSearch();
+  await type('wh');
+  expect(screen.getByText('Dr Who')).toBeInTheDocument();
+  expect(screen.getByText('Quiet walk')).toBeInTheDocument();
+});
+
+test('a failure for an abandoned query does not replace the newer results (#960)', async () => {
+  const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  let rejectSlow!: (e: Error) => void;
+  vi.mocked(searchAll)
+    .mockReturnValueOnce(new Promise((_, rej) => (rejectSlow = rej)))
+    .mockResolvedValueOnce(
+      result({ contacts: [{ id: 2, uid: 'u2', firstname: 'John', lastname: 'Smith' }] }),
+    );
+  renderSearch();
+  await type('jo');
+  await type('john');
+  await act(async () => {
+    rejectSlow(new Error('late'));
+  });
+  expect(screen.getByText('John Smith')).toBeInTheDocument();
+  expect(screen.queryByText(/Couldn't search right now/)).not.toBeInTheDocument();
+  spy.mockRestore();
+});
+
+test('Enter on a blank box does nothing', async () => {
+  renderSearch();
+  const box = screen.getByRole('combobox', { name: 'Search everything' });
+  fireEvent.change(box, { target: { value: '   ' } });
+  fireEvent.keyDown(box, { key: 'Enter' });
+  expect(screen.getByTestId('where')).toHaveTextContent(/^\/$/);
+});
+
+// #2744: a contact hit that matched somewhere other than its name says where.
+test('a contact hit shows why it matched; name-only and absent show nothing (#2744)', async () => {
+  vi.mocked(searchAll).mockResolvedValue(
+    result({
+      contacts: [
+        {
+          id: 1,
+          uid: 'u1',
+          firstname: 'Beatrix',
+          lastname: 'Zebra',
+          org: 'Zebracorp',
+          matched_on: ['name', 'organization', 'phone'],
+        },
+        { id: 2, uid: 'u2', firstname: 'Bob', lastname: 'Name', matched_on: ['name'] },
+        { id: 3, uid: 'u3', firstname: 'Cy', lastname: 'Plain' },
+      ],
+      entities: [
+        {
+          id: 'e-1',
+          kind: 'organisation',
+          name: 'Zebra Holdings',
+          sensitivity: 'normal',
+          matched_on: ['name'],
+        },
+      ],
+    }),
+  );
+  renderSearch();
+  await type('zebra');
+  expect(screen.getAllByText(/^Matches: /)).toHaveLength(1);
+  expect(screen.getByText('Matches: name, organisation, phone')).toBeInTheDocument();
+  // The reason lives inside its option, so the #2695 listbox structure is unchanged.
+  const option = screen.getByText('Matches: name, organisation, phone').closest('[role="option"]');
+  expect(option).toHaveTextContent('Beatrix Zebra');
+  expect(option?.parentElement?.getAttribute('role')).toBe('group');
 });

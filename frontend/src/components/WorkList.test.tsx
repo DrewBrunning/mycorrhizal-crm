@@ -116,16 +116,16 @@ test('edit and delete call back with the exact entry', () => {
   const confirm = vi.fn(() => true);
   vi.stubGlobal('confirm', confirm);
 
-  fireEvent.click(org.getByLabelText('Edit'));
+  fireEvent.click(org.getByLabelText(/^Edit\b/));
   expect(callbacks.onEditOrganization).toHaveBeenCalledWith(organizations[0]);
 
-  fireEvent.click(org.getByLabelText('Delete'));
+  fireEvent.click(org.getByLabelText(/^Delete\b/));
   expect(callbacks.onDeleteOrganization).toHaveBeenCalledWith(organizations[0]);
 
-  fireEvent.click(title.getAllByLabelText('Edit')[1]);
+  fireEvent.click(title.getAllByLabelText(/^Edit\b/)[1]);
   expect(callbacks.onEditTitle).toHaveBeenCalledWith(titles[1]);
 
-  fireEvent.click(title.getAllByLabelText('Delete')[0]);
+  fireEvent.click(title.getAllByLabelText(/^Delete\b/)[0]);
   expect(callbacks.onDeleteTitle).toHaveBeenCalledWith(titles[0]);
 
   vi.unstubAllGlobals();
@@ -138,7 +138,7 @@ test('declining the delete confirmation makes no callback', () => {
     vi.fn(() => false),
   );
 
-  fireEvent.click(screen.getByLabelText('Delete'));
+  fireEvent.click(screen.getByLabelText(/^Delete\b/));
 
   expect(callbacks.onDeleteOrganization).not.toHaveBeenCalled();
   vi.unstubAllGlobals();
@@ -160,9 +160,9 @@ test('a projected organisation shows its source chip and has no edit or delete',
   const org = within(screen.getByRole('region', { name: 'Organizations' }));
   expect(org.getByRole('link', { name: 'from Acme Corp' })).toHaveAttribute('href', '/entities/e1');
   // Only the contact's own value carries edit/delete controls.
-  expect(org.getAllByRole('button', { name: 'Edit' })).toHaveLength(1);
-  expect(org.getAllByRole('button', { name: 'Delete' })).toHaveLength(1);
-  fireEvent.click(org.getByRole('button', { name: 'Edit' }));
+  expect(org.getAllByRole('button', { name: /^Edit\b/ })).toHaveLength(1);
+  expect(org.getAllByRole('button', { name: /^Delete\b/ })).toHaveLength(1);
+  fireEvent.click(org.getByRole('button', { name: /^Edit\b/ }));
   expect(callbacks.onEditOrganization).toHaveBeenCalledWith(
     expect.objectContaining({ id: 'org-1' }),
   );

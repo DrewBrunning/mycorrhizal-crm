@@ -52,7 +52,14 @@ data class ShareContactUiState(
     @StringRes val errorRes: Int? = null,
     /** The other users on the instance, for the recipient picker. */
     val recipients: List<UserDirectoryEntry> = emptyList(),
-    val selectedRecipientId: Long? = null,
+    /** True when the server only searches by username (inferred); see [RecipientDirectorySearch]. */
+    val recipientSearchMode: Boolean = false,
+    /** The text typed into the recipient field (search mode only). */
+    val recipientQuery: String = "",
+    /** The newest directory request for [recipientQuery] has answered. */
+    val recipientSearchSettled: Boolean = false,
+    /** The chosen recipient, kept even when a later search no longer lists them. */
+    val selectedRecipient: UserDirectoryEntry? = null,
     /** Selected section tokens; defaults to all non-sensitive sections. */
     val selectedSections: Set<String> = ShareFieldSections.DEFAULT_SELECTED.toSet(),
     val sensitiveRevealed: Boolean = false,
@@ -67,6 +74,7 @@ data class ShareContactUiState(
     /** Standing only: what the recipient would see of the selected sections today. */
     val preview: StandingPreview = StandingPreview.Idle
 ) {
+    val selectedRecipientId: Long? get() = selectedRecipient?.id
     val canShare: Boolean
         get() = selectedRecipientId != null && selectedSections.isNotEmpty() && !isSharing
 }
@@ -88,23 +96,41 @@ class ShareContactViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ShareContactUiState())
     val uiState: StateFlow<ShareContactUiState> = _uiState.asStateFlow()
 
-    init {
-        load()
-    }
-
     fun load() {
         if (_uiState.value.isLoading) return
-        viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
-            contactShareRepository.userDirectory().foldApiError(
-                onSuccess = { recipients ->
-                    _uiState.update { it.copy(isLoading = false, recipients = recipients) }
-                },
-                onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
-                }
-            )
+        _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
+        search.load()
+    }
+
+    /** Search mode: the text typed into the recipient field (debounced, newest answer wins). */
+    fun setRecipientQuery(query: String) {
+        _uiState.update { state ->
+            // Editing the text after a pick means the user is choosing someone else.
+            val keep = state.selectedRecipient?.takeIf { it.username == query.trim() }
+            state.copy(selectedRecipient = keep)
         }
+        search.setQuery(query)
+    }
+
+    private val search = RecipientDirectorySearch(
+        scope = viewModelScope,
+        repository = contactShareRepository,
+        onState = { s ->
+            _uiState.update {
+                it.copy(
+                    isLoading = s.isLoading,
+                    recipients = s.recipients,
+                    recipientSearchMode = s.searchMode,
+                    recipientQuery = s.query,
+                    recipientSearchSettled = s.settled
+                )
+            }
+        },
+        onError = { error -> _uiState.update { it.copy(error = error) } }
+    )
+
+    init {
+        load()
     }
 
     /** The clock for "N days from now"; tests replace it. */
@@ -121,7 +147,10 @@ class ShareContactViewModel @Inject constructor(
     }
 
     fun selectRecipient(id: Long?) {
-        _uiState.update { it.copy(selectedRecipientId = id) }
+        val picked = id?.let { wanted -> _uiState.value.recipients.firstOrNull { it.id == wanted } }
+        _uiState.update { it.copy(selectedRecipient = picked) }
+        // In search mode the field shows the picked name; that must not trigger a search.
+        if (picked != null && _uiState.value.recipientSearchMode) search.showQuery(picked.username)
     }
 
     fun toggleSection(token: String, checked: Boolean) {

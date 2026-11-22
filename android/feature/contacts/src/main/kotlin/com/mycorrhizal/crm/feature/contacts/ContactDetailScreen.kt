@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -84,7 +85,6 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -120,6 +120,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -161,6 +162,7 @@ import com.mycorrhizal.crm.model.network.ReminderCompletion
 import com.mycorrhizal.crm.model.network.Tag
 import com.mycorrhizal.crm.model.network.TargetClosenessTier
 import com.mycorrhizal.crm.model.network.editorToWireValue
+import com.mycorrhizal.crm.model.network.entityLinkIdFromElementId
 import com.mycorrhizal.crm.model.network.fieldValueDisplay
 import com.mycorrhizal.crm.model.network.isEditorValueEmpty
 import com.mycorrhizal.crm.model.network.isMulti
@@ -179,6 +181,7 @@ import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.HealthScoreBadge
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
+import com.mycorrhizal.crm.ui.components.SavedDataBanner
 import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.WriteConflictDialog
 import com.mycorrhizal.crm.ui.components.contactFieldLabel
@@ -838,99 +841,107 @@ fun ContactDetailScreen(
 
                 else -> {
                     val contact = state.contact!!
-                    ContactDetailContent(
-                        contact = contact,
-                        listState = listState,
-                        headerContentAlpha = 1f - collapseProgress,
-                        deviceLookupKey = state.deviceLookupKey,
-                        dateFormat = state.dateFormat,
-                        accountEnabledFields = state.resolvedEnabledFields,
-                        hideEmpty = state.resolvedHideEmpty,
-                        revealedFields = revealedFields,
-                        onRevealField = { revealedFields = revealedFields + it },
-                        onCustomizeFields = { showFieldVisibilityDialog = true },
-                        onEdit = onEdit,
-                        fieldDefinitions = state.fieldDefinitions,
-                        fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
-                        savingFieldDefinitionId = state.savingFieldDefinitionId,
-                        onSaveFieldValue = viewModel::saveFieldValue,
-                        allCircles = state.allCircles,
-                        contactCircles = state.contactCircles,
-                        allTags = state.allTags,
-                        contactTags = state.contactTags,
-                        onAddCircle = viewModel::addCircle,
-                        onRemoveCircle = viewModel::removeCircle,
-                        onAddTag = viewModel::addTag,
-                        onRemoveTag = viewModel::removeTag,
-                        onOpenInContacts = onOpenInContacts,
-                        onViewActivities = onViewActivities,
-                        onAddToActivity = { showAddToActivities = true },
-                        onViewNotes = onViewNotes,
-                        onViewReminders = onViewReminders,
-                        onViewAttachments = onViewAttachments,
-                        onViewPhotos = onViewPhotos,
-                        onViewRelationships = onViewRelationships,
-                        onViewCadence = onViewCadence,
-                        onViewLifeEvents = onViewLifeEvents,
-                        onViewGifts = onViewGifts,
-                        onViewPreferences = onViewPreferences,
-                        onViewOccasions = onViewOccasions,
-                        onViewSkills = onViewSkills,
-                        onViewWork = onViewWork,
-                        onViewEntities = onViewEntities,
-                        onViewAnniversaries = onViewAnniversaries,
-                        onViewAgenda = onViewAgenda,
-                        onViewTimeline = onViewTimeline,
-                        onEditActivity = onEditActivity,
-                        onEditNote = onEditNote,
-                        onEditReminder = onEditReminder,
-                        onCompleteReminder = viewModel::completeReminder,
-                        completions = state.completions,
-                        onUndoCompletion = { id -> pendingUndoCompletionId = id },
-                        onUploadProfilePicture = onUploadProfilePicture,
-                        // Issue #212: the header star toggle (web #173).
-                        onToggleFavorite = viewModel::toggleFavorite,
-                        // T90 / issue #831: the header "You" badge (web parity).
-                        isMe = isMe,
-                        // Issue #383 (ADR-0023): the relationship health score badge.
-                        score = state.score,
-                        // Issue #1798: the target picker/offer flow.
-                        onSetTargetCloseness = viewModel::setTargetCloseness,
-                        cadencePolicyOffer = state.cadencePolicyOffer,
-                        onAcceptCadenceOffer = viewModel::acceptCadenceOffer,
-                        onDismissCadenceOffer = viewModel::dismissCadenceOffer,
-                        externalIdentities = state.externalIdentities,
-                        immichSummary = state.immichSummary,
-                        onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
-                        onUnlinkImmich = { pendingImmichUnlink = true },
-                        // Issue #836: sync-now has no confirmation dialog (web parity).
-                        immichSyncing = state.immichSyncing,
-                        onSyncImmich = viewModel::syncImmich,
-                        externalActivities = state.externalActivities,
-                        // Issue #236: the "Add link" entry points, gated per system.
-                        paperlessConfigured = state.paperlessConfigured,
-                        seafileConfigured = state.seafileConfigured,
-                        nextcloudConfigured = state.nextcloudConfigured,
-                        lifeEventCount = state.lifeEventCount,
-                        giftCount = state.giftCount,
-                        preferenceCount = state.preferenceCount,
-                        agendaCount = state.agendaCount,
-                        relationshipCount = state.relationshipCount,
-                        attachmentCount = state.attachmentCount,
-                        cadenceCount = state.cadenceCount,
-                        onAddPaperlessLink = {
-                            paperlessPickerOpen = true
-                            viewModel.loadPaperlessDocuments()
-                        },
-                        onAddSeafileLink = {
-                            seafilePickerOpen = true
-                            viewModel.loadSeafileLibraries()
-                        },
-                        onAddNextcloudLink = {
-                            nextcloudPickerOpen = true
-                            viewModel.loadNextcloudDir()
+                    // Issue #2629: a read the repository answered from the offline mirror.
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        if (contact.servedFromCache) {
+                            SavedDataBanner(onRetry = viewModel::load)
                         }
-                    )
+                        ContactDetailContent(
+                            modifier = Modifier.weight(1f),
+                            contact = contact,
+                            listState = listState,
+                            headerContentAlpha = 1f - collapseProgress,
+                            deviceLookupKey = state.deviceLookupKey,
+                            dateFormat = state.dateFormat,
+                            accountEnabledFields = state.resolvedEnabledFields,
+                            hideEmpty = state.resolvedHideEmpty,
+                            revealedFields = revealedFields,
+                            onRevealField = { revealedFields = revealedFields + it },
+                            onCustomizeFields = { showFieldVisibilityDialog = true },
+                            onEdit = onEdit,
+                            fieldDefinitions = state.fieldDefinitions,
+                            fieldValuesByDefinitionId = state.fieldValuesByDefinitionId,
+                            savingFieldDefinitionId = state.savingFieldDefinitionId,
+                            onSaveFieldValue = viewModel::saveFieldValue,
+                            allCircles = state.allCircles,
+                            contactCircles = state.contactCircles,
+                            allTags = state.allTags,
+                            contactTags = state.contactTags,
+                            onAddCircle = viewModel::addCircle,
+                            onRemoveCircle = viewModel::removeCircle,
+                            onAddTag = viewModel::addTag,
+                            onRemoveTag = viewModel::removeTag,
+                            onOpenInContacts = onOpenInContacts,
+                            onViewActivities = onViewActivities,
+                            onAddToActivity = { showAddToActivities = true },
+                            onViewNotes = onViewNotes,
+                            onViewReminders = onViewReminders,
+                            onViewAttachments = onViewAttachments,
+                            onViewPhotos = onViewPhotos,
+                            onViewRelationships = onViewRelationships,
+                            onViewCadence = onViewCadence,
+                            onViewLifeEvents = onViewLifeEvents,
+                            onViewGifts = onViewGifts,
+                            onViewPreferences = onViewPreferences,
+                            onViewOccasions = onViewOccasions,
+                            onViewSkills = onViewSkills,
+                            onViewWork = onViewWork,
+                            onViewEntities = onViewEntities,
+                            onViewAnniversaries = onViewAnniversaries,
+                            onViewAgenda = onViewAgenda,
+                            onViewTimeline = onViewTimeline,
+                            onEditActivity = onEditActivity,
+                            onEditNote = onEditNote,
+                            onEditReminder = onEditReminder,
+                            onCompleteReminder = viewModel::completeReminder,
+                            completions = state.completions,
+                            onUndoCompletion = { id -> pendingUndoCompletionId = id },
+                            onUploadProfilePicture = onUploadProfilePicture,
+                            // Issue #212: the header star toggle (web #173).
+                            onToggleFavorite = viewModel::toggleFavorite,
+                            // T90 / issue #831: the header "You" badge (web parity).
+                            isMe = isMe,
+                            // Issue #383 (ADR-0023): the relationship health score badge.
+                            score = state.score,
+                            // Issue #1798: the target picker/offer flow.
+                            onSetTargetCloseness = viewModel::setTargetCloseness,
+                            cadencePolicyOffer = state.cadencePolicyOffer,
+                            onAcceptCadenceOffer = viewModel::acceptCadenceOffer,
+                            onDismissCadenceOffer = viewModel::dismissCadenceOffer,
+                            externalIdentities = state.externalIdentities,
+                            immichSummary = state.immichSummary,
+                            onDeleteExternalIdentity = { pendingExternalLinkDelete = it },
+                            onUnlinkImmich = { pendingImmichUnlink = true },
+                            // Issue #836: sync-now has no confirmation dialog (web parity).
+                            immichSyncing = state.immichSyncing,
+                            onSyncImmich = viewModel::syncImmich,
+                            externalActivities = state.externalActivities,
+                            // Issue #236: the "Add link" entry points, gated per system.
+                            paperlessConfigured = state.paperlessConfigured,
+                            seafileConfigured = state.seafileConfigured,
+                            nextcloudConfigured = state.nextcloudConfigured,
+                            lifeEventCount = state.lifeEventCount,
+                            giftCount = state.giftRowCount,
+                            preferenceCount = state.preferenceCount,
+                            agendaCount = state.agendaCount,
+                            relationshipCount = state.relationshipCount,
+                            attachmentCount = state.attachmentCount,
+                            cadenceCount = state.cadenceCount,
+                            projectedEntityNames = state.projectedEntityNames,
+                            onAddPaperlessLink = {
+                                paperlessPickerOpen = true
+                                viewModel.loadPaperlessDocuments()
+                            },
+                            onAddSeafileLink = {
+                                seafilePickerOpen = true
+                                viewModel.loadSeafileLibraries()
+                            },
+                            onAddNextcloudLink = {
+                                nextcloudPickerOpen = true
+                                viewModel.loadNextcloudDir()
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -1437,7 +1448,9 @@ fun ContactDetailContent(
     agendaCount: Int? = null,
     relationshipCount: Int? = null,
     attachmentCount: Int? = null,
-    cadenceCount: Int? = null
+    cadenceCount: Int? = null,
+    // Issue #2646: link id -> entity name, for the "from <name>" chip on projected rows.
+    projectedEntityNames: Map<String, String> = emptyMap()
 ) {
     val card = contact.card
     // Issue #1997: per-contact overrides and hide-empty are applied here so a
@@ -1453,9 +1466,20 @@ fun ContactDetailContent(
     val reminderCount = contact.reminders.orEmpty().size
     // Issue #1728: the three moved-out groups are also preloaded on the record.
     val personalInfoCount = card?.personalInfo.orEmpty().size
-    val workCount = card?.organizations.orEmpty().size +
-        card?.titles.orEmpty().size +
-        (if (!contact.crm?.workInformation.isNullOrBlank()) 1 else 0)
+    // Issue #2647: count only what the Work screen lists, i.e. the subsections still enabled.
+    val workOrganizations =
+        if (ContactFieldKey.ORGANIZATIONS in
+            enabledFields
+        ) {
+            card?.organizations.orEmpty().size
+        } else {
+            0
+        }
+    val workTitles =
+        if (ContactFieldKey.TITLES in enabledFields) card?.titles.orEmpty().size else 0
+    val hasWorkInformation = ContactFieldKey.WORK_INFORMATION in enabledFields &&
+        !contact.crm?.workInformation.isNullOrBlank()
+    val workCount = workOrganizations + workTitles + (if (hasWorkInformation) 1 else 0)
     // Issue #383: local dialog visibility only — the data itself lives in
     // ContactDetailUiState.score, loaded once by the ViewModel and passed in
     // as [score]. Kept local (rather than hoisted to ContactDetailScreen like
@@ -1599,7 +1623,7 @@ fun ContactDetailContent(
                                 birthday.display(dateFormat ?: DateFormat.EU)
                             )
                         } else {
-                            stringResource(R.string.contact_field_not_set)
+                            stringResource(R.string.contact_birthday_not_set)
                         },
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -1622,7 +1646,7 @@ fun ContactDetailContent(
                 if (ContactFieldKey.GENDER in enabledFields) {
                     Text(
                         text = gender?.takeIf { it.isNotBlank() }
-                            ?: stringResource(R.string.contact_field_not_set),
+                            ?: stringResource(R.string.contact_gender_not_set),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -1698,7 +1722,14 @@ fun ContactDetailContent(
                     if (addresses.isEmpty()) {
                         EmptyFieldRow(onAdd = { onEdit(contact.id) })
                     } else {
-                        addresses.forEach { AddressRow(it) }
+                        addresses.forEach { address ->
+                            AddressRow(
+                                address,
+                                entityLinkIdFromElementId(
+                                    address.id
+                                )?.let { projectedEntityNames[it] }
+                            )
+                        }
                     }
                 }
             }
@@ -2817,7 +2848,7 @@ private fun Phone.isMobile(): Boolean {
 }
 
 @Composable
-private fun AddressRow(address: Address) {
+private fun AddressRow(address: Address, projectedEntityName: String?) {
     val context = LocalContext.current
     val text = address.full
         ?: address.components?.joinToString(", ") { it.value.orEmpty() }
@@ -2830,7 +2861,7 @@ private fun AddressRow(address: Address) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = text, style = MaterialTheme.typography.bodyLarge)
-            if (projected) ProjectedFromChip(entityName = null)
+            if (projected) ProjectedFromChip(entityName = projectedEntityName)
         }
         if (text.isNotBlank()) {
             IconButton(onClick = { context.startActivity(FieldActions.mapIntent(text)) }) {
@@ -3024,7 +3055,7 @@ private fun MobileLinkActions(linkType: MobileLinkType, handle: String) {
  */
 @Composable
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-private fun <T> ChipEditorRow(
+internal fun <T> ChipEditorRow(
     items: List<T>,
     allItems: List<T>,
     label: (T) -> String,
@@ -3048,17 +3079,24 @@ private fun <T> ChipEditorRow(
             modifier = Modifier.fillMaxWidth()
         ) {
             items.forEach { item ->
-                InputChip(
-                    selected = true,
+                // #2624: an applied chip is a "remove" button, not a checked toggle — an
+                // InputChip(selected = true) is announced as a checked checkbox. A plain chip is
+                // a Role.Button; the description names what activating it does, and the 48dp
+                // minimum height makes the whole chip (close glyph included) the touch target.
+                val removeLabel = stringResource(R.string.contact_chip_remove_named, label(item))
+                AssistChip(
                     onClick = { onRemove(item) },
                     label = { Text(label(item)) },
                     trailingIcon = {
                         Icon(
                             Icons.Outlined.Close,
-                            contentDescription = stringResource(R.string.contact_remove),
+                            contentDescription = null,
                             modifier = Modifier.size(16.dp)
                         )
-                    }
+                    },
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .semantics { contentDescription = removeLabel }
                 )
             }
         }
@@ -3068,6 +3106,7 @@ private fun <T> ChipEditorRow(
             Box(modifier = Modifier.padding(top = 4.dp)) {
                 AssistChip(
                     onClick = { menuExpanded = true },
+                    modifier = Modifier.heightIn(min = 48.dp),
                     label = { Text(addLabel) },
                     leadingIcon = {
                         Icon(
@@ -3075,8 +3114,7 @@ private fun <T> ChipEditorRow(
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
-                    },
-                    modifier = Modifier.height(32.dp)
+                    }
                 )
                 DropdownMenu(
                     expanded = menuExpanded,
@@ -3409,9 +3447,10 @@ private fun ContactFieldToolbar(
 
 /** A muted placeholder for an enabled field with no value (hide-empty off). */
 @Composable
-private fun EmptyFieldRow(onAdd: () -> Unit) {
+internal fun EmptyFieldRow(onAdd: () -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        // #2625: the same 16dp inset as a filled InfoRow, so "Not set" lines up with values.
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(

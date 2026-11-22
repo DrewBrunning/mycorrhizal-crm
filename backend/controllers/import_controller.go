@@ -22,27 +22,21 @@ import (
 // HTTP input and delegate to the manager.
 var importSessions = services.NewImportSessionManager()
 
-// rejectImportSessionOverLimit aborts with 429 when the caller already holds
-// MaxImportSessionsPerUser live import sessions (issue #415) and returns
-// true; callers return immediately on true. Sessions are in-memory and can
-// each carry up to 20k rows/contacts, so this is the per-user bound on the
-// largest unauthenticated-by-quota memory surface. 429 (not 400) matches the
-// "too many in-flight operations" semantics: confirming or letting an
-// existing session expire frees the slot, so a retry can legitimately
-// succeed.
+// rejectImportSessionOverLimit makes room for one more import session for the
+// caller (issue #415, amended by #2664) and returns true only when the request
+// was already aborted (no authenticated user); callers return immediately on
+// true. Sessions are in-memory and can each carry up to 20k rows/contacts, so
+// the per-user cap is the bound on this memory surface. Reaching it no longer
+// answers 429 until a session expires: an abandoned dialog or a rejected file
+// leaves a session behind that the user cannot see or confirm, so the user's
+// oldest unconfirmed session is evicted instead (see
+// ImportSessionManager.MakeRoomForSession).
 func rejectImportSessionOverLimit(c *gin.Context) bool {
 	userID, ok := currentUserID(c)
 	if !ok {
 		return true
 	}
-	if importSessions.CountActive(userID) >= services.MaxImportSessionsPerUser {
-		apperrors.AbortWithError(c, apperrors.NewError(
-			apperrors.ErrCodeRateLimitExceeded,
-			fmt.Sprintf("Too many in-progress imports. Maximum is %d concurrent import sessions; confirm or wait for an existing one to expire before starting another.", services.MaxImportSessionsPerUser),
-			http.StatusTooManyRequests,
-		))
-		return true
-	}
+	importSessions.MakeRoomForSession(userID)
 	return false
 }
 
@@ -90,14 +84,19 @@ func UploadCSVForImport(c *gin.Context) {
 	// client upload (the caller gets a 400), not a server fault, so it logs at
 	// info -- the same rule issue #1474 applied to the other 4xx paths, and
 	// what keeps the warn/error log guard from flagging a negative E2E case.
-	headers, dataRows, err := services.ParseCSV(f)
+	headers, dataRows, fileDiags, err := services.ParseCSVWithDiagnostics(f)
 	if err != nil {
+		if errors.Is(err, services.ErrImportNotText) {
+			log.Info().Err(err).Msg("Rejected non-text CSV upload")
+			apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", "This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.").WithReason(apperrors.ReasonImportCSVNotText, nil))
+			return
+		}
 		log.Info().Err(err).Msg("Failed to parse CSV")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()).WithReason(apperrors.ReasonImportFileUnreadable, map[string]any{"reason": err.Error()}))
 		return
 	}
 
-	sessionID := importSessions.CreateCSVSession(userID, headers, dataRows)
+	sessionID := importSessions.CreateCSVSessionWithDiagnostics(userID, headers, dataRows, fileDiags)
 
 	// Get sample data for preview
 	sampleData := make([][]string, 0, services.SampleRows)
@@ -120,6 +119,7 @@ func UploadCSVForImport(c *gin.Context) {
 		SuggestedMappings: suggestedMappings,
 		RowCount:          len(dataRows),
 		SampleData:        sampleData,
+		FileDiagnostics:   models.DiagnosticsOrEmpty(fileDiags),
 	})
 }
 
@@ -165,7 +165,7 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 
 	// Parse VCF using service. A malformed upload is a rejected client
 	// request (400), not a server fault, so it logs at info (issue #1474).
-	vcfContacts, previews, stats, err := services.ParseVCF(f, db, userID)
+	vcfContacts, previews, stats, fileDiags, err := services.ParseVCFWithDiagnostics(f, db, userID)
 	if err != nil {
 		log.Info().Err(err).Msg("Failed to parse VCF")
 		apperrors.AbortWithError(c, apperrors.ErrInvalidInput("file", err.Error()).WithReason(apperrors.ReasonImportFileUnreadable, map[string]any{"reason": err.Error()}))
@@ -183,12 +183,13 @@ func UploadVCFForImport(c *gin.Context, cfg *config.Config) {
 		Msg("VCF uploaded and parsed successfully")
 
 	c.JSON(http.StatusOK, models.ImportPreviewResponse{
-		SessionID:      sessionID,
-		Rows:           previews,
-		TotalRows:      len(previews),
-		ValidRows:      stats.ValidCount,
-		DuplicateCount: stats.DuplicateCount,
-		ErrorCount:     stats.ErrorCount,
+		SessionID:       sessionID,
+		Rows:            previews,
+		TotalRows:       len(previews),
+		ValidRows:       stats.ValidCount,
+		DuplicateCount:  stats.DuplicateCount,
+		ErrorCount:      stats.ErrorCount,
+		FileDiagnostics: models.DiagnosticsOrEmpty(fileDiags),
 	})
 }
 
@@ -261,12 +262,13 @@ func UploadJSContactForImport(c *gin.Context) {
 		Msg("JSContact file uploaded and parsed successfully")
 
 	c.JSON(http.StatusOK, models.ImportPreviewResponse{
-		SessionID:      sessionID,
-		Rows:           previews,
-		TotalRows:      len(previews),
-		ValidRows:      stats.ValidCount,
-		DuplicateCount: stats.DuplicateCount,
-		ErrorCount:     stats.ErrorCount,
+		SessionID:       sessionID,
+		Rows:            previews,
+		TotalRows:       len(previews),
+		ValidRows:       stats.ValidCount,
+		DuplicateCount:  stats.DuplicateCount,
+		ErrorCount:      stats.ErrorCount,
+		FileDiagnostics: models.DiagnosticsOrEmpty(nil),
 	})
 }
 
@@ -339,13 +341,15 @@ func UploadImportRecords(c *gin.Context) {
 
 	for rowIdx := range request.Records {
 		contact := &models.Contact{}
-		models.ApplyRecordToContact(contact, request.Records[rowIdx].ToRecord(), "")
+		record := request.Records[rowIdx].ToRecord()
+		dateDiags := services.DropInvalidRecordDates(record)
+		models.ApplyRecordToContact(contact, record, "")
 		if contact.VCardUID == "" {
 			contact.VCardUID = uuid.New().String()
 		}
 
 		contacts = append(contacts, services.VCFContactData{Contact: contact})
-		preview := services.BuildImportRowPreview(db, userID, contact, rowIdx, batch, nil, &stats)
+		preview := services.BuildImportRowPreview(db, userID, contact, rowIdx, batch, dateDiags, &stats)
 		batch = append(batch, contact)
 		previews = append(previews, preview)
 	}
@@ -361,12 +365,13 @@ func UploadImportRecords(c *gin.Context) {
 		Msg("Import records session created")
 
 	c.JSON(http.StatusOK, models.ImportPreviewResponse{
-		SessionID:      sessionID,
-		Rows:           previews,
-		TotalRows:      len(previews),
-		ValidRows:      stats.ValidCount,
-		DuplicateCount: stats.DuplicateCount,
-		ErrorCount:     stats.ErrorCount,
+		SessionID:       sessionID,
+		Rows:            previews,
+		TotalRows:       len(previews),
+		ValidRows:       stats.ValidCount,
+		DuplicateCount:  stats.DuplicateCount,
+		ErrorCount:      stats.ErrorCount,
+		FileDiagnostics: models.DiagnosticsOrEmpty(nil),
 	})
 }
 
@@ -483,4 +488,24 @@ func GetImportRun(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, run.Detail())
+}
+
+// CancelImportSession handles POST /contacts/import/cancel (issue #2664): it
+// discards the caller's own unconfirmed CSV/VCF/JSContact/records import
+// session. Idempotent and quiet by design: an unknown, expired, consumed or
+// foreign session id answers the same 200 as a live one, so a client can call
+// it on every dialog close (Cancel, Close, Escape, Back-to-upload, unmount)
+// without tracking state, and one user cannot probe another's session ids.
+func CancelImportSession(c *gin.Context) {
+	userID, ok := currentUserID(c)
+	if !ok {
+		return
+	}
+	request, err := middleware.GetValidated[models.ImportCancelRequest](c)
+	if err != nil {
+		apperrors.AbortWithError(c, err)
+		return
+	}
+	importSessions.Cancel(userID, request.SessionID)
+	c.JSON(http.StatusOK, gin.H{"status": "cancelled"})
 }

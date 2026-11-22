@@ -2,19 +2,23 @@ package com.mycorrhizal.crm.feature.circles
 
 import androidx.compose.ui.graphics.Color
 import com.mycorrhizal.crm.model.network.CircleTimelineItem
+import com.mycorrhizal.crm.model.util.DateFormat
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.util.Locale
 
 private val SUMMARY_KEYS = listOf("content", "title", "message", "name", "description", "type")
 
-/** A one-line summary of a timeline entry: the first non-blank text field (mirrors the web dialog). */
-internal fun CircleTimelineItem.summary(): String {
+/**
+ * A one-line summary of a timeline entry: the first non-blank text field (mirrors the web dialog).
+ * The `type` fallback is a stored token (`married`), so it goes through [tokenLabel] (issue #2626).
+ */
+internal fun CircleTimelineItem.summary(tokenLabel: (String) -> String = { it }): String {
     val values = data ?: return ""
     for (key in SUMMARY_KEYS) {
         val value = values[key]
-        if (value is String && value.isNotBlank()) return value
+        if (value is String && value.isNotBlank()) {
+            return if (key == "type") tokenLabel(value) else value
+        }
     }
     return ""
 }
@@ -25,22 +29,24 @@ private fun calendarDay(iso: String): LocalDate? =
 private const val ISO_DATE_LENGTH = 10
 
 /**
- * Medium localized calendar date of [iso] (its first 10 characters, so an offset never shifts the
- * day — web's `calendarDateOnly`). A later [endIso] day renders "start – end" (activities).
- * An unparseable [iso] falls back to the raw string.
+ * Calendar date of [iso] (its first 10 characters, so an offset never shifts the day — web's
+ * `calendarDateOnly`) in the user's date-format preference [dateFormat] (issue #2618). A later
+ * [endIso] day renders "start – end" (activities). An unparseable [iso] falls back to the raw
+ * string.
  */
 internal fun formatTimelineDate(
     iso: String,
     endIso: String?,
+    dateFormat: String,
     locale: Locale = Locale.getDefault()
 ): String {
     val start = calendarDay(iso) ?: return iso
-    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(locale)
+    fun LocalDate.show() = DateFormat.formatFull(year, monthValue, dayOfMonth, dateFormat, locale)
     val end = endIso?.let(::calendarDay)
     return if (end != null && end.isAfter(start)) {
-        "${start.format(formatter)} – ${end.format(formatter)}"
+        "${start.show()} – ${end.show()}"
     } else {
-        start.format(formatter)
+        start.show()
     }
 }
 

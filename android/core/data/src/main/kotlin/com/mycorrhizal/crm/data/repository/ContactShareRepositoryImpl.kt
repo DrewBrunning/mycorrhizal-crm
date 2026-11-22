@@ -43,6 +43,6 @@ class ContactShareRepositoryImpl @Inject constructor(private val apiClient: ApiC
 
     override suspend fun decline(id: String): Result<Unit> = apiClient.declineContactShare(id)
 
-    override suspend fun userDirectory(): Result<List<UserDirectoryEntry>> =
-        apiClient.getUserDirectory()
+    override suspend fun userDirectory(query: String): Result<List<UserDirectoryEntry>> =
+        apiClient.getUserDirectory(query)
 }

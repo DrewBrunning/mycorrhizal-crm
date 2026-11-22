@@ -8,7 +8,7 @@ import {
   DialogTitle,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
@@ -18,6 +18,7 @@ import {
 } from '../api/shareGrants';
 import { useDateFormat } from '../DateFormatProvider';
 import { getErrorMessage } from '../utils/errorHandler';
+import { describeJSContact } from '../utils/jscontactDisplay';
 import AppDialog from './AppDialog';
 import SharedContactCard from './SharedContactCard';
 
@@ -60,8 +61,14 @@ export default function SharedGrantContentDialog({
   const [state, setState] = useState<State>({ status: 'loading' });
   const grantId = grant?.id;
 
+  // Bumped by Retry to re-run the fetch for the same grant.
+  const [attempt, setAttempt] = useState(0);
+  const retry = useCallback(() => setAttempt((n) => n + 1), []);
+
   useEffect(() => {
     if (!grantId) return;
+    // `attempt` is a deliberate dependency: Retry re-fetches the same grant.
+    void attempt;
     let cancelled = false;
     setState({ status: 'loading' });
     getShareGrantContent(grantId)
@@ -77,22 +84,47 @@ export default function SharedGrantContentDialog({
     return () => {
       cancelled = true;
     };
-  }, [grantId]);
+  }, [grantId, attempt]);
 
   const body = (() => {
     if (state.status === 'loading')
       return <CircularProgress size={24} aria-label={t('common.loading')} />;
     if (state.status === 'unavailable') {
-      return <Alert severity="info">{t('standingShares.content.unavailable')}</Alert>;
+      return (
+        <Alert severity="info" role="status">
+          {t('standingShares.content.unavailable')}
+        </Alert>
+      );
     }
-    if (state.status === 'error') return <Alert severity="error">{state.message}</Alert>;
+    if (state.status === 'error') {
+      return (
+        <Alert
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={retry}>
+              {t('common.retry')}
+            </Button>
+          }
+        >
+          {state.message}
+        </Alert>
+      );
+    }
     const { content } = state;
     switch (content.entity_type) {
       case 'contact':
-        return content.contact ? (
-          <SharedContactCard card={content.contact} />
-        ) : (
-          <Typography variant="body2">{t('standingShares.content.noDetails')}</Typography>
+        if (!content.contact) {
+          return <Typography variant="body2">{t('standingShares.content.noDetails')}</Typography>;
+        }
+        return (
+          <>
+            <SharedContactCard card={content.contact} />
+            {describeJSContact(content.contact).sections.length === 0 && (
+              <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+                {t('standingShares.content.noDetails')}
+              </Typography>
+            )}
+          </>
         );
       case 'note':
         return content.note ? (

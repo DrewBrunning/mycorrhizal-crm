@@ -79,7 +79,9 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
       }
     });
 
-    return descriptions;
+    // Two links between the same pair (say Owner and Resident) read as the same
+    // sentence; the graph edge carries no role, so say it once (#2713).
+    return [...new Set(descriptions)];
   };
 
   return (

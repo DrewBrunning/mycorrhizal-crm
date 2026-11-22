@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.ui.components
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -212,6 +213,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
         ErrorReasonCode.VALIDATION_ACTIVITY_IDS_RANGE ->
             stringResource(R.string.error_reason_validation_activity_ids_range)
 
+        ErrorReasonCode.VALIDATION_TIMEZONE_INVALID ->
+            stringResource(R.string.error_reason_validation_timezone_invalid)
+
         ErrorReasonCode.VALIDATION_CURSOR_MALFORMED ->
             stringResource(R.string.error_reason_validation_cursor_malformed)
 
@@ -400,10 +404,12 @@ private fun localizedReason(reason: ErrorReason?): String? {
                 "reason"
             )?.let { stringResource(R.string.error_reason_meerkat_api_error, it) }
 
+        // Issue #2652: the server's `reason` param is English text that points at the
+        // web-only "database upload"; Android has no such option, so use fixed copy.
+        // The string still declares the registry's `reason` positional argument (the
+        // compatci parity test requires it) and is deliberately given an empty value.
         ErrorReasonCode.MEERKAT_UPSTREAM_ERROR ->
-            reason.str(
-                "reason"
-            )?.let { stringResource(R.string.error_reason_meerkat_upstream_error, it) }
+            stringResource(R.string.error_reason_meerkat_upstream_error, "")
 
         ErrorReasonCode.MEERKAT_SIGN_IN_INPUT_MISSING ->
             stringResource(R.string.error_reason_meerkat_sign_in_input_missing)
@@ -420,6 +426,12 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.MEERKAT_VERSION_UNTESTED ->
             stringResource(R.string.error_reason_meerkat_version_untested)
+
+        ErrorReasonCode.MEERKAT_FETCH_UNREACHABLE ->
+            stringResource(R.string.error_reason_meerkat_fetch_unreachable)
+
+        ErrorReasonCode.MEERKAT_FETCH_UNREADABLE ->
+            stringResource(R.string.error_reason_meerkat_fetch_unreadable)
 
         ErrorReasonCode.COMMON_DATABASE_ERROR -> stringResource(
             R.string.error_reason_common_database_error
@@ -1220,6 +1232,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_share_grant_state_conflict
         )
 
+        ErrorReasonCode.SHARE_GRANT_NOT_ENDED -> stringResource(
+            R.string.error_reason_share_grant_not_ended
+        )
+
         ErrorReasonCode.SHARE_GRANT_WIDENING_REFUSED -> stringResource(
             R.string.error_reason_share_grant_widening_refused
         )
@@ -1865,6 +1881,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
             R.string.error_reason_household_type_invalid
         )
 
+        ErrorReasonCode.IMPORT_CSV_NOT_TEXT -> stringResource(
+            R.string.error_reason_import_csv_not_text
+        )
+
         ErrorReasonCode.IMPORT_DISK_SPACE_LOW -> {
             val p1 = reason.str("total")
             val p2 = reason.str("reason")
@@ -1896,6 +1916,14 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.OCCASION_ANCHOR_DATE_INCOMPLETE -> stringResource(
             R.string.error_reason_occasion_anchor_date_incomplete
+        )
+
+        ErrorReasonCode.OCCASION_ANCHOR_DATE_INVALID -> stringResource(
+            R.string.error_reason_occasion_anchor_date_invalid
+        )
+
+        ErrorReasonCode.OCCASION_ANCHOR_DATE_REQUIRED -> stringResource(
+            R.string.error_reason_occasion_anchor_date_required
         )
 
         ErrorReasonCode.OCCASION_DAYS_INVALID -> stringResource(
@@ -2027,4 +2055,18 @@ private fun ErrorReason.int(name: String): Int? = when (val value = params[name]
     is Number -> value.toInt()
     is String -> value.toIntOrNull()
     else -> null
+}
+
+/**
+ * Issue #2629: the fatal-error state of a screen that has nothing to show (a failed load with no
+ * rows): the localized message and a Retry that re-runs the load.
+ */
+@Composable
+fun ErrorState(error: ApiError, onRetry: () -> Unit, modifier: Modifier = Modifier) {
+    EmptyState(
+        title = error.localizedMessage(),
+        modifier = modifier,
+        actionLabel = stringResource(R.string.action_retry),
+        onAction = onRetry
+    )
 }

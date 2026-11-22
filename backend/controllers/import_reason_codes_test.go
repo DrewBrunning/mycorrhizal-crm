@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -37,6 +38,43 @@ func TestImportReasonCodes_CSVUpload(t *testing.T) {
 		w := httptest.NewRecorder()
 		router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", "contacts.txt", csvFixture([3]string{"A", "B", "a@example.com"})))
 		requireReason(t, w, http.StatusBadRequest, "csv_file_not_csv")
+	})
+	// Issue #2688: content sniffing. A binary renamed .csv is a 400 with its
+	// own reason; legitimate encodings still upload.
+	t.Run("binary renamed csv", func(t *testing.T) {
+		fixtures := map[string][]byte{
+			"png":  append([]byte("\x89PNG\r\n\x1a\n"), make([]byte, 64)...),
+			"zip":  []byte("PK\x03\x04\x14\x00\x00\x00\x08\x00data"),
+			"xlsx": []byte("PK\x03\x04\x14\x00\x06\x00\x08\x00[Content_Types].xml"),
+			"pdf":  []byte("%PDF-1.4\n1 0 obj\n"),
+			"nul":  []byte("First Name,Last Name\nAda,Love\x00lace\n"),
+		}
+		for name, body := range fixtures {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", name+".csv", body))
+			requireReason(t, w, http.StatusBadRequest, "import_csv_not_text")
+			reason, params := wireReason(t, w)
+			assert.Equal(t, "import_csv_not_text", reason, name)
+			assert.Empty(t, params, name)
+		}
+	})
+	t.Run("legitimate encodings still upload", func(t *testing.T) {
+		win1252 := []byte("First Name,Last Name,Email\nJos\xe9,M\xfcller,j@example.com\n")
+		bom := append([]byte{0xEF, 0xBB, 0xBF}, csvFixture([3]string{"A", "B", "a@example.com"})...)
+		for name, body := range map[string][]byte{"win1252": win1252, "bom": bom} {
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/upload", name+".csv", body))
+			require.Equal(t, http.StatusOK, w.Code, "%s: %s", name, w.Body.String())
+			var resp models.ImportUploadResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp), name)
+			assert.NotEmpty(t, resp.SessionID, "%s must create a real session", name)
+			assert.Equal(t, 1, resp.RowCount, "%s must parse the data row", name)
+			assert.Equal(t, []string{"First Name", "Last Name", "Email"}, resp.Headers)
+			if name == "win1252" {
+				assert.Contains(t, resp.SampleData, []string{"José", "Müller", "j@example.com"},
+					"the Windows-1252 bytes must decode to their characters, not replacement glyphs")
+			}
+		}
 	})
 	t.Run("parser error carries the wrapper reason", func(t *testing.T) {
 		w := httptest.NewRecorder()

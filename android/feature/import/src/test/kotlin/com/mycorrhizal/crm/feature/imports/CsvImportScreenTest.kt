@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.ColumnMapping
+import com.mycorrhizal.crm.model.network.ImportDiagnostic
 import com.mycorrhizal.crm.model.network.ImportFixedAssignment
 import com.mycorrhizal.crm.model.network.ImportFixedAssignmentItem
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
@@ -195,7 +196,7 @@ class CsvImportScreenTest {
             ),
             onDone = { done = true }
         )
-        composeTestRule.onNodeWithText("Confirm").performClick()
+        composeTestRule.onNodeWithText("Done").performClick()
         assertEquals(true, done)
     }
 
@@ -295,5 +296,28 @@ class CsvImportScreenTest {
         composeTestRule.onNodeWithTag("import-fix-firstname").performTextInput("Dana")
         composeTestRule.onNodeWithText("Save fix").performClick()
         assertEquals(ImportRowEdit(rowIndex = 0, firstname = "Dana"), saved)
+    }
+
+    // Issue #2731: the preview's file-level notice reaches the review step.
+    @Test
+    fun `the review step shows the preview's file diagnostics`() {
+        setContent(
+            CsvImportUiState(
+                step = CsvImportStep.PREVIEW,
+                preview = ImportPreviewResponse(
+                    sessionId = "session-1",
+                    rows = listOf(ImportRowPreview(rowIndex = 0)),
+                    fileDiagnostics = listOf(
+                        ImportDiagnostic(
+                            "warn",
+                            "encoding",
+                            "file was not UTF-8; read as Windows-1252"
+                        )
+                    )
+                ),
+                rowActions = mapOf(0 to "add")
+            )
+        )
+        composeTestRule.onNodeWithTag("import-file-diagnostic").assertIsDisplayed()
     }
 }

@@ -26,6 +26,7 @@ import {
   restoreEntity,
 } from './api/entities';
 import { type FieldDefinition, type FieldValue, getFieldDefinitions } from './api/fieldDefinitions';
+import { getTrashedEntities, type TrashedEntity } from './api/trash';
 import CustomFieldGroups from './components/CustomFieldGroups';
 import EntityDeleteDialog from './components/EntityDeleteDialog';
 import EntityFormDialog from './components/EntityFormDialog';
@@ -39,6 +40,31 @@ import { coreToForm } from './utils/entityCore';
 import { ENTITY_KIND_KEYS, ENTITY_SENSITIVITY_KEYS, roleKey } from './utils/entityLabels';
 import { formatLinkPeriod } from './utils/entityPeriod';
 import { getErrorMessage } from './utils/errorHandler';
+
+// An id that is no longer live is looked up in the entity Trash (the API the
+// Trash page uses), so a deleted or merged-away entity's page can offer Restore
+// instead of a bare not-found (#2708). A failed lookup is just "not found".
+async function findTrashedEntity(id: string): Promise<TrashedEntity | null> {
+  try {
+    for (let page = 1, seen = 0; page <= 50; page++) {
+      const res = await getTrashedEntities({ page, limit: 100 });
+      const hit = res.entities.find((e) => e.entity.id === id);
+      if (hit) return hit;
+      seen += res.entities.length;
+      if (res.entities.length === 0 || seen >= res.total) break;
+    }
+  } catch {
+    // fall through to not-found
+  }
+  return null;
+}
+
+// What the "gone" panel needs: deleted here, found in Trash, or merged away.
+interface GoneEntity {
+  id: string;
+  name: string;
+  mergedAway: boolean;
+}
 
 interface MergedLoserState {
   mergedLoser?: { id: string; name: string };
@@ -60,7 +86,8 @@ export default function EntityDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notFound, setNotFound] = useState(false);
-  const [deleted, setDeleted] = useState<Entity | null>(null);
+  const [deleted, setDeleted] = useState<GoneEntity | null>(null);
+  const [peopleLoaded, setPeopleLoaded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [merging, setMerging] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -72,6 +99,7 @@ export default function EntityDetailPage() {
     setLoading(true);
     setError('');
     setNotFound(false);
+    setPeopleLoaded(false);
     try {
       const e = await getEntity(id);
       setEntity(e);
@@ -82,13 +110,24 @@ export default function EntityDetailPage() {
         listEntityFieldValues(id),
       ]);
       setContactsError(people.status === 'rejected');
+      setPeopleLoaded(people.status === 'fulfilled');
       setContacts(people.status === 'fulfilled' ? people.value : []);
       setDefinitions(defs.status === 'fulfilled' ? defs.value.field_definitions || [] : []);
       setValues(vals.status === 'fulfilled' ? vals.value : []);
     } catch (err) {
       setEntity(null);
-      if (err instanceof ApiError && err.status === 404) setNotFound(true);
-      else setError(getErrorMessage(err) || t('entities.detail.loadFailed'));
+      if (err instanceof ApiError && err.status === 404) {
+        const trashed = await findTrashedEntity(id);
+        if (trashed) {
+          setDeleted({
+            id: trashed.entity.id,
+            name: trashed.entity.name,
+            mergedAway: Boolean(trashed.merged_into),
+          });
+        } else {
+          setNotFound(true);
+        }
+      } else setError(getErrorMessage(err) || t('entities.detail.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -162,6 +201,7 @@ export default function EntityDetailPage() {
         {back}
         <Alert
           severity="info"
+          role="status"
           action={
             <Button
               color="inherit"
@@ -169,12 +209,18 @@ export default function EntityDetailPage() {
               disabled={restoring}
               onClick={() => void restore(deleted.id, deleted.name)}
             >
-              {t('entities.deleted.restore')}
+              {deleted.mergedAway
+                ? t('entities.merge.undo', { name: deleted.name })
+                : t('entities.deleted.restore')}
             </Button>
           }
         >
-          <AlertTitle>{t('entities.deleted.title', { name: deleted.name })}</AlertTitle>
-          {t('entities.deleted.body')}
+          <AlertTitle>
+            {deleted.mergedAway
+              ? t('entities.merge.undoTitle', { name: deleted.name })
+              : t('entities.deleted.title', { name: deleted.name })}
+          </AlertTitle>
+          {deleted.mergedAway ? t('entities.merge.undoBody') : t('entities.deleted.body')}
         </Alert>
       </Box>
     );
@@ -192,6 +238,12 @@ export default function EntityDetailPage() {
       </Box>
     );
   }
+
+  // #2702: count distinct contacts, not links (one contact can hold several
+  // roles). Until the list has loaded, or if it failed, use the stored link count.
+  const linkedContacts = peopleLoaded
+    ? new Set(contacts.map((c) => c.contact_id)).size
+    : (entity.link_count ?? contacts.length);
 
   const form = coreToForm(entity.kind, entity.core) as unknown as Record<string, string>;
   const detailRows = detailFields(entity.kind)
@@ -246,7 +298,7 @@ export default function EntityDetailPage() {
           />
         )}
         <Typography variant="body2" color="text.secondary">
-          {t('entities.detail.linkedCount', { count: entity.link_count ?? contacts.length })}
+          {t('entities.detail.linkedCount', { count: linkedContacts })}
         </Typography>
       </Stack>
 
@@ -383,6 +435,9 @@ export default function EntityDetailPage() {
         <EntityMergeDialog
           open
           loserId={entity.id}
+          // Distinct contacts, the same definition the survivor picker's list rows use;
+          // the detail entity's own link_count counts link rows and must not be mixed in.
+          loserLinkCount={peopleLoaded ? linkedContacts : undefined}
           onClose={() => setMerging(false)}
           onMerged={(result, loser) => {
             setMerging(false);
@@ -399,7 +454,7 @@ export default function EntityDetailPage() {
         onClose={() => setDeleting(false)}
         onDeleted={() => {
           setDeleting(false);
-          setDeleted(entity);
+          setDeleted({ id: entity.id, name: entity.name, mergedAway: false });
         }}
       />
     </Box>

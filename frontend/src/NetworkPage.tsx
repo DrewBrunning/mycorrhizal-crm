@@ -266,7 +266,9 @@ export default function NetworkPage() {
           p: 2,
         }}
       >
-        <Alert severity="info">{t('network.noData')}</Alert>
+        <Alert severity="info" role="status">
+          {t('network.noData')}
+        </Alert>
       </Box>
     );
   }
@@ -299,7 +301,7 @@ export default function NetworkPage() {
         </Alert>
       )}
       {data.scoped && !fullNetwork && (
-        <Alert severity="info" sx={{ mb: 2 }}>
+        <Alert severity="info" role="status" sx={{ mb: 2 }}>
           {t('network.egoNotice', { depth: data.depth ?? 2 })}
         </Alert>
       )}

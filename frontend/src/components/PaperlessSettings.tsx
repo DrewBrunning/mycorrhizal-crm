@@ -138,6 +138,7 @@ export default function PaperlessSettings() {
               fullWidth
               size="small"
               placeholder="http://paperless:8000"
+              slotProps={{ htmlInput: { translate: 'no' } }}
             />
 
             <TextField

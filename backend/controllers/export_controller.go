@@ -196,22 +196,29 @@ func abortExportError(c *gin.Context, log *zerolog.Logger, operation, category, 
 // The second return is false when the caller should abort (an error has
 // already been written to the response).
 func parseExportFieldSelection(c *gin.Context, operation string) (*models.FieldSelection, bool) {
-	raw := c.Query("sections")
+	// Accept both the documented comma-joined shape and a repeated
+	// ?sections=a&sections=b shape. The latter was accidentally produced by an
+	// older web single-contact export; c.Query would read only the first value
+	// and silently narrow the export to one section. c.QueryArray keeps every
+	// value, so old clients get their full selection after upgrading the server.
+	rawSections := c.QueryArray("sections")
 	var sel *models.FieldSelection
-	if raw == "" {
+	if len(rawSections) == 0 {
 		sel = models.FieldSelectionAll()
 	} else {
 		sel = models.NewFieldSelection()
-		for _, token := range strings.Split(raw, ",") {
-			token = strings.TrimSpace(token)
-			if token == "" {
-				continue
-			}
-			if err := sel.Enable(token); err != nil {
-				apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()).WithReason(apperrors.ReasonExportSelectionInvalid, map[string]any{"reason": err.Error()}).
-					WithDetails("operation", operation).
-					WithDetails("category", exportCatValidation))
-				return nil, false
+		for _, raw := range rawSections {
+			for _, token := range strings.Split(raw, ",") {
+				token = strings.TrimSpace(token)
+				if token == "" {
+					continue
+				}
+				if err := sel.Enable(token); err != nil {
+					apperrors.AbortWithError(c, apperrors.ErrValidation(err.Error()).WithReason(apperrors.ReasonExportSelectionInvalid, map[string]any{"reason": err.Error()}).
+						WithDetails("operation", operation).
+						WithDetails("category", exportCatValidation))
+					return nil, false
+				}
 			}
 		}
 		if len(sel.Sections) == 0 {

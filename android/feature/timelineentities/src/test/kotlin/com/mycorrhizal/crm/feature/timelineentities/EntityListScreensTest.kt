@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
@@ -105,6 +106,47 @@ class EntityListScaffoldTest {
         // The empty-state button carries the same label as the FAB's description.
         composeTestRule.onNodeWithText("New life event").performClick()
         assertEquals(1, added)
+    }
+
+    // A failed contact fetch (loadError) is the shared ErrorState: the localized reason plus a
+    // Retry that re-runs the load; the empty-state "add the first one" prompt must not show.
+    @Test
+    fun `a load error with nothing listed shows the localized reason and Retry`() {
+        var refreshed = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                EntityListScaffold(
+                    title = "Life events",
+                    addLabel = "New life event",
+                    emptyTitle = "No items yet",
+                    emptyBody = "Add the first one.",
+                    uiState = EntityListUiState(
+                        loadError = ApiError.Client(
+                            409,
+                            "raw-body-not-shown",
+                            com.mycorrhizal.crm.model.network.ErrorReason(
+                                com.mycorrhizal.crm.model.network.ErrorReasonCode.FEED_LIMIT_REACHED,
+                                mapOf("max" to 50.0)
+                            )
+                        )
+                    ),
+                    onAdd = {},
+                    onItemClick = {},
+                    onDelete = {},
+                    onErrorShown = {},
+                    onBack = {},
+                    onRefresh = { refreshed++ },
+                    dialog = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No items yet").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Retry").performClick()
+        assertEquals(1, refreshed)
     }
 
     @Test
@@ -1534,5 +1576,77 @@ class EntityListScreensTopLevelTest {
             ),
             shown
         )
+    }
+
+    // --- Issue #2606: the Gifts-screen preference rows use the localized labels ---
+
+    @Test
+    fun `gift preference rows show the localized category, disposition and value`() {
+        val deleted = mutableListOf<String>()
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                GiftPreferencesPanel(
+                    items = listOf(
+                        Preference(
+                            id = "p1",
+                            category = "jewelry_other",
+                            key = "like",
+                            value = "Enamel pins"
+                        ),
+                        Preference(
+                            id = "p2",
+                            category = "gift_other",
+                            key = "favorite",
+                            value = "Hand-bound notebooks"
+                        ),
+                        Preference(id = "p3", category = "dislike", value = "No candles"),
+                        Preference(
+                            id = "p4",
+                            category = "cause",
+                            key = "allergy",
+                            value = "Lilies",
+                            notes = "Hay fever"
+                        )
+                    ),
+                    onAdd = {},
+                    onEdit = {},
+                    onDelete = { deleted += it }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Jewelry — other: Like · Enamel pins").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Gift idea — other: Favorite · Hand-bound notebooks"
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("Avoid gifting: No candles").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Charitable cause: Allergy · Lilies\nHay fever"
+        ).assertIsDisplayed()
+        // No raw token or key = value syntax anywhere.
+        composeTestRule.onAllNodesWithText("jewelry_other", substring = true)
+            .assertCountEquals(0)
+        composeTestRule.onAllNodesWithText(" = ", substring = true).assertCountEquals(0)
+
+        composeTestRule.onNodeWithContentDescription(
+            "Delete Avoid gifting: No candles"
+        ).performClick()
+        assertEquals(listOf("p3"), deleted)
+        composeTestRule.onNodeWithContentDescription(
+            "Delete Jewelry — other: Like · Enamel pins"
+        ).assertIsDisplayed()
+    }
+
+    @Test
+    fun `gift preference label keeps an unknown disposition key verbatim`() {
+        var label = ""
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                label = Preference(category = "gift_other", key = "obsessed", value = "Tea")
+                    .giftPreferenceLabel()
+            }
+        }
+        composeTestRule.waitForIdle()
+        assertEquals("Gift idea — other: obsessed · Tea", label)
     }
 }

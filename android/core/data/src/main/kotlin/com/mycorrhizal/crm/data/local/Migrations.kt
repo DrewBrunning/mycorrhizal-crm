@@ -153,11 +153,28 @@ val MIGRATION_18_19: Migration = object : Migration(startVersion = 18, endVersio
 }
 
 /**
+ * Issue #2629: `cached_circles` gains `description` and `color` so the saved copy of the circle
+ * list shows what the server list shows when the server cannot be reached. Existing rows get
+ * the empty defaults and are refreshed by the next successful list. Hand-written for the same
+ * reason as every migration since 13: the destructive fallback drops `pending_interactions`.
+ */
+val MIGRATION_19_20: Migration = object : Migration(startVersion = 19, endVersion = 20) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL(
+            "ALTER TABLE `cached_circles` ADD COLUMN `description` TEXT NOT NULL DEFAULT ''"
+        )
+        connection.execSQL(
+            "ALTER TABLE `cached_circles` ADD COLUMN `color` TEXT NOT NULL DEFAULT ''"
+        )
+    }
+}
+
+/**
  * The [AppDatabase] schema version. A `const val` (rather than a bare `18` in the `@Database`
  * annotation) so [MigrationVersionCoverageTest] can read the exact same value the annotation
  * compiles with, instead of a second, independently-maintained copy of the number.
  */
-const val CURRENT_VERSION: Int = 19
+const val CURRENT_VERSION: Int = 20
 
 /**
  * Issue #480: the lowest [AppDatabase] version this repo has any evidence of shipping.
@@ -181,7 +198,8 @@ val REGISTERED_MIGRATIONS: List<Migration> = listOf(
     MIGRATION_15_16,
     MIGRATION_16_17,
     MIGRATION_17_18,
-    MIGRATION_18_19
+    MIGRATION_18_19,
+    MIGRATION_19_20
 )
 
 /**

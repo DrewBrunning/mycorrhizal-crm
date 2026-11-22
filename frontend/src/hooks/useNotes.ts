@@ -33,6 +33,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
     toDate,
     scope,
     includeContacts,
+    sort,
   } = params;
 
   const [notes, setNotes] = useState<Note[]>([]);
@@ -72,6 +73,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
           toDate,
           scope,
           includeContacts,
+          sort,
         });
         if (requestRef.current !== requestId) return;
         setNotes(data.notes || []);
@@ -86,7 +88,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
     } finally {
       if (requestRef.current === requestId) setLoading(false);
     }
-  }, [contactId, paramLimit, search, fromDate, toDate, scope, includeContacts]);
+  }, [contactId, paramLimit, search, fromDate, toDate, scope, includeContacts, sort]);
 
   const loadMore = useCallback(async () => {
     if (!nextCursor) return;
@@ -102,6 +104,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
         toDate,
         scope,
         includeContacts,
+        sort,
       });
       if (requestRef.current !== requestId) return;
       setNotes((prev) => [...prev, ...(data.notes || [])]);
@@ -115,7 +118,7 @@ export function useNotes(contactId?: string | number, params: GetNotesParams = {
     } finally {
       if (requestRef.current === requestId) setLoading(false);
     }
-  }, [nextCursor, paramLimit, search, fromDate, toDate, scope, includeContacts]);
+  }, [nextCursor, paramLimit, search, fromDate, toDate, scope, includeContacts, sort]);
 
   useEffect(() => {
     void fetchFirst();

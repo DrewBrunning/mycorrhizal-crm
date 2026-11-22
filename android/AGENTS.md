@@ -39,6 +39,42 @@ anything mirrored across clients; the Kotlin-specific rules are here.
   There is deliberately no `lint-baseline.xml`: a new exemption needs a reasoned per-check `ignore`
   and, when it is deferred work, a linked follow-up issue.
 
+## Screenshot goldens
+
+Issue #2534: Compose visual regression runs on the same Robolectric stack via
+Roborazzi, in `:feature:contacts`, `:feature:auth` and `:feature:settings`
+(`src/test/kotlin/.../screenshot/`, goldens in `src/test/screenshots/`). Each
+test renders a stateless `*Content` composable from a hand-built state across
+light/dark x font scale 1.0/2.0 on a Pixel 7, plus one
+`RobolectricDeviceQualifiers.MediumTablet` run where the screen has a layout
+branch worth pinning; never feed a golden a ViewModel, Hilt, network, clock or
+generated ID. Verify with
+`./gradlew :feature:contacts:verifyRoborazziDebug
+:feature:auth:verifyRoborazziDebug :feature:settings:verifyRoborazziDebug
+:app:verifyRoborazziObtainiumDebug`
+locally; CI does not run a separate screenshot step — the `android-unit` job's
+unit-test step passes `-Proborazzi.test.verify=true`, so the goldens verify
+inside the test pass that already happens (~0.2 s for the whole matrix, not a
+second module run). After an intentional visual change regenerate with
+`./gradlew :feature:contacts:recordRoborazziDebug` (or the module that changed)
+and commit the PNG diff (the diff is the review). Diffs land in
+`build/outputs/roborazzi/`. Record on Linux, CI's platform — never hand-edit or
+delete a golden to turn a build green.
+
+Issue #2535: the **pseudo-locale (en-XA)** pass is the one exception to the
+module-local rule. It lives in `:app` — tests in
+`src/testObtainiumDebug/kotlin/.../screenshot/`, goldens in
+`src/test/screenshots/*_pseudo.png` — because aapt2 generates `values-en-rXA`
+only at the app's link step; a library module's test resource APK carries zero
+`(en-rXA)` entries, so the same test there would render plain English and pass
+silently. The variant source set is deliberate: obtainium is the superset flavor
+(foss/play only strip features), so its coverage extends to them, and the pseudo
+resources are debug-only. Running the suite per flavor would execute identical
+captures and race on one golden path, so do not widen it to `src/test/` or
+`src/testObtainium/`, and never copy the goldens per flavor. The same pass runs
+`PseudoLocaleHardcodedStringTest`, which fails on unbracketed UI text that is
+not explicitly listed fixture user content.
+
 ## Instrumented E2E
 
 The suite in `android/app/src/androidTest` drives the real app against the real

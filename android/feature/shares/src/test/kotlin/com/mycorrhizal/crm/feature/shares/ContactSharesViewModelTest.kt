@@ -17,6 +17,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -73,6 +74,81 @@ class ContactSharesViewModelTest {
         assertEquals("dana", vm.uiState.value.usernames["7"])
         assertEquals("casey", vm.uiState.value.usernames["9"])
         assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `loadMore appends the next page for the selected tab and follows its cursor`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val older = incomingShare(id = "s2", name = "Older")
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                ContactSharesPage(contactShares = listOf(incomingShare()), nextCursor = "c1")
+            ),
+            Result.success(ContactSharesPage(contactShares = listOf(older), nextCursor = ""))
+        )
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+
+        val vm = ContactSharesViewModel(repository)
+        advanceUntilIdle()
+        assertEquals("c1", vm.uiState.value.incomingNextCursor)
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("s1", "s2"), vm.uiState.value.incoming.map { it.id })
+        assertNull(vm.uiState.value.incomingNextCursor)
+        assertFalse(vm.uiState.value.loadingMore)
+        coVerify(exactly = 1) { repository.listIncoming("c1", 100) }
+    }
+
+    @Test
+    fun `a failed loadMore keeps the loaded rows and exposes a retry error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                ContactSharesPage(contactShares = listOf(incomingShare()), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Client(500, "boom"))
+        )
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+        val vm = ContactSharesViewModel(repository)
+        advanceUntilIdle()
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("s1"), vm.uiState.value.incoming.map { it.id })
+        assertNotNull(vm.uiState.value.loadMoreError)
+        assertFalse(vm.uiState.value.loadingMore)
+    }
+
+    @Test
+    fun `loadMore appends the outgoing tab and follows its cursor`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val older = outgoingShare(id = "s4", name = "Older Outgoing")
+        coEvery { repository.listIncoming(any(), any()) } returns
+            Result.success(ContactSharesPage())
+        coEvery { repository.listOutgoing(any(), any()) } returnsMany listOf(
+            Result.success(
+                ContactSharesPage(contactShares = listOf(outgoingShare()), nextCursor = "c2")
+            ),
+            Result.success(ContactSharesPage(contactShares = listOf(older), nextCursor = ""))
+        )
+        val vm = ContactSharesViewModel(repository)
+        advanceUntilIdle()
+        vm.selectTab(SharesTab.OUTGOING)
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("s3", "s4"), vm.uiState.value.outgoing.map { it.id })
+        assertNull(vm.uiState.value.outgoingNextCursor)
+        coVerify(exactly = 1) { repository.listOutgoing("c2", 100) }
     }
 
     @Test
@@ -273,5 +349,28 @@ class ContactSharesViewModelTest {
         assertNull(vm.uiState.value.declinePendingId)
         coVerify(exactly = 0) { repository.decline(any()) }
         assertEquals(1, vm.uiState.value.incoming.size)
+    }
+
+    @Test
+    fun `switching tabs clears a load-more error from the previous tab`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                ContactSharesPage(contactShares = listOf(incomingShare()), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Client(500, "boom"))
+        )
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+        val vm = ContactSharesViewModel(repository)
+        advanceUntilIdle()
+        vm.loadMore()
+        advanceUntilIdle()
+        assertNotNull(vm.uiState.value.loadMoreError)
+
+        vm.selectTab(SharesTab.OUTGOING)
+
+        assertNull(vm.uiState.value.loadMoreError)
     }
 }

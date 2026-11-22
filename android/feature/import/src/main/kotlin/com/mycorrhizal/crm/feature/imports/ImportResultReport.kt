@@ -2,6 +2,7 @@ package com.mycorrhizal.crm.feature.imports
 
 import android.content.Context
 import android.content.Intent
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -32,7 +33,8 @@ import java.io.File
  * Issue #2187 (Android parity, #2210): the final import result — the created/updated/skipped
  * counts, then every skipped or failed row with its reason (`ImportResult.issues`) and a share
  * button that hands the list over as a CSV. A clean import shows no list. [onShareCsv] defaults
- * to the system share sheet; tests pass their own.
+ * to the system share sheet; tests pass their own. Nothing is pending on this screen, so the
+ * closing button reads "Done" (issue #2621); a past run's report passes [doneLabel] "Close".
  */
 @Composable
 fun ImportResultReport(
@@ -42,7 +44,8 @@ fun ImportResultReport(
     onShareCsv: ((List<ImportRowIssue>) -> Unit)? = null,
     summary: String? = null,
     summaryTag: String? = null,
-    doneTag: String? = null
+    doneTag: String? = null,
+    @StringRes doneLabel: Int = R.string.action_done
 ) {
     val context = LocalContext.current
     val share = onShareCsv ?: { issues -> shareImportIssuesCsv(context, issues) }
@@ -63,7 +66,7 @@ fun ImportResultReport(
         )
         if (result.issues.isEmpty()) {
             Button(onClick = onDone, modifier = Modifier.optionalTestTag(doneTag)) {
-                Text(stringResource(R.string.action_confirm))
+                Text(stringResource(doneLabel))
             }
             return
         }
@@ -72,10 +75,17 @@ fun ImportResultReport(
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
+            val notImported = importReportTitleRes(
+                result.issues
+            ) != R.string.import_report_title_warnings
             Text(
-                text = stringResource(R.string.import_report_title),
+                text = stringResource(importReportTitleRes(result.issues)),
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.error
+                color = if (notImported) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                }
             )
             OutlinedButton(onClick = { share(result.issues) }) {
                 Text(stringResource(R.string.import_report_share))
@@ -88,7 +98,7 @@ fun ImportResultReport(
             onClick = onDone,
             modifier = Modifier.padding(top = 8.dp).optionalTestTag(doneTag)
         ) {
-            Text(stringResource(R.string.action_confirm))
+            Text(stringResource(doneLabel))
         }
     }
 }
@@ -108,14 +118,7 @@ private fun IssueRow(issue: ImportRowIssue) {
             style = MaterialTheme.typography.bodyMedium
         )
         Text(
-            text = stringResource(
-                if (issue.status == "failed") {
-                    R.string.import_report_failed
-                } else {
-                    R.string.import_report_skipped
-                },
-                issue.reason
-            ),
+            text = issue.localizedLine(),
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

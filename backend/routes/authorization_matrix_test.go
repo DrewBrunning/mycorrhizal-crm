@@ -404,6 +404,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"POST /api/v1/contacts/import/upload":           {class: classProtected},
 		"POST /api/v1/contacts/import/preview":          {class: classProtected},
 		"POST /api/v1/contacts/import/confirm":          {class: classProtected},
+		"POST /api/v1/contacts/import/cancel":           {class: classProtected},
 		"POST /api/v1/contacts/import/vcf/upload":       {class: classProtected},
 		"POST /api/v1/contacts/import/vcf/confirm":      {class: classProtected},
 		"POST /api/v1/contacts/import/jscontact/upload": {class: classProtected},
@@ -449,6 +450,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"GET /api/v1/share-grants/notifications":       {class: classProtected},
 		"POST /api/v1/share-grants/notifications/read": {class: classProtected},
 		"DELETE /api/v1/share-grants/blocks/:user_id":  {class: classProtected},
+		"DELETE /api/v1/share-grants/:id":              {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID},
 		"PATCH /api/v1/share-grants/:id":               {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID},
 		"POST /api/v1/share-grants/:id/accept":         {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/accept"},
 		"POST /api/v1/share-grants/:id/decline":        {class: classItem, probe: "/api/v1/share-grants/" + fabricatedUUID + "/decline"},
@@ -607,6 +609,7 @@ func buildTable(s seeded) map[string]authzRow {
 		"DELETE /api/v1/occasion-obligations/:id":             {class: classItem, probe: "/api/v1/occasion-obligations/" + s.occasionObligation},
 		"GET /api/v1/occasions/upcoming":                      {class: classProtected},
 		"GET /api/v1/occasion-obligations/card-list":          {class: classProtected},
+		"GET /api/v1/occasion-obligations/card-list/summary":  {class: classProtected},
 		"GET /api/v1/occasion-obligations/gift-shopping-list": {class: classProtected},
 
 		// --- occasion events (docs/adrs/0026-occasions-events.md, issue #1228) --

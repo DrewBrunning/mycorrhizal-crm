@@ -189,6 +189,7 @@ func (m *MeerkatImportManager) startAPIFetch(db *gorm.DB, s *meerkatImportSessio
 	}
 	s.phase = models.SourceImportPhaseFetchingContacts
 	s.phaseDone, s.errMsg = 0, ""
+	s.errReason, s.errReasonParams = "", nil
 	s.plan, s.previews, s.snapshot = nil, nil, nil
 	ctx, cancel := context.WithCancel(context.Background())
 	s.cancel = cancel
@@ -207,7 +208,8 @@ func (m *MeerkatImportManager) runAPIFetch(ctx context.Context, db *gorm.DB, s *
 			return // cancelled: the session is being torn down
 		}
 		log.Warn().Err(err).Str("session_id", s.id).Msg("Meerkat API fetch failed")
-		s.fail(userSafeMeerkatAPIError(err))
+		msg, code, params := meerkatFetchFailure(err)
+		s.failCoded(msg, code, params)
 		return
 	}
 	s.mu.Lock()
@@ -320,4 +322,27 @@ func (m *MeerkatImportManager) processPhotos(db *gorm.DB, s *meerkatImportSessio
 	s.mu.Lock()
 	s.phase = models.SourceImportPhaseDone
 	s.mu.Unlock()
+}
+
+// meerkatFetchFailure is the reason-coded form of userSafeMeerkatAPIError for
+// a failed background fetch (issue #2727): the English message (kept as the
+// fallback, including its "use the database upload" advice), a #2093 reason
+// code and its params. The two advice-bearing causes get dedicated codes whose
+// templates carry no advice, so a client without a database-upload option can
+// show the plain failure and the web can add the hint separately; every other
+// cause reuses meerkat_api_error with the existing {reason} param, exactly as
+// the connect step does. None of the messages names a host, so no code needs a
+// host param.
+func meerkatFetchFailure(err error) (string, apperrors.ReasonCode, map[string]any) {
+	msg := userSafeMeerkatAPIError(err)
+	switch {
+	case errors.Is(err, meerkatapi.ErrInvalidData):
+		return msg, apperrors.ReasonMeerkatFetchUnreadable, nil
+	case errors.Is(err, meerkatapi.ErrUnauthorized), errors.Is(err, meerkatapi.ErrLocked),
+		errors.Is(err, meerkatapi.ErrInvalidURL), errors.Is(err, meerkatapi.ErrPrivateAddress),
+		errors.Is(err, meerkatapi.ErrNotMeerkat), errors.Is(err, meerkatapi.ErrTooLarge):
+		return msg, apperrors.ReasonMeerkatAPIError, map[string]any{"reason": msg}
+	default:
+		return msg, apperrors.ReasonMeerkatFetchUnreachable, nil
+	}
 }

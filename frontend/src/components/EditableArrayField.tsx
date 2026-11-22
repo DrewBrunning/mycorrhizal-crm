@@ -123,7 +123,7 @@ export default function EditableArrayField<T>({
             className="edit-button"
             size="small"
             onClick={startEdit}
-            aria-label={t('common.edit')}
+            aria-label={t('common.editNamed', { name: label })}
             // #188 / #196: the tight p:0.25 padding measured 22x22, under the
             // 2.5.8 (AA) 24x24 minimum -- floor it. Mirrors EditableField.tsx.
             sx={{

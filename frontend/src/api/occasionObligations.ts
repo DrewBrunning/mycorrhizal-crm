@@ -3,6 +3,7 @@
 // layer above LifeEvent/Gift/Preference.
 import { API_BASE_URL, apiFetch, getAuthHeaders, parseErrorResponse } from './client';
 import { downloadFileFromResponse } from './export';
+import { withViewerTimezone } from './viewerTimezone';
 
 // OccasionObligation.Kind is an open classifier (backend/models/occasion_obligation.go)
 // — card/gift/invite are the three named ones; the value is free text
@@ -136,9 +137,12 @@ export async function getUpcomingOccasions(params?: {
   const { days = 30, includeSensitive = false } = params || {};
   const queryParams = new URLSearchParams({ days: String(days) });
   if (includeSensitive) queryParams.append('include_sensitive', 'true');
-  const response = await apiFetch(`${API_BASE_URL}/occasions/upcoming?${queryParams.toString()}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await apiFetch(
+    withViewerTimezone(`${API_BASE_URL}/occasions/upcoming?${queryParams.toString()}`),
+    {
+      headers: getAuthHeaders(),
+    },
+  );
   if (!response.ok) throw await parseErrorResponse(response);
   return response.json();
 }
@@ -170,7 +174,9 @@ export async function getGiftShoppingList(params?: {
   const queryParams = new URLSearchParams({ days: String(days) });
   if (includeSensitive) queryParams.append('include_sensitive', 'true');
   const response = await apiFetch(
-    `${API_BASE_URL}/occasion-obligations/gift-shopping-list?${queryParams.toString()}`,
+    withViewerTimezone(
+      `${API_BASE_URL}/occasion-obligations/gift-shopping-list?${queryParams.toString()}`,
+    ),
     { headers: getAuthHeaders() },
   );
   if (!response.ok) throw await parseErrorResponse(response);
@@ -194,4 +200,33 @@ export async function downloadOccasionCardListCSV(params?: {
   );
   if (!response.ok) throw await parseErrorResponse(response);
   await downloadFileFromResponse(response, `mycorrhizal-${kind}-list.csv`);
+}
+
+// Counts-only companion to the card-list CSV (issue #2786, OccasionCardListSummary):
+// how many recipients the CSV holds for the same query and how many it skips.
+// `included` always equals the CSV's data-row count; no names or addresses.
+export interface OccasionCardListSummary {
+  total: number;
+  included: number;
+  skipped: number;
+  skipped_reasons: {
+    no_address: number;
+    private_address_only: number;
+  };
+}
+
+// GET /occasion-obligations/card-list/summary
+export async function getOccasionCardListSummary(params?: {
+  kind?: string;
+  includeSensitive?: boolean;
+}): Promise<OccasionCardListSummary> {
+  const { kind = 'card', includeSensitive = false } = params || {};
+  const queryParams = new URLSearchParams({ kind });
+  if (includeSensitive) queryParams.append('include_sensitive', 'true');
+  const response = await apiFetch(
+    `${API_BASE_URL}/occasion-obligations/card-list/summary?${queryParams.toString()}`,
+    { headers: getAuthHeaders() },
+  );
+  if (!response.ok) throw await parseErrorResponse(response);
+  return response.json();
 }

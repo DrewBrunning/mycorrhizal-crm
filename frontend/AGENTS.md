@@ -55,6 +55,15 @@ This file is the frontend contract. Android shares the trap IDs below.
 - **Shared repo-root fixtures go through `@testdata/...`, never `../../../testdata/...`.** Stryker
   runs vitest from a sandbox copy of `frontend/`, where the relative path resolves to nothing;
   `vitest.config.ts` resolves the alias by walking up, and `src/testdataAlias.test.ts` enforces it.
+- **Real-browser component tests are a separate tier (issue #2539).** `src/**/*.browser.test.tsx`
+  runs under Chromium via vitest browser mode (`cd frontend && npm run test:browser`, config
+  `vitest.browser.config.ts`) for behaviour jsdom cannot prove: real media queries, observers,
+  scrolling/anchor jumps, image measurement. They are excluded from the jsdom run
+  (`vitest.config.ts`'s `exclude`); keep that config's `@testdata` resolver and
+  `setupFiles` identical to `vitest.config.ts`. Do not
+  use this tier for anything jsdom can already prove (mock `matchMedia`/`scrollIntoView` there
+  instead of moving the test here) or for multi-page flows (that is E2E). Stryker mutates the jsdom
+  config only. Layer policy: `docs/development/testing.md`.
 - Generated TS types: `src/generated/openapi.ts` is generated from `openapi.yaml` by
   `cd backend && go run ./cmd/gentsapi` — never hand-edited. The hand-written types in `src/api/*.ts`
   are pinned to it by `src/api/contractConformance.ts` (types only; imported by nothing): `tsc` fails
@@ -63,12 +72,12 @@ This file is the frontend contract. Android shares the trap IDs below.
 - **TypeScript is intentionally capped at 6.x** (`typescript ^6.0.3`). TypeScript 7 is the Go-native
   rewrite (`tsgo`): no classic JS compiler API (`lib/typescript.js` gone, only `./unstable/*`) and no
   `tsserver`, so `typescript-eslint`'s typed linting — which `eslint.config.js`'s `projectService`
-  promise-safety rules depend on — cannot load it. The installed `typescript-eslint@8.72.1` declares
+  promise-safety rules depend on — cannot load it. The installed `typescript-eslint@8.72.2` declares
   peer `typescript >=4.8.4 <6.1.0`. The cap is load-bearing; revisit when the toolchain supports TS 7.
 - **`nanoid` is locked to `^3.3.18` in `resolutions`** (security pin for GHSA-2v37-7h3g-55p8 /
   CVE-2026-67213, which hit 3.3.17 and the whole 4.x–5.1.5 line). It cannot move to 4/5/6: vite →
   postcss loads it via CommonJS `require('nanoid/non-secure')`, while nanoid 4+ is ESM-only. The
-  lock currently resolves postcss 8.5.32, which requests `nanoid ^3.3.20`, while the resolution keeps
+  lock currently resolves postcss 8.5.33, which requests `nanoid ^3.3.20`, while the resolution keeps
   3.3.18; nanoid 3.3.20 also ships CommonJS (`main: index.cjs`). Re-verify the compatibility and
   patched-line claims before moving the pin.
 - **`glob` is forced to `^14.0.2` and each minimatch-10 consumer to `^11.0.1` in `resolutions`**

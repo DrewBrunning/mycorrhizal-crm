@@ -347,6 +347,38 @@ class ContactSectionScreensTest {
     }
 
     @Test
+    fun `work with only work information has one add control, not a second one for organizations`() {
+        val vm = viewModel(
+            ContactSectionsUiState(
+                enabledFields = setOf(ContactFieldKey.WORK_INFORMATION),
+                record = record()
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactWorkScreen(onBack = {}, viewModel = vm) }
+        }
+        composeTestRule.onNodeWithTag("contact-work-edit-information").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("Add work details").assertDoesNotExist()
+    }
+
+    @Test
+    fun `work with organizations enabled keeps the add button`() {
+        val vm = viewModel(
+            ContactSectionsUiState(
+                enabledFields = setOf(
+                    ContactFieldKey.WORK_INFORMATION,
+                    ContactFieldKey.ORGANIZATIONS
+                ),
+                record = record()
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { ContactWorkScreen(onBack = {}, viewModel = vm) }
+        }
+        composeTestRule.onNodeWithContentDescription("Add work details").assertIsDisplayed()
+    }
+
+    @Test
     fun `work list renders organizations titles and work information with periods`() {
         val vm = viewModel(
             ContactSectionsUiState(

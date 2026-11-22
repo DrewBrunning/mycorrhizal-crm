@@ -280,11 +280,13 @@ Evidence first (failed gate step on each of the failing runs, from the Actions A
 | Schemathesis `schemagate` (2 runs) | `1 unaccepted finding(s)`, a randomized-fuzz `Server error` (5xx) | **A real finding**, not infra: `schemagate` already gates on a committed ignore list and failed on a *new* finding | **Not retried.** Re-rolling a fuzzer until it stops finding a 500 hides a defect; fix the 5xx or add a justified ignore entry. |
 | `min-version-tests` Go floor (3 runs, 2026-09-19..22) | a different timing-sensitive test each time: `TestCheckDBIntegrityScheduledFiresWebhookOnCorruption` (SQLITE_BUSY lock-release race, with `services` taking 2–3 min under a contended runner), `TestDetectReachOutSuggestions_OrganizationChange`, and a `schemafixture` 10 min timeout (since raised to 25 min) | **Timing flakes, not floor-specific** — the same packages pass at the current toolchain in the same battery | `.github/scripts/go-test-retry-failed.sh` re-runs **only the failed packages, once**, with a `::warning::` naming each retried package and test. A build/vet failure, more than 3 failed packages, or a package that fails twice still fails the leg. |
 | Playwright E2E, DAVx5 / Android emulator legs, zizmor, large-dataset migration | already retried in-job (the emulator legs run a "retry, fresh emulator" attempt) or one-off | — | unchanged; the ledger + `rerun_gates` bound their cost to one gate instead of the battery |
+| Android Tests, JVM legs (`Android APK assembly + packaging checks`, 2026-11-20, [#2854](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2854)) | a 30s configuration failure: `Could not GET .../kotlin-stdlib-2.4.0.jar ... Received status code 429 from server: Too Many Requests` (20 artifacts), while every sibling Android job in the same run was green | **Artifact-host rate limit, not a code failure**: Maven Central answers 429 to a burst of fresh fetches from shared runner IPs, and the Plugin Portal redirects those artifacts there, so listing the portal first does not avoid it | `.github/scripts/gradle-retry-transient.sh` retries the Gradle invocation **once**, and **only** on a transport signature (HTTP 429/5xx from the artifact host, a reset/refused connection, a DNS/TLS handshake failure, a truncated body), with a `::warning::`. A compile error, a failing test, a missing artifact (404 / `Could not find`) and the zero-retry `schedule` tier all still fail on the first attempt. |
 
-The two retries are *bounded* on purpose: a retry that can mask a real finding turns a gate into a
+The retries above are *bounded* on purpose: a retry that can mask a real finding turns a gate into a
 suggestion. The structural wiring (the scripts are what the workflows run; `zapgate`'s exit code and
 the script's agree) is pinned by `releaseworkflow.CheckResilience` and the shell tests
-`.github/scripts/tests/zap-scan-gate.test.sh` / `go-test-retry-failed.test.sh` (CI: `actionlint.yml`).
+`.github/scripts/tests/zap-scan-gate.test.sh`, `.github/scripts/tests/go-test-retry-failed.test.sh`
+and `.github/scripts/tests/gradle-retry-transient.test.sh` (CI: `actionlint.yml`).
 
 `go run ./cmd/releasegatecheck` enforces the wiring (`releaseworkflow.CheckResilience`): every
 composed gate carries a `skip_gates` condition naming itself, dependent gates tolerate a skipped
@@ -318,10 +320,15 @@ reverses the earlier "a signing problem here shouldn't block the Docker images" 
   working. It does not install anything.
 - asserts `app-obtainium-release.apk` and `mycorrhizal-apk.sigstore.json` are present on the Release.
 
-**Known gap, accepted (issue #994):** no gate here, or anywhere in CI, drives the
-release-signed/R8-minified APK through an instrumented test, and none installs release N then
-N+1 over it to confirm the offline mirror survives — the "full emulator test" #480 originally
-named. [#480](https://github.com/DrewBrunning/mycorrhizal-crm/issues/480) (ANDROID-03) landed
+**Known gap, accepted (issue #994), packaging excluded since #2875:** no gate here, or anywhere
+in CI, drives the release-signed/R8-minified APK through an instrumented *functional* test, and
+none installs release N then N+1 over it to confirm the offline mirror survives — the "full
+emulator test" #480 originally named. The release-shaped artifact's **packaging** is verified on
+the PR path: `android-tests.yml`'s `android-assemble` leg assembles the debug-signed `benchmark`
+variant (release's R8 + resource shrinking) with `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true`, then
+asserts `lib/arm64-v8a/libmycorrhizal.so` is inside the APK and `mapping.txt` is non-empty, so the
+#1390 packaging failure is caught before release cut (issue #2875).
+[#480](https://github.com/DrewBrunning/mycorrhizal-crm/issues/480) (ANDROID-03) landed
 `RoomMigrationEncryptedTest`, which proves the Room migration chain against a real
 SQLCipher-encrypted file, and `MigrationVersionCoverageTest`, which guards that every version
 pair has a registered migration or a recorded destructive-fallback decision — but both run on
@@ -330,9 +337,9 @@ performs a real two-APK install. [PR #804](https://github.com/DrewBrunning/mycor
 deliberately did not build the literal install-N-then-install-N+1 harness: `versionCode` monotonicity
 (asserted above) is what makes Android accept the install, which is orthogonal to whether the
 database migrates correctly once the new code runs — the thing the JVM/instrumented migration
-suite already proves directly. Disposition: accept, not built — see the "E2E Android
-(instrumented)" section of [`testing.md`](testing.md#e2e-android-instrumented) for where this is
-tracked.
+suite already proves directly. Disposition: accept the two-APK upgrade, not built — see the "E2E
+Android (instrumented)" section of [`testing.md`](testing.md#e2e-android-instrumented) for where
+this is tracked.
 
 **Known gap, accepted, with a manual gate (issue #1339): Android local-only mode.** The embedded
 server ships arm64-only, so `LocalOnlyModeE2eTest` (the only end-to-end proof of `LocalServerHost`:
@@ -349,6 +356,11 @@ new silent skip cannot hide behind this accepted one. Things that cover local mo
   the no-arg exec fails, and pins the Kotlin `EMBEDDED_HOST_ARG` to the Go `embeddedHostArg`. This
   is the `Backend (Go)` job, so it is merge-blocking. It proves the binary's contract, not the
   Android host or seccomp behaviour.
+- **Automated, per-PR (issue #2875):** `android-tests.yml`'s `android-assemble` leg builds the
+  release-shaped `benchmark` variant with the same property and asserts the same
+  `lib/arm64-v8a/libmycorrhizal.so` path plus a non-empty `mapping.txt`, so a PR that breaks
+  release packaging (the #1390 failure mode) no longer waits for a dispatched build or a release
+  cut to be caught.
 - **Automated, per release build (issue #1390):** the embedded server is only packaged when
   Gradle gets `-PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true` with Go on the builder, and a build
   without it silently hides local mode. So `docker-publish.yml` (signed release APK),
@@ -490,19 +502,21 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `Backend (Go)` | per-pr | yes | go build + go vet + gofmt clean and `go test ./... -race` passes; no package exceeds its -timeout. | `unit-tests.yml` |
 | `Frontend (Vitest)` | per-pr | yes | `tsc --noEmit` and `vitest run` both pass. | `unit-tests.yml` |
 | `Frontend bundle-size budget` | per-pr | yes | `yarn build && yarn budget` passes: no emitted chunk grows past frontend/bundle-budget.json's tolerance (#556). Merge-time only; path-gated like the other unit-tests.yml required contexts. | `unit-tests.yml` |
-| `Run E2E Tests` | per-pr | yes | the route-stubbed Playwright suite (including @perf specs) passes. | `e2e-tests.yml` |
-| `Android (Gradle)` | per-pr | yes | `testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug` with warnings treated as errors (shared `android/lint.xml` exemptions carry reasons), `detekt`, and the flavor-qualified debug assembles all pass, plus the `buildHealth` dependency-analysis gate. Runs as four parallel legs (`android-unit`, `android-lint`, `android-analysis`, `android-assemble`); the required `Android (Gradle)` context is an aggregator job that fails if any leg fails. | `android-tests.yml` |
-| `Android E2E (emulator)` | per-pr | yes | the instrumented suite passes against the docker-compose.test.yml backend on an API-35 emulator. | `android-tests.yml` |
+| `Run E2E Tests` | per-pr | yes | the route-stubbed Playwright suite (including @perf specs) passes. Path-gated to frontend/openapi/infra/workflows; a backend-only PR is covered by the Go suites and by deploy-smoke at release time, not by this browser suite. | `e2e-tests.yml` |
+| `Android (Gradle)` | per-pr | yes | `testDebugUnitTest` (libraries) plus the flavor-qualified `:app:testObtainiumDebugUnitTest`/`:app:testFossDebugUnitTest`, `lintDebug` plus `:app:lint{Obtainium,Foss}Debug` with warnings treated as errors (shared `android/lint.xml` exemptions carry reasons), `detekt`, the Compose screenshot goldens match (Roborazzi, `-Proborazzi.test.verify=true` inside the unit-test step, #2534), and the flavor-qualified debug assembles all pass, plus the release-shaped `benchmark` variant assembles with the embedded server packaged and `mapping.txt` non-empty (#2875) and the `buildHealth` dependency-analysis gate. Runs as four parallel legs (`android-unit`, `android-lint`, `android-analysis`, `android-assemble`); the required `Android (Gradle)` context is an aggregator job that fails if any leg fails. | `android-tests.yml` |
+| `Android E2E (emulator)` | per-pr | yes | the instrumented suite passes against the docker-compose.test.yml backend on an API-35 emulator. The job deliberately does not run on `pull_request` (#578), so on a PR this required context is satisfied by a skipped job; the real signal is push to main, nightly and release composition. | `android-tests.yml` |
 | `Android scan (mobsfscan)` | per-pr | yes | mobsfscan reports no new high-severity finding on the Android sources. | `sast.yml` |
 | `Scan workflows (zizmor)` | per-pr | yes | zizmor exits 0 — no finding above what zizmor.yml's ignore list accepts. | `zizmor.yml` |
-| `CIS container hardening scan` | per-pr | yes | the all-in-one image passes docker/cis-hardening.sh and the Trivy misconfig/secret scan with no CRITICAL/HIGH. | `container-hardening.yml` |
+| `CIS container hardening scan` | per-pr | yes | the all-in-one image passes docker/cis-hardening.sh and the Trivy misconfiguration scan with no CRITICAL/HIGH. | `container-hardening.yml` |
+| `Secret scan (working tree)` | per-pr | yes | the Trivy filesystem secret scanner finds no committed credential. Runs on every PR, not path-gated; complements the gitleaks pre-commit hook and the history-only TruffleHog nightly. | `container-hardening.yml` |
 | `codecov/patch/backend` | per-pr | yes | changed Go lines are >= 95% covered (codecov.yml). Merge-time only: a PR-diff concept, not re-polled at publication. | `unit-tests.yml` |
 | `codecov/patch/frontend` | per-pr | yes | changed TypeScript lines are >= 90% covered. Merge-time only. | `unit-tests.yml` |
 | `codecov/patch/android` | per-pr | yes | changed Kotlin lines are >= 80% covered. Merge-time only. | `android-tests.yml` |
 | `Detect Changes` | per-pr | yes | the shared path-filter job completes; always green (structural). Required so path-skipped suites can be required checks (#264). | `unit-tests.yml` |
+| `Changelog note for operator-visible change` | per-pr | yes | a PR touching a migration, `backend/config/config.go` or `.env.example` changes `CHANGELOG.md` [Unreleased] or carries `no-changelog: <reason>` in its description. Runs only when the path filter matches; on any other PR the required context is satisfied by a skipped job. | `unit-tests.yml` |
 | `Docs & security-doc citations` | per-pr | yes | typos + citecheck + depexceptions + deprecations + docscheck + releasegatecheck all exit 0, the app-token full-history gitleaks scan is clean (rule-only config from the base-branch `.gitleaks.toml`, no inherited allowlists or PR-supplied `.gitleaksignore`/inline allows, #1877), plus the path-gated third-party notices drift check on a dependency-manifest/generator/notice change (#1944). Runs on every PR and nightly. `release_gate: true` — composed by the release gate and re-asserted at cut time, where `release.yml` also runs `citecheck` directly as a hard gate (#608). | `unit-tests.yml` |
-| `Migration Tests` | per-pr | yes | every supported-release upgrade leg, adjacent hop, and down round-trip passes. Per-leg check names make polling impractical; the release commit only adds a frozen schema dump, which schema-fixture-gate verifies, and the push:main run covers the chain. | `migration-tests.yml` |
-| `Go binary reproducible` | per-pr | yes | two builds from different paths are byte-identical (REL-04). Runs on the release commit's push:main; not in the ruleset. | `reproducibility.yml` |
+| `Migration Tests` | per-pr | yes | the aggregate job reports success when no migration-relevant path changed (all legs skipped). Once any leg runs, every per-PR leg (supported-release upgrade matrix, adjacent hops, down round-trip, schema-fixture suite, full-install upgrade) must succeed; a skipped or failed leg then fails the aggregate. | `migration-tests.yml` |
+| `Go binary reproducible` | per-pr | yes | two builds from different paths are byte-identical (REL-04). Required on `main`; no-ops green when no repro input changed. | `reproducibility.yml` |
 | `validate-tag` | release-internal | yes | the pushed tag matches the versioning-policy pattern (REL-01, backend/internal/versionpolicy). Blocks every downstream job. | `docker-publish.yml` |
 | `release-gate` | release-internal | yes | calls the reusable `release-validate.yml` and blocks publication unless it passes: every `release_gate:true` per-PR check and every release-tier suite is composed with `needs:` (ADR 0021, issue #1165), so the tag-triggered path cannot drift from `release.yml`'s cut-time composition. A `workflow_dispatch` run with a non-empty `override_reason` skips the composed gate and the sibling `release-gate-override` job records the override with the actor. | `docker-publish.yml` |
 | `schema-fixture-gate` | release-internal | yes | a committed backend/database/testdata/schemas/<tag>.sql exists for a mycorrhizal-supported-series tag (MIG-01, #436/#529). | `docker-publish.yml` |
@@ -527,7 +541,7 @@ matching registry entry (name, tier, mandatory) and every `workflow` file exists
 | `CodeQL` | advisory | no | SARIF is uploaded; a new alert is triaged in the Security tab, not release-blocking. | `codeql.yml` |
 | `Grype vulnerability scan` | advisory | no | second-opinion CVE scan; the critical/high hard gate is on main + nightly, advisory at release time. | `grype.yml` |
 | `TruffleHog secret scan` | advisory | no | verified-secret git-history scan; a hit is investigated immediately but is not a release job. | `trufflehog.yml` |
-| `Stryker mutation testing` | advisory | no | frontend/stryker.conf.json's thresholds.break fails the nightly run itself on a mutation-score drop below the ratchet (issue #915); still nightly-only and not release-blocking, so tier stays advisory. | `stryker.yml` |
+| `Stryker mutation testing` | advisory | no | each leg's thresholds.break in stryker.yml's matrix fails the nightly run itself on a mutation-score drop below its ratchet (issue #915); still nightly-only and not release-blocking, so tier stays advisory. | `stryker.yml` |
 | `Go mutation testing` | advisory | no | gremlins mutation testing against the safety-critical Go paths (migration/upgrade, backup/restore, delete cascade, import/export, data-integrity invariants — backend/internal/mutationscope.Scopes); each matrix leg's generated config fails the nightly run itself below its recorded threshold (issue #915). Per-leg check names make polling impractical; nightly-only and not release-blocking, so tier stays advisory. | `go-mutation.yml` |
 | `Android macrobenchmark` | advisory | no | cold/warm/hot startup and dashboard frame timing trend; continue-on-error by design (emulator variance). | `android-tests.yml` |
 | `Reproducible image (all-in-one)` | advisory | no | double-build config + layer digest compare for the linux/amd64 image; continue-on-error until reliably green on main (REL-04, #448). | `reproducibility.yml` |

@@ -5,6 +5,8 @@ import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -16,11 +18,14 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.SavedStateHandle
 import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.GraphRepository
 import com.mycorrhizal.crm.model.AppVersion
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.GraphChain
 import com.mycorrhizal.crm.model.network.GraphChainStep
 import com.mycorrhizal.crm.model.network.GraphConnectionsResponse
@@ -30,6 +35,7 @@ import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -423,6 +429,51 @@ class NetworkScreenTest {
         composeTestRule.onNodeWithText("Choose contact").assertIsDisplayed()
     }
 
+    // A failed start-contact fetch is the shared ErrorState (real reason + Retry), not the
+    // "no VCard UID" message or the bare picker prompt.
+    @Test
+    fun `a failed start-contact fetch shows the localized reason with Retry`() {
+        var refreshed = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NetworkScreenContent(
+                    uiState = NetworkUiState(
+                        fromContactId = 1,
+                        error = com.mycorrhizal.crm.network.ApiError.Client(
+                            409,
+                            "raw-body-not-shown",
+                            com.mycorrhizal.crm.model.network.ErrorReason(
+                                com.mycorrhizal.crm.model.network.ErrorReasonCode.FEED_LIMIT_REACHED,
+                                mapOf("max" to 50.0)
+                            )
+                        )
+                    ),
+                    showMenu = false,
+                    onBack = {},
+                    onMenuClick = {},
+                    onOpenContact = {},
+                    onDepthChange = {},
+                    onRelationInputChange = {},
+                    onRelationApply = {},
+                    onCircleSelect = {},
+                    onOpenPicker = {},
+                    onClosePicker = {},
+                    onSearchContacts = {},
+                    onSelectFrom = {},
+                    onErrorShown = {},
+                    onRefresh = { refreshed++ }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Contact has no VCard UID").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Retry").performClick()
+        assertEquals(1, refreshed)
+    }
+
     @Test
     fun `typing in the picker searches and selecting a result invokes onSelectFrom`() {
         var searched: String? = null
@@ -447,6 +498,34 @@ class NetworkScreenTest {
         assertEquals("bo", searched)
         composeTestRule.onNodeWithText("Bob").performClick()
         assertEquals(2, selected?.id)
+    }
+
+    @Test
+    fun `the picker has exactly one dismiss button and left-aligned results`() {
+        var dismissed = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactPickerDialog(
+                    uiState = NetworkUiState(
+                        pickerOpen = true,
+                        contactSearchResults = listOf(
+                            ContactSummary(id = 2, uid = "uid-2", fn = "Bob")
+                        )
+                    ),
+                    onDismiss = { dismissed++ },
+                    onSearch = {},
+                    onSelect = {}
+                )
+            }
+        }
+        composeTestRule.onAllNodesWithText("Cancel").assertCountEquals(1)
+        val field = composeTestRule.onNodeWithTag("picker-search").fetchSemanticsNode()
+        val row = composeTestRule.onNodeWithText("Bob").fetchSemanticsNode()
+        // Left-aligned with the field above, not centred in the dialog.
+        assertTrue(row.boundsInRoot.left - field.boundsInRoot.left < 24f)
+        composeTestRule.onNodeWithTag("picker-result-2").assertHeightIsAtLeast(48.dp)
+        composeTestRule.onNodeWithText("Cancel").performClick()
+        assertEquals(1, dismissed)
     }
 
     @Test
@@ -554,6 +633,89 @@ class NetworkScreenTest {
         )
     }
 
+    // Issue #2629: the entity overlay renders inside the list, so with the toggle on a failed
+    // traversal does not replace it with the full-screen ErrorState.
+    @Test
+    fun `a failed traversal with the entity overlay on keeps the list instead of the error state`() {
+        val graphRepository = mockk<GraphRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+        coEvery { graphRepository.selfContactVCardUid() } returns Result.success("uid-self")
+        coEvery { contactRepository.resolveByUid(listOf("uid-self")) } returns Result.success(
+            mapOf("uid-self" to ContactSummary(id = 1, uid = "uid-self", firstname = "Alice"))
+        )
+        coEvery { graphRepository.getConnections("uid-self", 2, null) } returns
+            Result.failure(ApiError.Client(500, "down"))
+        coEvery { graphRepository.entityOverlay("uid-self", 2) } returns
+            Result.failure(ApiError.Client(500, "overlay-down"))
+        val vm = NetworkViewModel(graphRepository, contactRepository, SavedStateHandle())
+        composeTestRule.setContent {
+            MycorrhizalTheme { NetworkScreen(viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { vm.setShowEntities(true) }
+        composeTestRule.waitForIdle()
+
+        // The overlay stays visible, but the traversal failure must not go
+        // silent: its reason and Retry stay reachable inline.
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
+    // Issue #2629: a failed traversal is the shared ErrorState (localized reason) with a Retry
+    // that re-runs the load; the empty state must not show and Retry then brings the rows back.
+    @Test
+    fun `a failed traversal shows the localized reason with Retry that reloads the network`() {
+        val graphRepository = mockk<GraphRepository>()
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { graphRepository.circlesWithMembers() } returns Result.success(emptyList())
+        coEvery { graphRepository.selfContactVCardUid() } returns Result.success("uid-self")
+        coEvery { contactRepository.resolveByUid(listOf("uid-self")) } returns Result.success(
+            mapOf("uid-self" to ContactSummary(id = 1, uid = "uid-self", firstname = "Alice"))
+        )
+        coEvery { graphRepository.getConnections("uid-self", 2, null) } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(
+                GraphConnectionsResponse(
+                    chains = listOf(
+                        chain(
+                            10,
+                            "t1",
+                            "Carol",
+                            depth = 1,
+                            steps = listOf(GraphChainStep(10, "t1", "Carol", "child_of"))
+                        )
+                    )
+                )
+            )
+        )
+        val vm = NetworkViewModel(graphRepository, contactRepository, SavedStateHandle())
+        composeTestRule.setContent {
+            MycorrhizalTheme { NetworkScreen(viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText("No connections yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Carol").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { graphRepository.getConnections("uid-self", 2, null) }
+    }
+
     // --- Issue #2302 / ADR 0043 decision 2: the opt-in, read-only entity overlay -------------
 
     @Test
@@ -586,7 +748,8 @@ class NetworkScreenTest {
     }
 
     @Test
-    fun `with the overlay on, entities show read-only with their contacts and never as chains`() {
+    fun `with the overlay on, entities show with their contacts and open on tap and never as chains`() {
+        var opened: String? = null
         composeTestRule.setContent {
             MycorrhizalTheme {
                 NetworkScreenContent(
@@ -611,16 +774,20 @@ class NetworkScreenTest {
                     onClosePicker = {},
                     onSearchContacts = {},
                     onSelectFrom = {},
-                    onErrorShown = {}
+                    onErrorShown = {},
+                    onOpenEntity = { opened = it }
                 )
             }
         }
         composeTestRule.onNodeWithTag("network-entities-toggle").assertIsOn()
         composeTestRule.onNodeWithTag("network-entity-e-o1").assertIsDisplayed()
         composeTestRule.onNodeWithText("Organisation · Alice, Ada").assertIsDisplayed()
-        // No edit affordance: the row has no click action.
+        // Tapping opens the entity page (the graph node id is `e-<entityId>`).
         composeTestRule.onNodeWithTag("network-entity-e-o1")
-            .assert(SemanticsMatcher.keyNotDefined(SemanticsActions.OnClick))
+            .assertHasClickAction()
+            .assertHeightIsAtLeast(48.dp)
+            .performClick()
+        assertEquals("o1", opened)
     }
 
     @Test

@@ -10,6 +10,14 @@ import CadencePanel from './CadencePanel';
 import ContactTimeline from './ContactTimeline';
 import ReminderList from './ReminderList';
 
+// The gallery is irrelevant to date rendering; left real, its image fetch can
+// settle after the test environment is torn down and its late setState surfaces
+// as an unhandled "window is not defined" rejection that fails the whole run.
+vi.mock('./ImageGallery', async (importActual) => ({
+  ...(await importActual<typeof import('./ImageGallery')>()),
+  default: () => null,
+}));
+
 // Issue #1778 (web): a calendar day that travels as a 00:00Z instant (a
 // reminder's remind_at, an activity/note date picked in a date input, cadence
 // last_interaction) renders on that calendar day west of UTC, not the day

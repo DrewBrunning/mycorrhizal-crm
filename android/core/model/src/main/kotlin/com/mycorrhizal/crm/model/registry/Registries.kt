@@ -61,6 +61,7 @@ object LifeEventTypes {
     val BY_CATEGORY: Map<String, List<String>> = mapOf(
         LifeEventCategory.HOME_LIVING to listOf(
             "moved",
+            "moved_out",
             "bought_a_home",
             "made_a_home_improvement",
             "went_on_holidays",

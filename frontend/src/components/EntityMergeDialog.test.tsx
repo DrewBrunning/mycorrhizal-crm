@@ -10,6 +10,7 @@ import {
   mergeEntity,
 } from '../api/entities';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import { DateFormatProvider } from '../DateFormatProvider';
 import EntityMergeDialog from './EntityMergeDialog';
 
 afterEach(() => {
@@ -65,7 +66,9 @@ test('merges the loser into the survivor with explicit field resolutions only', 
   const onMerged = vi.fn();
   render(
     <SnackbarProvider>
-      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={onMerged} />
+      <DateFormatProvider>
+        <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={onMerged} />
+      </DateFormatProvider>
     </SnackbarProvider>,
   );
   expect(
@@ -87,7 +90,9 @@ test('merges the loser into the survivor with explicit field resolutions only', 
 test('with nothing ticked the request carries no resolutions', async () => {
   render(
     <SnackbarProvider>
-      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+      <DateFormatProvider>
+        <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+      </DateFormatProvider>
     </SnackbarProvider>,
   );
   await screen.findByText(/will be deleted/);
@@ -99,7 +104,9 @@ test('with nothing ticked the request carries no resolutions', async () => {
 test('swap flips which entity is kept', async () => {
   render(
     <SnackbarProvider>
-      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+      <DateFormatProvider>
+        <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+      </DateFormatProvider>
     </SnackbarProvider>,
   );
   await screen.findByText(/Acme, Inc will be deleted/);
@@ -114,7 +121,9 @@ test('swap flips which entity is kept', async () => {
 test('opened from an entity page, the user picks the survivor from same-kind entities', async () => {
   render(
     <SnackbarProvider>
-      <EntityMergeDialog open loserId="b" onClose={vi.fn()} onMerged={vi.fn()} />
+      <DateFormatProvider>
+        <EntityMergeDialog open loserId="b" onClose={vi.fn()} onMerged={vi.fn()} />
+      </DateFormatProvider>
     </SnackbarProvider>,
   );
   const mergeButton = await screen.findByRole('button', { name: 'Merge' });
@@ -136,7 +145,9 @@ test('a merge error is shown and onMerged is not called', async () => {
   const onMerged = vi.fn();
   render(
     <SnackbarProvider>
-      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={onMerged} />
+      <DateFormatProvider>
+        <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={onMerged} />
+      </DateFormatProvider>
     </SnackbarProvider>,
   );
   await screen.findByText(/will be deleted/);
@@ -151,7 +162,9 @@ test('the merge outcome is reported: links moved and any primary that had to be 
   );
   render(
     <SnackbarProvider>
-      <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+      <DateFormatProvider>
+        <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+      </DateFormatProvider>
     </SnackbarProvider>,
   );
   await screen.findByText(/will be deleted/);
@@ -161,4 +174,82 @@ test('the merge outcome is reported: links moved and any primary that had to be 
       'Merged into Acme. 3 links moved. 1 contact had two primaries; the existing one was kept.',
     ),
   ).toBeInTheDocument();
+});
+
+// #2701/#2743: with identical names the intro must say which one survives, using the
+// distinct-contact counts the list/suggestions supply -- never the detail endpoint's
+// link-row count (decoy 99 below), so the two definitions are not mixed in one view.
+const mkSame = (id: string, updated: string): Entity => ({
+  ...ent(id, 'Green Acres Co-op'),
+  updated_at: updated,
+  link_count: 99,
+});
+
+test('with the same name on both sides the intro adds updated date and the supplied contact counts (#2743)', async () => {
+  getMock.mockImplementation(async (id) =>
+    id === 'a' ? mkSame('a', '2026-03-05T10:00:00Z') : mkSame('b', '2026-04-19T10:00:00Z'),
+  );
+  render(
+    <SnackbarProvider>
+      <DateFormatProvider>
+        <EntityMergeDialog
+          open
+          loserId="b"
+          survivorId="a"
+          loserLinkCount={1}
+          survivorLinkCount={2}
+          onClose={vi.fn()}
+          onMerged={vi.fn()}
+        />
+      </DateFormatProvider>
+    </SnackbarProvider>,
+  );
+  const intro = await screen.findByText(/will be deleted and its contacts move to/);
+  expect(intro.textContent).toMatch(
+    /^Green Acres Co-op \(updated .+, 1 contact\) will be deleted and its contacts move to Green Acres Co-op \(updated .+, 2 contacts\)\./,
+  );
+  expect(intro.textContent).not.toMatch(/99/);
+});
+
+test('without supplied counts the intro shows only the updated date, never the detail link-row count (#2743)', async () => {
+  getMock.mockImplementation(async (id) =>
+    id === 'a' ? mkSame('a', '2026-03-05T10:00:00Z') : mkSame('b', '2026-04-19T10:00:00Z'),
+  );
+  render(
+    <SnackbarProvider>
+      <DateFormatProvider>
+        <EntityMergeDialog open loserId="b" survivorId="a" onClose={vi.fn()} onMerged={vi.fn()} />
+      </DateFormatProvider>
+    </SnackbarProvider>,
+  );
+  const intro = await screen.findByText(/will be deleted and its contacts move to/);
+  expect(intro.textContent).toMatch(/\(updated [^,)]+\) will be deleted/);
+  expect(intro.textContent).not.toMatch(/99|contacts\)/);
+});
+
+test('a survivor picked from the list is described with the list link_count (#2743)', async () => {
+  const sameA = { ...mkSame('a', '2026-03-05T10:00:00Z'), link_count: 5 };
+  listMock.mockResolvedValue({ entities: [sameA], limit: 25, next_cursor: '' });
+  getMock.mockImplementation(async (id) =>
+    id === 'a' ? mkSame('a', '2026-03-05T10:00:00Z') : mkSame('b', '2026-04-19T10:00:00Z'),
+  );
+  render(
+    <SnackbarProvider>
+      <DateFormatProvider>
+        <EntityMergeDialog
+          open
+          loserId="b"
+          loserLinkCount={2}
+          onClose={vi.fn()}
+          onMerged={vi.fn()}
+        />
+      </DateFormatProvider>
+    </SnackbarProvider>,
+  );
+  fireEvent.mouseDown(await screen.findByLabelText('Merge into'));
+  fireEvent.click(within(await screen.findByRole('listbox')).getByText('Green Acres Co-op'));
+  const intro = await screen.findByText(/will be deleted and its contacts move to/);
+  expect(intro.textContent).toMatch(
+    /\(updated .+, 2 contacts\) will be deleted.*\(updated .+, 5 contacts\)\./,
+  );
 });

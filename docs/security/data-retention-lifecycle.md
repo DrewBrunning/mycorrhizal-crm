@@ -36,7 +36,7 @@ doc; a handful of genuine gaps are called out explicitly in [Known gaps](#known-
 - **Where / who**: `mycorrhizal.db`, scoped by `user_id` in every query (backend/AGENTS.md trap #5). Reachable
   only via the authenticated owner's API session.
 - **Retention**: live until the user deletes it; soft-deleted (`deleted_at` set) for
-  `DELETE_RETENTION_DAYS` (default 30, `config/config.go:82,243`) as an undo window (audit `Undo`,
+  `DELETED_RETENTION_DAYS` (default 30, `config.Config.DeleteRetentionDays`) as an undo window (audit `Undo`,
   `audit_controller.go`) and a sync tombstone (T17 `?since=` feed). A non-positive value disables the
   purge (`DELETED_RETENTION_DAYS=0` is the documented "keep soft-deleted rows forever" value); a
   negative value is rejected at startup (`config.Validate`).
@@ -140,7 +140,8 @@ decision 13): `status` is its lifecycle and tombstone. `ShareBlock` is an edge r
   hourly `share_grant_lifecycle` job (issue #2291; it also moves grants past `expires_at`, and pending
   grants unanswered for 30 days, to `expired`, writing the audit event). The window anchors on the
   row's last update, i.e. the moment it became terminal. `SHARE_GRANT_RETENTION_DAYS=0` disables the
-  purge. Read-path expiry never depends on the job. The job also purges `share_grant_notifications`
+  purge. The owner can also dismiss an ended grant early with `DELETE /share-grants/{id}` (issue #2742, ADR 0042
+  amendment), a hard delete of the same row the purge would remove. Read-path expiry never depends on the job. The job also purges `share_grant_notifications`
   rows older than the same window.
 - **Deletion / propagation**: deleting a contact, note, activity or circle revokes the owner's live
   grants on it with reason `entity_deleted` (`services.RevokeShareGrantsForEntity`; for contacts a
@@ -204,7 +205,7 @@ trashed contacts forever.
 ### Reusable entities (ADR 0043, issue #2295)
 
 `entities` and `contact_entity_links` soft-delete (the link is a deliberate ADR 0004 exception: it carries authored
-role/date data that restore must bring back) and are purged past `DELETE_RETENTION_DAYS` by
+role/date data that restore must bring back) and are purged past `DELETED_RETENTION_DAYS` by
 `PurgeSoftDeletedRows`, which also removes the orphaned `entity_deletion_snapshots`, `dismissed_entity_pairs` and
 entity-target `field_values`. A contact delete soft-deletes its links with the deletion batch id
 (`services.ContactCascadeRegistry`, step `contact_entity_links`); an entity delete soft-deletes its links with one
@@ -724,7 +725,7 @@ design is ADR-0010 / CON-04, issue #479).
   direct consequence: restoring a backup **resurrects** anything that was soft-deleted (but not yet purged) as
   of that snapshot, since a file-level restore has no concept of "these rows were mid-undo-window".
   Soft-deleted data ages out of backups in two steps: it stops appearing in *new* snapshots once the
-  purge window (default 30 days, `DELETE_RETENTION_DAYS`) passes, but it survives in every snapshot
+  purge window (default 30 days, `DELETED_RETENTION_DAYS`) passes, but it survives in every snapshot
   that predates that purge until the operator deletes the snapshot. There is no partial/selective
   restore.
 - **Restore-environment security**: a restore is a point-in-time rollback; the automated restore
@@ -897,7 +898,7 @@ design is ADR-0010 / CON-04, issue #479).
   commonly embeds a per-user sync token — plus an optional encrypted password; `link_field_types` is
   user-authored display config with no credential.
 - **Retention**: soft-delete with the T26 partial-unique-index pattern (a user may remove and
-  re-add a connection without a soft-deleted ghost blocking it). After `DELETE_RETENTION_DAYS`,
+  re-add a connection without a soft-deleted ghost blocking it). After `DELETED_RETENTION_DAYS`,
   `PurgeSoftDeletedRows` (`backend/services/purge_service.go`) hard-deletes the row — before issue
   [#978](https://github.com/DrewBrunning/mycorrhizal-crm/issues/978) only `ImmichConfig` was in the T26
   purge list, so the other encrypted credentials, the token-bearing subscription URLs, and

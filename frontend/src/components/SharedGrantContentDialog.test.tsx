@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { ApiError } from '../api/client';
@@ -279,4 +279,84 @@ test('Close calls onClose', async () => {
   await screen.findByText('x');
   fireEvent.click(screen.getByRole('button', { name: 'Close' }));
   expect(onClose).toHaveBeenCalled();
+});
+
+// #2602: parity with the Android retryable error. Retry re-runs the fetch for the
+// SAME grant and shows the loading state while it runs.
+test('a failed load offers Retry, which refetches the same grant and renders the content', async () => {
+  contentMock.mockRejectedValueOnce(
+    new ApiError('raw text', 'CONFLICT', 409, undefined, undefined, 'share_grant_widening_refused'),
+  );
+  renderDialog(recipientGrant());
+  const retry = await screen.findByRole('button', { name: 'Retry' });
+  // The reason-coded error is shown translated, with Retry beside it.
+  expect(screen.getByRole('alert').textContent).toContain(
+    'A share can only be narrowed; create a new share to grant more',
+  );
+
+  let finish: (c: ShareGrantContent) => void = () => undefined;
+  contentMock.mockReturnValueOnce(new Promise<ShareGrantContent>((res) => (finish = res)));
+  fireEvent.click(retry);
+  // Loading state while the retry runs: the error and the button are gone.
+  expect(await screen.findByLabelText('Loading…')).toBeDefined();
+  expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+  await act(async () => {
+    finish(content({ note: { content: 'It worked', date: '2026-12-24' } }));
+  });
+  expect(await screen.findByText('It worked')).toBeDefined();
+  expect(contentMock).toHaveBeenCalledTimes(2);
+  expect(contentMock).toHaveBeenLastCalledWith('g1');
+});
+
+test('Retry that fails again shows the error and Retry again', async () => {
+  contentMock.mockRejectedValue(new ApiError('still down', 'INTERNAL_ERROR', 500));
+  renderDialog(recipientGrant());
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }));
+  expect(await screen.findByText('still down')).toBeDefined();
+  expect(await screen.findByRole('button', { name: 'Retry' })).toBeDefined();
+  expect(contentMock).toHaveBeenCalledTimes(2);
+});
+
+test('a 404 (no longer available) offers no Retry', async () => {
+  contentMock.mockRejectedValue(new ApiError('gone', 'NOT_FOUND', 404));
+  renderDialog(recipientGrant());
+  await screen.findByText('This share is no longer available.');
+  expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+});
+
+// #2709: a card with a name but nothing in the granted sections looked broken.
+test('a contact with a name but no section data shows the name AND the no-details line (#2709)', async () => {
+  contentMock.mockResolvedValue(
+    content({ entity_type: 'contact', contact: { name: { full: 'Chen Wei' } } }),
+  );
+  renderDialog(recipientGrant({ entity_type: 'contact', label: 'Chen Wei' }));
+  expect(await screen.findByText('Chen Wei', { selector: 'p' })).toBeDefined();
+  expect(screen.getByText('There are no details in the shared sections.')).toBeDefined();
+});
+
+test('a contact with section data does not show the no-details line (#2709)', async () => {
+  contentMock.mockResolvedValue(
+    content({
+      entity_type: 'contact',
+      contact: { name: { full: 'Ada' }, emails: { e1: { address: 'a@example.com' } } },
+    }),
+  );
+  renderDialog(recipientGrant({ entity_type: 'contact' }));
+  await screen.findByText('a@example.com');
+  expect(screen.queryByText('There are no details in the shared sections.')).toBeNull();
+});
+
+// #2714: the dialog title is the h2, so section titles are h3 (axe heading-order).
+test('contact section titles are h3 headings under the dialog title (#2714)', async () => {
+  contentMock.mockResolvedValue(
+    content({
+      entity_type: 'contact',
+      contact: { name: { full: 'Ada' }, emails: { e1: { address: 'a@example.com' } } },
+    }),
+  );
+  renderDialog(recipientGrant({ entity_type: 'contact' }));
+  const dialog = await screen.findByRole('dialog');
+  await within(dialog).findByText('a@example.com');
+  expect(within(dialog).getByRole('heading', { level: 3, name: 'Emails' })).toBeDefined();
+  expect(within(dialog).queryAllByRole('heading', { level: 4 })).toHaveLength(0);
 });

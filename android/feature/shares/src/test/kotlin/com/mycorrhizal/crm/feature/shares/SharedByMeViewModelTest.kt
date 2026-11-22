@@ -1,6 +1,10 @@
 package com.mycorrhizal.crm.feature.shares
 
+import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
+import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.OutgoingShareGrant
 import com.mycorrhizal.crm.model.network.OutgoingShareGrantsPage
 import com.mycorrhizal.crm.model.network.ShareGrantPatch
@@ -30,6 +34,7 @@ class SharedByMeViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val repository = mockk<ShareGrantRepository>()
+    private val contacts = mockk<ContactRepository>()
 
     private val contactGrant = OutgoingShareGrant(
         id = "g1",
@@ -57,7 +62,7 @@ class SharedByMeViewModelTest {
             Result.success(OutgoingShareGrantsPage(shareGrants = grants.toList()))
     }
 
-    private fun newVm(): SharedByMeViewModel = SharedByMeViewModel(repository).also {
+    private fun newVm(): SharedByMeViewModel = SharedByMeViewModel(repository, contacts).also {
         it.now = { Instant.parse("2026-11-10T00:00:00Z") }
     }
 
@@ -68,6 +73,51 @@ class SharedByMeViewModelTest {
         advanceUntilIdle()
         assertEquals(listOf("g1", "g2"), vm.uiState.value.grants.map { it.id })
         assertEquals(4, vm.uiState.value.grants[1].memberCount)
+    }
+
+    @Test
+    fun `loadMore appends the next page and follows its cursor`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val older = contactGrant.copy(id = "g4", label = "Older")
+        coEvery { repository.listOutgoing(any(), any()) } returnsMany listOf(
+            Result.success(
+                OutgoingShareGrantsPage(shareGrants = listOf(contactGrant), nextCursor = "c1")
+            ),
+            Result.success(OutgoingShareGrantsPage(shareGrants = listOf(older), nextCursor = ""))
+        )
+        val vm = newVm()
+        advanceUntilIdle()
+        assertEquals("c1", vm.uiState.value.nextCursor)
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("g1", "g4"), vm.uiState.value.grants.map { it.id })
+        assertNull(vm.uiState.value.nextCursor)
+        assertFalse(vm.uiState.value.loadingMore)
+        coVerify(exactly = 1) { repository.listOutgoing("c1", 100) }
+    }
+
+    @Test
+    fun `a failed loadMore keeps the loaded rows and exposes a retry error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { repository.listOutgoing(any(), any()) } returnsMany listOf(
+            Result.success(
+                OutgoingShareGrantsPage(shareGrants = listOf(contactGrant), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Server(500, "boom"))
+        )
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.loadMore()
+        advanceUntilIdle()
+
+        assertEquals(listOf("g1"), vm.uiState.value.grants.map { it.id })
+        assertNotNull(vm.uiState.value.loadMoreError)
+        assertFalse(vm.uiState.value.loadingMore)
     }
 
     @Test
@@ -172,6 +222,7 @@ class SharedByMeViewModelTest {
         val withheld = contactGrant.copy(reconfirmSections = listOf("addresses"))
         stubLoad(withheld)
         coEvery { repository.reconfirm("g1") } returns Result.success(contactGrant)
+        coEvery { repository.previewContact(any(), any()) } returns Result.success(emptyMap())
         val vm = newVm()
         advanceUntilIdle()
 
@@ -336,5 +387,262 @@ class SharedByMeViewModelTest {
         assertFalse(revoked.isLive)
         assertTrue(contactGrant.isLive)
         assertTrue(circleGrant.isLive)
+    }
+
+    // --- Issue #2627: remove an ended grant ---
+
+    private val declined = contactGrant.copy(id = "g4", status = ShareGrantStatuses.DECLINED)
+    private val expired = contactGrant.copy(id = "g5", status = ShareGrantStatuses.EXPIRED)
+
+    @Test
+    fun `only an ended grant can be removed`() = runTest(mainDispatcherRule.testDispatcher) {
+        stubLoad(contactGrant, circleGrant, revoked, declined, expired)
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(contactGrant)
+        assertNull(vm.uiState.value.prompt)
+        vm.requestRemove(circleGrant)
+        assertNull(vm.uiState.value.prompt)
+
+        listOf(revoked, declined, expired).forEach { grant ->
+            vm.requestRemove(grant)
+            assertEquals(SharedByMePrompt.Remove(grant), vm.uiState.value.prompt)
+            vm.dismissPrompt()
+        }
+        assertTrue(revoked.isEnded && declined.isEnded && expired.isEnded)
+        assertFalse(contactGrant.isEnded || circleGrant.isEnded)
+        coVerify(exactly = 0) { repository.delete(any()) }
+    }
+
+    @Test
+    fun `remove is confirmation gated, deletes the row and reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(contactGrant, declined)
+        coEvery { repository.delete("g4") } returns Result.success(Unit)
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(declined)
+        coVerify(exactly = 0) { repository.delete(any()) }
+        stubLoad(contactGrant)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { repository.delete("g4") }
+        coVerify(exactly = 0) { repository.revoke(any()) }
+        assertNull(vm.uiState.value.prompt)
+        assertNull(vm.uiState.value.actionError)
+        assertEquals(listOf("g1"), vm.uiState.value.grants.map { it.id })
+        coVerify(exactly = 2) { repository.listOutgoing(any(), any()) }
+    }
+
+    @Test
+    fun `a removed row leaves the list before the reload answers`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        val reload = CompletableDeferred<Unit>()
+        var calls = 0
+        coEvery { repository.listOutgoing(any(), any()) } coAnswers {
+            if (++calls > 1) reload.await()
+            Result.success(OutgoingShareGrantsPage(shareGrants = listOf(contactGrant, declined)))
+        }
+        coEvery { repository.delete("g4") } returns Result.success(Unit)
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(declined)
+        vm.confirmPrompt()
+        runCurrent()
+
+        assertTrue(vm.uiState.value.isLoading)
+        assertEquals(listOf("g1"), vm.uiState.value.grants.map { it.id })
+        reload.complete(Unit)
+        advanceUntilIdle()
+    }
+
+    @Test
+    fun `a 404 after remove means it is already gone, not an error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(declined)
+        coEvery { repository.delete("g4") } returns Result.failure(
+            ApiError.Client(
+                404,
+                "Share grant not found",
+                reason = ErrorReason(ErrorReasonCode.SHARE_GRANT_NOT_FOUND, emptyMap())
+            )
+        )
+        val vm = newVm()
+        advanceUntilIdle()
+
+        stubLoad()
+        vm.requestRemove(declined)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.actionError)
+        assertTrue(vm.uiState.value.grants.isEmpty())
+        assertNull(vm.uiState.value.prompt)
+    }
+
+    @Test
+    fun `a 409 not-ended keeps the row, reports the reason and reloads`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(declined)
+        coEvery { repository.delete("g4") } returns Result.failure(
+            ApiError.Client(
+                409,
+                "RAW",
+                reason = ErrorReason(ErrorReasonCode.SHARE_GRANT_NOT_ENDED, emptyMap())
+            )
+        )
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(declined)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+
+        val error = vm.uiState.value.actionError as ApiError.Client
+        assertEquals(ErrorReasonCode.SHARE_GRANT_NOT_ENDED, error.reason?.code)
+        assertEquals(listOf("g4"), vm.uiState.value.grants.map { it.id })
+        coVerify(exactly = 2) { repository.listOutgoing(any(), any()) }
+    }
+
+    @Test
+    fun `a failed remove for another reason keeps the row`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(declined)
+        coEvery { repository.delete("g4") } returns Result.failure(ApiError.Server(500, "x"))
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestRemove(declined)
+        vm.confirmPrompt()
+        advanceUntilIdle()
+
+        assertNotNull(vm.uiState.value.actionError)
+        assertEquals(listOf("g4"), vm.uiState.value.grants.map { it.id })
+    }
+
+    // --- Issue #2659: re-confirm review ---
+
+    private val withheldGrant = contactGrant.copy(
+        entityId = "uid-1",
+        reconfirmSections = listOf("phones", "emails")
+    )
+
+    @Test
+    fun `requesting a reconfirm previews the withheld sections and counts their items`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(withheldGrant)
+        coEvery { repository.previewContact("uid-1", listOf("emails", "phones")) } returns
+            Result.success(
+                mapOf(
+                    "emails" to mapOf("e1" to mapOf("address" to "a@x.org")),
+                    "phones" to mapOf(
+                        "p1" to mapOf("number" to "1"),
+                        "p2" to mapOf("number" to "2")
+                    )
+                )
+            )
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestReconfirm(withheldGrant)
+        advanceUntilIdle()
+
+        assertEquals(mapOf("emails" to 1, "phones" to 2), vm.uiState.value.reconfirmCounts)
+    }
+
+    @Test
+    fun `a failed preview leaves the counts empty and keeps the prompt`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(withheldGrant)
+        coEvery { repository.previewContact(any(), any()) } returns
+            Result.failure(ApiError.Server(503, "down"))
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.requestReconfirm(withheldGrant)
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.reconfirmCounts.isEmpty())
+        assertNotNull(vm.uiState.value.prompt)
+        assertNull(vm.uiState.value.actionError)
+    }
+
+    @Test
+    fun `dismissing the prompt clears the preview counts`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(withheldGrant)
+        coEvery { repository.previewContact(any(), any()) } returns
+            Result.success(mapOf("emails" to mapOf("e1" to mapOf("address" to "a@x.org"))))
+        val vm = newVm()
+        advanceUntilIdle()
+        vm.requestReconfirm(withheldGrant)
+        advanceUntilIdle()
+
+        vm.dismissPrompt()
+
+        assertTrue(vm.uiState.value.reconfirmCounts.isEmpty())
+        assertNull(vm.uiState.value.prompt)
+    }
+
+    @Test
+    fun `open contact resolves the grant's contact uid to its id once`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(withheldGrant)
+        coEvery { contacts.resolveByUid(listOf("uid-1")) } returns
+            Result.success(mapOf("uid-1" to ContactSummary(id = 7, uid = "uid-1")))
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.openContact(withheldGrant)
+        advanceUntilIdle()
+        assertEquals(7, vm.uiState.value.openContactId)
+
+        vm.onContactOpened()
+        assertNull(vm.uiState.value.openContactId)
+    }
+
+    @Test
+    fun `open contact for an unresolvable uid reports not found, never navigates`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(withheldGrant)
+        coEvery { contacts.resolveByUid(any()) } returns Result.success(emptyMap())
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.openContact(withheldGrant)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.openContactId)
+        assertTrue(vm.uiState.value.actionError is ApiError.Client)
+    }
+
+    @Test
+    fun `open contact surfaces a resolver failure as an action error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubLoad(withheldGrant)
+        coEvery { contacts.resolveByUid(any()) } returns Result.failure(ApiError.Server(503, "x"))
+        val vm = newVm()
+        advanceUntilIdle()
+
+        vm.openContact(withheldGrant)
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.openContactId)
+        assertNotNull(vm.uiState.value.actionError)
     }
 }

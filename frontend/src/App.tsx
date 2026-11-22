@@ -56,6 +56,7 @@ import MapIcon from '@mui/icons-material/Map';
 import MenuIcon from '@mui/icons-material/Menu';
 import MonitorHeartIcon from '@mui/icons-material/MonitorHeart';
 import PeopleIcon from '@mui/icons-material/People';
+import SearchIcon from '@mui/icons-material/Search';
 import SettingsIcon from '@mui/icons-material/Settings';
 import ShareIcon from '@mui/icons-material/Share';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -81,7 +82,17 @@ import {
   useMediaQuery,
   useTheme,
 } from '@mui/material';
-import { Fragment, lazy, type ReactElement, Suspense, useEffect, useMemo, useState } from 'react';
+import {
+  Fragment,
+  lazy,
+  type ReactElement,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createBrowserRouter,
@@ -95,7 +106,13 @@ import {
 import ActivitiesPage from './ActivitiesPage';
 import AuditPage from './AuditPage';
 import { getShareGrantNotifications } from './api/shareGrants';
-import { fetchAndCacheUserInfo, getToken, isAdmin, logoutAndRedirect } from './auth';
+import {
+  fetchAndCacheUserInfo,
+  getToken,
+  isAdmin,
+  logoutAndRedirect,
+  shouldProbeSession,
+} from './auth';
 import CirclesTagsPage from './CirclesTagsPage';
 import CircleTagTriagePage from './CircleTagTriagePage';
 import ContactDetailPage from './ContactDetailPage';
@@ -111,6 +128,7 @@ import SessionExpiredNotice from './components/SessionExpiredNotice';
 import DashboardPage from './DashboardPage';
 import DataSettingsPage from './DataSettingsPage';
 import HouseholdsPage from './HouseholdsPage';
+import { applyAccountLanguage } from './i18n/accountLanguage';
 import LoginPage from './LoginPage';
 import NetworkPage from './NetworkPage';
 import NotesPage from './NotesPage';
@@ -128,6 +146,7 @@ import SystemStatusPage from './SystemStatusPage';
 import UsersPage from './UsersPage';
 import './App.css';
 import { AuthContext, useAuth } from './context/AuthContext';
+import { PendingSharesContext } from './context/PendingSharesContext';
 
 // T98: 180 -> 256. The old 180 was tight enough that four of the five locales
 // wrapped their longest nav label even at the pre-T98 16px (de/es/fr/it, at
@@ -157,6 +176,8 @@ const drawerWidth = 256;
 interface NavItem {
   text: string;
   icon: ReactElement;
+  /** Icon shown while a collapsible group is closed (carries the child's badge, #2690). */
+  collapsedIcon?: ReactElement;
   path: string;
   /** Sub-items rendered under this one (a collapsible group). */
   children?: NavItem[];
@@ -197,23 +218,26 @@ function AppContent({
   const compactNav = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   // Standing shares (#2292): grants awaiting this user's answer, for the nav badge.
-  // Re-read on navigation so answering one on the page clears it. A failed read
-  // just shows no badge.
+  // Re-read on navigation and whenever a page calls refreshPendingShares() (#2691:
+  // answering a share on /shared-with-me does not navigate). A failed read just
+  // shows no badge; a reply for an older read never overwrites a newer one.
   const [pendingShares, setPendingShares] = useState(0);
+  const pendingReadSeq = useRef(0);
   const { pathname: currentPath } = location;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: currentPath re-reads the count on navigation
-  useEffect(() => {
-    if (!token) return;
-    let cancelled = false;
+  const refreshPendingShares = useCallback(() => {
+    const seq = ++pendingReadSeq.current;
     getShareGrantNotifications()
       .then((n) => {
-        if (!cancelled) setPendingShares(n.pending_count);
+        if (seq === pendingReadSeq.current) setPendingShares(n.pending_count);
       })
       .catch(() => {});
-    return () => {
-      cancelled = true;
-    };
-  }, [token, currentPath]);
+  }, []);
+  const pendingSharesValue = useMemo(() => ({ refreshPendingShares }), [refreshPendingShares]);
+  // currentPath re-reads the count on navigation.
+  useEffect(() => {
+    if (!token) return;
+    refreshPendingShares();
+  }, [token, currentPath, refreshPendingShares]);
   const [accountMenuAnchor, setAccountMenuAnchor] = useState<HTMLElement | null>(null);
   const accountMenuOpen = Boolean(accountMenuAnchor);
 
@@ -237,25 +261,29 @@ function AppContent({
   // admin-only pages behind `userIsAdmin` like Users/System events/System
   // status. Routes live in the <Routes> block; this list only places them.
   const navTree = useMemo<NavItem[]>(() => {
+    // #2690: the pending-share badge sits on "Shared with me" AND on the
+    // collapsed Settings parent (renderNavItem swaps it onto the child when
+    // the group opens), so it is visible from every page.
+    const withPendingBadge = (icon: ReactElement): ReactElement =>
+      pendingShares > 0 ? (
+        <Badge
+          badgeContent={pendingShares}
+          color="primary"
+          role="img"
+          aria-label={t('nav.sharedPendingBadge', { count: pendingShares })}
+        >
+          {icon}
+        </Badge>
+      ) : (
+        icon
+      );
     const settingsChildren: NavItem[] = [
       // Shares: the one-time contact-sharing page, then the standing-share pages
       // (#2292). "Shared with me" carries the pending-share badge.
       { text: t('nav.shares'), icon: <ShareIcon />, path: '/shares' },
       {
         text: t('nav.sharedWithMe'),
-        icon:
-          pendingShares > 0 ? (
-            <Badge
-              badgeContent={pendingShares}
-              color="primary"
-              role="img"
-              aria-label={t('nav.sharedPendingBadge', { count: pendingShares })}
-            >
-              <CallReceivedIcon />
-            </Badge>
-          ) : (
-            <CallReceivedIcon />
-          ),
+        icon: withPendingBadge(<CallReceivedIcon />),
         path: '/shared-with-me',
       },
       { text: t('nav.sharedByMe'), icon: <CallMadeIcon />, path: '/shared-by-me' },
@@ -300,6 +328,7 @@ function AppContent({
       {
         text: t('nav.profile'),
         icon: <SettingsIcon />,
+        collapsedIcon: withPendingBadge(<SettingsIcon />),
         path: '/settings',
         children: settingsChildren,
       },
@@ -407,7 +436,9 @@ function AppContent({
             selected={isSelected}
             sx={{ ...navLinkSx, ...(nested ? { pl: 3 } : {}) }}
           >
-            <ListItemIcon>{item.icon}</ListItemIcon>
+            <ListItemIcon>
+              {children && !open && item.collapsedIcon ? item.collapsedIcon : item.icon}
+            </ListItemIcon>
             <ListItemText primary={item.text} slotProps={navLabelSlotProps} />
           </ListItemButton>
         </ListItem>
@@ -482,11 +513,28 @@ function AppContent({
             <IconButton
               edge="start"
               color="inherit"
-              aria-label="menu"
+              aria-label={t('app.openNavigation')}
+              aria-expanded={mobileDrawerOpen}
+              aria-controls="mobile-nav-drawer"
               onClick={handleDrawerToggle}
               sx={{ mr: 0.5 }}
             >
-              <MenuIcon />
+              {pendingShares > 0 ? (
+                <Badge
+                  badgeContent={pendingShares}
+                  // Cream chip with dark text: the theme's secondary colour is
+                  // low-contrast against the dark AppBar.
+                  sx={{
+                    '& .MuiBadge-badge': { bgcolor: 'background.paper', color: 'text.primary' },
+                  }}
+                  role="img"
+                  aria-label={t('nav.sharedPendingBadge', { count: pendingShares })}
+                >
+                  <MenuIcon />
+                </Badge>
+              ) : (
+                <MenuIcon />
+              )}
             </IconButton>
           )}
           <Typography
@@ -494,8 +542,16 @@ function AppContent({
             component={Link}
             to="/"
             onClick={() => {}}
+            noWrap
             sx={{
               flexGrow: 1,
+              // #2874: the title is branding, not an action. Below `md` the
+              // AppBar also holds the search box and the labelled Logout
+              // button; under a 40%-expanded locale (~German/French) the row
+              // is a couple of pixels too tight at the `sm` edge, and without
+              // `minWidth: 0` the flex row squeezes Logout below its content
+              // width instead of ellipsizing the brand.
+              minWidth: 0,
               display: { xs: 'none', sm: 'block' },
               textDecoration: 'none',
               color: 'inherit',
@@ -527,6 +583,17 @@ function AppContent({
                 </IconButton>
               ))}
               <Box sx={{ flexGrow: 1 }} />
+              {/* #2692: the AppBar has no room for the search box here, so this
+                  opens the results page, which carries its own search field. */}
+              <IconButton
+                component={Link}
+                to="/search"
+                color="inherit"
+                aria-label={t('globalSearch.open')}
+                sx={{ mr: 0.5 }}
+              >
+                <SearchIcon />
+              </IconButton>
               <IconButton
                 color="inherit"
                 aria-label={t('app.accountMenu')}
@@ -566,6 +633,10 @@ function AppContent({
                 color="inherit"
                 startIcon={<LogoutIcon />}
                 onClick={() => void handleLogout()}
+                // #2874: never shrink the action label to fit; the branding
+                // title ellipsizes instead (see above). Truncating "Logout"
+                // would hide the action, not just brand chrome.
+                sx={{ flexShrink: 0 }}
               >
                 {t('app.logout')}
               </Button>
@@ -579,6 +650,7 @@ function AppContent({
         variant="temporary"
         open={mobileDrawerOpen}
         onClose={handleDrawerToggle}
+        slotProps={{ paper: { id: 'mobile-nav-drawer' } }}
         sx={{
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': { boxSizing: 'border-box', width: drawerWidth },
@@ -640,225 +712,227 @@ function AppContent({
         <OfflineBanner />
         <RouteAnnouncer />
         <ErrorBoundary key={location.pathname} name="Page">
-          <Routes>
-            <Route
-              path="/contacts"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <ContactsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/contacts/:id"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <ContactDetailPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/contacts/:id/prep"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <PrepViewPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/notes"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <NotesPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/activities"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <ActivitiesPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/occasions"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <OccasionsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <SettingsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/settings/data"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <DataSettingsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/network"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <NetworkPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/map"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <MapPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/households"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <HouseholdsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/circles"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <CirclesTagsPage />
-                </Suspense>
-              }
-            />
-            <Route path="/tags" element={<Navigate to="/circles?tab=tags" replace />} />
-            <Route
-              path="/shares"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <ContactSharesPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/shared-with-me"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <SharedWithMePage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/shared-by-me"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <SharedByMePage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/trash"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <TrashPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/search"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <SearchResultsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/share"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <ShareTargetPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/entities"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <EntitiesPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/entities/:id"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <EntityDetailPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/audit"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <AuditPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/users"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <UsersPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/system-events"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <SystemEventsPage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/system-status"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <SystemStatusPage />
-                </Suspense>
-              }
-            />
-            <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
-            <Route
-              path="/circle-tag-triage"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <CircleTagTriagePage />
-                </Suspense>
-              }
-            />
-            <Route
-              path="/"
-              element={
-                <Suspense fallback={<RouteLoadingFallback />}>
-                  <DashboardPage />
-                </Suspense>
-              }
-            />
-            {/* Issue #1793: the logged-in shell used to redirect /login away
+          <PendingSharesContext.Provider value={pendingSharesValue}>
+            <Routes>
+              <Route
+                path="/contacts"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <ContactsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/contacts/:id"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <ContactDetailPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/contacts/:id/prep"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <PrepViewPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/notes"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <NotesPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/activities"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <ActivitiesPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/occasions"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <OccasionsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/settings"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <SettingsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/settings/data"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <DataSettingsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/network"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <NetworkPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/map"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <MapPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/households"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <HouseholdsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/circles"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <CirclesTagsPage />
+                  </Suspense>
+                }
+              />
+              <Route path="/tags" element={<Navigate to="/circles?tab=tags" replace />} />
+              <Route
+                path="/shares"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <ContactSharesPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/shared-with-me"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <SharedWithMePage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/shared-by-me"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <SharedByMePage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/trash"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <TrashPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/search"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <SearchResultsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/share"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <ShareTargetPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/entities"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <EntitiesPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/entities/:id"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <EntityDetailPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/audit"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <AuditPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <UsersPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/system-events"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <SystemEventsPage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/system-status"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <SystemStatusPage />
+                  </Suspense>
+                }
+              />
+              <Route path="/api-tokens" element={<Navigate to="/settings" replace />} />
+              <Route
+                path="/circle-tag-triage"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <CircleTagTriagePage />
+                  </Suspense>
+                }
+              />
+              <Route
+                path="/"
+                element={
+                  <Suspense fallback={<RouteLoadingFallback />}>
+                    <DashboardPage />
+                  </Suspense>
+                }
+              />
+              {/* Issue #1793: the logged-in shell used to redirect /login away
                 even when the cached user_info outlived the session cookie,
                 making an explicit visit a dead end. Let the form render so a
                 stale-cache visitor can sign in again. */}
-            <Route path="/login" element={<LoginPage setToken={setToken} />} />
-            <Route path="/register" element={<Navigate to="/" replace />} />
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
+              <Route path="/login" element={<LoginPage setToken={setToken} />} />
+              <Route path="/register" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </PendingSharesContext.Provider>
         </ErrorBoundary>
       </Box>
     </>
@@ -895,14 +969,18 @@ function App() {
   const [token, setToken] = useState(getToken());
 
   useEffect(() => {
-    // Restore session after OIDC redirect: the server sets the auth cookie but
-    // localStorage is empty, so we fetch user info once to populate it.
-    if (!getToken()) {
-      // fetchAndCacheUserInfo catches its own errors and resolves to null.
-      void fetchAndCacheUserInfo().then((info) => {
-        if (info) setToken(getToken());
-      });
-    }
+    // Refresh the account from the server at start (#2685, #2718): restores the
+    // session after an SSO redirect (the server set the auth cookie but
+    // localStorage is empty) and applies preferences changed on another device,
+    // such as the UI language. A plain signed-out visit skips the probe.
+    if (!shouldProbeSession()) return;
+    const hadSession = getToken() !== null;
+    // fetchAndCacheUserInfo catches its own errors and resolves to null.
+    void fetchAndCacheUserInfo().then((info) => {
+      if (!info) return;
+      if (!hadSession) setToken(getToken());
+      applyAccountLanguage(info.language);
+    });
   }, []);
 
   useEffect(() => {

@@ -62,6 +62,7 @@ export default function FieldSectionPicker({
             return (
               <Box key={section.token} sx={{ display: 'flex', alignItems: 'center' }}>
                 <FormControlLabel
+                  sx={{ minHeight: 44 }}
                   control={
                     <Checkbox
                       checked={locked ? false : checked}

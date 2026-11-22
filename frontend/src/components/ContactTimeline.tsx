@@ -72,7 +72,7 @@ export default function ContactTimeline({
 }: ContactTimelineProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { formatDate, dateFormat } = useDateFormat();
+  const { formatDate, dateFormat, formatBirthday } = useDateFormat();
 
   if (timelineItems.length === 0) {
     return (
@@ -103,7 +103,9 @@ export default function ContactTimeline({
                   flex: 0.3,
                 }}
               >
-                <Typography variant="caption">{partialDateDisplay(event.date)}</Typography>
+                <Typography variant="caption">
+                  {partialDateDisplay(event.date, formatBirthday)}
+                </Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="warning">
@@ -113,7 +115,7 @@ export default function ContactTimeline({
               </TimelineSeparator>
               <TimelineContent>
                 <Typography variant="caption" sx={timelineMobileDateSx}>
-                  {partialDateDisplay(event.date)}
+                  {partialDateDisplay(event.date, formatBirthday)}
                 </Typography>
                 <Paper elevation={1} sx={{ p: 1.5 }}>
                   <Typography variant="subtitle1" component="p" sx={{ fontWeight: 500 }}>
@@ -392,7 +394,7 @@ export default function ContactTimeline({
                     className="action-icon"
                     size="small"
                     color="error"
-                    aria-label={t('common.delete')}
+                    aria-label={t('timeline.deleteCompletionFrom', { date: dateLabel })}
                     onClick={() => onDeleteCompletion?.((item.data as ReminderCompletion).ID)}
                     sx={{
                       position: 'absolute',
@@ -408,7 +410,10 @@ export default function ContactTimeline({
                   <IconButton
                     className="action-icon"
                     size="small"
-                    aria-label={t('common.edit')}
+                    aria-label={t(
+                      item.type === 'note' ? 'timeline.editNoteFrom' : 'timeline.editActivityFrom',
+                      { date: dateLabel },
+                    )}
                     onClick={() =>
                       onEditItem(item.type as 'note' | 'activity', item.data as Note | Activity)
                     }

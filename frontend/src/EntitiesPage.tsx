@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   List,
+  ListItem,
   ListItemButton,
   ListItemText,
   Tab,
@@ -20,6 +21,7 @@ import EntitySuggestionsPanel, { pairKey } from './components/EntitySuggestionsP
 import LoadError from './components/LoadError';
 import PageHeader from './components/PageHeader';
 import { useSnackbar } from './context/SnackbarContext';
+import { useDateFormat } from './DateFormatProvider';
 import { useDebouncedValue } from './hooks/useDebounce';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useEntityList } from './hooks/useEntityList';
@@ -41,6 +43,7 @@ export default function EntitiesPage() {
   const { t } = useTranslation();
   useDocumentTitle(t('entities.title'));
   const { showSuccess } = useSnackbar();
+  const { formatDate } = useDateFormat();
   const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const kind = kindFromParam(params.get('kind'));
@@ -74,6 +77,8 @@ export default function EntitiesPage() {
         onChange={(_, v: EntityKind) => selectKind(v)}
         aria-label={t('entities.tabsLabel')}
         variant="scrollable"
+        scrollButtons="auto"
+        allowScrollButtonsMobile
         sx={{ mb: 2 }}
       >
         {ENTITY_KINDS.map((k) => (
@@ -99,25 +104,29 @@ export default function EntitiesPage() {
       ) : (
         <List disablePadding aria-label={t(ENTITY_KIND_PLURAL_KEYS[kind])}>
           {entities.map((e) => (
-            <ListItemButton
-              key={e.id}
-              component={Link}
-              to={`/entities/${e.id}`}
-              divider
-              sx={{ borderRadius: 1 }}
-            >
-              <ListItemText
-                primary={e.name}
-                secondary={
-                  [
-                    coreSummary(e),
-                    e.sensitivity !== 'normal' ? t(ENTITY_SENSITIVITY_KEYS[e.sensitivity]) : '',
-                  ]
-                    .filter(Boolean)
-                    .join(' · ') || undefined
-                }
-              />
-            </ListItemButton>
+            <ListItem key={e.id} disablePadding divider>
+              <ListItemButton component={Link} to={`/entities/${e.id}`} sx={{ borderRadius: 1 }}>
+                <ListItemText
+                  primary={e.name}
+                  secondary={
+                    [
+                      coreSummary(e),
+                      e.sensitivity !== 'normal' ? t(ENTITY_SENSITIVITY_KEYS[e.sensitivity]) : '',
+                      // The list rows carry link_count (distinct contacts) and updated_at
+                      // (#2743), which is what tells same-named entities apart (#2701).
+                      e.link_count !== undefined && e.updated_at
+                        ? t('entities.listDetail', {
+                            count: e.link_count,
+                            date: formatDate(e.updated_at),
+                          })
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || undefined
+                  }
+                />
+              </ListItemButton>
+            </ListItem>
           ))}
         </List>
       )}
@@ -135,6 +144,7 @@ export default function EntitiesPage() {
         onClose={() => setCreating(false)}
         onSaved={(saved) => {
           setCreating(false);
+          void refresh();
           showSuccess(t('entities.form.created', { name: saved.name }));
           void navigate(`/entities/${saved.id}`);
         }}
@@ -144,6 +154,8 @@ export default function EntitiesPage() {
           open
           loserId={merging.b.id}
           survivorId={merging.a.id}
+          loserLinkCount={merging.b.link_count}
+          survivorLinkCount={merging.a.link_count}
           onClose={() => setMerging(null)}
           onMerged={() => {
             setResolved((prev) => new Set(prev).add(pairKey(merging)));

@@ -17,9 +17,11 @@ import com.mycorrhizal.crm.model.network.RevokeAllApiTokensResponse
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -177,7 +179,7 @@ class ApiTokensScreenTest {
         composeTestRule.onNodeWithText("Active").assertIsDisplayed()
         composeTestRule.onNodeWithContentDescription("Rotate Sync script").performClick()
         composeTestRule.onNodeWithContentDescription("Revoke Sync script").performClick()
-        assert(rotated && revoked)
+        assertTrue(rotated && revoked)
     }
 
     @Test
@@ -369,7 +371,7 @@ class ApiTokensScreenTest {
         }
 
         composeTestRule.onNodeWithText("Done, I saved it").performClick()
-        assert(dismissed)
+        assertTrue(dismissed)
     }
 
     // --- Issue #1775: destructive Revoke all moved out of the top bar ---
@@ -417,5 +419,28 @@ class ApiTokensScreenTest {
 
         composeTestRule.onNodeWithContentDescription("More options").performClick()
         composeTestRule.onNodeWithText("Revoke all").assertIsNotEnabled()
+    }
+
+    @Test
+    fun `a failed load shows the server message with Retry that reloads the tokens`() {
+        val repository = mockk<ApiTokenRepository>()
+        coEvery { repository.list() } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(token(1)))
+        )
+        setScreen(ApiTokensViewModel(repository))
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("No API tokens yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("CI token").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { repository.list() }
     }
 }

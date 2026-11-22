@@ -1,11 +1,16 @@
 package com.mycorrhizal.crm.feature.shares
 
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasScrollAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToNode
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -90,6 +95,43 @@ class SharedWithMeScreenTest {
     }
 
     @Test
+    fun `Load more appends the next page and clears the affordance`() {
+        val older = pending.copy(id = "g3", label = "Older Share")
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                IncomingShareGrantsPage(shareGrants = listOf(pending), nextCursor = "c1")
+            ),
+            Result.success(IncomingShareGrantsPage(shareGrants = listOf(older), nextCursor = ""))
+        )
+        coEvery { repository.blocks() } returns Result.success(emptyList())
+        screen()
+
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Older Share").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Load more").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed Load more shows the reason and keeps the loaded rows`() {
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                IncomingShareGrantsPage(shareGrants = listOf(pending), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Client(500, "load-more-boom"))
+        )
+        coEvery { repository.blocks() } returns Result.success(emptyList())
+        screen()
+
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("load-more-boom").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
+    }
+
+    @Test
     fun `accept calls the repository`() {
         stub(listOf(pending))
         coEvery { repository.accept("g1") } returns Result.success(pending.copy(status = "active"))
@@ -109,6 +151,10 @@ class SharedWithMeScreenTest {
 
         composeTestRule.onNodeWithText("Decline").performClick()
         composeTestRule.onNodeWithText("Decline this share?").assertIsDisplayed()
+        // Issue #2642: decline, leave and block are one `declined` to the sender (ADR 0042).
+        composeTestRule.onNodeWithText(
+            "Decline the share of Dana White from dana? They will see it as declined or ended."
+        ).assertIsDisplayed()
         coVerify(exactly = 0) { repository.decline(any(), any()) }
         composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
 
@@ -125,6 +171,11 @@ class SharedWithMeScreenTest {
         composeTestRule.onNodeWithContentDescription("More actions for Dana White").performClick()
         composeTestRule.onNodeWithText("Block sender").performClick()
         composeTestRule.onNodeWithText("Block dana?").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "This declines the share and ends every share from dana to you. They are not " +
+                "told you blocked them; they see their shares as declined or ended. Their " +
+                "future shares will not show up here. You can unblock them later."
+        ).assertIsDisplayed()
         coVerify(exactly = 0) { repository.decline(any(), any()) }
         composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
 
@@ -144,9 +195,43 @@ class SharedWithMeScreenTest {
         composeTestRule.onNodeWithContentDescription("More actions for Note").performClick()
         composeTestRule.onNodeWithText("Stop receiving").performClick()
         composeTestRule.onNodeWithText("Stop receiving this share?").assertIsDisplayed()
+        composeTestRule.onNodeWithText(
+            "Note will no longer be visible to you. They will see the share as declined or " +
+                "ended. To see it again, dana has to share it with you again."
+        ).assertIsDisplayed()
         coVerify(exactly = 0) { repository.leave(any()) }
         composeTestRule.onNodeWithTag("grant-prompt-confirm").performClick()
         coVerify(exactly = 1) { repository.leave("g2") }
+    }
+
+    // Issue #2626: the server labels an active note grant with the note's first line; the row
+    // shows it, and only an absent label falls back to the generic "Note".
+    @Test
+    fun `an active note row shows the first-line label the server sends`() {
+        stub(listOf(active.copy(label = "Gift ideas for Dana")))
+        screen()
+
+        composeTestRule.onNodeWithText("Gift ideas for Dana").assertIsDisplayed()
+        // The type stays as the caption under the label.
+        composeTestRule.onNodeWithText("Note").assertIsDisplayed()
+        composeTestRule.onNodeWithContentDescription("More actions for Gift ideas for Dana")
+            .assertIsDisplayed()
+    }
+
+    @Test
+    fun `an absent label falls back to the type name in the row, its menu and the dialogs`() {
+        stub(listOf(active.copy(label = "")))
+        coEvery { repository.leave("g2") } returns Result.success(active.copy(status = "declined"))
+        screen()
+
+        // Row title and type caption.
+        composeTestRule.onAllNodesWithText("Note").assertCountEquals(2)
+        composeTestRule.onNodeWithContentDescription("More actions for Note").performClick()
+        composeTestRule.onNodeWithText("Stop receiving").performClick()
+        composeTestRule.onNodeWithText(
+            "Note will no longer be visible to you. They will see the share as declined or " +
+                "ended. To see it again, dana has to share it with you again."
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -204,5 +289,57 @@ class SharedWithMeScreenTest {
         stub(listOf(pending, active), blocks = listOf(ShareBlock(7, "mallory")))
         screen()
         composeTestRule.assertAccessibleSemantics()
+    }
+
+    // Issue #2643: pending and active rows say which sections are offered.
+    @Test
+    fun `rows list the offered sections, shortened after three`() {
+        stub(
+            listOf(
+                pending.copy(id = "a", label = "A", sections = emptyList()),
+                pending.copy(id = "b", label = "B", sections = listOf("emails")),
+                pending.copy(
+                    id = "c",
+                    label = "C",
+                    sections = listOf("emails", "phones", "addresses")
+                ),
+                active.copy(
+                    id = "d",
+                    label = "D",
+                    entityType = "contact",
+                    sections = listOf("emails", "phones", "addresses", "notes")
+                )
+            )
+        )
+        screen()
+
+        composeTestRule.onNodeWithText("Offers: Emails").assertExists()
+        composeTestRule.onNodeWithText("Offers: Emails, Phones, Addresses").assertExists()
+        // The fourth row is below the fold of the lazy list.
+        composeTestRule.onNode(hasScrollAction())
+            .performScrollToNode(hasText("Offers: Emails, Phones, Addresses and 1 more"))
+        composeTestRule.onNodeWithText(
+            "Offers: Emails, Phones, Addresses and 1 more"
+        ).assertIsDisplayed()
+        // Zero sections: no line.
+        composeTestRule.onAllNodesWithText("Offers:", substring = true).assertCountEquals(3)
+    }
+
+    // Issue #2656: blocking the only sender must not leave a bare "Blocked senders" header.
+    @Test
+    fun `with no grants but a blocked sender the empty state still shows`() {
+        stub(emptyList(), blocks = listOf(ShareBlock(7, "mallory")))
+        screen()
+
+        composeTestRule.onNodeWithText("Nothing shared with you yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Blocked senders").assertIsDisplayed()
+        composeTestRule.onNodeWithText("mallory").assertIsDisplayed()
+    }
+
+    @Test
+    fun `with grants there is no empty-state line`() {
+        stub(listOf(pending), blocks = listOf(ShareBlock(7, "mallory")))
+        screen()
+        composeTestRule.onNodeWithText("Nothing shared with you yet").assertDoesNotExist()
     }
 }

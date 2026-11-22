@@ -101,6 +101,10 @@ func TestUnarchiveContact_ScopedToOwner(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 	assert.Equal(t, http.StatusNotFound, w.Code)
+
+	var reloaded models.Contact
+	require.NoError(t, db.First(&reloaded, theirs.ID).Error)
+	assert.True(t, reloaded.Archived, "another user's archived contact must stay archived")
 }
 
 // --- ListUserDirectory --------------------------------------------------------

@@ -174,6 +174,7 @@ import com.mycorrhizal.crm.model.network.ImmichPeopleResponse
 import com.mycorrhizal.crm.model.network.ImmichPerson
 import com.mycorrhizal.crm.model.network.ImmichPersonSummary
 import com.mycorrhizal.crm.model.network.ImmichSummaryResponse
+import com.mycorrhizal.crm.model.network.ImportCancelRequest
 import com.mycorrhizal.crm.model.network.ImportConfirmRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewRequest
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
@@ -218,6 +219,7 @@ import com.mycorrhizal.crm.model.network.NotificationConfig
 import com.mycorrhizal.crm.model.network.NotificationConfigInput
 import com.mycorrhizal.crm.model.network.NotificationTestChannelRequest
 import com.mycorrhizal.crm.model.network.NotificationTestResult
+import com.mycorrhizal.crm.model.network.OccasionCardListSummary
 import com.mycorrhizal.crm.model.network.OccasionEvent
 import com.mycorrhizal.crm.model.network.OccasionEventAttendee
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeInput
@@ -328,9 +330,11 @@ import com.mycorrhizal.crm.model.network.stripProjectedEntries
 import com.squareup.moshi.JsonReader
 import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -349,8 +353,32 @@ import okio.Buffer
  * deliberately small and endpoint-focused so the swap stays local to
  * :core:network.
  */
-class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi) {
+class ApiClient(
+    private val okHttpClient: OkHttpClient,
+    private val moshi: Moshi,
+    /**
+     * The device's IANA zone id, read on every request (the user can cross zones). Injected so
+     * tests can pin it; the default is the JVM's current default zone.
+     */
+    private val timeZoneId: () -> String = { ZoneId.systemDefault().id }
+) {
     private val jsonMediaType = "application/json".toMediaType()
+
+    /**
+     * Adds the optional `tz` query parameter (backend #2762, ADR 0015 Rule 4) to a read that
+     * decides which calendar day is "today", so the server counts from the device's day rather
+     * than its own reminder zone (issues #2617, #2679). Skipped when the device zone is not one
+     * the server accepts, because a bad value is a 400 `validation_timezone_invalid` that would
+     * fail the whole read; an older server ignores the parameter.
+     */
+    private fun HttpUrl.Builder.addViewerTimeZone(): HttpUrl.Builder {
+        viewerTimeZoneOrNull(timeZoneId())?.let { addQueryParameter("tz", it) }
+        return this
+    }
+
+    /** A `tz`-carrying URL for a fixed [path] that has no other query parameters. */
+    private fun withViewerTimeZone(path: String): String =
+        path.toHttpUrl().newBuilder().addViewerTimeZone().build().toString()
 
     /**
      * POST /api/v1/login. For a 2FA account the response carries
@@ -1283,7 +1311,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
      * normalized to `[]` server-side; see [DashboardResponse]'s doc comment.
      */
     suspend fun getDashboard(): Result<DashboardResponse> =
-        executeGet("$PLACEHOLDER_ORIGIN$DASHBOARD_PATH") { _, body ->
+        executeGet(withViewerTimeZone("$PLACEHOLDER_ORIGIN$DASHBOARD_PATH")) { _, body ->
             moshi.adapter(DashboardResponse::class.java).fromJson(body)
         }
 
@@ -1958,18 +1986,23 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
      * GET /api/v1/notes — the Notes drawer entry, cursor-paginated. With no [scope] the server
      * returns the N4 unfiled-notes inbox; `scope=all` lists every note (issue #2224, additive from
      * #2223) and [includeContacts] fills each note's nested `contact` (the caller's own contacts).
+     * [sort] is `date` for the note's own date, newest first (issue #2744); the cursor it returns
+     * is specific to that sort, so a caller must send the same [sort] on every page of a list. An
+     * older server ignores the parameter.
      */
     suspend fun listNotes(
         cursor: String? = null,
         limit: Int? = null,
         scope: String? = null,
-        includeContacts: Boolean = false
+        includeContacts: Boolean = false,
+        sort: String? = null
     ): Result<NotesPage> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$NOTES_PATH".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
         limit?.let { urlBuilder.addQueryParameter("limit", it.toString()) }
         scope?.let { urlBuilder.addQueryParameter("scope", it) }
         if (includeContacts) urlBuilder.addQueryParameter("include", "contacts")
+        sort?.let { urlBuilder.addQueryParameter("sort", it) }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(NotesPage::class.java).fromJson(body)
         }
@@ -1977,7 +2010,10 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
 
     /**
      * GET /api/v1/contacts/{id}/notes — a contact's notes (M19: T17
-     * cursor-paginated; [search]/[fromDate]/[toDate] filter server-side).
+     * cursor-paginated; [search]/[fromDate]/[toDate] filter server-side). [sort] is `date` for the
+     * note's own date, newest first (issue #2797, backend #2813); the cursor it returns is specific
+     * to that sort, so a caller must send the same [sort] on every page of a list. An older server
+     * ignores the parameter and keeps the last-edited order.
      */
     suspend fun listContactNotes(
         contactId: Int,
@@ -1985,7 +2021,8 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         limit: Int? = null,
         search: String? = null,
         fromDate: String? = null,
-        toDate: String? = null
+        toDate: String? = null,
+        sort: String? = null
     ): Result<ContactNotesResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$CONTACTS_PATH/$contactId/notes".toHttpUrl().newBuilder()
         cursor?.let { urlBuilder.addQueryParameter("cursor", it) }
@@ -1993,6 +2030,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         search?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("search", it) }
         fromDate?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("fromDate", it) }
         toDate?.takeIf { it.isNotBlank() }?.let { urlBuilder.addQueryParameter("toDate", it) }
+        sort?.let { urlBuilder.addQueryParameter("sort", it) }
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(ContactNotesResponse::class.java).fromJson(body)
         }
@@ -2072,9 +2110,9 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             moshi.adapter(ContactRemindersResponse::class.java).fromJson(body)
         }
 
-    /** GET /api/v1/reminders/upcoming — reminders due within ~7 days. */
+    /** GET /api/v1/reminders/upcoming?tz= — reminders due within ~7 days from the device's today. */
     suspend fun listUpcomingReminders(): Result<ContactRemindersResponse> =
-        executeGet("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/upcoming") { _, body ->
+        executeGet(withViewerTimeZone("$PLACEHOLDER_ORIGIN$REMINDERS_PATH/upcoming")) { _, body ->
             moshi.adapter(ContactRemindersResponse::class.java).fromJson(body)
         }
 
@@ -2159,9 +2197,9 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     suspend fun deleteReminderCompletion(id: Int): Result<Unit> =
         executeDelete("$PLACEHOLDER_ORIGIN$REMINDER_COMPLETIONS_PATH/$id")
 
-    /** GET /api/v1/contacts/birthdays — upcoming birthdays. */
+    /** GET /api/v1/contacts/birthdays?tz= — upcoming birthdays from the device's today. */
     suspend fun listUpcomingBirthdays(): Result<BirthdaysResponse> =
-        executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/birthdays") { _, body ->
+        executeGet(withViewerTimeZone("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/birthdays")) { _, body ->
             moshi.adapter(BirthdaysResponse::class.java).fromJson(body)
         }
 
@@ -2269,7 +2307,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         executeDelete("$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/$id")
 
     /**
-     * GET /api/v1/occasion-obligations/gift-shopping-list?days=30|90 — upcoming gift obligations
+     * GET /api/v1/occasion-obligations/gift-shopping-list?days=30|90&tz= — upcoming gift obligations
      * joined to this cycle's gift (ADR 0024 part 5). Above-normal obligations are never requested
      * (no `include_sensitive`), matching the web surface.
      */
@@ -2277,6 +2315,7 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         val urlBuilder = "$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/gift-shopping-list"
             .toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("days", days.toString())
+        urlBuilder.addViewerTimeZone()
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(GiftShoppingListResponse::class.java).fromJson(body)
         }
@@ -2295,12 +2334,27 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     }
 
     /**
-     * GET /api/v1/occasions/upcoming?days=30|90 — birthdays, anniversaries, life events and active
+     * GET /api/v1/occasion-obligations/card-list/summary?kind=… (issue #2786): counts-only twin of
+     * the CSV. `include_sensitive` is never sent, matching the CSV, so `included` equals the
+     * rows of the file this app shares.
+     */
+    suspend fun getOccasionCardListSummary(kind: String): Result<OccasionCardListSummary> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$OCCASION_OBLIGATIONS_PATH/card-list/summary"
+            .toHttpUrl().newBuilder()
+        urlBuilder.addQueryParameter("kind", kind)
+        return executeGet(urlBuilder.build().toString()) { _, body ->
+            moshi.adapter(OccasionCardListSummary::class.java).fromJson(body)
+        }
+    }
+
+    /**
+     * GET /api/v1/occasions/upcoming?days=30|90&tz= — birthdays, anniversaries, life events and active
      * obligations in the window (ADR 0024 part 3). `include_sensitive` is never sent.
      */
     suspend fun getUpcomingOccasions(days: Int): Result<UpcomingOccasionsResponse> {
         val urlBuilder = "$PLACEHOLDER_ORIGIN$API_V1/occasions/upcoming".toHttpUrl().newBuilder()
         urlBuilder.addQueryParameter("days", days.toString())
+        urlBuilder.addViewerTimeZone()
         return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(UpcomingOccasionsResponse::class.java).fromJson(body)
         }
@@ -3158,6 +3212,16 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
             moshi.adapter(ImportPreviewResponse::class.java).fromJson(body)
         }
 
+    /**
+     * POST /api/v1/contacts/import/cancel (issue #2664) — discards an unconfirmed CSV / VCF /
+     * JSContact / records import session. Idempotent: an unknown, expired, consumed or foreign id
+     * answers the same 200, so callers fire it on every exit without tracking state.
+     */
+    suspend fun cancelImportSession(sessionId: String): Result<Unit> = executePost(
+        "$CONTACTS_PATH/import/cancel",
+        ImportCancelRequest(sessionId)
+    ) { _, _ -> Unit }
+
     // --- Account bundle (issues #1259/#1260/#1264, ADR 0028 Decision 3) ---
 
     /**
@@ -3529,6 +3593,15 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         moshi.adapter(OutgoingShareGrantResponse::class.java).fromJson(body)?.shareGrant
     }
 
+    /**
+     * DELETE /api/v1/share-grants/{id} — owner-only dismiss of an ended (declined, expired or
+     * revoked) grant from Shared by me (issue #2742). 204 on success; 409 `share_grant_not_ended`
+     * for a live grant; the identical 404 for an unknown, someone else's or already removed id
+     * (a caller treats that 404 after Remove as already done).
+     */
+    suspend fun deleteShareGrant(id: String): Result<Unit> =
+        executeDelete("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$id")
+
     /** GET /api/v1/share-grants/{id}/content — the one recipient read route, resolved per request. */
     suspend fun getShareGrantContent(id: String): Result<ShareGrantContent> =
         executeGet("$PLACEHOLDER_ORIGIN$SHARE_GRANTS_PATH/$id/content") { _, body ->
@@ -3586,11 +3659,19 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
     suspend fun markShareGrantNotificationsRead(): Result<Unit> =
         executePostEmpty("$SHARE_GRANTS_PATH/notifications/read") { _, _ -> Unit }
 
-    /** GET /api/v1/users/directory — every other user (id + username), for the recipient picker. */
-    suspend fun getUserDirectory(): Result<List<UserDirectoryEntry>> =
-        executeGet("$PLACEHOLDER_ORIGIN$USERS_PATH/directory") { _, body ->
+    /**
+     * GET /api/v1/users/directory[?q=] — id + username of the other users, for the recipient
+     * picker. [query] is the typed username prefix: a server running SHARE_DIRECTORY_MODE=search
+     * needs 3+ characters of it, while one in the default `all` mode (and any older server,
+     * which never reads `q`) ignores it and lists everyone. A blank query sends no parameter.
+     */
+    suspend fun getUserDirectory(query: String = ""): Result<List<UserDirectoryEntry>> {
+        val urlBuilder = "$PLACEHOLDER_ORIGIN$USERS_PATH/directory".toHttpUrl().newBuilder()
+        query.trim().takeIf { it.isNotEmpty() }?.let { urlBuilder.addQueryParameter("q", it) }
+        return executeGet(urlBuilder.build().toString()) { _, body ->
             moshi.adapter(UserDirectoryResponse::class.java).fromJson(body)?.users
         }
+    }
 
     // --- Admin user management (issue #348) — the five admin-group routes in
     // backend/routes/routes.go; the caller must be an admin or every one of
@@ -3852,13 +3933,19 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
 
     // --- Reusable entities (issue #2302, ADR 0043) ---
 
-    /** GET /api/v1/entities — one page; [cursor] is the previous page's `next_cursor`. */
+    /**
+     * GET /api/v1/entities — one page; [cursor] is the previous page's `next_cursor`. [sortByName]
+     * sends `sort=name&order=asc` (A to Z; the server's `order` default is desc, issue #2630).
+     * The cursor is sort-specific, so a caller pages with one value of [sortByName] throughout; a
+     * server that predates the parameters ignores them and keeps its last-modified order.
+     */
     suspend fun listEntities(
         kind: String? = null,
         q: String? = null,
         sensitivity: String? = null,
         cursor: String? = null,
-        limit: Int? = null
+        limit: Int? = null,
+        sortByName: Boolean = false
     ): Result<EntityListResponse> {
         val builder = "$PLACEHOLDER_ORIGIN$ENTITIES_PATH".toHttpUrl().newBuilder()
         kind?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("kind", it) }
@@ -3871,6 +3958,10 @@ class ApiClient(private val okHttpClient: OkHttpClient, private val moshi: Moshi
         }
         cursor?.takeIf { it.isNotBlank() }?.let { builder.addQueryParameter("cursor", it) }
         limit?.let { builder.addQueryParameter("limit", it.toString()) }
+        if (sortByName) {
+            builder.addQueryParameter("sort", "name")
+            builder.addQueryParameter("order", "asc")
+        }
         return executeGet(builder.build().toString()) { _, body ->
             moshi.adapter(EntityListResponse::class.java).fromJson(body)
         }

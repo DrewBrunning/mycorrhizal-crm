@@ -5,6 +5,7 @@ import { Box, Chip, IconButton, Paper, Tooltip, Typography } from '@mui/material
 import { useTranslation } from 'react-i18next';
 import type { Contact } from '../api/contacts';
 import { type LifeEvent, partialDateRangeDisplay } from '../api/lifeEvents';
+import { useOptionalDateFormat } from '../DateFormatProvider';
 
 interface LifeEventListProps {
   events: LifeEvent[];
@@ -20,6 +21,7 @@ export default function LifeEventList({
   onDelete,
 }: LifeEventListProps) {
   const { t } = useTranslation();
+  const dateFormat = useOptionalDateFormat();
 
   if (events.length === 0) {
     return (
@@ -76,7 +78,11 @@ export default function LifeEventList({
                   />
                 )}
                 <Chip
-                  label={partialDateRangeDisplay(event.date, event.end_date)}
+                  label={partialDateRangeDisplay(
+                    event.date,
+                    event.end_date,
+                    dateFormat?.formatBirthday,
+                  )}
                   size="small"
                   variant="outlined"
                 />
@@ -125,13 +131,21 @@ export default function LifeEventList({
               className="life-event-actions"
               sx={{ opacity: 0, transition: 'opacity 0.2s', display: 'flex', gap: 1 }}
             >
-              <IconButton size="small" onClick={() => onEdit(event)} aria-label={t('common.edit')}>
+              <IconButton
+                size="small"
+                onClick={() => onEdit(event)}
+                aria-label={t('common.editNamed', {
+                  name: t(`lifeEvent.types.${event.type}`, event.type),
+                })}
+              >
                 <EditIcon fontSize="small" />
               </IconButton>
               <IconButton
                 size="small"
                 onClick={() => onDelete(event.id)}
-                aria-label={t('common.delete')}
+                aria-label={t('common.deleteNamed', {
+                  name: t(`lifeEvent.types.${event.type}`, event.type),
+                })}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>

@@ -2,8 +2,10 @@ package com.mycorrhizal.crm.feature.shares
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.domain.repository.ContactRepository
 import com.mycorrhizal.crm.domain.repository.ShareGrantRepository
 import com.mycorrhizal.crm.model.network.OutgoingShareGrant
+import com.mycorrhizal.crm.model.network.ShareGrantEntityTypes
 import com.mycorrhizal.crm.model.network.ShareGrantPatch
 import com.mycorrhizal.crm.model.network.ShareGrantStatuses
 import com.mycorrhizal.crm.network.ApiError
@@ -13,15 +15,28 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+private const val NOT_FOUND = "Contact not found"
+private const val HTTP_NOT_FOUND = 404
+
 /** True while the grant can still be revoked or edited (pending or active). */
 val OutgoingShareGrant.isLive: Boolean
     get() = status == ShareGrantStatuses.PENDING || status == ShareGrantStatuses.ACTIVE
+
+/**
+ * True once the grant has ended (declined, expired or revoked) and can be dismissed from the
+ * list (issue #2627). A pending or active grant whose time ran out already reads `expired`.
+ */
+val OutgoingShareGrant.isEnded: Boolean
+    get() = status == ShareGrantStatuses.DECLINED ||
+        status == ShareGrantStatuses.EXPIRED ||
+        status == ShareGrantStatuses.REVOKED
 
 /** What to do with a grant's expiry when editing. */
 sealed interface ExpiryChoice {
@@ -44,6 +59,9 @@ sealed interface SharedByMePrompt {
 
     /** Release sections withheld after a sensitivity change, once the owner has reviewed them. */
     data class Reconfirm(override val grant: OutgoingShareGrant) : SharedByMePrompt
+
+    /** Dismiss an ended grant from the list (issue #2627); the recipient is unaffected. */
+    data class Remove(override val grant: OutgoingShareGrant) : SharedByMePrompt
 }
 
 /** The narrow-only editor: sections can only be removed, the expiry changed. */
@@ -61,7 +79,13 @@ data class SharedByMeUiState(
     val actionError: ApiError? = null,
     val prompt: SharedByMePrompt? = null,
     val edit: ShareGrantEditState? = null,
-    val busy: Boolean = false
+    val busy: Boolean = false,
+    val reconfirmCounts: Map<String, Int> = emptyMap(),
+    val openContactId: Int? = null,
+    /** Non-null while the server has another page of grants. */
+    val nextCursor: String? = null,
+    val loadingMore: Boolean = false,
+    val loadMoreError: ApiError? = null
 )
 
 /**
@@ -70,8 +94,10 @@ data class SharedByMeUiState(
  * offers a wider list.
  */
 @HiltViewModel
-class SharedByMeViewModel @Inject constructor(private val repository: ShareGrantRepository) :
-    ViewModel() {
+class SharedByMeViewModel @Inject constructor(
+    private val repository: ShareGrantRepository,
+    private val contactRepository: ContactRepository
+) : ViewModel() {
 
     /** The clock for "N days from now"; tests replace it. */
     internal var now: () -> Instant = { Instant.now() }
@@ -100,10 +126,37 @@ class SharedByMeViewModel @Inject constructor(private val repository: ShareGrant
                     it.copy(
                         isLoading = false,
                         grants = result.getOrNull()?.shareGrants.orEmpty(),
-                        loadError = result.exceptionOrNull()?.toApiError()
+                        loadError = result.exceptionOrNull()?.toApiError(),
+                        nextCursor = result.getOrNull()?.nextCursor?.takeIf { cursor ->
+                            cursor.isNotBlank()
+                        },
+                        loadMoreError = null
                     )
                 }
             } while (reloadPending)
+        }
+    }
+
+    /** Appends the next page of grants; the backend caps a page at 100. */
+    fun loadMore() {
+        if (_uiState.value.isLoading || _uiState.value.loadingMore) return
+        val cursor = _uiState.value.nextCursor ?: return
+        viewModelScope.launch {
+            _uiState.update { it.copy(loadingMore = true, loadMoreError = null) }
+            repository.listOutgoing(cursor).foldApiError(
+                onSuccess = { page ->
+                    _uiState.update {
+                        it.copy(
+                            loadingMore = false,
+                            grants = it.grants + page.shareGrants,
+                            nextCursor = page.nextCursor?.takeIf { next -> next.isNotBlank() }
+                        )
+                    }
+                },
+                onError = { error ->
+                    _uiState.update { it.copy(loadingMore = false, loadMoreError = error) }
+                }
+            )
         }
     }
 
@@ -119,9 +172,44 @@ class SharedByMeViewModel @Inject constructor(private val repository: ShareGrant
         if (grant.isLive) openPrompt(SharedByMePrompt.Revoke(grant))
     }
 
+    fun requestRemove(grant: OutgoingShareGrant) {
+        if (grant.isEnded) openPrompt(SharedByMePrompt.Remove(grant))
+    }
+
     fun requestReconfirm(grant: OutgoingShareGrant) {
         if (grant.isLive && grant.reconfirmSections.isNotEmpty()) {
             openPrompt(SharedByMePrompt.Reconfirm(grant))
+            loadReconfirmCounts(grant)
+        }
+    }
+
+    private var previewJob: Job? = null
+
+    /**
+     * Issue #2659: what each withheld section holds today, so the owner can see what they are
+     * about to release. It is the owner's own export of those sections (sensitive items left
+     * out), counted per section. A failed preview is deliberately silent: the dialog still names
+     * the sections, only without counts.
+     */
+    private fun loadReconfirmCounts(grant: OutgoingShareGrant) {
+        if (grant.entityType != ShareGrantEntityTypes.CONTACT) return
+        previewJob?.cancel()
+        val sections = grant.reconfirmSections.sorted()
+        previewJob = viewModelScope.launch {
+            repository.previewContact(grant.entityId, sections).foldApiError(
+                onSuccess = { card ->
+                    val counts = projectSharedContact(card, sections.toSet())
+                        .sections.associate { it.token to it.lines.size }
+                    _uiState.update { state ->
+                        if (state.prompt?.grant?.id == grant.id) {
+                            state.copy(reconfirmCounts = counts)
+                        } else {
+                            state
+                        }
+                    }
+                },
+                onError = {}
+            )
         }
     }
 
@@ -132,16 +220,86 @@ class SharedByMeViewModel @Inject constructor(private val repository: ShareGrant
 
     fun dismissPrompt() {
         if (_uiState.value.busy) return
-        _uiState.update { it.copy(prompt = null) }
+        closePrompt()
+    }
+
+    private fun closePrompt() {
+        previewJob?.cancel()
+        _uiState.update { it.copy(prompt = null, reconfirmCounts = emptyMap()) }
+    }
+
+    /**
+     * Issue #2659: resolves the grant's contact (a vCard UID on the wire) to the local contact id
+     * the app navigates by. The dialog closes either way; a contact that no longer resolves is
+     * reported once as a not-found error.
+     */
+    fun openContact(grant: OutgoingShareGrant) {
+        if (_uiState.value.busy) return
+        viewModelScope.launch {
+            contactRepository.resolveByUid(listOf(grant.entityId)).foldApiError(
+                onSuccess = { found ->
+                    val id = found[grant.entityId]?.id
+                    previewJob?.cancel()
+                    _uiState.update {
+                        it.copy(
+                            prompt = null,
+                            reconfirmCounts = emptyMap(),
+                            openContactId = id,
+                            actionError = if (id == null) ApiError.Client(404, NOT_FOUND) else null
+                        )
+                    }
+                },
+                onError = { error ->
+                    previewJob?.cancel()
+                    _uiState.update {
+                        it.copy(prompt = null, reconfirmCounts = emptyMap(), actionError = error)
+                    }
+                }
+            )
+        }
+    }
+
+    fun onContactOpened() {
+        _uiState.update { it.copy(openContactId = null) }
     }
 
     fun confirmPrompt() {
         val prompt = _uiState.value.prompt ?: return
-        runAction {
-            when (prompt) {
-                is SharedByMePrompt.Revoke -> repository.revoke(prompt.grant.id)
-                is SharedByMePrompt.Reconfirm -> repository.reconfirm(prompt.grant.id)
-            }
+        when (prompt) {
+            is SharedByMePrompt.Revoke -> runAction { repository.revoke(prompt.grant.id) }
+            is SharedByMePrompt.Reconfirm -> runAction { repository.reconfirm(prompt.grant.id) }
+            is SharedByMePrompt.Remove -> remove(prompt.grant)
+        }
+    }
+
+    /**
+     * Issue #2627 (backend #2742): the row leaves the list at once. A 404 means it is already
+     * gone (unknown or removed elsewhere), which is the outcome the owner asked for, so it is
+     * not an error. Anything else, a 409 `share_grant_not_ended` included, keeps the row and
+     * reports the reason; the reload then shows the server's truth.
+     */
+    private fun remove(grant: OutgoingShareGrant) {
+        if (_uiState.value.busy) return
+        viewModelScope.launch {
+            _uiState.update { it.copy(busy = true, actionError = null) }
+            repository.delete(grant.id).foldApiError(
+                onSuccess = { dropRow(grant.id) },
+                onError = { error ->
+                    if (error is ApiError.Client && error.code == HTTP_NOT_FOUND) {
+                        dropRow(grant.id)
+                    } else {
+                        _uiState.update { it.copy(busy = false, actionError = error) }
+                    }
+                }
+            )
+            closePrompt()
+            reloadAfterChange()
+        }
+    }
+
+    private fun dropRow(id: String) {
+        _uiState.update { state ->
+            state.copy(busy = false, grants = state.grants.filterNot { it.id == id })
         }
     }
 
@@ -227,11 +385,12 @@ class SharedByMeViewModel @Inject constructor(private val repository: ShareGrant
         viewModelScope.launch {
             _uiState.update { it.copy(busy = true, actionError = null) }
             call().foldApiError(
-                onSuccess = { _uiState.update { it.copy(busy = false, prompt = null) } },
+                onSuccess = { _uiState.update { it.copy(busy = false) } },
                 onError = { error ->
-                    _uiState.update { it.copy(busy = false, prompt = null, actionError = error) }
+                    _uiState.update { it.copy(busy = false, actionError = error) }
                 }
             )
+            closePrompt()
             reloadAfterChange()
         }
     }

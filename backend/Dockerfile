@@ -36,7 +36,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build \
     -o mycorrhizal .
 
 # Runtime stage
-FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c0371ea2c9a
+FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5a48c71bf
 
 # Install runtime dependencies (versions pinned per hadolint DL3018 against
 # the alpine:3.24 index).
@@ -67,7 +67,8 @@ FROM alpine:3.24@sha256:be2656061b536c1883c4034790e21d0a09c5aaaf51968b89368a3c03
 # ("tzdata-2026f-r0: breaks: world[tzdata=2026e-r0]") -- the same pruned-pin
 # class as libssl3 above.
 # 2026-11-06 (alpine-pin-bump, automated): zlib 1.3.2-r1 -> 1.4-r0. Alpine pruned the old version from the index.
-RUN apk add --no-cache ca-certificates=20261020-r0 tzdata=2026f-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r0 libcrypto3=3.5.9-r0 zlib=1.4-r0
+# 2026-11-19 (alpine-pin-bump, automated): libssl3 3.5.9-r0 -> 3.5.9-r1, libcrypto3 3.5.9-r0 -> 3.5.9-r1. Alpine pruned the old version from the index.
+RUN apk add --no-cache ca-certificates=20261020-r0 tzdata=2026f-r0 shadow=4.18.0-r1 su-exec=0.3-r0 libc6-compat=1.1.0-r4 libssl3=3.5.9-r1 libcrypto3=3.5.9-r1 zlib=1.4-r0
 
 WORKDIR /app
 

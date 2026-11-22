@@ -3,6 +3,8 @@ package com.mycorrhizal.crm.feature.occasions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,6 +50,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.OccasionEventAttendeeView
 import com.mycorrhizal.crm.model.registry.OccasionRsvp
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
 /**
@@ -55,7 +59,7 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
  * #1228). The RSVP recorded here is what the user reports the contact told
  * them — no invitation is sent, and the hint says so.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun OccasionAttendeesScreen(
     onBack: () -> Unit,
@@ -109,6 +113,10 @@ fun OccasionAttendeesScreen(
         Box(Modifier.fillMaxSize().padding(padding)) {
             if (state.errorRes != null) {
                 CenteredMessage(stringResource(state.errorRes!!))
+            } else if (state.loadError != null && state.attendees.isEmpty()) {
+                state.loadError?.let { error ->
+                    ErrorState(error = error, onRetry = viewModel::load)
+                }
             } else {
                 Column(
                     modifier = Modifier.fillMaxSize().verticalScroll(
@@ -153,7 +161,11 @@ fun OccasionAttendeesScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Issue #2608: wrap, so a long circle name cannot push the rest off-screen.
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
                             state.circles.forEach { circle ->
                                 FilterChip(
                                     selected = circle.id in state.selectedCircleIds,
@@ -266,7 +278,7 @@ fun OccasionAttendeesScreen(
                         viewModel.removeAttendee(attendee.entityId)
                         pendingRemove = null
                     }
-                ) { Text(stringResource(R.string.action_delete)) }
+                ) { Text(stringResource(R.string.action_remove)) }
             },
             dismissButton = {
                 TextButton(
@@ -312,10 +324,13 @@ private fun AttendeeRow(
                 }
             }
         }
-        IconButton(enabled = enabled, onClick = onRemove) {
+        AccessibleIconButton(enabled = enabled, onClick = onRemove) {
             Icon(
                 Icons.Outlined.Delete,
-                contentDescription = stringResource(R.string.occasions_remove_attendee)
+                contentDescription = stringResource(
+                    R.string.occasions_remove_attendee_named,
+                    attendee.contactName
+                )
             )
         }
     }

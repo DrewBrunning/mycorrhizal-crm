@@ -118,7 +118,7 @@ export default function WorkList({
               <IconButton
                 size="small"
                 onClick={() => onEditOrganization(organization)}
-                aria-label={t('common.edit')}
+                aria-label={t('common.editNamed', { name: organization.name })}
               >
                 <EditIcon fontSize="small" />
               </IconButton>
@@ -126,7 +126,7 @@ export default function WorkList({
                 size="small"
                 color="error"
                 onClick={() => confirmDelete(() => onDeleteOrganization(organization))}
-                aria-label={t('common.delete')}
+                aria-label={t('common.deleteNamed', { name: organization.name })}
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
@@ -177,7 +177,7 @@ export default function WorkList({
             <IconButton
               size="small"
               onClick={() => onEditTitle(title)}
-              aria-label={t('common.edit')}
+              aria-label={t('common.editNamed', { name: title.name })}
             >
               <EditIcon fontSize="small" />
             </IconButton>
@@ -185,7 +185,7 @@ export default function WorkList({
               size="small"
               color="error"
               onClick={() => confirmDelete(() => onDeleteTitle(title))}
-              aria-label={t('common.delete')}
+              aria-label={t('common.deleteNamed', { name: title.name })}
             >
               <DeleteIcon fontSize="small" />
             </IconButton>

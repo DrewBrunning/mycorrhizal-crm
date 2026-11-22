@@ -22,6 +22,8 @@ import com.mycorrhizal.crm.model.network.Circle
 import com.mycorrhizal.crm.model.network.CircleMember
 import com.mycorrhizal.crm.model.network.CircleTimelinePage
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.LocalServerVersion
@@ -111,6 +113,18 @@ class CircleDetailScreenTest {
         // Issue #1768: the contact's name, never the raw vCard UID.
         composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
         composeTestRule.onNodeWithText("uid-alice").assertDoesNotExist()
+    }
+
+    @Test
+    fun `text everyone with fewer than two phone numbers stays tappable and says why`() {
+        setScreen(resolve = mapOf("uid-alice" to alice))
+
+        composeTestRule.onNodeWithContentDescription(str(R.string.circles_text_everyone))
+            .assertIsEnabled().performClick()
+
+        composeTestRule.onNodeWithText(
+            "To text everyone, at least two members need a phone number."
+        ).assertIsDisplayed()
     }
 
     @Test
@@ -309,6 +323,139 @@ class CircleDetailScreenTest {
         // The error is both the body Text and the transient snackbar, so assert
         // on the collection rather than a single node.
         assertTrue(composeTestRule.onAllNodesWithText("boom").fetchSemanticsNodes().isNotEmpty())
+    }
+
+    // Issue #2629: a failed load is the shared ErrorState (localized reason text) with a Retry
+    // that re-runs the load; the transient snackbar must not also announce it.
+    @Test
+    fun `a failed load shows the localized reason with Retry that reloads the members`() {
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { circleRepository.getWithMembers("c1") } returnsMany listOf(
+            Result.failure(
+                ApiError.Client(
+                    409,
+                    "raw-body-not-shown",
+                    ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+                )
+            ),
+            Result.success(
+                CircleDetail(
+                    circle = Circle(id = "c1", name = "Family"),
+                    members = listOf(
+                        CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice")
+                    )
+                )
+            )
+        )
+        coEvery { contactRepository.resolveByUid(any()) } returns
+            Result.success(mapOf("uid-alice" to alice))
+        val vm = CircleDetailViewModel(
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("circleId" to "c1"))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("feed limit reached (maximum 50 active feeds)")
+            .assertIsDisplayed()
+        composeTestRule.onNodeWithText("raw-body-not-shown").assertDoesNotExist()
+        composeTestRule.onNodeWithText(str(R.string.circles_members_empty)).assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+        coVerify(exactly = 2) { circleRepository.getWithMembers("c1") }
+    }
+
+    // The ErrorState is not a toast: a mutation error while it is on screen still toasts, and the
+    // ErrorState (with its Retry) stays.
+    @Test
+    fun `a mutation error still toasts while the load error stays on screen`() {
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { circleRepository.getWithMembers("c1") } returns
+            Result.failure(ApiError.Client(500, "down"))
+        coEvery { circleRepository.addMember("c1", "uid-x") } returns
+            Result.failure(ApiError.Client(400, "cannot-add"))
+        val vm = CircleDetailViewModel(
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("circleId" to "c1"))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { vm.addMember("uid-x") }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("cannot-add").assertIsDisplayed()
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertIsDisplayed()
+    }
+
+    // Issue #2629: a failed refresh with members already on screen is not a full-screen error:
+    // the list stays and the failure is announced by the transient message.
+    @Test
+    fun `a failed refresh keeps the members and toasts the error`() {
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
+        val contactRepository = mockk<ContactRepository>()
+        coEvery { circleRepository.getWithMembers("c1") } returnsMany listOf(
+            Result.success(
+                CircleDetail(
+                    circle = Circle(id = "c1", name = "Family"),
+                    members = listOf(
+                        CircleMember(id = 1, circleId = "c1", memberVCardUid = "uid-alice")
+                    )
+                )
+            ),
+            Result.failure(ApiError.Client(500, "down"))
+        )
+        coEvery { contactRepository.resolveByUid(any()) } returns
+            Result.success(mapOf("uid-alice" to alice))
+        val vm = CircleDetailViewModel(
+            circleRepository,
+            contactRepository,
+            SavedStateHandle(mapOf("circleId" to "c1"))
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { vm.load() }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("down").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alice Smith").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    // A missing circle id is not a network failure: plain message, no Retry to offer.
+    @Test
+    fun `a missing circle id shows its message without Retry`() {
+        val circleRepository = mockk<CircleRepository>().also(::stubEmptyTimeline)
+        val contactRepository = mockk<ContactRepository>()
+        val vm = CircleDetailViewModel(circleRepository, contactRepository, SavedStateHandle())
+        composeTestRule.setContent {
+            MycorrhizalTheme { CircleDetailScreen(onBack = {}, viewModel = vm) }
+        }
+        composeTestRule.waitForIdle()
+
+        assertTrue(
+            composeTestRule.onAllNodesWithText(str(R.string.circles_error_missing_id))
+                .fetchSemanticsNodes().isNotEmpty()
+        )
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
     }
 
     // Issue #2518: a circle can be shared as a standing grant, keyed by its id.

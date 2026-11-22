@@ -1,15 +1,26 @@
 package com.mycorrhizal.crm.feature.contacts.entities
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.Address
 import com.mycorrhizal.crm.model.network.ContactEntityLink
 import com.mycorrhizal.crm.model.network.Entity
@@ -18,6 +29,7 @@ import com.mycorrhizal.crm.model.network.Organization
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -137,10 +149,15 @@ class ContactEntityLinksScreenTest {
     fun `removing a link asks first and keeps the entity`() {
         val calls = Calls()
         setContent(ContactEntityLinksUiState(isLoading = false, links = listOf(acmeLink)), calls)
-        composeTestRule.onNodeWithText("Delete").performClick()
+        composeTestRule.onNodeWithText("Remove").performClick()
         composeTestRule.onNodeWithText(
-            "Remove the link to Acme? The entity itself is kept."
+            "Remove the link to Acme? The organisation, place or pet itself is kept."
         ).assertIsDisplayed()
+        // The confirm names the action the dialog is about, not a destructive "Delete".
+        composeTestRule.onNode(
+            hasTestTag("contact-entity-link-remove-confirm") and hasText("Remove")
+        ).assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Delete").assertCountEquals(0)
         assertEquals(emptyList<String>(), calls.removed)
         composeTestRule.onNodeWithTag("contact-entity-link-remove-confirm").performClick()
         assertEquals(listOf("l1"), calls.removed)
@@ -195,13 +212,92 @@ class ContactEntityLinksScreenTest {
     }
 
     @Test
+    fun `the entity name is a button of at least 48dp that opens the entity`() {
+        var opened: String? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                ContactEntityLinksContent(
+                    state = ContactEntityLinksUiState(isLoading = false, links = listOf(acmeLink)),
+                    onBack = {},
+                    onOpenEntity = { opened = it },
+                    onLink = { _, _ -> },
+                    onSetPrimary = { _, _ -> },
+                    onRemove = {},
+                    onAdopt = {},
+                    onLinkOwn = { _, _, _, _ -> },
+                    onFindMatch = {},
+                    onSearch = { _, _ -> },
+                    onClearSearch = {},
+                    onFormDismissed = {},
+                    onErrorShown = {},
+                    onConflictLoadLatest = {},
+                    onConflictDismissed = {},
+                    onRetry = {}
+                )
+            }
+        }
+        val name = composeTestRule.onNodeWithTag("contact-entity-link-open-l1")
+        name.assertHeightIsAtLeast(48.dp).assertHasClickAction()
+        name.assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
+        )
+        // Link styling: a chevron next to the name, not decoration without meaning.
+        composeTestRule.onNodeWithTag("contact-entity-link-chevron-l1", useUnmergedTree = true)
+            .assertExists()
+        name.performClick()
+        assertEquals("e1", opened)
+    }
+
+    @Test
+    fun `captions on a link are at least 12sp`() {
+        setContent(ContactEntityLinksUiState(isLoading = false, links = listOf(acmeLink)))
+        for (text in listOf("Organisation \u00b7 Employee", "Shown as organisation")) {
+            val size = composeTestRule.onNodeWithText(text, substring = true)
+                .fetchSemanticsNode().textSizeSp()
+            assertTrue("$text is ${size}sp", size >= 12f)
+        }
+    }
+
+    @Test
+    fun `the link dialog option rows and the primary switch rows are at least 48dp`() {
+        setContent(ContactEntityLinksUiState(isLoading = false, links = listOf(acmeLink)))
+        composeTestRule.onNodeWithTag("contact-entity-link-primary-l1").assertHeightIsAtLeast(48.dp)
+        composeTestRule.onNodeWithTag("contact-entity-link-add").performClick()
+        composeTestRule.onNodeWithTag("contact-entity-link-entity-search").performTextInput("Zed")
+        composeTestRule.onNodeWithTag("contact-entity-link-create", useUnmergedTree = false)
+            .assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test
+    fun `the own-value dialog option rows are at least 48dp`() {
+        setContent(
+            ContactEntityLinksUiState(
+                isLoading = false,
+                ownOrganizations = listOf(Organization(id = "o1", name = "Globex")),
+                ownMatch = Entity(id = "e9", name = "Globex")
+            )
+        )
+        composeTestRule.onNodeWithTag("contact-entity-link-from-own").performClick()
+        composeTestRule.onNodeWithTag("contact-entity-own-create-new").assertHeightIsAtLeast(48.dp)
+        composeTestRule.onNodeWithTag("contact-entity-own-use-existing")
+            .assertHeightIsAtLeast(48.dp)
+    }
+
+    private fun androidx.compose.ui.semantics.SemanticsNode.textSizeSp(): Float {
+        val results = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
+        config[androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult]
+            .action?.invoke(results)
+        return results.first().layoutInput.style.fontSize.value
+    }
+
+    @Test
     fun `the projected chip names its entity and is only text`() {
         composeTestRule.setContent {
             MycorrhizalTheme { ProjectedEntryRow(title = "Acme", entityName = "Acme", tag = "row") }
         }
         composeTestRule.onNodeWithText("from Acme").assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "Shown from the linked entity. Change it on the entity's page, or copy it into this contact to edit it here."
+            "Shown from the linked organisation or place. Change it on its page, or copy it into this contact to edit it here."
         ).assertIsDisplayed()
         composeTestRule.onAllNodesWithTag("organization-edit-x").assertCountEquals(0)
     }
@@ -209,6 +305,6 @@ class ContactEntityLinksScreenTest {
     @Test
     fun `an unknown entity falls back to a generic chip`() {
         composeTestRule.setContent { MycorrhizalTheme { ProjectedFromChip(entityName = null) } }
-        composeTestRule.onNodeWithText("from a linked entity").assertIsDisplayed()
+        composeTestRule.onNodeWithText("from a linked organisation or place").assertIsDisplayed()
     }
 }

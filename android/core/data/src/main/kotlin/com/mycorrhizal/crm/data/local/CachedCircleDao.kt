@@ -24,6 +24,10 @@ interface CachedCircleDao {
 
     @Query("DELETE FROM cached_circles")
     suspend fun deleteAll()
+
+    /** Drops every row whose id is not in [keepIds] (an empty list drops them all). */
+    @Query("DELETE FROM cached_circles WHERE id NOT IN (:keepIds)")
+    suspend fun deleteAllExcept(keepIds: List<String>)
 }
 
 @Dao

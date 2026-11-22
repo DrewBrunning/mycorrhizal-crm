@@ -42,7 +42,7 @@ test('removing a row reports the array without it', () => {
   const second = note({ note: 'Second note' });
   const { onChange } = renderEditor({ value: [note(), second] });
 
-  fireEvent.click(screen.getAllByLabelText('Delete')[0]);
+  fireEvent.click(screen.getAllByLabelText(/^Delete\b/)[0]);
 
   expect(onChange).toHaveBeenCalledWith([second]);
 });

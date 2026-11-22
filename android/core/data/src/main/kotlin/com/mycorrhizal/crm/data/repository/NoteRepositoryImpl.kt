@@ -13,6 +13,13 @@ import com.mycorrhizal.crm.network.ApiClient
 import javax.inject.Inject
 
 /**
+ * The Notes list (issue #2616, backend #2744) and a contact's notes (issue #2797, backend #2813)
+ * order by the note's own date. Their cursors are sort-specific, so every page of a list must send
+ * this same value.
+ */
+private const val NOTES_SORT_DATE = "date"
+
+/**
  * Online-first note access. Writes go to the server; successful responses are
  * mirrored into the Room cache.
  */
@@ -29,7 +36,15 @@ class NoteRepositoryImpl @Inject constructor(
         fromDate: String?,
         toDate: String?
     ): Result<ContactNotesPage> {
-        val result = apiClient.listContactNotes(contactId, cursor, limit, search, fromDate, toDate)
+        val result = apiClient.listContactNotes(
+            contactId,
+            cursor,
+            limit,
+            search,
+            fromDate,
+            toDate,
+            NOTES_SORT_DATE
+        )
         val response = result.getOrNull()
         if (response != null) {
             dao.upsertAll(response.notes.map { it.toCached() })
@@ -48,8 +63,15 @@ class NoteRepositoryImpl @Inject constructor(
         limit: Int?
     ): Result<UnfiledNotesPage> {
         val result = when (scope) {
-            NotesScope.ALL -> apiClient.listNotes(cursor, limit, "all", true)
-            NotesScope.UNFILED -> apiClient.listNotes(cursor, limit, "unfiled", false)
+            NotesScope.ALL -> apiClient.listNotes(cursor, limit, "all", true, NOTES_SORT_DATE)
+
+            NotesScope.UNFILED -> apiClient.listNotes(
+                cursor,
+                limit,
+                "unfiled",
+                false,
+                NOTES_SORT_DATE
+            )
         }
         result.getOrNull()?.let { page -> dao.upsertAll(page.notes.map { it.toCached() }) }
         return result.map { page ->

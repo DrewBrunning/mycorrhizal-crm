@@ -43,6 +43,21 @@ class LocalesConsistencyTest {
         }
     }
 
+    /** Issue #2626: English copy spells it "Organisation" and "colour" everywhere. */
+    @Test
+    fun `English copy uses one spelling for organisation and colour`() {
+        val values = Regex("""<string name="([^"]+)"[^>]*>([^<]*)</string>""")
+            .findAll(contentFor("values"))
+            .associate { it.groupValues[1] to it.groupValues[2] }
+        val american = Regex("""\b(organization|color)""", RegexOption.IGNORE_CASE)
+        val offenders = values.filterValues { american.containsMatchIn(it) }.keys
+        assertEquals(
+            "American spellings in English copy: $offenders",
+            emptySet<String>(),
+            offenders
+        )
+    }
+
     /** Plural resource names in one values dir — the `<plurals>` half of the key set. */
     private fun pluralKeysFor(valuesDir: String): Set<String> {
         val text = contentFor(valuesDir)

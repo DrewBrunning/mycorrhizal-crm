@@ -860,6 +860,33 @@ class ApiClientTest {
     }
 
     @Test
+    fun `search parses matched_on on contact and entity hits and tolerates its absence`() =
+        runBlocking {
+            // Wire shape of backend #2757: contact hits list the fields they matched in a fixed
+            // order, entity hits are always ["name"], and the key is omitted when unknown.
+            server.enqueue(
+                MockResponse().setResponseCode(200).setBody(
+                    """{"query":"zebracorp","contacts":[
+                    {"id":7,"fn":"Beatrix Marlow","org":"Zebracorp Holdings","matched_on":["organization"]},
+                    {"id":8,"fn":"Fenn Zebracorp","matched_on":["name","organization"]},
+                    {"id":9,"fn":"Older Server"}],
+                    "notes":[],"activities":[],"entities":[
+                    {"id":"e1","kind":"organisation","name":"Zebracorp Holdings","sensitivity":"normal","matched_on":["name"]},
+                    {"id":"e2","kind":"place","name":"Zebracorp Yard","sensitivity":"normal"}]}"""
+                )
+            )
+
+            val result = client.search("zebracorp").getOrThrow()
+
+            assertEquals(
+                mapOf(7 to listOf("organization"), 8 to listOf("name", "organization")),
+                result.matchedOnByContactId()
+            )
+            assertEquals(listOf("name"), result.entities[0].matchedOn)
+            assertEquals(null, result.entities[1].matchedOn)
+        }
+
+    @Test
     fun `search tolerates a server that omits entities`() = runBlocking {
         server.enqueue(
             MockResponse().setResponseCode(200).setBody("""{"query":"acme","notes":[]}""")
@@ -1868,6 +1895,58 @@ class ApiClientTest {
         assertEquals("/api/v1/notes?scope=unfiled", server.takeRequest().path)
     }
 
+    // Issue #2616 / backend #2744: sort=date orders by the note's own date; the cursor it returns
+    // is sort-specific, so the same sort rides along on every page request.
+    @Test
+    fun `list notes sends sort alongside scope and the resume cursor`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"total": 0}"""))
+
+        client.listNotes(cursor = "c-2", scope = "all", includeContacts = true, sort = "date")
+
+        assertEquals(
+            "/api/v1/notes?cursor=c-2&scope=all&include=contacts&sort=date",
+            server.takeRequest().path
+        )
+    }
+
+    @Test
+    fun `list notes omits sort unless asked so an older server sees the unchanged request`() =
+        runBlocking {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"total": 0}"""))
+
+            client.listNotes(scope = "all")
+
+            assertEquals("/api/v1/notes?scope=all", server.takeRequest().path)
+        }
+
+    // Issue #2797 / backend #2813: GET /contacts/{id}/notes takes the same sort=date; its cursor is
+    // sort-specific, so the sort rides along with the resume cursor on a load-more request too.
+    @Test
+    fun `contact notes send sort=date on the first page and with the resume cursor`() =
+        runBlocking {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notes": []}"""))
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notes": []}"""))
+
+            client.listContactNotes(5, limit = 25, sort = "date")
+            client.listContactNotes(5, cursor = "c-2", limit = 25, sort = "date")
+
+            assertEquals("/api/v1/contacts/5/notes?limit=25&sort=date", server.takeRequest().path)
+            assertEquals(
+                "/api/v1/contacts/5/notes?cursor=c-2&limit=25&sort=date",
+                server.takeRequest().path
+            )
+        }
+
+    @Test
+    fun `contact notes omit sort unless asked so an older server sees the unchanged request`() =
+        runBlocking {
+            server.enqueue(MockResponse().setResponseCode(200).setBody("""{"notes": []}"""))
+
+            client.listContactNotes(5)
+
+            assertEquals("/api/v1/contacts/5/notes", server.takeRequest().path)
+        }
+
     // Trap-#8 (`/CLAUDE.md`): GetUnassignedNotes marshals a nil Go slice as JSON `null`, not
     // `[]`, for zero unfiled notes — a different failure mode than the absent-key one below.
     @Test
@@ -2235,7 +2314,7 @@ class ApiClientTest {
 
         val request = server.takeRequest()
         assertEquals("GET", request.method)
-        assertEquals("/api/v1/dashboard", request.path)
+        assertEquals("/api/v1/dashboard", request.requestUrl?.encodedPath)
     }
 
     @Test
@@ -2612,9 +2691,9 @@ class ApiClientTest {
     }
 
     @Test
-    fun `search response's contacts group never reaches the parsed model`() = runBlocking {
-        // T87: the contact list is the sole authority for contact results; SearchResult has no
-        // `contacts` property to leak them into, regardless of what the server sends.
+    fun `search response's contacts group is reduced to id and matched_on`() = runBlocking {
+        // T87: the contact list is the sole authority for contact results; SearchResult keeps
+        // only each hit's id and matched_on (#2630), never a renderable contact.
         server.enqueue(
             MockResponse()
                 .setResponseCode(200)
@@ -3206,6 +3285,30 @@ class ApiClientTest {
         assertTrue(body.contains("session-1"))
         assertTrue(body.contains("\"action\":\"update\""))
     }
+
+    // Issue #2664/#2734: POST /contacts/import/cancel {session_id} answers {"status":"cancelled"}.
+    @Test
+    fun `cancelImportSession posts the session id to the cancel path`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"status":"cancelled"}"""))
+
+        val result = client.cancelImportSession("session-9")
+
+        assertTrue(result.isSuccess)
+        val request = server.takeRequest()
+        assertEquals("POST", request.method)
+        assertEquals("/api/v1/contacts/import/cancel", request.path)
+        assertEquals("""{"session_id":"session-9"}""", request.body.readUtf8())
+    }
+
+    @Test
+    fun `cancelImportSession reports a failure as a failed result and does not throw`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setResponseCode(404).setBody("""{"error":{"message":"nf"}}""")
+            )
+
+            assertTrue(client.cancelImportSession("session-9").isFailure)
+        }
 
     // Issues #2186/#2187: confirm carries row_edits; the result carries the per-row issues.
     @Test
@@ -3855,6 +3958,27 @@ class ApiClientTest {
         val request = server.takeRequest()
         assertEquals("GET", request.method)
         assertEquals("/api/v1/users/directory", request.path)
+    }
+
+    // Issues #2787 / #2658: SHARE_DIRECTORY_MODE=search takes the typed username prefix as `q`.
+    @Test
+    fun `get user directory sends the trimmed query as q`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"users": []}"""))
+
+        val result = client.getUserDirectory("  ali&x=1 ")
+
+        assertTrue(result.isSuccess)
+        assertEquals("/api/v1/users/directory?q=ali%26x%3D1", server.takeRequest().path)
+    }
+
+    // An older server never reads `q`, and an empty query adds no parameter at all.
+    @Test
+    fun `get user directory sends no q for a blank query`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("""{"users": []}"""))
+
+        client.getUserDirectory("   ")
+
+        assertEquals("/api/v1/users/directory", server.takeRequest().path)
     }
 
     // --- M25: settings surfaces (profile prefs, webhooks, notification channels) ---

@@ -104,7 +104,7 @@ test('a failed search shows a retryable error', async () => {
 test('entities are the fourth tab: counted, linked to the entity page, with a kind chip', async () => {
   vi.mocked(searchAll).mockResolvedValue(data);
   renderPage('/search?q=ali');
-  fireEvent.click(await screen.findByRole('tab', { name: 'Entities (2)' }));
+  fireEvent.click(await screen.findByRole('tab', { name: 'Organisations, places & pets (2)' }));
   const house = screen.getByRole('link', { name: /Alice Springs House/ });
   expect(house).toHaveAttribute('href', '/entities/e-1');
   expect(house).toHaveTextContent('Place');
@@ -116,7 +116,7 @@ test('?tab=entities deep-links to the entities tab', async () => {
   vi.mocked(searchAll).mockResolvedValue(data);
   renderPage('/search?q=ali&tab=entities');
   expect(await screen.findByText('Alice Springs House')).toBeInTheDocument();
-  expect(screen.getByRole('tab', { name: 'Entities (2)' })).toHaveAttribute(
+  expect(screen.getByRole('tab', { name: 'Organisations, places & pets (2)' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
@@ -206,4 +206,108 @@ test('a stale failure for an abandoned query does not replace the newer results 
   });
   expect(screen.queryByText(/slow boom/)).not.toBeInTheDocument();
   expect(screen.getByRole('tab', { name: 'Contacts (1)' })).toBeInTheDocument();
+});
+
+// #2698: the default tab must not be an empty one when another has hits.
+test('with no tab parameter the first non-empty tab is selected (#2698)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({ ...data, contacts: [], notes: [], activities: [] });
+  renderPage('/search?q=lakeside');
+  expect(await screen.findByText('Alice Springs House')).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Organisations, places & pets (2)' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  expect(screen.queryByText('No contacts match "lakeside".')).not.toBeInTheDocument();
+});
+
+test('an explicit tab parameter is honoured even when that tab is empty (#2698)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({ ...data, contacts: [], notes: [], activities: [] });
+  renderPage('/search?q=lakeside&tab=contacts');
+  expect(await screen.findByText('No contacts match "lakeside".')).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Contacts (0)' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
+
+test('the user can pick the empty Contacts tab over a non-empty default (#2698)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({ ...data, contacts: [], notes: [], activities: [] });
+  renderPage('/search?q=lakeside');
+  fireEvent.click(await screen.findByRole('tab', { name: 'Contacts (0)' }));
+  expect(await screen.findByText('No contacts match "lakeside".')).toBeInTheDocument();
+});
+
+test('when every category is empty the Contacts tab stays selected (#2698)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({ ...data, contacts: [], notes: [], entities: [] });
+  renderPage('/search?q=zzzz');
+  expect(await screen.findByRole('tab', { name: 'Contacts (0)' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+});
+
+// #2692: a phone has no AppBar search, so the page carries its own field.
+test('the results page has a search field prefilled with the query; submitting replaces it (#2692)', async () => {
+  vi.mocked(searchAll).mockResolvedValue(data);
+  renderPage('/search?q=ali&tab=notes');
+  const field = await screen.findByRole('searchbox', { name: 'Search everything' });
+  expect(field).toHaveValue('ali');
+  fireEvent.change(field, { target: { value: 'bob' } });
+  fireEvent.submit(field.closest('form') as HTMLFormElement);
+  await waitFor(() => expect(searchAll).toHaveBeenLastCalledWith('bob', 50));
+  expect(screen.getByRole('searchbox', { name: 'Search everything' })).toHaveValue('bob');
+});
+
+test('the search field is reachable when no query has been typed yet (#2692)', () => {
+  renderPage('/search');
+  expect(screen.getByRole('searchbox', { name: 'Search everything' })).toHaveValue('');
+});
+
+// axe `list` (serious): a <ul> may only contain <li>; each result link sits in one.
+test('every result row is a list item wrapping its link', async () => {
+  vi.mocked(searchAll).mockResolvedValue(data);
+  renderPage('/search?q=ali');
+  const link = await screen.findByRole('link', { name: /Alice Smith/ });
+  const list = link.closest('ul') as HTMLElement;
+  for (const child of Array.from(list.children)) expect(child.tagName).toBe('LI');
+});
+
+// #2744: the results page says why a contact matched when it was not (only) the name.
+test('a contact row shows why it matched; name-only and absent show nothing (#2744)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({
+    ...data,
+    contacts: [
+      {
+        id: 1,
+        uid: 'u1',
+        firstname: 'Beatrix',
+        lastname: 'Zebra',
+        matched_on: ['email', 'address'],
+      },
+      { id: 2, uid: 'u2', firstname: 'Bob', lastname: 'Name', matched_on: ['name'] },
+      { id: 3, uid: 'u3', firstname: 'Cy', lastname: 'Plain' },
+    ],
+  });
+  renderPage('/search?q=zebra');
+  const row = await screen.findByRole('link', { name: /Beatrix Zebra/ });
+  expect(row).toHaveTextContent('Matches: email, address');
+  expect(screen.getAllByText(/^Matches: /)).toHaveLength(1);
+});
+
+test('entity rows never show a match reason (name is the only one) (#2744)', async () => {
+  vi.mocked(searchAll).mockResolvedValue({
+    ...data,
+    entities: [
+      {
+        id: 'e-1',
+        kind: 'place',
+        name: 'Alice Springs House',
+        sensitivity: 'normal',
+        matched_on: ['name'],
+      },
+    ],
+  });
+  renderPage('/search?q=ali&tab=entities');
+  await screen.findByRole('link', { name: /Alice Springs House/ });
+  expect(screen.queryByText(/^Matches: /)).toBeNull();
 });

@@ -46,6 +46,7 @@ import com.mycorrhizal.crm.feature.contacts.memberDisplayName
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
@@ -66,7 +67,13 @@ fun CircleDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by rememberSaveable { mutableStateOf(false) }
-    val errorMessage = state.errorRes?.let { stringResource(it) } ?: state.error?.localizedMessage()
+    var showTextHint by remember { mutableStateOf(false) }
+    // With nothing loaded a failed load is the screen's ErrorState (and its Retry); a toast that
+    // clears the error on dismissal would take that state away again.
+    val onScreenLoadError =
+        state.loadError?.takeIf { state.members.isEmpty() && state.circle == null }
+    val errorMessage = state.errorRes?.let { stringResource(it) }
+        ?: state.error?.takeUnless { it === onScreenLoadError }?.localizedMessage()
     val context = LocalContext.current
 
     // Issue #218: numbers for the "text everyone" group SMS. Members with no
@@ -122,13 +129,18 @@ fun CircleDetailScreen(
                             contentDescription = stringResource(R.string.circles_edit)
                         )
                     }
+                    // Issue #2630: never a silently disabled action; tapping it with too few
+                    // phone numbers says why.
                     AccessibleIconButton(
                         onClick = {
-                            context.startActivity(
-                                FieldActions.groupSmsIntent(textablePhones, context)
-                            )
-                        },
-                        enabled = textablePhones.size >= 2
+                            if (textablePhones.size >= 2) {
+                                context.startActivity(
+                                    FieldActions.groupSmsIntent(textablePhones, context)
+                                )
+                            } else {
+                                showTextHint = true
+                            }
+                        }
                     ) {
                         Icon(
                             Icons.AutoMirrored.Outlined.Message,
@@ -162,6 +174,9 @@ fun CircleDetailScreen(
             ) {
                 when {
                     state.isLoading && state.members.isEmpty() -> LoadingSkeleton()
+
+                    onScreenLoadError != null ->
+                        ErrorState(error = onScreenLoadError, onRetry = viewModel::load)
 
                     state.members.isEmpty() && state.circle == null && errorMessage != null -> {
                         Text(
@@ -245,6 +260,14 @@ fun CircleDetailScreen(
                 showEditDialog = false
             }
         )
+    }
+
+    if (showTextHint) {
+        val hint = stringResource(R.string.group_text_everyone_unavailable)
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            snackbarHostState.showSnackbar(hint)
+            showTextHint = false
+        }
     }
 
     errorMessage?.let { message ->

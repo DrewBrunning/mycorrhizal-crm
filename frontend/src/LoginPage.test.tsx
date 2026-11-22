@@ -370,3 +370,25 @@ describe('LoginPage passkey option', () => {
     expect(await screen.findByText(/Passkey sign-in failed/)).toBeInTheDocument();
   });
 });
+
+// #2675 (WCAG 1.3.5): the credential fields carry autocomplete tokens so
+// password managers and browsers can fill them.
+describe('LoginPage autocomplete tokens', () => {
+  test('identifier is a username and the password is the current password', () => {
+    renderLogin();
+    expect(screen.getByLabelText(/username or email/i)).toHaveAttribute('autocomplete', 'username');
+    expect(screen.getByLabelText(/^password/i)).toHaveAttribute('autocomplete', 'current-password');
+  });
+
+  test('the 2FA code field asks for a one-time code', async () => {
+    loginUserMock.mockResolvedValue({ two_factor_required: true });
+    renderLogin();
+    fireEvent.change(screen.getByLabelText(/username or email/i), { target: { value: 'alice' } });
+    fireEvent.change(screen.getByLabelText(/^password/i), { target: { value: 'secret123' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Login' }));
+    expect(await screen.findByLabelText(/verification code/i)).toHaveAttribute(
+      'autocomplete',
+      'one-time-code',
+    );
+  });
+});

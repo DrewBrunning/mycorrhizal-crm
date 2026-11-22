@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router';
 import type { Contact } from '../api/contacts';
 import { partialDateDisplay } from '../api/lifeEvents';
 import { getDisplayLabel, getOtherPartyId, type RelationshipEdge } from '../api/relationshipEdges';
+import { useOptionalDateFormat } from '../DateFormatProvider';
 
 interface RelationshipEdgeListProps {
   confirmedEdges: RelationshipEdge[];
@@ -31,6 +32,7 @@ export default function RelationshipEdgeList({
   onReject,
 }: RelationshipEdgeListProps) {
   const { t } = useTranslation();
+  const dateFormat = useOptionalDateFormat();
   const navigate = useNavigate();
 
   const handleDeleteClick = (edgeId: string) => {
@@ -126,7 +128,7 @@ export default function RelationshipEdgeList({
                   >
                     {t(getDisplayLabel(edge, viewedContactUid))}
                     {edge.end_date &&
-                      ` · ${t('relationships.until', { date: partialDateDisplay(edge.end_date) })}`}
+                      ` · ${t('relationships.until', { date: partialDateDisplay(edge.end_date, dateFormat?.formatBirthday) })}`}
                   </Typography>
                   {edge.sensitivity !== 'normal' && (
                     <Chip
@@ -148,13 +150,17 @@ export default function RelationshipEdgeList({
                   transition: 'opacity 0.2s ease-in-out',
                 }}
               >
-                <IconButton size="small" onClick={() => onEdit(edge)} aria-label={t('common.edit')}>
+                <IconButton
+                  size="small"
+                  onClick={() => onEdit(edge)}
+                  aria-label={t('common.editNamed', { name: otherPartyName(edge).name })}
+                >
                   <EditIcon fontSize="small" />
                 </IconButton>
                 <IconButton
                   size="small"
                   onClick={() => handleDeleteClick(edge.id)}
-                  aria-label={t('common.delete')}
+                  aria-label={t('common.deleteNamed', { name: otherPartyName(edge).name })}
                   color="error"
                 >
                   <DeleteIcon fontSize="small" />
@@ -228,7 +234,9 @@ export default function RelationshipEdgeList({
                     <IconButton
                       size="small"
                       onClick={() => onAccept(edge.id)}
-                      aria-label={t('relationships.accept')}
+                      aria-label={t('relationships.acceptNamed', {
+                        name: otherPartyName(edge).name,
+                      })}
                       color="success"
                     >
                       <CheckIcon fontSize="small" />
@@ -236,7 +244,9 @@ export default function RelationshipEdgeList({
                     <IconButton
                       size="small"
                       onClick={() => handleRejectClick(edge.id)}
-                      aria-label={t('relationships.reject')}
+                      aria-label={t('relationships.rejectNamed', {
+                        name: otherPartyName(edge).name,
+                      })}
                       color="error"
                     >
                       <CloseIcon fontSize="small" />

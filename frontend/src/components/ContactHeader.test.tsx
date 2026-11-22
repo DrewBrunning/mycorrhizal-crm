@@ -158,8 +158,11 @@ function renderHeader(props: Partial<React.ComponentProps<typeof ContactHeader>>
 }
 
 test('view mode labels the contact by its CRM kind (T27)', () => {
-  renderHeader();
+  const { container } = renderHeader();
   expect(screen.getByText('Animal')).toBeInTheDocument();
+  // #2536: the contact's name is user content, not UI copy; both responsive
+  // h1 renderings carry the marker the pseudo-locale e2e scan relies on.
+  expect(container.querySelectorAll('h1[data-user-content]').length).toBeGreaterThan(0);
 });
 
 test('view mode does not label a human-kind contact', () => {
@@ -457,7 +460,7 @@ test('picking an existing circle from the autocomplete calls onAddCircle', async
 
   // The first "Edit" pencil belongs to the name section; the circles pencil
   // is the second.
-  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[1]);
   fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Select existing circle...' }));
   fireEvent.click(await screen.findByRole('option', { name: 'Friends' }));
 
@@ -469,7 +472,7 @@ test('pressing Enter in the new-circle field calls onAddCircle with a fresh circ
   const onAddCircle = vi.fn();
   renderHeader({ onAddCircle });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[1]);
   const input = screen.getByPlaceholderText('New circle name...');
   fireEvent.change(input, { target: { value: 'Book Club' } });
   fireEvent.keyDown(input, { key: 'Enter' });
@@ -489,7 +492,7 @@ test('pressing Enter with only whitespace does not call onAddCircle', () => {
   const onAddCircle = vi.fn();
   renderHeader({ onAddCircle });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[1]);
   const input = screen.getByPlaceholderText('New circle name...');
   fireEvent.change(input, { target: { value: '   ' } });
   fireEvent.keyDown(input, { key: 'Enter' });
@@ -502,7 +505,7 @@ test('deleting a circle chip calls onRemoveCircle', () => {
   const onRemoveCircle = vi.fn();
   renderHeader({ contactCircles: [circle('c1', 'Friends')], onRemoveCircle });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[1]);
   // MUI Chip's delete icon renders as a button-like SVG with no accessible
   // name of its own; select it via the chip's delete test id.
   fireEvent.click(screen.getByTestId('CancelIcon'));
@@ -516,7 +519,7 @@ test('picking an existing tag from the autocomplete calls onAddTag', async () =>
   renderHeader({ allTags: [tag('t1', 'VIP')], onAddTag });
 
   // Edit pencils in order: name, circles, tags.
-  fireEvent.click(screen.getAllByLabelText('Edit')[2]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[2]);
   fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Select tag...' }));
   fireEvent.click(await screen.findByRole('option', { name: 'VIP' }));
 
@@ -528,7 +531,7 @@ test('pressing Enter in the new-tag field calls onAddTag with a fresh tag', () =
   const onAddTag = vi.fn();
   renderHeader({ onAddTag });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[2]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[2]);
   const input = screen.getByPlaceholderText('New tag...');
   fireEvent.change(input, { target: { value: 'Neighbor' } });
   fireEvent.keyDown(input, { key: 'Enter' });
@@ -546,7 +549,7 @@ test('deleting a tag chip calls onRemoveTag', () => {
   const onRemoveTag = vi.fn();
   renderHeader({ contactTags: [tag('t1', 'VIP')], onRemoveTag });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[2]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[2]);
   fireEvent.click(screen.getByTestId('CancelIcon'));
 
   expect(onRemoveTag).toHaveBeenCalledWith(tag('t1', 'VIP'));
@@ -567,7 +570,7 @@ test('wide layout: an archived contact shows Unarchive and hides Archive/Delete'
   const unarchiveButton = screen.getByRole('button', { name: 'Unarchive' });
   expect(unarchiveButton).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Archive' })).not.toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /^Delete\b/ })).not.toBeInTheDocument();
 
   fireEvent.click(unarchiveButton);
   expect(onUnarchiveContact).toHaveBeenCalledTimes(1);
@@ -806,7 +809,7 @@ test('clicking the circles Add button calls onAddCircle with a fresh circle', ()
   const onAddCircle = vi.fn();
   renderHeader({ onAddCircle });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[1]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[1]);
   const input = screen.getByPlaceholderText('New circle name...');
   fireEvent.change(input, { target: { value: 'Book Club' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add' }));
@@ -825,7 +828,7 @@ test('clicking the tags Add button calls onAddTag with a fresh tag', () => {
   const onAddTag = vi.fn();
   renderHeader({ onAddTag });
 
-  fireEvent.click(screen.getAllByLabelText('Edit')[2]);
+  fireEvent.click(screen.getAllByLabelText(/^Edit\b/)[2]);
   const input = screen.getByPlaceholderText('New tag...');
   fireEvent.change(input, { target: { value: 'Neighbor' } });
   fireEvent.click(screen.getByRole('button', { name: 'Add' }));

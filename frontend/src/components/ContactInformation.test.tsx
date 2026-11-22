@@ -2,7 +2,6 @@ import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import '../i18n/config';
 import type { Card, CRMEnvelope } from '../api/contacts';
 import type { ContactEntityLink } from '../api/entities';
 import { getLinkFieldTypes } from '../api/linkFieldTypes';
@@ -10,6 +9,7 @@ import { geocodeDraft } from '../api/map';
 import type { ContactFieldKey } from '../contactFields';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import i18n from '../i18n/config';
 import { resolveLinkFieldTypeIcon } from '../linkFieldTypeIcons';
 import ContactInformation from './ContactInformation';
 
@@ -303,6 +303,8 @@ test('an email is itself a mailto: link, plus a copy action', () => {
   const row = fieldRow('Email');
   const link = within(row).getByText(/alice@example\.com/);
   expect(link.closest('a')).toHaveAttribute('href', 'mailto:alice@example.com');
+  // #2536: the address itself is data, not translated copy.
+  expect(link).toHaveAttribute('data-user-content');
   expect(within(row).getByLabelText(/^Copy Email /)).toBeInTheDocument();
 });
 
@@ -453,7 +455,7 @@ test('the IMPP editor is OnlineServiceEditor (uriOnly) and preserves a pre-exist
     { enabledFields: new Set<ContactFieldKey>(['imppAddresses']) },
   );
   const row = fieldRow('Instant messaging');
-  fireEvent.click(within(row).getByLabelText('Edit'));
+  fireEvent.click(within(row).getByLabelText(/^Edit\b/));
 
   expect(screen.getByRole('combobox', { name: 'Service' })).toBeInTheDocument();
   expect(screen.getByLabelText('Address')).toHaveValue('xmpp:alice@example.com');
@@ -485,7 +487,7 @@ test('the Social Profiles editor offers the registry as service Autocomplete opt
     { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) },
   );
   const row = fieldRow('Social Profiles');
-  fireEvent.click(within(row).getByLabelText('Edit'));
+  fireEvent.click(within(row).getByLabelText(/^Edit\b/));
 
   const serviceInput = screen.getByRole('combobox', { name: 'Service' });
   fireEvent.mouseDown(serviceInput);
@@ -502,7 +504,7 @@ test('editing and saving a phone unchanged still round-trips through the same ad
     phones: [{ number: '+15551234567', features: ['cell'] }],
   });
   const row = fieldRow('Phone');
-  fireEvent.click(within(row).getByLabelText('Edit'));
+  fireEvent.click(within(row).getByLabelText(/^Edit\b/));
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   expect(onUpdateCard).toHaveBeenCalledTimes(1);
   // contexts is re-derived from type (itself derived from features[0]) by
@@ -620,24 +622,26 @@ function hasFullSpanAncestor(el: Element, fullSpanClasses: Set<string>, maxDepth
 
 test('pronouns is full-span only while editing, not in read mode (T88)', () => {
   renderInformation({ speakToAs: { pronouns: [{ pronouns: 'she/her' }], grammaticalGenders: [] } });
+
+  // Enter edit mode first so emotion has injected the full-span rule. If the
+  // class set were empty, both assertions below would be vacuous (the
+  // shuffled-order failure #2829 was the positive half of this).
+  fireEvent.click(within(fieldRow('Pronouns & Grammatical Gender')).getByLabelText(/^Edit\b/));
   const classes = fullSpanClassNames(allStyles());
+  expect(classes.size).toBeGreaterThan(0);
 
-  const readLabel = screen.getByText('Pronouns & Grammatical Gender');
-  expect(hasFullSpanAncestor(readLabel, classes)).toBe(false);
-
-  fireEvent.click(within(fieldRow('Pronouns & Grammatical Gender')).getByLabelText('Edit'));
-
-  // The read-mode label is gone once editing starts; anchor on the editor's
-  // own Cancel button instead (unique on the page -- only one field edits
-  // at a time in this test).
   const cancelButton = screen.getByRole('button', { name: 'Cancel' });
   expect(hasFullSpanAncestor(cancelButton, classes)).toBe(true);
+
+  fireEvent.click(cancelButton);
+  const readLabel = screen.getByText('Pronouns & Grammatical Gender');
+  expect(hasFullSpanAncestor(readLabel, classes)).toBe(false);
 });
 
 test('entering edit mode on pronouns does not reorder the fields above it (T88)', () => {
   renderInformation({ speakToAs: { pronouns: [{ pronouns: 'she/her' }], grammaticalGenders: [] } });
   const genderLabelBefore = screen.getByText('Gender');
-  fireEvent.click(within(fieldRow('Pronouns & Grammatical Gender')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('Pronouns & Grammatical Gender')).getByLabelText(/^Edit\b/));
   // Gender is unrelated to pronouns' own editing state -- still present,
   // same node, not reflowed elsewhere.
   expect(screen.getByText('Gender')).toBe(genderLabelBefore);
@@ -678,7 +682,7 @@ const addressOptions = {
 };
 
 function openAddressEditor() {
-  fireEvent.click(within(fieldRow('Address')).getByLabelText('Edit'));
+  fireEvent.click(within(fieldRow('Address')).getByLabelText(/^Edit\b/));
 }
 
 test('a coordinate found mid-edit is persisted only by Save', async () => {
@@ -747,10 +751,43 @@ test('a projected address shows its source chip and stays out of the address edi
   expect(screen.getByRole('link', { name: 'from Cabin' })).toHaveAttribute('href', '/entities/e1');
 
   // Editing opens only the contact's own address; the projected one is not an input.
-  fireEvent.click(row.getByLabelText('Edit'));
+  fireEvent.click(row.getByLabelText(/^Edit\b/));
   expect(screen.getAllByLabelText(/City/).length).toBe(1);
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   await waitFor(() => expect(onUpdateCard).toHaveBeenCalled());
   const [patch] = onUpdateCard.mock.calls[0] as unknown as [Partial<Card>];
   expect(patch.addresses?.map((a) => a.id)).toEqual(['own-1']);
+});
+
+// #2681: a private email/phone context (the neutral vocabulary's counterpart of
+// "home") was shown as the raw token "(private)" in every language.
+test('a private context is translated, not shown as the raw token', async () => {
+  renderInformation({ emails: [{ address: 'a@example.com', contexts: ['private'] }] });
+  expect(screen.getByText(/a@example\.com \(Private\)/)).toBeInTheDocument();
+  cleanup();
+  await i18n.changeLanguage('de');
+  try {
+    renderInformation({ emails: [{ address: 'a@example.com', contexts: ['private'] }] });
+    expect(screen.getByText(/a@example\.com \(Privat\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/\(private\)/)).not.toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
+
+test('an unknown context is still shown as typed', () => {
+  renderInformation({ emails: [{ address: 'a@example.com', contexts: ['pager'] }] });
+  expect(screen.getByText(/a@example\.com \(pager\)/)).toBeInTheDocument();
+});
+
+// Issue #2681: a context token rendered as a raw English word ("(private)").
+test('an online service context is shown as its label, not the raw token', () => {
+  renderInformation(
+    { socialProfiles: [{ service: 'SomeUnknownService', user: 'alice', contexts: ['private'] }] },
+    {},
+    { enabledFields: new Set<ContactFieldKey>(['socialProfiles']) },
+  );
+  const row = fieldRow('Social Profiles');
+  expect(within(row).getByText(/\(Private\)/)).toBeInTheDocument();
+  expect(within(row).queryByText(/\(private\)/)).toBeNull();
 });

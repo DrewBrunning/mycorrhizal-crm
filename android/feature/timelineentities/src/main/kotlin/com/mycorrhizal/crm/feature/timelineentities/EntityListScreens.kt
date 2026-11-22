@@ -91,6 +91,7 @@ import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.DropdownOption
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.FormScaffold
 import com.mycorrhizal.crm.ui.components.LabelledDropdown
@@ -223,6 +224,11 @@ internal fun EntityListScaffold(
                     when {
                         uiState.isLoading && uiState.items.isEmpty() -> item {
                             LoadingSkeleton()
+                        }
+
+                        // Issue #2629: a failed contact fetch is the real error with Retry.
+                        uiState.loadError != null -> item {
+                            ErrorState(error = uiState.loadError, onRetry = onRefresh)
                         }
 
                         uiState.items.isEmpty() && errorMessage == null -> item {
@@ -1526,7 +1532,12 @@ private fun preferenceSensitivityLabelRes(sensitivity: String): Int = when (sens
 }
 
 @androidx.annotation.StringRes
-private fun preferenceKeyLabelRes(key: String): Int = when (key) {
+private fun preferenceKeyLabelRes(key: String): Int =
+    knownPreferenceKeyLabelRes(key) ?: R.string.preferences_key
+
+/** The localized label of a known disposition/clothing key, or null for a free-text key. */
+@androidx.annotation.StringRes
+private fun knownPreferenceKeyLabelRes(key: String): Int? = when (key) {
     "favorite" -> R.string.preferences_key_favorite
     "like" -> R.string.preferences_key_like
     "dislike" -> R.string.preferences_key_dislike
@@ -1546,7 +1557,7 @@ private fun preferenceKeyLabelRes(key: String): Int = when (key) {
     "belt" -> R.string.preferences_key_belt
     "ring" -> R.string.preferences_key_ring
     "socks" -> R.string.preferences_key_socks
-    else -> R.string.preferences_key
+    else -> null
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1905,7 +1916,7 @@ private fun ClothingSizesPanel(
  * preference that would then only show up in PreferencesScreen instead.
  */
 @Composable
-private fun GiftPreferencesPanel(
+internal fun GiftPreferencesPanel(
     items: List<Preference>,
     onAdd: () -> Unit,
     onEdit: (Preference) -> Unit,
@@ -1942,6 +1953,7 @@ private fun GiftPreferencesPanel(
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 sectionItems.forEach { item ->
+                    val itemLabel = item.giftPreferenceLabel()
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1953,14 +1965,17 @@ private fun GiftPreferencesPanel(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                text = preferenceLabel(item),
+                                text = itemLabel,
                                 style = MaterialTheme.typography.bodyLarge
                             )
                         }
                         IconButton(onClick = { onDelete(item.id) }) {
                             Icon(
                                 Icons.Outlined.Delete,
-                                contentDescription = stringResource(R.string.action_delete)
+                                contentDescription = stringResource(
+                                    R.string.entities_delete_named,
+                                    itemLabel
+                                )
                             )
                         }
                     }
@@ -2196,6 +2211,23 @@ internal fun MarkDiscussedForm(
 @Composable
 internal fun preferenceCategoryText(category: String): String =
     preferenceCategoryLabelRes(category)?.let { stringResource(it) } ?: humanizeToken(category)
+
+/**
+ * Issue #2606: the Gifts-screen row title, `Category: Disposition · value` (plus notes),
+ * built from the same localized category label the Preferences list uses so no raw
+ * `jewelry_other` token or `key = value` syntax reaches the screen. An unknown key
+ * (a free-text disposition) is shown verbatim.
+ */
+@Composable
+internal fun Preference.giftPreferenceLabel(): String {
+    val categoryText = preferenceCategoryText(category)
+    val keyText = key?.takeIf { it.isNotBlank() }?.let { k ->
+        knownPreferenceKeyLabelRes(k)?.let { stringResource(it) } ?: k
+    }
+    val body = keyText?.let { "$it · $value" } ?: value
+    val withNotes = notes?.takeIf { it.isNotBlank() }?.let { "$body\n$it" } ?: body
+    return "$categoryText: $withNotes"
+}
 
 /** Issue #1755: the localized row title for an entity item (token families resolve here, not in the ViewModel). */
 @Composable

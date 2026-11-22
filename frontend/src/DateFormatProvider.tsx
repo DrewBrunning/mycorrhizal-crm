@@ -7,6 +7,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // The supported date formats. Keys are persisted backend-side as the user's
 // `date_format` preference, so they are a stable contract shared with
@@ -571,6 +572,7 @@ export function autoFormatBirthdayInputWithFormat(
 }
 
 export function DateFormatProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [dateFormat, setDateFormatState] = useState<DateFormat>(() => getDateFormat());
 
   // Keep the provider in sync with a change made outside it (initialize on
@@ -615,22 +617,25 @@ export function DateFormatProvider({ children }: { children: ReactNode }) {
     [dateFormat],
   );
 
+  // #2536: the mask's letters are language, not format: a German UI shows
+  // TT.MM.JJJJ for the same `eu` preference. It used to be hardcoded English
+  // (the pseudo-locale pass found it as the Add Reminder dialog's placeholder).
   const getBirthdayPlaceholder = useCallback(() => {
     switch (dateFormat) {
       case 'eu':
       case 'eu-mmm':
       case 'eu-mmmm':
-        return 'DD.MM.YYYY';
+        return t('dateFormat.placeholder.eu');
       case 'iso':
-        return 'YYYY-MM-DD';
+        return t('dateFormat.placeholder.iso');
       case 'ca':
-        return 'DD/MM/YYYY';
+        return t('dateFormat.placeholder.ca');
       case 'eu-hyphen':
-        return 'DD-MM-YYYY';
+        return t('dateFormat.placeholder.euHyphen');
       default: // us, us-mmm, us-mmmm
-        return 'MM/DD/YYYY';
+        return t('dateFormat.placeholder.us');
     }
-  }, [dateFormat]);
+  }, [dateFormat, t]);
 
   const getBirthdayFormatHint = useCallback(() => {
     switch (dateFormat) {
@@ -654,17 +659,17 @@ export function DateFormatProvider({ children }: { children: ReactNode }) {
       case 'eu':
       case 'eu-mmm':
       case 'eu-mmmm':
-        return 'DD.MM.YYYY';
+        return t('dateFormat.placeholder.eu');
       case 'iso':
-        return 'YYYY-MM-DD';
+        return t('dateFormat.placeholder.iso');
       case 'ca':
-        return 'DD/MM/YYYY';
+        return t('dateFormat.placeholder.ca');
       case 'eu-hyphen':
-        return 'DD-MM-YYYY';
+        return t('dateFormat.placeholder.euHyphen');
       default: // us, us-mmm, us-mmmm
-        return 'MM/DD/YYYY';
+        return t('dateFormat.placeholder.us');
     }
-  }, [dateFormat]);
+  }, [dateFormat, t]);
 
   const calculateAge = useCallback((birthday: string) => calculateAgeFromBirthday(birthday), []);
 
@@ -709,3 +714,10 @@ export const useDateFormat = () => {
 
   return context;
 };
+
+/**
+ * Like {@link useDateFormat} but returns `undefined` outside a provider instead
+ * of throwing. For presentational pieces that merely prefer the user's date
+ * format and can fall back to the stored ISO form (issue #2681).
+ */
+export const useOptionalDateFormat = () => useContext(DateFormatContext);

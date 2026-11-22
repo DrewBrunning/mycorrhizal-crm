@@ -8,6 +8,8 @@ import {
   listEntitySuggestions,
 } from '../api/entities';
 import { useSnackbar } from '../context/SnackbarContext';
+import { useDateFormat } from '../DateFormatProvider';
+import { nameWithDetail, sameEntityName } from '../utils/entityDisambiguation';
 import { ENTITY_REASON_KEYS } from '../utils/entityLabels';
 import { getErrorMessage } from '../utils/errorHandler';
 
@@ -30,10 +32,22 @@ export default function EntitySuggestionsPanel({
 }: EntitySuggestionsPanelProps) {
   const { t } = useTranslation();
   const { showSuccess } = useSnackbar();
+  const { formatDate } = useDateFormat();
   const [pairs, setPairs] = useState<EntitySuggestionPair[] | null>(null);
   const [scannedKind, setScannedKind] = useState<EntityKind | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  // A same-named pair reads "X and X"; each side's updated date and distinct
+  // linked-contact count come with the pair (#2743), so the text can say which is which.
+  const pairText = (p: EntitySuggestionPair) => {
+    if (!sameEntityName(p.a.name, p.b.name)) {
+      return t('entities.suggestions.pair', { a: p.a.name, b: p.b.name });
+    }
+    return t('entities.suggestions.pair', {
+      a: nameWithDetail(t, formatDate, p.a),
+      b: nameWithDetail(t, formatDate, p.b),
+    });
+  };
 
   const scan = async () => {
     setLoading(true);
@@ -89,9 +103,7 @@ export default function EntitySuggestionsPanel({
                 sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}
               >
                 <Box sx={{ flex: 1, minWidth: 200 }}>
-                  <Typography>
-                    {t('entities.suggestions.pair', { a: p.a.name, b: p.b.name })}
-                  </Typography>
+                  <Typography>{pairText(p)}</Typography>
                   <Typography variant="caption" color="text.secondary">
                     {t(ENTITY_REASON_KEYS[p.reason])}
                   </Typography>

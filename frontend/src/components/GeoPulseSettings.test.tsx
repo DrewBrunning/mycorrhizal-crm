@@ -67,6 +67,8 @@ test('renders the connect form when nothing is configured, with no test/remove b
   renderSettings();
 
   await waitFor(() => expect(screen.getByLabelText('Base URL')).toBeInTheDocument());
+  // #2536: the example URL placeholder is a literal, not copy.
+  expect(screen.getByLabelText('Base URL')).toHaveAttribute('translate', 'no');
   expect(screen.getByLabelText('API Token')).toBeInTheDocument();
   expect(
     screen.getByText('Create a token in GeoPulse (Profile → Security) and paste it here.'),

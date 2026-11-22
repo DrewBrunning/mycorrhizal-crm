@@ -18,6 +18,7 @@ import com.mycorrhizal.crm.model.network.DiscoveredCustomProperty
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.FieldDefinition
+import com.mycorrhizal.crm.model.network.ImportDiagnostic
 import com.mycorrhizal.crm.model.network.ImportFieldMapping
 import com.mycorrhizal.crm.model.network.ImportPreviewResponse
 import com.mycorrhizal.crm.model.network.ImportResult
@@ -233,7 +234,7 @@ class VcfImportScreenTest {
             ),
             onDone = { done = true }
         )
-        composeTestRule.onNodeWithText("Confirm").performClick()
+        composeTestRule.onNodeWithText("Done").performClick()
         assertEquals(true, done)
     }
 
@@ -483,7 +484,30 @@ class VcfImportScreenTest {
                 )
             )
         )
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    // Issue #2731: the preview's file-level notice reaches the review step.
+    @Test
+    fun `the review step shows the preview's file diagnostics`() {
+        setContent(
+            VcfImportUiState(
+                step = VcfImportStep.PREVIEW,
+                preview = ImportPreviewResponse(
+                    sessionId = "session-1",
+                    rows = listOf(ImportRowPreview(rowIndex = 0)),
+                    fileDiagnostics = listOf(
+                        ImportDiagnostic(
+                            "warn",
+                            "encoding",
+                            "file was not UTF-8; read as Windows-1252"
+                        )
+                    )
+                ),
+                rowActions = mapOf(0 to "add")
+            )
+        )
+        composeTestRule.onNodeWithTag("import-file-diagnostic").assertIsDisplayed()
     }
 }

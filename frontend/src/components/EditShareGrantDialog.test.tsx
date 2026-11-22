@@ -204,3 +204,20 @@ test('Save is disabled while the request is in flight, and Cancel closes', async
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
   expect(onClose).toHaveBeenCalled();
 });
+
+// #2696: the expiry is stored as local end-of-day, so the field must show the
+// LOCAL calendar date. Run under a negative-UTC zone (TZ=America/Los_Angeles)
+// this is the day the owner picked; slicing the UTC ISO string gave the next day.
+test('pre-fills the expiry as the local calendar date the owner picked (#2696)', () => {
+  renderDialog(grant({ expires_at: new Date(2026, 11, 20, 23, 59, 59).toISOString() }));
+  expect((screen.getByLabelText('Expires on (optional)') as HTMLInputElement).value).toBe(
+    '2026-12-20',
+  );
+});
+
+test('section checkbox rows are at least 44 px tall (#2716)', () => {
+  renderDialog(grant());
+  for (const box of screen.getAllByRole('checkbox')) {
+    expect(getComputedStyle(box.closest('label') as HTMLElement).minHeight).toBe('44px');
+  }
+});

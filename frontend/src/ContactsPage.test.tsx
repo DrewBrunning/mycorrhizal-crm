@@ -1006,6 +1006,34 @@ test('selecting exactly two contacts and merging opens the pair-mode dialog, the
   await waitFor(() => expect(selectedText('2 selected')).toBeUndefined());
   expect(getContacts).toHaveBeenCalledTimes(2);
   expect(within(dialog).queryByText('Keep Alice')).not.toBeInTheDocument();
+  // #2688: the merge ends with a status message naming the survivor.
+  const note = await screen.findByText('Merged 2 contacts into Alice');
+  expect(note.closest('[role="status"]')).not.toBeNull();
+});
+
+test('merging a pair with the second contact as keeper names that contact', async () => {
+  mockTwoPages();
+  vi.mocked(previewContactMerge).mockImplementation(
+    async (keepId, mergeId) =>
+      ({ ...noConflictPreview, keep_id: keepId, merge_id: mergeId }) as never,
+  );
+  vi.mocked(commitContactMerge).mockResolvedValue({ message: 'merged', contact: {} } as never);
+  renderPage();
+  await screen.findByLabelText('Select Alice');
+  fireEvent.click(screen.getByLabelText('Select Alice'));
+  fireEvent.click(screen.getByLabelText('Select Bob'));
+  fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+
+  const dialog = screen.getByRole('dialog');
+  fireEvent.click(within(dialog).getByText('Keep Bob'));
+  const dialogMerge = within(dialog).getByRole('button', { name: 'Merge' });
+  await waitFor(() => expect(dialogMerge).not.toBeDisabled());
+  fireEvent.click(dialogMerge);
+
+  await waitFor(() => expect(commitContactMerge).toHaveBeenCalledWith(2, 1, {}));
+  expect(await screen.findByText('Merged 2 contacts into Bob')).toBeInTheDocument();
+  // #2688: focus lands on the surviving contact's row, not on <body>.
+  await waitFor(() => expect(screen.getByLabelText('Select Bob')).toHaveFocus());
 });
 
 // #2197: three or more selected contacts fold into one primary, one pair at a
@@ -1060,6 +1088,9 @@ test('merging three selected contacts picks a primary and folds the others in on
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   expect(selectedText('3 selected')).toBeUndefined();
   expect(getContacts).toHaveBeenCalledTimes(2);
+  // #2688: the confirmation names the contact the others were merged into.
+  expect(await screen.findByText('Merged 3 contacts into Carol')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByLabelText('Select Carol')).toHaveFocus());
 });
 
 // Selection is keyed by VCardUID specifically so it survives pagination, and
@@ -1160,6 +1191,8 @@ test('renders a filled star for a favorite and an outline star otherwise', async
   const bobStar = screen.getByRole('button', { name: 'Mark Bob as favorite' });
   expect(aliceStar).toBeInTheDocument();
   expect(bobStar).toBeInTheDocument();
+  // #2536: the row's name is data; the marker is the e2e scan's contract.
+  expect(screen.getByText('Alice')).toHaveAttribute('data-user-content');
 });
 
 test('clicking the star on a non-favorite POSTs to favorite and fills the star', async () => {

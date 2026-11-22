@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.model.network.NotesPage
 import com.mycorrhizal.crm.network.ApiClient
 import com.mycorrhizal.crm.network.ApiError
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -59,6 +60,7 @@ class NoteRepositoryImplTest {
                 any(),
                 any(),
                 any(),
+                any(),
                 any()
             )
         } returns Result.success(
@@ -89,6 +91,7 @@ class NoteRepositoryImplTest {
                 any(),
                 any(),
                 any(),
+                any(),
                 any()
             )
         } returns Result.failure(
@@ -112,6 +115,7 @@ class NoteRepositoryImplTest {
                 any(),
                 any(),
                 any(),
+                any(),
                 any()
             )
         } returns Result.success(
@@ -125,6 +129,41 @@ class NoteRepositoryImplTest {
 
         assertTrue(result.isSuccess)
         assertEquals("cursor-2", result.getOrThrow().nextCursor)
+    }
+
+    // Issue #2797 / backend #2813: a contact's notes are ordered by the note's own date, and the
+    // sort-specific cursor means every page (first and load-more) must send the same sort.
+    @Test
+    fun `listForContact asks for date order on the first page and on load-more`() = runTest {
+        coEvery {
+            apiClient.listContactNotes(5, null, 25, null, null, null, "date")
+        } returns Result.success(
+            ContactNotesResponse(
+                notes = listOf(Note(id = 3, content = "Newest dated")),
+                nextCursor = "date-cursor-2"
+            )
+        )
+        coEvery {
+            apiClient.listContactNotes(5, "date-cursor-2", 25, null, null, null, "date")
+        } returns Result.success(
+            ContactNotesResponse(notes = listOf(Note(id = 2, content = "Older dated")))
+        )
+
+        val first = repository.listForContact(5, limit = 25)
+        val second = repository.listForContact(
+            5,
+            cursor = first.getOrThrow().nextCursor,
+            limit = 25
+        )
+
+        assertEquals(listOf(3), first.getOrThrow().notes.map { it.id })
+        assertEquals(listOf(2), second.getOrThrow().notes.map { it.id })
+        coVerify(exactly = 1) {
+            apiClient.listContactNotes(5, null, 25, null, null, null, "date")
+        }
+        coVerify(exactly = 1) {
+            apiClient.listContactNotes(5, "date-cursor-2", 25, null, null, null, "date")
+        }
     }
 
     // M19: delete drops the local cache row after a successful server soft delete.
@@ -155,10 +194,19 @@ class NoteRepositoryImplTest {
         assertEquals(1, db.cachedNoteDao().getAll().size)
     }
 
+    /** The unfiled inbox request: first page, ordered by note date (issue #2616). */
+    private suspend fun listUnfiledByDate() = apiClient.listNotes(
+        cursor = null,
+        limit = null,
+        scope = "unfiled",
+        includeContacts = false,
+        sort = "date"
+    )
+
     // M9: the Notes drawer inbox — GET /notes, the N4 unfiled-notes queue.
     @Test
     fun `listNotes UNFILED caches notes and carries the queue depth`() = runTest {
-        coEvery { apiClient.listNotes(null, null, "unfiled", false) } returns Result.success(
+        coEvery { listUnfiledByDate() } returns Result.success(
             NotesPage(
                 notesRaw = listOf(Note(id = 3, content = "Buy milk")),
                 nextCursor = "cursor-2",
@@ -181,7 +229,7 @@ class NoteRepositoryImplTest {
     // doesn't crash Moshi — this is the repository-level proof (ApiClientTest covers the parse).
     @Test
     fun `listNotes tolerates a null notes list`() = runTest {
-        coEvery { apiClient.listNotes(null, null, "unfiled", false) } returns Result.success(
+        coEvery { listUnfiledByDate() } returns Result.success(
             NotesPage(notesRaw = null, total = 0)
         )
 
@@ -194,28 +242,29 @@ class NoteRepositoryImplTest {
 
     // Issue #2224: the default Notes view is every note, with the contact filled in.
     @Test
-    fun `listNotes ALL asks for scope all with contacts and pages by cursor`() = runTest {
-        coEvery { apiClient.listNotes("c1", 25, "all", true) } returns Result.success(
-            NotesPage(
-                notesRaw = listOf(
-                    Note(
-                        id = 8,
-                        content = "Met at the fair",
-                        contactId = 5,
-                        contact = ContactFlat(id = 5, firstname = "Ada", lastname = "Lovelace")
-                    )
-                ),
-                nextCursor = null,
-                total = 40
+    fun `listNotes ALL asks for scope all with contacts and date order and pages by cursor`() =
+        runTest {
+            coEvery { apiClient.listNotes("c1", 25, "all", true, "date") } returns Result.success(
+                NotesPage(
+                    notesRaw = listOf(
+                        Note(
+                            id = 8,
+                            content = "Met at the fair",
+                            contactId = 5,
+                            contact = ContactFlat(id = 5, firstname = "Ada", lastname = "Lovelace")
+                        )
+                    ),
+                    nextCursor = null,
+                    total = 40
+                )
             )
-        )
 
-        val result = repository.listNotes(NotesScope.ALL, cursor = "c1", limit = 25)
+            val result = repository.listNotes(NotesScope.ALL, cursor = "c1", limit = 25)
 
-        val page = result.getOrThrow()
-        assertEquals("Ada Lovelace", page.notes.single().contact?.displayName)
-        assertEquals(40, page.total)
-    }
+            val page = result.getOrThrow()
+            assertEquals("Ada Lovelace", page.notes.single().contact?.displayName)
+            assertEquals(40, page.total)
+        }
 
     @Test
     fun `create caches the created note`() = runTest {

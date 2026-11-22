@@ -194,9 +194,9 @@ test('handleApply treats 409 as already-exists and reports other failures, track
   fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
   await waitFor(() => {
-    expect(screen.getByText('Create Entities')).toBeDefined();
+    expect(screen.getByText('Create organisations and places')).toBeDefined();
   });
-  fireEvent.click(screen.getByRole('button', { name: 'Create Entities' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Create organisations and places' }));
 
   await waitFor(() => {
     expect(screen.getByText('Created Circle: Family')).toBeDefined();
@@ -232,8 +232,8 @@ test('handleApply reports a non-409 tag-creation failure verbatim', async () => 
   await waitFor(() => expect(screen.getByRole('button', { name: 'Apply' })).toBeDefined());
   fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
-  await waitFor(() => expect(screen.getByText('Create Entities')).toBeDefined());
-  fireEvent.click(screen.getByRole('button', { name: 'Create Entities' }));
+  await waitFor(() => expect(screen.getByText('Create organisations and places')).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Create organisations and places' }));
 
   await waitFor(() => {
     expect(screen.getByText(/Failed to create tag "Diet"/)).toBeDefined();

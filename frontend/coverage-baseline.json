@@ -9,10 +9,10 @@
       "branchesTotal": 88
     },
     "src/App.tsx": {
-      "lines": 88.17,
-      "linesTotal": 93,
-      "branches": 88,
-      "branchesTotal": 50
+      "lines": 92.23,
+      "linesTotal": 103,
+      "branches": 94.91,
+      "branchesTotal": 59
     },
     "src/AppThemeProvider.tsx": {
       "lines": 87.5,
@@ -51,40 +51,40 @@
       "branchesTotal": 37
     },
     "src/ContactsPage.tsx": {
-      "lines": 92.51,
-      "linesTotal": 254,
-      "branches": 87.71,
-      "branchesTotal": 171
+      "lines": 92.6,
+      "linesTotal": 257,
+      "branches": 87.86,
+      "branchesTotal": 173
     },
     "src/DashboardPage.tsx": {
-      "lines": 77.71,
-      "linesTotal": 166,
-      "branches": 68.18,
-      "branchesTotal": 110
+      "lines": 82.42,
+      "linesTotal": 165,
+      "branches": 75,
+      "branchesTotal": 112
     },
     "src/DataSettingsPage.tsx": {
       "lines": 100,
-      "linesTotal": 125,
-      "branches": 95.52,
-      "branchesTotal": 67
+      "linesTotal": 143,
+      "branches": 96.2,
+      "branchesTotal": 79
     },
     "src/DateFormatProvider.tsx": {
-      "lines": 94.71,
-      "linesTotal": 284,
+      "lines": 94.73,
+      "linesTotal": 285,
       "branches": 87.05,
       "branchesTotal": 224
     },
     "src/EntitiesPage.tsx": {
-      "lines": 81.25,
-      "linesTotal": 32,
-      "branches": 80,
-      "branchesTotal": 20
+      "lines": 91.17,
+      "linesTotal": 34,
+      "branches": 83.33,
+      "branchesTotal": 24
     },
     "src/EntityDetailPage.tsx": {
-      "lines": 88.88,
-      "linesTotal": 99,
-      "branches": 71.01,
-      "branchesTotal": 69
+      "lines": 90.51,
+      "linesTotal": 116,
+      "branches": 78.16,
+      "branchesTotal": 87
     },
     "src/HouseholdsPage.tsx": {
       "lines": 100,
@@ -93,10 +93,10 @@
       "branchesTotal": 30
     },
     "src/LoginPage.tsx": {
-      "lines": 95.77,
-      "linesTotal": 71,
-      "branches": 84.61,
-      "branchesTotal": 52
+      "lines": 96.38,
+      "linesTotal": 83,
+      "branches": 85.96,
+      "branchesTotal": 57
     },
     "src/MapPage.tsx": {
       "lines": 100,
@@ -141,10 +141,10 @@
       "branchesTotal": 38
     },
     "src/SearchResultsPage.tsx": {
-      "lines": 98.3,
-      "linesTotal": 59,
-      "branches": 87.83,
-      "branchesTotal": 74
+      "lines": 98.55,
+      "linesTotal": 69,
+      "branches": 90.36,
+      "branchesTotal": 83
     },
     "src/SettingsPage.tsx": {
       "lines": 83.13,
@@ -159,15 +159,15 @@
       "branchesTotal": 10
     },
     "src/SharedByMePage.tsx": {
-      "lines": 94.23,
-      "linesTotal": 52,
-      "branches": 97.95,
-      "branchesTotal": 49
+      "lines": 96.1,
+      "linesTotal": 77,
+      "branches": 98.64,
+      "branchesTotal": 74
     },
     "src/SharedWithMePage.tsx": {
-      "lines": 93.75,
-      "linesTotal": 80,
-      "branches": 95.55,
+      "lines": 98.83,
+      "linesTotal": 86,
+      "branches": 97.77,
       "branchesTotal": 45
     },
     "src/SystemEventsPage.tsx": {
@@ -183,10 +183,10 @@
       "branchesTotal": 122
     },
     "src/TrashPage.tsx": {
-      "lines": 86.11,
-      "linesTotal": 36,
-      "branches": 83.33,
-      "branchesTotal": 30
+      "lines": 87.75,
+      "linesTotal": 49,
+      "branches": 89.36,
+      "branchesTotal": 47
     },
     "src/UsersPage.tsx": {
       "lines": 91.95,
@@ -388,9 +388,9 @@
     },
     "src/api/export.ts": {
       "lines": 100,
-      "linesTotal": 79,
-      "branches": 97.05,
-      "branchesTotal": 34
+      "linesTotal": 84,
+      "branches": 97.22,
+      "branchesTotal": 36
     },
     "src/api/externalLinks.ts": {
       "lines": 100,
@@ -448,7 +448,7 @@
     },
     "src/api/import.ts": {
       "lines": 100,
-      "linesTotal": 35,
+      "linesTotal": 37,
       "branches": 100,
       "branchesTotal": 20
     },
@@ -462,7 +462,7 @@
       "lines": 100,
       "linesTotal": 40,
       "branches": 100,
-      "branchesTotal": 52
+      "branchesTotal": 56
     },
     "src/api/linkFieldTypes.ts": {
       "lines": 100,
@@ -502,9 +502,9 @@
     },
     "src/api/notes.ts": {
       "lines": 100,
-      "linesTotal": 55,
+      "linesTotal": 56,
       "branches": 100,
-      "branchesTotal": 36
+      "branchesTotal": 38
     },
     "src/api/notificationHealth.ts": {
       "lines": 100,
@@ -586,9 +586,9 @@
     },
     "src/api/shareGrants.ts": {
       "lines": 100,
-      "linesTotal": 42,
-      "branches": 82.85,
-      "branchesTotal": 35
+      "linesTotal": 44,
+      "branches": 86.48,
+      "branchesTotal": 37
     },
     "src/api/sourceImport.ts": {
       "lines": 100,
@@ -634,15 +634,21 @@
     },
     "src/api/trash.ts": {
       "lines": 100,
-      "linesTotal": 15,
-      "branches": 74.07,
-      "branchesTotal": 27
+      "linesTotal": 24,
+      "branches": 86,
+      "branchesTotal": 50
     },
     "src/api/users.ts": {
       "lines": 100,
       "linesTotal": 40,
       "branches": 100,
       "branchesTotal": 18
+    },
+    "src/api/viewerTimezone.ts": {
+      "lines": 100,
+      "linesTotal": 11,
+      "branches": 100,
+      "branchesTotal": 11
     },
     "src/api/webauthn.ts": {
       "lines": 100,
@@ -657,10 +663,10 @@
       "branchesTotal": 4
     },
     "src/auth.ts": {
-      "lines": 98.78,
-      "linesTotal": 82,
-      "branches": 98.43,
-      "branchesTotal": 64
+      "lines": 99.03,
+      "linesTotal": 104,
+      "branches": 100,
+      "branchesTotal": 76
     },
     "src/components/AcceptContactShareDialog.tsx": {
       "lines": 94.28,
@@ -771,10 +777,10 @@
       "branchesTotal": 37
     },
     "src/components/BulkMergeDialog.tsx": {
-      "lines": 97.05,
-      "linesTotal": 34,
-      "branches": 82.6,
-      "branchesTotal": 23
+      "lines": 97.29,
+      "linesTotal": 37,
+      "branches": 85.18,
+      "branchesTotal": 27
     },
     "src/components/CadenceDialog.tsx": {
       "lines": 94.87,
@@ -813,10 +819,10 @@
       "branchesTotal": 12
     },
     "src/components/CircleDetailDialog.tsx": {
-      "lines": 98.07,
-      "linesTotal": 52,
-      "branches": 98.27,
-      "branchesTotal": 58
+      "lines": 98.18,
+      "linesTotal": 55,
+      "branches": 100,
+      "branchesTotal": 59
     },
     "src/components/CircleTagEntityList.tsx": {
       "lines": 100,
@@ -827,8 +833,8 @@
     "src/components/ClothingSizesPanel.tsx": {
       "lines": 85.41,
       "linesTotal": 48,
-      "branches": 67.85,
-      "branchesTotal": 28
+      "branches": 71.87,
+      "branchesTotal": 32
     },
     "src/components/ConfirmDiscardDialog.tsx": {
       "lines": 100,
@@ -891,9 +897,9 @@
       "branchesTotal": 88
     },
     "src/components/ContactInformation.tsx": {
-      "lines": 76.25,
-      "linesTotal": 139,
-      "branches": 76.19,
+      "lines": 76.92,
+      "linesTotal": 143,
+      "branches": 76.62,
       "branchesTotal": 231
     },
     "src/components/ContactMap.tsx": {
@@ -911,8 +917,8 @@
     "src/components/ContactTimeline.tsx": {
       "lines": 93.1,
       "linesTotal": 29,
-      "branches": 93.47,
-      "branchesTotal": 92
+      "branches": 93.61,
+      "branchesTotal": 94
     },
     "src/components/ConversationAgendaDialog.tsx": {
       "lines": 97.05,
@@ -947,7 +953,7 @@
     "src/components/CustomFieldsSettings.tsx": {
       "lines": 95.34,
       "linesTotal": 43,
-      "branches": 85.18,
+      "branches": 88.88,
       "branchesTotal": 27
     },
     "src/components/DAVPasswordSettings.tsx": {
@@ -994,7 +1000,7 @@
     },
     "src/components/EditShareGrantDialog.tsx": {
       "lines": 100,
-      "linesTotal": 37,
+      "linesTotal": 41,
       "branches": 100,
       "branchesTotal": 26
     },
@@ -1019,26 +1025,26 @@
     "src/components/EntitiesFromContactsSettings.tsx": {
       "lines": 92.68,
       "linesTotal": 82,
-      "branches": 78.18,
-      "branchesTotal": 55
+      "branches": 79.66,
+      "branchesTotal": 59
     },
     "src/components/EntityDeleteDialog.tsx": {
       "lines": 100,
-      "linesTotal": 31,
-      "branches": 75,
-      "branchesTotal": 32
+      "linesTotal": 32,
+      "branches": 76.47,
+      "branchesTotal": 34
     },
     "src/components/EntityFormDialog.tsx": {
-      "lines": 82.35,
-      "linesTotal": 68,
-      "branches": 87.09,
-      "branchesTotal": 31
+      "lines": 86.07,
+      "linesTotal": 79,
+      "branches": 94.87,
+      "branchesTotal": 39
     },
     "src/components/EntityMergeDialog.tsx": {
-      "lines": 98.5,
-      "linesTotal": 67,
-      "branches": 80.39,
-      "branchesTotal": 51
+      "lines": 98.66,
+      "linesTotal": 75,
+      "branches": 84.12,
+      "branchesTotal": 63
     },
     "src/components/EntityPicker.tsx": {
       "lines": 100,
@@ -1048,9 +1054,9 @@
     },
     "src/components/EntitySuggestionsPanel.tsx": {
       "lines": 100,
-      "linesTotal": 28,
-      "branches": 81.25,
-      "branchesTotal": 16
+      "linesTotal": 33,
+      "branches": 88.88,
+      "branchesTotal": 18
     },
     "src/components/ErrorAggregationPanel.tsx": {
       "lines": 100,
@@ -1149,8 +1155,8 @@
       "branchesTotal": 59
     },
     "src/components/GiftDialog.tsx": {
-      "lines": 94.89,
-      "linesTotal": 98,
+      "lines": 94.94,
+      "linesTotal": 99,
       "branches": 88.6,
       "branchesTotal": 79
     },
@@ -1161,10 +1167,10 @@
       "branchesTotal": 54
     },
     "src/components/GlobalSearch.tsx": {
-      "lines": 98.59,
-      "linesTotal": 71,
-      "branches": 85.41,
-      "branchesTotal": 48
+      "lines": 98.86,
+      "linesTotal": 88,
+      "branches": 89.65,
+      "branchesTotal": 58
     },
     "src/components/HouseholdDialog.tsx": {
       "lines": 96.77,
@@ -1209,10 +1215,10 @@
       "branchesTotal": 50
     },
     "src/components/ImportContactsDialog.tsx": {
-      "lines": 91.61,
-      "linesTotal": 346,
-      "branches": 85.41,
-      "branchesTotal": 288
+      "lines": 94.23,
+      "linesTotal": 399,
+      "branches": 86.9,
+      "branchesTotal": 359
     },
     "src/components/ImportFixedAssignmentPicker.tsx": {
       "lines": 84.21,
@@ -1222,9 +1228,9 @@
     },
     "src/components/ImportIssuesReport.tsx": {
       "lines": 100,
-      "linesTotal": 14,
+      "linesTotal": 29,
       "branches": 100,
-      "branchesTotal": 6
+      "branchesTotal": 30
     },
     "src/components/ImportedResourcesSection.tsx": {
       "lines": 100,
@@ -1251,14 +1257,14 @@
       "branchesTotal": 114
     },
     "src/components/LifeEventList.tsx": {
-      "lines": 77.77,
-      "linesTotal": 9,
+      "lines": 80,
+      "linesTotal": 10,
       "branches": 61.53,
       "branchesTotal": 13
     },
     "src/components/LifeEventSuggestions.tsx": {
       "lines": 100,
-      "linesTotal": 31,
+      "linesTotal": 32,
       "branches": 75,
       "branchesTotal": 4
     },
@@ -1305,10 +1311,10 @@
       "branchesTotal": 26
     },
     "src/components/MeerkatImportDialog.tsx": {
-      "lines": 96.05,
-      "linesTotal": 76,
-      "branches": 88.88,
-      "branchesTotal": 45
+      "lines": 96.15,
+      "linesTotal": 78,
+      "branches": 90.19,
+      "branchesTotal": 51
     },
     "src/components/MeerkatLiveConnect.tsx": {
       "lines": 100,
@@ -1317,16 +1323,16 @@
       "branchesTotal": 32
     },
     "src/components/MergeContactsDialog.tsx": {
-      "lines": 95.18,
-      "linesTotal": 83,
-      "branches": 88.61,
-      "branchesTotal": 123
+      "lines": 95.34,
+      "linesTotal": 86,
+      "branches": 90.62,
+      "branchesTotal": 128
     },
     "src/components/MonicaImportDialog.tsx": {
-      "lines": 95.65,
-      "linesTotal": 46,
-      "branches": 92.3,
-      "branchesTotal": 13
+      "lines": 96.49,
+      "linesTotal": 57,
+      "branches": 93.75,
+      "branchesTotal": 32
     },
     "src/components/MultiValueField.tsx": {
       "lines": 96.55,
@@ -1341,10 +1347,10 @@
       "branchesTotal": 16
     },
     "src/components/NetworkGraph.tsx": {
-      "lines": 77.21,
-      "linesTotal": 158,
-      "branches": 55.81,
-      "branchesTotal": 129
+      "lines": 79.19,
+      "linesTotal": 173,
+      "branches": 57.97,
+      "branchesTotal": 138
     },
     "src/components/NetworkLegend.tsx": {
       "lines": 100,
@@ -1385,8 +1391,8 @@
     "src/components/NotificationSettings.tsx": {
       "lines": 79.73,
       "linesTotal": 153,
-      "branches": 68.54,
-      "branchesTotal": 124
+      "branches": 71.09,
+      "branchesTotal": 128
     },
     "src/components/OccasionEventAttendeesDialog.tsx": {
       "lines": 100,
@@ -1415,8 +1421,8 @@
     "src/components/OccasionObligationList.tsx": {
       "lines": 100,
       "linesTotal": 13,
-      "branches": 90,
-      "branchesTotal": 20
+      "branches": 90.9,
+      "branchesTotal": 22
     },
     "src/components/OfflineBanner.tsx": {
       "lines": 100,
@@ -1511,8 +1517,8 @@
     "src/components/ReachOutSuggestionsList.tsx": {
       "lines": 90.9,
       "linesTotal": 11,
-      "branches": 75,
-      "branchesTotal": 16
+      "branches": 88.88,
+      "branchesTotal": 18
     },
     "src/components/RecordConflictDialog.tsx": {
       "lines": 100,
@@ -1533,8 +1539,8 @@
       "branchesTotal": 106
     },
     "src/components/RelationshipEdgeList.tsx": {
-      "lines": 77.77,
-      "linesTotal": 27,
+      "lines": 78.57,
+      "linesTotal": 28,
       "branches": 63.63,
       "branchesTotal": 22
     },
@@ -1647,10 +1653,10 @@
       "branchesTotal": 2
     },
     "src/components/SharedGrantContentDialog.tsx": {
-      "lines": 97.22,
-      "linesTotal": 36,
-      "branches": 90.47,
-      "branchesTotal": 42
+      "lines": 97.61,
+      "linesTotal": 42,
+      "branches": 90.9,
+      "branchesTotal": 44
     },
     "src/components/SpeakToAsEditor.tsx": {
       "lines": 100,
@@ -1685,8 +1691,8 @@
     "src/components/SyncConflictList.tsx": {
       "lines": 95,
       "linesTotal": 20,
-      "branches": 60,
-      "branchesTotal": 25
+      "branches": 72.41,
+      "branchesTotal": 29
     },
     "src/components/TimelineExplorerDialog.tsx": {
       "lines": 100,
@@ -1709,8 +1715,8 @@
     "src/components/UpcomingOccasionsWidget.tsx": {
       "lines": 100,
       "linesTotal": 4,
-      "branches": 94.73,
-      "branchesTotal": 19
+      "branches": 95.65,
+      "branchesTotal": 23
     },
     "src/components/WebhooksSettings.tsx": {
       "lines": 86.06,
@@ -1727,7 +1733,7 @@
     "src/components/WorkList.tsx": {
       "lines": 100,
       "linesTotal": 28,
-      "branches": 92,
+      "branches": 96,
       "branchesTotal": 50
     },
     "src/components/sourceImport/SourceImportLossReport.tsx": {
@@ -1756,9 +1762,9 @@
     },
     "src/components/sourceImport/SourceImportWizard.tsx": {
       "lines": 100,
-      "linesTotal": 27,
+      "linesTotal": 30,
       "branches": 100,
-      "branchesTotal": 26
+      "branchesTotal": 39
     },
     "src/components/timelineLayout.ts": {
       "lines": 100,
@@ -1796,11 +1802,23 @@
       "branches": 100,
       "branchesTotal": 2
     },
+    "src/context/PendingSharesContext.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 0
+    },
     "src/context/SnackbarContext.tsx": {
       "lines": 91.3,
       "linesTotal": 23,
       "branches": 75,
       "branchesTotal": 8
+    },
+    "src/entityPages.ts": {
+      "lines": 0,
+      "linesTotal": 0,
+      "branches": 0,
+      "branchesTotal": 0
     },
     "src/generated/openapi.ts": {
       "lines": 0,
@@ -2170,7 +2188,7 @@
     },
     "src/hooks/useShareGrantList.ts": {
       "lines": 100,
-      "linesTotal": 35,
+      "linesTotal": 37,
       "branches": 100,
       "branchesTotal": 16
     },
@@ -2178,7 +2196,7 @@
       "lines": 100,
       "linesTotal": 104,
       "branches": 100,
-      "branchesTotal": 40
+      "branchesTotal": 41
     },
     "src/hooks/useSubsystemHealth.ts": {
       "lines": 100,
@@ -2217,8 +2235,8 @@
       "branchesTotal": 52
     },
     "src/hooks/useTrash.ts": {
-      "lines": 96.77,
-      "linesTotal": 31,
+      "lines": 97.61,
+      "linesTotal": 42,
       "branches": 50,
       "branchesTotal": 4
     },
@@ -2227,6 +2245,12 @@
       "linesTotal": 19,
       "branches": 100,
       "branchesTotal": 0
+    },
+    "src/i18n/accountLanguage.ts": {
+      "lines": 100,
+      "linesTotal": 7,
+      "branches": 77.77,
+      "branchesTotal": 9
     },
     "src/i18n/config.ts": {
       "lines": 83.33,
@@ -2301,10 +2325,10 @@
       "branchesTotal": 4
     },
     "src/service-worker.ts": {
-      "lines": 84.31,
-      "linesTotal": 51,
-      "branches": 75,
-      "branchesTotal": 32
+      "lines": 95.45,
+      "linesTotal": 44,
+      "branches": 92.3,
+      "branchesTotal": 26
     },
     "src/serviceWorkerRegistration.ts": {
       "lines": 100,
@@ -2402,6 +2426,12 @@
       "branches": 100,
       "branchesTotal": 28
     },
+    "src/utils/birthdayAge.ts": {
+      "lines": 100,
+      "linesTotal": 5,
+      "branches": 100,
+      "branchesTotal": 5
+    },
     "src/utils/circleColors.ts": {
       "lines": 100,
       "linesTotal": 2,
@@ -2468,6 +2498,12 @@
       "branches": 97.91,
       "branchesTotal": 96
     },
+    "src/utils/entityDisambiguation.ts": {
+      "lines": 100,
+      "linesTotal": 5,
+      "branches": 75,
+      "branchesTotal": 4
+    },
     "src/utils/entityLabels.ts": {
       "lines": 100,
       "linesTotal": 8,
@@ -2498,6 +2534,12 @@
       "branches": 100,
       "branchesTotal": 16
     },
+    "src/utils/humanizeToken.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 2
+    },
     "src/utils/imageCrop.ts": {
       "lines": 100,
       "linesTotal": 12,
@@ -2512,9 +2554,21 @@
     },
     "src/utils/importReportCsv.ts": {
       "lines": 100,
-      "linesTotal": 8,
+      "linesTotal": 12,
+      "branches": 100,
+      "branchesTotal": 10
+    },
+    "src/utils/importWarning.ts": {
+      "lines": 100,
+      "linesTotal": 2,
       "branches": 100,
       "branchesTotal": 4
+    },
+    "src/utils/itemLabel.ts": {
+      "lines": 100,
+      "linesTotal": 4,
+      "branches": 100,
+      "branchesTotal": 5
     },
     "src/utils/jscontactDisplay.ts": {
       "lines": 66.66,
@@ -2530,9 +2584,9 @@
     },
     "src/utils/localDate.ts": {
       "lines": 100,
-      "linesTotal": 14,
+      "linesTotal": 21,
       "branches": 100,
-      "branchesTotal": 8
+      "branchesTotal": 11
     },
     "src/utils/markdown.ts": {
       "lines": 96.02,
@@ -2560,9 +2614,21 @@
     },
     "src/utils/searchLinks.ts": {
       "lines": 100,
-      "linesTotal": 7,
+      "linesTotal": 8,
       "branches": 100,
       "branchesTotal": 6
+    },
+    "src/utils/searchMatch.ts": {
+      "lines": 100,
+      "linesTotal": 6,
+      "branches": 100,
+      "branchesTotal": 6
+    },
+    "src/utils/serviceWorkerNavigation.ts": {
+      "lines": 100,
+      "linesTotal": 13,
+      "branches": 100,
+      "branchesTotal": 10
     },
     "src/utils/sessionDraftStorage.ts": {
       "lines": 100,

@@ -190,7 +190,7 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
       </Typography>
 
       {upload && (
-        <Alert severity="info" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
+        <Alert severity="info" role="status" sx={{ '& .MuiAlert-message': { width: '100%' } }}>
           <Typography variant="body2" gutterBottom>
             {t('settings.meerkatImport.connect.found', {
               contacts: t('settings.meerkatImport.connect.foundContacts', {
@@ -277,6 +277,16 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
     </Stack>
   );
 
+  // #2727: the advice to use the database upload is a separate line, shown
+  // only for the failures it helps with (the live instance cannot be reached or
+  // read) and only because this dialog has the upload option.
+  const failedCode =
+    wizard.status?.phase === 'failed' ? wizard.status.error_reason_code : undefined;
+  const fetchFailureHint =
+    failedCode === 'meerkat_fetch_unreachable' || failedCode === 'meerkat_fetch_unreadable'
+      ? t('settings.meerkatImport.connect.fetchFailedHint')
+      : undefined;
+
   return (
     <SourceImportWizard
       open={open}
@@ -286,6 +296,7 @@ export default function MeerkatImportDialog({ open, onClose, onImportComplete }:
       wizard={wizard}
       connectStep={connectStep}
       onComplete={handleComplete}
+      errorHint={fetchFailureHint}
     />
   );
 }

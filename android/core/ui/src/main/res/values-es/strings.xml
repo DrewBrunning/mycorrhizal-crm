@@ -157,6 +157,8 @@
     <string name="contacts_sort_recently_added">Añadidos recientemente</string>
     <string name="contacts_empty">Aún no hay contactos</string>
     <string name="contacts_empty_body">Añade a alguien para empezar o importa tus contactos.</string>
+    <string name="contacts_no_match">Ningún contacto coincide con «%1$s»</string>
+    <string name="contacts_clear_search">Borrar búsqueda</string>
     <string name="contacts_new">Nuevo contacto</string>
     <string name="contacts_photo_description">Foto de %1$s</string>
     <!-- Issue #219: TalkBack action label for tapping the avatar on the detail
@@ -196,6 +198,12 @@
     <string name="contacts_search_notes_group">Notas</string>
     <string name="contacts_search_activities_group">Interacciones</string>
     <string name="contacts_search_entities_group">Organizaciones, lugares y mascotas</string>
+    <string name="contacts_search_matched_on">Coincide en: %1$s</string>
+    <string name="contacts_search_matched_field_name">nombre</string>
+    <string name="contacts_search_matched_field_organization">organización</string>
+    <string name="contacts_search_matched_field_email">correo electrónico</string>
+    <string name="contacts_search_matched_field_phone">teléfono</string>
+    <string name="contacts_search_matched_field_address">dirección</string>
     <string name="contacts_search_unfiled">Sin asignar</string>
     <string name="contacts_search_resolved_relation">Relación coincidente: %1$s</string>
 
@@ -391,6 +399,7 @@
     <string name="contact_remove_named">Eliminar %1$s %2$d</string>
     <string name="contact_field_row_named">%1$s %2$d</string>
     <string name="contact_remove">Eliminar</string>
+    <string name="contact_chip_remove_named">Eliminar %1$s</string>
     <string name="contact_add">Añadir</string>
     <!-- M7: editor de valores múltiples -->
     <string name="contact_field_type">Tipo</string>
@@ -1143,6 +1152,8 @@
     <string name="reminder_overdue">Vencido</string>
     <string name="reminder_flexible">Flexible</string>
     <string name="date_field_pick_date">Elegir fecha</string>
+    <string name="date_field_type_date">Escribir una fecha</string>
+    <string name="date_field_pick_from_calendar">Elegir en el calendario</string>
     <string name="date_field_clear_date">Borrar fecha</string>
     <string name="date_field_add_time">Añadir hora</string>
     <string name="date_field_remove_time">Quitar hora</string>
@@ -1315,10 +1326,12 @@
     <string name="action_edit">Editar</string>
     <string name="action_delete">Eliminar</string>
     <string name="action_cancel">Cancelar</string>
+    <string name="action_remove">Quitar</string>
     <string name="action_add">Añadir</string>
     <string name="action_back">Atrás</string>
     <string name="action_rename">Renombrar</string>
     <string name="action_retry">Reintentar</string>
+    <string name="saved_data_banner_message">Mostrando datos guardados</string>
 
 
     <!-- Tags -->
@@ -1430,6 +1443,7 @@
     <string name="households_suggest_relationships">Sugerir relaciones</string>
     <!-- Issue #218: group SMS to every household member with a phone number. -->
     <string name="households_text_everyone">Escribir a todos</string>
+    <string name="group_text_everyone_unavailable">Para escribir a todos, al menos dos miembros necesitan un número de teléfono.</string>
     <plurals name="households_suggestions_generated">
         <item quantity="one">%1$d nueva relación sugerida generada. Revísala en las páginas de contacto de los miembros.</item>
         <item quantity="many">%1$d nuevas relaciones sugeridas generadas. Revísalas en las páginas de contacto de los miembros.</item>
@@ -1513,8 +1527,8 @@
 
     <!-- Contact shares (M15) -->
     <string name="shares_title">Compartición de contactos</string>
-    <string name="shares_tab_incoming">Entrantes</string>
-    <string name="shares_tab_outgoing">Salientes</string>
+    <string name="shares_tab_incoming">Copias recibidas</string>
+    <string name="shares_tab_outgoing">Copias enviadas</string>
     <string name="shares_incoming_empty">Aún no hay comparticiones entrantes</string>
     <string name="shares_outgoing_empty">Aún no hay comparticiones salientes</string>
     <string name="shares_from">De %1$s</string>
@@ -1522,6 +1536,8 @@
     <string name="shares_status_pending">Pendiente</string>
     <string name="shares_status_accepted">Aceptada</string>
     <string name="shares_status_declined">Rechazada</string>
+    <!-- Issue #2642: decline, leave and block are one `declined` to the sender (ADR 0042). -->
+    <string name="shares_status_declined_by_recipient">Rechazada o finalizada por el destinatario</string>
     <string name="shares_accept">Aceptar</string>
     <string name="shares_decline">Rechazar</string>
     <string name="shares_decline_confirm_title">¿Rechazar esta compartición?</string>
@@ -1536,7 +1552,8 @@
     <string name="shares_share_dialog_title">Compartir contacto</string>
     <string name="shares_share_dialog_description">Envía una copia filtrada y única de este contacto a otro usuario de esta instancia. Ellos deciden si aceptarla.</string>
     <string name="shares_recipient">Destinatario</string>
-    <string name="shares_no_recipients">No hay otros usuarios en esta instancia con quienes compartir</string>
+    <string name="shares_recipient_search_hint">Escribe al menos 3 letras del nombre de usuario</string>
+    <string name="shares_recipient_no_match">No hay usuarios que coincidan</string>
     <string name="shares_error_no_vcard_uid">Este contacto no tiene UID de vCard — no se puede compartir.</string>
     <string name="shares_share_button">Compartir</string>
     <string name="shares_sharing">Compartiendo…</string>
@@ -1583,24 +1600,27 @@
     <string name="shares_grant_block">Bloquear al remitente</string>
     <string name="shares_grant_unblock">Desbloquear</string>
     <string name="shares_grant_revoke">Revocar</string>
+    <string name="shares_grant_remove">Quitar</string>
     <string name="shares_grant_reconfirm">Revisar y volver a confirmar</string>
     <string name="shares_grant_edit">Editar</string>
-    <string name="shares_grant_decline_message">¿Rechazar lo compartido (%1$s) de %2$s? Esa persona verá que fue rechazado.</string>
+    <string name="shares_grant_decline_message">¿Rechazar lo compartido (%1$s) de %2$s? Esa persona lo verá como rechazado o finalizado.</string>
     <string name="shares_grant_block_title">¿Bloquear a %1$s?</string>
-    <string name="shares_grant_block_message">Esto rechaza lo compartido y termina todo lo que %1$s comparte contigo. Lo que comparta en el futuro no aparecerá aquí y no se le avisa del bloqueo. Puedes desbloquearlo más tarde.</string>
+    <string name="shares_grant_block_message">Esto rechaza lo compartido y termina todo lo que %1$s comparte contigo. No se le avisa del bloqueo; verá lo que compartió como rechazado o finalizado. Lo que comparta en el futuro no aparecerá aquí. Puedes desbloquearlo más tarde.</string>
     <string name="shares_grant_leave_title">¿Dejar de recibir lo compartido?</string>
-    <string name="shares_grant_leave_message">%1$s dejará de ser visible para ti. Para verlo de nuevo, %2$s tendrá que volver a compartirlo contigo.</string>
+    <string name="shares_grant_leave_message">%1$s dejará de ser visible para ti. Esa persona verá lo compartido como rechazado o finalizado. Para verlo de nuevo, %2$s tendrá que volver a compartirlo contigo.</string>
     <string name="shares_grant_revoke_title">¿Revocar lo compartido?</string>
     <string name="shares_grant_revoke_message">%1$s perderá el acceso la próxima vez que lo cargue. Lo que ya haya visto no se puede recuperar.</string>
+    <string name="shares_grant_remove_title">¿Quitar lo compartido?</string>
+    <string name="shares_grant_remove_message">Lo compartido con %1$s ha terminado. Al quitarlo, desaparece de esta lista.</string>
     <string name="shares_grant_reconfirm_title">¿Volver a compartir estas secciones?</string>
-    <string name="shares_grant_reconfirm_message">Algunos elementos de lo compartido se marcaron como privados o secretos, por eso estas secciones no se muestran a %1$s: %2$s. Revisa su contenido antes de volver a compartirlas.</string>
+    <string name="shares_grant_reconfirm_message">Algunos elementos de lo compartido se marcaron como privados o secretos, por eso estas secciones no se muestran a %1$s. Revisa su contenido antes de volver a compartirlas.</string>
     <string name="shares_grant_reconfirm_confirm">Volver a compartir</string>
     <string name="shares_grant_needs_reconfirm">Algunas secciones no se muestran hasta que las revises</string>
     <string name="shares_blocked_title">Remitentes bloqueados</string>
     <string name="shares_revoked_reason_owner">Revocaste lo compartido</string>
     <string name="shares_revoked_reason_entity_deleted">El elemento compartido se eliminó</string>
     <string name="shares_revoked_reason_recipient_deleted">Se eliminó la cuenta del destinatario</string>
-    <string name="shares_content_title">Compartido contigo</string>
+    <string name="shares_content_title">Compartido conmigo</string>
     <string name="shares_content_from">Compartido por %1$s</string>
     <string name="shares_content_unavailable">Esto compartido ya no está disponible</string>
     <string name="shares_content_offline_hint">El contenido compartido nunca se guarda en este dispositivo, por lo que no se puede mostrar sin conexión.</string>
@@ -1656,6 +1676,21 @@
         <item quantity="one">En %1$d día</item>
         <item quantity="many">En %1$d días</item>
         <item quantity="other">En %1$d días</item>
+    </plurals>
+    <string name="shares_review">Revisar</string>
+    <string name="shares_open_contact">Abrir contacto</string>
+    <string name="shares_sections_shared">Compartido: %1$s</string>
+    <string name="shares_sections_offers">Ofrece: %1$s</string>
+    <string name="shares_grant_meta_join">%1$s · %2$s</string>
+    <plurals name="shares_sections_more">
+        <item quantity="one">%1$s y %2$d más</item>
+        <item quantity="many">%1$s y %2$d más</item>
+        <item quantity="other">%1$s y %2$d más</item>
+    </plurals>
+    <plurals name="shares_reconfirm_item_count">
+        <item quantity="one">%1$s · %2$d elemento</item>
+        <item quantity="many">%1$s · %2$d elementos</item>
+        <item quantity="other">%1$s · %2$d elementos</item>
     </plurals>
 
     <!-- Cadence (T19 relationship health) -->
@@ -1717,6 +1752,7 @@
     <string name="entities_error_no_vcard_uid">El contacto no tiene UID de VCard</string>
     <string name="entities_delete_title">¿Eliminar elemento?</string>
     <string name="entities_delete_named">Eliminar %1$s</string>
+    <string name="entities_edit_named">Editar %1$s</string>
     <string name="entities_delete_confirm">¿Eliminar «%1$s»? Esto no se puede deshacer.</string>
     <string name="life_events_title">Acontecimientos vitales</string>
     <string name="life_events_new">Nuevo acontecimiento</string>
@@ -2138,11 +2174,21 @@
     <string name="import_row_fix">Corregir esta fila</string>
     <string name="import_row_fix_edit">Editar corrección</string>
     <string name="import_row_fix_saved">Corrección guardada: se volverá a comprobar al importar</string>
+    <string name="import_row_unfixable">Este error no se puede corregir aquí: omite la fila o edita el contacto después de importar</string>
     <string name="import_row_fix_save">Guardar corrección</string>
     <string name="import_report_title">Filas no importadas</string>
     <string name="import_report_row">Fila %1$d · %2$s</string>
     <string name="import_report_skipped">Omitida: %1$s</string>
     <string name="import_report_failed">Fallida: %1$s</string>
+    <string name="import_diag_birthday_warn">El cumpleaños no es una fecha válida, así que no se importará</string>
+    <string name="import_diag_anniversary_warn">El aniversario no es una fecha válida, así que no se importará</string>
+    <string name="import_diag_encoding_warn">Este archivo no estaba en UTF-8, por lo que se leyó como Windows-1252. Comprueba que los acentos se vean bien.</string>
+    <string name="import_report_warning_birthday">Importado, pero el cumpleaños no es una fecha válida y se omitió</string>
+    <string name="import_report_warning_anniversary">Importado, pero el aniversario no es una fecha válida y se omitió</string>
+    <string name="import_report_warning">Importado con una advertencia: %1$s</string>
+    <string name="import_report_note">Nota: %1$s</string>
+    <string name="import_report_title_warnings">Importado con advertencias</string>
+    <string name="import_report_title_mixed">Filas no importadas o con advertencias</string>
     <string name="import_report_share">Compartir como CSV</string>
     <string name="import_report_share_title">Compartir informe de importación</string>
     <string name="import_resolve_all">Resolver todo como combinado</string>
@@ -2224,13 +2270,29 @@
     <!-- Historial de importación (paridad web, issue #651 / #834) -->
     <string name="import_history_entry">Historial de importación</string>
     <string name="import_history_title">Historial de importación</string>
+    <plurals name="import_history_created_count">
+        <item quantity="one">%1$d creado</item>
+        <item quantity="many">%1$d creados</item>
+        <item quantity="other">%1$d creados</item>
+    </plurals>
+    <plurals name="import_history_updated_count">
+        <item quantity="one">%1$d actualizado</item>
+        <item quantity="many">%1$d actualizados</item>
+        <item quantity="other">%1$d actualizados</item>
+    </plurals>
+    <plurals name="import_history_skipped_count">
+        <item quantity="one">%1$d omitido</item>
+        <item quantity="many">%1$d omitidos</item>
+        <item quantity="other">%1$d omitidos</item>
+    </plurals>
+    <plurals name="import_history_error_count">
+        <item quantity="one">%1$d error</item>
+        <item quantity="many">%1$d errores</item>
+        <item quantity="other">%1$d errores</item>
+    </plurals>
     <string name="import_history_view_report">Ver informe</string>
     <string name="import_history_report_title">Informe de importación</string>
     <string name="import_history_empty">Aún no hay importaciones</string>
-    <string name="import_history_col_created">Creados</string>
-    <string name="import_history_col_updated">Actualizados</string>
-    <string name="import_history_col_skipped">Omitidos</string>
-    <string name="import_history_col_errors">Errores</string>
     <string name="import_history_format_csv">CSV</string>
     <string name="import_history_format_vcf">VCF</string>
     <string name="import_history_format_jscontact">JSContact</string>
@@ -2275,11 +2337,11 @@
     <string name="trash_title">Papelera</string>
     <string name="trash_empty_action">Vaciar papelera</string>
     <string name="trash_empty_state">La papelera está vacía</string>
-    <string name="trash_retention_forever">Los contactos eliminados se conservan hasta que vacíes la papelera.</string>
+    <string name="trash_retention_forever">Los elementos eliminados se conservan hasta que vacíes la papelera.</string>
     <plurals name="trash_retention">
-        <item quantity="one">Los contactos eliminados se conservan %1$d día y después se eliminan para siempre.</item>
-        <item quantity="many">Los contactos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
-        <item quantity="other">Los contactos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
+        <item quantity="one">Los elementos eliminados se conservan %1$d día y después se eliminan para siempre.</item>
+        <item quantity="many">Los elementos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
+        <item quantity="other">Los elementos eliminados se conservan %1$d días y después se eliminan para siempre.</item>
     </plurals>
     <string name="trash_deleted_on">Eliminado el %1$s</string>
     <string name="trash_purge_on">Se elimina para siempre el %1$s</string>
@@ -2460,6 +2522,7 @@
     <string name="occasions_no_attendees">Todavía no hay nadie invitado</string>
     <string name="occasions_add_attendee">Añadir invitado</string>
     <string name="occasions_remove_attendee">Quitar invitado</string>
+    <string name="occasions_remove_attendee_named">Quitar invitado %1$s</string>
     <string name="occasions_remove_confirm">¿Quitar a %1$s de este evento?</string>
     <string name="occasions_rsvp_pending">Pendiente</string>
     <string name="occasions_rsvp_accepted">Aceptado</string>
@@ -2490,17 +2553,22 @@
     <string name="occasion_ob_kind_gift">Regalo</string>
     <string name="occasion_ob_kind_invite">Invitación</string>
     <string name="occasion_ob_label">Etiqueta</string>
-    <string name="occasion_ob_label_hint">p. ej. «Tarjeta de Navidad», «Regalo de cumpleaños»</string>
+    <string name="occasion_ob_label_hint">p. ej. «Tarjeta de Navidad», «Regalo de aniversario»</string>
     <string name="occasion_ob_anchor_month">Mes</string>
     <string name="occasion_ob_anchor_day">Día</string>
     <string name="occasion_ob_anchor_unset">Sin definir</string>
+    <plurals name="occasion_ob_day_cleared">
+        <item quantity="one">%1$s tiene como máximo %2$d día, así que se borró el día. Elige un día de nuevo.</item>
+        <item quantity="many">%1$s tiene como máximo %2$d días, así que se borró el día. Elige un día de nuevo.</item>
+        <item quantity="other">%1$s tiene como máximo %2$d días, así que se borró el día. Elige un día de nuevo.</item>
+    </plurals>
+    <string name="occasion_ob_no_date">Sin fecha: sin recordatorio</string>
     <string name="occasion_ob_lead_time">Antelación (días)</string>
     <string name="occasion_ob_lead_time_hint">Cuántos días antes de la fecha quieres el recordatorio, p. ej. 14 para «regalo dos semanas antes»</string>
     <string name="occasion_ob_active">Activa</string>
     <string name="occasion_ob_inactive">Inactiva</string>
     <string name="occasion_ob_delete_title">Eliminar ocasión</string>
     <string name="occasion_ob_validation_label_required">Introduce una etiqueta para esta ocasión.</string>
-    <string name="occasion_ob_validation_anchor_both">Define el mes y el día, o deja ambos sin definir.</string>
     <string name="occasion_ob_validation_lead_time">Introduce un número entero de días de antelación de 0 a 365.</string>
     <plurals name="occasion_ob_lead_time_display">
         <item quantity="one">%1$d día de antelación</item>
@@ -2512,6 +2580,23 @@
     <string name="occasion_card_list_description">Comparte un CSV de los contactos con una ocasión de tarjeta activa: una fila por obligación activa, con el nombre del contacto, su dirección de sensibilidad normal y la ocasión. Se omiten las direcciones privadas y secretas.</string>
     <string name="occasion_card_list_share">Compartir como CSV</string>
     <string name="occasion_card_list_share_title">Compartir lista de tarjetas</string>
+    <!-- Issue #2786: who the card list holds and skips; quantity follows the included count. -->
+    <string name="occasion_card_list_summary_checking">Comprobando quién está en la lista…</string>
+    <plurals name="occasion_card_list_summary">
+        <item quantity="one">%1$d destinatario</item>
+        <item quantity="many">%1$d de destinatarios</item>
+        <item quantity="other">%1$d destinatarios</item>
+    </plurals>
+    <plurals name="occasion_card_list_summary_skipped">
+        <item quantity="one">%1$d destinatario; %2$d omitidos (%3$s)</item>
+        <item quantity="many">%1$d de destinatarios; %2$d omitidos (%3$s)</item>
+        <item quantity="other">%1$d destinatarios; %2$d omitidos (%3$s)</item>
+    </plurals>
+    <string name="occasion_card_list_skipped_no_address">sin dirección postal: %1$d</string>
+    <string name="occasion_card_list_skipped_private_address">solo dirección privada: %1$d</string>
+    <string name="occasion_card_list_reasons_separator">", "</string>
+    <string name="occasion_card_list_no_recipients">Ningún destinatario tiene una dirección postal.</string>
+    <string name="occasion_card_list_no_obligations">Aún no hay ocasiones de tarjeta activas. Añada una desde la página de un contacto.</string>
     <string name="occasion_gift_list_title">Lista de compras de regalos</string>
     <string name="occasion_gift_list_description">Regalos próximos y si tienes una idea, ya lo compraste o ya lo entregaste.</string>
     <string name="occasion_gift_list_empty">No hacen falta regalos en este periodo.</string>
@@ -2722,6 +2807,7 @@
     </plurals>
     <string name="monica_import_unavailable">Importar desde Monica requiere un perfil de servidor. Cambia a un perfil de servidor para usarlo.</string>
     <string name="monica_import_error_failed">La importación no se completó. No se cambió nada.</string>
+    <string name="monica_import_unreachable">No se pudo acceder a Monica en %1$s</string>
     <string name="dashboard_backup_reminder_title">Haz una copia de tus datos</string>
     <string name="dashboard_backup_reminder_body">Tus datos solo existen en este dispositivo. Guarda un paquete de cuenta para poder restaurarlos si el dispositivo se pierde o se restablece.</string>
     <string name="dashboard_backup_reminder_action">Copiar ahora</string>
@@ -3014,7 +3100,7 @@
     <string name="error_request_ref">(ref: %1$s)</string>
     <string name="login_error_invalid_credentials">Credenciales no válidas</string>
     <string name="register_error_disabled">El registro está desactivado en este servidor</string>
-    <string name="error_client_network">Sin conexión</string>
+    <string name="error_client_network">No se puede conectar con tu servidor. Comprueba tu conexión e inténtalo de nuevo.</string>
     <string name="error_client_timeout">La solicitud agotó el tiempo de espera</string>
     <string name="error_client_server">Error del servidor (%1$d)</string>
     <string name="error_client_session_expired">Sesión caducada: inicia sesión de nuevo</string>
@@ -3050,6 +3136,7 @@
     <string name="error_reason_relationship_partial_date_missing">Una fecha debe incluir al menos un año, un mes o un día</string>
     <string name="error_reason_relationship_self_edge">El origen y el destino deben ser contactos distintos</string>
     <string name="error_reason_validation_activity_ids_range">Debe contener entre 1 y 100 ids</string>
+    <string name="error_reason_validation_timezone_invalid">tz debe ser un nombre de zona horaria IANA como Europe/Berlin</string>
     <string name="error_reason_validation_required">%1$s es obligatorio</string>
     <string name="error_reason_validation_email">%1$s debe ser una dirección de correo electrónico válida</string>
     <string name="error_reason_validation_min">%1$s debe tener al menos %2$s caracteres</string>
@@ -3068,18 +3155,18 @@
     <string name="error_reason_validation_cursor_malformed">El id del cursor no es válido</string>
     <string name="error_reason_trash_uid_in_use">Un contacto activo ya usa el UID de este contacto; combínalo o elimínalo primero</string>
     <string name="error_reason_trash_snapshot_unsupported">Esta versión no admite la instantánea de eliminación de este contacto; aún puede eliminarse de forma permanente</string>
-    <string name="error_reason_entity_not_found">Entidad no encontrada</string>
+    <string name="error_reason_entity_not_found">No se encontró la organización, el lugar o la mascota</string>
     <string name="error_reason_entity_kind_required">kind es obligatorio y debe ser organisation, place o pet</string>
-    <string name="error_reason_entity_kind_immutable">El tipo de una entidad no se puede cambiar; elimínala y crea una nueva</string>
+    <string name="error_reason_entity_kind_immutable">El tipo no se puede cambiar; elimínalo y crea uno nuevo</string>
     <string name="error_reason_entity_core_invalid">%1$s</string>
-    <string name="error_reason_entity_snapshot_unsupported">La instantánea de eliminación de esta entidad no es compatible con esta versión</string>
-    <string name="error_reason_entity_link_not_found">Vínculo no encontrado</string>
-    <string name="error_reason_entity_link_role_invalid">Ese rol no es válido para este tipo de entidad</string>
-    <string name="error_reason_entity_link_kind_not_adoptable">Esta entidad no tiene un valor de organización o dirección que adoptar en el contacto</string>
+    <string name="error_reason_entity_snapshot_unsupported">La instantánea de eliminación de este elemento no es compatible con esta versión</string>
+    <string name="error_reason_entity_link_not_found">No se encontró el vínculo con la organización, el lugar o la mascota</string>
+    <string name="error_reason_entity_link_role_invalid">Ese rol no es válido para este tipo</string>
+    <string name="error_reason_entity_link_kind_not_adoptable">Este elemento no tiene un valor de organización o dirección que adoptar en el contacto</string>
     <string name="error_reason_entity_link_source_not_found">El contacto no tiene esa organización o dirección</string>
     <string name="error_reason_entity_link_primary_conflict">Otro cambio en el vínculo principal de este contacto ocurrió al mismo tiempo; inténtalo de nuevo</string>
-    <string name="error_reason_entity_merge_same_entity">Una entidad no se puede fusionar consigo misma</string>
-    <string name="error_reason_entity_merge_kind_mismatch">Solo se pueden fusionar entidades del mismo tipo</string>
+    <string name="error_reason_entity_merge_same_entity">No se puede fusionar una organización, un lugar o una mascota consigo mismo</string>
+    <string name="error_reason_entity_merge_kind_mismatch">Solo se pueden fusionar elementos del mismo tipo</string>
     <string name="error_reason_entity_merge_resolution_invalid">%1$s</string>
     <string name="error_reason_contact_field_definition_target_immutable">El destino de una definición de campo no se puede cambiar</string>
     <string name="error_reason_contact_field_definition_projection_target_invalid">Solo las definiciones de campo de contacto pueden usar una proyección vcard; usa internal-only</string>
@@ -3101,13 +3188,15 @@
     <string name="error_reason_meerkat_import_in_progress">Esta importación ya se está preparando</string>
     <string name="error_reason_meerkat_not_prepared">La base de datos de Meerkat aún no está preparada</string>
     <string name="error_reason_meerkat_api_error">%1$s</string>
-    <string name="error_reason_meerkat_upstream_error">%1$s</string>
+    <string name="error_reason_meerkat_upstream_error">No se pudo contactar con la instancia de Meerkat o envió una respuesta ilegible. Compruebe la dirección y que la instancia esté en línea.%1$s</string>
     <string name="error_reason_meerkat_sign_in_input_missing">Introduce un token de API de Meerkat o un nombre de usuario y una contraseña</string>
     <string name="error_reason_meerkat_remote_too_many_contacts">Contactos en esta cuenta de Meerkat: %1$d. La importación admite como máximo %2$d</string>
     <string name="error_reason_meerkat_version_untested">Esta versión de Meerkat no está probada con el importador. Confirma para intentarlo de todos modos; no se escribe nada hasta que revises la vista previa.</string>
+    <string name="error_reason_meerkat_fetch_unreachable">No se pudo acceder a la instancia de Meerkat</string>
+    <string name="error_reason_meerkat_fetch_unreadable">El servidor de Meerkat envió una respuesta que el importador no pudo leer. Revise la URL</string>
     <string name="error_reason_common_database_error">Algo salió mal al guardar o cargar tus datos</string>
     <string name="error_reason_common_database_busy">El servidor está ocupado. Inténtalo de nuevo en un momento</string>
-    <string name="error_reason_auth_invalid_credentials">Correo electrónico o contraseña no válidos</string>
+    <string name="error_reason_auth_invalid_credentials">Nombre de usuario, correo electrónico o contraseña no válidos</string>
     <string name="error_reason_auth_token_expired">Tu sesión ha caducado. Inicia sesión de nuevo</string>
     <string name="error_reason_auth_token_invalid">Tu sesión ya no es válida. Inicia sesión de nuevo</string>
     <string name="error_reason_common_client_not_supported">Esta versión de la app ya no es compatible. Actualiza a %1$s o posterior</string>
@@ -3238,7 +3327,7 @@
     <string name="error_reason_monica_url_invalid">La URL de Monica no es válida</string>
     <string name="error_reason_monica_url_private">La URL de Monica apunta a una dirección privada, que este servidor bloquea</string>
     <string name="error_reason_monica_not_monica_api">El servidor no respondió como una API de Monica: revisa la URL</string>
-    <string name="error_reason_monica_unreachable">Error del servicio Monica: no se pudo acceder a la instancia de Monica</string>
+    <string name="error_reason_monica_unreachable">No se pudo acceder a la instancia de Monica</string>
     <string name="error_reason_monica_too_many_contacts">Esta cuenta de Monica tiene %1$s contactos; la importación admite como máximo %2$d</string>
     <string name="error_reason_monica_too_many_records">Esta cuenta de Monica tiene %1$s registros; la importación admite como máximo %2$d</string>
     <string name="error_reason_monica_fetch_in_progress">Ya hay una descarga en curso para esta sesión</string>
@@ -3295,6 +3384,7 @@
     <string name="error_reason_contact_share_already_responded">La invitación para compartir ya se ha respondido</string>
     <string name="error_reason_share_grant_not_found">Recurso compartido no encontrado</string>
     <string name="error_reason_share_grant_state_conflict">Este recurso compartido ya no se puede cambiar así</string>
+    <string name="error_reason_share_grant_not_ended">Solo se puede quitar un recurso compartido que haya terminado (rechazado, caducado o revocado); revócalo primero</string>
     <string name="error_reason_share_grant_widening_refused">Un recurso compartido solo se puede restringir; crea uno nuevo para compartir más</string>
     <string name="error_reason_share_grant_already_exists">Ya está compartido con esta persona</string>
     <string name="error_reason_share_grant_pending_limit">Hay demasiados recursos compartidos esperando respuesta</string>
@@ -3442,13 +3532,16 @@
     <string name="error_reason_household_suggestion_member_stale">El contacto ya no es miembro de este hogar</string>
     <string name="error_reason_household_suggestion_stale">Los miembros sugeridos ya no comparten dirección; vuelve a ejecutar el escaneo de sugerencias</string>
     <string name="error_reason_household_type_invalid">type debe ser family_unit, roommates u other</string>
+    <string name="error_reason_import_csv_not_text">Este archivo no es un archivo CSV de texto sin formato. Expórtalo de nuevo como CSV (UTF-8) e inténtalo otra vez.</string>
     <string name="error_reason_import_disk_space_low">no hay suficiente espacio en disco para importar %1$s contactos: %2$s</string>
     <string name="error_reason_import_field_mapping_target_invalid">Un valor importado solo puede ir a un campo personalizado que se aplique a los contactos</string>
     <string name="error_reason_import_field_mappings_invalid">%1$s</string>
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>
     <string name="error_reason_integration_save_failed">%1$s</string>
-    <string name="error_reason_occasion_anchor_date_incomplete">Una fecha ancla de ocasión requiere tanto mes como día, o ninguno de los dos</string>
+    <string name="error_reason_occasion_anchor_date_incomplete">Una fecha ancla de ocasión requiere tanto mes como día</string>
+    <string name="error_reason_occasion_anchor_date_invalid">Esa combinación de mes y día no existe, por ejemplo el 30 de febrero</string>
+    <string name="error_reason_occasion_anchor_date_required">Una ocasión necesita un mes y un día para poder recordártela</string>
     <string name="error_reason_occasion_days_invalid">days debe ser 30 o 90</string>
     <string name="error_reason_occasion_event_circles_required">circle_ids es obligatorio</string>
     <string name="error_reason_occasion_event_end_before_start">La hora de fin del evento no puede ser anterior a la de inicio</string>
@@ -3507,6 +3600,8 @@
     <string name="contact_field_visibility_hide_empty_off">Mostrar campos vacíos</string>
     <string name="contact_field_visibility_reset">Restablecer valores predeterminados</string>
     <string name="contact_field_not_set">Sin definir</string>
+    <string name="contact_gender_not_set">Género: Sin definir</string>
+    <string name="contact_birthday_not_set">Cumpleaños: Sin definir</string>
     <string name="settings_contact_fields_hide_empty_label">Ocultar campos vacíos</string>
     <string name="settings_contact_fields_hide_empty_description">En la página de un contacto, no se muestran los campos que aún no tienen valor. Puedes añadir uno desde el menú Añadir un campo, y cada contacto puede anular este ajuste.</string>
     <string name="note_images_add">Añadir fotos</string>
@@ -3561,6 +3656,7 @@
     <string name="shared_entities_new_pet">Añadir mascota</string>
     <string name="shared_entities_empty_pet">Aún no hay mascotas.</string>
     <string name="shared_entities_search">Buscar por nombre</string>
+    <string name="shared_entities_search_clear">Borrar búsqueda</string>
     <string name="shared_entities_no_results">Nada coincide con tu búsqueda.</string>
     <string name="shared_entities_sensitivity_label">Sensibilidad</string>
     <string name="shared_entities_sensitivity_normal">Normal</string>
@@ -3585,7 +3681,7 @@
     <string name="shared_entities_form_edit_title">Editar %1$s</string>
     <string name="shared_entities_form_name_required">Introduce un nombre.</string>
     <string name="shared_entities_form_invalid_date">Introduce %1$s como AAAA, AAAA-MM o AAAA-MM-DD.</string>
-    <string name="shared_entities_detail_not_found">Esta entidad no existe o se eliminó.</string>
+    <string name="shared_entities_detail_not_found">Este elemento no existe o se eliminó.</string>
     <string name="shared_entities_detail_details">Detalles</string>
     <string name="shared_entities_detail_no_details">Aún no hay detalles.</string>
     <string name="shared_entities_detail_custom_fields">Campos personalizados</string>
@@ -3602,18 +3698,18 @@
     <string name="shared_entities_delete_adopt_place">Conservar antes la dirección en esos contactos (copiarla en cada contacto como valor propio)</string>
     <string name="shared_entities_delete_confirm">Eliminar</string>
     <string name="shared_entities_deleted_title">Se eliminó %1$s</string>
-    <string name="shared_entities_deleted_body">Ya no aparece en ningún contacto. Restáurala para recuperar la entidad y sus vínculos.</string>
+    <string name="shared_entities_deleted_body">Ya no aparece en ningún contacto. Restáuralo para recuperarlo junto con sus vínculos.</string>
     <string name="shared_entities_deleted_restore">Restaurar</string>
-    <string name="shared_entities_deleted_same_name_live">Ya existe otra entidad de este tipo con el mismo nombre; quizá quieras fusionarlas.</string>
+    <string name="shared_entities_deleted_same_name_live">Ya existe otro elemento de este tipo con el mismo nombre; quizá quieras fusionarlos.</string>
     <string name="shared_entities_merge_title">Fusionar %1$s</string>
-    <string name="shared_entities_merge_intro">%1$s se eliminará y sus contactos pasarán a %2$s. No se fusiona nada si no lo confirmas aquí.</string>
+    <string name="shared_entities_merge_intro">%1$s se eliminará y sus contactos pasarán a %2$s.</string>
     <string name="shared_entities_merge_into">Fusionar con</string>
-    <string name="shared_entities_merge_no_candidates">No hay otra entidad de este tipo con la que fusionar.</string>
+    <string name="shared_entities_merge_no_candidates">No hay otro elemento de este tipo con el que fusionar.</string>
     <string name="shared_entities_merge_fill">Copiar también estos datos de %1$s (la que se conserva no los tiene):</string>
     <string name="shared_entities_merge_confirm">Fusionar</string>
     <string name="shared_entities_merge_done">Fusionada con %1$s.</string>
     <string name="shared_entities_merge_undo_title">%1$s se fusionó y desapareció</string>
-    <string name="shared_entities_merge_undo_body">Al restaurarla solo vuelve la entidad en sí; los vínculos se quedan con la que se conservó.</string>
+    <string name="shared_entities_merge_undo_body">Al restaurarlo solo vuelve el elemento en sí; los vínculos se quedan con el que se conservó.</string>
     <string name="shared_entities_merge_undo">Restaurar %1$s</string>
     <string name="shared_entities_role_organisation_employee">Empleado/a</string>
     <string name="shared_entities_role_organisation_owner">Propietario/a</string>
@@ -3636,12 +3732,12 @@
     <string name="contact_entity_links_shown_as_adr">Se muestra como dirección</string>
     <string name="contact_entity_links_not_current">No vigente</string>
     <string name="contact_entity_links_primary_for">Principal: %1$s</string>
-    <string name="contact_entity_links_adopt_hint">Copia el valor en este contacto como propio, para que se conserve aunque se elimine el vínculo o la entidad.</string>
+    <string name="contact_entity_links_adopt_hint">Copia el valor en este contacto como propio, para que se conserve aunque se elimine el vínculo o el elemento.</string>
     <string name="contact_entity_links_adopt_organisation">Copiar %1$s como organización propia</string>
     <string name="contact_entity_links_adopt_place">Copiar %1$s como dirección propia</string>
     <string name="contact_entity_links_adopted">Se copió %1$s en este contacto.</string>
     <string name="contact_entity_links_remove_for">Quitar vínculo con %1$s</string>
-    <string name="contact_entity_links_remove_confirm">¿Quitar el vínculo con %1$s? La entidad en sí se conserva.</string>
+    <string name="contact_entity_links_remove_confirm">¿Quitar el vínculo con %1$s? El elemento en sí se conserva.</string>
     <string name="contact_entity_links_add_title">Vincular con una organización, lugar o mascota</string>
     <string name="contact_entity_links_edit_title">Editar vínculo con %1$s</string>
     <string name="contact_entity_links_kind">Tipo</string>
@@ -3653,10 +3749,10 @@
     <string name="contact_entity_links_primary_help">Principal (se muestra en la ficha de este contacto)</string>
     <string name="contact_entity_links_year_invalid">Introduce los años con cuatro cifras, y el final no puede ser anterior al inicio.</string>
     <string name="contact_entity_links_projected_from">de %1$s</string>
-    <string name="contact_entity_links_projected_from_unknown">de una entidad vinculada</string>
-    <string name="contact_entity_links_projected_hint">Se muestra desde la entidad vinculada. Cámbialo en la página de la entidad, o cópialo en este contacto para editarlo aquí.</string>
+    <string name="contact_entity_links_projected_from_unknown">de una organización o lugar vinculado</string>
+    <string name="contact_entity_links_projected_hint">Se muestra desde la organización o el lugar vinculado. Cámbialo en su página, o cópialo en este contacto para editarlo aquí.</string>
     <string name="contact_entity_links_from_own_title">Vincular un valor propio</string>
-    <string name="contact_entity_links_from_own_intro">Conecta una organización o dirección propia de este contacto con una entidad compartida. El valor se queda en el contacto.</string>
+    <string name="contact_entity_links_from_own_intro">Conecta una organización o dirección propia de este contacto con una organización o un lugar compartidos. El valor se queda en el contacto.</string>
     <string name="contact_entity_links_from_own_value">Valor</string>
     <string name="contact_entity_links_from_own_create_new_organisation">Crear una organización nueva a partir de este valor</string>
     <string name="contact_entity_links_from_own_create_new_place">Crear un lugar nuevo a partir de este valor</string>
@@ -3668,14 +3764,22 @@
     <string name="shared_entities_detail_no_custom_fields">Todavía no hay campos personalizados para este tipo. Añade uno en Ajustes.</string>
     <string name="shared_entities_loading_failed">No se pudieron cargar las organizaciones, los lugares y las mascotas.</string>
     <string name="shared_entities_merge_search">Busca con qué fusionar</string>
-    <string name="shared_entities_merge_keep_this">Conservar este y fusionar el otro en él</string>
     <string name="shared_entities_merge_nothing_unless_confirmed">No se fusiona nada hasta que confirmes abajo.</string>
+    <string name="shared_entities_merge_title_direction">Fusionar %1$s en %2$s</string>
+    <string name="shared_entities_merge_keep_option">Conservar %1$s y fusionar %2$s en él</string>
+    <string name="shared_entities_merge_undo_action">Deshacer</string>
+    <string name="shared_entities_merge_detail_updated">Actualizado el %1$s</string>
+    <plurals name="shared_entities_deleted_body_kept">
+        <item quantity="one">Su valor se copió en %1$d contacto y se conserva allí. Restáuralo para recuperarlo junto con sus vínculos.</item>
+        <item quantity="many">Su valor se copió en %1$d contactos y se conserva allí. Restáuralo para recuperarlo junto con sus vínculos.</item>
+        <item quantity="other">Su valor se copió en %1$d contactos y se conserva allí. Restáuralo para recuperarlo junto con sus vínculos.</item>
+    </plurals>
     <string name="shared_entities_merge_summary_line">Se fusionó %1$s con %2$s.</string>
     <string name="shared_entities_merge_open_survivor">Abrir %1$s</string>
-    <string name="shared_entities_restore_failed">No se pudo restaurar esta entidad.</string>
+    <string name="shared_entities_restore_failed">No se pudo restaurar este elemento.</string>
     <string name="shared_entities_open">Abrir %1$s</string>
     <string name="shared_entities_suggestions_title">Posibles duplicados</string>
-    <string name="shared_entities_suggestions_description">Entidades con el mismo nombre o uno muy parecido. Nada se fusiona a menos que lo decidas.</string>
+    <string name="shared_entities_suggestions_description">Nombres idénticos o muy parecidos. Nada se fusiona a menos que lo decidas.</string>
     <string name="shared_entities_suggestions_load">Buscar duplicados</string>
     <string name="shared_entities_suggestions_none">No se encontraron duplicados.</string>
     <string name="shared_entities_suggestions_failed">No se pudieron buscar duplicados.</string>
@@ -3691,7 +3795,7 @@
     <string name="network_entities_toggle">Mostrar organizaciones, lugares y mascotas</string>
     <string name="network_entities_empty">Ninguna organización, lugar o mascota está vinculada a estos contactos.</string>
     <string name="network_entities_failed">No se pudieron cargar las organizaciones, los lugares y las mascotas.</string>
-    <string name="network_entities_read_only">%1$s, %2$s, solo lectura</string>
+    <string name="network_entities_description">%1$s, %2$s</string>
     <plurals name="shared_entities_detail_linked_count">
         <item quantity="one">Vinculada a %1$d contacto</item>
         <item quantity="many">Vinculada a %1$d contactos</item>
@@ -3718,17 +3822,21 @@
         <item quantity="other">No se pudo copiar a %1$d contactos, así que no se eliminó nada.</item>
     </plurals>
     <string name="shared_entities_from_contacts_open">Crear desde mis contactos…</string>
-    <string name="shared_entities_from_contacts_title">Crear entidades desde mis contactos</string>
-    <string name="shared_entities_from_contacts_intro">Grupos de la misma organización o dirección encontrados en tus contactos. Marca los que quieras crear y elige qué contactos vincular. No se cambia ni se elimina nada de un contacto. Puedes repetirlo cuando quieras: solo se ofrecen los valores aún sin vincular.</string>
+    <string name="shared_entities_from_contacts_title">Crear desde mis contactos</string>
+    <string name="shared_entities_from_contacts_intro">Grupos de la misma organización o dirección encontrados en tus contactos. Marca un grupo para crearlo y luego elige qué contactos vincular. No se cambia ni se elimina nada de un contacto. Puedes repetirlo cuando quieras: solo se ofrecen los valores aún sin vincular.</string>
     <string name="shared_entities_from_contacts_none">No queda nada por crear a partir de tus contactos.</string>
     <string name="shared_entities_from_contacts_load_failed">No se pudieron revisar tus contactos.</string>
-    <string name="shared_entities_from_contacts_create_failed">No se pudieron crear las entidades.</string>
+    <string name="shared_entities_from_contacts_create_failed">No se pudieron crear las organizaciones o lugares.</string>
     <string name="shared_entities_from_contacts_include_cd">Incluir %1$s</string>
     <string name="shared_entities_from_contacts_variants">También escrito como: %1$s</string>
     <string name="shared_entities_from_contacts_name">Nombre de %1$s</string>
     <string name="shared_entities_from_contacts_role">Rol para %1$s</string>
     <string name="shared_entities_from_contacts_primary">Establecer como principal</string>
     <string name="shared_entities_from_contacts_primary_cd">Establecer como principal para %1$s</string>
+    <string name="shared_entities_from_contacts_name_label">Nombre</string>
+    <string name="shared_entities_from_contacts_role_label">Rol</string>
+    <string name="settings_custom_fields_applies_to_hint">No se puede cambiar después de crearlo.</string>
+    <string name="settings_custom_fields_group_hint_entity">Opcional. Los campos del mismo grupo se muestran juntos en la página.</string>
     <string name="shared_entities_from_contacts_contacts_heading">Contactos a vincular</string>
     <string name="shared_entities_from_contacts_result_none">No se creó nada.</string>
     <string name="shared_entities_from_contacts_skip_group_not_found">%1$s: omitido. Puede que ya exista o que ya no coincida con tus contactos.</string>

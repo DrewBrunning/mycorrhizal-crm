@@ -17,13 +17,17 @@ import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.TrashedContact
 import com.mycorrhizal.crm.model.network.TrashedEntity
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.ui.LocalDateFormat
+import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
+import java.util.TimeZone
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -79,8 +83,43 @@ class TrashScreenTest {
         assertEquals(1, purged)
     }
 
+    // Issue #2618: deleted-at / purge-at follow the user's date format and hour cycle, no seconds.
     @Test
-    fun `retention zero says the contacts are kept until the trash is emptied`() {
+    fun `deleted and purge times follow the date format preference and show no seconds`() {
+        val original = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"))
+        try {
+            composeTestRule.setContent {
+                CompositionLocalProvider(
+                    LocalDateFormat provides DateFormat.EU,
+                    LocalIs24Hour provides true
+                ) {
+                    MycorrhizalTheme {
+                        TrashList(
+                            items = listOf(
+                                ada.copy(
+                                    deletedAt = "2026-10-01T18:51:19Z",
+                                    purgeAt = "2026-10-31T18:51:19Z"
+                                )
+                            ),
+                            retentionDays = 30,
+                            enabled = true,
+                            onRestore = {},
+                            onPurge = {}
+                        )
+                    }
+                }
+            }
+
+            composeTestRule.onNodeWithText("Deleted 01.10.2026 18:51").assertIsDisplayed()
+            composeTestRule.onNodeWithText("Deletes forever 31.10.2026 18:51").assertIsDisplayed()
+        } finally {
+            TimeZone.setDefault(original)
+        }
+    }
+
+    @Test
+    fun `retention zero says the items are kept until the trash is emptied`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
                 TrashList(
@@ -94,7 +133,7 @@ class TrashScreenTest {
         }
 
         composeTestRule.onNodeWithTag("trash-retention").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Deleted contacts are kept until you empty the trash.")
+        composeTestRule.onNodeWithText("Deleted items are kept until you empty the trash.")
             .assertIsDisplayed()
     }
 
@@ -159,7 +198,7 @@ class TrashScreenTest {
         screenWith(TrashUiState(retentionDays = 30))
         composeTestRule.onNodeWithText("Trash is empty").assertIsDisplayed()
         composeTestRule.onNodeWithText(
-            "Deleted contacts are kept for 30 days, then deleted forever."
+            "Deleted items are kept for 30 days, then deleted forever."
         )
             .assertIsDisplayed()
     }
@@ -401,14 +440,14 @@ class TrashScreenTest {
     @Test
     fun `a failed first load is worded from its reason code, never the server text`() {
         screenWith(TrashUiState(error = reasonCoded()))
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 
     @Test
     fun `a refresh failure with items listed is worded from its reason code`() {
         screenWith(TrashUiState(items = listOf(ada), retentionDays = 30, error = reasonCoded()))
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
     }
 
@@ -418,7 +457,9 @@ class TrashScreenTest {
         screenWith(TrashUiState(), events)
         events.trySend(TrashUiEvent.Failed(reasonCoded()))
         composeTestRule.waitUntil(5_000) {
-            composeTestRule.onAllNodesWithText("Entity not found").fetchSemanticsNodes()
+            composeTestRule
+                .onAllNodesWithText("Organisation, place or pet not found")
+                .fetchSemanticsNodes()
                 .isNotEmpty()
         }
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()

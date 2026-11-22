@@ -102,6 +102,7 @@ describe('SessionExpiredGate', () => {
       expect(screen.queryByLabelText(/username or email/i)).not.toBeInTheDocument(),
     );
     expect(screen.queryByText(/your session has expired/i)).not.toBeInTheDocument();
+    expect(loginUserMock).toHaveBeenCalledWith('alice', 'secret123');
   });
 
   test('a two-factor account steps to the code prompt, then closes on success', async () => {

@@ -71,6 +71,10 @@ test('lists a link field type under its category, flagging seeded defaults', asy
   renderSettings();
 
   await waitFor(() => expect(screen.getByText('WhatsApp')).toBeInTheDocument());
+  // #2536: registry values are data -- a brand name and a protocol template
+  // must never be pseudo-localized. Both markers are the e2e scan's contract.
+  expect(screen.getByText('WhatsApp')).toHaveAttribute('data-user-content');
+  expect(screen.getByText('https://wa.me/{value}')).toHaveAttribute('data-user-content');
   expect(screen.getByText('Messaging')).toBeInTheDocument();
   expect(screen.getByText('Default')).toBeInTheDocument();
 });

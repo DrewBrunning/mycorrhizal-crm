@@ -248,7 +248,10 @@ class ReminderFormViewModelTest {
             vm.onRecurrenceChange(ReminderRecurrence.WEEKLY)
             val state = vm.uiState.value
             assertEquals(ReminderRecurrence.WEEKLY, state.recurrence)
-            val expected = ReminderFormState.dateForRecurrence(ReminderRecurrence.WEEKLY)
+            // Independent oracle: a WEEKLY reminder is one week from today.
+            // Calling ReminderFormState.dateForRecurrence here would assert the
+            // implementation against itself and pass if WEEKLY regressed.
+            val expected = LocalDate.now().plusWeeks(1).toString()
             assertEquals("${expected}T00:00:00Z", state.remindAt)
         }
 

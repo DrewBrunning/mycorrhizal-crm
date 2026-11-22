@@ -1,12 +1,16 @@
 package com.mycorrhizal.crm.feature.occasions
 
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -15,9 +19,12 @@ import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
+import java.time.Instant
 import java.util.Locale
 import java.util.TimeZone
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -88,6 +95,32 @@ class OccasionsScreenTest {
     }
 
     @Test
+    fun `a failed load shows the server message with Retry that reloads the events`() {
+        coEvery { repository.list() } returnsMany listOf(
+            Result.failure(ApiError.Network(java.io.IOException("offline"))),
+            Result.success(listOf(event()))
+        )
+        val viewModel = OccasionsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                OccasionsScreen(onMenuClick = {}, onOpenAttendees = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).assertIsDisplayed()
+        composeTestRule.onNodeWithText("No events yet").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Summer BBQ").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Retry").assertDoesNotExist()
+    }
+
+    @Test
     fun `shows the empty state when there are no events`() {
         render(emptyList())
         composeTestRule
@@ -148,7 +181,7 @@ class OccasionsScreenTest {
     @Test
     fun `the edit action opens a prefilled dialog`() {
         render(listOf(event()))
-        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        composeTestRule.onNodeWithContentDescription("Edit Summer BBQ").performClick()
         composeTestRule.onNodeWithText("Edit event").assertIsDisplayed()
         // The row and the prefilled title field both carry the title.
         composeTestRule.onAllNodesWithText("Summer BBQ").assertCountEquals(2)
@@ -164,9 +197,22 @@ class OccasionsScreenTest {
     }
 
     @Test
+    fun `each event row names its event in the edit and delete actions`() {
+        render(listOf(event("e1", "Summer BBQ"), event("e2", "Winter party")))
+        listOf("Summer BBQ", "Winter party").forEach { title ->
+            composeTestRule.onNodeWithContentDescription("Edit $title")
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+            composeTestRule.onNodeWithContentDescription("Delete $title")
+                .assertIsDisplayed().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        }
+        composeTestRule.onAllNodesWithContentDescription("Edit").assertCountEquals(0)
+        composeTestRule.onAllNodesWithContentDescription("Delete").assertCountEquals(0)
+    }
+
+    @Test
     fun `the delete action opens a confirmation`() {
         render(listOf(event()))
-        composeTestRule.onNodeWithContentDescription("Delete").performClick()
+        composeTestRule.onNodeWithContentDescription("Delete Summer BBQ").performClick()
         composeTestRule.onNodeWithText("Delete event").assertIsDisplayed()
         composeTestRule.onNodeWithText(
             "Delete “Summer BBQ”? This cannot be undone."
@@ -221,7 +267,55 @@ class OccasionsScreenTest {
             }
         }
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Entity not found").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation, place or pet not found").assertIsDisplayed()
         composeTestRule.onNodeWithText("RAW SERVER TEXT").assertDoesNotExist()
+    }
+
+    private fun at(id: String, startsAt: String, endsAt: String? = null) =
+        OccasionEvent(id = id, title = id, startsAt = startsAt, endsAt = endsAt)
+
+    @Test
+    fun `upcoming events come first soonest first, then past events most recent first`() {
+        val now = Instant.parse("2026-11-13T12:00:00Z")
+        val ordered = orderOccasionEvents(
+            listOf(
+                at("past-old", "2026-01-01T10:00:00Z"),
+                at("later", "2027-03-01T10:00:00Z"),
+                at("past-recent", "2026-11-01T10:00:00Z"),
+                at("soon", "2026-11-20T10:00:00Z")
+            ),
+            now
+        )
+        assertEquals(listOf("soon", "later", "past-recent", "past-old"), ordered.map { it.id })
+    }
+
+    @Test
+    fun `an event still running counts as upcoming and an unparseable start sorts last`() {
+        val now = Instant.parse("2026-11-13T12:00:00Z")
+        val ordered = orderOccasionEvents(
+            listOf(
+                at("garbage", "not a date"),
+                at("finished", "2026-11-13T08:00:00Z", endsAt = "2026-11-13T11:00:00Z"),
+                at("running", "2026-11-13T09:00:00Z", endsAt = "2026-11-13T18:00:00Z"),
+                at("tomorrow", "2026-11-14T09:00:00Z")
+            ),
+            now
+        )
+        assertEquals(listOf("running", "tomorrow", "finished", "garbage"), ordered.map { it.id })
+    }
+
+    @Test
+    fun `the list renders upcoming events before past ones regardless of server order`() {
+        render(
+            listOf(
+                at("Past gala", "2001-05-01T10:00:00Z"),
+                at("Far future", "2099-06-01T10:00:00Z"),
+                at("Near future", "2099-01-01T10:00:00Z")
+            )
+        )
+        fun top(title: String) = composeTestRule.onNodeWithText(title)
+            .fetchSemanticsNode().boundsInRoot.top
+        assertTrue(top("Near future") < top("Far future"))
+        assertTrue(top("Far future") < top("Past gala"))
     }
 }

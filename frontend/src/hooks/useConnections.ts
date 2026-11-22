@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { type GraphConnectionsResponse, getConnections } from '../api/graph';
 import { handleFetchError } from '../utils/errorHandler';
 
@@ -10,11 +10,16 @@ export function useConnections(fromUid: string | undefined) {
   const [connections, setConnections] = useState<GraphConnectionsResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A depth/relation change can leave an older request in flight. Only the
+  // newest request may write state, or a slow depth-1 response can land after
+  // a fast depth-2 response and show the wrong network.
+  const requestRef = useRef(0);
 
   const refresh = useCallback(
     async (opts?: { depth?: number; relation?: string; overrideUid?: string }) => {
       const uid = opts?.overrideUid ?? fromUid;
       if (!uid) return;
+      const requestId = ++requestRef.current;
       setLoading(true);
       setError(null);
       try {
@@ -26,11 +31,13 @@ export function useConnections(fromUid: string | undefined) {
           depth: opts?.depth ?? 1,
           relation: opts?.relation?.trim() || undefined,
         });
+        if (requestRef.current !== requestId) return;
         setConnections(result);
       } catch (err) {
+        if (requestRef.current !== requestId) return;
         setError(handleFetchError(err, 'fetching connections'));
       } finally {
-        setLoading(false);
+        if (requestRef.current === requestId) setLoading(false);
       }
     },
     [fromUid],

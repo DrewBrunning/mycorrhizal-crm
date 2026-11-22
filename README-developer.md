@@ -6,9 +6,9 @@
 **Backend**
 - Route definitions in [backend/routes/routes.go](backend/routes/routes.go) apply layered middleware: request IDs, structured logging, rate limiting, JWT auth, and JSON validation.
 - Controllers (see [backend/controllers/contact_controller.go](backend/controllers/contact_controller.go)) expect `validated` payloads injected by [backend/middleware/validation.go](backend/middleware/validation.go); pull inputs from the context instead of decoding again.
-- Custom errors from [backend/errors/errors.go](backend/errors/errors.go) plus [backend/middleware/middleware.go](backend/middleware/middleware.go) map failures to consistent JSON envelopes; prefer returning `*apperrors.AppError`.
+- Custom errors from [backend/errors/errors.go](backend/errors/errors.go) plus [backend/errors/middleware.go](backend/errors/middleware.go) map failures to consistent JSON envelopes; prefer returning `*apperrors.AppError`.
 - Database access is via GORM models in [backend/models](backend/models) with JSON arrays (contacts.circles) and manual cascade cleanup in delete flows; wrap multi-entity writes in transactions.
-- Scheduled reminders run from [backend/services/reminder_service.go](backend/services/reminder_service.go) using gocron; honor `REMINDER_TIME` and Resend email toggles from [backend/config/config.go](backend/config/config.go).
+- Scheduled reminders are registered through gocron in [backend/embedded/scheduled_jobs.go](backend/embedded/scheduled_jobs.go); [backend/services/reminder_service.go](backend/services/reminder_service.go) owns the send logic. Honor `REMINDER_TIME` and Resend email toggles from [backend/config/config.go](backend/config/config.go).
 
 **Frontend**
 - All network calls go through [frontend/src/api/client.ts](frontend/src/api/client.ts) which enforces auth headers, request timeouts, and auto-logout on 401; reuse it for new endpoints.
@@ -50,7 +50,7 @@
   ```
 
 **Testing**
-- Backend Go tests (`go test ./...` or `make test`) spin up in-memory SQLite in helpers like [backend/controllers/activity_controller_test.go](backend/controllers/activity_controller_test.go); mirror that pattern for new suites.
+- Backend Go tests (`go test ./...` or `make test`) use `dbtest.New(t)`, which copies the real migrated on-disk schema template (backend trap #1), as in [backend/controllers/activity_controller_test.go](backend/controllers/activity_controller_test.go); mirror that pattern for new suites.
 - Validation and middleware behavior has dedicated coverage in [backend/middleware/validation_test.go](backend/middleware/validation_test.go) and related files—extend these before touching shared validators.
 - Reminder scheduling is covered in [backend/services/reminder_service_test.go](backend/services/reminder_service_test.go) with clock control helpers; keep cron changes tested there.
 - Frontend unit tests run with `yarn test` and rely on React Testing Library setup in [frontend/src/setupTests.ts](frontend/src/setupTests.ts), which already registers jest-dom.
@@ -96,7 +96,7 @@
 - Notes:
   - The suite registers its own seed account (`e2euser`) and creates/cleans up its own `E2E *` contacts; it never touches user data. It needs registration enabled, which `docker-compose.test.yml` already sets.
   - The seed backend data is persistent — `docker compose -f docker-compose.test.yml down -v` resets it between runs if you want a clean slate.
-  - CI runs this on every push/PR to main via the `android-e2e` job in [.github/workflows/android-tests.yml](.github/workflows/android-tests.yml).
+  - CI runs this on push to `main`, nightly, and manual/release dispatch via the `android-e2e` job in [.github/workflows/android-tests.yml](.github/workflows/android-tests.yml); it is deliberately not a pull-request check.
   - Screenshots and screen recording are allowed by default in every build type (issue #1741): `FLAG_SECURE` is set only while the opt-in, device-local Settings -> App lock switch "Block screenshots and screen recording" is on (`shouldSetFlagSecure`), so `adb exec-out screencap -p` returns a real frame unless you turn it on. On API 33+ the recents thumbnail is always blanked via `setRecentsScreenshotEnabled(false)`. `ScreenResilienceTest` covers default/cold-start/live toggle; `FlagSecurePolicyTest` (JVM) pins the policy.
 
 **Android call/SMS tracking runbook (issue #721)**
@@ -147,6 +147,7 @@
 - `android/core/data`'s `AppDatabase` (`version = CURRENT_VERSION`, `Migrations.kt`) now exports its schema JSON to `android/core/data/schemas/` on every compile (`exportSchema = true`, wired via `room.schemaLocation` in `core/data/build.gradle.kts`); commit the JSON diff alongside any migration you add. There's no schema JSON below version 16 — `AppDatabase`'s doc comment explains why and what that means for testing.
 - `REGISTERED_MIGRATIONS` in `Migrations.kt` is the single source of truth for which version bump has a hand-written `Migration`; `DataModule.provideDatabase` builds its `.addMigrations(...)` call from that list. Run `cd android && ./gradlew :core:data:testDebugUnitTest` to run the whole Robolectric suite, including:
   - `Migration13To14Test` / `Migration14To15Test` / `Migration15To16Test` / `Migration16To17Test` — one class per registered migration, each building a realistic hand-written "before" database (`LocalDatabaseSchemaFixtures.kt`) and asserting it migrates cleanly through the real `AppDatabase` builder. `Migration16To17Test` (issue #479) also asserts every migrated outbox row is backfilled with its per-row `idempotencyKey` (the CON-04/ADR-0010 retry key that makes an ambiguous-failure re-sync replay rather than duplicate).
+  - `Migration19To20Test` (issue #2629, `cached_circles` + `description`/`color`) — the upgrade-from-the-latest-release hop (v1.6.0 shipped Room v19): a *populated* v19 database (several circles, memberships, a contact, an outbox row) must keep every row and old column, with the new columns at their `''` defaults. `SchemaFixtureMatchesDumpTest` pins the hand-built v19 "before" fixture to the committed `19.json` column-for-column, so that proof starts from the shipped schema.
   - `PendingInteractionsSurviveMigrationTest` — the dedicated, thorough check that `pending_interactions` (the not-yet-synced outbox, the whole reason these migrations are hand-written instead of relying on `fallbackToDestructiveMigration`) survives the full v13→current chain in every field combination the entity supports.
   - `MigrationVersionCoverageTest` — the regression guard: fails if any version pair from `EARLIEST_KNOWN_VERSION` to `CURRENT_VERSION` has neither a registered migration nor an explicit entry in `ACCEPTED_DESTRUCTIVE_GAPS`. Hand-verify it by commenting out an entry in `REGISTERED_MIGRATIONS` and confirming this test fails, then restore it.
   - `DestructiveFallbackTest` — proves the destructive fallback fires (and the app recovers cleanly) for a version gap outside that covered range, and does *not* fire across the real registered chain.
@@ -207,8 +208,8 @@
 **CI: path-gated checks (issue #264)**
 - Every suite is **path-gated**: a PR runs only the suites relevant to the files it changes. The mapping from paths to checks lives in one place, [.github/filters.yaml](.github/filters.yaml) — change it there, not per-workflow. Each gated workflow has a `Detect Changes` job (`dorny/paths-filter`) whose boolean outputs the suite jobs `if:` on.
   - `backend/**` → Go fmt/vet/test, govulncheck, gosec, CodeQL(go), backend image build.
-  - `frontend/**` → vitest, tsc, eslint, Playwright e2e, CodeQL(js/ts), frontend image build.
-  - `android/**` → Android unit/lint/assemble, instrumented e2e, CodeQL(java).
+  - `frontend/**` (plus the shared `testdata/contract-fixtures`, `testdata/deep-links` and `testdata/geo-uri-fixtures.json` it reads) → vitest, tsc, eslint, Playwright e2e, CodeQL(js/ts), frontend image build.
+  - `android/**` (plus the shared `testdata/contract-fixtures`, `deep-links`, `geo-uri-fixtures.json` and `phonekey-vectors` it reads) → Android unit/lint/assemble, instrumented e2e, CodeQL(java).
   - `backend/openapi.yaml` → backend + frontend + Android (the API contract).
   - `Dockerfile`, `docker-compose*.yml`, `docker/**` (nginx.conf etc.) → the e2e suites, which build and run the deployed artifact.
   - `.github/**` → everything (a workflow change can affect any check; this includes `filters.yaml` itself).
@@ -216,7 +217,7 @@
     actionlint's shellcheck discovery over every tracked shell script (issue #1904).
   - `docs/**` → nothing here; the docs deploy job is already path-filtered to `docs/**`.
 - **Why a skipped job is safe to require.** A job skipped by its `if:` conditional reports **Success** (GitHub's current behavior) and satisfies a required status check — unlike a whole workflow skipped by `on: paths:`, which leaves its checks pending and blocks merges. So we gate at the job level, never at the workflow `paths:` level, and every suite check below can be marked required without unrelated pre-existing failures blocking a PR.
-- **Required checks on `main`:** `Backend (Go)`, `Frontend (Vitest)`, `Run E2E Tests`, `Android (Gradle)`, `Android E2E (emulator)`. `enforce_admins` is on, so the checks apply to admins too. Set from Settings → Branches (or the REST API, e.g. `gh api`).
+- **Required checks on `main`:** the live `main-protection` ruleset is the exact list; do not restate it here. See [docs/development/repo-governance.md](docs/development/repo-governance.md) and `.github/rulesets/main-protection.json`. `enforce_admins` is on, so the checks apply to admins too.
 - **Verifying the mapping** after touching `filters.yaml`: open small PRs that touch only one area (`android/`, `backend/`, `docs/`, `backend/openapi.yaml`) and confirm each runs exactly the intended suites and reports the rest as skipped.
 
 **CI: flake detection and test-health signal (issue #268)**

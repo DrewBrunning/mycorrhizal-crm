@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -18,7 +19,6 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,12 +32,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.Entity
 import com.mycorrhizal.crm.model.network.EntityCore
+import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
@@ -94,7 +97,21 @@ fun EntityMergeDialog(
     AlertDialog(
         modifier = modifier.testTag("entity-merge-dialog"),
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.shared_entities_merge_title, entity.name)) },
+        // The title follows the chosen direction ("Merge A into B"); before a partner is picked
+        // it only names what is being merged.
+        title = {
+            Text(
+                if (loser != null && survivor != null) {
+                    stringResource(
+                        R.string.shared_entities_merge_title_direction,
+                        loser.name,
+                        survivor.name
+                    )
+                } else {
+                    stringResource(R.string.shared_entities_merge_title, entity.name)
+                }
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -135,12 +152,21 @@ fun EntityMergeDialog(
                                         role = Role.RadioButton,
                                         onClick = { selectedId = candidate.id }
                                     )
+                                    .heightIn(min = MIN_ROW_HEIGHT)
                                     .padding(vertical = 4.dp)
                                     .testTag("entity-merge-candidate-${candidate.id}"),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 RadioButton(selected = candidate.id == selectedId, onClick = null)
-                                Text(candidate.name, modifier = Modifier.padding(start = 8.dp))
+                                Column(Modifier.padding(start = 8.dp)) {
+                                    Text(candidate.name)
+                                    // Same-named candidates are told apart by their facts.
+                                    Text(
+                                        entityMergeDetail(candidate),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                             }
                         }
                     }
@@ -154,23 +180,23 @@ fun EntityMergeDialog(
                         ),
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Row(
-                        modifier = Modifier.fillMaxWidth()
-                            .toggleable(
-                                value = keepThis,
-                                role = Role.Switch,
-                                onValueChange = { keepThis = it }
-                            )
-                            .padding(vertical = 4.dp)
-                            .testTag("entity-merge-swap"),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            stringResource(R.string.shared_entities_merge_keep_this),
-                            modifier = Modifier.weight(1f)
+                    // Two named options instead of a switch: "this one" meant a different
+                    // entity depending on where the dialog was opened.
+                    Column(Modifier.fillMaxWidth().selectableGroup()) {
+                        KeepOption(
+                            kept = other,
+                            merged = entity,
+                            selected = !keepThis,
+                            tag = "entity-merge-keep-other",
+                            onSelect = { keepThis = false }
                         )
-                        Switch(checked = keepThis, onCheckedChange = null)
+                        KeepOption(
+                            kept = entity,
+                            merged = other,
+                            selected = keepThis,
+                            tag = "entity-merge-keep-this",
+                            onSelect = { keepThis = true }
+                        )
                     }
                     if (fillable.isNotEmpty()) {
                         Text(
@@ -187,6 +213,7 @@ fun EntityMergeDialog(
                                             fill = if (on) fill + field else fill - field
                                         }
                                     )
+                                    .heightIn(min = MIN_ROW_HEIGHT)
                                     .padding(vertical = 4.dp)
                                     .testTag("entity-merge-fill-$field"),
                                 verticalAlignment = Alignment.CenterVertically
@@ -223,4 +250,66 @@ fun EntityMergeDialog(
             }
         }
     )
+}
+
+private val MIN_ROW_HEIGHT = 48.dp
+
+/**
+ * One "keep this, merge that into it" radio row: names both sides, with the kept side's kind,
+ * linked contacts and last update underneath so same-named entities can be told apart.
+ */
+@Composable
+private fun KeepOption(
+    kept: Entity,
+    merged: Entity,
+    selected: Boolean,
+    tag: String,
+    onSelect: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth()
+            .selectable(selected = selected, role = Role.RadioButton, onClick = onSelect)
+            .heightIn(min = MIN_ROW_HEIGHT)
+            .padding(vertical = 4.dp)
+            .testTag(tag),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = null)
+        Column(Modifier.padding(start = 8.dp)) {
+            Text(
+                stringResource(R.string.shared_entities_merge_keep_option, kept.name, merged.name),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            val detail = entityMergeDetail(kept)
+            if (detail.isNotBlank()) {
+                Text(
+                    detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+/**
+ * "Place · Linked to 3 contacts · Updated 12.11.2026": the facts that tell two same-named records
+ * apart. The count and the date appear only when the record carries them: GET /entities/{id}, the
+ * list items and the duplicate-suggestion sides do (#2749); an older server's list rows do not.
+ */
+@Composable
+internal fun entityMergeDetail(entity: Entity): String =
+    entityDetailLine(entity.kind, entity.linkCount, entity.updatedAt)
+
+@Composable
+internal fun entityDetailLine(kind: String, linkCount: Int?, updatedAt: String?): String {
+    val dateFormat = LocalDateFormat.current
+    val linked = linkCount?.let {
+        pluralStringResource(R.plurals.shared_entities_detail_linked_count, it, it)
+    }
+    val updated = DateFormat.formatTimestamp(updatedAt, dateFormat)
+        .takeIf { it.isNotBlank() }
+        ?.let { stringResource(R.string.shared_entities_merge_detail_updated, it) }
+    return listOfNotNull(stringResource(entityKindOneRes(kind)), linked, updated)
+        .joinToString(" \u00b7 ")
 }

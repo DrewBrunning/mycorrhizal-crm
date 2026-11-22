@@ -712,7 +712,7 @@ func buildQueryScopeRows() []qsRow {
 		},
 		qsRow{
 			name: "occasion-obligations/card-list ?include_sensitive=", path: "/api/v1/occasion-obligations/card-list",
-			params: []string{"include_sensitive"}, reads: []string{"GetOccasionCardListCSV:include_sensitive"},
+			params: []string{"include_sensitive"}, reads: []string{"parseCardListQuery:include_sensitive"},
 			query:   func(a *qsActor) string { return "include_sensitive=true" },
 			in:      qsMk("due-cardN", "due-cardS"),
 			baseIn:  qsMk("due-cardN"),
@@ -757,20 +757,21 @@ var qsAllow = map[string]string{
 // spec declares with a scope-ish name but that are not row-probed, each with
 // the recorded reason.
 var qsAllowSpec = map[string]string{
-	"/graph|include_entities":                     "response-shape flag (#2298): display-only entity nodes/edges from a user_id-scoped join (qsAllow GetGraph:include_entities)",
-	"/contacts|include_total":                     "response-shape flag (#2188): a COUNT over the already user-scoped query (qsAllow GetContacts:include_total)",
-	"/admin/job-runs|since":                       "admin-only, instance-wide by design (qsAllow ListJobRuns:since)",
-	"/admin/system-events|correlation_id":         "admin-only, instance-wide by design (qsAllow ListSystemEvents:correlation_id)",
-	"/admin/system-events|ids":                    "admin-only, instance-wide by design (qsAllow ListSystemEvents:ids)",
-	"/admin/system-events|since":                  "admin-only, instance-wide by design (qsAllow ListSystemEvents:since)",
-	"/contacts/import/meerkat/preview|session_id": "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
-	"/contacts/import/meerkat/status|session_id":  "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
-	"/contacts/import/monica/preview|session_id":  "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
-	"/contacts/import/monica/status|session_id":   "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
-	"/feeds/atom|token":                           "capability token, not a scope (qsAllow ServeFeed:token)",
-	"/import/mycorrhizal/preview|session_id":      "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
-	"/import/mycorrhizal/status|session_id":       "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
-	"/occasion-events|from":                       "date bound, not an identifier (qsAllow parseEventWindow:from)",
+	"/graph|include_entities":                                   "response-shape flag (#2298): display-only entity nodes/edges from a user_id-scoped join (qsAllow GetGraph:include_entities)",
+	"/contacts|include_total":                                   "response-shape flag (#2188): a COUNT over the already user-scoped query (qsAllow GetContacts:include_total)",
+	"/admin/job-runs|since":                                     "admin-only, instance-wide by design (qsAllow ListJobRuns:since)",
+	"/admin/system-events|correlation_id":                       "admin-only, instance-wide by design (qsAllow ListSystemEvents:correlation_id)",
+	"/admin/system-events|ids":                                  "admin-only, instance-wide by design (qsAllow ListSystemEvents:ids)",
+	"/admin/system-events|since":                                "admin-only, instance-wide by design (qsAllow ListSystemEvents:since)",
+	"/contacts/import/meerkat/preview|session_id":               "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
+	"/contacts/import/meerkat/status|session_id":                "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
+	"/contacts/import/monica/preview|session_id":                "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
+	"/contacts/import/monica/status|session_id":                 "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
+	"/feeds/atom|token":                                         "capability token, not a scope (qsAllow ServeFeed:token)",
+	"/import/mycorrhizal/preview|session_id":                    "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
+	"/import/mycorrhizal/status|session_id":                     "in-memory import session keyed by (user_id, session_id); see qsAllow GetMonicaImportStatus:session_id",
+	"/occasion-obligations/card-list/summary|include_sensitive": "counts-only response (no identifiers to probe); same shared parseCardListQuery/resolveCardList as the probed card-list CSV row; counts and cross-user isolation covered by controllers/occasion_card_list_summary_test.go",
+	"/occasion-events|from":                                     "date bound, not an identifier (qsAllow parseEventWindow:from)",
 }
 
 // qsNonScope are query parameter names the handlers read that carry no
@@ -792,6 +793,7 @@ var qsNonScope = map[string]string{
 	"component": "admin filter", "severity": "admin filter", "event_type": "admin filter", "job_name": "admin filter",
 	"mode":   "suggestions mode switch (pairs of the caller's entities, or groups of the caller's own contact values; both user_id-scoped)",
 	"result": "admin filter", "sensitivity": "sensitivity filter value on the caller's own rows", "date": "geopulse day", "timezone": "geopulse zone",
+	"tz": "viewer IANA zone for the display day boundary (#2762, ADR 0015 Rule 4); never selects rows",
 }
 
 // ── AST scan of handler query reads ───────────────────────────────────────

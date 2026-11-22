@@ -1446,7 +1446,9 @@ export type EntityRestoreSkip = {
 export type EntitySuggestionEntity = {
   id: string;
   kind: 'organisation' | 'place' | 'pet';
+  link_count: number;
   name: string;
+  updated_at: string;
 };
 
 export type EntitySuggestionPair = {
@@ -1940,6 +1942,14 @@ export type ImportAddedValue = {
   value?: string;
 };
 
+export type ImportCancelRequest = {
+  session_id: string;
+};
+
+export type ImportCancelResponse = {
+  status: 'cancelled';
+};
+
 export type ImportConfirmRequest = {
   actions: RowImportAction[];
   assign_circle_ids?: string[];
@@ -1984,6 +1994,7 @@ export type ImportPreviewRequest = {
 export type ImportPreviewResponse = {
   duplicate_count?: number;
   error_count?: number;
+  file_diagnostics?: Diagnostic[];
   fixed_assignment?: ImportFixedAssignment;
   rows?: ImportRowPreview[];
   session_id?: string;
@@ -2013,12 +2024,13 @@ export type ImportRowEdit = {
 };
 
 export type ImportRowIssue = {
+  concept?: 'birthday' | 'anniversary';
   email: string;
   name: string;
   phone: string;
   reason: string;
   row: number;
-  status: 'skipped' | 'failed';
+  status: 'skipped' | 'failed' | 'warning';
 };
 
 export type ImportRowPreview = {
@@ -2058,6 +2070,7 @@ export type ImportScalarChange = {
 };
 
 export type ImportUploadResponse = {
+  file_diagnostics?: Diagnostic[];
   headers?: string[];
   row_count?: number;
   sample_data?: string[][];
@@ -2372,6 +2385,8 @@ export type MonicaImportRowPreview = ImportRowPreview & {
 
 export type MonicaImportStatus = {
   error?: string;
+  error_reason_code?: string;
+  error_reason_params?: Record<string, unknown>;
   phase?: 'connecting' | 'fetching_contacts' | 'fetching_activities' | 'fetching_notes' | 'fetching_reminders' | 'fetching_extras' | 'fetching_relationships' | 'building_preview' | 'ready' | 'importing' | 'importing_photos' | 'done' | 'failed' | 'cancelled';
   phase_done?: number;
   phase_total?: number;
@@ -2546,6 +2561,16 @@ export type OIDCNativeExchangeResponse = {
   language?: string;
   time_format?: 'auto' | '12h' | '24h';
   token: string;
+};
+
+export type OccasionCardListSummary = {
+  included: number;
+  skipped: number;
+  skipped_reasons: {
+    no_address: number;
+    private_address_only: number;
+  };
+  total: number;
 };
 
 export type OccasionEvent = {
@@ -2990,6 +3015,7 @@ export type SearchContactHit = {
   fn?: string;
   id?: number;
   lastname?: string;
+  matched_on?: ('name' | 'organization' | 'email' | 'phone' | 'address')[];
   nickname?: string;
   org?: string;
   photo?: string;
@@ -3003,6 +3029,7 @@ export type SearchContactHit = {
 export type SearchEntityHit = {
   id?: string;
   kind?: 'organisation' | 'place' | 'pet';
+  matched_on?: 'name'[];
   name?: string;
   sensitivity?: 'normal' | 'private' | 'secret';
 };

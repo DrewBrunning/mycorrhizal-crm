@@ -283,7 +283,9 @@ export default function FeedCreateDialog({
             <Alert severity="warning">{t('feeds.createDialog.fullWarning')}</Alert>
           )}
 
-          <Alert severity="info">{t('feeds.createDialog.readerCopyNotice')}</Alert>
+          <Alert severity="info" role="status">
+            {t('feeds.createDialog.readerCopyNotice')}
+          </Alert>
         </Box>
       </DialogContent>
       <DialogActions>

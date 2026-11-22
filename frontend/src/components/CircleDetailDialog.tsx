@@ -16,6 +16,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
+import type { TFunction } from 'i18next';
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
@@ -31,11 +32,14 @@ import {
   getCircleTimeline,
 } from '../api/circles';
 import { useDateFormat } from '../DateFormatProvider';
+import { useDiscardGuard } from '../hooks/useDiscardGuard';
 import { formatActivityDateRange } from '../utils/activityRange';
 import { circleColorHex } from '../utils/circleColors';
 import { isDuplicateCircleNameError } from '../utils/circleName';
 import { getErrorMessage, handleFetchError } from '../utils/errorHandler';
+import { humanizeToken } from '../utils/humanizeToken';
 import { calendarDateOnly } from '../utils/localDate';
+import ConfirmDiscardDialog from './ConfirmDiscardDialog';
 
 // Issue #1995: edit a circle's description/colour and see its members' merged
 // timeline ("aggregate" Part 2 decision: no circle-owned notes/activities).
@@ -48,11 +52,17 @@ interface CircleDetailDialogProps {
 }
 
 // A short human summary of a timeline entry: the first non-empty text field.
-function summarize(item: CircleTimelineItem): string {
+function summarize(item: CircleTimelineItem, t: TFunction): string {
   const data = item.data as unknown as Record<string, unknown>;
   for (const key of ['content', 'title', 'message', 'name', 'description', 'type']) {
     const v = data[key];
-    if (typeof v === 'string' && v.trim()) return v;
+    if (typeof v === 'string' && v.trim()) {
+      // Issue #2681: a life event's `type` is a token ("married"); show its
+      // label, as the contact's own life-event list does.
+      return key === 'type' && item.type === 'life_event'
+        ? t(`lifeEvent.types.${v}`, humanizeToken(v))
+        : v;
+    }
   }
   return '';
 }
@@ -97,16 +107,22 @@ export default function CircleDetailDialog({
     void load(circleId);
   }, [circleId, load]);
 
-  if (!circle) return null;
-
+  // Issue #2665: edits to the name, description or colour are unsaved work, so
+  // Escape, the backdrop and Close confirm before dropping them.
   const trimmedName = name.trim();
   const dirty =
-    trimmedName !== circle.name ||
-    description.trim() !== (circle.description ?? '') ||
-    color !== (circle.color ?? '');
+    !!circle &&
+    (trimmedName !== circle.name ||
+      description.trim() !== (circle.description ?? '') ||
+      color !== (circle.color ?? ''));
+  const { guardedClose, confirmDialogProps, navigationGuardElement } = useDiscardGuard(dirty, {
+    onNavigationDiscard: onClose,
+  });
 
+  if (!circle) return null;
+
+  // Save is disabled while the name is empty, so no guard is needed here.
   const handleSave = async () => {
-    if (!trimmedName) return;
     setSaving(true);
     setNameError(null);
     try {
@@ -121,7 +137,9 @@ export default function CircleDetailDialog({
   };
 
   return (
-    <Dialog open onClose={onClose} fullWidth maxWidth="sm">
+    <Dialog open onClose={() => guardedClose(onClose)} fullWidth maxWidth="sm">
+      {navigationGuardElement}
+      <ConfirmDiscardDialog {...confirmDialogProps} />
       <DialogTitle>{circle.name}</DialogTitle>
       <DialogContent>
         <Stack spacing={2} sx={{ mt: 1 }}>
@@ -199,7 +217,7 @@ export default function CircleDetailDialog({
                 {items.map((item) => (
                   <ListItem key={`${item.type}-${item.id}`} disableGutters divider>
                     <ListItemText
-                      primary={summarize(item)}
+                      primary={summarize(item, t)}
                       secondary={
                         <>
                           {(item.members ?? []).map((m, i) => (
@@ -241,7 +259,7 @@ export default function CircleDetailDialog({
         </Stack>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>{t('common.close')}</Button>
+        <Button onClick={() => guardedClose(onClose)}>{t('common.close')}</Button>
         <Button
           variant="contained"
           onClick={() => void handleSave()}

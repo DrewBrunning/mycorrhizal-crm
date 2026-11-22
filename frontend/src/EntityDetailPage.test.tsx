@@ -18,6 +18,7 @@ import {
   updateEntity,
 } from './api/entities';
 import { type FieldDefinition, getFieldDefinitions } from './api/fieldDefinitions';
+import { getTrashedEntities } from './api/trash';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
 import EntityDetailPage from './EntityDetailPage';
@@ -47,6 +48,12 @@ vi.mock('./api/fieldDefinitions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./api/fieldDefinitions')>();
   return { ...actual, getFieldDefinitions: vi.fn() };
 });
+
+vi.mock('./api/trash', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./api/trash')>();
+  return { ...actual, getTrashedEntities: vi.fn() };
+});
+const trashMock = vi.mocked(getTrashedEntities);
 
 const getMock = vi.mocked(getEntity);
 const updateMock = vi.mocked(updateEntity);
@@ -122,6 +129,7 @@ beforeEach(() => {
   valuesMock.mockResolvedValue([]);
   defsMock.mockResolvedValue({ field_definitions: [], total: 0, next_cursor: '', limit: 100 });
   listMock.mockResolvedValue({ entities: [], limit: 100, next_cursor: '' });
+  trashMock.mockResolvedValue({ entities: [], total: 0, page: 1, limit: 100, retention_days: 30 });
 });
 
 test('shows the entity, its details and the linked people with role, period and primary', async () => {
@@ -129,7 +137,8 @@ test('shows the entity, its details and the linked people with role, period and 
   expect(await screen.findByRole('heading', { level: 1, name: 'Acme' })).toBeInTheDocument();
   expect(screen.getByText('https://acme.test')).toBeInTheDocument();
   expect(screen.getByText('Big client')).toBeInTheDocument();
-  expect(screen.getByText('Linked to 3 contacts')).toBeInTheDocument();
+  // Two distinct contacts (Alice, Bob) even though the entity has 3 links in its count.
+  expect(screen.getByText('Linked to 2 contacts')).toBeInTheDocument();
 
   const people = screen.getByRole('region', { name: 'People' });
   const alice = within(people).getByRole('link', { name: 'Alice Anderson' });
@@ -143,14 +152,14 @@ test('shows the entity, its details and the linked people with role, period and 
 test('shows a not-found state when the entity is gone', async () => {
   getMock.mockRejectedValueOnce(new ApiError('Entity not found', 'NOT_FOUND', 404));
   renderPage();
-  expect(await screen.findByText("This entity doesn't exist or was deleted.")).toBeInTheDocument();
+  expect(await screen.findByText("This doesn't exist or was deleted.")).toBeInTheDocument();
 });
 
 test('edit saves with the current revision and refreshes the page', async () => {
   updateMock.mockResolvedValue({ ...acme, name: 'Acme Ltd', revision: 6 });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Acme Ltd' } });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   expect(await screen.findByRole('heading', { name: 'Acme Ltd' })).toBeInTheDocument();
@@ -199,7 +208,7 @@ test('custom fields for this kind are editable and saved as the full value set',
   expect(screen.queryByText('Nickname')).not.toBeInTheDocument();
 
   const region = screen.getByRole('region', { name: 'Custom fields' });
-  fireEvent.click(within(region).getByLabelText('Edit'));
+  fireEvent.click(within(region).getByLabelText(/^Edit\b/));
   fireEvent.change(within(region).getByRole('textbox'), { target: { value: 'B-2' } });
   fireEvent.click(within(region).getByRole('button', { name: 'Save' }));
   await waitFor(() =>
@@ -211,14 +220,14 @@ test('delete names how many contacts lose the organisation and deletes with the 
   deleteMock.mockResolvedValue({ message: 'ok', link_count: 3, projection_count: 2 });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   const dialog = await screen.findByRole('dialog', { name: 'Delete Acme?' });
   expect(
     within(dialog).getByText(
       'Acme is the primary organisation of 2 contacts; they will lose that organisation.',
     ),
   ).toBeInTheDocument();
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() => expect(deleteMock).toHaveBeenCalledWith('e1', 5));
   expect(adoptMock).not.toHaveBeenCalled();
   // Deleted state with a restore action instead of silently navigating away.
@@ -237,12 +246,12 @@ test('adopt-all copies the organisation into each current primary contact before
   deleteMock.mockResolvedValue({ message: 'ok', link_count: 4, projection_count: 2 });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(
     within(dialog).getByRole('checkbox', { name: /Keep the organisation on those contacts first/ }),
   );
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
   await waitFor(() => expect(deleteMock).toHaveBeenCalled());
   expect(adoptMock.mock.calls.map((c) => [c[0], c[1]])).toEqual([
     [11, 'l1'],
@@ -254,10 +263,10 @@ test('if an adopt fails nothing is deleted and the error is shown', async () => 
   adoptMock.mockRejectedValue(new ApiError('nope', 'ERR', 500));
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   const dialog = await screen.findByRole('dialog');
   fireEvent.click(within(dialog).getByRole('checkbox', { name: /Keep the organisation/ }));
-  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
   expect(await within(dialog).findByRole('alert')).toHaveTextContent('so nothing was deleted');
   expect(deleteMock).not.toHaveBeenCalled();
 });
@@ -272,11 +281,11 @@ test('restore brings the deleted entity back', async () => {
   });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   fireEvent.click(
-    within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }),
+    within(await screen.findByRole('dialog')).getByRole('button', { name: /^Delete\b/ }),
   );
-  fireEvent.click(await screen.findByRole('button', { name: 'Restore' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Restore\b/ }));
   await waitFor(() => expect(restoreMock).toHaveBeenCalledWith('e1'));
   expect(await screen.findByRole('heading', { name: 'Acme' })).toBeInTheDocument();
 });
@@ -291,14 +300,59 @@ test('a restore that finds a live same-name entity warns about it', async () => 
   });
   renderPage();
   await screen.findByRole('heading', { name: 'Acme' });
-  fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
   fireEvent.click(
-    within(await screen.findByRole('dialog')).getByRole('button', { name: 'Delete' }),
+    within(await screen.findByRole('dialog')).getByRole('button', { name: /^Delete\b/ }),
   );
-  fireEvent.click(await screen.findByRole('button', { name: 'Restore' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Restore\b/ }));
   expect(
-    await screen.findByText(/Another entity of this kind with the same name already exists/),
+    await screen.findByText(/Another one of this kind with the same name already exists/),
   ).toBeInTheDocument();
+});
+
+// #2743: the merge dialog describes the loser with the page's distinct linked contacts (2
+// here; the detail entity's own link_count of 3 counts link rows) and the same-named
+// survivor with its list link_count, so the two definitions are not mixed.
+test('merge intro uses distinct contact counts for both same-named sides (#2743)', async () => {
+  const dated = { ...acme, updated_at: '2026-03-05T10:00:00Z' };
+  const twin: Entity = {
+    ...dated,
+    id: 'e2',
+    link_count: 4,
+    updated_at: '2026-04-19T10:00:00Z',
+  };
+  listMock.mockResolvedValue({ entities: [dated, twin], limit: 100, next_cursor: '' });
+  getMock.mockImplementation(async (id) => (id === 'e2' ? { ...twin, link_count: 99 } : dated));
+  renderPage();
+  await screen.findByRole('heading', { name: 'Acme' });
+  await screen.findByText('Linked to 2 contacts');
+  fireEvent.click(screen.getByRole('button', { name: 'Merge into another…' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.mouseDown(within(dialog).getByLabelText('Merge into'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Acme' }));
+  const intro = await within(dialog).findByText(/will be deleted and its contacts move to/);
+  expect(intro.textContent).toMatch(
+    /Acme \(updated .+, 2 contacts\) will be deleted and its contacts move to Acme \(updated .+, 4 contacts\)\./,
+  );
+});
+
+test('merge intro omits the loser contact count when the linked contacts failed to load (#2743)', async () => {
+  const dated = { ...acme, updated_at: '2026-03-05T10:00:00Z' };
+  const twin: Entity = { ...dated, id: 'e2', link_count: 4, updated_at: '2026-04-19T10:00:00Z' };
+  contactsMock.mockRejectedValue(new Error('contacts down'));
+  listMock.mockResolvedValue({ entities: [dated, twin], limit: 100, next_cursor: '' });
+  getMock.mockImplementation(async (id) => (id === 'e2' ? twin : dated));
+  renderPage();
+  await screen.findByRole('heading', { name: 'Acme' });
+  fireEvent.click(screen.getByRole('button', { name: 'Merge into another…' }));
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.mouseDown(within(dialog).getByLabelText('Merge into'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Acme' }));
+  const intro = await within(dialog).findByText(/will be deleted and its contacts move to/);
+  // The detail entity's own link_count (3 link rows) is a different definition: not shown.
+  expect(intro.textContent).toMatch(
+    /^Acme \(updated [^,)]+\) will be deleted .* \(updated .+, 4 contacts\)\./,
+  );
 });
 
 test('merge into another entity navigates to the survivor and offers to restore the loser', async () => {
@@ -333,4 +387,85 @@ test('merge into another entity navigates to the survivor and offers to restore 
   });
   fireEvent.click(screen.getByRole('button', { name: 'Restore Acme' }));
   await waitFor(() => expect(restoreMock).toHaveBeenCalledWith('e1'));
+});
+
+// #2702: "Linked to N contacts" counts distinct contacts, not links.
+test('three links over two contacts read "Linked to 2 contacts" in the header and the delete dialog (#2702)', async () => {
+  contactsMock.mockResolvedValue([
+    link({ link_id: 'l1', contact_id: 11, role: 'owner' }),
+    link({ link_id: 'l2', contact_id: 11, role: 'resident', is_primary: false }),
+    link({ link_id: 'l3', contact_id: 12, firstname: 'Chen', lastname: 'Li', is_primary: false }),
+  ]);
+  renderPage();
+  expect(await screen.findByText('Linked to 2 contacts')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
+  const dialog = await screen.findByRole('dialog', { name: 'Delete Acme?' });
+  expect(within(dialog).getByText(/linked to 2 contacts in total/)).toBeInTheDocument();
+});
+
+test('when the people list fails to load the stored link count is still shown (#2702)', async () => {
+  contactsMock.mockRejectedValue(new Error('boom'));
+  renderPage();
+  expect(await screen.findByText('Linked to 3 contacts')).toBeInTheDocument();
+});
+
+// #2708: an entity page whose id is no longer live (merged away or deleted)
+// offers Restore instead of a bare not-found.
+const mergedAway = {
+  entity: { ...acme, id: 'e1', name: 'Acme' },
+  deleted_at: '2026-10-01T00:00:00Z',
+  purge_at: null,
+  merged_into: 'e2',
+  merged_into_name: 'Acme Inc',
+};
+
+test('a merged-away entity page offers Restore (#2708)', async () => {
+  getMock.mockRejectedValue(new ApiError('Entity not found', 'NOT_FOUND', 404));
+  trashMock.mockResolvedValue({
+    entities: [mergedAway],
+    total: 1,
+    page: 1,
+    limit: 100,
+    retention_days: 30,
+  });
+  restoreMock.mockResolvedValue({
+    entity: acme,
+    links_revived: 0,
+    same_name_live: false,
+    skipped: [],
+  });
+  renderPage();
+  expect(await screen.findByText('Acme was merged away')).toBeInTheDocument();
+  expect(screen.queryByText("This doesn't exist or was deleted.")).not.toBeInTheDocument();
+  getMock.mockResolvedValue(acme);
+  fireEvent.click(screen.getByRole('button', { name: 'Restore Acme' }));
+  await waitFor(() => expect(restoreMock).toHaveBeenCalledWith('e1'));
+  expect(await screen.findByRole('heading', { level: 1, name: 'Acme' })).toBeInTheDocument();
+});
+
+test('a deleted (not merged) entity page offers Restore (#2708)', async () => {
+  getMock.mockRejectedValue(new ApiError('Entity not found', 'NOT_FOUND', 404));
+  trashMock.mockResolvedValue({
+    entities: [{ ...mergedAway, merged_into: undefined, merged_into_name: undefined }],
+    total: 1,
+    page: 1,
+    limit: 100,
+    retention_days: 30,
+  });
+  renderPage();
+  expect(await screen.findByText('Acme was deleted')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /^Restore\b/ })).toBeInTheDocument();
+});
+
+test('an id that is not in the trash either still shows not-found (#2708)', async () => {
+  getMock.mockRejectedValue(new ApiError('Entity not found', 'NOT_FOUND', 404));
+  renderPage();
+  expect(await screen.findByText("This doesn't exist or was deleted.")).toBeInTheDocument();
+});
+
+test('if the trash lookup fails the page falls back to not-found (#2708)', async () => {
+  getMock.mockRejectedValue(new ApiError('Entity not found', 'NOT_FOUND', 404));
+  trashMock.mockRejectedValue(new Error('boom'));
+  renderPage();
+  expect(await screen.findByText("This doesn't exist or was deleted.")).toBeInTheDocument();
 });

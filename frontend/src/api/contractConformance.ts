@@ -104,6 +104,7 @@ import type {
 } from './occasionEvents';
 import type {
   GiftShoppingItem,
+  OccasionCardListSummary,
   OccasionObligation,
   OccasionSensitivity,
   UpcomingOccasion,
@@ -260,6 +261,7 @@ export type Conformance = [
   NoDrift<ResponseDrift<OccasionObligation, S.OccasionObligation>>,
   NoDrift<ResponseDrift<UpcomingOccasion, S.UpcomingOccasion>>,
   NoDrift<ResponseDrift<GiftShoppingItem, S.GiftShoppingItem>>,
+  NoDrift<ResponseDrift<OccasionCardListSummary, S.OccasionCardListSummary>>,
   NoDrift<ResponseDrift<OccasionEvent, S.OccasionEvent>>,
   NoDrift<ResponseDrift<OccasionEventAttendee, S.OccasionEventAttendee>>,
   NoDrift<ResponseDrift<OccasionEventAttendeeView, S.OccasionEventAttendeeView>>,

@@ -56,6 +56,7 @@ import ReviewDuplicatesDialog from './components/ReviewDuplicatesDialog';
 import SearchNotesActivities from './components/SearchNotesActivities';
 import { type ContactFieldKey, resolveEnabledFields } from './contactFields';
 import { useAnnouncer } from './context/AnnouncerContext';
+import { useSnackbar } from './context/SnackbarContext';
 import { useCircles } from './hooks/useCircles';
 import { useContacts } from './hooks/useContacts';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -70,6 +71,7 @@ export default function ContactsPage() {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.contacts'));
   const { announce } = useAnnouncer();
+  const { showSuccess } = useSnackbar();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   // The committed (debounced) search term — the URL's `?search=` param is the
@@ -531,14 +533,28 @@ export default function ContactsPage() {
 
   // The group flow ends once, with how many merges were committed. Refetch
   // and clear the selection only when something actually merged.
-  const handleMergeGroupFinished = async (mergedCount: number) => {
+  const handleMergeGroupFinished = async (mergedCount: number, survivor?: Contact) => {
     setMergeGroup(null);
-    if (mergedCount > 0) await handleMerged();
+    // BulkMergeDialog always names the survivor when it committed a merge.
+    if (mergedCount > 0) await handleMerged(survivor as Contact, mergedCount + 1);
   };
 
   const handleMergeClosed = () => setMergePair(null);
 
-  const handleMerged = async () => {
+  // #2688: after a merge the dialog and the selection are gone, so focus would fall to <body>.
+  // Move it to the surviving contact's row (its select checkbox is the row's first focusable
+  // control) once the refetched list has rendered. If the survivor is not on this page, nothing
+  // is focused. A merge cannot be undone, so there is no Undo to offer.
+  const [focusSurvivorId, setFocusSurvivorId] = useState<number | null>(null);
+  useEffect(() => {
+    if (focusSurvivorId === null) return;
+    document
+      .querySelector<HTMLElement>(`[data-contact-id="${focusSurvivorId}"] input[type="checkbox"]`)
+      ?.focus();
+    setFocusSurvivorId(null);
+  }, [focusSurvivorId]);
+
+  const handleMerged = async (survivor: Contact, total: number) => {
     // T92 step 4: the loser is gone and the survivor gained its
     // circles/tags — refetch so a stale row (or stale membership chips)
     // can't linger, and clear the selection pointing at the dead contact
@@ -546,6 +562,14 @@ export default function ContactsPage() {
     setMergePair(null);
     setSelectedUids(new Set());
     await Promise.all([refetch(), refreshCircles(), refreshTags()]);
+    setFocusSurvivorId(survivor.ID);
+    // #2688: say what happened, naming the contact that was kept.
+    showSuccess(
+      t('bulk.mergeDone', {
+        count: total,
+        name: [survivor.firstname, survivor.lastname].filter(Boolean).join(' ').trim(),
+      }),
+    );
   };
 
   // The five list-lens controls. Rendered inline in the toolbar from `sm` up
@@ -936,7 +960,10 @@ export default function ContactsPage() {
                 </Avatar>
                 <Box sx={{ flex: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                    {/* #2536: names and contact details are data the user
+                        entered; the pseudo-locale pass must not read them as
+                        hardcoded English UI copy. */}
+                    <Typography variant="body1" data-user-content sx={{ fontWeight: 500 }}>
                       {[
                         contact.firstname,
                         contact.nickname && `"${contact.nickname}"`,
@@ -960,6 +987,7 @@ export default function ContactsPage() {
                     <Typography
                       variant="body2"
                       noWrap
+                      data-user-content
                       sx={{
                         display: { xs: 'none', md: 'block' },
                         color: 'text.secondary',
@@ -1120,7 +1148,9 @@ export default function ContactsPage() {
         <MergeContactsDialog
           open
           onClose={handleMergeClosed}
-          onMerged={handleMerged}
+          onMerged={(keeperId) =>
+            handleMerged(mergePair.a.ID === keeperId ? mergePair.a : mergePair.b, 2)
+          }
           pair={mergePair}
         />
       )}

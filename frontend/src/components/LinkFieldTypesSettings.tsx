@@ -245,7 +245,10 @@ export default function LinkFieldTypesSettings() {
                       <ListItemText
                         primary={
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                            {/* #2536: the registry is data (seeded server-side,
+                                user-editable) — "Signal" is a proper noun and a
+                                protocol template must never be translated. */}
+                            <Typography variant="body2" data-user-content sx={{ fontWeight: 500 }}>
                               {lt.name}
                             </Typography>
                             {lt.is_default && (
@@ -260,6 +263,7 @@ export default function LinkFieldTypesSettings() {
                         secondary={
                           <Typography
                             variant="caption"
+                            data-user-content={lt.protocol ? true : undefined}
                             sx={{
                               color: 'text.secondary',
                             }}

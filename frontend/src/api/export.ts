@@ -52,6 +52,29 @@ export async function exportDataAsCsv(): Promise<void> {
   await downloadFileFromResponse(response, 'mycorrhizal-export.csv');
 }
 
+// Issue #2678: the full-fidelity, re-importable account bundle (GET
+// /export/account) -- the file "Import account bundle" consumes. It carries
+// every sensitivity level, so the caller confirms with the user first. The
+// server builds the whole JSON in memory (up to the import's size cap, with
+// embedded photos), so it gets a longer timeout than a normal request. Too
+// large a bundle fails with the `bundle_export_too_large` reason code, which
+// the caller shows through getErrorMessage.
+const ACCOUNT_BUNDLE_TIMEOUT_MS = 120_000;
+
+export async function exportAccountBundle(): Promise<void> {
+  const response = await apiFetch(
+    `${API_BASE_URL}/export/account`,
+    { method: 'GET', headers: getAuthHeaders() },
+    ACCOUNT_BUNDLE_TIMEOUT_MS,
+  );
+
+  if (!response.ok) {
+    throw await parseErrorResponse(response);
+  }
+
+  await downloadFileFromResponse(response, 'mycorrhizal-account-bundle.json');
+}
+
 // --- T9: selective field export + sensitivity gating -----------------
 
 export type ExportFormat = 'vcf4' | 'vcf3' | 'jscontact';
@@ -232,9 +255,10 @@ export async function exportContact(
 
   const params = new URLSearchParams();
   params.set('vcard_uid', vcardUID);
-  sections.forEach((s) => {
-    params.append('sections', s);
-  });
+  // The backend reads ?sections= with c.Query, which returns only the first
+  // occurrence of a repeated key. Send the comma-joined shape the all-contacts
+  // export already uses; one `sections=` parameter, never one per token.
+  params.set('sections', sections.join(','));
   if (includeSensitive) {
     params.set('include_sensitive', 'true');
   }

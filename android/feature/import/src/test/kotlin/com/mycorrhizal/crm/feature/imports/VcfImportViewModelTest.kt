@@ -17,6 +17,7 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
 import io.mockk.slot
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -670,4 +671,93 @@ class VcfImportViewModelTest {
             assertEquals(setOf("x-favorite-color"), vm.uiState.value.fieldMappings.keys)
             assertEquals("text", vm.uiState.value.fieldMappings.getValue("x-favorite-color").type)
         }
+
+    // Issue #2664 / #2734: leaving discards the unconfirmed server session, fire-and-forget.
+    private fun TestScope.vcfAtReview(): VcfImportViewModel {
+        coEvery { apiClient.cancelImportSession(any()) } returns Result.success(Unit)
+        return uploaded(
+            ImportPreviewResponse(
+                sessionId = "s-vcf",
+                rows = listOf(ImportRowPreview(rowIndex = 0))
+            )
+        )
+    }
+
+    @Test
+    fun `leaving the review step cancels the server session once`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = vcfAtReview()
+
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.cancelImportSession("s-vcf") }
+        }
+
+    @Test
+    fun `leaving before any file was uploaded sends nothing`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { apiClient.cancelImportSession(any()) } returns Result.success(Unit)
+
+            VcfImportViewModel(apiClient).leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { apiClient.cancelImportSession(any()) }
+        }
+
+    @Test
+    fun `leaving after a successful import does not cancel`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = vcfAtReview()
+            coEvery { apiClient.confirmVcfImport(any()) } returns Result.success(ImportResult())
+            vm.confirm()
+            advanceUntilIdle()
+
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { apiClient.cancelImportSession(any()) }
+        }
+
+    @Test
+    fun `leaving after the server refused the confirm still cancels`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = vcfAtReview()
+            coEvery { apiClient.confirmVcfImport(any()) } returns
+                Result.failure(ApiError.Client(400, "bad"))
+            vm.confirm()
+            advanceUntilIdle()
+
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { apiClient.cancelImportSession("s-vcf") }
+        }
+
+    @Test
+    fun `leaving after a confirm that may have run (network error) does not cancel`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val vm = vcfAtReview()
+            coEvery { apiClient.confirmVcfImport(any()) } returns
+                Result.failure(java.io.IOException("reset"))
+            vm.confirm()
+            advanceUntilIdle()
+
+            vm.leaveScreen()
+            advanceUntilIdle()
+
+            coVerify(exactly = 0) { apiClient.cancelImportSession(any()) }
+        }
+
+    @Test
+    fun `a failing cancel never surfaces an error`() = runTest(mainDispatcherRule.testDispatcher) {
+        val vm = vcfAtReview()
+        coEvery { apiClient.cancelImportSession(any()) } returns
+            Result.failure(ApiError.Client(404, "gone"))
+
+        vm.cancel()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.error)
+    }
 }

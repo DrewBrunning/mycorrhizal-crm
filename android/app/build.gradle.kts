@@ -8,6 +8,23 @@ plugins {
     // dependency graph for the in-app third-party licenses screen. GMS-free,
     // so the `foss` flavor keeps its zero-GMS guarantee.
     alias(libs.plugins.about.libraries)
+    // Issue #2535: record/verify the en-XA pseudo-locale goldens. Only :app can
+    // host them: aapt2 generates pseudo resources at the app's link step, so a
+    // library module's test resource APK has no `values-en-rXA` at all. See
+    // "Screenshot goldens" in android/AGENTS.md before moving these tests.
+    alias(libs.plugins.roborazzi)
+}
+
+// Issue #2535: pseudo-locale goldens are committed next to the base goldens so
+// a review sees the changed pixels. The tests live in the variant-scoped
+// `src/testObtainiumDebug/` source set: obtainium is the superset flavor (foss
+// and play only remove features), so covering it covers the others, and the
+// pseudo resources themselves are debug-only. Running the sweep per-flavor
+// would execute identical captures and race on one golden path, so it stays
+// obtainium-debug only. `verify`/`record` write
+// `<golden>_actual`/`_compare` under build/outputs/roborazzi/.
+roborazzi {
+    outputDir.set(file("src/test/screenshots"))
 }
 
 // Issue #1880: attribution is required for the distributed APK/AAB, and the
@@ -31,7 +48,7 @@ aboutLibraries {
 // files stay single-sourced at the repository root; this task only copies them
 // into the app's assets at build time.
 val thirdPartyAttributionAssets = layout.buildDirectory.dir("generated/thirdPartyAttribution/assets")
-val copyThirdPartyAttribution by tasks.registering(Copy::class) {
+val copyThirdPartyAttribution = tasks.register<Copy>("copyThirdPartyAttribution") {
     group = "build"
     description = "Copies Go/font third-party notices into the app's assets."
     from(rootProject.file("../THIRD_PARTY_NOTICES.md")) { into("thirdparty") }
@@ -146,6 +163,15 @@ android {
         getByName("testObtainium").kotlin.directories += "src/fcmTest/kotlin"
         getByName("testPlay").kotlin.directories += "src/fcmTest/kotlin"
 
+        // Issue #2535: the en-XA pseudo-locale tests are in the AGP-default
+        // `src/testObtainiumDebug/` variant source set, deliberately not
+        // `src/test/` (all flavors) or `src/testObtainium/` (both build types).
+        // Obtainium is the superset flavor — foss and play only strip features
+        // — so its coverage extends to them; the pseudo resources themselves
+        // are debug-only (`isPseudoLocalesEnabled` above), and running the
+        // tests twice would capture the same golden paths concurrently.
+        // Do not "fix" this by widening the source set or copying the goldens.
+
         // Issue #1268 / ADR 0029 §5: the shared deep-link route vectors at
         // /testdata/deep-links (repo root) — one hand-authored file every
         // parser (Android, web, backend emitter) is tested against.
@@ -209,6 +235,14 @@ android {
             providers.gradleProperty("MYCORRHIZAL_APP_ID_SUFFIX").orNull
                 ?.takeIf { it.isNotBlank() }
                 ?.let { applicationIdSuffix = it }
+            // Issue #2535: aapt2 generates `values-en-rXA` only at the app's
+            // link step, which is what makes the pseudo-locale goldens and the
+            // hardcoded-string check possible at all. This is a test
+            // instrument, not a feature: it stays off `release` (and therefore
+            // `benchmark`, which initWith(release)) so no pseudo resources can
+            // ship in a distributed APK/AAB. Verified by grepping the release
+            // resource outputs for `en-rXA` (see the issue's PR evidence).
+            isPseudoLocalesEnabled = true
         }
 
         release {
@@ -230,8 +264,10 @@ android {
         //   - non-debuggable + `isProfileable`, so macrobenchmark can read
         //     startup and frame timing (a debuggable build is rejected /
         //     warns, and JIT/debug overhead pollutes the numbers).
-        // Never distributed — no CI job assembles it except the macrobenchmark
-        // one, and the GitHub Release APK is still the `release` variant.
+        // Never distributed — CI assembles it only for the
+        // `android-macrobenchmark` job and `android-assemble`'s
+        // release-packaging check (issue #2875); the GitHub Release APK is still
+        // the `release` variant.
         create("benchmark") {
             initWith(getByName("release"))
             signingConfig = signingConfigs.getByName("debug")
@@ -301,6 +337,10 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.androidx.compose.ui.test.junit4)
+    // Issue #2535: the en-XA pseudo-locale goldens and the hardcoded-string
+    // sweep. The capture extensions (SemanticsNodeInteraction.captureRoboImage
+    // + RobolectricDeviceQualifiers) ship in `roborazzi` itself.
+    testImplementation(libs.roborazzi)
     // Issue #679: back-stack / route-table assertions against a real
     // TestNavHostController in Robolectric.
     testImplementation(libs.androidx.navigation.testing)
@@ -396,14 +436,15 @@ val embeddedServerRequired: Boolean =
     providers.gradleProperty("MYCORRHIZAL_BUILD_EMBEDDED_SERVER").orNull == "true"
 
 val goAvailable: Boolean = runCatching {
-    val probe = ProcessBuilder("go", "version").redirectErrorStream(true).start()
-    probe.waitFor()
-    probe.exitValue() == 0
+    providers.exec {
+        commandLine("go", "version")
+        isIgnoreExitValue = true
+    }.result.get().exitValue == 0
 }.getOrDefault(false)
 
 val embeddedServerOutput = embeddedServerJniLibs.map { it.file("arm64-v8a/libmycorrhizal.so").asFile }
 
-val buildEmbeddedServer by tasks.registering(Exec::class) {
+val buildEmbeddedServer = tasks.register<Exec>("buildEmbeddedServer") {
     group = "build"
     description = "Cross-compiles the embedded Go server for Android arm64-v8a into jniLibs."
     workingDir = rootProject.file("../backend")

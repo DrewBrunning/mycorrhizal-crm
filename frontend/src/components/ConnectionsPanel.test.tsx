@@ -164,7 +164,14 @@ test('applying a relation filter sends it as a query param', async () => {
   fireEvent.change(screen.getByLabelText('Relation filter'), { target: { value: 'brother' } });
   fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
   await waitFor(() => {
-    expect(requested.some((u) => u.includes('relation=brother'))).toBe(true);
+    expect(requested.filter((u) => u.includes('relation=brother'))).toHaveLength(1);
+  });
+
+  // Re-applying the same value has no state change to drive the effect, so
+  // the handler must refresh explicitly.
+  fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
+  await waitFor(() => {
+    expect(requested.filter((u) => u.includes('relation=brother'))).toHaveLength(2);
   });
 });
 
@@ -200,22 +207,23 @@ test('changing the depth after applying a filter keeps the filter', async () => 
 
 // T114: more than five chains render only five by default, with a "View all"
 // toggle revealing the rest (the timeline's T78 pattern).
+const manyChains = (from: number, to: number) =>
+  Array.from({ length: to - from + 1 }, (_, i) => ({
+    target_id: from + i,
+    target_vcard_uid: `c${from + i}-uid`,
+    target_name: `Contact ${from + i}`,
+    depth: 1,
+    steps: [
+      {
+        contact_id: from + i,
+        contact_vcard_uid: `c${from + i}-uid`,
+        contact_name: `Contact ${from + i}`,
+        relation: 'sibling_of',
+      },
+    ],
+  }));
+
 test('previews the first five chains and reveals the rest on demand', async () => {
-  const manyChains = (from: number, to: number) =>
-    Array.from({ length: to - from + 1 }, (_, i) => ({
-      target_id: from + i,
-      target_vcard_uid: `c${from + i}-uid`,
-      target_name: `Contact ${from + i}`,
-      depth: 1,
-      steps: [
-        {
-          contact_id: from + i,
-          contact_vcard_uid: `c${from + i}-uid`,
-          contact_name: `Contact ${from + i}`,
-          relation: 'sibling_of',
-        },
-      ],
-    }));
   mockGraph('/graph/connections?', () => ({
     from_vcard_uid: 'john-uid',
     from_name: 'John',
@@ -242,4 +250,51 @@ test('previews the first five chains and reveals the rest on demand', async () =
   });
   expect(screen.getAllByText('Contact 7').length).toBeGreaterThan(0);
   expect(screen.getByRole('button', { name: 'Show less' })).toBeInTheDocument();
+});
+
+// The preview re-collapses on a new *query*, not merely on a response object
+// landing (see the collapse effect's comment): an expansion the user has
+// already made must survive a result set for a query they didn't change,
+// and a depth change must still start collapsed again.
+test('a depth change re-collapses the expanded preview', async () => {
+  const requested: string[] = [];
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.includes('/graph/connections?')) {
+        requested.push(url);
+        return {
+          ok: true,
+          json: async () => ({
+            from_vcard_uid: 'john-uid',
+            from_name: 'John',
+            depth: 1,
+            chains: manyChains(1, 7),
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  renderPanel();
+
+  await screen.findByRole('button', { name: 'View all' });
+  fireEvent.click(screen.getByRole('button', { name: 'View all' }));
+  await waitFor(() => {
+    expect(screen.getAllByText('Contact 6').length).toBeGreaterThan(0);
+  });
+
+  fireEvent.mouseDown(screen.getByLabelText('Depth'));
+  fireEvent.click(screen.getByText('2'));
+
+  // Assert on the depth=2 result set, not on the pre-load render: the collapse
+  // is synchronous with the depth change, so waiting for the old request alone
+  // would let the assertion pass before the new list ever arrived.
+  await waitFor(() => {
+    expect(requested.some((u) => u.includes('depth=2'))).toBe(true);
+    expect(screen.queryByRole('progressbar')).toBeNull();
+  });
+  expect(screen.getByRole('button', { name: 'View all' })).toBeInTheDocument();
+  expect(screen.queryAllByText('Contact 6').length).toBe(0);
+  expect(screen.queryAllByText('Contact 7').length).toBe(0);
 });

@@ -44,6 +44,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { useNotes } from './hooks/useNotes';
 import { useRecordConflict } from './hooks/useRecordConflict';
 import { handleError } from './utils/errorHandler';
+import { itemLabel } from './utils/itemLabel';
 import { calendarDateOnly } from './utils/localDate';
 
 const NotesPage: React.FC = () => {
@@ -63,9 +64,11 @@ const NotesPage: React.FC = () => {
   const [sharingNote, setSharingNote] = useState<Note | null>(null);
   const NOTES_PER_PAGE = 25;
 
-  // T17: cursor pagination — the inbox pages by (updated_at, id) and a "load
-  // more" button appends the next_cursor page. There is no page number or
-  // exact total anymore.
+  // T17: cursor pagination — a "load more" button appends the next_cursor page.
+  // There is no page number or exact total anymore. Each note shows its own date,
+  // so the list pages by (date, id) (#2744; the default pages by last edit, which
+  // put an old note someone just edited at the top). The sort never changes for
+  // this list, so a cursor is always used with the sort that issued it.
   const notesParams = useMemo(
     () => ({
       limit: NOTES_PER_PAGE,
@@ -74,6 +77,7 @@ const NotesPage: React.FC = () => {
       toDate: toDate || undefined,
       scope,
       includeContacts: true,
+      sort: 'date' as const,
     }),
     [debouncedSearch, fromDate, toDate, scope],
   );
@@ -241,7 +245,7 @@ const NotesPage: React.FC = () => {
             <IconButton
               size="small"
               aria-describedby={infoPopoverId}
-              aria-label={t('common.info')}
+              aria-label={t('common.infoAbout', { name: t('notes.title') })}
               onClick={handleInfoClick}
             >
               <InfoOutlinedIcon fontSize="small" />
@@ -345,7 +349,25 @@ const NotesPage: React.FC = () => {
           </Typography>
         </Paper>
       ) : (
-        <Timeline position="right">
+        <Timeline
+          position="right"
+          sx={{
+            // #2704: side by side, the date column left the note card only
+            // ~84px at 320px, so its text had nowhere to go. On phones stack
+            // the date above the card and drop the marker rail instead.
+            '@media (max-width:599.95px)': {
+              '& .MuiTimelineItem-root': { flexDirection: 'column', minHeight: 0 },
+              '& .MuiTimelineOppositeContent-root': {
+                flex: 'none',
+                marginRight: 0,
+                paddingBottom: 0,
+                textAlign: 'left',
+              },
+              '& .MuiTimelineSeparator-root': { display: 'none' },
+              '& .MuiTimelineContent-root': { flex: 'none', width: '100%' },
+            },
+          }}
+        >
           {notes.map((note, index) => (
             <TimelineItem key={note.ID}>
               <TimelineOppositeContent
@@ -364,7 +386,7 @@ const NotesPage: React.FC = () => {
                 </TimelineDot>
                 {index < notes.length - 1 && <TimelineConnector />}
               </TimelineSeparator>
-              <TimelineContent sx={{ flex: 0.8 }}>
+              <TimelineContent sx={{ flex: 0.8, minWidth: 0 }}>
                 <Paper
                   elevation={2}
                   sx={{
@@ -384,7 +406,7 @@ const NotesPage: React.FC = () => {
                         alignItems: 'flex-start',
                       }}
                     >
-                      <Box sx={{ flex: 1 }}>
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
                         <MarkdownText text={note.content} />
                         <ImageGallery
                           ownerId={note.ID}
@@ -402,7 +424,9 @@ const NotesPage: React.FC = () => {
                           <IconButton
                             size="small"
                             onClick={() => setSharingNote(note)}
-                            aria-label={t('standingShares.shareNote')}
+                            aria-label={t('standingShares.shareNoteNamed', {
+                              name: itemLabel(note.content),
+                            })}
                           >
                             <ShareIcon fontSize="small" />
                           </IconButton>
@@ -410,7 +434,9 @@ const NotesPage: React.FC = () => {
                         <IconButton
                           size="small"
                           onClick={() => handleEditClick(note)}
-                          aria-label={t('contactDetail.editNote')}
+                          aria-label={t('contactDetail.editNoteNamed', {
+                            name: itemLabel(note.content),
+                          })}
                         >
                           <EditIcon fontSize="small" />
                         </IconButton>
@@ -425,6 +451,16 @@ const NotesPage: React.FC = () => {
                           component={RouterLink}
                           to={`/contacts/${note.contact_id}`}
                           clickable
+                          // Issue #2704: a Chip never wraps, so a long name made the
+                          // card (and the page) wider than a phone. Let it wrap.
+                          sx={{
+                            maxWidth: '100%',
+                            height: 'auto',
+                            '& .MuiChip-label': {
+                              whiteSpace: 'normal',
+                              overflowWrap: 'anywhere',
+                            },
+                          }}
                         />
                       </Box>
                     )}

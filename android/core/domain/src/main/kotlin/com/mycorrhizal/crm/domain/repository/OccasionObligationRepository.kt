@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.domain.repository
 
 import com.mycorrhizal.crm.model.network.GiftShoppingItem
+import com.mycorrhizal.crm.model.network.OccasionCardListSummary
 import com.mycorrhizal.crm.model.network.OccasionObligation
 import com.mycorrhizal.crm.model.network.OccasionObligationInput
 
@@ -24,4 +25,7 @@ interface OccasionObligationRepository {
 
     /** The card-list CSV for obligations of [kind]; above-normal addresses are left out. */
     suspend fun cardListCsv(kind: String): Result<ByteArray>
+
+    /** Counts-only summary of who the card list holds and skips (issue #2786). */
+    suspend fun cardListSummary(kind: String): Result<OccasionCardListSummary>
 }

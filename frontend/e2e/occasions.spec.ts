@@ -78,7 +78,10 @@ test.describe('Occasions', () => {
       // --- deactivating the obligation takes it off the list ---
       await page.goto(`/contacts/${contact.ID}`);
       await waitForLoading(page);
-      await page.locator('#occasions').getByRole('button', { name: 'Edit', exact: true }).click();
+      await page
+        .locator('#occasions')
+        .getByRole('button', { name: /^Edit / })
+        .click();
       const edit = page.getByRole('dialog', { name: 'Edit occasion' });
       await edit.getByRole('switch', { name: 'Active' }).uncheck();
       await edit.getByRole('button', { name: 'Save' }).click();
@@ -96,7 +99,9 @@ test.describe('Occasions', () => {
       await bad.getByRole('combobox', { name: 'Month' }).click();
       await page.getByRole('option', { name: 'January', exact: true }).click();
       await bad.getByRole('button', { name: 'Save' }).click();
-      await expect(bad.getByText('Set both a month and a day, or leave both unset.')).toBeVisible();
+      await expect(bad.getByRole('combobox', { name: 'Day' })).toHaveAccessibleDescription(
+        'An occasion anchor date requires both a month and a day',
+      );
       await bad.getByRole('button', { name: 'Cancel' }).click();
 
       // --- deleting the contact takes its obligation with it ---

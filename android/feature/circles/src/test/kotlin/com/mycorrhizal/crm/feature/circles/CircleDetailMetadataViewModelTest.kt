@@ -307,6 +307,38 @@ class CircleDetailMetadataViewModelTest {
             assertFalse(vm.uiState.value.isSaving)
         }
 
+    // Issue #2629: only a failed load sets loadError (the screen's ErrorState + Retry); a failed
+    // update stays a toast-level `error`, and a reload clears it.
+    @Test
+    fun `a failed load sets loadError and a mutation failure does not`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val offline = ApiError.Server(503, "down")
+            coEvery { circleRepository.getWithMembers("c1") } returnsMany listOf(
+                Result.failure(offline),
+                Result.success(
+                    CircleDetail(
+                        circle = Circle(id = "c1", name = "Friends"),
+                        members = emptyList()
+                    )
+                )
+            )
+            coEvery { circleRepository.update(any(), any(), any(), any()) } returns
+                Result.failure(ApiError.Server(500, "boom"))
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            assertEquals(offline, vm.uiState.value.loadError)
+
+            vm.load()
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.loadError)
+
+            vm.update("Friends", "d", "red") {}
+            advanceUntilIdle()
+            assertNull(vm.uiState.value.loadError)
+            assertEquals("boom", vm.uiState.value.error?.message)
+        }
+
     @Test
     fun `a slow superseded first-page response cannot overwrite a newer reload`() =
         runTest(mainDispatcherRule.testDispatcher) {

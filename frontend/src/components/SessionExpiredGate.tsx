@@ -18,7 +18,7 @@ import {
   onSessionSignInRequest,
   type SessionExpiryMode,
 } from '../api/sessionExpiry';
-import { API_BASE_URL, login2FA, loginUser, logoutAndRedirect } from '../auth';
+import { login2FA, loginUser, logoutAndRedirect, startOidcLogin } from '../auth';
 import { useErrorAlertFocus } from '../hooks/useErrorAlertFocus';
 import { useOIDCConfig } from '../hooks/useOIDCConfig';
 import AppDialog from './AppDialog';
@@ -168,6 +168,7 @@ export default function SessionExpiredGate() {
                 <Stack spacing={2}>
                   <TextField
                     label={t('login.identifier')}
+                    autoComplete="username"
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
                     required
@@ -182,6 +183,7 @@ export default function SessionExpiredGate() {
                   />
                   <TextField
                     label={t('login.password')}
+                    autoComplete="current-password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -208,7 +210,7 @@ export default function SessionExpiredGate() {
                       <Button
                         variant="outlined"
                         onClick={() => {
-                          window.location.href = `${API_BASE_URL}/auth/oidc/login`;
+                          startOidcLogin();
                         }}
                       >
                         {t('sessionExpired.ssoButton', { provider: oidcConfig.provider_name })}

@@ -139,12 +139,14 @@ export default function RelationshipSuggestionsInbox({
         </Alert>
       )}
       {loading && (
-        <Alert severity="info" sx={{ mb: 1 }}>
+        <Alert severity="info" role="status" sx={{ mb: 1 }}>
           {t('settings.data.propose.loadingSuggestions')}
         </Alert>
       )}
       {edges.length === 0 && !loading && (
-        <Alert severity="info">{t('settings.data.propose.noRelationshipSuggestions')}</Alert>
+        <Alert severity="info" role="status">
+          {t('settings.data.propose.noRelationshipSuggestions')}
+        </Alert>
       )}
       <Stack spacing={1}>
         {edges.map((edge) => {
@@ -177,7 +179,9 @@ export default function RelationshipSuggestionsInbox({
                     color="success"
                     disabled={busy}
                     onClick={() => void handleAccept(edge.id)}
-                    aria-label={t('relationships.accept')}
+                    aria-label={t('relationships.acceptNamed', {
+                      name: `${nameFor(edge.source_id)} · ${label} · ${nameFor(edge.target_id)}`,
+                    })}
                   >
                     <CheckIcon fontSize="small" />
                   </IconButton>
@@ -186,7 +190,9 @@ export default function RelationshipSuggestionsInbox({
                     color="error"
                     disabled={busy}
                     onClick={() => void handleReject(edge.id)}
-                    aria-label={t('relationships.reject')}
+                    aria-label={t('relationships.rejectNamed', {
+                      name: `${nameFor(edge.source_id)} · ${label} · ${nameFor(edge.target_id)}`,
+                    })}
                   >
                     <CloseIcon fontSize="small" />
                   </IconButton>

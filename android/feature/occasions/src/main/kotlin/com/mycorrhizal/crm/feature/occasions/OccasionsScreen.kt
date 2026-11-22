@@ -63,9 +63,11 @@ import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.localizedMessage
 import java.time.Instant
@@ -144,6 +146,7 @@ fun OccasionsScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
+        val orderedEvents = remember(state.events) { orderOccasionEvents(state.events) }
         Column(Modifier.fillMaxSize().padding(padding)) {
             Text(
                 text = stringResource(R.string.occasions_description),
@@ -154,6 +157,11 @@ fun OccasionsScreen(
             Box(Modifier.fillMaxWidth().weight(1f)) {
                 when {
                     state.errorRes != null -> CenteredMessage(stringResource(state.errorRes!!))
+
+                    state.loadError != null && state.events.isEmpty() ->
+                        state.loadError?.let { error ->
+                            ErrorState(error = error, onRetry = viewModel::load)
+                        }
 
                     state.isLoading && state.events.isEmpty() -> CenteredMessage(
                         stringResource(R.string.a11y_state_loading)
@@ -179,7 +187,7 @@ fun OccasionsScreen(
                                 )
                             }
                         } else {
-                            items(state.events, key = { it.id }) { event ->
+                            items(orderedEvents, key = { it.id }) { event ->
                                 OccasionEventRow(
                                     event = event,
                                     onOpen = { onOpenAttendees(event.id) },
@@ -297,13 +305,19 @@ private fun OccasionEventRow(
                 Icon(Icons.Outlined.Group, contentDescription = null)
                 Text(stringResource(R.string.occasions_attendees))
             }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.action_edit))
+            AccessibleIconButton(onClick = onEdit) {
+                Icon(
+                    Icons.Outlined.Edit,
+                    contentDescription = stringResource(R.string.entities_edit_named, event.title)
+                )
             }
-            IconButton(onClick = onDelete) {
+            AccessibleIconButton(onClick = onDelete) {
                 Icon(
                     Icons.Outlined.Delete,
-                    contentDescription = stringResource(R.string.action_delete)
+                    contentDescription = stringResource(
+                        R.string.entities_delete_named,
+                        event.title
+                    )
                 )
             }
         }
@@ -580,6 +594,26 @@ private fun InstantPickerDialog(
             }
         )
     }
+}
+
+/**
+ * Issue #2628: upcoming events first, soonest first; then past events, most recent first.
+ * An event is upcoming until it has ended (its end, else its start, is not before [now]); a start
+ * that does not parse sorts last. The sort is stable, so equal instants keep the server's order.
+ */
+internal fun orderOccasionEvents(
+    events: List<OccasionEvent>,
+    now: Instant = Instant.now()
+): List<OccasionEvent> {
+    fun instant(value: String?) = value?.let { runCatching { Instant.parse(it) }.getOrNull() }
+    val (upcoming, rest) = events.partition { event ->
+        val end = instant(event.endsAt) ?: instant(event.startsAt)
+        end != null && !end.isBefore(now)
+    }
+    val (past, unparseable) = rest.partition { instant(it.startsAt) != null }
+    return upcoming.sortedBy { instant(it.startsAt) ?: Instant.MAX } +
+        past.sortedByDescending { instant(it.startsAt) } +
+        unparseable
 }
 
 /**

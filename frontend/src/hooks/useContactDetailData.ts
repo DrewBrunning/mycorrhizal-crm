@@ -41,7 +41,8 @@ export async function fetchContactDetailCore(id: string): Promise<ContactDetailC
   let auxFetchFailed = false;
   const [record, notesData, activitiesData, completionsData, user] = await Promise.all([
     getContactRecord(id),
-    getContactNotes(id).catch((err: unknown) => {
+    // #2797: the timeline shows the newest notes by their own date, not the last-edited ones.
+    getContactNotes(id, { sort: 'date' }).catch((err: unknown) => {
       console.error('Error fetching contact notes:', err);
       auxFetchFailed = true;
       // Stryker disable next-line ObjectLiteral: the empty fallback and an empty object both normalize to [] via the `|| []` below
@@ -140,7 +141,7 @@ export function useContactDetailData(id: string | undefined) {
     if (!id) return;
     try {
       const [notesData, activitiesData, completionsData] = await Promise.all([
-        getContactNotes(id),
+        getContactNotes(id, { sort: 'date' }),
         getContactActivities(id),
         getCompletionsForContact(parseInt(id, 10)),
       ]);

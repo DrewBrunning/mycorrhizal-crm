@@ -164,19 +164,20 @@ test('unchecking a section removes it from what is shared', async () => {
   fireEvent.mouseDown(await screen.findByLabelText('Recipient'));
   fireEvent.click(await screen.findByText('bob'));
 
-  const section = EXPORT_FIELD_SECTIONS.find((s) => !s.sensitive);
-  if (!section) throw new Error('no non-sensitive section');
-  const box = screen.getAllByRole('checkbox').find((c) => !c.hasAttribute('disabled'));
-  if (!box) throw new Error('no enabled checkbox');
-  const wasChecked = (box as HTMLInputElement).checked;
+  const section = EXPORT_FIELD_SECTIONS.find((s) => s.token === 'emails');
+  if (!section) throw new Error('emails section missing');
+  const expectedSections = EXPORT_FIELD_SECTIONS.filter((s) => !s.sensitive)
+    .map((s) => s.token)
+    .filter((token) => token !== section.token);
+  const box = screen.getByRole('checkbox', { name: /Emails/i });
+  expect((box as HTMLInputElement).checked).toBe(true);
   fireEvent.click(box);
-  expect((box as HTMLInputElement).checked).toBe(!wasChecked);
-  fireEvent.click(box);
-  expect((box as HTMLInputElement).checked).toBe(wasChecked);
+  expect((box as HTMLInputElement).checked).toBe(false);
 
   fireEvent.click(screen.getByRole('button', { name: 'Share' }));
   await waitFor(() => expect(onClose).toHaveBeenCalled());
-  expect(sentBody?.sections).toBeDefined();
+  expect(sentBody?.sections).toEqual(expectedSections);
+  expect(sentBody?.sections).not.toContain(section.token);
 });
 
 test('a failed share shows the error and keeps the dialog open', async () => {
@@ -196,4 +197,52 @@ test('a failed share shows the error and keeps the dialog open', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Share' }));
   expect(await screen.findByText(/share refused/)).toBeInTheDocument();
   expect(onClose).not.toHaveBeenCalled();
+});
+
+// #2716: touch targets of at least 44 px. jsdom has no layout, so assert the
+// MUI-computed min-height on the label row that wraps each control.
+test('the mode radios and the one-time section checkboxes are at least 44 px tall (#2716)', async () => {
+  mockFetchByUrl({ '/users/directory': directoryResponse });
+  renderDialog();
+  await screen.findByLabelText('Recipient');
+  const controls = [...screen.getAllByRole('radio'), ...screen.getAllByRole('checkbox')];
+  expect(screen.getAllByRole('radio')).toHaveLength(2);
+  expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(3);
+  for (const control of controls) {
+    expect(getComputedStyle(control.closest('label') as HTMLElement).minHeight).toBe('44px');
+  }
+});
+
+// #2787 / #2658: SHARE_DIRECTORY_MODE=search. The directory returns nothing for a query
+// shorter than 3 characters; the picker says so, asks the server as the user types, and the
+// share still goes to the chosen user.
+test('search mode: hints, queries the typed username, and shares with the match (#2787)', async () => {
+  const urls: string[] = [];
+  let sentBody: Record<string, unknown> | undefined;
+  mockFetchByUrl({
+    '/users/directory': (url) => {
+      urls.push(url);
+      const q = new URL(url, 'http://test.invalid').searchParams.get('q') ?? '';
+      return { users: q.length >= 3 ? [{ id: 2, username: 'bob' }] : [] };
+    },
+    '/contact-shares': (_url, init) => {
+      sentBody = JSON.parse(init?.body as string);
+      return { message: 'Share created', contact_share: { id: 'share-1' } };
+    },
+  });
+  const onClose = vi.fn();
+  renderDialog({ onClose });
+
+  expect(await screen.findByText('Type at least 3 letters of the username')).toBeInTheDocument();
+  const input = screen.getByRole('combobox', { name: 'Recipient' });
+  fireEvent.focus(input);
+  fireEvent.change(input, { target: { value: 'bob' } });
+  fireEvent.click(await screen.findByRole('option', { name: 'bob' }));
+  expect(urls.some((u) => new URL(u, 'http://test.invalid').searchParams.get('q') === 'bob')).toBe(
+    true,
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Share' }));
+  await waitFor(() => expect(onClose).toHaveBeenCalled());
+  expect(sentBody?.to_user_id).toBe(2);
 });

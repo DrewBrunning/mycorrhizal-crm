@@ -16,6 +16,7 @@ import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
 import com.mycorrhizal.crm.model.network.ThinContactInput
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.foldApiError
+import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -40,6 +41,8 @@ data class RelationshipsUiState(
     val contactSearchResults: List<ContactSummary> = emptyList(),
     val contactSearchLoading: Boolean = false,
     val error: ApiError? = null,
+    /** Issue #2629: the last edge load failed (cleared when a load starts); shown with Retry. */
+    val loadError: ApiError? = null,
     @StringRes val errorRes: Int? = null
 ) {
     val confirmedEdges: List<RelationshipEdge>
@@ -82,11 +85,21 @@ class RelationshipsViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null, errorRes = null) }
+            _uiState.update {
+                it.copy(isLoading = true, error = null, errorRes = null, loadError = null)
+            }
             // The graph invariants use the contact's VCardUID, so resolve it
             // from the record before listing edges. vcardUid prefers the
             // top-level uid (the canonical field; issue #693).
-            val uid = contactRepository.getContact(contactId).getOrNull()?.vcardUid
+            val contact = contactRepository.getContact(contactId)
+            // A FAILED fetch (offline, 404, server error) says nothing about the UID: show the
+            // real error with Retry. "No VCard UID" is only for a contact that loaded without one.
+            contact.exceptionOrNull()?.let { failure ->
+                val error = failure.toApiError()
+                _uiState.update { it.copy(isLoading = false, error = error, loadError = error) }
+                return@launch
+            }
+            val uid = contact.getOrNull()?.vcardUid
             if (uid.isNullOrBlank()) {
                 _uiState.update {
                     it.copy(
@@ -104,7 +117,8 @@ class RelationshipsViewModel @Inject constructor(
                     resolveOtherParties(edges, uid)
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+                    // Issue #2629: also the screen's ErrorState (with Retry) when nothing loaded.
+                    _uiState.update { it.copy(isLoading = false, error = error, loadError = error) }
                 }
             )
         }

@@ -55,7 +55,16 @@ class NavDestinationsTest {
         fun routes(group: NavGroup) = navDestinationsIn(group).map { it.route }
 
         assertEquals(
-            listOf("home", "contacts", "circles", "tags", "households", "network", "map"),
+            listOf(
+                "home",
+                "contacts",
+                "circles",
+                "tags",
+                "households",
+                "entities",
+                "network",
+                "map"
+            ),
             routes(NavGroup.PEOPLE)
         )
         assertEquals(
@@ -97,6 +106,7 @@ class NavDestinationsTest {
         "circles" to R.string.circles_title,
         "tags" to R.string.tags_title,
         "households" to R.string.households_title,
+        "entities" to R.string.shared_entities_title,
         "network" to R.string.nav_network,
         "map" to R.string.nav_map,
         "activities" to R.string.nav_activities,
@@ -166,10 +176,8 @@ class NavDestinationsTest {
         assertFalse(isSelected(null, contacts))
         assertTrue(isSelected("settings/appearance", settings))
         assertTrue(isSelected("webhooks", settings))
-        // Issue #2302: the entity list and detail are reached from Settings.
-        assertTrue(isSelected("entities", settings))
-        assertTrue(isSelected("entities/e1", settings))
-        assertTrue(isSelected("entities/from-contacts", settings))
+        // Issue #2649: the entity list has its own drawer entry now (see EntitiesNavEntryTest).
+        assertFalse(isSelected("entities", settings))
         assertTrue(isSelected("admin/users", settings))
         assertTrue(isSelected("data/custom-export", data))
         assertFalse(isSelected("data", settings))

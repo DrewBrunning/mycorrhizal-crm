@@ -48,7 +48,7 @@ export default function SearchNotesActivities({
   return (
     <Box sx={{ mt: 2 }}>
       {resolvedRelation && (
-        <Alert severity="info" sx={{ py: 0, mb: 1 }}>
+        <Alert severity="info" role="status" sx={{ py: 0, mb: 1 }}>
           {t('contacts.searchResolvedRelation', {
             relation: t(`relationships.types.${resolvedRelation}`, resolvedRelation),
           })}

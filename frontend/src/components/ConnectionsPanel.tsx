@@ -50,8 +50,8 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
   const [appliedRelation, setAppliedRelation] = useState('');
   // T114: the panel previews the first 5 chains and reveals the rest on
   // demand (the timeline's T78 pattern) -- a deep network can otherwise
-  // render dozens of cards here. Re-collapses whenever a new result set
-  // lands (depth/relation change), so a fresh query never re-opens a long
+  // render dozens of cards here. Re-collapses whenever the query changes
+  // (depth/relation/anchor contact), so a fresh query never re-opens a long
   // list the user didn't ask to expand.
   const [showAll, setShowAll] = useState(false);
 
@@ -90,14 +90,31 @@ export default function ConnectionsPanel({ contactUid }: ConnectionsPanelProps) 
     void refresh({ depth, relation: appliedRelation.trim() || undefined, overrideUid: contactUid });
   }, [contactUid, depth, refresh, appliedRelation, visible]);
 
-  // T114: a new result set re-collapses the preview.
+  // T114: a new *query* re-collapses the preview -- the timeline's T78
+  // component (SearchNotesActivities) is keyed on `query` for the same
+  // reason. Keyed on the query inputs, not on the `connections` object: a
+  // response object arriving for an unchanged query is not a new result set
+  // the user asked for, and resetting on it silently collapses a list they
+  // had just expanded. Keying it on `connections` also made
+  // 'previews the first five chains and reveals the rest on demand'
+  // intermittently fail (2026-11-20 nightly, #2858/#2857): RTL's waitFor
+  // returns on the data commit's DOM mutation, which lands *before* React
+  // flushes that commit's passive effects, so the click could queue its
+  // toggle ahead of this effect's `setShowAll(false)` -- and the collapse
+  // then wiped the expansion the test had just made.
   useEffect(() => {
     setShowAll(false);
-  }, [connections]);
+  }, [contactUid, depth, appliedRelation]);
 
   const handleApplyRelation = () => {
-    setAppliedRelation(relation.trim());
-    void refresh({ depth, relation: relation.trim() || undefined, overrideUid: contactUid });
+    const next = relation.trim();
+    if (next === appliedRelation) {
+      // The effect below only runs when appliedRelation changes; an explicit
+      // re-apply of the same value still needs its refresh.
+      void refresh({ depth, relation: next || undefined, overrideUid: contactUid });
+      return;
+    }
+    setAppliedRelation(next);
   };
 
   const renderChain = (chain: GraphChain) => (

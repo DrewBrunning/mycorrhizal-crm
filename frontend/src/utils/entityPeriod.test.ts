@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next';
 import { describe, expect, test } from 'vitest';
 import { formatLinkPeriod, isLinkCurrent, periodFromYears, yearsFromPeriod } from './entityPeriod';
 
@@ -49,7 +50,9 @@ describe('years <-> period', () => {
 });
 
 describe('formatLinkPeriod', () => {
-  const t = (k: string, o?: Record<string, unknown>) => `${k}:${JSON.stringify(o ?? {})}`;
+  // i18next 27 brands TFunction, so a hand-written stub needs the cast.
+  const t = ((k: string, o?: Record<string, unknown>) =>
+    `${k}:${JSON.stringify(o ?? {})}`) as unknown as TFunction;
   test('range, since, until and none', () => {
     expect(formatLinkPeriod({ start: { year: 2019 }, end: { year: 2021 } }, t)).toBe('2019 – 2021');
     expect(formatLinkPeriod({ start: { year: 2019 } }, t)).toContain('since');

@@ -182,6 +182,37 @@ class DeviceGrantManagerTest {
     }
 
     @Test
+    fun `remove enrollment reports a revoke-all failure when the grant id is missing`() = runTest {
+        val h = Harness()
+        coEvery { h.storage.loadGrantId("profile-1") } returns null
+        coEvery { h.api.revokeAllDeviceGrants() } returns
+            Result.failure(IllegalStateException("offline"))
+
+        val result = h.manager.removeEnrollment()
+
+        assertTrue(result.isFailure)
+    }
+
+    @Test
+    fun `revokeAllDeviceGrants maps the count response to Unit`() = runTest {
+        val h = Harness()
+        coEvery { h.api.revokeAllDeviceGrants() } returns Result.success(
+            com.mycorrhizal.crm.model.network.RevokeAllDeviceGrantsResponse(3)
+        )
+
+        assertTrue(h.manager.revokeAllDeviceGrants().isSuccess)
+    }
+
+    @Test
+    fun `revokeAllDeviceGrants propagates a server failure`() = runTest {
+        val h = Harness()
+        coEvery { h.api.revokeAllDeviceGrants() } returns
+            Result.failure(IllegalStateException("offline"))
+
+        assertTrue(h.manager.revokeAllDeviceGrants().isFailure)
+    }
+
+    @Test
     fun `createDeviceGrant maps the one-time token to the domain type`() = runTest {
         val h = Harness()
         coEvery { h.api.createDeviceGrant("Tablet") } returns

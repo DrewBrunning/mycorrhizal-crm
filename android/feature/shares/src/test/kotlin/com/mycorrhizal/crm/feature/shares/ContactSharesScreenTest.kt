@@ -4,6 +4,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -20,6 +21,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -79,6 +81,45 @@ class ContactSharesScreenTest {
         composeTestRule.onNodeWithText("From dana").assertIsDisplayed()
         composeTestRule.onNodeWithText("Accept").assertIsDisplayed()
         composeTestRule.onNodeWithText("Decline").assertIsDisplayed()
+    }
+
+    @Test
+    fun `Load more appends the next page and clears the affordance`() {
+        val older = incomingShare.copy(id = "s2", contactDisplayName = "Older Share")
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                ContactSharesPage(contactShares = listOf(incomingShare), nextCursor = "c1")
+            ),
+            Result.success(ContactSharesPage(contactShares = listOf(older), nextCursor = ""))
+        )
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+        screen()
+
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Older Share").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Load more").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed Load more shows the reason and keeps the loaded rows`() {
+        coEvery { repository.listIncoming(any(), any()) } returnsMany listOf(
+            Result.success(
+                ContactSharesPage(contactShares = listOf(incomingShare), nextCursor = "c1")
+            ),
+            Result.failure(ApiError.Client(500, "load-more-boom"))
+        )
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+        screen()
+
+        composeTestRule.onNodeWithText("Load more").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("load-more-boom").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
     }
 
     @Test
@@ -193,7 +234,7 @@ class ContactSharesScreenTest {
 
         screen()
 
-        composeTestRule.onNodeWithText("Outgoing").performClick()
+        composeTestRule.onNodeWithText("Copies sent").performClick()
 
         composeTestRule.onNodeWithText("No outgoing shares yet").assertIsDisplayed()
         composeTestRule.onNodeWithText("No incoming shares yet").assertDoesNotExist()
@@ -302,5 +343,92 @@ class ContactSharesScreenTest {
         composeTestRule.onNodeWithText("Shared with me").performClick()
         composeTestRule.onNodeWithText("Shared by me").performClick()
         assertTrue(withMe == 1 && byMe == 1)
+    }
+
+    // --- Issue #2615: a waiting standing share must not hide behind the empty legacy tab ---
+
+    private fun screenWithPending(count: Int, withMe: () -> Unit = {}) {
+        val vm = ContactSharesViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.mycorrhizal.crm.ui.LocalPendingShareGrantCount provides count
+                ) {
+                    ContactSharesScreen(
+                        onMenuClick = {},
+                        onOpenSharedWithMe = withMe,
+                        onOpenSharedByMe = {},
+                        viewModel = vm
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
+    fun `a banner announces waiting standing shares and its review action opens them`() {
+        stubEmpty()
+        var withMe = 0
+        screenWithPending(1) { withMe++ }
+
+        composeTestRule.onNodeWithText("1 share waiting for you").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Review").performClick()
+        assertEquals(1, withMe)
+    }
+
+    @Test
+    fun `no banner when nothing is waiting`() {
+        stubEmpty()
+        screenWithPending(0)
+        composeTestRule.onNodeWithText("Review").assertDoesNotExist()
+    }
+
+    @Test
+    fun `no banner when the standing-share links are not wired`() {
+        stubEmpty()
+        val vm = ContactSharesViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.mycorrhizal.crm.ui.LocalPendingShareGrantCount provides 3
+                ) { ContactSharesScreen(onMenuClick = {}, viewModel = vm) }
+            }
+        }
+        composeTestRule.onNodeWithText("Review").assertDoesNotExist()
+    }
+
+    @Test
+    fun `the legacy tabs are named as one-time copies`() {
+        stubEmpty()
+        screen()
+        composeTestRule.onNodeWithText("Copies received").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Copies sent").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Incoming").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Outgoing").assertDoesNotExist()
+    }
+
+    @Test
+    fun `a failed load with nothing to show offers Retry that reloads the shares`() {
+        var offline = true
+        coEvery { repository.listIncoming(any(), any()) } answers {
+            if (offline) {
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            } else {
+                Result.success(ContactSharesPage(contactShares = listOf(incomingShare)))
+            }
+        }
+        coEvery { repository.listOutgoing(any(), any()) } returns
+            Result.success(ContactSharesPage())
+
+        screen()
+
+        composeTestRule.onAllNodesWithText(
+            "Can't reach your server. Check your connection and try again."
+        ).onFirst().assertIsDisplayed()
+        offline = false
+        composeTestRule.onNodeWithText("Retry").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("Dana White").assertIsDisplayed()
     }
 }

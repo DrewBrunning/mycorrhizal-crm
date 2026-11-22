@@ -7,6 +7,8 @@ import com.mycorrhizal.crm.domain.repository.RelationshipEdgeRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
 import com.mycorrhizal.crm.model.network.ContactSummary
+import com.mycorrhizal.crm.model.network.ErrorReason
+import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.Name
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.RelationshipEdge
@@ -133,6 +135,34 @@ class RelationshipsViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
+        assertEquals("boom", vm.uiState.value.error?.message)
+    }
+
+    // Issue #2629: only a failed edge load sets loadError (the screen's ErrorState + Retry); a
+    // failed mutation stays a toast-level `error`, and a reload clears it.
+    @Test
+    fun `a failed edge load sets loadError and a mutation failure does not`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubContact()
+        val offline = ApiError.Server(503, "down")
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returnsMany listOf(
+            Result.failure(offline),
+            Result.success(emptyList())
+        )
+        coEvery { edgeRepository.delete("e1") } returns Result.failure(ApiError.Client(500, "boom"))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertEquals(offline, vm.uiState.value.loadError)
+
+        vm.load()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.loadError)
+
+        vm.delete("e1")
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.loadError)
         assertEquals("boom", vm.uiState.value.error?.message)
     }
 
@@ -613,22 +643,52 @@ class RelationshipsViewModelTest {
 
     // --- load edge cases ---
 
+    // The previous test here pinned "no vCard UID" for a FAILED contact fetch, which was wrong: a
+    // 404/offline/server failure says nothing about the contact's UID, and hid the real reason and
+    // the Retry. A failed fetch is now the load error (reason-coded, localized, retryable).
     @Test
-    fun `load sets the no-vcard-uid error when the contact fetch fails`() = runTest(
+    fun `a failed contact fetch is the load error, not the no-vcard-uid message`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
-        coEvery {
-            contactRepository.getContact(
-                5
-            )
-        } returns Result.failure(ApiError.Client(404, "gone"))
+        val failure = ApiError.Client(
+            409,
+            "raw-body-not-shown",
+            ErrorReason(ErrorReasonCode.FEED_LIMIT_REACHED, mapOf("max" to 50.0))
+        )
+        coEvery { contactRepository.getContact(5) } returns Result.failure(failure)
 
         val vm = viewModel()
         advanceUntilIdle()
 
         assertFalse(vm.uiState.value.isLoading)
-        assertEquals(R.string.relationships_error_no_vcard_uid, vm.uiState.value.errorRes)
-        assertNull(vm.uiState.value.error)
+        assertNull(vm.uiState.value.errorRes)
+        assertEquals(failure, vm.uiState.value.loadError)
+        assertEquals(failure, vm.uiState.value.error)
+        assertEquals("", vm.uiState.value.contactVCardUid)
+    }
+
+    @Test
+    fun `load after a failed contact fetch retries the fetch and recovers`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { contactRepository.getContact(5) } returnsMany listOf(
+            Result.failure(ApiError.Client(404, "gone")),
+            Result.success(ContactRecordResponse(id = 5, card = Card(uid = viewedUid)))
+        )
+        coEvery { edgeRepository.listForContact(viewedUid, null, null) } returns
+            Result.success(emptyList())
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.loadError != null)
+
+        vm.load()
+        advanceUntilIdle()
+
+        assertNull(vm.uiState.value.loadError)
+        assertNull(vm.uiState.value.errorRes)
+        assertEquals(viewedUid, vm.uiState.value.contactVCardUid)
+        coVerify(exactly = 2) { contactRepository.getContact(5) }
     }
 
     @Test

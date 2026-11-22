@@ -100,12 +100,6 @@ internal fun Project.configureKotlinWarnings() {
         .orElse(false)
     tasks.withType<KotlinCompilationTask<*>>().configureEach {
         compilerOptions.allWarningsAsErrors.set(allowWarnings.map { !it })
-        // Moshi's `@Json(name = ...)` on a constructor `val` targets the value
-        // parameter, which is what Moshi reads. Kotlin 2.2 warns that the
-        // default target will widen to the field as well (KT-73255); pinning
-        // the current rule keeps that semantics and silences the warning on
-        // every DTO.
-        compilerOptions.freeCompilerArgs.add("-Xannotation-default-target=first-only")
         // Moshi codegen (KSP, 1.15.x) emits `.toInt()` on an Int in generated
         // adapters such as CardJsonAdapter. Generated code can't be edited or
         // @Suppress-ed, so this one diagnostic is disabled. The cost is that a
@@ -185,7 +179,7 @@ internal fun Project.configureDetekt() {
  *
  * This is the full category list, not a hand-picked subset — verified via
  * `lint --show` against lint-checks 32.3.1 (the version bundled with this
- * project's AGP 9.3.1):
+ * project's AGP 9.5.1):
  *   - `ContentDescription` — ImageView/ImageButton without a description.
  *   - `LabelFor` — EditText without an associated label.
  *   - `KeyboardInaccessibleWidget` — clickable but not focusable.

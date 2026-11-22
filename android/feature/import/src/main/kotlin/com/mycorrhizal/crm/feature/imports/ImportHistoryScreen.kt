@@ -31,7 +31,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -41,11 +45,8 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import com.mycorrhizal.crm.ui.formatInstant
 import com.mycorrhizal.crm.ui.isServerFeatureSupported
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 
 /**
  * Issue #834 (web parity, issue #651): the persisted import-run history —
@@ -111,6 +112,7 @@ fun ImportHistoryScreen(
             report != null -> ImportResultReport(
                 result = report.toImportResult(),
                 onDone = viewModel::closeReport,
+                doneLabel = R.string.action_close,
                 modifier = Modifier.padding(padding).testTag("import-history-report")
             )
 
@@ -167,36 +169,45 @@ private fun ImportRunCard(run: ImportRun, onViewReport: () -> Unit) {
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = formatRunTime(run.createdAt),
+                    text = formatInstant(run.createdAt),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Text(
-                    stringResource(R.string.import_history_col_created) + ": " + run.created,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    stringResource(R.string.import_history_col_updated) + ": " + run.updated,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    stringResource(R.string.import_history_col_skipped) + ": " + run.skipped,
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Text(
-                    stringResource(R.string.import_history_col_errors) + ": " + run.errorCount,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (run.errorCount >
-                        0
-                    ) {
-                        MaterialTheme.colorScheme.error
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    }
-                )
+            // Issue #2626: one sentence ("3 created, 1 updated, 2 skipped, 0 errors") with real
+            // plurals, instead of four "Label: n" fragments. The error count keeps its red when > 0.
+            val created = pluralStringResource(
+                R.plurals.import_history_created_count,
+                run.created,
+                run.created
+            )
+            val updated = pluralStringResource(
+                R.plurals.import_history_updated_count,
+                run.updated,
+                run.updated
+            )
+            val skipped = pluralStringResource(
+                R.plurals.import_history_skipped_count,
+                run.skipped,
+                run.skipped
+            )
+            val errors = pluralStringResource(
+                R.plurals.import_history_error_count,
+                run.errorCount,
+                run.errorCount
+            )
+            val errorColor = if (run.errorCount > 0) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
             }
+            Text(
+                text = buildAnnotatedString {
+                    append("$created, $updated, $skipped, ")
+                    withStyle(SpanStyle(color = errorColor)) { append(errors) }
+                },
+                style = MaterialTheme.typography.bodySmall
+            )
             // Issue #2464: only runs that stored per-row issues have a report to open.
             // Issue #2527: and only a v1.7.0+ server serves one (`GET /contacts/import/history/:id`).
             if (run.issueCount > 0 && isServerFeatureSupported(ServerFeature.IMPORT_RUN_REPORT)) {
@@ -220,15 +231,4 @@ private fun formatLabel(format: String): String = when (format) {
     "monica" -> stringResource(R.string.import_history_format_monica)
     "meerkat" -> stringResource(R.string.import_history_format_meerkat)
     else -> format
-}
-
-/** Mirrors web's `new Date(run.created_at).toLocaleString()` (also AuditScreen's formatAuditTime). */
-private fun formatRunTime(iso: String?): String {
-    if (iso.isNullOrBlank()) return ""
-    return runCatching {
-        val instant = Instant.parse(iso)
-        DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
-            .withZone(ZoneId.systemDefault())
-            .format(instant)
-    }.getOrDefault(iso)
 }

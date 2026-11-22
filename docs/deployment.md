@@ -28,7 +28,7 @@ restating it.
 
 ## How the Docker Setup Works
 
-Mycorrhizal CRM runs as a single all-in-one container. Inside it, nginx serves the React SPA and proxies all `/api/`, `/carddav/`, and `/.well-known/carddav` requests (plus `/.well-known/assetlinks.json`, see [Native Android passkeys](#native-android-passkeys-optional-public-https-only)) to the Go backend on `127.0.0.1:8080`; the backend is never exposed to the host directly. Only the nginx port is published (default `7300`). This same-origin proxy is built in, so nothing extra is required.
+Mycorrhizal CRM runs as a single all-in-one container. Inside it, nginx serves the React SPA and proxies `/api/`, `/health`, `/mcp`, `/carddav/`, `/caldav/`, `/.well-known/carddav`, and `/.well-known/assetlinks.json` (see [Native Android passkeys](#native-android-passkeys-optional-public-https-only)) to the Go backend on `127.0.0.1:8081`; the backend is never exposed to the host directly. Only the nginx port is published (default `7300`). This same-origin proxy is built in, so nothing extra is required.
 
 Rate limiters (auth, API, CardDAV, account lockout) are in-memory and per-process; they reset on restart and are not shared across replicas if you run more than one backend instance.
 
@@ -806,7 +806,7 @@ else, or add `-not -path '*/pre-migration/*'`.
 effect on already-taken backup files. A restore is a point-in-time rollback: anything soft-deleted
 (but not yet purged, T26) as of the snapshot is resurrected, and anything created or edited after
 the snapshot is lost. Soft-deleted data therefore ages out of backups in two steps: it stops
-appearing in *new* snapshots once the purge window (default 30 days, `DELETE_RETENTION_DAYS`) passes,
+appearing in *new* snapshots once the purge window (default 30 days, `DELETED_RETENTION_DAYS`) passes,
 but it survives in every snapshot that predates that purge until the operator deletes the snapshot.
 There is no partial/selective restore.
 

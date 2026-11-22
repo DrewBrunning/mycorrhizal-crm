@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import {
   EXPORT_FIELD_SECTIONS,
   type ExportLossPreflightResponse,
+  exportAccountBundle,
   exportContact,
   exportContacts,
   exportContactsAsVcf,
@@ -113,6 +114,40 @@ describe('exportDataAsCsv', () => {
   });
 });
 
+describe('exportAccountBundle (issue #2678)', () => {
+  test('GETs /export/account and downloads the JSON bundle under its own filename', async () => {
+    const { createObjectURL, click } = stubDownloadEnvironment();
+    const fetchMock = vi.fn().mockResolvedValueOnce(fileResponse('mycorrhizal-account.json'));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await exportAccountBundle();
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toMatch(/\/api\/v1\/export\/account$/);
+    expect(init.method).toBe('GET');
+    expect(capturedLink?.download).toBe('mycorrhizal-account.json');
+    expect(click).toHaveBeenCalledTimes(1);
+    expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+  });
+
+  test('falls back to a .json filename without Content-Disposition', async () => {
+    stubDownloadEnvironment();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(fileResponse()));
+
+    await exportAccountBundle();
+
+    expect(capturedLink?.download).toBe('mycorrhizal-account-bundle.json');
+  });
+
+  test('a failed export throws and downloads nothing', async () => {
+    const { click } = stubDownloadEnvironment();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValueOnce(errorResponse()));
+
+    await expect(exportAccountBundle()).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+    expect(click).not.toHaveBeenCalled();
+  });
+});
+
 describe('exportContacts', () => {
   test('jscontact export sends sections and include_sensitive to /export/jscontact', async () => {
     const { createObjectURL } = stubDownloadEnvironment();
@@ -183,7 +218,13 @@ describe('exportContact', () => {
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toContain('/api/v1/export/vcf?');
     expect(url).toContain('vcard_uid=uid-1');
-    expect((url.match(/sections=/g) || []).length).toBe(EXPORT_FIELD_SECTIONS.length);
+    // One comma-joined sections parameter: the backend's c.Query reads only
+    // the first occurrence of a repeated key, so one-per-token would silently
+    // export only emails.
+    const parsed = new URLSearchParams((url as string).split('?')[1]);
+    expect(parsed.getAll('sections')).toEqual([
+      EXPORT_FIELD_SECTIONS.map((s) => s.token).join(','),
+    ]);
     expect(url).not.toContain('include_sensitive');
     expect(init.method).toBe('GET');
     expect(capturedLink?.download).toBe('uid-1.vcf');

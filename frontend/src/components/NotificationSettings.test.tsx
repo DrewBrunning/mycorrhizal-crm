@@ -93,6 +93,9 @@ test('saving posts the channel config and per-user toggles', async () => {
   );
 
   await waitFor(() => expect(screen.getByLabelText('ntfy server URL')).toBeInTheDocument());
+  // #2536: example URLs and the example topic are literals, not copy.
+  expect(screen.getByLabelText('ntfy server URL')).toHaveAttribute('translate', 'no');
+  expect(screen.getByLabelText('Topic')).toHaveAttribute('translate', 'no');
   fireEvent.change(screen.getByLabelText('ntfy server URL'), {
     target: { value: 'https://ntfy.example.com' },
   });
@@ -263,6 +266,8 @@ test('registered devices are listed and can be removed', async () => {
   );
 
   await waitFor(() => expect(screen.getByText('Chrome')).toBeInTheDocument());
+  // #2673: the remove button names the device it removes.
+  expect(screen.getByRole('button', { name: 'Remove device Chrome' })).toBeInTheDocument();
   fireEvent.click(screen.getByTitle('Remove this device'));
 
   await waitFor(() => expect(deleteId).toBe(7));
@@ -333,6 +338,7 @@ test('registered mobile devices (M2) are listed, can be removed, and unblock the
   );
 
   await waitFor(() => expect(screen.getByText("Drew's Pixel")).toBeInTheDocument());
+  expect(screen.getByRole('button', { name: "Remove device Drew's Pixel" })).toBeInTheDocument();
   // No browser subscriptions but one mobile device: the push test button must
   // be enabled (M2 design decision 5 — the test button probes both). The
   // three "Send test notification" buttons are ntfy/Gotify/push in that
@@ -381,4 +387,58 @@ test('ntfy access token is sent when entered and omitted when empty', async () =
   fireEvent.click(screen.getByRole('button', { name: 'Save notification settings' }));
   await waitFor(() => expect(putBody).not.toBeNull());
   expect(putBody).toMatchObject({ clear_ntfy_token: true });
+});
+
+// #2673: a device with no label still gets a distinguishing name.
+test('unlabelled devices fall back to a generic name in the remove button', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (String(url).includes('/notifications/config')) {
+        return { ok: true, json: async () => emptyConfig };
+      }
+      if (String(url).includes('/notifications/push-subscriptions')) {
+        return {
+          ok: true,
+          json: async () => ({
+            subscriptions: [
+              {
+                id: 1,
+                endpoint: 'https://push.example.com/x',
+                p256dh: 'k',
+                auth: 'a',
+                device_label: '',
+                created_at: '2026-01-01T00:00:00Z',
+              },
+            ],
+          }),
+        };
+      }
+      if (String(url).includes('/notifications/devices')) {
+        return {
+          ok: true,
+          json: async () => ({
+            devices: [
+              {
+                id: 2,
+                token: 't',
+                client: 'fcm',
+                device_label: '',
+                created_at: '2026-01-01T00:00:00Z',
+                updated_at: '2026-01-01T00:00:00Z',
+              },
+            ],
+          }),
+        };
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    }),
+  );
+  render(
+    <SnackbarProvider>
+      <NotificationSettings />
+    </SnackbarProvider>,
+  );
+  expect(await screen.findByRole('button', { name: 'Remove device Browser' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Remove device FCM' })).toBeInTheDocument();
 });

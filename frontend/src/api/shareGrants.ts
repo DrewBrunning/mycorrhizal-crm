@@ -222,6 +222,19 @@ async function ownerAction(
   return (await readJSON<{ share_grant: ShareGrantOwnerView }>(response)).share_grant;
 }
 
+// Owner-only dismiss of an ENDED grant (declined, expired or revoked): a hard
+// delete of the sender's row (issue #2742, ADR 0042). 204 on success; 409
+// share_grant_not_ended for a pending/active grant; 404 for an unknown,
+// already-removed or not-yours id (indistinguishable by design), which a caller
+// treats as "already gone".
+export async function deleteShareGrant(id: string): Promise<void> {
+  const response = await apiFetch(`${API_BASE_URL}/share-grants/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) throw await parseErrorResponse(response);
+}
+
 export const acceptShareGrant = (id: string) => recipientAction(id, 'accept');
 export const leaveShareGrant = (id: string) => recipientAction(id, 'leave');
 // Declining with block:true also blocks the sender and ends every pending or

@@ -1,5 +1,6 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -100,9 +102,11 @@ import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
 import com.mycorrhizal.crm.ui.components.EmptyState
+import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.FabListContentPadding
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.SavedDataBanner
 import com.mycorrhizal.crm.ui.components.localizedMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -230,6 +234,9 @@ fun ContactListScreenContent(
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
     val currentOnLoadMore = rememberUpdatedState(onLoadMore)
     var search by rememberSaveable { mutableStateOf(uiState.searchQuery) }
+    val matchedOnByContact = remember(uiState.searchResult, uiState.searchQuery) {
+        uiState.matchedOnByContact()
+    }
     // M23: inline bulk-selection mode (web parity). The selection *set* lives in the
     // ViewModel so filter changes can clear it; this flag is pure screen chrome.
     var selectMode by rememberSaveable { mutableStateOf(false) }
@@ -325,6 +332,25 @@ fun ContactListScreenContent(
                             leadingIcon = {
                                 Icon(Icons.Outlined.Search, contentDescription = null)
                             },
+                            trailingIcon = if (search.isNotEmpty()) {
+                                {
+                                    AccessibleIconButton(
+                                        onClick = {
+                                            search = ""
+                                            onSearchQueryChange("")
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Outlined.Close,
+                                            contentDescription = stringResource(
+                                                R.string.contacts_clear_search
+                                            )
+                                        )
+                                    }
+                                }
+                            } else {
+                                null
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .testTag("contact-search"),
@@ -335,6 +361,8 @@ fun ContactListScreenContent(
                                 unfocusedLabelColor = MaterialTheme.colorScheme.onPrimary,
                                 focusedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
                                 unfocusedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                focusedTrailingIconColor = MaterialTheme.colorScheme.onPrimary,
+                                unfocusedTrailingIconColor = MaterialTheme.colorScheme.onPrimary,
                                 cursorColor = MaterialTheme.colorScheme.onPrimary,
                                 focusedBorderColor = Color.Transparent,
                                 unfocusedBorderColor = Color.Transparent
@@ -441,6 +469,7 @@ fun ContactListScreenContent(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            if (uiState.showingSavedData) SavedDataBanner(onRetry = onRefresh)
             // T87: the notes/activities section trails every state (loading/empty/error/
             // populated) as the LazyColumn's last item, so it's reachable regardless of
             // whether the contact list itself has rows — the two result sets are independent.
@@ -476,6 +505,7 @@ fun ContactListScreenContent(
                             selectMode = selectMode,
                             isMe = uiState.selfContactVCardUid != null &&
                                 contact.uid == uiState.selfContactVCardUid,
+                            matchedOn = matchedOnByContact[contact.id].orEmpty(),
                             onToggleFavorite = { onToggleFavorite(contact) },
                             onClick = {
                                 if (selectMode) {
@@ -497,6 +527,27 @@ fun ContactListScreenContent(
                     when {
                         uiState.isLoading && uiState.contacts.isEmpty() -> item {
                             LoadingSkeleton(modifier = Modifier.testTag("contact-list-loading"))
+                        }
+
+                        // #2614: a query that matched nothing is not the onboarding state.
+                        uiState.contacts.isEmpty() && uiState.error == null &&
+                            uiState.searchQuery.isNotBlank() -> item {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxWidth().padding(24.dp)
+                            ) {
+                                EmptyState(
+                                    title = stringResource(
+                                        R.string.contacts_no_match,
+                                        uiState.searchQuery.trim()
+                                    ),
+                                    actionLabel = stringResource(R.string.contacts_clear_search),
+                                    onAction = {
+                                        search = ""
+                                        onSearchQueryChange("")
+                                    }
+                                )
+                            }
                         }
 
                         uiState.contacts.isEmpty() && uiState.error == null -> item {
@@ -530,14 +581,10 @@ fun ContactListScreenContent(
                             }
                         }
 
+                        // With nothing to list (and no saved rows to fall back on) a failed
+                        // load is the shared ErrorState; Retry re-runs the load.
                         uiState.contacts.isEmpty() && uiState.error != null -> item {
-                            Box(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
-                                Text(
-                                    text = uiState.error.localizedMessage(),
-                                    color = MaterialTheme.colorScheme.error,
-                                    modifier = Modifier.align(Alignment.Center)
-                                )
-                            }
+                            ErrorState(error = uiState.error, onRetry = onRefresh)
                         }
 
                         else -> {
@@ -729,7 +776,9 @@ fun ContactListScreenContent(
         )
     }
 
-    uiState.error?.let { error ->
+    // With nothing listed the error is the list's ErrorState (and its Retry); a toast that clears
+    // the error on dismissal would take that state away again (and flip it to the empty state).
+    uiState.error?.takeIf { uiState.contacts.isNotEmpty() }?.let { error ->
         val message = error.localizedMessage()
         LaunchedEffect(message) {
             snackbarHostState.showSnackbar(message)
@@ -908,6 +957,9 @@ private fun BulkActionBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier
                 .fillMaxWidth()
+                // #2605: the app is edge-to-edge, so the bar's tonal surface paints under the
+                // system navigation bar; inset its content so the actions sit above it.
+                .navigationBarsPadding()
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
@@ -1040,6 +1092,9 @@ fun ContactListItem(
     // T90 / issue #831: whether this row is the caller's self-contact
     // pointer — drives the "You" badge (web parity).
     isMe: Boolean = false,
+    // #2630: the fields the active search matched on this contact (backend `matched_on`);
+    // empty when not searching or the server did not say.
+    matchedOn: List<String> = emptyList(),
     // Issue #212: the per-row favorite toggle (web #173). Tapping the star
     // must never navigate into the detail page — the nested clickable's own
     // handler consumes the tap before the row's combinedClickable sees it
@@ -1159,6 +1214,15 @@ fun ContactListItem(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            searchMatchedOnLabel(matchedOn)?.let { label ->
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -1313,7 +1377,12 @@ private fun SearchEntitiesSection(entities: List<SearchEntityHit>, onOpenEntity:
             entities.forEach { hit ->
                 ListItem(
                     headlineContent = { Text(hit.name) },
-                    supportingContent = { Text(stringResource(entityKindOneRes(hit.kind))) },
+                    supportingContent = {
+                        Column {
+                            Text(stringResource(entityKindOneRes(hit.kind)))
+                            searchMatchedOnLabel(hit.matchedOn)?.let { Text(it) }
+                        }
+                    },
                     modifier = Modifier.clickable { onOpenEntity(hit.id) }
                 )
             }
@@ -1396,4 +1465,26 @@ private fun SearchActivityRow(activity: SearchActivityHit, onContactClick: (Int)
             )
         }
     }
+}
+
+@StringRes
+internal fun searchMatchFieldRes(token: String): Int? = when (token) {
+    "name" -> R.string.contacts_search_matched_field_name
+    "organization" -> R.string.contacts_search_matched_field_organization
+    "email" -> R.string.contacts_search_matched_field_email
+    "phone" -> R.string.contacts_search_matched_field_phone
+    "address" -> R.string.contacts_search_matched_field_address
+    else -> null
+}
+
+/**
+ * "Matched on name, email" (#2630): why a search hit matched. Tokens this app does not know (a
+ * newer server) are dropped; null when nothing is left, so no line shows.
+ */
+@Composable
+internal fun searchMatchedOnLabel(matchedOn: List<String>?): String? {
+    val fields = matchedOn.orEmpty().mapNotNull { searchMatchFieldRes(it) }
+        .map { stringResource(it) }
+    if (fields.isEmpty()) return null
+    return stringResource(R.string.contacts_search_matched_on, fields.joinToString(", "))
 }
