@@ -478,6 +478,43 @@ time-based rule.
   [`release-gates.md`](release-gates.md#the-android-decision-issue-527) — issue
   #994.
 
+### On-demand accessibility scan (ATF probe)
+
+`android/app/src/androidTest/.../e2e/AccessibilitySweepTest.kt` runs Google's
+Accessibility Test Framework (`com.google.android.apps.common.testing.accessibility.framework`,
+the engine behind the Accessibility Scanner app) against the real app: login,
+dashboard, contacts, a contact detail and settings, with the full
+`AccessibilityCheckPreset.LATEST` and no suppressions.
+
+**It is a probe, not a contrast gate.** The evaluation run (API 33 emulator,
+2026-11-21) showed ATF 3.1.2 returns `NOT_RUN` for virtually every element of
+this Compose app: 235 `TextContrastCheck`, 199 `TouchTargetSizeCheck`, 218
+`RedundantDescriptionCheck`, 64 `TraversalOrderCheck`, 235 `ImageContrastCheck`,
+and so on. Compose exposes its content as `AccessibilityNodeInfo` virtual nodes,
+and those checks need View-backed text colour/size, a View to measure, and view
+order, none of which Compose supplies. The run's only two results were a false
+positive on the Compose host view and a real duplicate `"Add"` announcement on a
+contact detail.
+
+So it is neither scheduled nor a PR gate. It is kept because it is the cheapest
+way to re-evaluate a future ATF version: a run whose `NOT_RUN` counts collapse
+is the signal that contrast and the node-info checks have become usable. Do not
+schedule it or promote it to a gate until then. Run it from Actions →
+**Android Tests** → *Run workflow* with **run_a11y_scan** ticked (the findings
+and NOT_RUN table go to the job summary), or locally:
+
+```sh
+cd android
+adb reverse tcp:7300 tcp:7300
+./gradlew :app:connectedObtainiumDebugAndroidTest \
+  -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 \
+  -Pandroid.testInstrumentationRunnerArguments.requireReferences=true \
+  -Pandroid.testInstrumentationRunnerArguments.class=com.mycorrhizal.crm.e2e.AccessibilitySweepTest
+```
+
+The class carries `@OnDemandA11yScan`, and the required `android-e2e` jobs pass
+the runner's `notAnnotation` argument, so the PR gate never runs it.
+
 ## E2E web (Playwright)
 
 - **Responsible for** complete user workflows through the **shipped artifact** —

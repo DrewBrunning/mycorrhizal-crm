@@ -359,6 +359,15 @@ dependencies {
     androidTestImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.test.runner)
     androidTestImplementation(libs.androidx.test.ext.junit)
+    // The on-demand Accessibility Test Framework scan (AccessibilitySweepTest).
+    // Google's ATF, the engine behind the Accessibility Scanner app: rendered
+    // contrast, unexposed text, duplicate clickable bounds, traversal order, and
+    // checks over the real AccessibilityNodeInfo tree rather than the Compose
+    // semantics tree.
+    androidTestImplementation(libs.accessibility.test.framework)
+    // ATF's getAccessibilityHierarchyChecksForPreset returns a Guava
+    // ImmutableSet, so the type must be on the compile classpath too.
+    androidTestImplementation(libs.guava)
     // Issue #385: the storage-layer instrumented tests (RoomCacheEncryptionTest)
     // build Room + SQLCipher databases directly; `core:data`'s implementation
     // deps are runtime-only, so Room/SQLCipher are declared here for the

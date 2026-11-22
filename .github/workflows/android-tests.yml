@@ -11,6 +11,15 @@ on:
   schedule:
     - cron: '0 4 * * *' # 04:00 UTC nightly
   workflow_dispatch:
+    inputs:
+      # The ATF scan (below) is deliberately not on the PR gate or the nightly
+      # schedule yet: its first runs show what a full-preset scan finds so the
+      # findings can be triaged into fixes and reasoned suppressions.
+      run_a11y_scan:
+        description: 'Run the on-demand Accessibility Test Framework scan (emulator, ~10-15 min; not a gate).'
+        required: false
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       release_compose:
@@ -734,7 +743,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.mycorrhizal.crm.e2e.OnDemandA11yScan
 
       - name: Preserve attempt-1 instrumented results (flake triage)
         if: steps.android-e2e-attempt-1.outcome == 'failure'
@@ -762,7 +771,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.mycorrhizal.crm.e2e.OnDemandA11yScan
 
       # Issue #268: if the suite passed only after a retry, the preserved
       # flaky-attempt-* XMLs are the flake signal.
@@ -923,7 +932,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.mycorrhizal.crm.e2e.OnDemandA11yScan
 
       - name: Preserve attempt-1 instrumented results (API 26, flake triage)
         if: steps.android-e2e-min-sdk-attempt-1.outcome == 'failure'
@@ -951,7 +960,7 @@ jobs:
             adb reverse tcp:7300 tcp:7300
             adb reverse tcp:7301 tcp:7301
             adb reverse tcp:7302 tcp:7302
-            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true -Pandroid.testInstrumentationRunnerArguments.notAnnotation=com.mycorrhizal.crm.e2e.OnDemandA11yScan
 
       # Issue #1483: a JUnit Assume failure is a *skip*, and a skip is green on
       # this required, release-gating job. Fail unless the skipped set equals
@@ -1074,6 +1083,127 @@ jobs:
           working-directory: ./android
           disable-animations: true
           script: bash "$GITHUB_WORKSPACE/.github/scripts/assert-below-min-sdk-install.sh"
+
+  # On-demand Google Accessibility Test Framework (ATF) scan -- the engine
+  # behind the Accessibility Scanner app. Deliberately NOT scheduled and NOT
+  # part of the PR gate: the first runs exist to show what a full-preset,
+  # no-suppression scan finds, so the findings can be triaged into fixes or
+  # reasoned suppressions before this becomes a gate.
+  #
+  # Trigger: Actions -> Android Tests -> Run workflow -> tick run_a11y_scan.
+  # The test class is excluded from android-e2e via notAnnotation, so the
+  # required emulator gate never pays for the scan.
+  android-a11y-scan:
+    permissions:
+      contents: read
+      actions: read
+    name: Android a11y scan (ATF, on demand)
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 40
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_a11y_scan }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Validate Gradle wrapper
+        uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Set up JDK
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Same image the web E2E and Android E2E suites build.
+      - name: Build all-in-one backend image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Start test backend
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          echo "Waiting for services to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready"
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # No retry on purpose: a red run IS the output of this job. The findings
+      # land in the JUnit failure text and the job summary; a retry would only
+      # double the report (and hide the first one).
+      - name: Run the ATF scan
+        timeout-minutes: 25
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          working-directory: ./android
+          disable-animations: true
+          script: |
+            adb reverse tcp:7300 tcp:7300
+            ./gradlew :app:connectedObtainiumDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.serverUrl=http://127.0.0.1:7300 -Pandroid.testInstrumentationRunnerArguments.requireReferences=true -Pandroid.testInstrumentationRunnerArguments.annotation=com.mycorrhizal.crm.e2e.OnDemandA11yScan
+
+      # The findings are the point of the run, so surface them where they can be
+      # read without downloading the artifact.
+      - name: Publish findings to the job summary
+        if: always()
+        working-directory: android
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import glob
+          import xml.etree.ElementTree as ET
+
+          sections = []
+          for path in sorted(glob.glob("app/build/outputs/androidTest-results/connected/*.xml")):
+              for case in ET.parse(path).getroot().iter("testcase"):
+                  failure = case.find("failure")
+                  if failure is None:
+                      continue
+                  text = (failure.text or failure.get("message") or "").strip()
+                  sections.append(f"### {case.get('classname')}#{case.get('name')}\n\n```\n{text}\n```")
+
+          print("## ATF scan findings\n")
+          print("\n\n".join(sections) if sections else "The scan was clean.")
+          PY
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-a11y-scan-results
+          path: |
+            android/app/build/reports/androidTests/
+            android/app/build/outputs/androidTest-results/
+          retention-days: 14
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose -f docker-compose.test.yml logs mycorrhizal
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
 
   # Issue #263: startup + dashboard-render macrobenchmark, same
   # emulator/backend/triggers as android-e2e. Deliberately NON-GATING
