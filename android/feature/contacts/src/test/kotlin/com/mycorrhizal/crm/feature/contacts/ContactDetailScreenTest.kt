@@ -3087,9 +3087,28 @@ class ContactDetailScreenTest {
     }
 
     @Test
+    fun `an empty field row names the field it adds`() {
+        setContent(
+            ContactDetailUiState(
+                contact = ContactRecordResponse(
+                    id = 5,
+                    card = Card(name = Name(full = "Dana White"))
+                )
+            ),
+            hideEmpty = false
+        )
+
+        // ATF's DuplicateSpeakableTextCheck flagged the contact screen for rendering
+        // four buttons whose only speakable text was "Add". Each empty row must name
+        // its own field, the way #1724 fixed the multi-value editors.
+        scrollTo("Add Phone").assertIsDisplayed()
+        scrollTo("Add Email").assertIsDisplayed()
+    }
+
+    @Test
     fun `an empty field row is inset by the same 16dp as a filled row`() {
         composeTestRule.setContent {
-            MycorrhizalTheme { Box { EmptyFieldRow(onAdd = {}) } }
+            MycorrhizalTheme { Box { EmptyFieldRow(fieldName = "Birthday", onAdd = {}) } }
         }
 
         val left = composeTestRule.onNodeWithText("Not set").getUnclippedBoundsInRoot().left

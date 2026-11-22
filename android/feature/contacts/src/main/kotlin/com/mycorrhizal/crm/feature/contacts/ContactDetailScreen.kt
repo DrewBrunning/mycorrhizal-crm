@@ -1668,9 +1668,10 @@ fun ContactDetailContent(
         val grammaticalGenders = card?.speakToAs?.grammaticalGenders.orEmpty()
         if (ContactFieldKey.SPEAK_TO_AS in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_speak_to_as)) {
+                val sectionTitle = stringResource(R.string.contact_speak_to_as)
+                SectionCard(sectionTitle) {
                     if (pronouns.isEmpty() && grammaticalGenders.isEmpty()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         pronouns.forEach { p -> p.pronouns?.let { InfoRow(it) } }
                         grammaticalGenders.forEach { g -> g.value?.let { InfoRow(it) } }
@@ -1681,10 +1682,11 @@ fun ContactDetailContent(
         // Issue #1728: personal info (skills & interests) moved to its own drill-down.
         if (ContactFieldKey.KEYWORDS in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_keywords)) {
+                val sectionTitle = stringResource(R.string.contact_keywords)
+                SectionCard(sectionTitle) {
                     val keywords = card?.keywords.orEmpty()
                     if (keywords.isEmpty()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         InfoRow(keywords.joinToString(", "))
                     }
@@ -1693,10 +1695,11 @@ fun ContactDetailContent(
         }
         if (ContactFieldKey.PREFERRED_LANGUAGES in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_preferred_languages)) {
+                val sectionTitle = stringResource(R.string.contact_preferred_languages)
+                SectionCard(sectionTitle) {
                     val languages = card?.preferredLanguages.orEmpty()
                     if (languages.isEmpty()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         languages.forEach { pref -> pref.language?.let { InfoRow(it) } }
                     }
@@ -1705,10 +1708,11 @@ fun ContactDetailContent(
         }
         if (ContactFieldKey.PHONES in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_phone)) {
+                val sectionTitle = stringResource(R.string.contact_phone)
+                SectionCard(sectionTitle) {
                     val phones = card?.phones.orEmpty()
                     if (phones.isEmpty()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         phones.forEach { PhoneRow(it) }
                     }
@@ -1717,10 +1721,11 @@ fun ContactDetailContent(
         }
         if (ContactFieldKey.ADDRESSES in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_address)) {
+                val sectionTitle = stringResource(R.string.contact_address)
+                SectionCard(sectionTitle) {
                     val addresses = card?.addresses.orEmpty()
                     if (addresses.isEmpty()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         addresses.forEach { address ->
                             AddressRow(
@@ -1736,10 +1741,11 @@ fun ContactDetailContent(
         }
         if (ContactFieldKey.EMAILS in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_email)) {
+                val sectionTitle = stringResource(R.string.contact_email)
+                SectionCard(sectionTitle) {
                     val emails = card?.emails.orEmpty()
                     if (emails.isEmpty()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         emails.forEach { EmailRow(it) }
                     }
@@ -1757,9 +1763,10 @@ fun ContactDetailContent(
         if (onlineSections.isNotEmpty()) {
             val onlineServices = onlineSections.flatMap { it.second }
             item {
-                SectionCard(stringResource(R.string.contact_online_services)) {
+                val sectionTitle = stringResource(R.string.contact_online_services)
+                SectionCard(sectionTitle) {
                     if (onlineServices.isEmpty()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         onlineServices.forEach { OnlineServiceRow(it) }
                     }
@@ -1768,10 +1775,11 @@ fun ContactDetailContent(
         }
         if (ContactFieldKey.LINKS in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_links)) {
+                val sectionTitle = stringResource(R.string.contact_links)
+                SectionCard(sectionTitle) {
                     val links = card?.links.orEmpty()
                     if (links.isEmpty()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         links.forEach { link ->
                             val uri = link.uri.orEmpty()
@@ -1790,9 +1798,10 @@ fun ContactDetailContent(
         val howWeMet = contact.crm?.howWeMet
         if (ContactFieldKey.HOW_WE_MET in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_how_we_met)) {
+                val sectionTitle = stringResource(R.string.contact_how_we_met)
+                SectionCard(sectionTitle) {
                     if (howWeMet.isNullOrBlank()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         InfoRow(howWeMet)
                     }
@@ -1802,9 +1811,10 @@ fun ContactDetailContent(
         val contactInformation = contact.crm?.contactInformation
         if (ContactFieldKey.CONTACT_INFORMATION in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_contact_information)) {
+                val sectionTitle = stringResource(R.string.contact_contact_information)
+                SectionCard(sectionTitle) {
                     if (contactInformation.isNullOrBlank()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         InfoRow(contactInformation)
                     }
@@ -1813,10 +1823,11 @@ fun ContactDetailContent(
         }
         if (ContactFieldKey.CARD_NOTES in enabledFields) {
             item {
-                SectionCard(stringResource(R.string.contact_notes)) {
+                val sectionTitle = stringResource(R.string.contact_notes)
+                SectionCard(sectionTitle) {
                     val notes = card?.notes.orEmpty()
                     if (notes.isEmpty()) {
-                        EmptyFieldRow(onAdd = { onEdit(contact.id) })
+                        EmptyFieldRow(fieldName = sectionTitle, onAdd = { onEdit(contact.id) })
                     } else {
                         notes.forEach { note -> note.note?.let { InfoRow(it) } }
                     }
@@ -3445,9 +3456,17 @@ private fun ContactFieldToolbar(
     }
 }
 
-/** A muted placeholder for an enabled field with no value (hide-empty off). */
+/**
+ * A muted placeholder for an enabled field with no value (hide-empty off).
+ *
+ * [fieldName] is the section's own title, so the row's action is announced as
+ * "Add Phone", "Add Email", … rather than a bare "Add". Without it, every empty
+ * row on the detail screen exposed the same speakable text, and ATF's
+ * `DuplicateSpeakableTextCheck` flagged the screen (the same fix #1724 made for
+ * the multi-value editors' "Add email").
+ */
 @Composable
-internal fun EmptyFieldRow(onAdd: () -> Unit) {
+internal fun EmptyFieldRow(fieldName: String, onAdd: () -> Unit) {
     Row(
         // #2625: the same 16dp inset as a filled InfoRow, so "Not set" lines up with values.
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
@@ -3460,7 +3479,7 @@ internal fun EmptyFieldRow(onAdd: () -> Unit) {
             modifier = Modifier.weight(1f)
         )
         TextButton(onClick = onAdd) {
-            Text(stringResource(R.string.action_add))
+            Text(stringResource(R.string.contact_add_named, fieldName))
         }
     }
 }
