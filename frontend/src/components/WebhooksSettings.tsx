@@ -80,6 +80,8 @@ interface WebhookFormState {
   url: string;
   events: string[];
   is_active: boolean;
+  // null = follow the server default; true/false = an explicit choice.
+  include_sensitive: boolean | null;
 }
 
 const emptyForm = (): WebhookFormState => ({
@@ -87,6 +89,8 @@ const emptyForm = (): WebhookFormState => ({
   url: '',
   events: [],
   is_active: true,
+  // New webhooks follow the server default until the user touches the switch.
+  include_sensitive: null,
 });
 
 export default function WebhooksSettings() {
@@ -142,7 +146,13 @@ export default function WebhooksSettings() {
 
   const openEdit = (wh: Webhook) => {
     setEditingId(wh.id);
-    setForm({ name: wh.name, url: wh.url, events: wh.events, is_active: wh.is_active });
+    setForm({
+      name: wh.name,
+      url: wh.url,
+      events: wh.events,
+      is_active: wh.is_active,
+      include_sensitive: wh.include_sensitive ?? null,
+    });
     setDialogOpen(true);
   };
 
@@ -284,6 +294,11 @@ export default function WebhooksSettings() {
             {success && (
               <Alert severity="success" sx={{ py: 0 }} onClose={() => setSuccess('')}>
                 {success}
+              </Alert>
+            )}
+            {webhooks.some((wh) => (wh.include_sensitive ?? null) === null) && (
+              <Alert severity="info" sx={{ py: 0 }}>
+                {t('settings.webhooks.defaultNotice')}
               </Alert>
             )}
 
@@ -560,6 +575,30 @@ export default function WebhooksSettings() {
               }
               label={t('settings.webhooks.active')}
             />
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={form.include_sensitive ?? true}
+                  onChange={(e) => setForm((f) => ({ ...f, include_sensitive: e.target.checked }))}
+                  size="small"
+                />
+              }
+              label={t('settings.webhooks.includeSensitive')}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: -1 }}>
+              {form.include_sensitive === null
+                ? t('settings.webhooks.includeSensitiveDefaultNote')
+                : t('settings.webhooks.includeSensitiveHelp')}
+            </Typography>
+            {form.include_sensitive === null && (
+              <Button
+                size="small"
+                sx={{ alignSelf: 'flex-start' }}
+                onClick={() => setForm((f) => ({ ...f, include_sensitive: true }))}
+              >
+                {t('settings.webhooks.keepFullData')}
+              </Button>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions>

@@ -189,6 +189,16 @@ fun WebhooksScreen(onBack: () -> Unit, viewModel: WebhooksViewModel = hiltViewMo
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
+                    if (state.webhooks.any { it.includeSensitive == null }) {
+                        item {
+                            Text(
+                                text = stringResource(R.string.settings_webhooks_default_notice),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
                     if (state.error != null || state.deliveryError != null) {
                         item {
                             Text(
@@ -431,6 +441,8 @@ internal fun WebhookEditorDialog(
     var url by remember { mutableStateOf(initial?.url ?: "") }
     var isActive by remember { mutableStateOf(initial?.isActive ?: true) }
     var events by remember { mutableStateOf(initial?.events?.toSet() ?: emptySet()) }
+    // null = follow the server default; true/false is an explicit choice.
+    var includeSensitive by remember { mutableStateOf(initial?.includeSensitive) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -470,7 +482,9 @@ internal fun WebhookEditorDialog(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 220.dp)
+                        // Bounded so the added sensitive-data row and its
+                        // caption stay inside the dialog on a small phone.
+                        .heightIn(max = 180.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
                     WEBHOOK_EVENTS.forEach { event ->
@@ -516,6 +530,40 @@ internal fun WebhookEditorDialog(
                     )
                     Switch(checked = isActive, onCheckedChange = null)
                 }
+                // Issue #2888: the same switch and v2.0.0 notice as web.
+                Row(
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(
+                            value = includeSensitive ?: true,
+                            onValueChange = { includeSensitive = it },
+                            role = Role.Switch
+                        ),
+                    verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                ) {
+                    Text(
+                        stringResource(R.string.settings_webhooks_include_sensitive),
+                        style = MaterialTheme.typography.bodyLarge
+                    )
+                    Switch(checked = includeSensitive ?: true, onCheckedChange = null)
+                }
+                Text(
+                    text = stringResource(
+                        if (includeSensitive == null) {
+                            R.string.settings_webhooks_include_sensitive_default
+                        } else {
+                            R.string.settings_webhooks_include_sensitive_help
+                        }
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (includeSensitive == null) {
+                    TextButton(onClick = { includeSensitive = true }) {
+                        Text(stringResource(R.string.settings_webhooks_keep_full_data))
+                    }
+                }
             }
         },
         confirmButton = {
@@ -527,7 +575,8 @@ internal fun WebhookEditorDialog(
                             name = name.trim(),
                             url = url.trim(),
                             events = events.toList(),
-                            isActive = isActive
+                            isActive = isActive,
+                            includeSensitive = includeSensitive
                         )
                     )
                 },

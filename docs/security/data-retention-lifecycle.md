@@ -307,6 +307,12 @@ phones, addresses). Surfaced by the #510 privacy/data-minimization review as the
   the full body would serve no purpose. Failed/retrying rows keep the full body because
   `ProcessWebhookRetries` replays it verbatim. So the PII copy is now bounded *and* minimized: fresh
   failures may hold the body for re-send, successful receipts never do.
+- **Payload minimization (the per-webhook choice, issue #2888)**: a webhook with
+  `include_sensitive: false` receives contact events without private/secret addresses (and their
+  coordinates), and the filtered body is what a failed delivery stores for retry, so the retention
+  window never re-exposes data the receiver opted out of. `NULL` (the default) is full fidelity in
+  v1.x; the default is deprecated and flips to filtered in v2.0.0 (#2071). The redaction lives in
+  `backend/services/webhook_payload.go`.
 - **Deletion / propagation**: `PurgeExpiredWebhookDeliveries`
   (`backend/services/webhook_delivery_purge_service.go`) hard-deletes rows past the window, daily via
   cron (`backend/main.go`) under the `webhook_delivery_purge` job lock, and via the admin `TriggerPurge`

@@ -363,6 +363,14 @@ integration in the classification registry to its <a id> on this page. -->
 - **Configured by.** The **user** (Settings → Webhooks): URL, events, secret.
   Operator knobs: `WEBHOOK_BLOCK_PRIVATE_URLS` (default off — LAN receivers are
   legitimate), `WEBHOOK_DELIVERY_RETENTION_DAYS` (default 30).
+- **Sensitivity.** Contact events carry the contact's addresses, including
+  private/secret ones and their coordinates, unless the webhook sets
+  `include_sensitive: false`. The default is full fidelity in 1.x and becomes
+  filtered in v2.0.0 ([#2888](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2888),
+  [#2071](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2071)); a webhook
+  that still relies on the default carries the RFC 8594 deprecation headers in
+  its API response, and Settings → Webhooks explains the coming default. `note.*`, `activity.*` and `reminder.*` carry no
+  sensitivity classification and are unchanged.
 - **Ownership.** Mycorrhizal owns retrying, honoring `Retry-After`, classifying
   permanent failures, and bounding the delivery history. The user/operator owns
   the receiver (it must be up, reachable, and correctly parsing the payload).

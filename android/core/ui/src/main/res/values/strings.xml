@@ -763,6 +763,11 @@
     <string name="settings_webhooks_delete_body">Delete "%1$s"? This will stop all future deliveries.</string>
     <string name="settings_webhooks_test_named">Test %1$s</string>
     <string name="settings_webhooks_active">Active</string>
+    <string name="settings_webhooks_keep_full_data">Keep full data</string>
+    <string name="settings_webhooks_include_sensitive">Include private and secret data</string>
+    <string name="settings_webhooks_include_sensitive_help">Send private and secret addresses, including their map coordinates.</string>
+    <string name="settings_webhooks_include_sensitive_default">This webhook follows the server default, which currently includes private and secret data. In v2.0.0 it will leave them out; choose Keep full data to pin the current behaviour.</string>
+    <string name="settings_webhooks_default_notice">Some webhooks use the server default, which includes private and secret data today. In v2.0.0 the default will leave them out; open a webhook and choose Keep full data to keep them.</string>
     <string name="settings_webhooks_inactive">Inactive</string>
     <string name="settings_webhooks_events">Events</string>
     <plurals name="settings_webhooks_events_count">

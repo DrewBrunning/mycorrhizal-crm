@@ -15,6 +15,24 @@ import (
 	"gorm.io/gorm"
 )
 
+// webhookIncludeSensitiveDeprecationSunset is the earliest permitted removal of
+// the full-fidelity webhook default (docs/deprecations.md, id
+// webhook-payload-full-fidelity; issues #2888 and #2071). v2.0.0 flips the
+// default for a webhook whose include_sensitive is unset (NULL).
+const webhookIncludeSensitiveDeprecationSunset = "Wed, 10 Mar 2027 00:00:00 GMT"
+
+// signalWebhookDefaultDeprecation announces the deprecated full-fidelity
+// default when a returned webhook still relies on it (IncludeSensitive nil).
+// An explicit true or false is a recorded choice and stays silent.
+func signalWebhookDefaultDeprecation(c *gin.Context, webhooks ...models.Webhook) {
+	for _, wh := range webhooks {
+		if wh.IncludeSensitive == nil {
+			middleware.WriteDeprecationHeaders(c, "true", webhookIncludeSensitiveDeprecationSunset, "")
+			return
+		}
+	}
+}
+
 func ListWebhooks(c *gin.Context) {
 	db := c.MustGet("db").(*gorm.DB)
 	userID, ok := currentUserID(c)
@@ -37,6 +55,8 @@ func ListWebhooks(c *gin.Context) {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("query"))
 		return
 	}
+
+	signalWebhookDefaultDeprecation(c, webhooks...)
 
 	c.JSON(http.StatusOK, gin.H{"webhooks": toWebhookResponses(webhooks, health)})
 }
@@ -103,26 +123,30 @@ func CreateWebhook(c *gin.Context) {
 	}
 
 	wh := models.Webhook{
-		UserID:   userID,
-		Name:     input.Name,
-		URL:      input.URL,
-		Events:   input.Events,
-		Secret:   secret,
-		IsActive: input.IsActive,
+		UserID:           userID,
+		Name:             input.Name,
+		URL:              input.URL,
+		Events:           input.Events,
+		Secret:           secret,
+		IsActive:         input.IsActive,
+		IncludeSensitive: input.IncludeSensitive,
 	}
 	if err := db.Create(&wh).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("insert"))
 		return
 	}
 
+	signalWebhookDefaultDeprecation(c, wh)
+
 	c.JSON(http.StatusCreated, models.WebhookCreateResponse{
-		ID:        wh.ID,
-		Name:      wh.Name,
-		URL:       wh.URL,
-		Events:    wh.Events,
-		IsActive:  wh.IsActive,
-		CreatedAt: wh.CreatedAt,
-		Secret:    secret,
+		ID:               wh.ID,
+		Name:             wh.Name,
+		URL:              wh.URL,
+		Events:           wh.Events,
+		IsActive:         wh.IsActive,
+		CreatedAt:        wh.CreatedAt,
+		IncludeSensitive: wh.IncludeSensitive,
+		Secret:           secret,
 	})
 }
 
@@ -137,6 +161,8 @@ func GetWebhook(c *gin.Context) {
 	if !found {
 		return
 	}
+
+	signalWebhookDefaultDeprecation(c, wh)
 
 	c.JSON(http.StatusOK, toWebhookResponse(wh))
 }
@@ -163,11 +189,16 @@ func UpdateWebhook(c *gin.Context) {
 	wh.URL = input.URL
 	wh.Events = input.Events
 	wh.IsActive = input.IsActive
+	// PUT is a full replace: omitting include_sensitive resets the webhook to
+	// the server default (NULL), exactly like the other form fields.
+	wh.IncludeSensitive = input.IncludeSensitive
 
 	if err := db.Save(&wh).Error; err != nil {
 		apperrors.AbortWithError(c, apperrors.ErrDatabase("update"))
 		return
 	}
+
+	signalWebhookDefaultDeprecation(c, wh)
 
 	c.JSON(http.StatusOK, toWebhookResponse(wh))
 }
@@ -259,12 +290,13 @@ func generateSecret() (string, error) {
 
 func toWebhookResponse(wh models.Webhook) models.WebhookResponse {
 	return models.WebhookResponse{
-		ID:        wh.ID,
-		Name:      wh.Name,
-		URL:       wh.URL,
-		Events:    wh.Events,
-		IsActive:  wh.IsActive,
-		CreatedAt: wh.CreatedAt,
+		ID:               wh.ID,
+		Name:             wh.Name,
+		URL:              wh.URL,
+		Events:           wh.Events,
+		IsActive:         wh.IsActive,
+		CreatedAt:        wh.CreatedAt,
+		IncludeSensitive: wh.IncludeSensitive,
 	}
 }
 

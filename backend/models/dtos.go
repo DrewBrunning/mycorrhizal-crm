@@ -766,6 +766,11 @@ type WebhookInput struct {
 	// alert.raised / alert.cleared (#428, condition in the payload).
 	Events   []string `json:"events" validate:"required,min=1,max=16,dive,oneof=contact.created contact.updated contact.deleted contact.restored note.created note.updated note.deleted activity.created activity.updated activity.deleted reminder.triggered birthday.occurred reach_out_suggested db.integrity_check_failed db.restore_drill_failed alert.raised alert.cleared"`
 	IsActive bool     `json:"is_active"`
+	// IncludeSensitive optionally pins whether contact payloads include
+	// private/secret addresses and their coordinates. Omit it to follow the
+	// server default: full fidelity in v1.x; filtered from v2.0.0 (issue
+	// #2888 deprecates the default, #2071 flips it).
+	IncludeSensitive *bool `json:"include_sensitive"`
 }
 
 // WebhookResponse is the DTO returned for a webhook (no secret)
@@ -776,6 +781,9 @@ type WebhookResponse struct {
 	Events    []string  `json:"events"`
 	IsActive  bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
+	// IncludeSensitive is the webhook's explicit choice, or nil when it
+	// follows the server default (issue #2888).
+	IncludeSensitive *bool `json:"include_sensitive"`
 	// DeliveryHealth is the always-visible INT-04 (#467) surface for a
 	// webhook: a rollup of its most recent delivery so a receiver that has
 	// permanently failed (revoked token, deleted endpoint) is visible next to
@@ -804,7 +812,10 @@ type WebhookCreateResponse struct {
 	Events    []string  `json:"events"`
 	IsActive  bool      `json:"is_active"`
 	CreatedAt time.Time `json:"created_at"`
-	Secret    string    `json:"secret"`
+	// IncludeSensitive is the webhook's explicit choice, or nil when it
+	// follows the server default (issue #2888).
+	IncludeSensitive *bool  `json:"include_sensitive"`
+	Secret           string `json:"secret"`
 }
 
 // WebhookDeliveryResponse is the DTO returned for a webhook delivery record

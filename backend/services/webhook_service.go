@@ -244,6 +244,12 @@ func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID
 		return 0
 	}
 
+	// A webhook that explicitly opted out of sensitive data gets its own
+	// filtered body, built once even when several such subscriptions exist.
+	// Issue #2888.
+	var filteredBody []byte
+	filteredBuilt := false
+
 	queued := 0
 	for _, wh := range webhooks {
 		subscribed := false
@@ -257,11 +263,28 @@ func TriggerWebhooks(ctx context.Context, db *gorm.DB, cfg config.Config, userID
 			continue
 		}
 
+		payload := body
+		if wh.IncludeSensitive != nil && !*wh.IncludeSensitive {
+			if !filteredBuilt {
+				filteredBody, err = buildFilteredPayloadBody(eventType, data)
+				filteredBuilt = true
+				if err != nil {
+					// Fail closed: an explicit opt-out must never fall back to
+					// the unfiltered body. This needs a Marshaler that succeeds
+					// in the envelope but fails on re-marshal, so it is not
+					// reachable with the event payload types today.
+					logger.Error().Err(err).Str("event", eventType).Msg("Failed to build filtered webhook payload")
+					continue // # pragma: no cover — unreachable with the current event payload types
+				}
+			}
+			payload = filteredBody
+		}
+
 		queued++
 		webhookGoroutines(func() {
 			deliverySem <- struct{}{}
 			defer func() { <-deliverySem }()
-			deliverWebhook(deliveryCtx, db, cfg, wh, eventType, body, 1)
+			deliverWebhook(deliveryCtx, db, cfg, wh, eventType, payload, 1)
 		})
 	}
 	return queued

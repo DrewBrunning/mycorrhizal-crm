@@ -730,6 +730,11 @@
     <string name="settings_webhooks_delete_body">¿Eliminar "%1$s"? Se detendrán todas las entregas futuras.</string>
     <string name="settings_webhooks_test_named">Probar %1$s</string>
     <string name="settings_webhooks_active">Activo</string>
+    <string name="settings_webhooks_keep_full_data">Conservar todos los datos</string>
+    <string name="settings_webhooks_include_sensitive">Incluir datos privados y secretos</string>
+    <string name="settings_webhooks_include_sensitive_help">Envía direcciones privadas y secretas, incluidas sus coordenadas del mapa.</string>
+    <string name="settings_webhooks_include_sensitive_default">Este webhook sigue el valor predeterminado del servidor, que actualmente incluye datos privados y secretos. En la v2.0.0 los omitirá; elige Conservar todos los datos para fijar el comportamiento actual.</string>
+    <string name="settings_webhooks_default_notice">Algunos webhooks usan el valor predeterminado del servidor, que hoy incluye datos privados y secretos. En la v2.0.0 el valor predeterminado los omitirá; abre un webhook y elige Conservar todos los datos.</string>
     <string name="settings_webhooks_inactive">Inactivo</string>
     <string name="settings_webhooks_events">Eventos</string>
     <plurals name="settings_webhooks_events_count">

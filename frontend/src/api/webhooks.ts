@@ -7,6 +7,10 @@ export interface Webhook {
   url: string;
   events: string[];
   is_active: boolean;
+  // Null (or absent on a pre-1.7.0 server) means the webhook follows the
+  // server default: full fidelity in v1.x, filtered from v2.0.0 (issue #2888).
+  // Explicit true/false pins the choice.
+  include_sensitive?: boolean | null;
   created_at: string;
   // Rollup of the most recent delivery attempt (INT-04, issue #467). All
   // fields zero/null when the webhook has never been delivered to.
@@ -53,6 +57,8 @@ export async function createWebhook(input: {
   url: string;
   events: string[];
   is_active: boolean;
+  // Omit it to follow the server default; explicit true/false pins the choice.
+  include_sensitive?: boolean | null;
 }): Promise<WebhookCreateResponse> {
   const response = await apiFetch(`${API_BASE_URL}/webhooks`, {
     method: 'POST',
@@ -64,7 +70,13 @@ export async function createWebhook(input: {
 
 export async function updateWebhook(
   id: number,
-  input: { name: string; url: string; events: string[]; is_active: boolean },
+  input: {
+    name: string;
+    url: string;
+    events: string[];
+    is_active: boolean;
+    include_sensitive?: boolean | null;
+  },
 ): Promise<Webhook> {
   const response = await apiFetch(`${API_BASE_URL}/webhooks/${id}`, {
     method: 'PUT',

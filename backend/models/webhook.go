@@ -13,6 +13,13 @@ type Webhook struct {
 	URL    string   `gorm:"not null"`
 	Events []string `gorm:"type:text;serializer:json"`
 	Secret string   `gorm:"not null"`
+
+	// IncludeSensitive optionally pins whether contact payloads carry
+	// private/secret addresses and their coordinates. NULL follows the server
+	// default: full fidelity in v1.x, filtered from v2.0.0 (issues #2888,
+	// #2071). Never set by the driver; the API and UI decide explicitly.
+	IncludeSensitive *bool `gorm:"column:include_sensitive" json:"include_sensitive"`
+
 	// No `gorm:"default:true"` tag here on purpose: the SQL default lives in
 	// the hand-written migration (`is_active INTEGER NOT NULL DEFAULT 1`) per
 	// this project's convention of not using GORM AutoMigrate for schema. A

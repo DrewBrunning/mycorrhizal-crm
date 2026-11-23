@@ -40,6 +40,13 @@ const (
 	RelationshipSensitivitySecret  = "secret"
 )
 
+// IsSensitiveSensitivity reports whether a normal|private|secret classification
+// is above normal. The empty string means normal (the column default on rows
+// that predate the classification), so it is not sensitive.
+func IsSensitiveSensitivity(sensitivity string) bool {
+	return sensitivity != "" && sensitivity != RelationshipSensitivityNormal
+}
+
 // RelationshipEdge is the relationship graph's edge entity (docs/adrs/0001-neutral-hub-and-spoke-contact-model.md) — the internal source of truth for
 // relationships between two Contacts, per D3. Distinct from the legacy models.Relationship (a flat,
 // free-text table this entity is not built on top of and does not yet

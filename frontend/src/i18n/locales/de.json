@@ -1790,6 +1790,10 @@
       "url": "URL",
       "events": "Ereignisse",
       "active": "Aktiv",
+      "includeSensitive": "Private und geheime Daten einschließen",
+      "includeSensitiveHelp": "Private und geheime Adressen samt ihren Kartenkoordinaten senden. Ausschalten, um sie aus Kontakt-Ereignissen auszulassen.",
+      "includeSensitiveDefaultNote": "Dieser Webhook folgt der Servervorgabe, die derzeit private und geheime Daten einschließt. In v2.0.0 lässt sie sie aus; wählen Sie „Volle Daten beibehalten“, um das aktuelle Verhalten festzulegen.",
+      "defaultNotice": "Einige Webhooks folgen der Servervorgabe, die heute private und geheime Daten einschließt. In v2.0.0 lässt die Vorgabe sie aus; öffnen Sie einen Webhook und wählen Sie „Volle Daten beibehalten“.",
       "inactive": "Inaktiv",
       "eventsCount": "Ereignisse",
       "test": "Testen",
@@ -1836,7 +1840,8 @@
         "message": "\"{{name}}\" löschen? Alle zukünftigen Zustellungen werden gestoppt.",
         "confirm": "Löschen",
         "cancel": "Abbrechen"
-      }
+      },
+      "keepFullData": "Volle Daten beibehalten"
     },
     "customFields": {
       "title": "Benutzerdefinierte Felder",
