@@ -907,6 +907,11 @@ test('a successful favorite toggle flips the star and persists', async () => {
 
 // --- Occasions (ADR 0024, issue #387) ---------------------------------------
 
+// This test renders the full contact page under v8 coverage and then drives
+// two MUI Select menus (12 months, 31 days) before saving. It takes ~4s on a
+// healthy CI runner but exceeded the 10s global timeout on a contended one
+// (#2893), so give it the same explicit headroom as the 13-click deselection
+// test in ExportFieldPickerDialog.test.tsx.
 test('adding an occasion opens the create dialog and saves it via POST', async () => {
   const calls = mockFetch();
   renderPage();
@@ -937,7 +942,7 @@ test('adding an occasion opens the create dialog and saves it via POST', async (
     });
   });
   await waitFor(() => expect(screen.queryByText('Add an occasion')).not.toBeInTheDocument());
-});
+}, 20000);
 
 test('editing an existing occasion opens the edit dialog pre-filled, and saves via PUT', async () => {
   const existing: OccasionObligation = {
