@@ -12,7 +12,7 @@
 # those artifacts to Maven Central, so the 429 arrives even though the build
 # lists the portal as a repository.
 #
-# Retrying blindly would turn one broken build into three: the assemble steps
+# Retrying blindly would turn one broken build into several: the assemble steps
 # take 10+ minutes each. So this wrapper retries ONLY when the captured output
 # carries a transport-level signature -- HTTP 429/5xx from the artifact host, a
 # reset/refused connection, a DNS/TLS handshake failure, a truncated body.
@@ -24,6 +24,13 @@
 # 429 from server") and through Robolectric's runtime jar fetch ("Server
 # returned HTTP response code: 429 for URL"); both are matched.
 #
+# The retry is not immediate: a 429 is a rate limit, so a same-second retry
+# from the same runner IP almost always earns another 429 (the 2026-11-23
+# push runs on `main` did exactly that, 12s apart, and a 30s wait still lost
+# `buildHealth` to the same throttle). Back off exponentially
+# (60s, then 120s, capped at 300s) before each retry; a transient blip is over
+# by then, and a deterministic failure still exits on its first attempt.
+#
 # The nightly `schedule` tier is zero-retry on purpose -- a red nightly IS the
 # flake signal (docs/development/testing.md, "Nightly failure alerting") -- so
 # on that event the first failure is reported as-is.
@@ -31,10 +38,12 @@
 # Usage, from the android/ directory (the wrapper is ./gradlew):
 #   "$GITHUB_WORKSPACE/.github/scripts/gradle-retry-transient.sh" <gradle args...>
 #
-# Env: GRADLE_RETRY_MAX_ATTEMPTS (default 2 -- one retry), GITHUB_EVENT_NAME.
+# Env: GRADLE_RETRY_MAX_ATTEMPTS (default 3 -- two retries),
+#      GRADLE_RETRY_DELAY_SECONDS (default 60 -- doubles per retry, capped at 300),
+#      GITHUB_EVENT_NAME.
 set -uo pipefail
 
-attempts="${GRADLE_RETRY_MAX_ATTEMPTS:-2}"
+attempts="${GRADLE_RETRY_MAX_ATTEMPTS:-3}"
 case "$attempts" in
 '' | *[!0-9]*)
 	echo "::error::GRADLE_RETRY_MAX_ATTEMPTS must be a positive integer (got '$attempts')" >&2
@@ -45,6 +54,14 @@ if [ "$attempts" -lt 1 ]; then
 	echo "::error::GRADLE_RETRY_MAX_ATTEMPTS must be >= 1 (got '$attempts')" >&2
 	exit 2
 fi
+
+delay="${GRADLE_RETRY_DELAY_SECONDS:-60}"
+case "$delay" in
+'' | *[!0-9]*)
+	echo "::error::GRADLE_RETRY_DELAY_SECONDS must be a non-negative integer (got '$delay')" >&2
+	exit 2
+	;;
+esac
 
 # Deliberately narrow: each alternative names a transport failure, never a
 # build failure. "Could not resolve/Could not find" is NOT here -- that is the
@@ -85,8 +102,11 @@ while [ "$rc" -ne 0 ] && [ "$attempt" -lt "$attempts" ]; do
 		exit "$rc"
 	fi
 	attempt=$((attempt + 1))
-	echo "::warning::transient artifact-download failure in './gradlew $*' -- retrying (attempt ${attempt}/${attempts}, issue #2854)" >&2
+	backoff=$((delay * (1 << (attempt - 2))))
+	[ "$backoff" -gt 300 ] && backoff=300
+	echo "::warning::transient artifact-download failure in './gradlew $*' -- waiting ${backoff}s before retrying (attempt ${attempt}/${attempts}, issue #2854)" >&2
 	grep -iE "$transient_re" "$out" | head -3 >&2 || true
+	[ "$backoff" -gt 0 ] && sleep "$backoff"
 	run_gradle "$@"
 	rc=$?
 done

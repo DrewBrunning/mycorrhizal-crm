@@ -3,13 +3,14 @@
 # Tests for ../gradle-retry-transient.sh (issue #2854).
 #
 # What these pin: a transient artifact-host failure (HTTP 429/5xx, a reset
-# connection, a TLS handshake failure) is retried once and the leg passes,
-# loudly; everything that signals a real build problem -- a compile error, a
-# genuinely missing artifact, a repeat failure -- still fails the leg; the
-# nightly `schedule` tier never retries; and the arguments reach Gradle
+# connection, a TLS handshake failure) is retried with backoff and the leg
+# passes, loudly; everything that signals a real build problem -- a compile
+# error, a genuinely missing artifact, a repeat failure -- still fails the leg;
+# the nightly `schedule` tier never retries; and the arguments reach Gradle
 # verbatim. `./gradlew` is a stub in a scratch directory replaying scripted
-# output per call: call 1 prints $FIRST_OUT and exits $FIRST_RC, every later
-# call prints $RETRY_OUT and exits $RETRY_RC.
+# output per call: call 1 prints $FIRST_OUT and exits $FIRST_RC, call 2 prints
+# $RETRY_OUT/$RETRY_RC, and call 3 (when there is one) prints
+# $THIRD_OUT/$THIRD_RC, falling back to the retry values.
 
 set -u
 
@@ -33,8 +34,12 @@ if [ "$calls" -eq 1 ]; then
   printf '%s\n' "${FIRST_OUT:-}"
   exit "${FIRST_RC:-0}"
 fi
-printf '%s\n' "${RETRY_OUT:-}"
-exit "${RETRY_RC:-0}"
+if [ "$calls" -eq 2 ]; then
+  printf '%s\n' "${RETRY_OUT:-}"
+  exit "${RETRY_RC:-0}"
+fi
+printf '%s\n' "${THIRD_OUT:-${RETRY_OUT:-}}"
+exit "${THIRD_RC:-${RETRY_RC:-0}}"
 STUB
 chmod +x "$work/repo/gradlew"
 
@@ -63,7 +68,9 @@ scenario() {
 	shift 5
 	: > "$work/gradle.log"
 	local out rc calls
-	out="$(cd "$work/repo" && env GRADLE_LOG="$work/gradle.log" "$@" bash "$SCRIPT" --warning-mode=fail detekt 2>&1)"
+	# No scenario waits the default 30s backoff; the one below that exercises
+	# the knob overrides this with its own GRADLE_RETRY_DELAY_SECONDS.
+	out="$(cd "$work/repo" && env GRADLE_LOG="$work/gradle.log" GRADLE_RETRY_DELAY_SECONDS=0 "$@" bash "$SCRIPT" --warning-mode=fail detekt 2>&1)"
 	rc=$?
 	calls="$(wc -l < "$work/gradle.log")"
 	if [ "$rc" -eq "$want_rc" ] && [ "$calls" -eq "$want_calls" ] && grep -qF -- "$want_out" <<<"$out"; then
@@ -81,11 +88,14 @@ scenario "an HTTP 429 is retried once and the leg passes with a warning" 0 2 "pa
 scenario "a reset connection is retried once" 0 2 "passed on retry" -- FIRST_RC=1 FIRST_OUT="$RESET" RETRY_RC=0
 scenario "a Robolectric runtime 429 is retried once" 0 2 "passed on retry" -- FIRST_RC=1 FIRST_OUT="$ROBOLECTRIC_429" RETRY_RC=0
 scenario "a Robolectric 404 is not retried" 1 1 "non-transient reason" -- FIRST_RC=1 FIRST_OUT="$ROBOLECTRIC_404"
-scenario "a 429 that repeats still fails the leg" 1 2 "failed again after a transient" -- FIRST_RC=1 FIRST_OUT="$RATE_LIMITED" RETRY_RC=1 RETRY_OUT="$RATE_LIMITED"
+scenario "the retry waits the configured backoff" 0 2 "waiting 1s before retrying" -- GRADLE_RETRY_DELAY_SECONDS=1 FIRST_RC=1 FIRST_OUT="$RATE_LIMITED" RETRY_RC=0
+scenario "a 429 that clears on the last attempt passes" 0 3 "passed on retry" -- FIRST_RC=1 FIRST_OUT="$RATE_LIMITED" RETRY_RC=1 RETRY_OUT="$RATE_LIMITED" THIRD_RC=0 THIRD_OUT="BUILD SUCCESSFUL"
+scenario "a 429 that repeats still fails the leg" 1 3 "failed again after a transient" -- FIRST_RC=1 FIRST_OUT="$RATE_LIMITED" RETRY_RC=1 RETRY_OUT="$RATE_LIMITED"
 scenario "a compile error is not retried" 1 1 "non-transient reason" -- FIRST_RC=1 FIRST_OUT="$COMPILE_ERROR"
 scenario "a missing artifact is not retried" 1 1 "non-transient reason" -- FIRST_RC=1 FIRST_OUT="$MISSING_ARTIFACT"
 scenario "the nightly schedule tier is zero-retry" 1 1 "zero-retry" -- GITHUB_EVENT_NAME=schedule FIRST_RC=1 FIRST_OUT="$RATE_LIMITED"
 scenario "a green schedule run still passes" 0 1 "" -- GITHUB_EVENT_NAME=schedule FIRST_RC=0 FIRST_OUT="BUILD SUCCESSFUL"
+scenario "a non-numeric retry delay is rejected" 2 0 "must be a non-negative integer" -- GRADLE_RETRY_DELAY_SECONDS=soon FIRST_RC=1 FIRST_OUT="$RATE_LIMITED"
 
 # The wrapper must pass its arguments through unchanged, including a value with
 # a space-adjacent shell expansion the workflows rely on.
