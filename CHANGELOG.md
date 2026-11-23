@@ -54,6 +54,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A missing contact keeps its "not found" tab title** ([#2901](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2901)): opening a contact that no longer exists now leaves the browser tab on "Contact not found" instead of switching back to "Contacts".
 - **Android names the field on an empty contact row**: on a contact page, each empty field's button now says "Add Phone", "Add Email" and so on, so a screen reader can tell them apart instead of announcing "Add" for every one.
 - **Android announces whether an activity is selected**: in the "Add to activities" dialog a screen reader now says whether each row is checked, instead of only "checkbox".
 - **Long translated labels no longer clip or scroll** ([#2874](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2874)): at narrow widths the header keeps the Logout button readable and shortens the app name instead, and long unbroken text in an alert wraps rather than scrolling sideways.

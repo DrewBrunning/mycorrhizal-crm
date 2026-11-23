@@ -446,14 +446,28 @@ export default function ContactDetailPage() {
     [fieldDisplayInput],
   );
 
+  const [loadError, setLoadError] = useState<unknown>(null);
   const isMe = !!record && !!selfContactUid && record.uid === selfContactUid;
-  useDocumentTitle(record ? getContactDisplayName(record) : t('nav.contacts'));
+  // Issue #2901: this page and the NotFoundState child both set the title. When
+  // the record is missing, pass the SAME not-found title here; otherwise a
+  // later effect (the parent runs after the child, and re-runs on a language
+  // change) clobbers it with "Contacts" while the not-found state is on screen.
+  const settledNotFound =
+    !record &&
+    !loading &&
+    (!loadError || (loadError instanceof ApiError && loadError.status === 404));
+  useDocumentTitle(
+    record
+      ? getContactDisplayName(record)
+      : settledNotFound
+        ? t('contactDetail.notFound')
+        : t('nav.contacts'),
+  );
   const firstname = record ? nameComponentValue(record.card?.name?.components, 'given') || '' : '';
   const lastname = record ? nameComponentValue(record.card?.name?.components, 'surname') || '' : '';
   const contactName = `${firstname}${lastname ? ` ${lastname}` : ''}`;
 
   // T78: the timeline explorer dialog.
-  const [loadError, setLoadError] = useState<unknown>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [timelineExplorerOpen, setTimelineExplorerOpen] = useState(false);
   const [profilePictureDialogOpen, setProfilePictureDialogOpen] = useState(false);

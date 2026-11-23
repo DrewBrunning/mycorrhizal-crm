@@ -1,7 +1,6 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import './i18n/config';
 import type { Activity } from './api/activities';
 import type { CadencePolicy } from './api/cadencePolicies';
 import type { Circle, CircleMember } from './api/circles';
@@ -22,6 +21,7 @@ import ContactDetailPage from './ContactDetailPage';
 import { CONTACT_FIELDS, DEFAULT_ENABLED_CONTACT_FIELDS } from './contactFields';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
+import i18n from './i18n/config';
 
 // --- Fixture ----------------------------------------------------------------
 //
@@ -847,7 +847,28 @@ test('a failed contact record renders a not-found state with routes back', async
   expect(screen.getByText(/this contact may have been deleted/i)).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Go to Contacts' })).toHaveAttribute('href', '/contacts');
   expect(screen.getByRole('link', { name: 'Go to Dashboard' })).toHaveAttribute('href', '/');
-  expect(document.title).toBe('Contact not found · Mycorrhizal CRM');
+  // useDocumentTitle sets document.title from a passive effect; under Stryker's
+  // perTest coverage the effect can land after findByText resolves (issue #2901).
+  await waitFor(() => expect(document.title).toBe('Contact not found · Mycorrhizal CRM'));
+});
+
+// Issue #2901: the page-level hook and the NotFoundState child both set the
+// title. A language change re-runs both effects (child first, then parent), so
+// a parent that still passes "Contacts" for a missing record clobbers the
+// not-found title every time.
+test('the not-found title stays not-found after a language change', async () => {
+  consoleError.mockImplementation(() => {});
+  mockFetch({ failGet: ['record'] });
+  renderPage();
+  expect(await screen.findByText('Contact not found')).toBeInTheDocument();
+
+  await i18n.changeLanguage('de');
+  try {
+    expect(await screen.findByText('Kontakt nicht gefunden')).toBeInTheDocument();
+    await waitFor(() => expect(document.title).toBe('Kontakt nicht gefunden · Mycorrhizal CRM'));
+  } finally {
+    await i18n.changeLanguage('en');
+  }
 });
 
 test('a 5xx on the contact record shows a retryable error, not "not found" (issue #1478)', async () => {
