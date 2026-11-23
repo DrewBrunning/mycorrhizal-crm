@@ -1828,6 +1828,10 @@
       "url": "URL",
       "events": "Eventos",
       "active": "Activo",
+      "includeSensitive": "Incluir datos privados y secretos",
+      "includeSensitiveHelp": "Envía direcciones privadas y secretas, incluidas sus coordenadas del mapa. Desactívalo para omitirlas en los eventos de contacto.",
+      "includeSensitiveDefaultNote": "Este webhook sigue el valor predeterminado del servidor, que actualmente incluye datos privados y secretos. En la v2.0.0 los omitirá; elige Conservar todos los datos para fijar el comportamiento actual.",
+      "defaultNotice": "Algunos webhooks usan el valor predeterminado del servidor, que hoy incluye datos privados y secretos. En la v2.0.0 el valor predeterminado los omitirá; abre un webhook y elige Conservar todos los datos.",
       "inactive": "Inactivo",
       "eventsCount": "eventos",
       "test": "Probar",
@@ -1874,7 +1878,8 @@
         "message": "¿Eliminar \"{{name}}\"? Se detendrán todas las entregas futuras.",
         "confirm": "Eliminar",
         "cancel": "Cancelar"
-      }
+      },
+      "keepFullData": "Conservar todos los datos"
     },
     "customFields": {
       "title": "Campos Personalizados",

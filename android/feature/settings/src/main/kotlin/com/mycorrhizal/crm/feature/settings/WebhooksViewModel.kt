@@ -232,5 +232,6 @@ private fun WebhookCreateResponse.toWebhook(): Webhook = Webhook(
     url = url,
     events = events,
     isActive = isActive,
-    createdAt = createdAt
+    createdAt = createdAt,
+    includeSensitive = includeSensitive
 )

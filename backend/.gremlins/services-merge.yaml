@@ -137,6 +137,7 @@ unleash:
         - ^webdav_service\.go$
         - ^webhook_broadcast\.go$
         - ^webhook_delivery_purge_service\.go$
+        - ^webhook_payload\.go$
         - ^webhook_service\.go$
         - ^wedding_sync\.go$
     threshold:

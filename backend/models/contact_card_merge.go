@@ -319,7 +319,7 @@ func CarryForwardAddressSensitivity(existing []contactmodel.Address, incoming []
 // above the always-shareable "normal" (an empty value means normal, per the
 // flat/neutral model that treats "" and "normal" identically).
 func isSensitiveAddressSensitivity(sensitivity string) bool {
-	return sensitivity != "" && sensitivity != RelationshipSensitivityNormal
+	return IsSensitiveSensitivity(sensitivity)
 }
 
 // matchAddressIndex returns the index in addresses that corresponds to the

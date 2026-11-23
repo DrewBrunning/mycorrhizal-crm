@@ -152,7 +152,10 @@ data class Webhook(
     val url: String = "",
     val events: List<String> = emptyList(),
     @Json(name = "is_active") val isActive: Boolean = false,
-    @Json(name = "created_at") val createdAt: String? = null
+    @Json(name = "created_at") val createdAt: String? = null,
+    // Null follows the server default: full fidelity in v1.x, filtered from
+    // v2.0.0 (issue #2888).
+    @Json(name = "include_sensitive") val includeSensitive: Boolean? = null
 )
 
 /** POST /webhooks request/response body. [isActive] is a non-pointer bool server-side — always send it. */
@@ -161,7 +164,9 @@ data class WebhookInput(
     val name: String,
     val url: String,
     val events: List<String>,
-    @Json(name = "is_active") val isActive: Boolean
+    @Json(name = "is_active") val isActive: Boolean,
+    // Omit/null to follow the server default; true/false pins the choice.
+    @Json(name = "include_sensitive") val includeSensitive: Boolean? = null
 )
 
 /** POST /webhooks (201) response — the only response that carries the plaintext [secret]. */
@@ -173,6 +178,7 @@ data class WebhookCreateResponse(
     val events: List<String> = emptyList(),
     @Json(name = "is_active") val isActive: Boolean = false,
     @Json(name = "created_at") val createdAt: String? = null,
+    @Json(name = "include_sensitive") val includeSensitive: Boolean? = null,
     val secret: String? = null
 )
 

@@ -35,6 +35,7 @@ function webhook(overrides: Partial<Webhook> = {}): Webhook {
     url: 'https://example.com/hook',
     events: ['contact.created'],
     is_active: true,
+    include_sensitive: null,
     created_at: '2026-01-01T00:00:00Z',
     ...overrides,
   };
@@ -69,6 +70,15 @@ test('lists a webhook with its active status and event count', async () => {
   await waitFor(() => expect(screen.getByText('Inactive hook')).toBeInTheDocument());
   expect(screen.getByText('Inactive')).toBeInTheDocument();
   expect(screen.getByText('2 events')).toBeInTheDocument();
+  expect(screen.getByText(/use the server default/i)).toBeInTheDocument();
+});
+
+test('the default notice is absent when every webhook made an explicit choice', async () => {
+  vi.mocked(getWebhooks).mockResolvedValue([webhook({ include_sensitive: true })]);
+  render(<WebhooksSettings />);
+
+  await waitFor(() => expect(screen.getByText('My webhook')).toBeInTheDocument());
+  expect(screen.queryByText(/use the server default/i)).not.toBeInTheDocument();
 });
 
 test('creating a webhook posts the form and reveals the secret exactly once', async () => {
@@ -104,6 +114,7 @@ test('creating a webhook posts the form and reveals the secret exactly once', as
         name: 'New Hook',
         url: 'https://example.com/new',
         events: ['contact.created'],
+        include_sensitive: null,
       }),
     ),
   );
@@ -111,6 +122,75 @@ test('creating a webhook posts the form and reveals the secret exactly once', as
   // The secret is shown once, right after creation.
   await waitFor(() => expect(screen.getByText('Webhook Secret')).toBeInTheDocument());
   expect(screen.getByDisplayValue('whsec_abc123')).toBeInTheDocument();
+});
+
+test('creating a webhook can omit private and secret data', async () => {
+  vi.mocked(getWebhooks).mockResolvedValue([]);
+  vi.mocked(createWebhook).mockResolvedValue({
+    ...webhook({ id: 10, name: 'Filtered', include_sensitive: false }),
+    secret: 'whsec_filtered',
+  });
+
+  render(<WebhooksSettings />);
+  await waitFor(() => expect(screen.getByText('No webhooks configured yet.')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /add webhook/i }));
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Filtered' } });
+  fireEvent.change(screen.getByLabelText('URL *'), {
+    target: { value: 'https://example.com/filtered' },
+  });
+  fireEvent.mouseDown(screen.getByLabelText(/events \*/i));
+  fireEvent.click(await screen.findByRole('option', { name: 'Contact Created' }));
+  fireEvent.click(screen.getByLabelText('Include private and secret data'));
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() =>
+    expect(createWebhook).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include_sensitive: false,
+      }),
+    ),
+  );
+});
+
+test('editing a webhook that uses the default explains the v2 change', async () => {
+  vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 5, include_sensitive: null })]);
+  vi.mocked(updateWebhook).mockResolvedValue(webhook({ id: 5, include_sensitive: false }));
+
+  render(<WebhooksSettings />);
+  await waitFor(() => expect(screen.getByText('My webhook')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
+  expect(screen.getByText(/follows the server default/i)).toBeInTheDocument();
+
+  fireEvent.click(screen.getByLabelText('Include private and secret data'));
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() =>
+    expect(updateWebhook).toHaveBeenCalledWith(
+      5,
+      expect.objectContaining({ include_sensitive: false }),
+    ),
+  );
+});
+
+test('pinning full data from the server default sends an explicit true', async () => {
+  vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 6, include_sensitive: null })]);
+  vi.mocked(updateWebhook).mockResolvedValue(webhook({ id: 6, include_sensitive: true }));
+
+  render(<WebhooksSettings />);
+  await waitFor(() => expect(screen.getByText('My webhook')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
+  fireEvent.click(screen.getByRole('button', { name: /keep full data/i }));
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() =>
+    expect(updateWebhook).toHaveBeenCalledWith(
+      6,
+      expect.objectContaining({ include_sensitive: true }),
+    ),
+  );
 });
 
 test('editing a webhook prefills the form and saves via update', async () => {

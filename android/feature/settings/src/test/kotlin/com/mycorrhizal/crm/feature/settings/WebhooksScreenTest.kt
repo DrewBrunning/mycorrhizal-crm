@@ -23,6 +23,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -268,6 +269,59 @@ class WebhooksScreenTest {
         assertEquals("https://example.com/a", input?.url)
         assertEquals(listOf("contact.created"), input?.events)
         assertTrue(input?.isActive == true)
+        // Untouched, the webhook follows the server default (issue #2888).
+        assertNull(input?.includeSensitive)
+    }
+
+    @Test
+    fun `editor dialog keeps an explicit filtered choice`() {
+        var confirmed: WebhookInput? = null
+        val webhook = Webhook(
+            id = 6,
+            name = "Hook C",
+            url = "https://example.com/c",
+            events = listOf("contact.created"),
+            isActive = true,
+            includeSensitive = false
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                WebhookEditorDialog(
+                    initial = webhook,
+                    isSaving = false,
+                    onConfirm = { confirmed = it },
+                    onDismiss = {}
+                )
+            }
+        }
+
+        // An explicit choice shows the help text, not the "server default" note.
+        // The editor's lower rows sit below Robolectric's default test window
+        // (the same harness limit the Active switch test records), so assert
+        // the node exists rather than that it is on screen.
+        composeTestRule.onNodeWithText(
+            "Send private and secret addresses, including their map coordinates."
+        ).assertExists()
+        composeTestRule.onNodeWithText("Save").performClick()
+
+        assertEquals(false, confirmed?.includeSensitive)
+    }
+
+    @Test
+    fun `editor dialog explains the server default for an untouched choice`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                WebhookEditorDialog(
+                    initial = null,
+                    isSaving = false,
+                    onConfirm = {},
+                    onDismiss = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("follows the server default", substring = true)
+            .assertExists()
     }
 
     @Test

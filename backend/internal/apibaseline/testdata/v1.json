@@ -25953,6 +25953,11 @@
           "required": false
         },
         {
+          "name": "include_sensitive",
+          "type": "boolean",
+          "required": false
+        },
+        {
           "name": "is_active",
           "type": "boolean",
           "required": false
@@ -26038,6 +26043,11 @@
           "required": true
         },
         {
+          "name": "include_sensitive",
+          "type": "boolean",
+          "required": false
+        },
+        {
           "name": "is_active",
           "type": "boolean",
           "required": false
@@ -26075,6 +26085,11 @@
         {
           "name": "id",
           "type": "integer",
+          "required": false
+        },
+        {
+          "name": "include_sensitive",
+          "type": "boolean",
           "required": false
         },
         {

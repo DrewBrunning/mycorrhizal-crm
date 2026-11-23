@@ -1830,6 +1830,10 @@
       "url": "URL",
       "events": "Events",
       "active": "Active",
+      "includeSensitive": "Include private and secret data",
+      "includeSensitiveHelp": "Send private and secret addresses, including their map coordinates. Turn off to leave them out of contact events.",
+      "includeSensitiveDefaultNote": "This webhook follows the server default, which currently includes private and secret data. In v2.0.0 it will leave them out; choose Keep full data to pin the current behaviour.",
+      "defaultNotice": "Some webhooks use the server default, which includes private and secret data today. In v2.0.0 the default will leave them out; open a webhook and choose Keep full data to keep them.",
       "inactive": "Inactive",
       "eventsCount": "events",
       "test": "Test",
@@ -1876,7 +1880,8 @@
         "message": "Delete \"{{name}}\"? This will stop all future deliveries.",
         "confirm": "Delete",
         "cancel": "Cancel"
-      }
+      },
+      "keepFullData": "Keep full data"
     },
     "customFields": {
       "title": "Custom Fields",

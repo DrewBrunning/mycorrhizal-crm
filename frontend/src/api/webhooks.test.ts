@@ -21,6 +21,7 @@ const webhook: Webhook = {
   url: 'https://hooks.example.com/contact',
   events: ['contact.created'],
   is_active: true,
+  include_sensitive: null,
   created_at: '2026-01-01T00:00:00Z',
 };
 

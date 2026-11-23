@@ -280,6 +280,39 @@ Private Atom feeds ([ADR 0030](adrs/0030-feeds-atom-emission.md)). Feed manageme
 send `never_expires: true` instead of `expires_in_days`; API/MCP tokens must expire. Response includes
 `token` (the `mycorrhizal_…` plaintext value) only on creation. Subsequent list responses omit it.
 
+### Webhooks
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/webhooks` | List the caller's webhooks, with delivery health |
+| `POST` | `/webhooks` | Create a webhook; the signing secret is returned once |
+| `GET` | `/webhooks/:id` | One webhook |
+| `PUT` | `/webhooks/:id` | Replace a webhook (name, URL, events, active, `include_sensitive`) |
+| `DELETE` | `/webhooks/:id` | Delete a webhook |
+| `POST` | `/webhooks/:id/test` | Deliver a test payload |
+| `GET` | `/webhooks/:id/deliveries` | Recent delivery attempts |
+
+Each delivery is a JSON envelope `{id, event, timestamp, data}` with an
+`X-Webhook-Signature` HMAC-SHA256 header over the raw body and an
+`Idempotency-Key` equal to `id`. `contact.created`, `contact.updated` and
+`contact.restored` carry the `Contact` shape; `note.*`, `activity.*`,
+`reminder.triggered`, `birthday.occurred`, `reach_out_suggested` and the
+operator events carry their own entities. Only contact payloads currently
+carry sensitivity-classified data (the address list).
+
+`include_sensitive` is a nullable per-webhook choice:
+
+- `true` — send private and secret addresses, including their coordinates.
+- `false` — omit them from contact payloads. A filtered payload's flat
+  `address` scalar is recomputed from the first remaining address.
+- `null` / omitted — follow the server default. In v1.x that is **full
+  fidelity**, the same as `true`; from v2.0.0 the default omits them ([#2071](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2071)).
+  The default is deprecated in v1.7.0 ([#2888](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2888)): list/create/update/get
+  responses for a webhook that still uses it carry the RFC 8594
+  `Deprecation` and `Sunset` headers. Set the field explicitly to pin the
+  behaviour. The register row is `webhook-payload-full-fidelity` in
+  [the deprecation register](deprecations.md).
+
 ### CardDAV/CalDAV account password
 
 `PATCH /users/dav-password-policy` with `{ "allow": true | false }` controls whether the account

@@ -21514,6 +21514,14 @@ components:
             type: string
             enum: [contact.created, contact.updated, contact.deleted, contact.restored, note.created, note.updated, note.deleted, activity.created, activity.updated, activity.deleted, reminder.triggered, birthday.occurred]
         is_active: { type: boolean }
+        include_sensitive:
+          type: boolean
+          nullable: true
+          description: |
+            Whether contact payloads include private/secret addresses and their
+            coordinates. Omit it to follow the server default: full fidelity in
+            v1.x, filtered from v2.0.0 (issue #2888 deprecates the default,
+            #2071 flips it). `true` pins full fidelity; `false` filters now.
     WebhookResponse:
       type: object
       description: Never includes the signing secret.
@@ -21525,6 +21533,7 @@ components:
           type: array
           items: { type: string }
         is_active: { type: boolean }
+        include_sensitive: { type: boolean, nullable: true, description: "The webhook's explicit choice, or null when it follows the server default (issue #2888)." }
         created_at: { type: string, format: date-time }
         delivery_health:
           type: object

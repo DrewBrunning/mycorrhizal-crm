@@ -1828,6 +1828,10 @@
       "url": "URL",
       "events": "Événements",
       "active": "Actif",
+      "includeSensitive": "Inclure les données privées et secrètes",
+      "includeSensitiveHelp": "Envoyer les adresses privées et secrètes, y compris leurs coordonnées cartographiques. Désactivez cette option pour les omettre des événements de contact.",
+      "includeSensitiveDefaultNote": "Ce webhook suit la valeur par défaut du serveur, qui inclut actuellement les données privées et secrètes. Dans la v2.0.0, elle les omettra ; choisissez Conserver toutes les données pour fixer le comportement actuel.",
+      "defaultNotice": "Certains webhooks suivent la valeur par défaut du serveur, qui inclut aujourd'hui les données privées et secrètes. Dans la v2.0.0, la valeur par défaut les omettra ; ouvrez un webhook et choisissez Conserver toutes les données.",
       "inactive": "Inactif",
       "eventsCount": "événements",
       "test": "Tester",
@@ -1874,7 +1878,8 @@
         "message": "Supprimer \"{{name}}\" ? Cela arrêtera toutes les futures livraisons.",
         "confirm": "Supprimer",
         "cancel": "Annuler"
-      }
+      },
+      "keepFullData": "Conserver toutes les données"
     },
     "customFields": {
       "title": "Champs personnalisés",

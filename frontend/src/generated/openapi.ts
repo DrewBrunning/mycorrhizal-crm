@@ -3541,6 +3541,7 @@ export type WebhookDeliveryResponse = {
 
 export type WebhookInput = {
   events: ('contact.created' | 'contact.updated' | 'contact.deleted' | 'contact.restored' | 'note.created' | 'note.updated' | 'note.deleted' | 'activity.created' | 'activity.updated' | 'activity.deleted' | 'reminder.triggered' | 'birthday.occurred')[];
+  include_sensitive?: boolean | null;
   is_active?: boolean;
   name: string;
   url: string;
@@ -3558,6 +3559,7 @@ export type WebhookResponse = {
   };
   events?: string[];
   id?: number;
+  include_sensitive?: boolean | null;
   is_active?: boolean;
   name?: string;
   url?: string;
