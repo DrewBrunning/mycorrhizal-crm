@@ -20,6 +20,10 @@
 # find ...", a 404) and every other deterministic failure exit on the FIRST
 # attempt with Gradle's own status, unchanged.
 #
+# The host can be reached both through Gradle's resolver ("Received status code
+# 429 from server") and through Robolectric's runtime jar fetch ("Server
+# returned HTTP response code: 429 for URL"); both are matched.
+#
 # The nightly `schedule` tier is zero-retry on purpose -- a red nightly IS the
 # flake signal (docs/development/testing.md, "Nightly failure alerting") -- so
 # on that event the first failure is reported as-is.
@@ -46,6 +50,11 @@ fi
 # build failure. "Could not resolve/Could not find" is NOT here -- that is the
 # signature of a missing or misconfigured artifact, which a retry cannot fix.
 transient_re='status code (429|5[0-9][0-9]) from server'
+# Robolectric fetches its android-all jar outside Gradle's dependency
+# resolution, so a throttled fetch surfaces as Java's wording instead:
+# "Server returned HTTP response code: 429 for URL: https://repo1.maven.org/..."
+# (issue #2886). Same transport failure, different text.
+transient_re+='|Server returned HTTP response code: (429|5[0-9][0-9])'
 transient_re+='|connection reset|connection refused|broken pipe'
 transient_re+='|(read|connect) timed out|timed out waiting for'
 transient_re+='|remote host terminated the handshake|unexpected end of stream'

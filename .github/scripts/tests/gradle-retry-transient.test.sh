@@ -50,6 +50,12 @@ Execution failed for task '"'"':app:compileObtainiumDebugKotlin'"'"'.
   Searched in the following locations:
     - https://repo.maven.apache.org/maven2/org/example/not-published/1.2.3/not-published-1.2.3.pom'
 RESET='> Could not GET '"'"'https://plugins.gradle.org/m2/x.jar'"'"'. Connection reset'
+# Robolectric fetches its android-all jar itself, so a throttled fetch reports
+# Java's wording rather than Gradle's (issue #2886).
+ROBOLECTRIC_429='java.lang.AssertionError: Failed to fetch maven artifact org.robolectric:android-all-instrumented:15-robolectric-13954326-i7
+Caused by: java.io.IOException: Server returned HTTP response code: 429 for URL: https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/15-robolectric-13954326-i7/android-all-instrumented-15-robolectric-13954326-i7.jar'
+ROBOLECTRIC_404='java.lang.AssertionError: Failed to fetch maven artifact org.robolectric:android-all-instrumented:99
+Caused by: java.io.IOException: Server returned HTTP response code: 404 for URL: https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented/99/android-all-instrumented-99.jar'
 
 # scenario NAME WANT_RC WANT_CALLS WANT_SUBSTRING -- ENV=VAL...
 scenario() {
@@ -73,6 +79,8 @@ scenario() {
 scenario "a green build is one Gradle call" 0 1 "" -- FIRST_RC=0 FIRST_OUT="BUILD SUCCESSFUL"
 scenario "an HTTP 429 is retried once and the leg passes with a warning" 0 2 "passed on retry" -- FIRST_RC=1 FIRST_OUT="$RATE_LIMITED" RETRY_RC=0
 scenario "a reset connection is retried once" 0 2 "passed on retry" -- FIRST_RC=1 FIRST_OUT="$RESET" RETRY_RC=0
+scenario "a Robolectric runtime 429 is retried once" 0 2 "passed on retry" -- FIRST_RC=1 FIRST_OUT="$ROBOLECTRIC_429" RETRY_RC=0
+scenario "a Robolectric 404 is not retried" 1 1 "non-transient reason" -- FIRST_RC=1 FIRST_OUT="$ROBOLECTRIC_404"
 scenario "a 429 that repeats still fails the leg" 1 2 "failed again after a transient" -- FIRST_RC=1 FIRST_OUT="$RATE_LIMITED" RETRY_RC=1 RETRY_OUT="$RATE_LIMITED"
 scenario "a compile error is not retried" 1 1 "non-transient reason" -- FIRST_RC=1 FIRST_OUT="$COMPILE_ERROR"
 scenario "a missing artifact is not retried" 1 1 "non-transient reason" -- FIRST_RC=1 FIRST_OUT="$MISSING_ARTIFACT"
