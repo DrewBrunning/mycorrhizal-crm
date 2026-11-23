@@ -205,6 +205,12 @@ jobs:
       - name: Test gradle-retry-transient script
         run: bash .github/scripts/tests/gradle-retry-transient.test.sh
 
+      # Issue #2900: pins the release-rehearsal watch -- a transient Actions API
+      # 429/5xx is retried with backoff, while a watched run that genuinely
+      # failed still fails on the first report.
+      - name: Test gh-run-watch-retry script
+        run: bash .github/scripts/tests/gh-run-watch-retry.test.sh
+
       # Issue #1486: pins the manual-gate facts script -- an attested commit that
       # is not an ancestor of the release commit (diverged branch, or unknown to
       # the checkout) must read as a non-ancestor so the attestation fails

@@ -116,7 +116,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RUN_ID: ${{ env.RUN_ID }}
-        run: gh run watch "$RUN_ID" --exit-status
+        # Issue #2900: a transient Actions API 500 while polling must not fail
+        # the rehearsal; a non-successful release.yml run still fails at once.
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/gh-run-watch-retry.sh" "$RUN_ID"
 
       - name: Summary
         if: always()
