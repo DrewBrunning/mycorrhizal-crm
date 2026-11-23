@@ -318,6 +318,8 @@ jobs:
           retention-days: 7
 
       # Issue #268: JUnit XML consumed by test-report.yml.
+      # Overwrite on re-run: dorny/test-reporter merges artifacts by name, so a
+      # failed attempt's XML would keep the report red after a passing retry.
       - name: Upload unit test results (JUnit)
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -327,6 +329,7 @@ jobs:
             android/**/build/test-results/test*UnitTest/TEST-*.xml
             android/**/build/reports/tests/
           retention-days: 7
+          overwrite: true
 
   android-lint:
     permissions:
@@ -822,11 +825,14 @@ jobs:
         if: always()
         with:
           name: android-e2e-results
+          # Overwrite on re-run: dorny/test-reporter merges artifacts by name, so
+          # a failed attempt's XML would keep the report red after a passing retry.
           path: |
             android/app/build/reports/androidTests/
             android/app/build/outputs/androidTest-results/
             android/app/build/flaky-attempt-*/
           retention-days: 7
+          overwrite: true
 
       - name: Show container logs on failure
         if: failure()

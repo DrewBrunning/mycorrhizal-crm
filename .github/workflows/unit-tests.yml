@@ -1214,7 +1214,9 @@ jobs:
           retention-days: 7
 
       # Issue #268: one combined JUnit + flake artifact so test-report.yml
-      # needs no per-leg wiring.
+      # needs no per-leg wiring. Overwrite on re-run: dorny/test-reporter merges
+      # artifacts by name, so a failed attempt's XML would keep the report red
+      # after a passing retry.
       - name: Upload test results (JUnit + flake report)
         if: needs.backend-tests.result == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -1224,6 +1226,7 @@ jobs:
             backend/junit-*.xml
             backend/rerun-fails-*.txt
           retention-days: 7
+          overwrite: true
 
   frontend:
     permissions:
@@ -1367,7 +1370,9 @@ jobs:
 
       # Issue #268: JUnit XML (written by vitest's junit reporter) consumed by
       # test-report.yml (dorny/test-reporter). Flaky vitest tests are surfaced
-      # separately by the github-actions reporter's job summary.
+      # separately by the github-actions reporter's job summary. Overwrite on
+      # re-run: dorny merges artifacts by name, so a failed attempt's XML would
+      # keep the report red after a passing retry.
       - name: Upload test results (JUnit)
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -1375,6 +1380,7 @@ jobs:
           name: frontend-junit-results
           path: frontend/junit.xml
           retention-days: 7
+          overwrite: true
 
   # Issue #556 (web PERF counterpart to #468-#471): production `vite build`
   # then `yarn budget`, which fails when a chunk grows past
