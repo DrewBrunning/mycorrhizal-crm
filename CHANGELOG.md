@@ -48,6 +48,10 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Tidier web menu** ([#2175](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2175)): Shares, Audit log, Data and, for admins, Users and System pages now sit under Settings in the left menu. Open them with the arrow beside Settings; every page keeps its address.
 - **German texts now consistently use the formal Sie** ([#2686](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2686)): the web and Android apps no longer mix du and Sie, and the import report CSV now words its Status column like the on-screen report ([#2681](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2681)).
 
+### Deprecated
+
+- **Legacy app-password scope field** ([#2887](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2887)): the old `full`/`carddav` field on the API-token endpoints is deprecated and removed in v2.0.0; create tokens with explicit access scopes instead. Existing tokens and clients keep working.
+
 ### Fixed
 
 - **Android names the field on an empty contact row**: on a contact page, each empty field's button now says "Add Phone", "Add Email" and so on, so a screen reader can tell them apart instead of announcing "Add" for every one.

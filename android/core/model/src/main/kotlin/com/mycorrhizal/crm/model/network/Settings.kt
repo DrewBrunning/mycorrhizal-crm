@@ -227,6 +227,16 @@ val API_TOKEN_PRESET_SCOPES: Map<String, List<String>> = mapOf(
     "mcp" to listOf("mcp")
 )
 
+/**
+ * The only two values the pre-1.5.1 legacy `scope` field can express (issue #2887). Used when the
+ * connected server predates the `scopes` field: sending `scopes` there is ignored and silently
+ * creates a full-access token.
+ */
+val LEGACY_TOKEN_PRESET_SCOPES: Map<String, String> = mapOf(
+    "full" to "full",
+    "contacts" to "carddav"
+)
+
 /** Selectable lifetimes; the backend caps this at 365 days ([MAX_API_TOKEN_EXPIRY_DAYS]). */
 val API_TOKEN_EXPIRY_OPTIONS: List<Int> = listOf(30, 60, 90, 180, 365)
 

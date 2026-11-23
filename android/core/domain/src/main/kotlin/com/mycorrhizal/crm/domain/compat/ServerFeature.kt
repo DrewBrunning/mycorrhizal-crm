@@ -162,6 +162,14 @@ enum class ServerFeature(val minServerVersion: AppVersion) {
     /** API-token rotation + revoke-all (v0.6.1+). */
     API_TOKENS_ADVANCED(AppVersion(0, 6, 1)),
 
+    /**
+     * Explicit app-password scopes: `scopes` on POST /api-tokens (issue #2010; first shipped in
+     * v1.5.1). Below this floor the app must send the legacy `scope` field instead — a pre-1.5.1
+     * server ignores unknown JSON, so sending only `scopes` would silently mint a full-access
+     * token (issue #2887).
+     */
+    API_TOKEN_SCOPES(AppVersion(1, 5, 1)),
+
     /** Biometric device-grant sign-in: enroll/exchange/revoke (v0.6.10+). */
     DEVICE_GRANT_SIGNIN(AppVersion(0, 6, 10)),
 

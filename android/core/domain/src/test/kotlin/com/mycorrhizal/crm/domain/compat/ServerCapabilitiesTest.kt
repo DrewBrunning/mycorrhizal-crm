@@ -53,6 +53,7 @@ class ServerCapabilitiesTest {
         assertFalse(ServerCapabilities.isSupported(v(0, 6, 0), ServerFeature.AUDIT_EXPORT))
         assertFalse(ServerCapabilities.isSupported(v(0, 6, 0), ServerFeature.API_TOKENS_ADVANCED))
         assertFalse(ServerCapabilities.isSupported(v(0, 6, 9), ServerFeature.DEVICE_GRANT_SIGNIN))
+        assertFalse(ServerCapabilities.isSupported(v(1, 5, 0), ServerFeature.API_TOKEN_SCOPES))
     }
 
     @Test
@@ -62,6 +63,7 @@ class ServerCapabilitiesTest {
         assertTrue(ServerCapabilities.isSupported(v(0, 6, 1), ServerFeature.AUDIT_EXPORT))
         assertTrue(ServerCapabilities.isSupported(v(0, 6, 1), ServerFeature.API_TOKENS_ADVANCED))
         assertTrue(ServerCapabilities.isSupported(v(0, 6, 10), ServerFeature.DEVICE_GRANT_SIGNIN))
+        assertTrue(ServerCapabilities.isSupported(v(1, 5, 1), ServerFeature.API_TOKEN_SCOPES))
     }
 
     // --- isServerSupported: the baseline / "server too old" gate -----------

@@ -105,6 +105,29 @@ class ApiTokensViewModelTest {
         }
 
     @Test
+    fun `create sends the legacy scope when the server predates scopes`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.list() } returns Result.success(emptyList())
+            val captured = slot<com.mycorrhizal.crm.model.network.ApiTokenInput>()
+            coEvery { repository.create(capture(captured)) } returns Result.success(
+                ApiTokenCreateResponse(
+                    id = 9,
+                    name = "Old server",
+                    scope = "carddav",
+                    token = "s3cret"
+                )
+            )
+            val vm = ApiTokensViewModel(repository)
+            advanceUntilIdle()
+
+            vm.create("Old server", expiresInDays = 90, scope = "carddav")
+            advanceUntilIdle()
+
+            assertEquals("carddav", captured.captured.scope)
+            assertNull(captured.captured.scopes)
+        }
+
+    @Test
     fun `create ignores a blank name without calling the repository`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.list() } returns Result.success(emptyList())
@@ -129,7 +152,7 @@ class ApiTokensViewModelTest {
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()
 
-            vm.create("New")
+            vm.create("New", scope = "full")
             advanceUntilIdle()
 
             val state = vm.uiState.value
@@ -274,7 +297,7 @@ class ApiTokensViewModelTest {
             )
             val vm = ApiTokensViewModel(repository)
             advanceUntilIdle()
-            vm.create("New")
+            vm.create("New", scope = "full")
             advanceUntilIdle()
 
             vm.dismissRevealedToken()

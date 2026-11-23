@@ -19,6 +19,21 @@ import (
 	"gorm.io/gorm"
 )
 
+// legacyScopeDeprecationSunset is the earliest permitted removal of the
+// legacy ApiToken `scope` request/response field (docs/deprecations.md, id
+// api-token-legacy-scope; issues #2887 and #2023). The field and the
+// full/carddav aliases keep working unchanged for the whole window; v2.0.0
+// removes them and explicit `scopes` is the only token-access surface.
+const legacyScopeDeprecationSunset = "Wed, 10 Mar 2027 00:00:00 GMT"
+
+// signalApiTokenScopeDeprecation announces the deprecated field on a response
+// that carries it. The route-based registry cannot key on a response field, so
+// the token handlers call this directly — the same pattern as the hobby
+// preference and flat-lockout deprecations.
+func signalApiTokenScopeDeprecation(c *gin.Context) {
+	middleware.WriteDeprecationHeaders(c, "true", legacyScopeDeprecationSunset, "")
+}
+
 // generateApiToken mints a new plaintext token ("mycorrhizal_" + 32 random
 // bytes, base64url) and its SHA-256 hash for storage. Shared by CreateApiToken
 // and RotateApiToken so a reissued token is generated exactly the same way as
@@ -94,6 +109,12 @@ func ListApiTokens(c *gin.Context) {
 		response[i] = apiTokenResponse(t)
 	}
 
+	// An empty page carries no token object, so it does not touch the
+	// deprecated field and must not announce it.
+	if len(response) > 0 {
+		signalApiTokenScopeDeprecation(c)
+	}
+
 	c.JSON(http.StatusOK, gin.H{"tokens": response})
 }
 
@@ -156,6 +177,9 @@ func CreateApiToken(c *gin.Context) {
 
 	// T18 audit: API-token issuance (issue #381).
 	models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", token.ID), models.AuditOpCreate, userID)
+
+	// The create response carries the legacy `scope` view of the new token.
+	signalApiTokenScopeDeprecation(c)
 
 	c.JSON(http.StatusCreated, models.ApiTokenCreateResponse{
 		ApiTokenResponse: apiTokenResponse(token),
@@ -303,6 +327,10 @@ func RotateApiToken(c *gin.Context) {
 	// individually, both recorded here since rotation does both at once.
 	models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", oldToken.ID), models.AuditOpRevoke, userID)
 	models.RecordAuditEvent(db, models.AuditEntityAPIToken, fmt.Sprintf("%d", newToken.ID), models.AuditOpCreate, userID)
+
+	// The rotate response carries the legacy `scope` view of the reissued
+	// token.
+	signalApiTokenScopeDeprecation(c)
 
 	c.JSON(http.StatusCreated, models.ApiTokenCreateResponse{
 		ApiTokenResponse: apiTokenResponse(newToken),

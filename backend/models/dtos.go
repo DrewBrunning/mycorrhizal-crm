@@ -699,8 +699,10 @@ type ApiTokenInput struct {
 	// ExpiresInDays is optional; omitting it applies DefaultApiTokenExpiryDays.
 	// A DAV-only scope set may instead set NeverExpires.
 	ExpiresInDays *int `json:"expires_in_days" validate:"omitempty,min=1,max=365"`
-	// Scope is the legacy single-scope field. It remains accepted so older
-	// clients keep working; Scopes wins when both are supplied.
+	// Scope is the legacy single-scope field. Deprecated in v1.7.0 and removed
+	// in v2.0.0 (issues #2887, #2023); Scopes is the replacement. It stays
+	// accepted and unchanged for the whole deprecation window, and Scopes wins
+	// when both are supplied.
 	Scope string `json:"scope" validate:"omitempty,oneof=full carddav"`
 	// Scopes is the explicit access set. Omit it and Scope for the legacy
 	// full-access default.
@@ -717,8 +719,10 @@ type ApiTokenResponse struct {
 	LastUsedAt *time.Time `json:"last_used_at"`
 	RevokedAt  *time.Time `json:"revoked_at"`
 	ExpiresAt  *time.Time `json:"expires_at"`
-	Scope      string     `json:"scope"`
-	Scopes     []string   `json:"scopes"`
+	// Scope is the legacy single-scope view. Deprecated in v1.7.0 and removed in
+	// v2.0.0 (issues #2887, #2023); use Scopes.
+	Scope  string   `json:"scope"`
+	Scopes []string `json:"scopes"`
 }
 
 // DAVPasswordPolicyInput toggles account-password authentication on

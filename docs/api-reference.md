@@ -276,7 +276,14 @@ Private Atom feeds ([ADR 0030](adrs/0030-feeds-atom-emission.md)). Feed manageme
 ```
 
 `scopes` is an explicit set of `carddav`, `caldav`, `api:read`, `api:write`, `mcp`. The legacy
-`scope: "full" | "carddav"` field is still accepted when `scopes` is absent. A DAV-only scope set may
+`scope: "full" | "carddav"` field is still accepted when `scopes` is absent, and every token response
+still carries a derived `scope` view — both are **deprecated since v1.7.0** and removed in v2.0.0
+([#2887](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2887),
+[#2023](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2023)). Create tokens with `scopes`,
+read `scopes`, and ignore `scope`. The field keeps working unchanged for the whole window (at least
+one later minor release and 90 days, not before 2027-03-10); list, create and rotate responses carry
+the RFC 8594 `Deprecation` and `Sunset` headers while it does. The register row is
+`api-token-legacy-scope` in [the deprecation register](deprecations.md). A DAV-only scope set may
 send `never_expires: true` instead of `expires_in_days`; API/MCP tokens must expire. Response includes
 `token` (the `mycorrhizal_…` plaintext value) only on creation. Subsequent list responses omit it.
 
