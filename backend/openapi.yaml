@@ -13091,6 +13091,10 @@ paths:
       operationId: listApiTokens
       tags:
         - API Tokens
+      description: |
+        Every returned token carries the deprecated legacy `scope` view. A
+        non-empty page sends the RFC 8594 `Deprecation`, `Sunset` and `Link`
+        headers (issues #2887, #2023); use `scopes` instead.
       responses:
         "401":
           description: Not authenticated (missing or invalid session cookie or full-scope bearer token).
@@ -13114,7 +13118,10 @@ paths:
       operationId: createApiToken
       tags:
         - API Tokens
-      description: The plaintext token is returned only here, once.
+      description: |
+        The plaintext token is returned only here, once. The response carries
+        the deprecated legacy `scope` view and the RFC 8594 `Deprecation`,
+        `Sunset` and `Link` headers (issues #2887, #2023); use `scopes`.
       requestBody:
         required: true
         content:
@@ -13198,7 +13205,9 @@ paths:
         Issue #413: revoke + reissue in one round trip, for callers that want
         continuity (a script keeps running under a fresh credential) instead
         of the create-then-revoke two-step. The new plaintext token is shown
-        exactly once, like createApiToken's.
+        exactly once, like createApiToken's. The response carries the deprecated
+        legacy `scope` view and the RFC 8594 `Deprecation`, `Sunset` and `Link`
+        headers (issues #2887, #2023); use `scopes`.
       parameters:
         - name: id
           in: path
@@ -21397,7 +21406,7 @@ components:
       properties:
         name: { type: string, minLength: 1, maxLength: 100 }
         expires_in_days: { type: integer, minimum: 1, maximum: 365, description: "Defaults to 90." }
-        scope: { type: string, enum: [full, carddav], description: "Legacy single scope, still accepted; ignored when scopes is present. Omit both for full access. carddav tokens are rejected by the REST API." }
+        scope: { type: string, enum: [full, carddav], deprecated: true, description: "**Deprecated; removed in v2.0.0** (issues #2887, #2023). Legacy single scope, still accepted and unchanged for the whole deprecation window; ignored when scopes is present. Omit both for full access. carddav tokens are rejected by the REST API. Use scopes instead." }
         scopes:
           type: array
           maxItems: 5
@@ -21413,7 +21422,7 @@ components:
         last_used_at: { type: string, format: date-time, nullable: true }
         revoked_at: { type: string, format: date-time, nullable: true }
         expires_at: { type: string, format: date-time, nullable: true }
-        scope: { type: string, description: "Legacy single-scope view: full, carddav, or custom." }
+        scope: { type: string, deprecated: true, description: "**Deprecated; removed in v2.0.0** (issues #2887, #2023). Legacy single-scope view: full, carddav, or custom. Use scopes instead. Every list/create/rotate response that carries this field also sends the RFC 8594 Deprecation and Sunset headers." }
         scopes:
           type: array
           items: { type: string, enum: [carddav, caldav, api:read, api:write, mcp] }

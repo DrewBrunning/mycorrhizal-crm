@@ -42,6 +42,7 @@ func TestDeprecationSunsetHeadersMatchRegister(t *testing.T) {
 		{"flat-lockout-429-body", flatLockoutDeprecationSunset},
 		{"preference-category-hobby", hobbyPreferenceDeprecationSunset},
 		{"webhook-payload-full-fidelity", webhookIncludeSensitiveDeprecationSunset},
+		{"api-token-legacy-scope", legacyScopeDeprecationSunset},
 	} {
 		t.Run(tc.id, func(t *testing.T) {
 			sunset, err := http.ParseTime(tc.sunset)

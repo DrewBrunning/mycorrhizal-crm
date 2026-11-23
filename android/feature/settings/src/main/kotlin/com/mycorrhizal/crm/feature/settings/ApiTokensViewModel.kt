@@ -7,7 +7,6 @@ import com.mycorrhizal.crm.model.network.ApiToken
 import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
 import com.mycorrhizal.crm.model.network.ApiTokenInput
 import com.mycorrhizal.crm.model.network.DEFAULT_API_TOKEN_EXPIRY_DAYS
-import com.mycorrhizal.crm.model.network.DEFAULT_API_TOKEN_SCOPE
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.network.toApiError
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -94,10 +93,11 @@ class ApiTokensViewModel @Inject constructor(private val repository: ApiTokenRep
     fun create(
         name: String,
         expiresInDays: Int = DEFAULT_API_TOKEN_EXPIRY_DAYS,
-        scope: String = DEFAULT_API_TOKEN_SCOPE,
+        scope: String? = null,
         scopes: List<String>? = null
     ) {
         if (_uiState.value.isSaving || name.isBlank()) return
+        require(scopes != null || scope != null) { "choose scopes or a legacy scope" }
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, error = null) }
             val input = if (scopes != null) {

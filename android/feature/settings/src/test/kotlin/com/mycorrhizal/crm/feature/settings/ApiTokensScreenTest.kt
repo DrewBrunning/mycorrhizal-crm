@@ -21,6 +21,7 @@ import io.mockk.coVerify
 import io.mockk.mockk
 import kotlinx.coroutines.awaitCancellation
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -225,7 +226,7 @@ class ApiTokensScreenTest {
             MycorrhizalTheme {
                 CreateApiTokenDialog(
                     isSaving = false,
-                    onConfirm = { name, _, _ -> confirmedName = name },
+                    onConfirm = { name, _, _, _ -> confirmedName = name },
                     onDismiss = {}
                 )
             }
@@ -242,7 +243,11 @@ class ApiTokensScreenTest {
     fun `create dialog title is Title Case`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                CreateApiTokenDialog(isSaving = false, onConfirm = { _, _, _ -> }, onDismiss = {})
+                CreateApiTokenDialog(
+                    isSaving = false,
+                    onConfirm = { _, _, _, _ -> },
+                    onDismiss = {}
+                )
             }
         }
 
@@ -253,7 +258,11 @@ class ApiTokensScreenTest {
     fun `create dialog chip labels never wrap inside their chip`() {
         composeTestRule.setContent {
             MycorrhizalTheme {
-                CreateApiTokenDialog(isSaving = false, onConfirm = { _, _, _ -> }, onDismiss = {})
+                CreateApiTokenDialog(
+                    isSaving = false,
+                    onConfirm = { _, _, _, _ -> },
+                    onDismiss = {}
+                )
             }
         }
 
@@ -274,7 +283,7 @@ class ApiTokensScreenTest {
             MycorrhizalTheme {
                 CreateApiTokenDialog(
                     isSaving = false,
-                    onConfirm = { _, expiresInDays, selected ->
+                    onConfirm = { _, expiresInDays, selected, _ ->
                         days = expiresInDays
                         scopes = selected
                     },
@@ -297,7 +306,7 @@ class ApiTokensScreenTest {
             MycorrhizalTheme {
                 CreateApiTokenDialog(
                     isSaving = false,
-                    onConfirm = { _, _, selected -> scopes = selected },
+                    onConfirm = { _, _, selected, _ -> scopes = selected },
                     onDismiss = {}
                 )
             }
@@ -308,6 +317,37 @@ class ApiTokensScreenTest {
         composeTestRule.onNodeWithText("Create token").performClick()
 
         assertEquals(listOf("carddav"), scopes)
+    }
+
+    @Test
+    fun `create dialog offers only the legacy full and CardDAV scopes on an old server`() {
+        var scope: String? = null
+        var scopes: List<String>? = null
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                CreateApiTokenDialog(
+                    isSaving = false,
+                    scopedSupported = false,
+                    onConfirm = { _, _, selected, legacyScope ->
+                        scopes = selected
+                        scope = legacyScope
+                    },
+                    onDismiss = {}
+                )
+            }
+        }
+
+        // A pre-1.5.1 server has no `scopes` field; offering the newer presets
+        // there would silently mint a full-access token.
+        composeTestRule.onNodeWithText("Calendar (CalDAV)").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Contacts + calendar").assertDoesNotExist()
+
+        composeTestRule.onNodeWithText("Token name").performTextInput("Old server")
+        composeTestRule.onNodeWithText("CardDAV only").performClick()
+        composeTestRule.onNodeWithText("Create token").performClick()
+
+        assertEquals("carddav", scope)
+        assertNull(scopes)
     }
 
     @Test

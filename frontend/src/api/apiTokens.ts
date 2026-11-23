@@ -35,8 +35,6 @@ export const API_TOKEN_EXPIRY_OPTIONS = [30, 60, 90, 180, 365] as const;
 
 export const DEFAULT_API_TOKEN_EXPIRY_DAYS = 90;
 
-export const DEFAULT_API_TOKEN_SCOPE: ApiTokenScope = 'full';
-
 export interface ApiTokenCreateResponse extends ApiToken {
   token: string;
 }
@@ -52,20 +50,6 @@ export async function getApiTokens(): Promise<ApiTokensListResponse> {
   });
   const data = await handleResponse(response, 'Unable to load API tokens.');
   return { tokens: data?.tokens || [] };
-}
-
-export async function createApiToken(
-  name: string,
-  expiresInDays: number = DEFAULT_API_TOKEN_EXPIRY_DAYS,
-  scope: ApiTokenScope = DEFAULT_API_TOKEN_SCOPE,
-): Promise<ApiTokenCreateResponse> {
-  const response = await apiFetch(`${API_BASE_URL}/api-tokens`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: JSON.stringify({ name, expires_in_days: expiresInDays, scope }),
-  });
-  const data = await handleResponse(response, 'Unable to create API token.');
-  return data as ApiTokenCreateResponse;
 }
 
 /** Issue #2010: create a token with an explicit access set. */
@@ -112,7 +96,7 @@ export async function revokeAllApiTokens(): Promise<RevokeAllApiTokensResponse> 
 
 /**
  * Issue #413: revoke a token and reissue a new one with the same name and
- * scope in a single step. Like createApiToken, the plaintext is returned
+ * scopes in a single step. Like createApiTokenWithScopes, the plaintext is returned
  * exactly once.
  */
 export async function rotateApiToken(id: number): Promise<ApiTokenCreateResponse> {

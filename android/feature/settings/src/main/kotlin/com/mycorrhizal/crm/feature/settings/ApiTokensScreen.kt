@@ -55,10 +55,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.domain.compat.ServerCapabilities
 import com.mycorrhizal.crm.domain.compat.ServerFeature
 import com.mycorrhizal.crm.model.network.API_TOKEN_EXPIRY_OPTIONS
+import com.mycorrhizal.crm.model.network.API_TOKEN_PRESETS
 import com.mycorrhizal.crm.model.network.API_TOKEN_PRESET_SCOPES
 import com.mycorrhizal.crm.model.network.ApiToken
 import com.mycorrhizal.crm.model.network.ApiTokenCreateResponse
 import com.mycorrhizal.crm.model.network.DEFAULT_API_TOKEN_EXPIRY_DAYS
+import com.mycorrhizal.crm.model.network.LEGACY_TOKEN_PRESET_SCOPES
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
@@ -96,6 +98,16 @@ fun ApiTokensScreen(onBack: () -> Unit, viewModel: ApiTokensViewModel = hiltView
         ServerCapabilities.isSupported(
             LocalServerVersion.current,
             ServerFeature.API_TOKENS_ADVANCED
+        )
+
+    // Scoped app passwords need the v1.5.1 `scopes` field (issue #2010). A
+    // pre-1.5.1 server ignores unknown JSON, so sending only `scopes` there
+    // would silently mint a full-access token; the dialog falls back to the
+    // legacy `full` / `carddav` choice instead (issue #2887).
+    val scopedTokensSupported =
+        ServerCapabilities.isSupported(
+            LocalServerVersion.current,
+            ServerFeature.API_TOKEN_SCOPES
         )
 
     Scaffold(
@@ -237,8 +249,9 @@ fun ApiTokensScreen(onBack: () -> Unit, viewModel: ApiTokensViewModel = hiltView
     if (createOpen) {
         CreateApiTokenDialog(
             isSaving = state.isSaving,
-            onConfirm = { name, expiresInDays, scopes ->
-                viewModel.create(name, expiresInDays, scopes = scopes)
+            scopedSupported = scopedTokensSupported,
+            onConfirm = { name, expiresInDays, scopes, scope ->
+                viewModel.create(name, expiresInDays, scope = scope, scopes = scopes)
                 createOpen = false
             },
             onDismiss = { createOpen = false }
@@ -445,12 +458,27 @@ private fun statusLabelRes(token: ApiToken): Int = when {
 @Composable
 internal fun CreateApiTokenDialog(
     isSaving: Boolean,
-    onConfirm: (name: String, expiresInDays: Int, scopes: List<String>) -> Unit,
-    onDismiss: () -> Unit
+    onConfirm: (name: String, expiresInDays: Int, scopes: List<String>?, scope: String?) -> Unit,
+    onDismiss: () -> Unit,
+    scopedSupported: Boolean = true
 ) {
     var name by remember { mutableStateOf("") }
     var expiresInDays by remember { mutableIntStateOf(DEFAULT_API_TOKEN_EXPIRY_DAYS) }
     var preset by remember { mutableStateOf("full") }
+
+    // A pre-1.5.1 server only understands the legacy single `scope`; it has no
+    // way to express the newer API/MCP/CalDAV-only presets, so those are not
+    // offered there (issue #2887).
+    val presets = if (scopedSupported) {
+        API_TOKEN_PRESETS
+    } else {
+        LEGACY_TOKEN_PRESET_SCOPES.keys.toList()
+    }
+    val presetHelp = when (preset) {
+        "full" -> R.string.settings_api_tokens_scope_full_help
+        "contacts" -> R.string.settings_api_tokens_scope_carddav_help
+        else -> R.string.settings_api_tokens_scope_preset_help
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -499,7 +527,7 @@ internal fun CreateApiTokenDialog(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    listOf("full", "contacts", "calendar", "both", "api", "mcp").forEach { option ->
+                    presets.forEach { option ->
                         FilterChip(
                             selected = preset == option,
                             onClick = { preset = option },
@@ -514,13 +542,7 @@ internal fun CreateApiTokenDialog(
                     }
                 }
                 Text(
-                    text = stringResource(
-                        when (preset) {
-                            "full" -> R.string.settings_api_tokens_scope_full_help
-                            "contacts" -> R.string.settings_api_tokens_scope_carddav_help
-                            else -> R.string.settings_api_tokens_scope_preset_help
-                        }
-                    ),
+                    text = stringResource(presetHelp),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -532,7 +554,8 @@ internal fun CreateApiTokenDialog(
                     onConfirm(
                         name.trim(),
                         expiresInDays,
-                        API_TOKEN_PRESET_SCOPES.getValue(preset)
+                        if (scopedSupported) API_TOKEN_PRESET_SCOPES.getValue(preset) else null,
+                        if (scopedSupported) null else LEGACY_TOKEN_PRESET_SCOPES.getValue(preset)
                     )
                 },
                 enabled = !isSaving && name.isNotBlank()

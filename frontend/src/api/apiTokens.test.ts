@@ -2,10 +2,8 @@ import { describe, expect, test } from 'vitest';
 import { errorEnvelope, mockApi, setupMswServer } from '../test/mswServer';
 import {
   API_TOKEN_EXPIRY_OPTIONS,
-  createApiToken,
   createApiTokenWithScopes,
   DEFAULT_API_TOKEN_EXPIRY_DAYS,
-  DEFAULT_API_TOKEN_SCOPE,
   getApiTokens,
   revokeAllApiTokens,
   revokeApiToken,
@@ -28,7 +26,6 @@ describe('apiTokens', () => {
   test('constants', () => {
     expect(API_TOKEN_EXPIRY_OPTIONS).toEqual([30, 60, 90, 180, 365]);
     expect(DEFAULT_API_TOKEN_EXPIRY_DAYS).toBe(90);
-    expect(DEFAULT_API_TOKEN_SCOPE).toBe('full');
   });
 
   test('getApiTokens GETs /api-tokens and returns the tokens', async () => {
@@ -47,21 +44,6 @@ describe('apiTokens', () => {
   test('getApiTokens surfaces the backend message on error', async () => {
     mockApi('get', '/api-tokens', errorEnvelope(500, 'INTERNAL', 'db down'));
     await expect(getApiTokens()).rejects.toThrow('db down');
-  });
-
-  test('createApiToken POSTs name, default expiry and default scope', async () => {
-    const calls = mockApi('post', '/api-tokens', { ...token, token: 'secret' });
-    const res = await createApiToken('laptop');
-    expect(calls[0].method).toBe('POST');
-    expect(calls[0].headers.get('content-type')).toBe('application/json');
-    expect(calls[0].body).toEqual({ name: 'laptop', expires_in_days: 90, scope: 'full' });
-    expect(res.token).toBe('secret');
-  });
-
-  test('createApiToken sends explicit expiry and scope', async () => {
-    const calls = mockApi('post', '/api-tokens', { ...token, token: 's' });
-    await createApiToken('dav', 30, 'carddav');
-    expect(calls[0].body).toEqual({ name: 'dav', expires_in_days: 30, scope: 'carddav' });
   });
 
   test('createApiTokenWithScopes POSTs an explicit scope set', async () => {
@@ -84,13 +66,13 @@ describe('apiTokens', () => {
     });
   });
 
-  test('createApiToken maps a validation envelope to its field message', async () => {
+  test('createApiTokenWithScopes maps a validation envelope to its field message', async () => {
     mockApi(
       'post',
       '/api-tokens',
       errorEnvelope(400, 'VALIDATION_ERROR', 'bad', { name: 'Name is required' }),
     );
-    await expect(createApiToken('')).rejects.toThrow('Name is required');
+    await expect(createApiTokenWithScopes('', 90, ['carddav'])).rejects.toThrow('Name is required');
   });
 
   test('revokeApiToken DELETEs /api-tokens/:id', async () => {

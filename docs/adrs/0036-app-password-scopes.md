@@ -93,7 +93,9 @@ telling the user to create an app password.
 ## v2.0.0 follow-up
 
 The legacy `scope` field and the `full`/`carddav` aliases remain in 1.x only for
-compatibility. Their removal is tracked in issue #2023: deprecate `scope` with
-the MAINT-01 runtime signal in a 1.x release, backfill every remaining `scopes`
-row from `scope`, then drop the column and the API field in 2.0.0. The security
-enforcement in this ADR does not depend on that cleanup.
+compatibility. Their removal is tracked in issue #2023. The deprecation half
+ships in v1.7.0 (#2887): the register row, `deprecated: true` in the spec, the
+RFC 8594 headers on list/create/rotate, and the client version gate. The v2.0.0
+half backfills every remaining `scopes` row from `scope`, then drops the column
+and the API field. The security enforcement in this ADR does not depend on that
+cleanup.
