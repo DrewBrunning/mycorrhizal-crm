@@ -5,6 +5,15 @@ import '../i18n/config';
 import { DateFormatProvider, setDateFormatPreference } from '../DateFormatProvider';
 import ContactTimeline from './ContactTimeline';
 
+// The gallery is irrelevant to date rendering; left real, its image fetch can
+// settle after the test environment is torn down and its late setState surfaces
+// as an unhandled "window is not defined" rejection that fails the whole run
+// (issue #2897). Same guard as calendarDayRendering.test.tsx.
+vi.mock('./ImageGallery', async (importActual) => ({
+  ...(await importActual<typeof import('./ImageGallery')>()),
+  default: () => null,
+}));
+
 // Issue #2006: a multi-day activity shows its range in the user's date format.
 
 afterEach(() => {

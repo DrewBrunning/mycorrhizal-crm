@@ -6,6 +6,16 @@ import type { Gift } from '../api/gifts';
 import { DateFormatProvider } from '../DateFormatProvider';
 import ContactTimeline from './ContactTimeline';
 
+// The gallery is irrelevant to the timeline's label/state assertions; left
+// real, its image fetch can settle after the test environment is torn down and
+// its late setState surfaces as an unhandled "window is not defined" rejection
+// that fails the whole run (issue #2897). Same guard as
+// calendarDayRendering.test.tsx.
+vi.mock('./ImageGallery', async (importActual) => ({
+  ...(await importActual<typeof import('./ImageGallery')>()),
+  default: () => null,
+}));
+
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
 
