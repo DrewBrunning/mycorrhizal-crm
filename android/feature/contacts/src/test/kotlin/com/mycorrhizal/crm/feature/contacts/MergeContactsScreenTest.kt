@@ -1,13 +1,19 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsOff
-import androidx.compose.ui.test.assertIsToggleable
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.ContactMergeAssociationCounts
 import com.mycorrhizal.crm.model.network.ContactMergeFieldConflict
 import com.mycorrhizal.crm.model.network.ContactMergePreviewResponse
@@ -201,11 +207,48 @@ class MergeContactsScreenTest {
         // the checkbox's own accessible name -- previously an unnamed
         // Checkbox sat in a row whose own .clickable carried no role/state at
         // all, so TalkBack announced neither.
+        // #2944: single choice of two = radio button, >= 48 dp tall.
         composeTestRule.onNodeWithText(
             "Drew"
-        ).performScrollTo().assertIsToggleable().assertIsOff().performClick()
+        ).performScrollTo().assertIsSelectable().assertIsNotSelected()
+            .assertHeightIsAtLeast(48.dp)
+            .assert(
+                SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.RadioButton)
+            ).performClick()
         assertEquals("nickname", resolvedField)
         assertEquals("Drew", resolvedValue)
+    }
+
+    // #2945: once merged, the preview and Merge button are gone; only the result and a way to
+    // open the kept contact remain.
+    @Test
+    fun `after a successful merge no merge action is offered`() {
+        var opened = 0
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                MergeContactsScreenContent(
+                    uiState = MergeUiState(
+                        keepId = 1,
+                        mergeId = 2,
+                        merged = true,
+                        preview = ContactMergePreviewResponse(
+                            keepId = 1,
+                            mergeId = 2,
+                            resolution = ContactMergeResolution(),
+                            associationCounts = ContactMergeAssociationCounts()
+                        )
+                    ),
+                    onBack = {},
+                    onOpenKept = { opened++ }
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Contacts merged.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Merge").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Nothing to move.").assertDoesNotExist()
+        composeTestRule.onNodeWithText("Open contact").performClick()
+        assertEquals(1, opened)
     }
 
     @Test

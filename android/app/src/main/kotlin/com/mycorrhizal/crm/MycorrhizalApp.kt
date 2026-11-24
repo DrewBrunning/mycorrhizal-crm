@@ -1440,6 +1440,11 @@ private fun AppNavGraph(
             MergeContactsScreen(
                 onBack = { navController.popBackStack() },
                 keepId = keepId,
+                onOpenContact = { id ->
+                    navController.navigate("contacts/$id") {
+                        popUpTo(entry.destination.id) { inclusive = true }
+                    }
+                },
                 mergeId = mergeId,
                 otherName = mergeName,
                 queue = queue

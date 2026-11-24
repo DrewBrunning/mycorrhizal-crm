@@ -1,22 +1,26 @@
 package com.mycorrhizal.crm.feature.contacts
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -49,6 +53,7 @@ import com.mycorrhizal.crm.ui.components.localizedMessage
 fun MergeContactsScreen(
     onBack: () -> Unit,
     keepId: Long,
+    onOpenContact: (Long) -> Unit = {},
     mergeId: Long = 0,
     otherName: String? = null,
     queue: List<Long> = emptyList(),
@@ -74,7 +79,8 @@ fun MergeContactsScreen(
         onPick = viewModel::selectOther,
         onResolve = viewModel::resolve,
         onCommit = viewModel::commit,
-        onErrorShown = viewModel::onErrorShown
+        onErrorShown = viewModel::onErrorShown,
+        onOpenKept = { onOpenContact(keepId) }
     )
 }
 
@@ -93,7 +99,8 @@ fun MergeContactsScreenContent(
     onPick: (ContactSummary) -> Unit = {},
     onResolve: (String, String) -> Unit = { _, _ -> },
     onCommit: () -> Unit = {},
-    onErrorShown: () -> Unit = {}
+    onErrorShown: () -> Unit = {},
+    onOpenKept: () -> Unit = {}
 ) {
     val state = uiState
     val snackbarHostState = remember { SnackbarHostState() }
@@ -189,7 +196,9 @@ fun MergeContactsScreenContent(
                 )
             }
 
-            state.preview?.let { preview ->
+            // #2945: after a successful merge only the result remains; a second Merge would
+            // post for the already-deleted contact.
+            state.preview?.takeIf { !state.merged }?.let { preview ->
                 if (conflicts.isEmpty()) {
                     Text(
                         stringResource(R.string.merge_no_conflicts),
@@ -220,6 +229,12 @@ fun MergeContactsScreenContent(
             }
             if (state.merged) {
                 Text(stringResource(R.string.merge_done), color = MaterialTheme.colorScheme.primary)
+                OutlinedButton(
+                    onClick = onOpenKept,
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
+                ) {
+                    Text(stringResource(R.string.cd_open_contact))
+                }
             }
         }
     }
@@ -406,33 +421,30 @@ private fun ConflictRow(
     chosen: String?,
     onChoose: (String) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).selectableGroup()
+    ) {
         Text(
             text = conflict.label,
             style = MaterialTheme.typography.titleSmall
         )
         val options = listOfNotNull(conflict.keeperValue, conflict.loserValue).distinct()
         options.forEach { option ->
-            // #199: a bare Checkbox has no text of its own, and the row's own
-            // .clickable carried no Role/state — TalkBack found an unnamed
-            // checkbox plus a plain clickable row with no toggle semantics at
-            // all. Modifier.toggleable merges the option text into the
-            // checkbox's accessible name and exposes the checked state.
-            // (This option is really single-choice-of-two per conflict, so
-            // Role.RadioButton might describe it more precisely than
-            // Role.Checkbox — kept as Checkbox here since that's the widget in
-            // use and this fix is scoped to naming, not widget semantics.)
+            // #199/#2944: the option text is the control's accessible name; the choice is
+            // one-of-two, so it is a RadioButton in a selectable group, with a 48 dp row.
             Row(
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .toggleable(
-                        value = chosen == option,
-                        onValueChange = { onChoose(option) },
-                        role = Role.Checkbox
+                    .heightIn(min = 48.dp)
+                    .selectable(
+                        selected = chosen == option,
+                        onClick = { onChoose(option) },
+                        role = Role.RadioButton
                     )
             ) {
-                Checkbox(checked = chosen == option, onCheckedChange = null)
+                RadioButton(selected = chosen == option, onClick = null)
                 Text(option, modifier = Modifier.weight(1f))
             }
         }
