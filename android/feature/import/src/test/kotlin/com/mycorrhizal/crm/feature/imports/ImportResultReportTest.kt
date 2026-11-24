@@ -63,7 +63,7 @@ class ImportResultReportTest {
             )
         )
 
-        composeTestRule.onNodeWithText("Skipped: you chose Discard new").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Skipped: you chose to discard it").assertIsDisplayed()
         composeTestRule.onAllNodesWithText("Skipped: Skipped").assertCountEquals(0)
     }
 
