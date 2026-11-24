@@ -68,6 +68,40 @@ class CachedContactDaoTest {
         assertEquals(1, result[0].id)
     }
 
+    // #2940: the offline list must sort like the server (and like contactSectionLetter groups):
+    // last name, else first name, else full name -- not the formatted full name `fn`.
+    private fun sortFixture() = listOf(
+        // fn order would be: Ada Zed, Bea Adams, Cy Brown; sort-name order is Adams, Brown, Zed.
+        CachedContact(id = 1, fn = "Ada Zed", firstname = "Ada", lastname = "Zed"),
+        CachedContact(id = 2, fn = "Bea Adams", firstname = "Bea", lastname = "Adams"),
+        CachedContact(id = 3, fn = "Cy Brown", firstname = "Cy", lastname = "Brown"),
+        // No last name: sorts by first name, between Adams and Brown.
+        CachedContact(id = 4, fn = "Bo", firstname = "Bo", lastname = ""),
+        // Same last name: ties broken by first name.
+        CachedContact(id = 5, fn = "Zoe Adams", firstname = "Zoe", lastname = "Adams")
+    )
+
+    private val expectedSortOrder = listOf(2, 5, 4, 3, 1)
+
+    @Test
+    fun `getAll orders by last name else first name like the server`() = runBlocking {
+        dao.upsertAll(sortFixture())
+        assertEquals(expectedSortOrder, dao.getAll().map { it.id })
+    }
+
+    @Test
+    fun `search orders by last name else first name`() = runBlocking {
+        dao.upsertAll(sortFixture())
+        assertEquals(expectedSortOrder, dao.search("").map { it.id })
+    }
+
+    @Test
+    fun `searchFts and searchFtsMatch order by last name else first name`() = runBlocking {
+        dao.upsertAll(sortFixture().map { it.copy(org = "Acme") })
+        assertEquals(expectedSortOrder, dao.searchFts("acme").map { it.id })
+        assertEquals(expectedSortOrder, dao.searchFtsMatch("org:acme").map { it.id })
+    }
+
     @Test
     fun `search matches name and email`() = runBlocking {
         dao.upsertAll(

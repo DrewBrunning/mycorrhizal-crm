@@ -177,6 +177,23 @@ test('a contact renders its name and granted sections only', async () => {
   expect(screen.getByText('alice@example.com')).toBeDefined();
 });
 
+// #2908: the shared card showed "birth: 1985-11-28" instead of a localized label/date.
+test('a shared contact anniversary shows the localized kind and date (#2908)', async () => {
+  contentMock.mockResolvedValue(
+    content({
+      entity_type: 'contact',
+      contact: {
+        name: { full: 'Ada' },
+        anniversaries: { a1: { kind: 'birth', date: { year: 1985, month: 11, day: 28 } } },
+      },
+    }),
+  );
+  renderDialog(recipientGrant({ entity_type: 'contact' }));
+
+  expect(await screen.findByText('Birthday: 28.11.1985')).toBeDefined();
+  expect(screen.queryByText(/birth: 1985-11-28/)).toBeNull();
+});
+
 test('a contact with no details in the shared sections says so', async () => {
   contentMock.mockResolvedValue(content({ entity_type: 'contact' }));
   renderDialog(recipientGrant({ entity_type: 'contact' }));

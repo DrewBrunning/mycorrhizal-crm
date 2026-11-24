@@ -260,8 +260,8 @@ test('submits with just first name', async () => {
 });
 
 // The "Circles" and "Tags" sections share identical field labels ("Select
-// existing .../Or create new...") and button text ("Add"), so every query
-// here is scoped to its own section container (the heading's parent Box).
+// existing .../Or create new..."), while the add buttons are now named per
+// field (#2911), so every query here is scoped to its own section container.
 function circlesSection(): HTMLElement {
   return screen.getByText('Circles').parentElement as HTMLElement;
 }
@@ -276,7 +276,7 @@ test('typing a new circle name and clicking Add shows it as a removable chip', (
   fireEvent.change(within(section).getByLabelText('Or create new...'), {
     target: { value: 'Book Club' },
   });
-  fireEvent.click(within(section).getByRole('button', { name: 'Add' }));
+  fireEvent.click(within(section).getByRole('button', { name: 'Add circle' }));
 
   expect(within(section).getByText('Book Club')).toBeInTheDocument();
 
@@ -304,7 +304,7 @@ test('typing a new tag name and clicking Add shows it as a removable chip', () =
   fireEvent.change(within(section).getByLabelText('Or create new...'), {
     target: { value: 'VIP' },
   });
-  fireEvent.click(within(section).getByRole('button', { name: 'Add' }));
+  fireEvent.click(within(section).getByRole('button', { name: 'Add tag' }));
 
   expect(within(section).getByText('VIP')).toBeInTheDocument();
 
@@ -321,6 +321,19 @@ test('selecting an existing tag from the dropdown adds it as a chip', () => {
   fireEvent.click(screen.getByRole('option', { name: 'Client' }));
 
   expect(within(section).getByText('Client')).toBeInTheDocument();
+});
+
+// #2911: the four row-add buttons used to be indistinguishable "Add"s.
+test('the add-row buttons name their field or item (#2911)', () => {
+  renderDialog();
+  const addNames = screen
+    .getAllByRole('button')
+    .map((b) => b.getAttribute('aria-label') ?? (b.textContent ?? '').trim())
+    .filter((name) => name === 'Add' || name.startsWith('Add '))
+    .sort();
+  expect(addNames).toEqual(['Add Email', 'Add Phone', 'Add circle', 'Add tag']);
+  expect(addNames).not.toContain('Add');
+  expect(new Set(addNames).size).toBe(addNames.length);
 });
 
 test('creating a contact with a new circle and an existing tag wires up both memberships', async () => {
@@ -353,7 +366,7 @@ test('creating a contact with a new circle and an existing tag wires up both mem
   fireEvent.change(within(circlesSection()).getByLabelText('Or create new...'), {
     target: { value: 'Book Club' },
   });
-  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add' }));
+  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add circle' }));
   fireEvent.mouseDown(within(tagsSection()).getByLabelText('Select existing tag...'));
   fireEvent.click(screen.getByRole('option', { name: 'Client' }));
   fireEvent.click(screen.getByRole('button', { name: 'Create' }));
@@ -394,7 +407,7 @@ test('a failed circle-membership call is swallowed -- the contact was already cr
   fireEvent.change(within(circlesSection()).getByLabelText('Or create new...'), {
     target: { value: 'Broken Circle' },
   });
-  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add' }));
+  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add circle' }));
   fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
   await waitFor(() => expect(createMocked).toHaveBeenCalled());
@@ -525,8 +538,8 @@ test('phone, email, and Enter-to-add circle/tag edits all arm the discard guard'
   renderDialog();
 
   // Add a phone row and an email row, then type into them.
-  fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[0]);
-  fireEvent.click(screen.getAllByRole('button', { name: 'Add' })[1]);
+  fireEvent.click(screen.getByRole('button', { name: 'Add Phone' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add Email' }));
   fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '555-0100' } });
   fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@example.com' } });
 

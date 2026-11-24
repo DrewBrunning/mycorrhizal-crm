@@ -1,8 +1,17 @@
+import { readFileSync } from 'node:fs';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import security from 'eslint-plugin-security';
 import tseslint from 'typescript-eslint';
+
+// Issue #2920 item 1: files that already contain raw `err.message` sites are
+// covered by the counted allowlist (one entry per file, checked by
+// scripts/check-raw-error-message.mjs). The rule below applies to everything
+// else in src/, so a new offender cannot land.
+const rawErrorAllowlist = JSON.parse(
+  readFileSync(new URL('./raw-error-message-allowlist.json', import.meta.url), 'utf8'),
+);
 
 export default tseslint.config(
   {
@@ -121,6 +130,33 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
+    },
+  },
+  {
+    // Issue #2920 item 1 / #1915: a raw `err.message` in UI text ("Failed to
+    // fetch", a server-internal string) tells the user nothing.
+    // getErrorMessage() (src/utils/errorHandler.ts) maps network failures and
+    // ApiError responses to a translated, user-safe message. Files with
+    // existing sites are exempt here and ratcheted by count in
+    // raw-error-message-allowlist.json; test/spec/setup files render no UI
+    // text. A selector cannot compare `X` across nodes, so this matches any
+    // `… instanceof Error ? … .message` ternary (all current sites share X).
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: [
+      'src/**/*.test.*',
+      'src/**/*.spec.*',
+      'src/setupTests.ts',
+      ...Object.keys(rawErrorAllowlist),
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ConditionalExpression[test.type='BinaryExpression'][test.operator='instanceof'][test.right.type='Identifier'][test.right.name='Error'][consequent.type='MemberExpression'][consequent.property.type='Identifier'][consequent.property.name='message']",
+          message: 'Use getErrorMessage(err) from utils/errorHandler (#1915)',
+        },
+      ],
     },
   },
   {

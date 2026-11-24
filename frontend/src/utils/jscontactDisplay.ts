@@ -7,7 +7,9 @@
 // recipient until a person adds it here. The section tokens are the
 // models.FieldSections tokens (frontend trap #4: keep in sync with
 // EXPORT_FIELD_SECTIONS in api/export.ts).
+import type { TFunction } from 'i18next';
 import type { JSContactCard } from '../api/shareGrants';
+import { type DateFormat, formatDateWithFormat } from '../DateFormatProvider';
 
 export interface JSContactSection {
   token: string;
@@ -58,18 +60,32 @@ function addressOf(o: Obj): string {
     .join(', ');
 }
 
-function anniversaryOf(o: Obj): string {
+function anniversaryDate(o: Obj): string {
   const d = o.date;
-  let date = '';
-  if (isObj(d)) {
-    date = str(d.utc);
-    if (!date) {
-      const parts = [d.year, d.month, d.day].filter((n) => typeof n === 'number' && n > 0);
-      date = parts.map((n) => String(n).padStart(2, '0')).join('-');
-    }
+  if (!isObj(d)) return '';
+  const utc = str(d.utc);
+  if (utc) return utc;
+  const part = (v: unknown) => (typeof v === 'number' && v > 0 ? v : 0);
+  const year = part(d.year);
+  const month = part(d.month);
+  const day = part(d.day);
+  // formatDateWithFormat reads a date-only string digit for digit; pad the
+  // month/day so a partial date matches its YYYY-MM-DD / --MM-DD shapes.
+  if (year && month && day) {
+    return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
   }
+  if (month && day) return `--${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  return [year, month, day].filter(Boolean).join('-');
+}
+
+// Anniversary kinds are a backend enum; a kind without a translation (a
+// future token) falls back to the raw token rather than disappearing.
+function anniversaryOf(o: Obj, t: TFunction, dateFormat: DateFormat): string {
   const kind = str(o.kind);
-  return date && kind ? `${kind}: ${date}` : date;
+  const date = anniversaryDate(o);
+  const label = kind ? t(`contacts.anniversaryFields.kindOptions.${kind}`, kind) : '';
+  const formatted = date ? formatDateWithFormat(date, dateFormat) : '';
+  return label && formatted ? `${label}: ${formatted}` : formatted;
 }
 
 function relatedOf(o: Obj): string {
@@ -80,7 +96,7 @@ function pronounsOf(o: Obj): string {
   return str(o.pronouns);
 }
 
-type Summariser = (entry: Obj) => string;
+type Summariser = (entry: Obj, t: TFunction, dateFormat: DateFormat) => string;
 
 // Map-of-objects properties: JSContact property -> [section token, summariser].
 const OBJECT_MAPS: Record<string, [string, Summariser]> = {
@@ -130,7 +146,11 @@ const ORDER = [
   'languages',
 ];
 
-export function describeJSContact(card: JSContactCard): JSContactDisplay {
+export function describeJSContact(
+  card: JSContactCard,
+  t: TFunction,
+  dateFormat: DateFormat,
+): JSContactDisplay {
   const byToken = new Map<string, string[]>();
   const add = (token: string, items: string[]) => {
     const kept = items.filter(Boolean);
@@ -142,7 +162,7 @@ export function describeJSContact(card: JSContactCard): JSContactDisplay {
     if (!isObj(map)) continue;
     add(
       token,
-      Object.values(map).map((e) => (isObj(e) ? summarise(e) : '')),
+      Object.values(map).map((e) => (isObj(e) ? summarise(e, t, dateFormat) : '')),
     );
   }
 

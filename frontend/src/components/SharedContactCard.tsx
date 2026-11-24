@@ -1,6 +1,7 @@
 import { Box, Typography } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import type { JSContactCard } from '../api/shareGrants';
+import { useDateFormat } from '../DateFormatProvider';
 import { describeJSContact } from '../utils/jscontactDisplay';
 
 interface SharedContactCardProps {
@@ -12,7 +13,8 @@ interface SharedContactCardProps {
 // Used by both the Share dialog's projection preview and the recipient read view.
 export default function SharedContactCard({ card }: SharedContactCardProps) {
   const { t } = useTranslation();
-  const { name, sections } = describeJSContact(card);
+  const { dateFormat } = useDateFormat();
+  const { name, sections } = describeJSContact(card, t, dateFormat);
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
       <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600 }}>
