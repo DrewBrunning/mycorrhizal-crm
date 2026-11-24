@@ -465,6 +465,7 @@
         "help": {
           "ignore": "Wird unverändert beim Kontakt gespeichert und später wieder exportiert, ist hier aber nicht durchsuchbar oder bearbeitbar. Nichts geht verloren.",
           "map": "Trägt den Wert in ein bereits angelegtes benutzerdefiniertes Feld ein, sodass er durchsuchbar und bearbeitbar ist.",
+          "chooseField": "Wählen Sie ein Feld oder eine andere Aktion.",
           "mapEmpty": "Sie haben noch keine benutzerdefinierten Felder. Wählen Sie „Neues Feld erstellen“, um aus dieser Eigenschaft eines anzulegen.",
           "create": "Legt aus dieser Eigenschaft ein neues durchsuchbares benutzerdefiniertes Feld an und füllt es für jeden importierten Kontakt aus."
         }
@@ -4005,6 +4006,7 @@
       "validation_invalid_request_body": "Ungültiger Anfragetext",
       "import_session_not_found": "Importsitzung abgelaufen oder nicht gefunden",
       "import_session_expired": "Importsitzung abgelaufen",
+      "import_session_limit": "Zu viele Importe laufen gerade. Schließen Sie zuerst einen ab oder brechen Sie ihn ab.",
       "import_endpoint_csv_vcf_only": "Dieser Endpunkt ist nur für CSV- oder VCF-Importe vorgesehen",
       "import_endpoint_vcf_records_only": "Dieser Endpunkt ist nur für VCF- oder Datensatz-Importe vorgesehen",
       "import_preview_required": "Bitte erstellen Sie zuerst eine Vorschau",
@@ -4231,6 +4233,7 @@
       "import_csv_not_text": "Diese Datei ist keine reine Text-CSV-Datei. Exportieren Sie sie erneut als CSV (UTF-8) und versuchen Sie es noch einmal.",
       "import_disk_space_low": "nicht genügend Speicherplatz zum Importieren von {{total}} Kontakten: {{reason}}",
       "import_field_mapping_target_invalid": "Ein importierter Wert kann nur in ein benutzerdefiniertes Feld für Kontakte übernommen werden",
+      "import_field_mapping_unknown_field": "Wählen Sie für „{{property}}“ ein vorhandenes Feld oder eine andere Aktion.",
       "import_field_mappings_invalid": "{{reason}}",
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",

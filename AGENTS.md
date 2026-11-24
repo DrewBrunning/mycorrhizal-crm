@@ -113,7 +113,9 @@ actual port or CORS fails. Service-worker testing needs `frontend-prod` — see 
    fails.
 6. Run the pre-PR gate locally for the areas touched (`.github/filters.yaml`):
    build/lint/tests, then the area coverage ratchet and a flake-stress pass over
-   new/changed tests. The pre-commit hook is a subset, not the full suite.
+   new/changed tests. The pre-commit hook is a subset, not the full suite. A
+   user-visible change adds one `changelog.d/` fragment; never edit
+   `CHANGELOG.md` directly (the release assembles fragments).
    Raise the coverage baseline in the same PR when tests were added. Open the PR and stop.
 7. Commit with `-s`, push the feature branch, open a PR with the evidence. No force-push except the
    documented `--force-with-lease` DCO rebase.
@@ -125,7 +127,7 @@ path. Three categories replace it with their own verification — not with no ve
 
 - **Documentation-only** (`docs/`, `*.md`, context files): no test is expected; run the unconditional
   gates in `docs/AGENTS.md` (`docscheck`, `citecheck`, `typos`, `depexceptions`, `deprecations`,
-  `contextcheck`, `changelogcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
+  `contextcheck`, `changelogcheck`, `changelogfragmentcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
   `nightlyalertcheck`, `mainalertcheck`, `androidskipcheck`).
 - **Generated artifacts:** regenerate with the owning area's command, commit the diff, and run the
   named drift test. Never hand-edit.
@@ -155,8 +157,10 @@ Frontend [#1](frontend/AGENTS.md#trap-1) [#2](frontend/AGENTS.md#trap-2) [#3](fr
 - One branch per concern, using the matching prefix (`feature/`, `fix/`, `docs/`, `ci/`, `chore/`);
   implement → verify → commit → push → PR.
 - PR body says what changed and why and lists checks run and not run.
-- A user-visible change also adds one plain-language bullet to `CHANGELOG.md` under `[Unreleased]`
+- A user-visible change also adds one plain-language fragment under `changelog.d/`
   (format and limits: `docs/changelog-policy.md`; one bullet per feature across
-  platforms, naming a platform only when the change is platform-only); that entry is the release note. No user-visible
-  effect means `no-changelog: <reason>` in the PR body.
+  platforms, naming a platform only when the change is platform-only). Never edit
+  `CHANGELOG.md` directly: the release assembles the fragments with
+  `cmd/changelogassemble`. No user-visible effect means `no-changelog: <reason>`
+  in the PR body.
 - Close the corresponding issue when a ticket lands.

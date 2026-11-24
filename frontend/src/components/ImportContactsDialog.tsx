@@ -135,6 +135,12 @@ export default function ImportContactsDialog({
     [],
   );
   const [fieldMappings, setFieldMappings] = useState<ImportFieldMapping[]>([]);
+  // Issue #2909: a "map" decision with no field chosen cannot be applied --
+  // the server rejects it -- so the step's Continue is blocked until every
+  // "map" row names a definition.
+  const fieldMappingIncomplete = fieldMappings.some(
+    (m) => m.action === 'map' && !m.field_definition_id,
+  );
 
   // Issue #2000: circles/tags every CSV-imported contact joins.
   const [fixedCircleIds, setFixedCircleIds] = useState<string[]>([]);
@@ -538,7 +544,7 @@ export default function ImportContactsDialog({
           onClick={(e) => e.stopPropagation()}
         />
         <CloudUploadIcon aria-hidden sx={{ fontSize: 48, color: 'grey.500', mb: 2 }} />
-        <Typography variant="h6" gutterBottom>
+        <Typography variant="h6" component="h3" gutterBottom>
           {t(
             'contacts.import.upload.dragDrop',
             'Drag and drop a CSV or VCF file here, or click to select',
@@ -849,7 +855,11 @@ export default function ImportContactsDialog({
                           </FormHelperText>
                         </FormControl>
                         {action === 'map' && (
-                          <FormControl size="small" sx={{ minWidth: 220 }}>
+                          <FormControl
+                            size="small"
+                            sx={{ minWidth: 220 }}
+                            error={!mapping?.field_definition_id}
+                          >
                             <Select
                               value={mapping?.field_definition_id ?? ''}
                               displayEmpty
@@ -871,6 +881,14 @@ export default function ImportContactsDialog({
                                 </MenuItem>
                               ))}
                             </Select>
+                            {!mapping?.field_definition_id && (
+                              <FormHelperText>
+                                {t(
+                                  'contacts.import.customFields.help.chooseField',
+                                  'Choose a field, or pick another action',
+                                )}
+                              </FormHelperText>
+                            )}
                           </FormControl>
                         )}
                         {action === 'create' && (
@@ -1041,7 +1059,7 @@ export default function ImportContactsDialog({
             there were never any conflicts: once one exists, even a fully
             resolved set is not "everything below will be added as new". */}
         {conflictsRemaining > 0 ? (
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
             {t(
               'contacts.import.preview.resolveConflicts',
               'Resolve Conflicts ({{count}} remaining)',
@@ -1051,7 +1069,7 @@ export default function ImportContactsDialog({
             )}
           </Typography>
         ) : conflictRows.length > 0 ? (
-          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+          <Typography variant="subtitle2" component="h3" sx={{ mb: 1 }}>
             {t(
               'contacts.import.preview.allResolved',
               'All conflicts resolved — review the decisions below.',
@@ -1206,7 +1224,7 @@ export default function ImportContactsDialog({
                 setStep('preview');
                 setActiveStep(2);
               }}
-              disabled={loading}
+              disabled={loading || fieldMappingIncomplete}
             >
               {t('common.continue', 'Continue')}
             </Button>

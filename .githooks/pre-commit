@@ -217,6 +217,7 @@ run "deprecations (deprecation register)" backend go run ./cmd/deprecations
 run "docscheck (docs structure/links/drift)" backend go run ./cmd/docscheck
 run "contextcheck (AGENTS.md file set, aliases, budgets, registry parity)" backend go run ./cmd/contextcheck
 run "changelogcheck (CHANGELOG.md [Unreleased] lint)" backend go run ./cmd/changelogcheck
+run "changelogfragmentcheck (changelog.d fragments)" backend go run ./cmd/changelogfragmentcheck
 run "releasegatecheck (release-gate registry)" backend go run ./cmd/releasegatecheck
 run "governancecheck (governance settings)" backend go run ./cmd/governancecheck
 run "pragmacheck (coverage-override markers carry a reason)" backend go run ./cmd/pragmacheck
@@ -228,9 +229,10 @@ if [ "$changelog_relevant" = true ]; then
   echo ""
   echo "${YELLOW}${BOLD}## Reminder: changelog${RESET}"
   echo "${YELLOW}You staged a migration, backend/config/config.go, or .env.example.${RESET}"
-  echo "${YELLOW}Add an entry to CHANGELOG.md under [Unreleased] (with an Upgrade"
-  echo "blockquote if the operator must act), or put a 'no-changelog: <reason>'"
-  echo "line in the PR description if genuinely nothing is needed."
+  echo "${YELLOW}Add a fragment under changelog.d/ (format: changelog.d/README.md;"
+  echo "put any operator action in the assembled release's Upgrade blockquote),"
+  echo "or put a 'no-changelog: <reason>' line in the PR description if"
+  echo "genuinely nothing is needed."
   echo "See docs/changelog-policy.md.${RESET}"
 fi
 

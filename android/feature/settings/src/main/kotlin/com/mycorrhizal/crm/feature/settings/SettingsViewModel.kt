@@ -606,6 +606,16 @@ class SettingsViewModel @Inject constructor(
      * `values-XX` resources resolve in the new language without a restart.
      */
     fun updateLanguage(language: String) {
+        // #2937: "System default" clears the in-app override and the OS per-app locale; it has
+        // no server-side counterpart, so the server language is left as it is.
+        if (language == LANGUAGE_SYSTEM) {
+            viewModelScope.launch {
+                appSettings.setLanguageOverride(null)
+                AppLocale.applyToSystem(appContext, null)
+                _events.value = SettingsEvent.LocaleChanged
+            }
+            return
+        }
         val current = _uiState.value.session.language
         // Issue #1921: re-selecting the current language still reconciles the OS
         // per-app locale, which the user may have changed from system Settings
