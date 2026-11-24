@@ -54,6 +54,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Shared contact anniversaries on the web** ([#2908](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2908)): a shared contact card now reads "Birthday: 28.11.1985" in your language and date format instead of "birth: 1985-11-28".
 - **A missing contact keeps its "not found" tab title** ([#2901](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2901)): opening a contact that no longer exists now leaves the browser tab on "Contact not found" instead of switching back to "Contacts".
 - **Android names the field on an empty contact row**: on a contact page, each empty field's button now says "Add Phone", "Add Email" and so on, so a screen reader can tell them apart instead of announcing "Add" for every one.
 - **Android announces whether an activity is selected**: in the "Add to activities" dialog a screen reader now says whether each row is checked, instead of only "checkbox".

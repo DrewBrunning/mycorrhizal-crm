@@ -57,7 +57,7 @@ export default function SharedGrantContentDialog({
   onClose,
 }: SharedGrantContentDialogProps) {
   const { t } = useTranslation();
-  const { formatDate } = useDateFormat();
+  const { formatDate, dateFormat } = useDateFormat();
   const [state, setState] = useState<State>({ status: 'loading' });
   const grantId = grant?.id;
 
@@ -119,7 +119,7 @@ export default function SharedGrantContentDialog({
         return (
           <>
             <SharedContactCard card={content.contact} />
-            {describeJSContact(content.contact).sections.length === 0 && (
+            {describeJSContact(content.contact, t, dateFormat).sections.length === 0 && (
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                 {t('standingShares.content.noDetails')}
               </Typography>

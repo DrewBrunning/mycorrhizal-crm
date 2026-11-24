@@ -1,34 +1,51 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test } from 'vitest';
+import i18n from '../i18n/config';
 import { describeJSContact } from './jscontactDisplay';
+
+const t = i18n.t.bind(i18n);
+
+afterEach(async () => {
+  await i18n.changeLanguage('en');
+});
 
 describe('describeJSContact', () => {
   test('uses name.full, else joins the name components in order', () => {
-    expect(describeJSContact({ name: { full: 'Alice Anderson' } }).name).toBe('Alice Anderson');
+    expect(describeJSContact({ name: { full: 'Alice Anderson' } }, t, 'eu').name).toBe(
+      'Alice Anderson',
+    );
     expect(
-      describeJSContact({
-        name: {
-          components: [
-            { kind: 'given', value: 'John' },
-            { kind: 'surname', value: 'Doe' },
-          ],
+      describeJSContact(
+        {
+          name: {
+            components: [
+              { kind: 'given', value: 'John' },
+              { kind: 'surname', value: 'Doe' },
+            ],
+          },
         },
-      }).name,
+        t,
+        'eu',
+      ).name,
     ).toBe('John Doe');
-    expect(describeJSContact({}).name).toBe('');
+    expect(describeJSContact({}, t, 'eu').name).toBe('');
   });
 
   test('summarises each known section by its section token', () => {
-    const out = describeJSContact({
-      emails: { e1: { address: 'a@example.com' } },
-      phones: { p1: { number: '+1 555 0100', label: 'Home' } },
-      addresses: { a1: { full: '1 Main St, Springfield' } },
-      organizations: { o1: { name: 'Acme' } },
-      links: { l1: { uri: 'https://example.com' } },
-      onlineServices: { s1: { service: 'Mastodon', user: '@a' } },
-      notes: { n1: { note: 'Met at a conference' } },
-      keywords: { friend: true, golf: true },
-      personalInfo: { i1: { kind: 'hobby', value: 'Chess' } },
-    });
+    const out = describeJSContact(
+      {
+        emails: { e1: { address: 'a@example.com' } },
+        phones: { p1: { number: '+1 555 0100', label: 'Home' } },
+        addresses: { a1: { full: '1 Main St, Springfield' } },
+        organizations: { o1: { name: 'Acme' } },
+        links: { l1: { uri: 'https://example.com' } },
+        onlineServices: { s1: { service: 'Mastodon', user: '@a' } },
+        notes: { n1: { note: 'Met at a conference' } },
+        keywords: { friend: true, golf: true },
+        personalInfo: { i1: { kind: 'hobby', value: 'Chess' } },
+      },
+      t,
+      'eu',
+    );
     const byToken = Object.fromEntries(out.sections.map((s) => [s.token, s.items]));
     expect(byToken.emails).toEqual(['a@example.com']);
     expect(byToken.phones).toEqual(['Home: +1 555 0100']);
@@ -42,27 +59,67 @@ describe('describeJSContact', () => {
   });
 
   test('only renders an allowlist: unknown properties, ids and metadata never appear', () => {
-    const out = describeJSContact({
-      '@type': 'Card',
-      uid: 'secret-uid',
-      version: '1.0',
-      'crm:secret': { x: 'y' },
-      secretStuff: { a: { value: 'leak' } },
-      emails: { e1: { address: 'a@example.com' } },
-    });
+    const out = describeJSContact(
+      {
+        '@type': 'Card',
+        uid: 'secret-uid',
+        version: '1.0',
+        'crm:secret': { x: 'y' },
+        secretStuff: { a: { value: 'leak' } },
+        emails: { e1: { address: 'a@example.com' } },
+      },
+      t,
+      'eu',
+    );
     expect(out.sections.map((s) => s.token)).toEqual(['emails']);
     expect(JSON.stringify(out)).not.toContain('leak');
     expect(JSON.stringify(out)).not.toContain('secret-uid');
   });
 
   test('a section with no displayable items is omitted', () => {
-    expect(describeJSContact({ emails: {} }).sections).toEqual([]);
-    expect(describeJSContact({ emails: { e1: {} } }).sections).toEqual([]);
+    expect(describeJSContact({ emails: {} }, t, 'eu').sections).toEqual([]);
+    expect(describeJSContact({ emails: { e1: {} } }, t, 'eu').sections).toEqual([]);
   });
 
   test('tolerates malformed shapes without throwing', () => {
     expect(() =>
-      describeJSContact({ emails: 'nope', phones: [1, 2], name: 5, notes: { n: null } }),
+      describeJSContact({ emails: 'nope', phones: [1, 2], name: 5, notes: { n: null } }, t, 'eu'),
     ).not.toThrow();
+  });
+
+  // #2908: a shared card leaked the raw JSContact kind and ISO date.
+  test('renders an anniversary with the localized kind and the viewer date format (#2908)', async () => {
+    const card = {
+      anniversaries: { a1: { kind: 'birth', date: { year: 1985, month: 11, day: 28 } } },
+    };
+    const anniversaries = (out: ReturnType<typeof describeJSContact>) =>
+      out.sections.find((s) => s.token === 'anniversaries')?.items;
+
+    expect(anniversaries(describeJSContact(card, t, 'eu'))).toEqual(['Birthday: 28.11.1985']);
+
+    await i18n.changeLanguage('de');
+    expect(anniversaries(describeJSContact(card, t, 'eu'))).toEqual(['Geburtstag: 28.11.1985']);
+  });
+
+  test('pads single-digit month/day and formats a year-less anniversary (#2908)', () => {
+    const out = describeJSContact(
+      { anniversaries: { a1: { kind: 'birth', date: { month: 3, day: 4 } } } },
+      t,
+      'eu',
+    );
+    expect(out.sections.find((s) => s.token === 'anniversaries')?.items).toEqual([
+      'Birthday: 04.03.',
+    ]);
+  });
+
+  test('falls back to the raw kind when it has no translation (#2908)', () => {
+    const out = describeJSContact(
+      { anniversaries: { a1: { kind: 'anniversary', date: { year: 2000, month: 1, day: 2 } } } },
+      t,
+      'eu',
+    );
+    expect(out.sections.find((s) => s.token === 'anniversaries')?.items).toEqual([
+      'anniversary: 02.01.2000',
+    ]);
   });
 });
