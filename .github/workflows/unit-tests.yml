@@ -1351,6 +1351,13 @@ jobs:
         working-directory: frontend
         run: yarn lint
 
+      # Issue #2920 (item 3): month-day text must go through formatMonthDay
+      # (Intl) instead of hand-assembled `${month} ${day}`. The ESLint rule
+      # flags new sites; this script keeps the counted allowlist honest.
+      - name: Month-day formatting guard
+        working-directory: frontend
+        run: yarn month-day:check
+
       # Issue #1907: dead-weight detection the type/lint/bundle gates cannot
       # see -- files and exports nothing imports, and unused dependencies.
       # The i18n key-usage guard runs with vitest above.

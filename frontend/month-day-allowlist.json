@@ -4,10 +4,6 @@
     "src/components/GeoPulseSuggestionsDialog.tsx": {
       "count": 1,
       "reason": "Builds the YYYY-MM-DD query parameter sent to the API; it is a calendar value, not displayed text."
-    },
-    "src/components/OccasionObligationList.tsx": {
-      "count": 1,
-      "reason": "Pre-fix `${month name} ${day}` anchor label; #2914/#2924 migrates it and then this entry is deleted."
     }
   }
 }
