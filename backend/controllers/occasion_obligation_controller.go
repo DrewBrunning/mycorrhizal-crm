@@ -110,7 +110,7 @@ func syncOccasionObligationReminder(tx *gorm.DB, userID uint, obligation *models
 
 	reminder := models.Reminder{
 		UserID:               userID,
-		Message:              fmt.Sprintf("Occasion — %s: %s", obligation.Label, contactName),
+		Message:              fmt.Sprintf("%s: %s", obligation.Label, contactName),
 		RemindAt:             remindAt,
 		Recurrence:           "yearly",
 		ContactID:            contactID,

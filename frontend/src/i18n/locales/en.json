@@ -1167,6 +1167,7 @@
   },
   "reminders": {
     "title": "Reminders",
+    "occasionTitle": "Occasion — {{title}}",
     "add": "Add Reminder",
     "addReminder": "Add Reminder",
     "editReminder": "Edit Reminder",

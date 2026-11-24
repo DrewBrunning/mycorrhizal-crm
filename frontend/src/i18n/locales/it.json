@@ -1150,6 +1150,7 @@
   },
   "reminders": {
     "title": "Promemoria",
+    "occasionTitle": "Occasione — {{title}}",
     "add": "Aggiungi Promemoria",
     "addReminder": "Aggiungi Promemoria",
     "editReminder": "Modifica Promemoria",
