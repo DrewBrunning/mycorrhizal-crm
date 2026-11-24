@@ -1,6 +1,7 @@
 package reasonprose
 
 import (
+	"errors"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -25,6 +26,13 @@ func TestParseAllowlist(t *testing.T) {
 		assert.Equal(t, "parser detail", allow.reasons["foo_bar/reason"])
 	})
 
+	t.Run("comments and blank lines are ignored", func(t *testing.T) {
+		allow, err := parseAllowlist("# a comment\n\n# count: 1\n\n*/status\tdata, not a sentence\n")
+		require.NoError(t, err)
+		assert.Equal(t, 1, allow.count)
+		assert.Contains(t, allow.reasons, "*/status")
+	})
+
 	for _, tc := range []struct {
 		name string
 		text string
@@ -32,9 +40,12 @@ func TestParseAllowlist(t *testing.T) {
 	}{
 		{"missing count", "*/status\thttp status\n", "missing # count"},
 		{"count mismatch", "# count: 2\n*/status\thttp status\n", "count header says 2"},
+		{"bad count header", "# count: many\n*/status\thttp status\n", "bad count header"},
 		{"blank reason", "# count: 1\n*/status\t\n", "has no reason"},
 		{"missing tab", "# count: 1\n*/status http status\n", "want code/key"},
 		{"bad key", "# count: 1\nstatus\thttp status\n", "must be code/key"},
+		{"empty code", "# count: 1\n/status\thttp status\n", "must be code/key"},
+		{"empty param", "# count: 1\nfoo/\tparser detail\n", "must be code/key"},
 		{"duplicate", "# count: 2\n*/status\ta\n*/status\tb\n", "duplicate entry"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -64,9 +75,25 @@ func TestCheck(t *testing.T) {
 			params: map[string]any{"detail": "one two three"},
 		},
 		{
+			name:   "whitespace-only is not prose",
+			code:   "some_code",
+			params: map[string]any{"detail": "   \t\n "},
+		},
+		{
+			name:   "multi-line and extra spacing still count words",
+			code:   "some_code",
+			params: map[string]any{"detail": "one\n  two   three\tfour"},
+			want:   []string{"detail"},
+		},
+		{
 			name:   "non-string values are never prose",
 			code:   "some_code",
 			params: map[string]any{"count": 4, "ok": true},
+		},
+		{
+			name:   "nil params are ignored",
+			code:   "some_code",
+			params: nil,
 		},
 		{
 			name:   "allowed key is not prose",
@@ -77,6 +104,12 @@ func TestCheck(t *testing.T) {
 			name:   "allowed code and key is not prose",
 			code:   "meerkat_api_error",
 			params: map[string]any{"reason": "The Meerkat URL is invalid"},
+		},
+		{
+			name:   "allowlisted code with a different key is prose",
+			code:   "meerkat_api_error",
+			params: map[string]any{"detail": "one two three four"},
+			want:   []string{"detail"},
 		},
 		{
 			name:   "unallowed reason is prose",
@@ -104,6 +137,49 @@ func TestCheck(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCheckProblemFields(t *testing.T) {
+	problems := Check("some_code", map[string]any{"detail": "one two three four"})
+	require.Len(t, problems, 1)
+	p := problems[0]
+	assert.Equal(t, "some_code", p.Code)
+	assert.Equal(t, "detail", p.Key)
+	assert.Equal(t, "one two three four", p.Value)
+	assert.Contains(t, p.Why, "4 or more words")
+	assert.Contains(t, p.Why, "allowlist entry")
+}
+
+// TestCheckMalformedAllowlistFailsClosed exercises the load-error branch. The
+// embedded allowlist loads once through a sync.Once, so swap the parsed result
+// after forcing that load and restore it when the test ends.
+func TestCheckMalformedAllowlistFailsClosed(t *testing.T) {
+	_, _ = loadAllowlist()
+	prevLoaded, prevErr := loaded, loadError
+	t.Cleanup(func() { loaded, loadError = prevLoaded, prevErr })
+	loaded = allowlist{}
+	loadError = errors.New("boom")
+
+	problems := Check("some_code", map[string]any{"detail": "one two three four"})
+	require.Len(t, problems, 2)
+	assert.Equal(t, "some_code", problems[0].Code)
+	assert.Empty(t, problems[0].Key)
+	assert.Contains(t, problems[0].Why, "allowlist is malformed: boom")
+	assert.Equal(t, "detail", problems[1].Key)
+}
+
+func TestSortProblemsOrdersByKeyThenValue(t *testing.T) {
+	problems := []Problem{
+		{Key: "b", Value: "a"},
+		{Key: "a", Value: "z"},
+		{Key: "a", Value: "a"},
+	}
+	sortProblems(problems)
+	assert.Equal(t, []Problem{
+		{Key: "a", Value: "a"},
+		{Key: "a", Value: "z"},
+		{Key: "b", Value: "a"},
+	}, problems)
 }
 
 func TestEmbeddedAllowlistIsWellFormed(t *testing.T) {

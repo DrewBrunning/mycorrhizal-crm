@@ -84,13 +84,18 @@ func Check(code string, params map[string]any) []Problem {
 			Why:   fmt.Sprintf("%d or more words read as prose that a translated template cannot interpolate; use a localizable reason code/template or add a reasoned allowlist entry", proseWordThreshold),
 		})
 	}
+	sortProblems(problems)
+	return problems
+}
+
+// sortProblems orders problems by key, then value, so Check output is stable.
+func sortProblems(problems []Problem) {
 	sort.Slice(problems, func(i, j int) bool {
 		if problems[i].Key != problems[j].Key {
 			return problems[i].Key < problems[j].Key
 		}
 		return problems[i].Value < problems[j].Value
 	})
-	return problems
 }
 
 func loadAllowlist() (allowlist, error) {
