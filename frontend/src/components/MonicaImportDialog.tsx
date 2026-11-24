@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../api/client';
 import {
+  cancelMonicaImport,
   connectMonica,
   MONICA_IMPORT_BASE,
   type MonicaConnectResponse,
@@ -109,9 +110,15 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
   }, []);
 
   const handleClose = useCallback(() => {
+    // A session the wizard never received (Start not pressed) is invisible to
+    // wizard.cancel(), which would leave it open on the server until it
+    // expires (issue #2916, mirroring MeerkatImportDialog).
+    if (connectResp?.session_id && connectResp.session_id !== wizard.sessionId) {
+      void cancelMonicaImport(connectResp.session_id).catch(() => undefined);
+    }
     resetLocal();
     onClose();
-  }, [onClose, resetLocal]);
+  }, [connectResp, wizard.sessionId, onClose, resetLocal]);
 
   const handleComplete = useCallback(() => {
     resetLocal();

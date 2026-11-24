@@ -239,6 +239,8 @@ func TestConnectMeerkatImport_SessionCap(t *testing.T) {
 	}
 	w := postConnect(t, router, body)
 	require.Equal(t, http.StatusTooManyRequests, w.Code)
+	// Issue #2916: the refusal is localizable, not an English-only sentence.
+	assert.Contains(t, w.Body.String(), `"reason_code":"import_session_limit"`)
 }
 
 func TestConnectMeerkatImport_SessionIsOwnerScoped(t *testing.T) {

@@ -337,6 +337,10 @@ fun MycorrhizalApp(
     onOidcErrorShown: () -> Unit = {}
 ) {
     val session by mainViewModel.session.collectAsStateWithLifecycle()
+    // #2939: retry a profile fetch that failed while the server was unreachable.
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        mainViewModel.onAppResumed()
+    }
     // Issue #722: when a persisted session is resumed the authenticated tree
     // may have to pass the local (biometric / device-PIN) check first. The
     // app-lock state is collected here so the main tree is only composed once

@@ -378,6 +378,9 @@ export default function ContactTimeline({
                             sx={{
                               cursor: 'pointer',
                               textDecoration: 'none',
+                              minHeight: 24,
+                              display: 'inline-flex',
+                              alignItems: 'center',
                               '&:hover': { textDecoration: 'underline' },
                             }}
                           >

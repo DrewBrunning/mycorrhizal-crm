@@ -117,6 +117,7 @@ export default function OccasionEventList({
               <Button
                 size="small"
                 startIcon={<GroupIcon fontSize="small" />}
+                aria-label={t('occasions.events.manageAttendeesNamed', { event: event.title })}
                 onClick={() => onManageAttendees(event)}
               >
                 {t('occasions.events.manageAttendees')}

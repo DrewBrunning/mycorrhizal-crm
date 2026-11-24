@@ -4,6 +4,8 @@
     "logout": "Abmelden",
     "accountMenu": "Konto",
     "openNavigation": "Navigation öffnen",
+    "openNavigationWithPending_one": "Navigation öffnen, {{count}} Freigabe wartet auf Ihre Antwort",
+    "openNavigationWithPending_other": "Navigation öffnen, {{count}} Freigaben warten auf Ihre Antwort",
     "update": {
       "available": "Eine neue Version von Mycorrhizal CRM ist verfügbar.",
       "reload": "Neu laden"
@@ -379,12 +381,14 @@
     "workInformation": "Arbeitsinformationen",
     "contactInformation": "Zusätzliche Kontaktinformationen",
     "circles": "Kreise",
+    "addCircleNamed": "Kreis hinzufügen",
     "selectCircle": "Vorhandenen Kreis auswählen...",
     "newCircle": "Oder neu erstellen...",
     "tags": "Tags",
     "selectTag": "Vorhandenen Tag auswählen...",
     "setAsPreferred": "Als bevorzugt markieren",
     "newTag": "Oder neu erstellen...",
+    "addTag": "Tag hinzufügen",
     "add": {
       "button": "Kontakt hinzufügen",
       "title": "Neuen Kontakt hinzufügen",
@@ -461,6 +465,7 @@
         "help": {
           "ignore": "Wird unverändert beim Kontakt gespeichert und später wieder exportiert, ist hier aber nicht durchsuchbar oder bearbeitbar. Nichts geht verloren.",
           "map": "Trägt den Wert in ein bereits angelegtes benutzerdefiniertes Feld ein, sodass er durchsuchbar und bearbeitbar ist.",
+          "chooseField": "Wählen Sie ein Feld oder eine andere Aktion.",
           "mapEmpty": "Sie haben noch keine benutzerdefinierten Felder. Wählen Sie „Neues Feld erstellen“, um aus dieser Eigenschaft eines anzulegen.",
           "create": "Legt aus dieser Eigenschaft ein neues durchsuchbares benutzerdefiniertes Feld an und füllt es für jeden importierten Kontakt aus."
         }
@@ -1212,6 +1217,7 @@
     "delete": "Löschen",
     "deleteNamed": "{{name}} löschen",
     "deleteEntry": "Eintrag {{number}} löschen",
+    "addNamed": "{{name}} hinzufügen",
     "back": "Zurück",
     "continue": "Weiter",
     "add": "Hinzufügen",
@@ -3176,6 +3182,7 @@
       "notes": "Notizen",
       "deleteMessage": "Diese Veranstaltung löschen?",
       "manageAttendees": "Gäste",
+      "manageAttendeesNamed": "Gäste von {{event}}",
       "attendeesTitle": "Gäste — {{title}}",
       "noAttendees": "Noch niemand eingeladen.",
       "addAttendee": "Hinzufügen",
@@ -3999,6 +4006,7 @@
       "validation_invalid_request_body": "Ungültiger Anfragetext",
       "import_session_not_found": "Importsitzung abgelaufen oder nicht gefunden",
       "import_session_expired": "Importsitzung abgelaufen",
+      "import_session_limit": "Zu viele Importe laufen gerade. Schließen Sie zuerst einen ab oder brechen Sie ihn ab.",
       "import_endpoint_csv_vcf_only": "Dieser Endpunkt ist nur für CSV- oder VCF-Importe vorgesehen",
       "import_endpoint_vcf_records_only": "Dieser Endpunkt ist nur für VCF- oder Datensatz-Importe vorgesehen",
       "import_preview_required": "Bitte erstellen Sie zuerst eine Vorschau",
@@ -4225,6 +4233,7 @@
       "import_csv_not_text": "Diese Datei ist keine reine Text-CSV-Datei. Exportieren Sie sie erneut als CSV (UTF-8) und versuchen Sie es noch einmal.",
       "import_disk_space_low": "nicht genügend Speicherplatz zum Importieren von {{total}} Kontakten: {{reason}}",
       "import_field_mapping_target_invalid": "Ein importierter Wert kann nur in ein benutzerdefiniertes Feld für Kontakte übernommen werden",
+      "import_field_mapping_unknown_field": "Wählen Sie für „{{property}}“ ein vorhandenes Feld oder eine andere Aktion.",
       "import_field_mappings_invalid": "{{reason}}",
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
@@ -4474,7 +4483,9 @@
       "none": "Keine Duplikate gefunden.",
       "failed": "Die Suche nach Duplikaten ist fehlgeschlagen.",
       "merge": "Zusammenführen…",
+      "mergeNamed": "{{a}} und {{b}} zusammenführen",
       "dismiss": "Kein Duplikat",
+      "dismissNamed": "{{a}} und {{b}} sind keine Duplikate",
       "dismissed": "Dauerhaft ausgeblendet.",
       "pair": "{{a}} und {{b}}",
       "reason": {
@@ -4526,6 +4537,12 @@
       "createOrganisation_other": "{{count}} Organisationen erstellen",
       "createPlace_one": "{{count}} Ort erstellen",
       "createPlace_other": "{{count}} Orte erstellen",
+      "linkExisting": "Mit vorhandenem Eintrag verknüpfen: {{name}}",
+      "linkExistingOrganisation_one": "Mit vorhandener Organisation verknüpfen",
+      "linkExistingOrganisation_other": "{{count}} Gruppen mit vorhandenen Organisationen verknüpfen",
+      "linkExistingPlace_one": "Mit vorhandenem Ort verknüpfen",
+      "linkExistingPlace_other": "{{count}} Gruppen mit vorhandenen Orten verknüpfen",
+      "createAndLink": "Neue Gruppen erstellen und vorhandene verknüpfen",
       "createdOrganisation_one": "{{count}} Organisation erstellt.",
       "createdOrganisation_other": "{{count}} Organisationen erstellt.",
       "createdPlace_one": "{{count}} Ort erstellt.",
@@ -4534,7 +4551,8 @@
         "group_not_found": "{{name}}: übersprungen. Es existiert möglicherweise schon oder passt nicht mehr zu Ihren Kontakten.",
         "contact_not_in_group": "{{name}}: ein Kontakt gehört nicht mehr dazu.",
         "name_invalid": "{{name}}: Der Name ist ungültig.",
-        "core_invalid": "{{name}}: Die Angaben sind ungültig."
+        "core_invalid": "{{name}}: Die Angaben sind ungültig.",
+        "entity_not_found": "{{name}}: Die passende Organisation oder der passende Ort existiert nicht mehr."
       }
     }
   },

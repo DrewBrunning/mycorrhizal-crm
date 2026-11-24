@@ -13,7 +13,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { TFunction } from 'i18next';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from './api/client';
 import {
@@ -35,6 +35,10 @@ import { useShareGrantList } from './hooks/useShareGrantList';
 import { getErrorMessage } from './utils/errorHandler';
 
 type Confirm = { kind: 'revoke' | 'reconfirm' | 'remove'; grant: ShareGrantOwnerView };
+
+// What to focus once the list re-renders after an action (#2918): a nearby row's
+// same action button, or a stable fallback when that row was the only one.
+type FocusRequest = { kind: 'remove'; id: string } | { kind: 'edit'; id: string };
 
 const isLive = (g: ShareGrantOwnerView) => g.status === 'pending' || g.status === 'active';
 
@@ -59,6 +63,12 @@ export default function SharedByMePage() {
   const [actionError, setActionError] = useState('');
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [editing, setEditing] = useState<ShareGrantOwnerView | null>(null);
+  const removeButtons = useRef(new Map<string, HTMLButtonElement | null>());
+  const editButtons = useRef(new Map<string, HTMLButtonElement | null>());
+  const liveHeadingRef = useRef<HTMLHeadingElement>(null);
+  const endedHeadingRef = useRef<HTMLHeadingElement>(null);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const focusRequest = useRef<FocusRequest | null>(null);
 
   useEffect(() => {
     void refresh();
@@ -75,6 +85,11 @@ export default function SharedByMePage() {
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 404)) throw err;
     }
+    // Remove is offered only on ended shares (#2742), so the neighbour is in
+    // the ended section.
+    const index = endedItems.findIndex((g) => g.id === grant.id);
+    const neighbour = endedItems[index + 1] ?? endedItems[index - 1];
+    focusRequest.current = { kind: 'remove', id: neighbour?.id ?? '' };
     remove(grant.id);
     announce(t('standingShares.byMe.removed', params(grant)));
     refreshPendingShares();
@@ -94,7 +109,9 @@ export default function SharedByMePage() {
       } else if (kind === 'remove') {
         await dismissGrant(grant);
       } else {
-        replace(await reconfirmShareGrant(grant.id));
+        const next = await reconfirmShareGrant(grant.id);
+        focusRequest.current = { kind: 'edit', id: grant.id };
+        replace(next);
         announce(t('standingShares.byMe.reconfirmed', params(grant)));
       }
     } catch (err) {
@@ -184,6 +201,10 @@ export default function SharedByMePage() {
               disabled={busy}
               aria-label={t('standingShares.byMe.removeLabel', p)}
               onClick={() => setConfirm({ kind: 'remove', grant: g })}
+              ref={(el) => {
+                if (el) removeButtons.current.set(g.id, el);
+                else removeButtons.current.delete(g.id);
+              }}
             >
               {t('standingShares.byMe.remove')}
             </Button>
@@ -207,6 +228,10 @@ export default function SharedByMePage() {
               disabled={busy}
               aria-label={t('standingShares.byMe.editLabel', p)}
               onClick={() => setEditing(g)}
+              ref={(el) => {
+                if (el) editButtons.current.set(g.id, el);
+                else editButtons.current.delete(g.id);
+              }}
             >
               {t('standingShares.byMe.edit')}
             </Button>
@@ -231,8 +256,31 @@ export default function SharedByMePage() {
   const reconfirm = confirm?.kind === 'reconfirm';
   const removing = confirm?.kind === 'remove';
 
+  // Restore focus after an action unmounts its own row (#2918).
+  useEffect(() => {
+    const request = focusRequest.current;
+    if (!request) return;
+    focusRequest.current = null;
+    const button =
+      request.kind === 'edit'
+        ? editButtons.current.get(request.id)
+        : removeButtons.current.get(request.id);
+    if (button) {
+      button.focus();
+      return;
+    }
+    if (request.kind === 'remove') {
+      // A removed row is always in the ended section: when no neighbouring
+      // Remove button remains, that section is empty, so the live heading (or
+      // the page when nothing else is left) is the nearest stable target.
+      (liveHeadingRef.current ?? pageRef.current)?.focus();
+      return;
+    }
+    pageRef.current?.focus();
+  }, [liveItems, endedItems]);
+
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: 2, pb: 2 }}>
+    <Box ref={pageRef} tabIndex={-1} sx={{ maxWidth: 800, mx: 'auto', mt: 2, px: 2, pb: 2 }}>
       <PageHeader title={t('standingShares.byMe.title')} />
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
         {t('standingShares.byMe.description')}
@@ -251,7 +299,7 @@ export default function SharedByMePage() {
       )}
       {liveItems.length > 0 && (
         <>
-          <Typography variant="h6" component="h2" sx={{ mt: 1 }}>
+          <Typography ref={liveHeadingRef} tabIndex={-1} variant="h6" component="h2" sx={{ mt: 1 }}>
             {t('standingShares.byMe.liveHeading')}
           </Typography>
           <List>{liveItems.map(renderRow)}</List>
@@ -261,7 +309,10 @@ export default function SharedByMePage() {
         <Accordion
           disableGutters
           variant="outlined"
-          slotProps={{ heading: { component: 'h2' }, transition: { unmountOnExit: true } }}
+          slotProps={{
+            heading: { component: 'h2', ref: endedHeadingRef, tabIndex: -1 },
+            transition: { unmountOnExit: true },
+          }}
           sx={{ mt: 2 }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>

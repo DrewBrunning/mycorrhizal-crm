@@ -155,7 +155,7 @@
       "tier": "per-pr",
       "mandatory": true,
       "release_gate": false,
-      "criterion": "a PR touching a migration, backend/config/config.go or .env.example changes CHANGELOG.md [Unreleased] or carries `no-changelog: <reason>` in its description. Runs only when the path filter matches; on any other PR the required context is satisfied by a skipped job."
+      "criterion": "a PR touching a migration, backend/config/config.go, .env.example or changelog.d/** adds a changelog.d/*.md fragment (or changes CHANGELOG.md) or carries `no-changelog: <reason>` in its description. Runs only when the path filter matches; on any other PR the required context is satisfied by a skipped job."
     },
     {
       "name": "Docs & security-doc citations",
