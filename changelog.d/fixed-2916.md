@@ -1,0 +1,1 @@
+- **Cancelling an import releases its place** ([#2916](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2916)): closing the account-bundle or Monica import dialog after connecting but before starting now cancels that import on the server, so repeated cancelled tries no longer hit "too many imports" until it expires.
