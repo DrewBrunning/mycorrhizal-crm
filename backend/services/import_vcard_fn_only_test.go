@@ -34,6 +34,12 @@ func TestImportVCardBlock_FNOnlyName(t *testing.T) {
 			wantLast:  "",
 		},
 		{
+			name:      "FN padded with spaces is trimmed before splitting",
+			vcf:       "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:  Fn Only  \r\nEND:VCARD\r\n",
+			wantFirst: "Fn",
+			wantLast:  "Only",
+		},
+		{
 			name:      "structured N still wins over FN",
 			vcf:       "BEGIN:VCARD\r\nVERSION:4.0\r\nN:Component;Given;;;\r\nFN:Full Name\r\nEND:VCARD\r\n",
 			wantFirst: "Given",

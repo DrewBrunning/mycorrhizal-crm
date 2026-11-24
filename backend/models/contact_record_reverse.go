@@ -226,7 +226,9 @@ func PreserveLocalOnlyCRMFields(existing *Contact, incoming *contactmodel.Record
 // given/surname components but Card.Name.Full is set, the flat name is split
 // from Full the same way carddav/vcard_mapper.go splits an FN-only card: the
 // first space separates Firstname from the rest (RFC 6350 makes FN required
-// and N optional, issue #2913). Finally falls back to DeriveProjection's
+// and N optional, issue #2913). Full is trimmed first so a padded or
+// whitespace-only FN cannot produce an empty Firstname. Finally falls back to
+// DeriveProjection's
 // Firstname/Lastname for any still-empty slot, so a Record built with only
 // Name.Full set (e.g. a minimal JSContact import) still lands a usable
 // Firstname/Lastname rather than leaving them blank.
@@ -235,7 +237,10 @@ func applyName(c *Contact, card contactmodel.Card, proj contactmodel.Projection)
 	var full string
 	hasGiven, hasSurname := false, false
 	if card.Name != nil {
-		full = card.Name.Full
+		// Trim surrounding whitespace first: an FN that is padded (or is only
+		// spaces) would otherwise split into an empty first name and leave the
+		// contact unnamed again, the very failure this fallback fixes.
+		full = strings.TrimSpace(card.Name.Full)
 		for _, comp := range card.Name.Components {
 			switch comp.Kind {
 			case "given":
