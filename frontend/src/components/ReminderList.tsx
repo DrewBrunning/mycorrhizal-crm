@@ -26,6 +26,7 @@ import type { Reminder } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
 import { itemLabel } from '../utils/itemLabel';
 import { calendarDateOnly, isBeforeLocalToday } from '../utils/localDate';
+import { reminderTitle } from '../utils/reminderTitle';
 
 interface ReminderListProps {
   reminders: Reminder[];
@@ -99,120 +100,127 @@ export default function ReminderList({
   return (
     <>
       <Stack spacing={2}>
-        {reminders.map((reminder) => (
-          <Card
-            key={reminder.ID}
-            sx={{
-              border: isOverdue(reminder.remind_at) ? '2px solid' : '1px solid',
-              borderColor: isOverdue(reminder.remind_at) ? 'warning.main' : 'divider',
-              // #196: :focus-within reveals the actions once a button inside
-              // is keyboard-focused, not just on mouse hover.
-              '&:hover .action-buttons, &:focus-within .action-buttons': {
-                opacity: 1,
-              },
-            }}
-          >
-            <CardContent>
-              <Box
-                sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}
-              >
-                <Box sx={{ flexGrow: 1 }}>
-                  <Typography variant="body1" gutterBottom sx={{ overflowWrap: 'anywhere' }}>
-                    {reminder.message}
-                  </Typography>
+        {reminders.map((reminder) => {
+          const title = reminderTitle(t, reminder);
+          return (
+            <Card
+              key={reminder.ID}
+              sx={{
+                border: isOverdue(reminder.remind_at) ? '2px solid' : '1px solid',
+                borderColor: isOverdue(reminder.remind_at) ? 'warning.main' : 'divider',
+                // #196: :focus-within reveals the actions once a button inside
+                // is keyboard-focused, not just on mouse hover.
+                '&:hover .action-buttons, &:focus-within .action-buttons': {
+                  opacity: 1,
+                },
+              }}
+            >
+              <CardContent>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="body1" gutterBottom sx={{ overflowWrap: 'anywhere' }}>
+                      {title}
+                    </Typography>
 
-                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
-                    <Chip
-                      label={formatDate(calendarDateOnly(reminder.remind_at))}
-                      size="small"
-                      color={isOverdue(reminder.remind_at) ? 'warning' : 'default'}
-                    />
-
-                    {reminder.recurrence !== 'once' && (
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
                       <Chip
-                        icon={<RepeatIcon />}
-                        label={getRecurrenceLabel(reminder.recurrence)}
+                        label={formatDate(calendarDateOnly(reminder.remind_at))}
                         size="small"
-                        variant="outlined"
+                        color={isOverdue(reminder.remind_at) ? 'warning' : 'default'}
                       />
-                    )}
 
-                    {reminder.by_mail && (
-                      <Chip
-                        icon={<EmailIcon />}
-                        label={t('reminders.email')}
-                        size="small"
-                        variant="outlined"
-                      />
-                    )}
+                      {reminder.recurrence !== 'once' && (
+                        <Chip
+                          icon={<RepeatIcon />}
+                          label={getRecurrenceLabel(reminder.recurrence)}
+                          size="small"
+                          variant="outlined"
+                        />
+                      )}
 
-                    {reminder.reoccur_from_completion && reminder.recurrence !== 'once' && (
-                      <Tooltip title={t('reminders.reoccurFromCompletionTooltip')}>
-                        <Chip label={t('reminders.flexible')} size="small" />
-                      </Tooltip>
-                    )}
+                      {reminder.by_mail && (
+                        <Chip
+                          icon={<EmailIcon />}
+                          label={t('reminders.email')}
+                          size="small"
+                          variant="outlined"
+                        />
+                      )}
+
+                      {reminder.reoccur_from_completion && reminder.recurrence !== 'once' && (
+                        <Tooltip title={t('reminders.reoccurFromCompletionTooltip')}>
+                          <Chip label={t('reminders.flexible')} size="small" />
+                        </Tooltip>
+                      )}
+                    </Box>
                   </Box>
-                </Box>
 
-                <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
-                  <Tooltip title={t('reminders.complete')}>
-                    <IconButton
-                      size="small"
-                      onClick={() => void handleCompleteClick(reminder.ID)}
-                      disabled={loading === reminder.ID}
-                      color="success"
-                      aria-label={t('reminders.completeNamed', {
-                        title: itemLabel(reminder.message),
-                      })}
+                  <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
+                    <Tooltip title={t('reminders.complete')}>
+                      <IconButton
+                        size="small"
+                        onClick={() => void handleCompleteClick(reminder.ID)}
+                        disabled={loading === reminder.ID}
+                        color="success"
+                        aria-label={t('reminders.completeNamed', {
+                          title: itemLabel(title),
+                        })}
+                        sx={{
+                          transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
+                          '&:hover': {
+                            transform: 'scale(1.15)',
+                            boxShadow: '0 0 8px rgba(76, 175, 80, 0.5)',
+                          },
+                        }}
+                      >
+                        <CheckCircleIcon />
+                      </IconButton>
+                    </Tooltip>
+
+                    <Box
+                      className="action-buttons"
                       sx={{
-                        transition: 'transform 0.15s ease-in-out, box-shadow 0.15s ease-in-out',
-                        '&:hover': {
-                          transform: 'scale(1.15)',
-                          boxShadow: '0 0 8px rgba(76, 175, 80, 0.5)',
-                        },
+                        display: 'flex',
+                        gap: 0.5,
+                        opacity: 0,
+                        transition: 'opacity 0.2s ease-in-out',
                       }}
                     >
-                      <CheckCircleIcon />
-                    </IconButton>
-                  </Tooltip>
+                      <Tooltip title={t('common.editNamed', { name: itemLabel(title) })}>
+                        <IconButton
+                          size="small"
+                          onClick={() => onEdit(reminder)}
+                          disabled={loading === reminder.ID}
+                          aria-label={t('common.editNamed', { name: itemLabel(title) })}
+                        >
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
 
-                  <Box
-                    className="action-buttons"
-                    sx={{
-                      display: 'flex',
-                      gap: 0.5,
-                      opacity: 0,
-                      transition: 'opacity 0.2s ease-in-out',
-                    }}
-                  >
-                    <Tooltip title={t('common.editNamed', { name: itemLabel(reminder.message) })}>
-                      <IconButton
-                        size="small"
-                        onClick={() => onEdit(reminder)}
-                        disabled={loading === reminder.ID}
-                        aria-label={t('common.editNamed', { name: itemLabel(reminder.message) })}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-
-                    <Tooltip title={t('common.delete')}>
-                      <IconButton
-                        size="small"
-                        onClick={() => handleDeleteClick(reminder.ID)}
-                        disabled={loading === reminder.ID}
-                        color="error"
-                        aria-label={t('common.deleteNamed', { name: itemLabel(reminder.message) })}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Tooltip>
+                      <Tooltip title={t('common.delete')}>
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteClick(reminder.ID)}
+                          disabled={loading === reminder.ID}
+                          color="error"
+                          aria-label={t('common.deleteNamed', { name: itemLabel(title) })}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </Box>
                 </Box>
-              </Box>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </Stack>
 
       {/* Delete Confirmation Dialog */}

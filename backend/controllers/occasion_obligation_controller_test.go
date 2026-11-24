@@ -495,6 +495,7 @@ func TestCreateOccasionObligationMaterializesReminder(t *testing.T) {
 	var user models.User
 	db.First(&user)
 	contact := seedOccasionObligationContact(t, db, user.ID)
+	require.NoError(t, db.Model(&contact).Update("lastname", "Smith").Error)
 
 	w := doOccasionJSON(router, "POST", "/occasion-obligations", models.OccasionObligationInput{
 		EntityID:     contact.VCardUID,
@@ -515,6 +516,9 @@ func TestCreateOccasionObligationMaterializesReminder(t *testing.T) {
 	require.NoError(t, db.Where("occasion_obligation_id = ?", created.OccasionObligation.ID).Find(&reminders).Error)
 	require.Len(t, reminders, 1, "an active obligation with a valid anchor must materialize exactly one reminder")
 	assert.Equal(t, "yearly", reminders[0].Recurrence, "recurrence must be yearly so the reminder engine self-regenerates without a separate job")
+	// Issue #2915: the stored message must not bake the English "Occasion — "
+	// prefix into the row; the web renders a localized title around "label: name".
+	assert.Equal(t, "Birthday gift: Alice Smith", reminders[0].Message)
 
 	loc := time.UTC
 	wantAnchor := nextRemindAt(12, 25, time.Now().In(loc), loc)
