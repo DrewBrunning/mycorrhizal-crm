@@ -209,6 +209,27 @@ class MainViewModelProfileHydrationTest {
             coVerify(exactly = 1) { auth.fetchCurrentUser() }
         }
 
+    // #2939: resuming while a profile fetch is still in flight must not start a second one.
+    @Test
+    fun `resume while a hydration is in flight does not start another fetch`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val manager = restoredManager()
+            val gate = CompletableDeferred<Result<UserProfile>>()
+            val auth = mockk<AuthRepository> {
+                coEvery { fetchCurrentUser() } coAnswers { gate.await() }
+            }
+
+            val viewModel = vm(manager, auth)
+            advanceUntilIdle()
+            viewModel.onAppResumed()
+            advanceUntilIdle()
+            gate.complete(Result.success(admin))
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { auth.fetchCurrentUser() }
+            assertEquals("admin-alice", viewModel.session.value.username)
+        }
+
     @Test
     fun `a throwing fetch does not crash or log out`() = runTest(
         mainDispatcherRule.testDispatcher

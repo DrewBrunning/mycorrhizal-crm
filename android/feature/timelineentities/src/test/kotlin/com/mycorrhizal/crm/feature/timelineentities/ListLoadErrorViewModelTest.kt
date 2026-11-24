@@ -10,7 +10,11 @@ import com.mycorrhizal.crm.domain.repository.LifeEventRepository
 import com.mycorrhizal.crm.domain.repository.PreferenceRepository
 import com.mycorrhizal.crm.model.network.Card
 import com.mycorrhizal.crm.model.network.ContactRecordResponse
+import com.mycorrhizal.crm.model.network.ConversationAgenda
+import com.mycorrhizal.crm.model.network.Gift
+import com.mycorrhizal.crm.model.network.LifeEvent
 import com.mycorrhizal.crm.model.network.Name
+import com.mycorrhizal.crm.model.network.Preference
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.testing.MainDispatcherRule
 import io.mockk.coEvery
@@ -18,6 +22,7 @@ import io.mockk.mockk
 import java.io.IOException
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -100,5 +105,87 @@ class ListLoadErrorViewModelTest {
             assertNotNull(s.loadError)
             assertNull(s.error)
             assertTrue(s.items.isEmpty())
+        }
+
+    // #2938: a FAILED REFRESH with a list already showing keeps the list and reports through the
+    // snackbar `error` field; only a failed first load is the Retry screen.
+    @Test fun `life events refresh failure keeps the list and uses the snackbar error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val repo = mockk<LifeEventRepository>()
+            coEvery { repo.listForContact(uid) } returnsMany listOf(
+                Result.success(listOf(LifeEvent(id = "e1", entityId = uid, type = "moved"))),
+                offlineList()
+            )
+            val vm = LifeEventsViewModel(repo, contacts, handle)
+            advanceUntilIdle()
+            vm.load()
+            advanceUntilIdle()
+            assertEquals(1, vm.uiState.value.items.size)
+            assertNotNull(vm.uiState.value.error)
+            assertNull(vm.uiState.value.loadError)
+        }
+
+    @Test fun `preferences refresh failure keeps the list and uses the snackbar error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val repo = mockk<PreferenceRepository>()
+            coEvery { repo.listForContact(uid) } returnsMany listOf(
+                Result.success(
+                    listOf(
+                        Preference(id = "p1", entityId = uid, category = "hobby", value = "pottery")
+                    )
+                ),
+                offlineList()
+            )
+            val vm = PreferencesViewModel(repo, contacts, handle)
+            advanceUntilIdle()
+            vm.load()
+            advanceUntilIdle()
+            assertEquals(1, vm.uiState.value.items.size)
+            assertNotNull(vm.uiState.value.error)
+            assertNull(vm.uiState.value.loadError)
+        }
+
+    @Test fun `gifts refresh failure keeps the list and uses the snackbar error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val repo = mockk<GiftRepository>()
+            val lifeEvents = mockk<LifeEventRepository>()
+            val activities = mockk<ActivityRepository>()
+            val prefs = mockk<PreferenceRepository>()
+            coEvery { repo.listForContact(uid) } returnsMany listOf(
+                Result.success(listOf(Gift(id = "g1", entityId = uid, description = "Socks"))),
+                offlineList()
+            )
+            coEvery { lifeEvents.listForContact(uid) } returns Result.success(emptyList())
+            coEvery { prefs.listForContact(uid) } returns Result.success(emptyList())
+            coEvery { activities.listForContact(5, any(), any(), any(), any(), any()) } returns
+                Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
+            val vm = GiftsViewModel(repo, lifeEvents, activities, prefs, contacts, handle)
+            advanceUntilIdle()
+            vm.load()
+            advanceUntilIdle()
+            assertEquals(1, vm.uiState.value.items.size)
+            assertNotNull(vm.uiState.value.error)
+            assertNull(vm.uiState.value.loadError)
+        }
+
+    @Test fun `agenda refresh failure keeps the list and uses the snackbar error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val repo = mockk<ConversationAgendaRepository>()
+            val activities = mockk<ActivityRepository>()
+            coEvery { repo.listForContact(uid) } returnsMany listOf(
+                Result.success(
+                    listOf(ConversationAgenda(id = "a1", entityId = uid, content = "Ask"))
+                ),
+                offlineList()
+            )
+            coEvery { activities.listForContact(5, any(), any(), any(), any(), any()) } returns
+                Result.success(ContactActivitiesPage(activities = emptyList(), nextCursor = null))
+            val vm = ConversationAgendaViewModel(repo, activities, contacts, handle)
+            advanceUntilIdle()
+            vm.load()
+            advanceUntilIdle()
+            assertEquals(1, vm.uiState.value.items.size)
+            assertNotNull(vm.uiState.value.error)
+            assertNull(vm.uiState.value.loadError)
         }
 }

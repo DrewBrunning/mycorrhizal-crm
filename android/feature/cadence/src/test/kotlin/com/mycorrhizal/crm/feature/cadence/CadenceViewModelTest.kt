@@ -96,6 +96,27 @@ class CadenceViewModelTest {
         assertNull(vm.uiState.value.policy)
     }
 
+    // #2938: a refresh that fails while a policy is showing keeps it and uses the snackbar error.
+    @Test
+    fun `a failed refresh keeps the loaded policy and uses the snackbar error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubContact()
+        coEvery { policyRepository.listForContact(uid) } returnsMany listOf(
+            Result.success(listOf(policy())),
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+        )
+
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.load()
+        advanceUntilIdle()
+
+        assertNotNull(vm.uiState.value.policy)
+        assertNotNull(vm.uiState.value.error)
+        assertNull(vm.uiState.value.loadError)
+    }
+
     @Test
     fun `load resolves the vcard uid and takes the first policy`() = runTest(
         mainDispatcherRule.testDispatcher
