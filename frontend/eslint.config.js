@@ -1,8 +1,17 @@
+import { readFileSync } from 'node:fs';
 import jsxA11y from 'eslint-plugin-jsx-a11y';
 import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import security from 'eslint-plugin-security';
 import tseslint from 'typescript-eslint';
+
+// Issue #2920 item 3: existing hand-assembled month/day sites, counted and
+// reasoned. The list is the same committed file `scripts/check-month-day-format.mjs`
+// ratchets down (a new site in an allowlisted file still fails that script).
+const monthDayAllowlist = JSON.parse(
+  readFileSync(new URL('./month-day-allowlist.json', import.meta.url), 'utf8'),
+);
+const monthDayAllowlistedFiles = Object.keys(monthDayAllowlist.files);
 
 export default tseslint.config(
   {
@@ -121,6 +130,26 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
+    },
+  },
+  {
+    // Issue #2920 item 3: a year-less month/day is display text, so Intl must
+    // own its order and punctuation ("March 3" vs "3. März"). Ban the
+    // hand-assembled template literal; DateFormatProvider.tsx owns the
+    // formatters (and its existing numeric/MONTHS_* builders are exempt).
+    // Existing sites live in month-day-allowlist.json, whose exact counts
+    // scripts/check-month-day-format.mjs enforces.
+    files: ['src/**/*.tsx'],
+    ignores: ['src/DateFormatProvider.tsx', ...monthDayAllowlistedFiles],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'TemplateLiteral:has(Identifier[name=/month/i]):has(Identifier[name=/day/i])',
+          message:
+            'Do not assemble a month and day by hand. Use formatMonthDay(month, day, locale) from DateFormatProvider (#2920).',
+        },
+      ],
     },
   },
   {

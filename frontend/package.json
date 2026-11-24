@@ -54,6 +54,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "e2e:routes": "node scripts/check-e2e-routes.mjs",
+    "month-day:check": "node scripts/check-month-day-format.mjs",
     "coverage:ratchet": "node scripts/check-coverage-ratchet.mjs",
     "coverage:ratchet:update": "node scripts/check-coverage-ratchet.mjs --update",
     "test:e2e": "playwright test",
