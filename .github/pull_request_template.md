@@ -1,6 +1,7 @@
 <!--
 One concern per PR. Describe what changed and why, not how.
 Sign off every commit (git commit -s) — the DCO check enforces it.
+Draft PRs get the fast checks only; mark ready or add the `ci:full` label to run the heavy suites.
 
 The Context-change checklist is conditional: keep it only when the diff touches
 `AGENTS.md`, `.agents/skills/**`, `.claude/**`, or `testdata/agent-eval/**`;
