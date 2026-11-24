@@ -25,6 +25,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -75,6 +76,25 @@ class CadenceViewModelTest {
         qualifyingTypes = qualifyingTypes,
         health = health
     )
+
+    // #2938: contact cached (fetch succeeds), server then unreachable: the policy list fetch
+    // fails. That is a load error (ErrorState + Retry), not a snackbar, and must not look like
+    // "No cadence yet".
+    @Test
+    fun `a failed policy list fetch sets loadError instead of the snackbar error`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        stubContact()
+        coEvery { policyRepository.listForContact(uid) } returns
+            Result.failure(ApiError.Network(java.io.IOException("offline")))
+
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertNotNull(vm.uiState.value.loadError)
+        assertNull(vm.uiState.value.error)
+        assertNull(vm.uiState.value.policy)
+    }
 
     @Test
     fun `load resolves the vcard uid and takes the first policy`() = runTest(
@@ -182,7 +202,8 @@ class CadenceViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
 
-        assertEquals("boom", vm.uiState.value.error?.message)
+        // #2938: a first-load failure is the load error (ErrorState + Retry), not the snackbar.
+        assertEquals("boom", vm.uiState.value.loadError?.message)
     }
 
     @Test

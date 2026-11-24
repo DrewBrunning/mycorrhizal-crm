@@ -75,7 +75,7 @@ class ContactOccasionsViewModelTest {
         }
 
     @Test
-    fun `load surfaces a list failure and keeps the list empty`() =
+    fun `load surfaces a first-load list failure as the load error and keeps the list empty`() =
         runTest(mainDispatcherRule.testDispatcher) {
             coEvery { repository.listForContact(UID) } returns
                 Result.failure(ApiError.Client(500, "boom"))
@@ -83,7 +83,9 @@ class ContactOccasionsViewModelTest {
             val vm = viewModel()
             advanceUntilIdle()
 
-            assertTrue(vm.uiState.value.error is ApiError.Client)
+            // #2938: ErrorState + Retry, not the snackbar field.
+            assertTrue(vm.uiState.value.loadError is ApiError.Client)
+            assertNull(vm.uiState.value.error)
             assertTrue(vm.uiState.value.items.isEmpty())
         }
 
