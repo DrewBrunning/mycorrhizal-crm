@@ -2516,7 +2516,6 @@
     <string name="occasions_sensitivity_normal">Normal</string>
     <string name="occasions_sensitivity_private">Privé</string>
     <string name="occasions_sensitivity_secret">Secret</string>
-    <string name="occasions_time">Heure</string>
     <string name="occasions_event_dialog_hint">Un événement ponctuel que vous organisez. Ajoutez des invités après l’enregistrement, puis notez ce que chaque personne vous a dit.</string>
     <string name="occasions_create_title">Créer un événement</string>
     <string name="occasions_edit_title">Modifier l\'événement</string>
@@ -2844,7 +2843,6 @@
     <string name="geopulse_title">Enregistrer depuis l\'historique de localisation</string>
     <string name="geopulse_description">Choisissez une date pour voir les lieux enregistrés par GeoPulse. Rien n\'est sauvegardé tant que vous n\'en enregistrez pas un, et vous décidez avec qui vous étiez.</string>
     <string name="geopulse_date">Date</string>
-    <string name="geopulse_pick_date">Choisir une date</string>
     <string name="geopulse_look_up">Rechercher</string>
     <string name="geopulse_looking_up">Recherche…</string>
     <string name="geopulse_open_settings">Ouvrir les paramètres GeoPulse</string>
