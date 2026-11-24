@@ -244,3 +244,31 @@ test('a non-Error load rejection still shows the localized fallback message', as
     expect(screen.getByText('Unable to load contact field settings.')).toBeInTheDocument(),
   );
 });
+
+test('a non-Error toggle-save rejection still shows the localized fallback message', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+  vi.mocked(updateEnabledContactFields).mockRejectedValue('offline');
+
+  render(<ContactFieldSettings />);
+  await waitFor(() => expect(screen.getByLabelText('Websites')).not.toBeChecked());
+
+  fireEvent.click(screen.getByLabelText('Websites'));
+
+  await waitFor(() =>
+    expect(screen.getByText('Unable to save contact field settings.')).toBeInTheDocument(),
+  );
+});
+
+test('a non-Error hide-empty-save rejection still shows the localized fallback message', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+  vi.mocked(updateHideEmptyFields).mockRejectedValue('offline');
+
+  render(<ContactFieldSettings />);
+  await waitFor(() => expect(screen.getByLabelText('Hide empty fields')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByLabelText('Hide empty fields'));
+
+  await waitFor(() =>
+    expect(screen.getByText('Unable to save contact field settings.')).toBeInTheDocument(),
+  );
+});
