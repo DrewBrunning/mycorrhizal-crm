@@ -24,6 +24,9 @@ export interface Reminder {
   DeletedAt?: string | null;
   // Issue #591: monotonic per-row write counter, read-only (ADR 0006).
   revision?: number;
+  // Issue #2915: set on machine-synthesized occasion reminders; the views
+  // render those through the localized occasion title.
+  occasion_obligation_id?: string;
 }
 
 export interface ReminderFormData {
