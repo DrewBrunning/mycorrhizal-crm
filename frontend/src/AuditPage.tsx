@@ -470,6 +470,7 @@ function EntityIdCell({
         variant="body2"
         component={RouterLink}
         to={`/contacts/${contact.ID}`}
+        data-user-content
         sx={{
           textDecoration: 'none',
           color: 'primary.main',
@@ -489,6 +490,7 @@ function EntityIdCell({
     <Typography
       variant="body2"
       component="span"
+      data-user-content
       sx={{ fontFamily: 'monospace', fontSize: '0.8rem' }}
     >
       {event.entity_id}

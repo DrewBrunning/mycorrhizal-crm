@@ -668,6 +668,7 @@ export default function ImportContactsDialog({
                     <TableCell>
                       <Typography
                         variant="body2"
+                        data-user-content
                         sx={{
                           fontWeight: 'medium',
                         }}
@@ -679,6 +680,7 @@ export default function ImportContactsDialog({
                       <Typography
                         variant="body2"
                         noWrap
+                        data-user-content
                         sx={{
                           color: 'text.secondary',
                           maxWidth: 150,
@@ -1610,7 +1612,7 @@ function ImportRowCard({
   return (
     <Box
       role="group"
-      aria-label={name}
+      aria-labelledby={`import-row-${row.row_index}`}
       sx={{
         p: 1.5,
         border: '1px solid',
@@ -1626,12 +1628,18 @@ function ImportRowCard({
           {(shown.firstname || '?').charAt(0)}
         </Avatar>
         <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography variant="body2" sx={{ fontWeight: 500 }}>
+          <Typography
+            id={`import-row-${row.row_index}`}
+            variant="body2"
+            data-user-content
+            sx={{ fontWeight: 500 }}
+          >
             {name}
           </Typography>
           {sub && (
             <Typography
               variant="caption"
+              data-user-content
               sx={{
                 color: 'text.secondary',
               }}

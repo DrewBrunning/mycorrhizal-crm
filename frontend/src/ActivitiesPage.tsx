@@ -419,6 +419,7 @@ const ActivitiesPage: React.FC = () => {
                           <Typography
                             variant="subtitle1"
                             component="p"
+                            data-user-content
                             sx={{
                               fontWeight: 600,
                               overflowWrap: 'anywhere',
@@ -427,13 +428,16 @@ const ActivitiesPage: React.FC = () => {
                             {activity.title}
                           </Typography>
                         )}
-                        <MarkdownText
-                          text={activity.description ?? ''}
-                          sx={{ mt: activity.title ? 0.5 : 0 }}
-                        />
+                        <Box data-user-content>
+                          <MarkdownText
+                            text={activity.description ?? ''}
+                            sx={{ mt: activity.title ? 0.5 : 0 }}
+                          />
+                        </Box>
                         {activity.location && (
                           <Typography
                             variant="caption"
+                            data-user-content
                             sx={{
                               color: 'text.secondary',
                               mt: 1,
@@ -500,6 +504,7 @@ const ActivitiesPage: React.FC = () => {
                             component={RouterLink}
                             to={`/contacts/${contact.ID}`}
                             clickable
+                            data-user-content
                           />
                         ))}
                       </Box>

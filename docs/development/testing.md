@@ -698,10 +698,14 @@ in the DOM, and a dialog portal is focus-trapped, so its internal order may wrap
 ### Pseudo-localization (issue #2536)
 
 `frontend/e2e/pseudoLocale.spec.ts` renders the UI under `qps`, the conventional
-pseudo-locale, and fails on two defect classes that key-parity tests cannot see:
-**hardcoded strings** (they have no key, so `locales.test.ts` is blind to them)
-and **text expansion** (German/French run 30–40% longer than English, so a
-button, chip, table header or dialog label can stop fitting).
+pseudo-locale, and fails on defect classes key-parity tests cannot see:
+**hardcoded strings** (they have no key, so `locales.test.ts` is blind to them),
+**text expansion** (German/French run 30–40% longer than English, so a button,
+chip, table header or dialog label can stop fitting), **English server prose**
+(reason parameters rendered through a `{{reason}}`-only template look
+translated to the bracket rule — #2912) and **hand-assembled dates** (a
+translated month name followed by a bare day number is wrong in every
+day-first language, but both halves look localised — #2914).
 
 The mechanism is runtime-only: `frontend/src/i18n/pseudo.ts` accents every vowel
 and pads each translated string by 40%, wrapping it in `⟦…⟧`;
@@ -711,8 +715,26 @@ brackets are the delimiter the spec uses to tell translated text from literals,
 which is why the spec is strict: any run of 3+ consecutive ASCII letters on
 screen *outside* `⟦…⟧` is reported.
 
-The spec visits the dashboard, contacts list, contact detail (a spec-owned
-contact), Settings and the Add Reminder dialog, and on each one:
+Since #2920 the pass is **every route in `src/App.tsx`**, not a hand-kept list:
+the spec imports `loadRoutes()` from `scripts/check-e2e-routes.mjs` (the same
+parser the route-coverage guard runs), resolves `:id` from its own worker-seeded
+fixtures, and visits each route plus the named Import contacts (all wizard
+steps), account-bundle import, Meerkat import (unreachable URL), Add contact,
+Find duplicates and Share edit dialogs. Redirect-only compatibility routes
+(`/tags`, `/api-tokens`, and the logged-in `/register`) are listed in the spec's
+`ROUTE_EXEMPTIONS` with a reason; a separate test asserts each one still
+redirects, so an exemption that stops being true fails. Admin pages run under
+the shared admin so they render their own page instead of a non-admin redirect.
+
+The worker user is seeded through the API once per worker with the round-2
+populated states: an occasion with a reminder, a contact with an anniversary
+shared to the user (accepted), a timeline activity with two participants and a
+pending incoming share, plus a duplicate pair for the review dialog and a
+throwaway sender account that owns the shared contact. Everything is deleted in
+the worker-scoped fixture's teardown. The assertions on the populated routes
+also prove the seed rendered, so an empty/not-found page cannot scan clean.
+
+On each surface the spec:
 
 - collects **text nodes** (not `innerText`, so a translated label and an
   adjacent user-supplied name in the same parent stay distinguishable) and the
@@ -735,11 +757,25 @@ Two markup contracts keep that rule strict without false positives:
   translated, such as an example URL in a placeholder. It is the standard HTML
   attribute, so translation tooling honours it too.
 
-MUI's own built-in control labels (Autocomplete's Clear/Open, …) are exempt:
-they come from `@mui/material/locale` via `i18n/muiLocale.ts`, which has no
-`qps` entry by design, so they are not i18next keys and cannot be
-pseudo-localized. When adding a surface, extend the spec's `MUI_BUILTIN_LABELS`
-selector rather than reporting them as app copy.
+MUI's own built-in control labels (Autocomplete's Clear/Open, the Alert close
+action, …) are exempt: they come from `@mui/material/locale` via
+`i18n/muiLocale.ts`, which has no `qps` entry by design, so they are not
+i18next keys and cannot be pseudo-localized. MapLibre's own controls are exempt
+for the same reason (third-party widget chrome). When adding a surface, extend
+the spec's selector rather than reporting them as app copy.
+
+Server-originated strings are scanned too. The spec collects the API error's
+`reason_params` and fails on a 4+-word prose value even when it renders inside
+`⟦…⟧` (#2912), and it un-exempts a reminder row whose message carries an
+`occasion_obligation_id` before applying the 3+ letter rule (#2915): the
+"Occasion — " half is server copy, not user input. A reminder's own message is
+otherwise user content and keeps its `data-user-content` marker.
+
+Two counted allowlists pin known, already-recorded offenders so the pass can be
+strict everywhere else: three Data → Import buttons that need a wrapping layout
+fix at 600px, and the three `CONTACT_FIELD_LABELS` English constants the CSV
+mapping table still renders. Each entry carries a reason and an exact count; a
+fixed/reworded entry fails as stale and must be deleted.
 
 Fonts and the clock are pinned by `e2e/pinnedEnvironment.ts` — the same
 committed IBM Plex Sans woff2 route interception and frozen clock as the visual
@@ -765,8 +801,12 @@ separate CI job exists. Every surface is scanned at two pinned viewports:
   see the label overflow that prompted the second viewport (issue #2874).
 
 Only width drives the horizontal overflow scan; the height keeps the page
-realistic. Both passes share one surface list and one assertion body, so a new
-surface is added once.
+realistic. Both passes share one route table and one assertion body, so a new
+route is picked up when it lands in `App.tsx`. The automatic per-test axe scan
+is intentionally skipped here: the populated accessibility sweep is #2920 item
+6, and the seeded pending-share badge would otherwise fail #2906's target-size
+rule on every route. Measured on the populated seed: about 1.5 minutes with
+`--workers=1` for the whole file (69 tests).
 
 ### Service-worker upgrade suite (issue #476)
 

@@ -84,12 +84,13 @@ function PairLine({
         {c.firstname.charAt(0)}
       </Avatar>
       <Box sx={{ minWidth: 0 }}>
-        <Typography variant="body2" noWrap sx={{ fontWeight: 500 }}>
+        <Typography variant="body2" noWrap data-user-content sx={{ fontWeight: 500 }}>
           {contactName(c)}
         </Typography>
         <Typography
           variant="caption"
           noWrap
+          data-user-content
           sx={{
             color: 'text.secondary',
           }}

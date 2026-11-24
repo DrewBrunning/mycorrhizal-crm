@@ -141,6 +141,8 @@ export default function PrepViewPage() {
             <Typography
               variant="h5"
               component="h1"
+              // The contact's own name, unless the translated fallback is used.
+              data-user-content={briefing.name ? true : undefined}
               sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}
             >
               {briefing.name || t('prep.unknownContact')}
@@ -358,6 +360,7 @@ export default function PrepViewPage() {
               <Typography
                 variant="subtitle1"
                 component="p"
+                data-user-content
                 sx={{
                   fontWeight: 500,
                 }}
@@ -376,6 +379,7 @@ export default function PrepViewPage() {
               {briefing.last_activity.description && (
                 <Typography
                   variant="body2"
+                  data-user-content
                   sx={{ mt: 0.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                 >
                   {briefing.last_activity.description}

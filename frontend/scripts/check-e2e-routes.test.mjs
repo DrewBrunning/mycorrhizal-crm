@@ -6,12 +6,15 @@
 // "Frontend (Vitest)" job) enforces it with no workflow edit.
 
 import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
   APP_FILE,
   checkRoutes,
   isCovered,
   loadExemptions,
+  loadRoutes,
   loadSpecSources,
   parseRoutes,
   routeRegex,
@@ -28,6 +31,17 @@ describe('parseRoutes', () => {
       <Route path="*" element={<X />} />
       <Route path="/a" element={<A2 />} />`;
     expect(parseRoutes(src)).toEqual(['/a', '/b/:id']);
+  });
+
+  test('loadRoutes reads the same table from a file (used by the pseudo-locale pass)', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'e2e-routes-'));
+    const file = path.join(dir, 'App.tsx');
+    fs.writeFileSync(file, '<Route path="/from-file" element={<A />} />');
+    try {
+      expect(loadRoutes(file)).toEqual(['/from-file']);
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 

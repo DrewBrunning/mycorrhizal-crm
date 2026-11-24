@@ -19,6 +19,9 @@
     "e2e/sw-upgrade/poison-worker.js",
     // Build/operations tooling run directly with `node`, not imported.
     "scripts/*.mjs",
+    // Type-only declaration for a plain ESM script (check-e2e-routes.mjs's
+    // loadRoutes is imported by the pseudo-locale e2e spec, #2920).
+    "scripts/*.d.mts",
     // Served verbatim as a static asset (the stale-chunk recovery bootstrap).
     "public/_recovery.js"
   ],
