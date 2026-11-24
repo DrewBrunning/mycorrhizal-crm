@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"mycorrhizal/config"
@@ -142,7 +141,11 @@ func TestImportVCF_CustomFieldMapping_RejectsForeignDefinition(t *testing.T) {
 
 	env := decodeError(t, w)
 	assert.Equal(t, "INVALID_INPUT", env.Error.Code)
-	assert.Contains(t, strings.ToLower(env.Error.Details["reason"].(string)), "not one of your definitions")
+	// Issue #2909: a definition the user does not own is reported through the
+	// same localizable "choose an existing field" reason, naming the property.
+	assert.Contains(t, w.Body.String(), `"reason_code":"import_field_mapping_unknown_field"`)
+	assert.Contains(t, w.Body.String(), `"property":"x-hometown"`)
+	assert.NotContains(t, w.Body.String(), "record not found")
 
 	// Failed closed: no contact, no value on the foreign definition.
 	var contactCount int64
@@ -151,6 +154,47 @@ func TestImportVCF_CustomFieldMapping_RejectsForeignDefinition(t *testing.T) {
 	var valueCount int64
 	require.NoError(t, db.Model(&models.FieldValue{}).Where("field_definition_id = ?", foreignDef.ID).Count(&valueCount).Error)
 	assert.Zero(t, valueCount)
+}
+
+// TestImportVCF_CustomFieldMapping_EmptyDefinitionIsLocalizable reproduces the
+// audit's #2909 failure: "Map to existing field" with no field chosen must be
+// a 400 with a reason code and the property name, not the raw GORM sentence
+// ("field_definition_id \"\" is not one of your definitions: record not
+// found") shown verbatim to the user.
+func TestImportVCF_CustomFieldMapping_EmptyDefinitionIsLocalizable(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "cfmempty", Password: "password123!A", Email: "cfmempty@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	registerImportRoutes(router, &config.Config{})
+
+	vcf := "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Cora Empty\r\nN:Empty;Cora;;;\r\nUID:88888888-8888-4888-8888-888888888888\r\nX-HOMETOWN:Springfield\r\nEND:VCARD\r\n"
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/vcf/upload", "contacts.vcf", []byte(vcf)))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var preview models.ImportPreviewResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &preview))
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, newJSONRequest(t, "/contacts/import/vcf/confirm", models.ImportConfirmRequest{
+		SessionID: preview.SessionID,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+		FieldMappings: []models.ImportFieldMapping{
+			{PropertyName: "x-hometown", Action: "map", FieldDefinitionID: ""},
+		},
+	}))
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Equal(t, "INVALID_INPUT", decodeError(t, w).Error.Code)
+	assert.Contains(t, w.Body.String(), `"reason_code":"import_field_mapping_unknown_field"`)
+	assert.Contains(t, w.Body.String(), `"reason_params":{"property":"x-hometown"}`)
+	assert.NotContains(t, w.Body.String(), "record not found")
 }
 
 // Issue #2567: mapping a property into an organisation/place/pet definition is

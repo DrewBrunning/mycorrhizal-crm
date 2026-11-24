@@ -156,6 +156,16 @@ test('rejects an unsupported file extension before calling the API', async () =>
   expect(uploadVCFForImport).not.toHaveBeenCalled();
 });
 
+// Issue #2910: axe's heading-order rule expects h2 -> h3. The upload prompt
+// used to render as an h6 (Typography variant="h6"), skipping three levels.
+test('the upload heading is an h3 under the dialog title', () => {
+  renderDialog();
+
+  const title = screen.getByRole('heading', { level: 2, name: 'Import Contacts' });
+  const heading = screen.getByRole('heading', { level: 3, name: /drag and drop a csv or vcf/i });
+  expect(title.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
 test('CSV upload walks through mapping, preview, and confirm', async () => {
   vi.mocked(uploadCSVForImport).mockResolvedValue({
     session_id: 'sess-1',
@@ -353,6 +363,29 @@ test('map to existing field is unavailable when only entity definitions exist', 
   fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
   const option = await screen.findByRole('option', { name: /^Map to existing field/ });
   expect(option).toHaveAttribute('aria-disabled', 'true');
+});
+
+// Issue #2909: a "map" decision with no field chosen must not reach Apply.
+// Continue is disabled, and the field select shows an inline error.
+test('Continue is blocked until a map decision names a field', async () => {
+  await loadVcfWithCandidates(
+    [{ name: 'x-hometown', value: 'Springfield' }],
+    [{ id: 'def-1', label: 'Hometown', target: 'contact' }],
+  );
+
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
+  fireEvent.click(await screen.findByRole('option', { name: /^Map to existing field/ }));
+
+  const field = await screen.findByLabelText('x-hometown field');
+  expect(field).toHaveAttribute('aria-invalid', 'true');
+  expect(screen.getByText('Choose a field, or pick another action')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
+
+  fireEvent.mouseDown(field);
+  fireEvent.click(await screen.findByRole('option', { name: 'Hometown' }));
+
+  expect(screen.queryByText('Choose a field, or pick another action')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
 });
 
 test('confirm sends the promotion decisions as field_mappings', async () => {
