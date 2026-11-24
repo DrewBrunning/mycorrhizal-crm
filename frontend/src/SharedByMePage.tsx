@@ -37,10 +37,8 @@ import { getErrorMessage } from './utils/errorHandler';
 type Confirm = { kind: 'revoke' | 'reconfirm' | 'remove'; grant: ShareGrantOwnerView };
 
 // What to focus once the list re-renders after an action (#2918): a nearby row's
-// same action button, or a section heading when that row was the only one.
-type FocusRequest =
-  | { kind: 'remove'; id: string; heading: 'live' | 'ended' }
-  | { kind: 'edit'; id: string };
+// same action button, or a stable fallback when that row was the only one.
+type FocusRequest = { kind: 'remove'; id: string } | { kind: 'edit'; id: string };
 
 const isLive = (g: ShareGrantOwnerView) => g.status === 'pending' || g.status === 'active';
 
@@ -87,14 +85,11 @@ export default function SharedByMePage() {
     } catch (err) {
       if (!(err instanceof ApiError && err.status === 404)) throw err;
     }
-    const list = isLive(grant) ? liveItems : endedItems;
-    const index = list.findIndex((g) => g.id === grant.id);
-    const neighbour = list[index + 1] ?? list[index - 1];
-    focusRequest.current = {
-      kind: 'remove',
-      id: neighbour?.id ?? '',
-      heading: isLive(grant) ? 'live' : 'ended',
-    };
+    // Remove is offered only on ended shares (#2742), so the neighbour is in
+    // the ended section.
+    const index = endedItems.findIndex((g) => g.id === grant.id);
+    const neighbour = endedItems[index + 1] ?? endedItems[index - 1];
+    focusRequest.current = { kind: 'remove', id: neighbour?.id ?? '' };
     remove(grant.id);
     announce(t('standingShares.byMe.removed', params(grant)));
     refreshPendingShares();
@@ -270,15 +265,10 @@ export default function SharedByMePage() {
       return;
     }
     if (request.kind === 'remove') {
-      const heading =
-        request.heading === 'ended'
-          ? endedItems.length > 0
-            ? endedHeadingRef.current
-            : liveHeadingRef.current
-          : liveItems.length > 0
-            ? liveHeadingRef.current
-            : endedHeadingRef.current;
-      (heading ?? pageRef.current)?.focus();
+      // A removed row is always in the ended section: when no neighbouring
+      // Remove button remains, that section is empty, so the live heading (or
+      // the page when nothing else is left) is the nearest stable target.
+      (liveHeadingRef.current ?? pageRef.current)?.focus();
       return;
     }
     pageRef.current?.focus();
