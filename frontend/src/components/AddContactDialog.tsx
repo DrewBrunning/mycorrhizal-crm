@@ -452,7 +452,12 @@ export default function AddContactDialog({
                   }}
                   sx={{ flex: 1, minWidth: 0 }}
                 />
-                <Button onClick={handleAddCircle} variant="outlined" sx={{ flexShrink: 0 }}>
+                <Button
+                  onClick={handleAddCircle}
+                  variant="outlined"
+                  sx={{ flexShrink: 0 }}
+                  aria-label={t('contacts.addCircleNamed')}
+                >
                   {t('contacts.add.addCircle')}
                 </Button>
               </Box>
@@ -525,7 +530,12 @@ export default function AddContactDialog({
                   }}
                   sx={{ flex: 1, minWidth: 0 }}
                 />
-                <Button onClick={handleAddTag} variant="outlined" sx={{ flexShrink: 0 }}>
+                <Button
+                  onClick={handleAddTag}
+                  variant="outlined"
+                  sx={{ flexShrink: 0 }}
+                  aria-label={t('contacts.addTag')}
+                >
                   {t('common.add')}
                 </Button>
               </Box>
