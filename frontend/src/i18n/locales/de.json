@@ -4525,6 +4525,12 @@
       "createOrganisation_other": "{{count}} Organisationen erstellen",
       "createPlace_one": "{{count}} Ort erstellen",
       "createPlace_other": "{{count}} Orte erstellen",
+      "linkExisting": "Mit vorhandenem Eintrag verknüpfen: {{name}}",
+      "linkExistingOrganisation_one": "Mit vorhandener Organisation verknüpfen",
+      "linkExistingOrganisation_other": "{{count}} Gruppen mit vorhandenen Organisationen verknüpfen",
+      "linkExistingPlace_one": "Mit vorhandenem Ort verknüpfen",
+      "linkExistingPlace_other": "{{count}} Gruppen mit vorhandenen Orten verknüpfen",
+      "createAndLink": "Neue Gruppen erstellen und vorhandene verknüpfen",
       "createdOrganisation_one": "{{count}} Organisation erstellt.",
       "createdOrganisation_other": "{{count}} Organisationen erstellt.",
       "createdPlace_one": "{{count}} Ort erstellt.",
@@ -4533,7 +4539,8 @@
         "group_not_found": "{{name}}: übersprungen. Es existiert möglicherweise schon oder passt nicht mehr zu Ihren Kontakten.",
         "contact_not_in_group": "{{name}}: ein Kontakt gehört nicht mehr dazu.",
         "name_invalid": "{{name}}: Der Name ist ungültig.",
-        "core_invalid": "{{name}}: Die Angaben sind ungültig."
+        "core_invalid": "{{name}}: Die Angaben sind ungültig.",
+        "entity_not_found": "{{name}}: Die passende Organisation oder der passende Ort existiert nicht mehr."
       }
     }
   },

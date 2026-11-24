@@ -54,6 +54,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Link to an existing organisation or place instead of duplicating it** ([#2919](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2919)): when a contact's company or address already matches one you have created, "Create organisations and places from my contacts" now links the contact to it instead of creating a second entry with the same name.
 - **A missing contact keeps its "not found" tab title** ([#2901](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2901)): opening a contact that no longer exists now leaves the browser tab on "Contact not found" instead of switching back to "Contacts".
 - **Android names the field on an empty contact row**: on a contact page, each empty field's button now says "Add Phone", "Add Email" and so on, so a screen reader can tell them apart instead of announcing "Add" for every one.
 - **Android announces whether an activity is selected**: in the "Add to activities" dialog a screen reader now says whether each row is checked, instead of only "checkbox".

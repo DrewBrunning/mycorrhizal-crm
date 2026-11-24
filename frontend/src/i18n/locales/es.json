@@ -4654,6 +4654,14 @@
       "createPlace_one": "Crear {{count}} lugar",
       "createPlace_many": "Crear {{count}} lugares",
       "createPlace_other": "Crear {{count}} lugares",
+      "linkExisting": "Vincular con la entrada existente: {{name}}",
+      "linkExistingOrganisation_one": "Vincular con la organización existente",
+      "linkExistingOrganisation_many": "Vincular {{count}} grupos con organizaciones existentes",
+      "linkExistingOrganisation_other": "Vincular {{count}} grupos con organizaciones existentes",
+      "linkExistingPlace_one": "Vincular con el lugar existente",
+      "linkExistingPlace_many": "Vincular {{count}} grupos con lugares existentes",
+      "linkExistingPlace_other": "Vincular {{count}} grupos con lugares existentes",
+      "createAndLink": "Crear grupos nuevos y vincular los existentes",
       "createdOrganisation_one": "Se creó {{count}} organización.",
       "createdOrganisation_many": "Se crearon {{count}} organizaciones.",
       "createdOrganisation_other": "Se crearon {{count}} organizaciones.",
@@ -4664,7 +4672,8 @@
         "group_not_found": "{{name}}: omitido. Puede que ya exista o que ya no coincida con tus contactos.",
         "contact_not_in_group": "{{name}}: un contacto ya no pertenece a ese grupo.",
         "name_invalid": "{{name}}: el nombre no es válido.",
-        "core_invalid": "{{name}}: sus datos no son válidos."
+        "core_invalid": "{{name}}: sus datos no son válidos.",
+        "entity_not_found": "{{name}}: la organización o el lugar coincidente ya no existe."
       }
     }
   },

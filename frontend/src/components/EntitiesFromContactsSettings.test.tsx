@@ -30,6 +30,8 @@ function group(overrides: Partial<EntityValueGroup> = {}): EntityValueGroup {
     name: 'Acme Corp',
     reason: 'normalized_name',
     variants: ['Acme Corp', 'Acme, Inc'],
+    existing_entity_id: '',
+    existing_entity_name: '',
     contacts: [
       {
         contact_id: 1,
@@ -162,6 +164,67 @@ test('skipped groups are reported with a reason, never silently dropped', async 
   fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Include Acme Corp' }));
   fireEvent.click(within(dialog).getByRole('button', { name: 'Create 1 organisation' }));
   expect(await within(dialog).findByText(/Acme Corp: the name is not valid/)).toBeInTheDocument();
+});
+
+// Issue #2919: a group that already matches a live entity links to it instead
+// of creating a second organisation with the same name.
+test('a group matching an existing entity offers to link to it, not create it', async () => {
+  suggestMock.mockResolvedValue(
+    page([
+      group({
+        key: 'green',
+        name: 'Green Acres Co-op',
+        variants: ['Green Acres Co-op'],
+        existing_entity_id: 'e-green',
+        existing_entity_name: 'Green Acres Co-op',
+        contacts: [
+          {
+            contact_id: 11,
+            firstname: 'Alice',
+            lastname: 'A',
+            value_name: 'Green Acres Co-op',
+            has_primary: false,
+          },
+        ],
+      }),
+    ]),
+  );
+  createMock.mockResolvedValue({
+    created: [
+      {
+        key: 'green',
+        entity: { id: 'e-green', name: 'Green Acres Co-op' } as never,
+        links: [],
+      },
+    ],
+    skipped: [],
+  });
+  renderCard();
+  const dialog = await openWizard();
+  await within(dialog).findByText('Green Acres Co-op — 1 contact');
+
+  fireEvent.click(
+    within(dialog).getByRole('checkbox', { name: 'Link to existing Green Acres Co-op' }),
+  );
+  expect(within(dialog).queryByLabelText('Name of Green Acres Co-op')).toBeNull();
+  fireEvent.click(
+    within(dialog).getByRole('button', { name: 'Link to existing Green Acres Co-op' }),
+  );
+
+  await waitFor(() => expect(createMock).toHaveBeenCalled());
+  expect(createMock).toHaveBeenCalledWith({
+    kind: 'organisation',
+    groups: [
+      {
+        key: 'green',
+        name: 'Green Acres Co-op',
+        role: 'employee',
+        set_primary: false,
+        contact_ids: [11],
+        existing_entity_id: 'e-green',
+      },
+    ],
+  });
 });
 
 test('a failed scan or create shows the error and keeps the dialog', async () => {

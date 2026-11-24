@@ -4525,6 +4525,12 @@
       "createOrganisation_other": "Create {{count}} organisations",
       "createPlace_one": "Create {{count}} place",
       "createPlace_other": "Create {{count}} places",
+      "linkExisting": "Link to existing {{name}}",
+      "linkExistingOrganisation_one": "Link to existing organisation",
+      "linkExistingOrganisation_other": "Link {{count}} groups to existing organisations",
+      "linkExistingPlace_one": "Link to existing place",
+      "linkExistingPlace_other": "Link {{count}} groups to existing places",
+      "createAndLink": "Create new groups and link existing ones",
       "createdOrganisation_one": "Created {{count}} organisation.",
       "createdOrganisation_other": "Created {{count}} organisations.",
       "createdPlace_one": "Created {{count}} place.",
@@ -4533,7 +4539,8 @@
         "group_not_found": "{{name}}: skipped. It may already exist or no longer match your contacts.",
         "contact_not_in_group": "{{name}}: a contact no longer belongs to it.",
         "name_invalid": "{{name}}: the name is not valid.",
-        "core_invalid": "{{name}}: its details are not valid."
+        "core_invalid": "{{name}}: its details are not valid.",
+        "entity_not_found": "{{name}}: the organisation or place it matched no longer exists."
       }
     }
   },
