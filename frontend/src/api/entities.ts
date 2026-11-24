@@ -156,6 +156,10 @@ export interface EntityValueGroup {
   reason: EntitySuggestionReason;
   variants: string[];
   contacts: EntityValueGroupContact[];
+  // Issue #2919: the live entity of this kind whose value key equals the
+  // group's. Empty when none matches; confirming the group then creates one.
+  existing_entity_id: string;
+  existing_entity_name: string;
 }
 
 export interface EntitySuggestionsResponse {
@@ -169,6 +173,8 @@ export interface EntitySuggestionsResponse {
 export interface EntityFromContactsGroup {
   key: string;
   name?: string;
+  // Issue #2919: link to this live entity instead of creating one.
+  existing_entity_id?: string;
   role: string;
   set_primary?: boolean;
   contact_ids: number[];
@@ -182,7 +188,12 @@ export interface EntityFromContactsInput {
 export interface EntityFromContactsSkip {
   key: string;
   contact_id?: number;
-  reason: 'group_not_found' | 'contact_not_in_group' | 'name_invalid' | 'core_invalid';
+  reason:
+    | 'group_not_found'
+    | 'contact_not_in_group'
+    | 'name_invalid'
+    | 'core_invalid'
+    | 'entity_not_found';
 }
 
 export interface EntityFromContactsResponse {
