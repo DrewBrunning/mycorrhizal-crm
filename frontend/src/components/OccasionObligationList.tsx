@@ -19,7 +19,7 @@ export default function OccasionObligationList({
   onEdit,
   onDelete,
 }: OccasionObligationListProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const handleDeleteClick = (id: string) => {
     if (window.confirm(t('occasions.obligation.deleteMessage'))) {
@@ -44,7 +44,14 @@ export default function OccasionObligationList({
 
   const anchorLabel = (o: OccasionObligation): string | null => {
     if (o.anchor_month == null || o.anchor_day == null) return null;
-    return `${t(`occasions.months.${o.anchor_month}`)} ${o.anchor_day}`;
+    // Issue #2914: let Intl order and punctuate the date for the active
+    // language ("March 3" / "3. März" / "3 mars"), instead of hardcoding the
+    // English month-then-day order.
+    return new Intl.DateTimeFormat(i18n.language, {
+      month: 'long',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }).format(Date.UTC(2000, o.anchor_month - 1, o.anchor_day));
   };
 
   return (

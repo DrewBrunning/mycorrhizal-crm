@@ -56,6 +56,7 @@ import { dashboardGridSx } from './utils/dashboardGrid';
 import { handleError, handleFetchError } from './utils/errorHandler';
 import { itemLabel } from './utils/itemLabel';
 import { calendarDateOnly, isBeforeLocalToday } from './utils/localDate';
+import { reminderTitle } from './utils/reminderTitle';
 
 // Mirrors backend controllers.DashboardSectionLimit (issue #1791) -- keep in
 // sync. Used only to re-cap a block the page refetches from an uncapped
@@ -721,6 +722,7 @@ function DashboardPage() {
             <Stack spacing={1.5}>
               {upcomingReminders.map((reminder) => {
                 const overdue = isOverdue(reminder.remind_at);
+                const title = reminderTitle(t, reminder);
 
                 return (
                   <Card
@@ -741,7 +743,7 @@ function DashboardPage() {
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                         <Box sx={{ flexGrow: 1 }}>
                           <Typography variant="body2" data-user-content sx={{ fontWeight: 500 }}>
-                            {reminder.message}
+                            {title}
                           </Typography>
                           {reminder.contact_name && (
                             <Typography
@@ -800,7 +802,7 @@ function DashboardPage() {
                                 void handleSkipReminder(reminder.ID);
                               }}
                               aria-label={t('reminders.skipNamed', {
-                                title: itemLabel(reminder.message),
+                                title: itemLabel(title),
                               })}
                               sx={{
                                 transition: 'transform 0.15s ease-in-out',
@@ -821,7 +823,7 @@ function DashboardPage() {
                                 void handleCompleteReminder(reminder.ID);
                               }}
                               aria-label={t('reminders.completeNamed', {
-                                title: itemLabel(reminder.message),
+                                title: itemLabel(title),
                               })}
                               sx={{
                                 transition:
