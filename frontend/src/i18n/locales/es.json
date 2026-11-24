@@ -477,6 +477,7 @@
         "help": {
           "ignore": "Se guarda intacta con el contacto y se vuelve a exportar después, pero aquí no se puede buscar ni editar. No se pierde nada.",
           "map": "Coloca el valor en un campo personalizado que ya creaste, para poder buscarlo y editarlo.",
+          "chooseField": "Elige un campo o elige otra acción.",
           "mapEmpty": "Todavía no tienes campos personalizados. Elige «Crear campo nuevo» para crear uno a partir de esta propiedad.",
           "create": "Crea un campo personalizado nuevo con esta propiedad y lo rellena en cada contacto importado."
         }
@@ -4119,6 +4120,7 @@
       "validation_invalid_request_body": "Cuerpo de la solicitud no válido",
       "import_session_not_found": "La sesión de importación ha caducado o no se encontró",
       "import_session_expired": "La sesión de importación ha caducado",
+      "import_session_limit": "Hay demasiadas importaciones en curso. Termina o cancela una primero.",
       "import_endpoint_csv_vcf_only": "Este punto de acceso es solo para importaciones CSV o VCF",
       "import_endpoint_vcf_records_only": "Este punto de acceso es solo para importaciones VCF o de registros",
       "import_preview_required": "Genera primero una vista previa",
@@ -4345,6 +4347,7 @@
       "import_csv_not_text": "Este archivo no es un archivo CSV de texto sin formato. Expórtalo de nuevo como CSV (UTF-8) e inténtalo otra vez.",
       "import_disk_space_low": "no hay suficiente espacio en disco para importar {{total}} contactos: {{reason}}",
       "import_field_mapping_target_invalid": "Un valor importado solo puede ir a un campo personalizado que se aplique a los contactos",
+      "import_field_mapping_unknown_field": "Elige un campo existente para «{{property}}» o elige otra acción.",
       "import_field_mappings_invalid": "{{reason}}",
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",

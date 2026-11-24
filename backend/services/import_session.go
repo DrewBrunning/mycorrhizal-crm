@@ -839,6 +839,10 @@ func (m *ImportSessionManager) ConfirmVCF(ctx context.Context, db *gorm.DB, user
 	})
 
 	if txErr != nil {
+		var unknownField *importFieldMappingUnknownFieldError
+		if errors.As(txErr, &unknownField) {
+			return nil, apperrors.ErrInvalidInput("field_mappings", "choose an existing field, or pick another action").WithReason(apperrors.ReasonImportFieldMappingUnknownField, map[string]any{"property": unknownField.property})
+		}
 		if errors.Is(txErr, errImportFieldMappingTargetInvalid) {
 			return nil, apperrors.ErrInvalidInput("field_mappings", "the field does not apply to contacts").WithReason(apperrors.ReasonImportFieldMappingTargetInvalid, nil)
 		}
