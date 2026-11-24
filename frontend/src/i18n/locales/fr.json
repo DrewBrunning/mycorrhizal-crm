@@ -1149,6 +1149,7 @@
   },
   "reminders": {
     "title": "Rappels",
+    "occasionTitle": "Occasion — {{title}}",
     "add": "Ajouter un rappel",
     "addReminder": "Ajouter un rappel",
     "editReminder": "Modifier le rappel",

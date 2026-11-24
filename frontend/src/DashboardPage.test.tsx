@@ -235,6 +235,32 @@ test('completing a reminder refetches via the plain upcoming-reminders endpoint 
   await waitFor(() => expect(screen.getByText('Nicky Name')).toBeInTheDocument());
 });
 
+test('an occasion reminder on the dashboard uses the localized title (#2915)', async () => {
+  getDashboardMock.mockResolvedValue({
+    ...emptyDashboard(),
+    upcoming_reminders: [
+      {
+        ID: 7,
+        message: 'Card for Cory: Cory Noaddr',
+        occasion_obligation_id: 'ob-1',
+        by_mail: false,
+        remind_at: '2026-08-12T00:00:00Z',
+        recurrence: 'once',
+        reoccur_from_completion: false,
+        completed: false,
+        email_sent: false,
+        contact_id: 3,
+        contact_name: 'Cory Noaddr',
+      },
+    ],
+    upcoming_reminders_total: 1,
+  });
+
+  renderPage();
+
+  expect(await screen.findByText('Occasion — Card for Cory: Cory Noaddr')).toBeInTheDocument();
+});
+
 test('renders a CardDAV sync conflict and can restore or dismiss it (issue #395)', async () => {
   getDashboardMock.mockResolvedValue({
     ...emptyDashboard(),
