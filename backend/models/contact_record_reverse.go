@@ -2,6 +2,8 @@ package models
 
 import (
 	"context"
+	"strings"
+
 	"mycorrhizal/contactmodel"
 	"mycorrhizal/logger"
 	"mycorrhizal/photostore"
@@ -220,20 +222,28 @@ func PreserveLocalOnlyCRMFields(existing *Contact, incoming *contactmodel.Record
 
 // applyName is the inverse of buildName: Card.Name.Components ->
 // Firstname/Lastname/MiddleName/Prefix/Suffix ("name.given"/"name.surname"/
-// "name.given2"/"name.title"/"name.credential" rows). Falls back to
-// DeriveProjection's Firstname/Lastname (which itself falls back to
-// Card.Name.Full when there are no components at all) so a Record built
-// with only Name.Full set (e.g. a minimal JSContact import) still lands a
-// usable Firstname/Lastname rather than leaving them blank.
+// "name.given2"/"name.title"/"name.credential" rows). When there are no
+// given/surname components but Card.Name.Full is set, the flat name is split
+// from Full the same way carddav/vcard_mapper.go splits an FN-only card: the
+// first space separates Firstname from the rest (RFC 6350 makes FN required
+// and N optional, issue #2913). Finally falls back to DeriveProjection's
+// Firstname/Lastname for any still-empty slot, so a Record built with only
+// Name.Full set (e.g. a minimal JSContact import) still lands a usable
+// Firstname/Lastname rather than leaving them blank.
 func applyName(c *Contact, card contactmodel.Card, proj contactmodel.Projection) {
 	c.Firstname, c.Lastname, c.MiddleName, c.Prefix, c.Suffix = "", "", "", "", ""
+	var full string
+	hasGiven, hasSurname := false, false
 	if card.Name != nil {
+		full = card.Name.Full
 		for _, comp := range card.Name.Components {
 			switch comp.Kind {
 			case "given":
 				c.Firstname = comp.Value
+				hasGiven = true
 			case "surname":
 				c.Lastname = comp.Value
+				hasSurname = true
 			case "given2":
 				c.MiddleName = comp.Value
 			case "title":
@@ -241,6 +251,13 @@ func applyName(c *Contact, card contactmodel.Card, proj contactmodel.Projection)
 			case "credential":
 				c.Suffix = comp.Value
 			}
+		}
+	}
+	if !hasGiven && !hasSurname && full != "" {
+		parts := strings.SplitN(full, " ", 2)
+		c.Firstname = parts[0]
+		if len(parts) > 1 {
+			c.Lastname = parts[1]
 		}
 	}
 	if c.Firstname == "" {

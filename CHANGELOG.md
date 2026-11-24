@@ -54,6 +54,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **A vCard with only a full name now keeps that name** ([#2913](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2913)): when a contact card has FN but not the optional structured name, importing it now gives "Fn" and "Only" as the first and last names instead of leaving the contact unnamed.
 - **A missing contact keeps its "not found" tab title** ([#2901](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2901)): opening a contact that no longer exists now leaves the browser tab on "Contact not found" instead of switching back to "Contacts".
 - **Android names the field on an empty contact row**: on a contact page, each empty field's button now says "Add Phone", "Add Email" and so on, so a screen reader can tell them apart instead of announcing "Add" for every one.
 - **Android announces whether an activity is selected**: in the "Add to activities" dialog a screen reader now says whether each row is checked, instead of only "checkbox".
