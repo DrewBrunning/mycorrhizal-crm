@@ -39,6 +39,10 @@ name: Reproducible builds
 on:
   pull_request:
     branches: [main, "release/**"]
+    # Draft PRs run the fast checks only; marking ready or adding `ci:full`
+    # starts the heavy suites (see the run_heavy gate below and
+    # .github/AGENTS.md "Draft PRs and the heavy-suite gate").
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   push:
     branches: [main]
   schedule:
@@ -71,7 +75,9 @@ jobs:
   # does only when the `repro` or `workflows` filter matches -- the latter so
   # a change to *any* .github/workflows/*.yml file (not just this one) still
   # exercises the real build, matching filters.yaml's "workflows -> re-runs
-  # everything" convention.
+  # everything" convention. A draft PR (or an unrelated `labeled` event) never
+  # does: `repro` carries the draft gate below, and `go-binary` reports green
+  # without the build.
   changes:
     permissions:
       contents: read
@@ -80,6 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       repro: ${{ steps.resolve.outputs.repro }}
+      run_heavy: ${{ steps.resolve.outputs.run_heavy }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -95,6 +102,18 @@ jobs:
       - name: Resolve gating decision
         id: resolve
         run: |
+          # Draft gate (item 1): heavy suites run for every non-PR event, for a
+          # non-draft PR (except an unrelated `labeled` event), and for any PR
+          # carrying `ci:full`.
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            run_heavy=true
+          elif printf '%s' "$PR_LABELS" | grep -qF '"ci:full"'; then
+            run_heavy=true
+          elif [ "$PR_DRAFT" = "false" ] && [ "$PR_ACTION" != "labeled" ]; then
+            run_heavy=true
+          else
+            run_heavy=false
+          fi
           if [ "$EVENT_NAME" = "pull_request" ]; then
             if [ "$REPRO_CHANGED" = "true" ] || [ "$WORKFLOWS_CHANGED" = "true" ]; then
               repro=true
@@ -104,9 +123,22 @@ jobs:
           else
             repro=true
           fi
-          echo "repro=$repro" | tee -a "$GITHUB_OUTPUT"
+          # `repro` also carries the draft gate: go-binary is a required
+          # context and always runs/reports, so it must not be skipped
+          # outright -- on a draft (or an unrelated `labeled` event) it just
+          # no-ops instead of paying for the double build.
+          if [ "$run_heavy" != "true" ]; then
+            repro=false
+          fi
+          {
+            echo "repro=$repro"
+            echo "run_heavy=$run_heavy"
+          } | tee -a "$GITHUB_OUTPUT"
         env:
           EVENT_NAME: ${{ github.event_name }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
           REPRO_CHANGED: ${{ steps.filter.outputs.repro }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
@@ -170,11 +202,11 @@ jobs:
           fi
           echo "Reproducible: $a"
 
-      - name: Skip (no reproducibility-relevant paths changed)
+      - name: Skip (no reproducibility double build needed)
         if: needs.changes.outputs.repro != 'true'
         run: |
-          echo "No backend/build-input paths changed on this PR -- skipping the double build." >> "$GITHUB_STEP_SUMMARY"
-          echo "This required check still runs and reports so path-gating can't strand it (branch protection would otherwise wait on a status that never posts)." >> "$GITHUB_STEP_SUMMARY"
+          echo "No reproducibility double build needed for this run (no relevant paths changed, or a draft PR)." >> "$GITHUB_STEP_SUMMARY"
+          echo "This required check still runs and reports so path-gating can't strand it (branch protection would otherwise wait on a status that never posts). Marking the PR ready re-runs the build." >> "$GITHUB_STEP_SUMMARY"
 
   all-in-one-image:
     name: All-in-one image (linux/amd64) is reproducible
@@ -184,7 +216,7 @@ jobs:
     # skipped outright (not merely have its steps no-op) when nothing
     # relevant changed -- a skipped, non-required job doesn't strand branch
     # protection the way a required one would.
-    if: needs.changes.outputs.repro == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && needs.changes.outputs.repro == 'true'
     # Not a hard gate yet: the Go binary check above is proven bit-reproducible,
     # but the image adds an `apk add` layer and BuildKit's own metadata, and
     # this has not yet been observed green across enough runs to block a merge

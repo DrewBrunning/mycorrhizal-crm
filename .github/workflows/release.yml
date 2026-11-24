@@ -334,6 +334,17 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: go run ./cmd/reasoncodecheck -release-tag "$VERSION" ./...
 
+      # REL-05: changelog.d/ fragments are the source of [Unreleased] entries
+      # (docs/changelog-policy.md). Refuse to tag while any fragment is not
+      # assembled, so a release cannot ship notes that only exist locally.
+      - name: Gate - changelog fragments are assembled (changelogassemble)
+        working-directory: backend
+        run: |
+          if ! go run ./cmd/changelogassemble -check; then
+            echo "::error::changelog.d/ fragments are not assembled in CHANGELOG.md [Unreleased]. Run 'cd backend && go run ./cmd/changelogassemble -write', then commit CHANGELOG.md and the deleted fragment files before cutting the release."
+            exit 1
+          fi
+
       # Issue #2242: the Release body is the CHANGELOG.md section for the tag,
       # so a final version needs its `## [X.Y.Z]` section (renamed from
       # `[Unreleased]`) before it is tagged. A release candidate publishes that
