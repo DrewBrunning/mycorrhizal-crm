@@ -19,7 +19,15 @@ interface CachedContactDao {
     @Query("SELECT * FROM cached_contacts WHERE id IN (:ids)")
     suspend fun getByIds(ids: List<Int>): List<CachedContact>
 
-    @Query("SELECT * FROM cached_contacts WHERE deleted = 0 ORDER BY fn COLLATE NOCASE ASC")
+    // Same key as the server sort and `contactSectionLetter` (last name, else first name), so the
+    // offline list groups A-Z with each letter once (#2940).
+    @Query(
+        """
+        SELECT * FROM cached_contacts WHERE deleted = 0
+        ORDER BY COALESCE(NULLIF(lastname, ''), NULLIF(firstname, ''), fn) COLLATE NOCASE ASC,
+                 firstname COLLATE NOCASE ASC
+        """
+    )
     suspend fun getAll(): List<CachedContact>
 
     @Query("SELECT * FROM cached_contacts WHERE deleted = 1")
@@ -36,7 +44,8 @@ interface CachedContactDao {
               OR primaryEmail LIKE '%' || :query || '%'
               OR primaryPhone LIKE '%' || :query || '%'
           )
-        ORDER BY fn COLLATE NOCASE ASC
+        ORDER BY COALESCE(NULLIF(lastname, ''), NULLIF(firstname, ''), fn) COLLATE NOCASE ASC,
+                 firstname COLLATE NOCASE ASC
         """
     )
     suspend fun search(query: String): List<CachedContact>
@@ -53,7 +62,7 @@ interface CachedContactDao {
         JOIN cached_contacts c ON c.id = f.rowid
         WHERE cached_contacts_fts MATCH :query || '*'
           AND c.deleted = 0
-        ORDER BY c.fn COLLATE NOCASE ASC
+        ORDER BY COALESCE(NULLIF(c.lastname, ''), NULLIF(c.firstname, ''), c.fn) COLLATE NOCASE ASC, c.firstname COLLATE NOCASE ASC
         """
     )
     suspend fun searchFts(query: String): List<CachedContact>
@@ -70,7 +79,7 @@ interface CachedContactDao {
         JOIN cached_contacts c ON c.id = f.rowid
         WHERE cached_contacts_fts MATCH :matchExpr
           AND c.deleted = 0
-        ORDER BY c.fn COLLATE NOCASE ASC
+        ORDER BY COALESCE(NULLIF(c.lastname, ''), NULLIF(c.firstname, ''), c.fn) COLLATE NOCASE ASC, c.firstname COLLATE NOCASE ASC
         """
     )
     suspend fun searchFtsMatch(matchExpr: String): List<CachedContact>

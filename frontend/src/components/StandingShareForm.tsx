@@ -23,6 +23,7 @@ import {
   type ShareGrantEntityType,
   type ShareGrantOwnerView,
 } from '../api/shareGrants';
+import { useDateFormat } from '../DateFormatProvider';
 import { getErrorMessage } from '../utils/errorHandler';
 import { describeJSContact } from '../utils/jscontactDisplay';
 import DateField from './DateField';
@@ -70,6 +71,7 @@ export default function StandingShareForm({
   onDirty,
 }: StandingShareFormProps) {
   const { t } = useTranslation();
+  const { dateFormat } = useDateFormat();
   const [recipient, setRecipient] = useState<UserDirectoryEntry | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expiry, setExpiry] = useState('');
@@ -152,7 +154,7 @@ export default function StandingShareForm({
       );
     }
     if (preview.status === 'ready' && preview.card) {
-      if (describeJSContact(preview.card).sections.length === 0) {
+      if (describeJSContact(preview.card, t, dateFormat).sections.length === 0) {
         return (
           <>
             <SharedContactCard card={preview.card} />

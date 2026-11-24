@@ -3219,6 +3219,7 @@
     <string name="error_reason_validation_invalid_request_body">Invalid request body</string>
     <string name="error_reason_import_session_not_found">Import session expired or not found</string>
     <string name="error_reason_import_session_expired">Import session expired</string>
+    <string name="error_reason_import_session_limit">Too many imports are in progress. Finish or cancel one first.</string>
     <string name="error_reason_import_endpoint_csv_vcf_only">This endpoint is only for CSV or VCF imports</string>
     <string name="error_reason_import_endpoint_vcf_records_only">This endpoint is only for VCF or records imports</string>
     <string name="error_reason_import_preview_required">Please generate a preview first</string>
@@ -3443,6 +3444,7 @@
     <string name="error_reason_import_csv_not_text">This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.</string>
     <string name="error_reason_import_disk_space_low">not enough disk space to import %1$s contacts: %2$s</string>
     <string name="error_reason_import_field_mapping_target_invalid">An imported value can only go into a custom field that applies to contacts</string>
+    <string name="error_reason_import_field_mapping_unknown_field">Choose an existing field for “%1$s”, or pick another action.</string>
     <string name="error_reason_import_field_mappings_invalid">%1$s</string>
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>

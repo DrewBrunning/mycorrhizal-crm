@@ -279,6 +279,13 @@ jobs:
         working-directory: backend
         run: go run ./cmd/changelogcheck
 
+      # REL-05: every changelog.d/ fragment is one valid [Unreleased] bullet.
+      # The release-time assembly (cmd/changelogassemble) is gated in
+      # release.yml and promote-rc.yml.
+      - name: Lint changelog fragments (changelogfragmentcheck)
+        working-directory: backend
+        run: go run ./cmd/changelogfragmentcheck
+
       # REL-03 (#447): .github/release-gates.json is well-formed, every gate
       # names a real workflow, and release-gates.md's table matches it.
       - name: Verify release-gate registry
@@ -332,8 +339,9 @@ jobs:
         run: go run ./cmd/pragmacheck
 
   # REL-05 (#449): a PR touching an operator-visible surface
-  # (`changelog-relevant` in .github/filters.yaml) must change CHANGELOG.md or
-  # carry `no-changelog: <reason>` (issue #2242). Pull-request only (no PR
+  # (`changelog-relevant` in .github/filters.yaml) must add a
+  # `changelog.d/*.md` fragment (or change CHANGELOG.md directly) or carry
+  # `no-changelog: <reason>` (issue #2242). Pull-request only (no PR
   # body on a push); a skipped job reports success so it can be a required
   # check. Policy: docs/changelog-policy.md.
   changelog-note:
@@ -345,7 +353,7 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - name: Require a CHANGELOG.md entry or an explicit opt-out
+      - name: Require a changelog fragment or an explicit opt-out
         env:
           # Via env, never inline -- PR body is attacker-controlled.
           PR_BODY: ${{ github.event.pull_request.body }}
@@ -355,17 +363,21 @@ jobs:
         run: |
           set -eu
           # Assigned first so an API failure fails the step (set -e) instead
-          # of reading as "CHANGELOG.md not changed".
+          # of reading as "no changelog entry".
           files="$(gh api --paginate "repos/${GH_REPO}/pulls/${PR_NUMBER}/files" --jq '.[].filename')"
           if printf '%s\n' "$files" | grep -qx 'CHANGELOG.md'; then
             echo "CHANGELOG.md is part of this PR."
+            exit 0
+          fi
+          if printf '%s\n' "$files" | grep -qE '^changelog\.d/[^/]+\.md$'; then
+            echo "A changelog.d/ fragment is part of this PR."
             exit 0
           fi
           if printf '%s' "$PR_BODY" | grep -qiE 'no-changelog:[[:space:]]*\S'; then
             echo "Found a 'no-changelog: <reason>' opt-out."
             exit 0
           fi
-          echo "::error::This PR changes an operator-visible surface (a migration, the config surface, or .env.example) but does not change CHANGELOG.md and its description has no 'no-changelog: <reason>' line. See docs/changelog-policy.md."
+          echo "::error::This PR changes an operator-visible surface (a migration, the config surface, or .env.example) but adds no changelog.d/ fragment (and does not change CHANGELOG.md), and its description has no 'no-changelog: <reason>' line. See docs/changelog-policy.md."
           exit 1
 
   # Issue #1188: Codecov only creates `codecov/patch/<area>` check runs once
@@ -1350,6 +1362,13 @@ jobs:
       - name: Lint
         working-directory: frontend
         run: yarn lint
+
+      # Issue #2920 item 1: counted ratchet for raw err.message in UI text.
+      # ESLint above covers files with no existing sites; this covers the
+      # allowlisted files by count.
+      - name: Raw error-message guard
+        working-directory: frontend
+        run: node scripts/check-raw-error-message.mjs
 
       # Issue #1907: dead-weight detection the type/lint/bundle gates cannot
       # see -- files and exports nothing imports, and unused dependencies.

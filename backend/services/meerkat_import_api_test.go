@@ -349,6 +349,23 @@ func TestMeerkatAPIErrorMapping(t *testing.T) {
 	}
 }
 
+// Issue #2912: a connect that cannot reach the host must carry the
+// localizable meerkat_fetch_unreachable code, matching the fetch path. The old
+// default branch returned meerkat_upstream_error with the English sentence as
+// a free-text {reason} param, so every locale showed English.
+func TestMeerkatAPI_ConnectUnreachableUsesTheLocalizableReason(t *testing.T) {
+	mgr := NewMeerkatImportManager()
+	// Port 9 is the discard service: nothing listens, so the dial is refused
+	// immediately instead of hanging until the connect timeout.
+	_, appErr := mgr.Connect(context.Background(), 1, models.MeerkatConnectRequest{
+		BaseURL: "http://127.0.0.1:9", APIToken: "token",
+	}, apiCfg(t))
+	require.NotNil(t, appErr)
+	assert.Equal(t, string(apperrors.ReasonMeerkatFetchUnreachable), appErr.ReasonCode)
+	assert.Nil(t, appErr.ReasonParams, "the localized template takes no free-text param")
+	assert.Equal(t, "The Meerkat instance could not be reached", appErr.Message)
+}
+
 func TestMeerkatAPI_PhotoFailuresAreCountedNotFatal(t *testing.T) {
 	db := setupSourceImportTestDB(t)
 	user := createSourceImportUser(t, db)

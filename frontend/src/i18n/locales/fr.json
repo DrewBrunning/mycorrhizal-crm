@@ -4,6 +4,9 @@
     "logout": "Déconnexion",
     "accountMenu": "Compte",
     "openNavigation": "Ouvrir la navigation",
+    "openNavigationWithPending_one": "Ouvrir la navigation, {{count}} partage attend votre réponse",
+    "openNavigationWithPending_other": "Ouvrir la navigation, {{count}} partages attendent votre réponse",
+    "openNavigationWithPending_many": "Ouvrir la navigation, {{count}} partages attendent votre réponse",
     "update": {
       "available": "Une nouvelle version de Mycorrhizal CRM est disponible.",
       "reload": "Recharger"
@@ -388,12 +391,14 @@
     "workInformation": "Informations professionnelles",
     "contactInformation": "Informations de contact supplémentaires",
     "circles": "Cercles",
+    "addCircleNamed": "Ajouter un cercle",
     "selectCircle": "Sélectionnez un cercle existant...",
     "newCircle": "Ou créez-en un nouveau...",
     "tags": "Étiquettes",
     "selectTag": "Sélectionnez une étiquette existante...",
     "setAsPreferred": "Définir comme préféré",
     "newTag": "Ou créez-en une nouvelle...",
+    "addTag": "Ajouter une étiquette",
     "add": {
       "button": "Ajouter un contact",
       "title": "Ajouter un nouveau contact",
@@ -472,6 +477,7 @@
         "help": {
           "ignore": "Enregistrée intacte avec le contact et réexportée plus tard, mais ni recherchable ni modifiable ici. Rien n'est perdu.",
           "map": "Place la valeur dans un champ personnalisé que vous avez déjà créé, pour qu'elle soit recherchable et modifiable.",
+          "chooseField": "Choisissez un champ ou choisissez une autre action.",
           "mapEmpty": "Vous n'avez pas encore de champs personnalisés. Choisissez « Créer un nouveau champ » pour en créer un à partir de cette propriété.",
           "create": "Crée un nouveau champ personnalisé recherchable à partir de cette propriété et le remplit pour chaque contact importé."
         }
@@ -1149,6 +1155,7 @@
   },
   "reminders": {
     "title": "Rappels",
+    "occasionTitle": "Occasion — {{title}}",
     "add": "Ajouter un rappel",
     "addReminder": "Ajouter un rappel",
     "editReminder": "Modifier le rappel",
@@ -1238,6 +1245,7 @@
     "delete": "Supprimer",
     "deleteNamed": "Supprimer {{name}}",
     "deleteEntry": "Supprimer l’entrée {{number}}",
+    "addNamed": "Ajouter {{name}}",
     "back": "Retour",
     "continue": "Continuer",
     "add": "Ajouter",
@@ -3279,6 +3287,7 @@
       "notes": "Notes",
       "deleteMessage": "Supprimer cet événement ?",
       "manageAttendees": "Invités",
+      "manageAttendeesNamed": "Invités de {{event}}",
       "attendeesTitle": "Invités — {{title}}",
       "noAttendees": "Personne n'est encore invité.",
       "addAttendee": "Ajouter",
@@ -4111,6 +4120,7 @@
       "validation_invalid_request_body": "Corps de la requête invalide",
       "import_session_not_found": "Session d’import expirée ou introuvable",
       "import_session_expired": "Session d’import expirée",
+      "import_session_limit": "Trop d’importations sont en cours. Terminez-en une ou annulez-la d’abord.",
       "import_endpoint_csv_vcf_only": "Ce point d’accès est réservé aux imports CSV ou VCF",
       "import_endpoint_vcf_records_only": "Ce point d’accès est réservé aux imports VCF ou d’enregistrements",
       "import_preview_required": "Veuillez d’abord générer un aperçu",
@@ -4337,6 +4347,7 @@
       "import_csv_not_text": "Ce fichier n'est pas un fichier CSV en texte brut. Exportez-le à nouveau au format CSV (UTF-8) et réessayez.",
       "import_disk_space_low": "espace disque insuffisant pour importer {{total}} contacts : {{reason}}",
       "import_field_mapping_target_invalid": "Une valeur importée ne peut aller que dans un champ personnalisé qui s'applique aux contacts",
+      "import_field_mapping_unknown_field": "Choisissez un champ existant pour « {{property}} » ou choisissez une autre action.",
       "import_field_mappings_invalid": "{{reason}}",
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
@@ -4597,7 +4608,9 @@
       "none": "Aucun doublon trouvé.",
       "failed": "Impossible de rechercher les doublons.",
       "merge": "Fusionner…",
+      "mergeNamed": "Fusionner {{a}} et {{b}}",
       "dismiss": "Pas un doublon",
+      "dismissNamed": "{{a}} et {{b}} ne sont pas des doublons",
       "dismissed": "Masqué définitivement.",
       "pair": "{{a}} et {{b}}",
       "reason": {

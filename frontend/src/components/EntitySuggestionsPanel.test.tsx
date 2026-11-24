@@ -110,12 +110,12 @@ test('a failed dismiss shows the error and keeps the pair; a successful one remo
   await screen.findByText('Acme and Acme Ltd');
 
   dismissMock.mockRejectedValueOnce(new Error('dismiss broke'));
-  fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Acme and Acme Ltd are not duplicates' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('dismiss broke');
   expect(screen.getByText('Acme and Acme Ltd')).toBeInTheDocument();
 
   dismissMock.mockResolvedValueOnce(undefined as never);
-  fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Acme and Acme Ltd are not duplicates' }));
   await waitFor(() => expect(screen.queryByText('Acme and Acme Ltd')).not.toBeInTheDocument());
   expect(dismissMock).toHaveBeenLastCalledWith('a1', 'b1');
 });
@@ -161,7 +161,7 @@ test('merge is offered the pair with both counts so the dialog need not re-fetch
   listMock.mockResolvedValue({ pairs: [sameName] } as never);
   const { onMerge } = renderPanel();
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Merge…' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Merge Green Acres Co-op/ }));
   expect(onMerge).toHaveBeenCalledWith(sameName);
 });
 
@@ -171,4 +171,63 @@ test('a scan that fails without a message falls back to the generic failure text
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
   expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't look for duplicates.");
   expect(screen.queryByText('No duplicates found.')).not.toBeInTheDocument();
+});
+
+const pair2: EntitySuggestionPair = {
+  a: {
+    id: 'a2',
+    kind: 'organisation',
+    name: 'Beta',
+    updated_at: '2026-01-01T10:00:00Z',
+    link_count: 0,
+  },
+  b: {
+    id: 'b2',
+    kind: 'organisation',
+    name: 'Beta Ltd',
+    updated_at: '2026-01-02T10:00:00Z',
+    link_count: 4,
+  },
+  reason: 'normalized_name',
+};
+
+// #2911: every row used to offer identically named "Merge…" and "Not a duplicate".
+test('each pair action names the two entities it acts on (#2911)', async () => {
+  listMock.mockResolvedValue({ pairs: [pair, pair2] } as never);
+  renderPanel();
+  fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
+  await screen.findByText('Beta and Beta Ltd');
+  const names = screen
+    .getAllByRole('button')
+    .map((b) => b.getAttribute('aria-label'))
+    .filter((name): name is string => !!name && /^(Merge |.* are not duplicates$)/.test(name));
+  expect(names).toEqual([
+    'Merge Acme and Acme Ltd',
+    'Acme and Acme Ltd are not duplicates',
+    'Merge Beta and Beta Ltd',
+    'Beta and Beta Ltd are not duplicates',
+  ]);
+  expect(new Set(names).size).toBe(names.length);
+});
+
+// #2918: dismissing unmounts the row, so focus used to fall to <body>.
+test('dismissing a pair focuses the next duplicate row, then the heading (#2918)', async () => {
+  listMock.mockResolvedValue({ pairs: [pair, pair2] } as never);
+  dismissMock.mockResolvedValue(undefined as never);
+  renderPanel();
+  fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
+  await screen.findByText('Acme and Acme Ltd');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Acme and Acme Ltd are not duplicates' }));
+  await waitFor(() => expect(screen.queryByText('Acme and Acme Ltd')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      screen.getByRole('button', { name: 'Beta and Beta Ltd are not duplicates' }),
+    ),
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Beta and Beta Ltd are not duplicates' }));
+  const heading = screen.getByRole('heading', { name: 'Possible duplicates' });
+  await waitFor(() => expect(document.activeElement).toBe(heading));
+  expect(heading).toHaveAttribute('tabindex', '-1');
 });

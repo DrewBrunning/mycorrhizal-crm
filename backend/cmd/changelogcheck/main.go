@@ -13,28 +13,13 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"strings"
+
+	"mycorrhizal/internal/changelog"
 )
 
-const (
-	// maxWords is the hard limit behind the policy's "about 40 words".
-	maxWords = 60
-	// maxInternal is the hard limit behind "roughly three" Internal entries.
-	maxInternal = 5
-)
-
-// sections maps each allowed section name to its position in the policy order.
-var sections = map[string]int{
-	"Added": 1, "Changed": 2, "Deprecated": 3, "Removed": 4,
-	"Fixed": 5, "Security": 6, "Internal": 7,
-}
-
-var (
-	urlRe      = regexp.MustCompile(`https?://\S+`)
-	linkTextRe = regexp.MustCompile(`\[#\d+\]\(`)
-	bareRefRe  = regexp.MustCompile(`#\d+`)
-)
+// maxInternal is the hard limit behind "roughly three" Internal entries.
+const maxInternal = 5
 
 func main() { // # pragma: no cover — thin os.Exit wrapper over run
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
@@ -102,12 +87,12 @@ func check(doc string) []string {
 		case strings.HasPrefix(line, "### "):
 			flush()
 			section = strings.TrimSpace(strings.TrimPrefix(line, "### "))
-			pos, ok := sections[section]
+			pos, ok := changelog.SectionPosition(section)
 			switch {
 			case !ok:
-				add(n, "unknown section %q (use Added, Changed, Deprecated, Removed, Fixed, Security, Internal)", section)
+				add(n, "unknown section %q (use %s)", section, changelog.SectionNameList())
 			case pos <= order:
-				add(n, "section %q is out of order or repeated (order: Added, Changed, Deprecated, Removed, Fixed, Security, Internal)", section)
+				add(n, "section %q is out of order or repeated (order: %s)", section, changelog.SectionNameList())
 			default:
 				order = pos
 			}
@@ -127,15 +112,7 @@ func check(doc string) []string {
 }
 
 func checkBullet(b bullet, add func(int, string, ...any)) {
-	if !strings.HasPrefix(b.text, "- **") {
-		add(b.line, "bullet must start with a bold lead phrase: - **Lead**: ...")
-	}
-	stripped := linkTextRe.ReplaceAllString(b.text, "(")
-	stripped = urlRe.ReplaceAllString(stripped, "")
-	if bareRefRe.MatchString(stripped) {
-		add(b.line, "reference issues with a full URL, not a bare #number")
-	}
-	if words := len(strings.Fields(stripped)); words > maxWords {
-		add(b.line, "bullet has %d words; keep it to about 40 (limit %d)", words, maxWords)
+	for _, message := range changelog.ValidateBullet(b.text) {
+		add(b.line, "%s", message)
 	}
 }

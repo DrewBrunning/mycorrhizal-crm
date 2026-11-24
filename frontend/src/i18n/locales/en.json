@@ -4,6 +4,8 @@
     "logout": "Logout",
     "accountMenu": "Account",
     "openNavigation": "Open navigation",
+    "openNavigationWithPending_one": "Open navigation, {{count}} share waiting for your answer",
+    "openNavigationWithPending_other": "Open navigation, {{count}} shares waiting for your answer",
     "update": {
       "available": "A new version of Mycorrhizal CRM is available.",
       "reload": "Reload"
@@ -379,12 +381,14 @@
     "workInformation": "Work Information",
     "contactInformation": "Additional Contact Information",
     "circles": "Circles",
+    "addCircleNamed": "Add circle",
     "selectCircle": "Select existing circle...",
     "newCircle": "Or create new...",
     "tags": "Tags",
     "selectTag": "Select existing tag...",
     "setAsPreferred": "Set as preferred",
     "newTag": "Or create new...",
+    "addTag": "Add tag",
     "add": {
       "button": "Add Contact",
       "title": "Add New Contact",
@@ -461,6 +465,7 @@
         "help": {
           "ignore": "Saved untouched with the contact and exported again later, but not searchable or editable here. Nothing is lost.",
           "map": "Put the value into a custom field you already created, so it is searchable and editable.",
+          "chooseField": "Choose a field, or pick another action",
           "mapEmpty": "You have no custom fields yet. Choose \"Create new field\" to make one from this property.",
           "create": "Make a new searchable custom field from this property and fill it in for every imported contact."
         }
@@ -1166,6 +1171,7 @@
   },
   "reminders": {
     "title": "Reminders",
+    "occasionTitle": "Occasion — {{title}}",
     "add": "Add Reminder",
     "addReminder": "Add Reminder",
     "editReminder": "Edit Reminder",
@@ -1251,6 +1257,7 @@
     "delete": "Delete",
     "deleteNamed": "Delete {{name}}",
     "deleteEntry": "Delete entry {{number}}",
+    "addNamed": "Add {{name}}",
     "back": "Back",
     "continue": "Continue",
     "add": "Add",
@@ -3175,6 +3182,7 @@
       "notes": "Notes",
       "deleteMessage": "Delete this event?",
       "manageAttendees": "Attendees",
+      "manageAttendeesNamed": "Attendees of {{event}}",
       "attendeesTitle": "Attendees — {{title}}",
       "noAttendees": "No one invited yet.",
       "addAttendee": "Add",
@@ -3998,6 +4006,7 @@
       "validation_invalid_request_body": "Invalid request body",
       "import_session_not_found": "Import session expired or not found",
       "import_session_expired": "Import session expired",
+      "import_session_limit": "Too many imports are in progress. Finish or cancel one first.",
       "import_endpoint_csv_vcf_only": "This endpoint is only for CSV or VCF imports",
       "import_endpoint_vcf_records_only": "This endpoint is only for VCF or records imports",
       "import_preview_required": "Please generate a preview first",
@@ -4224,6 +4233,7 @@
       "import_csv_not_text": "This file is not a plain-text CSV file. Export it again as CSV (UTF-8) and try again.",
       "import_disk_space_low": "not enough disk space to import {{total}} contacts: {{reason}}",
       "import_field_mapping_target_invalid": "An imported value can only go into a custom field that applies to contacts",
+      "import_field_mapping_unknown_field": "Choose an existing field for “{{property}}”, or pick another action.",
       "import_field_mappings_invalid": "{{reason}}",
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
@@ -4473,7 +4483,9 @@
       "none": "No duplicates found.",
       "failed": "Couldn't look for duplicates.",
       "merge": "Merge…",
+      "mergeNamed": "Merge {{a}} and {{b}}",
       "dismiss": "Not a duplicate",
+      "dismissNamed": "{{a}} and {{b}} are not duplicates",
       "dismissed": "Hidden for good.",
       "pair": "{{a}} and {{b}}",
       "reason": {
