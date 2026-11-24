@@ -43,9 +43,16 @@ test('editing a row value reports the patched array', () => {
 test('the add button appends a row with the default type', () => {
   const { onChange } = renderEditor({ value: [value()] });
 
-  fireEvent.click(screen.getByRole('button', { name: 'Add' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Add Email' }));
 
   expect(onChange).toHaveBeenCalledWith([value(), { type: 'home', value: '' }]);
+});
+
+// #2911: four "Add" buttons in one dialog are indistinguishable by name.
+test('the add button names its field (#2911)', () => {
+  renderEditor({ label: 'Phone', valueType: 'tel', defaultType: 'cell' });
+  expect(screen.getByRole('button', { name: 'Add Phone' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
 });
 
 test('removing a row reports the array without it', () => {
