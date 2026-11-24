@@ -172,7 +172,13 @@ export default function MultiValueField({
           </Stack>
         ))}
         <Box>
-          <Button size="small" startIcon={<AddIcon />} onClick={addRow} variant="outlined">
+          <Button
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={addRow}
+            variant="outlined"
+            aria-label={t('common.addNamed', { name: label })}
+          >
             {t('common.add')}
           </Button>
         </Box>
