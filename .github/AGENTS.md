@@ -68,13 +68,13 @@ shadows the shared setting, and repairs the `CLAUDE.md` aliases).
   `./gradlew detekt --auto-correct` fixes formatting. Lint warnings are errors; `android/lint.xml`
   lists the reasoned exceptions.
 - **Always:** `citecheck` (including the ASVS/MASVS census test), `depexceptions`, `deprecations`,
-  `docscheck`, `contextcheck`, `changelogcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
+  `docscheck`, `contextcheck`, `changelogcheck`, `changelogfragmentcheck`, `releasegatecheck`, `governancecheck`, `codecovcheck`, `pragmacheck`,
   `nightlyalertcheck`, `mainalertcheck`, `androidskipcheck`.
 - **`pre-merge-commit`:** reruns the pre-commit checks on a clean merge commit (git skips
   `pre-commit` there), catching merge-skew in generated artifacts.
 - **`commit-msg`:** rejects a missing/mismatched DCO `Signed-off-by:` trailer — use `git commit -s`.
 - **Reminder only:** staging a migration, `backend/config/config.go`, or `.env.example` prints a
-  reminder to add a `CHANGELOG.md` entry (or `no-changelog:` in the PR body).
+  reminder to add a fragment under `changelog.d/` (or `no-changelog:` in the PR body).
 
 Deliberately CI-only: `govulncheck`, benchmarks/fuzz targets, the full Playwright E2E suite
 (`--full` only stress-runs a changed spec), and the instrumented Android suites. The pre-PR gate's
@@ -93,6 +93,46 @@ therefore means registering it in both `nightly-failure-alert.yml` and
 scheduled off-peak: DeepSeek bills 01:00–04:00 and 06:00–10:00 UTC Monday–Friday
 at the peak rate, and both eval workflows run `.github/scripts/deepseek-offpeak.sh`
 before invoking the model.
+
+## Draft PRs and the heavy-suite gate
+
+Opening many PRs (drafts especially) otherwise queues the whole suite ahead of work that is ready to
+merge; GitHub Actions has no priority queue. Required **fast** checks still run on every push; the
+expensive suites are gated on draft status.
+
+- **Never gated:** `unit-tests.yml` (`Backend (Go)`, `Frontend (Vitest)`), `biome.yml`,
+  `dependency-review.yml`, `license-compliance.yml`, `npm-supply-chain.yml`, `trufflehog.yml`,
+  `grype.yml`, `zizmor.yml`, `actionlint.yml`, `governance-drift.yml`, and the cheap
+  `secret-scan` / `toolchain-consistency` jobs.
+- **Gated:** `e2e-tests.yml`, `android-tests.yml` (the four build/test legs; the `Android (Gradle)`
+  aggregate is not gated and always reports), `docker-build-check.yml` (image builds),
+  `migration-tests.yml` (all legs; the aggregate always reports), `reproducibility.yml` (the
+  required `go-binary` job still runs and no-ops its double build), `container-hardening.yml`,
+  `codeql.yml`, `sast.yml`, `deploy-smoke.yml`, `pentest-harness.yml`.
+  `schemathesis.yml` has no PR trigger, so there is nothing to gate there.
+
+Each gated workflow computes a `run_heavy` output in its `changes` job (or a minimal `gate` job
+where there is none) from the same rule:
+
+```text
+event != pull_request
+|| labels contains 'ci:full'
+|| (pull_request.draft == false && action != 'labeled')
+```
+
+Draft PRs therefore run the fast checks only. To run the heavy suites on a draft, add the `ci:full`
+label (`gh pr edit <n> --add-label "ci:full"`; create it once with
+`gh label create "ci:full" --description "Run the full CI matrix on a draft PR"`). Marking the PR
+ready runs them on `ready_for_review`. An unrelated `labeled` event does not re-run a non-draft
+suite; the next push or ready-for-review transition does. `push`, `schedule`, `workflow_dispatch`
+and `workflow_call` always run the full set, so `release-validate.yml` still composes every gate.
+
+Per-PR cancellation is expected. Every PR-triggered check carries
+`group: <workflow>-${{ github.event_name }}-${{ github.ref }}` and
+`cancel-in-progress: ${{ github.event_name == 'pull_request' }}`, so a superseded push cancels only
+its own PR run and never a push/schedule/release run. Preserve that shape; never add
+`cancel-in-progress: true` to release/deploy/publish/promote workflows. `reap-branch-runs.yml` is
+the exception (it is the cleanup job that cancels a closed branch's leftover runs, not a check).
 
 ## Workflow-specific notes
 

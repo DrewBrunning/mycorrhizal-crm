@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, test, vi } from 'vitest';
-import '../i18n/config';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import type { OccasionObligation } from '../api/occasionObligations';
+import i18n from '../i18n/config';
 import OccasionObligationList from './OccasionObligationList';
 
 afterEach(cleanup);
@@ -45,6 +45,30 @@ test('says a legacy dateless occasion has no date and no reminder (#2670)', () =
     />,
   );
   expect(screen.getByText('No date \u2014 no reminder')).toBeInTheDocument();
+});
+
+// Issue #2914: the anchor date used to be `${month name} ${day}`, so German
+// read "März 3". Format it with Intl in the active language instead.
+describe('localizes the anchor date in the active language (#2914)', () => {
+  afterEach(async () => {
+    await i18n.changeLanguage('en');
+  });
+
+  test.each([
+    ['en', 'March 3'],
+    ['de', '3. März'],
+    ['fr', '3 mars'],
+  ])('%s renders the anchor date as "%s"', async (language, expected) => {
+    await i18n.changeLanguage(language);
+    render(
+      <OccasionObligationList
+        obligations={[{ ...baseObligation, anchor_month: 3, anchor_day: 3 }]}
+        onEdit={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(expected)).toBeInTheDocument();
+  });
 });
 
 test('shows an Inactive chip for a paused obligation', () => {

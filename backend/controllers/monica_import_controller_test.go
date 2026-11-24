@@ -137,6 +137,8 @@ func TestConnectMonicaImport_SessionCapReturns429(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, newJSONRequest(t, "/contacts/import/monica/connect", body))
 	mzErrorCode(t, w, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED")
+	// Issue #2916: the refusal is localizable, not an English-only sentence.
+	assert.Contains(t, w.Body.String(), `"reason_code":"import_session_limit"`)
 	mzAssertNoImportWrites(t, db)
 }
 
