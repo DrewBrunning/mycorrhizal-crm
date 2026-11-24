@@ -43,6 +43,26 @@ class LocalesConsistencyTest {
         }
     }
 
+    /**
+     * #2952: free-text placeholders that were copied verbatim from English in every locale.
+     * Each listed key must differ from English in each non-English locale.
+     */
+    @Test
+    fun `placeholder hints are translated in every non-English locale`() {
+        fun value(dir: String, key: String): String =
+            Regex("""<string name="${Regex.escape(key)}"[^>]*>([^<]*)</string>""")
+                .find(contentFor(dir))?.groupValues?.get(1) ?: error("$key missing in $dir")
+        for (key in listOf("activity_type_hint")) {
+            val english = value("values", key)
+            for (locale in locales.drop(1)) {
+                assertTrue(
+                    "$key is still the English text in $locale",
+                    value(locale, key) != english
+                )
+            }
+        }
+    }
+
     /** Issue #2626: English copy spells it "Organisation" and "colour" everywhere. */
     @Test
     fun `English copy uses one spelling for organisation and colour`() {

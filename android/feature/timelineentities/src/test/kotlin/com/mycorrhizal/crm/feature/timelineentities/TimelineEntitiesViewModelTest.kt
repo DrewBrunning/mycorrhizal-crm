@@ -834,18 +834,20 @@ class PreferencesViewModelTest {
             listOf("food_drink", "media", "hobby"),
             vm.uiState.value.items.map { it.sectionKey }
         )
-        assertEquals("food: allergy = peanuts", vm.uiState.value.items[0].label)
+        assertEquals("food: allergy · peanuts", vm.uiState.value.items[0].label)
         // #1755: the UI localizes from the raw category token, not from the English label.
         assertEquals(EntityLabelFamily.PREFERENCE, vm.uiState.value.items[0].labelFamily)
         assertEquals("food", vm.uiState.value.items[0].labelToken)
         // The localised row title re-attaches this to the translated category, so it
         // must carry the key (and notes) the raw English label had.
-        assertEquals("allergy = peanuts", vm.uiState.value.items[0].labelDetail)
+        // #2942: the key travels separately so the UI shows its translated label, never "key = value".
+        assertEquals("peanuts", vm.uiState.value.items[0].labelDetail)
+        assertEquals("allergy", vm.uiState.value.items[0].labelKey)
     }
 
-    @Test fun `preference detail keeps the key and notes`() {
+    @Test fun `preference detail keeps the value and notes and never uses key equals value`() {
         assertEquals(
-            "allergy = peanuts\nsevere",
+            "peanuts\nsevere",
             preferenceDetail(
                 Preference(
                     id = "p1",

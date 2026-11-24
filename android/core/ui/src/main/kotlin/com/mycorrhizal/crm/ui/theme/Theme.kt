@@ -92,9 +92,18 @@ internal val LightColors = lightColorScheme(
     onPrimaryContainer = MycorrhizalColors.bark,
     secondary = MycorrhizalColors.lichen,
     onSecondary = MycorrhizalColors.bark,
-    secondaryContainer = MycorrhizalColors.parchment,
+    // #2941: pending-state tint (soft lavender, laccaria family); it must differ from
+    // surfaceVariant (parchment), which the Expired chip uses.
+    secondaryContainer = Color(0xFFD9D3E8),
     onSecondaryContainer = MycorrhizalColors.bark,
     tertiary = MycorrhizalColors.moss,
+    // #2941: the Active / Declined share chips. Material's baseline tertiaryContainer and
+    // errorContainer are near-identical pinks; Active is a green (moss family) tint, Declined a
+    // salmon (russula family) tint, each with a dark on-colour (>= 10:1).
+    tertiaryContainer = Color(0xFFBFE3C9),
+    onTertiaryContainer = MycorrhizalColors.bark,
+    errorContainer = Color(0xFFF4C6BE),
+    onErrorContainer = Color(0xFF3B0B07),
     background = MycorrhizalColors.bone,
     onBackground = MycorrhizalColors.bark,
     surface = MycorrhizalColors.bone,

@@ -44,6 +44,7 @@ import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -1537,6 +1538,31 @@ class EntityListScreensTopLevelTest {
     }
 
     // --- Issue #1755: item labels resolve from tokens in the UI layer ---
+
+    // #2942: a preference row's delete/edit labels use the translated key label and the " · "
+    // separator the Gifts panel uses, never the raw `key = value`; Edit names the row like Delete.
+    @Test
+    fun `preference row actions use the translated key label and no equals sign`() {
+        val item = EntityItem(
+            "p1",
+            "media_other: favorite · Radio dramas",
+            labelFamily = EntityLabelFamily.PREFERENCE,
+            labelToken = "media_other",
+            labelDetail = "Radio dramas",
+            labelKey = "favorite"
+        )
+        var label = ""
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                label = item.displayLabel()
+                PreferenceEditAction(item = item, onClick = {})
+            }
+        }
+        composeTestRule.waitForIdle()
+        assertTrue(label, label.contains("Favorite · Radio dramas"))
+        assertFalse(label, label.contains("="))
+        composeTestRule.onNodeWithContentDescription("Edit $label").assertExists()
+    }
 
     @Test
     fun `entity item labels are localized from their token and humanize unknown ones`() {

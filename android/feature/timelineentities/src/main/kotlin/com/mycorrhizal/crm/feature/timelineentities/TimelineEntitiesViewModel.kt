@@ -71,7 +71,9 @@ data class EntityItem(
      */
     val labelFamily: EntityLabelFamily? = null,
     val labelToken: String? = null,
-    val labelDetail: String? = null
+    val labelDetail: String? = null,
+    /** #2942: a preference's disposition key; the UI localizes it and joins it with " · ". */
+    val labelKey: String? = null
 )
 
 enum class EntityLabelFamily { LIFE_EVENT, PREFERENCE }
@@ -826,7 +828,8 @@ class PreferencesViewModel @Inject constructor(
                                         sectionKey = preferenceSection(p.category),
                                         labelFamily = EntityLabelFamily.PREFERENCE,
                                         labelToken = p.category,
-                                        labelDetail = preferenceDetail(p)
+                                        labelDetail = preferenceDetail(p),
+                                        labelKey = p.key?.takeIf { it.isNotBlank() }
                                     )
                                 }
                         )
@@ -1155,15 +1158,17 @@ private fun giftLabel(g: Gift): String =
     g.occasion?.let { "$it — ${g.description}" } ?: g.description
 
 /**
- * The part of a preference after its category: `key = value`, plus notes when present.
- * Kept separate so the #1755 localised row title can re-attach it to a translated
- * category without dropping the key or notes (the delete prompt reads this too).
+ * The part of a preference after its category and key: the value, plus notes when present.
+ * The key travels separately (`EntityItem.labelKey`, #2942) so the UI can show its translated
+ * label with the same " · " separator the Gifts panel uses (#2606), never `key = value`.
  */
-internal fun preferenceDetail(p: Preference): String {
-    val base = p.key?.let { "$it = ${p.value}" } ?: p.value
-    return p.notes?.takeIf { it.isNotBlank() }?.let { "$base\n$it" } ?: base
-}
+internal fun preferenceDetail(p: Preference): String =
+    p.notes?.takeIf { it.isNotBlank() }?.let { "${p.value}\n$it" } ?: p.value
 
-internal fun preferenceLabel(p: Preference): String = "${p.category}: ${preferenceDetail(p)}"
+/** Non-localized fallback row text (the UI renders the localized form via `displayLabel`). */
+internal fun preferenceLabel(p: Preference): String {
+    val key = p.key?.takeIf { it.isNotBlank() }?.let { "$it · " }.orEmpty()
+    return "${p.category}: $key${preferenceDetail(p)}"
+}
 
 private fun agendaLabel(a: ConversationAgenda): String = a.content
