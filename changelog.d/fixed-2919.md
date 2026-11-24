@@ -1,0 +1,1 @@
+- **Link to an existing organisation or place instead of duplicating it** ([#2919](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2919)): when a contact's company or address already matches one you have created, "Create organisations and places from my contacts" now links the contact to it instead of creating a second entry with the same name.
