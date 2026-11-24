@@ -31,6 +31,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main, "release/**"]
+    # Draft PRs run the fast checks only; marking ready or adding `ci:full`
+    # starts the heavy suites (see the run_heavy gate below and
+    # .github/AGENTS.md "Draft PRs and the heavy-suite gate").
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   # Nightly re-run so a schema/chain change elsewhere still exercises the full
   # migration matrix even on a PR that did not touch backend/.
   schedule:
@@ -67,6 +71,7 @@ jobs:
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       workflows: ${{ steps.filter.outputs.workflows }}
+      run_heavy: ${{ steps.heavy.outputs.run_heavy }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -92,6 +97,29 @@ jobs:
           BACKEND_CHANGED: ${{ steps.filter.outputs.backend }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
+      # Draft gate (item 1): every leg below is expensive, so a draft PR
+      # (or an unrelated `labeled` event on a non-draft) skips them. The
+      # `migration-tests` aggregate is NOT gated: it is the required context
+      # and already treats skipped legs as passing.
+      - name: Resolve heavy-suite gate
+        id: heavy
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            run_heavy=true
+          elif printf '%s' "$PR_LABELS" | grep -qF '"ci:full"'; then
+            run_heavy=true
+          elif [ "$PR_DRAFT" = "false" ] && [ "$PR_ACTION" != "labeled" ]; then
+            run_heavy=true
+          else
+            run_heavy=false
+          fi
+          echo "run_heavy=$run_heavy" | tee -a "$GITHUB_OUTPUT"
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+
   # Upgrade-matrix legs, one per supported release, derived from
   # internal/schemafixture.SupportedReleases rather than a hand-maintained
   # list (which had already drifted). cmd/releaselist emits the matrix
@@ -103,7 +131,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: changes
-    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && ((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true')
     outputs:
       matrix: ${{ steps.list.outputs.matrix }}
     steps:
@@ -139,7 +167,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [changes, release-matrix]
-    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && ((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true')
     strategy:
       # One release's failure must not cancel the others — full signal from
       # every release on every run.
@@ -194,7 +222,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && ((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true')
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -220,7 +248,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && ((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true')
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -259,7 +287,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: changes
-    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && ((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true')
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -301,7 +329,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: changes
-    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && ((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call') || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true')
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
