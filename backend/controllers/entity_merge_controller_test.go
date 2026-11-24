@@ -9,6 +9,8 @@ import (
 
 	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
@@ -872,6 +874,95 @@ func TestEntityHelper_RefusesAnExistingEntityIdThatIsNotTheGroupsOwn(t *testing.
 	require.NoError(t, e.db.Model(&models.ContactEntityLink{}).Where("user_id = ?", e.userID).Count(&links).Error)
 	assert.EqualValues(t, 2, ents, "no entity was created")
 	assert.EqualValues(t, 0, links, "no link was written")
+}
+
+// Issue #2919: a kind mismatch and a soft-deleted entity are treated exactly
+// like an unknown id (entity_not_found), and an explicitly empty
+// existing_entity_id behaves as if the field were omitted: the group links to
+// the live entity the suggestions offered, and a group without one still
+// creates.
+func TestEntityHelper_ExistingEntityIDKindAndLivenessMismatchesAreSkipped(t *testing.T) {
+	e := newMergeEnv(t)
+	existing := e.org(t, "Green Acres Co-op")
+	c := orgContact(e, t, "Ada", "Green Acres Co-op")
+	green := e.valueGroupsJSON(t)[0]
+	require.Equal(t, existing.ID, green.ExistingEntityID)
+
+	// A place entity: the helper's lookup is kind-scoped, so this id can never
+	// satisfy an organisation group.
+	place := e.place(t, "Green Acres Co-op")
+	// A soft-deleted organisation still answers to the same value key, but it
+	// is not live, so it must not be linked.
+	stale := models.Entity{UserID: e.userID, Kind: models.EntityKindOrganisation, Name: "Green Acres Co-op", Core: "{}"}
+	require.NoError(t, e.db.Create(&stale).Error)
+	require.NoError(t, e.db.Delete(&stale).Error)
+
+	post := func(entityID any) fromContactsJSON {
+		t.Helper()
+		group := map[string]any{"key": green.Key, "role": "employee", "contact_ids": []uint{c.ID}}
+		if entityID != nil {
+			group["existing_entity_id"] = entityID
+		}
+		w := e.do(http.MethodPost, "/entities/from-contacts", map[string]any{"kind": "organisation", "groups": []map[string]any{group}})
+		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+		var out fromContactsJSON
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
+		return out
+	}
+
+	for _, id := range []string{place.ID, stale.ID} {
+		out := post(id)
+		assert.Empty(t, out.Created, "id %s must not link", id)
+		require.Len(t, out.Skipped, 1)
+		assert.Equal(t, "entity_not_found", out.Skipped[0].Reason)
+	}
+
+	// An explicitly empty id is the same as omitting it: use the suggestion's
+	// existing entity rather than creating a duplicate.
+	out := post("")
+	require.Len(t, out.Created, 1, "an empty id should link to the suggested entity")
+	assert.Equal(t, existing.ID, out.Created[0].Entity.ID)
+	require.Len(t, out.Created[0].Links, 1)
+	// Re-posting the same decided group is a no-op: the value is now matched,
+	// so the group is no longer proposed.
+	w := e.do(http.MethodPost, "/entities/from-contacts", map[string]any{"kind": "organisation", "groups": []map[string]any{
+		{"key": green.Key, "role": "employee", "contact_ids": []uint{c.ID}},
+	}})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var again fromContactsJSON
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &again))
+	require.Len(t, again.Skipped, 1)
+	assert.Equal(t, "group_not_found", again.Skipped[0].Reason)
+
+	placeCount, _ := countEntitiesOfKind(t, e, models.EntityKindPlace)
+	orgCount, _ := countEntitiesOfKind(t, e, models.EntityKindOrganisation)
+	assert.EqualValues(t, 1, placeCount)
+	assert.EqualValues(t, 1, orgCount, "only the pre-existing live organisation; no duplicate and no resurrection")
+
+	var links int64
+	require.NoError(t, e.db.Model(&models.ContactEntityLink{}).Where("user_id = ?", e.userID).Count(&links).Error)
+	assert.EqualValues(t, 1, links, "exactly one link from the accepted post")
+}
+
+func countEntitiesOfKind(t *testing.T, e *mergeEnv, kind string) (int64, error) {
+	t.Helper()
+	var n int64
+	err := e.db.Model(&models.Entity{}).Where("user_id = ? AND kind = ?", e.userID, kind).Count(&n).Error
+	return n, err
+}
+
+// A database error while loading the live entities must surface as a 500, not
+// silently present every group as having no existing entity (which would
+// create duplicates on confirm).
+func TestEntityHelper_SuggestionLoadFailureIsAnError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test logs the hidden-table database failure: Request error")
+	e := newMergeEnv(t)
+	orgContact(e, t, "Ada", "Green Acres Co-op")
+	dbtest.HideTable(t, e.db, "entities")
+
+	w := e.do(http.MethodGet, "/entities/suggestions?mode=contact_values&kind=organisation", nil)
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	assert.NotContains(t, w.Body.String(), "Green Acres", "no partial suggestion body on failure")
 }
 
 // Issue #2631: spelling variants of one organisation pair as normalized_name
