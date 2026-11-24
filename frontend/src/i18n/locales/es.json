@@ -1154,6 +1154,7 @@
   },
   "reminders": {
     "title": "Recordatorios",
+    "occasionTitle": "Ocasión — {{title}}",
     "add": "Agregar Recordatorio",
     "addReminder": "Agregar Recordatorio",
     "editReminder": "Editar Recordatorio",
