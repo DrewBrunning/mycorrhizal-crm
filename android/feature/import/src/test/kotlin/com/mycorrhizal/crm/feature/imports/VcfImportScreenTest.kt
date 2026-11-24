@@ -72,6 +72,20 @@ class VcfImportScreenTest {
         }
     }
 
+    // #2943: as CSV, a rejected file stays visible under the picker.
+    @Test
+    fun `a rejected file keeps its error under the picker after the snackbar time has passed`() {
+        setContent(
+            VcfImportUiState(
+                step = VcfImportStep.PICK,
+                errorRes = com.mycorrhizal.crm.ui.R.string.import_vcf_error_invalid_file
+            )
+        )
+        composeTestRule.mainClock.advanceTimeBy(10_000)
+        composeTestRule.onNodeWithText("Couldn't read that file. Choose a .vcf file.")
+            .assertIsDisplayed()
+    }
+
     @Test
     fun `pick step renders the picker button, not a placeholder`() {
         setContent(VcfImportUiState(step = VcfImportStep.PICK))
