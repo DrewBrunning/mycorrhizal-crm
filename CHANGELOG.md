@@ -54,6 +54,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Android "System default" language now sticks** ([#2937](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2937)): choosing System default for the app's language in Android settings, or the new "Use system default" entry in Settings → Appearance → Language, makes the app follow the device language, and the Language row shows the language actually in use.
 - **Shared contact anniversaries on the web** ([#2908](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2908)): a shared contact card now reads "Birthday: 28.11.1985" in your language and date format instead of "birth: 1985-11-28".
 - **Occasion dates and reminder titles follow your language** ([#2914](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2914), [#2915](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2915)): a standing occasion's date now reads in your language's usual order ("3. März" in German, "March 3" in English), and reminders created from an occasion are titled in your language instead of always starting with the English word "Occasion". Reminders you already have keep their wording.
 - **A missing contact keeps its "not found" tab title** ([#2901](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2901)): opening a contact that no longer exists now leaves the browser tab on "Contact not found" instead of switching back to "Contacts".
