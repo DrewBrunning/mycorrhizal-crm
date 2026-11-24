@@ -513,7 +513,11 @@ function AppContent({
             <IconButton
               edge="start"
               color="inherit"
-              aria-label={t('app.openNavigation')}
+              aria-label={
+                pendingShares > 0
+                  ? t('app.openNavigationWithPending', { count: pendingShares })
+                  : t('app.openNavigation')
+              }
               aria-expanded={mobileDrawerOpen}
               aria-controls="mobile-nav-drawer"
               onClick={handleDrawerToggle}
@@ -527,8 +531,9 @@ function AppContent({
                   sx={{
                     '& .MuiBadge-badge': { bgcolor: 'background.paper', color: 'text.primary' },
                   }}
-                  role="img"
-                  aria-label={t('nav.sharedPendingBadge', { count: pendingShares })}
+                  // The button name carries the count (#2906); the visible badge
+                  // is decoration and must not shadow it.
+                  aria-hidden
                 >
                   <MenuIcon />
                 </Badge>
