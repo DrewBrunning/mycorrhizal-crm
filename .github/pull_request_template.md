@@ -80,9 +80,10 @@ with the failing job link and the exact reproduce command above.
 ## Changelog
 
 <!--
-Does this change affect users or self-hosted operators? Add one entry to
-`CHANGELOG.md` under `[Unreleased]` (format: docs/changelog-policy.md). It
-becomes the release notes. Operator actions go in an `> **Upgrade**` blockquote.
+Does this change affect users or self-hosted operators? Add one fragment under
+`changelog.d/` (format: `changelog.d/README.md` and docs/changelog-policy.md).
+Do not edit `CHANGELOG.md` directly; the release assembles the fragments.
+Operator actions go in the assembled release's `> **Upgrade**` blockquote.
 
 If there is no user-visible effect, replace this whole section with:
       no-changelog: <short reason>
