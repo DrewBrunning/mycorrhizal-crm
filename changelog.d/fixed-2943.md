@@ -1,0 +1,1 @@
+- **Android keeps errors on screen until you act** ([#2943](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2943)): a failed save of a standing occasion shows its error in the form until you edit or retry, and a CSV or VCF file that can't be imported shows why under the file picker, instead of a message that disappears after a few seconds.
