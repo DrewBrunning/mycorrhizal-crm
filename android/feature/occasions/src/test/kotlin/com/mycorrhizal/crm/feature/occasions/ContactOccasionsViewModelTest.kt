@@ -499,6 +499,27 @@ class ContactOccasionsViewModelTest {
             assertTrue(vm.uiState.value.error is ApiError.Client)
         }
 
+    // #2938: a reload that fails while a list is already showing keeps the list and reports the
+    // failure as the snackbar error; only a failed FIRST load is the Retry screen.
+    @Test
+    fun `a failed reload after a delete keeps the list and uses the snackbar error`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { repository.listForContact(UID) } returnsMany listOf(
+                Result.success(listOf(ob())),
+                Result.failure(ApiError.Network(java.io.IOException("offline")))
+            )
+            coEvery { repository.delete("o1") } returns Result.success(Unit)
+            val vm = viewModel()
+            advanceUntilIdle()
+
+            vm.delete("o1")
+            advanceUntilIdle()
+
+            assertEquals(1, vm.uiState.value.items.size)
+            assertTrue(vm.uiState.value.error is ApiError.Network)
+            assertNull(vm.uiState.value.loadError)
+        }
+
     @Test
     fun `onSavedHandled and onErrorShown clear their flags`() =
         runTest(mainDispatcherRule.testDispatcher) {
