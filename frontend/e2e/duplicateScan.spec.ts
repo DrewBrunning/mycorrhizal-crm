@@ -6,6 +6,7 @@ import {
   test,
   waitForLoading,
 } from './fixtures';
+import { expectFocusNotLost } from './focusOrder';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 
 /**
@@ -117,6 +118,9 @@ test.describe('Duplicate scan', () => {
       await expect(
         reviewDialog.getByText(`${E2E_CONTACT_PREFIX}${runId}PhoneA Scan`),
       ).not.toBeVisible({ timeout: 10000 });
+      // #2920 item 7: dismissing removed the pair row (and the button that had
+      // focus); focus must not fall to <body> (#2918).
+      await expectFocusNotLost(page, 'contacts: Not a duplicate');
 
       // The dismissal is a server-side fact: the scan endpoint agrees. The
       // dismissal write and a follow-up scan can race through the WAL read

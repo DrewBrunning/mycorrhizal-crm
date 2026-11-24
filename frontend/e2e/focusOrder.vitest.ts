@@ -2,13 +2,21 @@
 // (e2e/accessibility.spec.ts). The rules have to stay narrow: a false positive
 // here fails a merge-blocking job for a correct screen, and a rule that is too
 // permissive silently lets a keyboard trap ship. Each rule is pinned here.
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
+  type ActiveElementState,
   type FocusStop,
+  focusLossViolation,
   keyboardFocusViolations,
   positiveTabindexViolations,
+  ROW_REMOVING_ACTIONS,
   type TabWalk,
 } from './focusOrder';
+
+const E2E_DIR = dirname(fileURLToPath(import.meta.url));
 
 function stop(over: Partial<FocusStop> = {}): FocusStop {
   return {
@@ -167,5 +175,71 @@ describe('positiveTabindexViolations', () => {
     expect(violations).toHaveLength(1);
     expect(violations[0]).toContain('input#email');
     expect(violations[0]).toMatch(/tabindex/i);
+  });
+});
+
+function active(over: Partial<ActiveElementState> = {}): ActiveElementState {
+  return {
+    tag: 'button',
+    label: 'button "Remove"',
+    isBody: false,
+    isConnected: true,
+    ...over,
+  };
+}
+
+describe('focusLossViolation', () => {
+  it('accepts a connected control that kept focus', () => {
+    expect(focusLossViolation(active())).toBeNull();
+  });
+
+  it('fails when focus fell to <body>', () => {
+    expect(focusLossViolation(active({ tag: 'body', isBody: true }))).toMatch(/<body>/);
+  });
+
+  it('fails when nothing holds focus', () => {
+    expect(focusLossViolation(null)).toMatch(/null/);
+    expect(focusLossViolation(active({ tag: 'none', label: 'none' }))).toMatch(/null/);
+  });
+
+  it('fails when focus stayed on the removed (detached) control', () => {
+    const violation = focusLossViolation(active({ isConnected: false }));
+    expect(violation).toContain('detached');
+    expect(violation).toContain('button "Remove"');
+  });
+});
+
+describe('row-removing action inventory', () => {
+  // Read every spec's `expectFocusNotLost(page, '<action>')` call. A new call
+  // must be listed in ROW_REMOVING_ACTIONS (and a listed action must still be
+  // performed), so a new row-removing action cannot ship without a focus check.
+  const specs = readdirSync(E2E_DIR).filter((f) => f.endsWith('.spec.ts'));
+  const calls = new Map<string, string[]>();
+  for (const spec of specs) {
+    const source = readFileSync(resolve(E2E_DIR, spec), 'utf8');
+    for (const match of source.matchAll(/expectFocusNotLost\(page,\s*'([^']+)'/g)) {
+      calls.set(match[1], [...(calls.get(match[1]) ?? []), spec]);
+    }
+  }
+
+  it('lists exactly the actions the specs assert', () => {
+    expect([...calls.keys()].sort()).toEqual(ROW_REMOVING_ACTIONS.map((a) => a.action).sort());
+  });
+
+  it('has no duplicate actions', () => {
+    const actions = ROW_REMOVING_ACTIONS.map((a) => a.action);
+    expect(new Set(actions).size).toBe(actions.length);
+  });
+
+  it('performs each action in the spec its entry names', () => {
+    for (const entry of ROW_REMOVING_ACTIONS) {
+      expect(calls.get(entry.action), entry.action).toContain(entry.spec);
+    }
+  });
+
+  it('names a spec file that exists', () => {
+    for (const entry of ROW_REMOVING_ACTIONS) {
+      expect(specs, entry.spec).toContain(entry.spec);
+    }
   });
 });
