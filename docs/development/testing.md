@@ -814,10 +814,35 @@ separate CI job exists. Every surface is scanned at two pinned viewports:
 Only width drives the horizontal overflow scan; the height keeps the page
 realistic. Both passes share one route table and one assertion body, so a new
 route is picked up when it lands in `App.tsx`. The automatic per-test axe scan
-is intentionally skipped here: the populated accessibility sweep is #2920 item
-6, and the seeded pending-share badge would otherwise fail #2906's target-size
-rule on every route. Measured on the populated seed: about 1.5 minutes with
-`--workers=1` for the whole file (69 tests).
+is intentionally skipped here: `a11ySweepPopulated.spec.ts` owns the
+populated-state scan, and the seeded pending-share badge would otherwise fail
+#2906's `label-content-name-mismatch` rule on every route. Measured on the
+populated seed: about 1.5 minutes with `--workers=1` for the whole file (69
+tests).
+
+### Populated phone-width axe sweep (issue #2920 item 6)
+
+`frontend/e2e/a11ySweepPopulated.spec.ts` reuses the pseudo-locale pass's
+worker seed (`e2e/populatedSeed.ts`) and route inventory
+(`e2e/populatedRoutes.ts`), then runs `assertNoBlockingA11yViolations` over
+every `App.tsx` route at 1280×720 and 375×800, in light and dark. It is the
+only scan that renders a pending incoming share at the phone width (#2906's
+hamburger name) and a contact timeline activity with participants (#2907's
+19.9px target size); `accessibility.spec.ts`'s curated route list and the
+per-test scan see neither state.
+
+It is nightly-only: 108 tests at `--workers=1` take about 2.7 minutes, too slow
+for PR CI. The spec self-skips unless `RUN_A11Y_SWEEP=1` (the same pattern as
+the `@perf-heavy` specs), and `e2e-tests.yml`'s schedule-only `e2e-a11y-sweep`
+job sets it. That job lives inside the already-registered `E2E Tests` nightly
+workflow, so a failure raises the usual `nightly-failure` issue through
+`nightly-failure-alert.yml`. Run it locally:
+
+```sh
+cd frontend
+RUN_A11Y_SWEEP=1 npx playwright test a11ySweepPopulated.spec.ts --workers=1
+```
+
 
 ### Service-worker upgrade suite (issue #476)
 

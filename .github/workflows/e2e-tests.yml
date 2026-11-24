@@ -1091,6 +1091,154 @@ jobs:
         if: always()
         run: docker compose -f docker-compose.test.yml down -v
 
+  # Issue #2920 item 6: the populated phone-width axe sweep. Every App.tsx
+  # route at 1280px and 375px, in light and dark, as a worker user with a
+  # pending incoming share and a timeline activity with participants -- the
+  # populated states that #2906 and #2907 only exhibit. Around three minutes
+  # with --workers=1, so it is schedule-only: PR CI keeps the curated
+  # accessibility.spec.ts scan and the automatic per-test scan unchanged. It
+  # lives inside this already-registered nightly workflow, so a failure raises
+  # the usual `nightly-failure` issue through nightly-failure-alert.yml.
+  e2e-a11y-sweep:
+    permissions:
+      contents: read
+      packages: read
+    name: Run E2E Populated A11y Sweep
+    runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 35
+    needs: changes
+    if: github.event_name == 'schedule'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # Build-once parity (#1484): this job is schedule-only, so a candidate
+      # digest is never supplied, but releasegatecheck requires every job that
+      # runs `mycorrhizal-crm-test:latest` to keep the pull-or-build shape.
+      - name: Log in to Container Registry (candidate image)
+        if: ${{ inputs.image_digest != '' }}
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the candidate image (build-once)
+        if: ${{ inputs.image_digest != '' }}
+        env:
+          IMAGE_DIGEST: ${{ inputs.image_digest }}
+        run: bash .github/scripts/candidate-image.sh pull "$IMAGE_DIGEST" mycorrhizal-crm-test:latest
+
+      - name: Build all-in-one image
+        if: ${{ inputs.image_digest == '' }}
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          push: false
+          load: true
+          tags: mycorrhizal-crm-test:latest
+          cache-from: type=gha,scope=combined
+          cache-to: type=gha,scope=combined,mode=max
+
+      - name: Start services
+        run: |
+          docker compose -f docker-compose.test.yml up -d
+          echo "Waiting for services to be ready..."
+          timeout 120 bash -c 'until curl -s http://localhost:7300/health/live > /dev/null 2>&1; do sleep 2; done'
+          echo "App is ready"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # COMPAT-01 (#472): floor comes from package.json's engines.node.
+          node-version-file: frontend/package.json
+          cache: 'yarn'
+          cache-dependency-path: frontend/yarn.lock
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Detect runner image
+        # Cache keys embed the OS image (issue #1659), same as the other jobs:
+        # a browser cache saved on one Ubuntu release must never restore onto
+        # another.
+        id: image
+        run: |
+          echo "os=${ImageOS:-unknown}-$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_OUTPUT"
+          echo "version=${ImageVersion:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache apt packages for Playwright
+        id: apt-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+          restore-keys: |
+            playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.image.outputs.os }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+
+      - name: Install Playwright browsers
+        timeout-minutes: 16
+        working-directory: frontend
+        run: bash ../.github/scripts/playwright-install-retry.sh chromium
+
+      - name: Save apt packages for Playwright
+        # Saved on failure too, so a stalled mirror does not throw away the
+        # partial downloads (issues #2826, #2828, #2841).
+        if: ${{ always() && steps.apt-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/playwright-apt
+          key: playwright-apt-${{ runner.os }}-${{ steps.image.outputs.os }}-${{ steps.image.outputs.version }}-chromium-${{ hashFiles('frontend/yarn.lock') }}
+
+      - name: Run populated accessibility sweep
+        working-directory: frontend
+        # RUN_A11Y_SWEEP=1 is the spec's own nightly gate: the normal PR/push
+        # suite runs the same file but self-skips it, so PR CI runtime is
+        # unchanged. --workers=1 keeps the sweep's navigation/scans serial.
+        run: npx playwright test e2e/a11ySweepPopulated.spec.ts --workers=1 --project=chromium
+        env:
+          CI: true
+          RUN_A11Y_SWEEP: '1'
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: playwright-report-a11y-sweep
+          path: frontend/playwright-report/
+          retention-days: 7
+
+      - name: Upload test results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: test-results-a11y-sweep
+          path: frontend/test-results/
+          retention-days: 7
+
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          echo "=== Mycorrhizal logs (nginx + backend under supervisord) ==="
+          docker compose -f docker-compose.test.yml logs mycorrhizal
+
+      - name: Stop services
+        if: always()
+        run: docker compose -f docker-compose.test.yml down -v
+
   # Issue #1479: the nightly widening -- the WHOLE chromium suite re-run on
   # Firefox (E2E_ALL_BROWSERS=1 makes playwright.config.ts's `firefox` project
   # match every spec). Schedule-only: the full suite on a second engine is too
