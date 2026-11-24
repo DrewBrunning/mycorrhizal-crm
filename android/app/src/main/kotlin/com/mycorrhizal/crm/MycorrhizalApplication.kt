@@ -69,18 +69,15 @@ class MycorrhizalApplication :
         // chosen language (attachBaseContext reads currentLanguageOverride()).
         // One tiny prefs file, once, at startup.
         runBlocking { appSettings.hydrate() }
-        // Issue #1921: reconcile the in-app language with the OS per-app locale
-        // on API 33+. An explicit system choice (the Settings picker) wins and
-        // is adopted into the local cache; if the OS has none yet (fresh
-        // install or upgrade from a version that only had the in-app setting)
-        // seed it from the stored choice so the two surfaces agree.
+        // Issues #1921 / #2937: the OS per-app locale is authoritative on API 33+. A chosen OS
+        // language is adopted into the local cache; an EMPTY OS locale means "System default",
+        // so a stored override is cleared instead of being copied back into the OS (which made
+        // "System default" in Android settings revert to the old language).
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            val systemTag = AppLocale.systemLanguageTag(this)
-            if (systemTag == null) {
-                AppLocale.languageTag?.let { AppLocale.applyToSystem(this, it) }
-            } else if (systemTag != AppLocale.languageTag) {
-                AppLocale.languageTag = systemTag
-                runBlocking { appSettings.setLanguageOverride(systemTag) }
+            val reconciled = AppLocale.reconcileStoredOverride(AppLocale.systemLanguageTag(this))
+            if (reconciled != AppLocale.languageTag) {
+                AppLocale.languageTag = reconciled
+                runBlocking { appSettings.setLanguageOverride(reconciled) }
             }
         }
         // M5 §3.1: Coil must fetch photos through the same OkHttpClient the API

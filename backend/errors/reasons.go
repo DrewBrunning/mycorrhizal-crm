@@ -316,6 +316,11 @@ const (
 	ReasonBundleTooManyRecords         ReasonCode = "bundle_too_many_records"
 	ReasonBundleImportInProgress       ReasonCode = "bundle_import_in_progress"
 	ReasonBundleNotPrepared            ReasonCode = "bundle_not_prepared"
+
+	// Per-user concurrent-session cap (issue #2916) and the custom-field
+	// "map" decision naming no usable definition (issue #2909).
+	ReasonImportSessionLimit             ReasonCode = "import_session_limit"
+	ReasonImportFieldMappingUnknownField ReasonCode = "import_field_mapping_unknown_field"
 	// Account, admin, API-token and contact-share errors (issue #2102).
 	ReasonAuthRequired                          ReasonCode = "auth_required"
 	ReasonAuthRegistrationDisabled              ReasonCode = "auth_registration_disabled"
@@ -803,6 +808,14 @@ var reasonRegistry = map[ReasonCode]reasonSpec{
 	ReasonBundleTooManyRecords:         {Template: "This bundle has more records than the import supports"},
 	ReasonBundleImportInProgress:       {Template: "This import is already being prepared"},
 	ReasonBundleNotPrepared:            {Template: "The account bundle is not prepared yet"},
+
+	// Per-user concurrent-session cap (issue #2916) and the custom-field
+	// "map" decision naming no usable definition (issue #2909).
+	ReasonImportSessionLimit: {Template: "Too many imports are in progress. Finish or cancel one first."},
+	ReasonImportFieldMappingUnknownField: {
+		Template: "Choose an existing field for “{property}”, or pick another action.",
+		Params:   []string{"property"},
+	},
 	// Account, admin, API-token and contact-share errors (issue #2102).
 	ReasonAuthRequired:                          {Template: "Authentication required"},
 	ReasonAuthRegistrationDisabled:              {Template: "Registration is disabled."},

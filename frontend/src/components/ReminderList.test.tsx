@@ -1,8 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
-import '../i18n/config';
 import type { Reminder } from '../api/reminders';
 import { DateFormatProvider } from '../DateFormatProvider';
+import i18n from '../i18n/config';
 import { useTimeZone } from '../testSupport/timeZone';
 import ReminderList from './ReminderList';
 
@@ -151,4 +151,54 @@ test('complete, edit and delete buttons name the reminder', () => {
   ).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Edit Water the plants' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Delete Send Chen the book' })).toBeInTheDocument();
+});
+
+// #2915: an occasion reminder's title is a localized template, not the
+// English "Occasion — " prefix stored in the row. The backend now stores
+// "label: name"; older rows still carry the prefix, which must not double up.
+test('renders a new-format occasion reminder with the localized title (#2915)', () => {
+  renderList({
+    reminders: [
+      reminder({ message: 'Card for Cory: Cory Noaddr', occasion_obligation_id: 'ob-1' }),
+    ],
+  });
+
+  expect(screen.getByText('Occasion — Card for Cory: Cory Noaddr')).toBeInTheDocument();
+});
+
+test('renders a legacy occasion reminder without doubling the stored prefix (#2915)', () => {
+  renderList({
+    reminders: [
+      reminder({
+        message: 'Occasion — Card for Cory: Cory Noaddr',
+        occasion_obligation_id: 'ob-1',
+      }),
+    ],
+  });
+
+  expect(screen.getByText('Occasion — Card for Cory: Cory Noaddr')).toBeInTheDocument();
+  expect(
+    screen.queryByText('Occasion — Occasion — Card for Cory: Cory Noaddr'),
+  ).not.toBeInTheDocument();
+});
+
+test('localizes the occasion title in the active language (#2915)', async () => {
+  await i18n.changeLanguage('de');
+  try {
+    renderList({
+      reminders: [
+        reminder({ message: 'Karte für Cory: Cory Noaddr', occasion_obligation_id: 'ob-1' }),
+      ],
+    });
+
+    expect(screen.getByText('Anlass — Karte für Cory: Cory Noaddr')).toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
+});
+
+test('leaves a reminder with no occasion link unchanged (#2915)', () => {
+  renderList({ reminders: [reminder({ message: 'Occasion — just a message' })] });
+
+  expect(screen.getByText('Occasion — just a message')).toBeInTheDocument();
 });

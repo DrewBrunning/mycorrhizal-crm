@@ -39,10 +39,12 @@ implement in small TDD loops, self-review, run the local per-PR suite, then open
 - Describe what changed and why, not how.
 - If the change is operator-visible — a database migration, a configuration
   variable, a behavior change, a deprecation, or anything needing action before
-  or after upgrading — add an entry to `CHANGELOG.md` under `[Unreleased]`, with an
-  `> **Upgrade**` blockquote if the operator must act. It becomes the release
-  notes. If a migration/config change genuinely needs no entry, write
-  `no-changelog: <reason>` in the PR description instead. See the
+  or after upgrading — add a fragment under `changelog.d/` (one file per change;
+  format in [`changelog.d/README.md`](../../changelog.d/README.md)), with an
+  `> **Upgrade**` blockquote in the assembled release section if the operator
+  must act. Do not edit `CHANGELOG.md` directly: the release assembles the
+  fragments into the notes. If a migration/config change genuinely needs no
+  entry, write `no-changelog: <reason>` in the PR description instead. See the
   [changelog policy](../changelog-policy.md).
 - Sign off every commit — see below.
 

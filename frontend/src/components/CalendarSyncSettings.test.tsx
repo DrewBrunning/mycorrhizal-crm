@@ -183,6 +183,134 @@ test('a sync failure surfaces the error instead of throwing', async () => {
   await waitFor(() => expect(screen.getByText('calendar unreachable')).toBeInTheDocument());
 });
 
+// Issue #2917: a network failure must not surface the browser's raw
+// "Failed to fetch"; the shared getErrorMessage() names the condition.
+const NETWORK_ERROR = "Couldn't reach the server. Check your connection and try again.";
+
+function expectNetworkError() {
+  return waitFor(() => expect(screen.getByText(NETWORK_ERROR)).toBeInTheDocument());
+}
+
+function expectNoRawFetchMessage() {
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+}
+
+test('a load network failure shows the localized network message', async () => {
+  vi.mocked(getCalendarSubscriptions).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<CalendarSyncSettings />);
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+test('a save network failure shows the localized network message', async () => {
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([]);
+  vi.mocked(createCalendarSubscription).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<CalendarSyncSettings />);
+  await waitFor(() => expect(screen.getByText('No calendars connected yet.')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /add calendar/i }));
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'New Calendar' } });
+  fireEvent.change(screen.getByLabelText(/calendar url/i), {
+    target: { value: 'https://example.com/cal/' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+test('a delete network failure shows the localized network message', async () => {
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([calendar({ id: 3, name: 'To Delete' })]);
+  vi.mocked(deleteCalendarSubscription).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<CalendarSyncSettings />);
+  await waitFor(() => expect(screen.getByText('To Delete')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete To Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+test('a sync network failure shows the localized network message', async () => {
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([calendar({ id: 2, name: 'Broken Cal' })]);
+  vi.mocked(syncCalendarSubscription).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<CalendarSyncSettings />);
+  await waitFor(() => expect(screen.getByText('Broken Cal')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /sync now/i }));
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+// Issue #2917: each catch site keeps its localized fallback for a non-Error
+// throwable, so both arms of `err instanceof Error ? ... : t(...)` are covered.
+test('a non-Error load rejection still shows the localized fallback message', async () => {
+  vi.mocked(getCalendarSubscriptions).mockRejectedValue('offline');
+
+  render(<CalendarSyncSettings />);
+
+  await waitFor(() =>
+    expect(screen.getByText('Failed to load calendar subscriptions.')).toBeInTheDocument(),
+  );
+});
+
+test('a non-Error save rejection still shows the localized fallback message', async () => {
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([]);
+  vi.mocked(createCalendarSubscription).mockRejectedValue('offline');
+
+  render(<CalendarSyncSettings />);
+  await waitFor(() => expect(screen.getByText('No calendars connected yet.')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /add calendar/i }));
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'New Calendar' } });
+  fireEvent.change(screen.getByLabelText(/calendar url/i), {
+    target: { value: 'https://example.com/cal/' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() =>
+    expect(screen.getByText('Failed to save the calendar subscription.')).toBeInTheDocument(),
+  );
+});
+
+test('a non-Error delete rejection still shows the localized fallback message', async () => {
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([calendar({ id: 3, name: 'To Delete' })]);
+  vi.mocked(deleteCalendarSubscription).mockRejectedValue('offline');
+
+  render(<CalendarSyncSettings />);
+  await waitFor(() => expect(screen.getByText('To Delete')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete To Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+
+  await waitFor(() =>
+    expect(screen.getByText('Failed to delete the calendar subscription.')).toBeInTheDocument(),
+  );
+});
+
+test('a non-Error sync rejection still shows the localized fallback message', async () => {
+  vi.mocked(getCalendarSubscriptions).mockResolvedValue([calendar({ id: 2, name: 'Broken Cal' })]);
+  vi.mocked(syncCalendarSubscription).mockRejectedValue('offline');
+
+  render(<CalendarSyncSettings />);
+  await waitFor(() => expect(screen.getByText('Broken Cal')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /sync now/i }));
+
+  await waitFor(() =>
+    expect(
+      screen.getByText('Calendar sync failed. Please check the URL and credentials.'),
+    ).toBeInTheDocument(),
+  );
+});
+
 test('shows a standing-failure health line with the incident start and consecutive count', async () => {
   vi.mocked(getCalendarSubscriptions).mockResolvedValue([
     calendar({

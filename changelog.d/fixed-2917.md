@@ -1,0 +1,1 @@
+- **Data settings says when the server cannot be reached** ([#2917](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2917)): with the server down, Settings → Data now says "Couldn't reach the server" instead of the browser's "Failed to fetch", matching the rest of the app.

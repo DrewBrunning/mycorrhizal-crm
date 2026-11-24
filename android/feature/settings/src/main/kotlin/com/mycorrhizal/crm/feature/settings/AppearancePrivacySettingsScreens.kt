@@ -19,6 +19,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.mycorrhizal.crm.data.repository.AppLocale
 import com.mycorrhizal.crm.domain.repository.AppSettingsRepository
 import com.mycorrhizal.crm.domain.repository.AutoLockDelay
 import com.mycorrhizal.crm.domain.repository.BiometricEnrollmentStatus
@@ -57,6 +58,7 @@ fun AppearanceSettingsScreen(
     ) { padding ->
         AppearanceSettingsContent(
             state = state,
+            languageInUse = AppLocale.languageTag ?: LANGUAGE_SYSTEM,
             onLanguageChange = viewModel::updateLanguage,
             onDateFormatChange = viewModel::updateDateFormat,
             onThemeChange = viewModel::setThemePreference,
@@ -69,6 +71,8 @@ fun AppearanceSettingsScreen(
 fun AppearanceSettingsContent(
     state: SettingsUiState,
     modifier: Modifier = Modifier,
+    // #2937: the language actually in use; LANGUAGE_SYSTEM when the UI follows the device.
+    languageInUse: String = state.session.language.orEmpty(),
     onLanguageChange: (String) -> Unit = {},
     onDateFormatChange: (String) -> Unit = {},
     onThemeChange: (String) -> Unit = {}
@@ -76,9 +80,15 @@ fun AppearanceSettingsContent(
     SettingsColumn(modifier = modifier) {
         SettingsDropdown(
             label = stringResource(R.string.settings_language),
-            value = state.session.language.orEmpty(),
-            options = listOf("en", "de", "it", "es", "fr"),
-            optionLabel = { lang -> languageName(lang) },
+            value = languageInUse,
+            options = listOf(LANGUAGE_SYSTEM, "en", "de", "it", "es", "fr"),
+            optionLabel = { lang ->
+                if (lang == LANGUAGE_SYSTEM) {
+                    stringResource(R.string.settings_theme_system)
+                } else {
+                    languageName(lang)
+                }
+            },
             onSelect = onLanguageChange
         )
         SettingsDropdown(

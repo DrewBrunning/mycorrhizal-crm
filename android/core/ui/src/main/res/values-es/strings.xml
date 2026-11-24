@@ -3316,6 +3316,7 @@
     <string name="error_reason_validation_invalid_request_body">Cuerpo de la solicitud no válido</string>
     <string name="error_reason_import_session_not_found">La sesión de importación ha caducado o no se encontró</string>
     <string name="error_reason_import_session_expired">La sesión de importación ha caducado</string>
+    <string name="error_reason_import_session_limit">Hay demasiadas importaciones en curso. Termina o cancela una primero.</string>
     <string name="error_reason_import_endpoint_csv_vcf_only">Este punto de acceso es solo para importaciones CSV o VCF</string>
     <string name="error_reason_import_endpoint_vcf_records_only">Este punto de acceso es solo para importaciones VCF o de registros</string>
     <string name="error_reason_import_preview_required">Genera primero una vista previa</string>
@@ -3540,6 +3541,7 @@
     <string name="error_reason_import_csv_not_text">Este archivo no es un archivo CSV de texto sin formato. Expórtalo de nuevo como CSV (UTF-8) e inténtalo otra vez.</string>
     <string name="error_reason_import_disk_space_low">no hay suficiente espacio en disco para importar %1$s contactos: %2$s</string>
     <string name="error_reason_import_field_mapping_target_invalid">Un valor importado solo puede ir a un campo personalizado que se aplique a los contactos</string>
+    <string name="error_reason_import_field_mapping_unknown_field">Elige un campo existente para «%1$s» o elige otra acción.</string>
     <string name="error_reason_import_field_mappings_invalid">%1$s</string>
     <string name="error_reason_import_file_unreadable">%1$s</string>
     <string name="error_reason_integration_request_body_invalid">%1$s</string>

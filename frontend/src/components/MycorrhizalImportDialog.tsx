@@ -2,6 +2,7 @@ import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/ma
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  cancelMycorrhizalImport,
   MYCORRHIZAL_IMPORT_BASE,
   type MycorrhizalUploadResponse,
   startMycorrhizalFetch,
@@ -42,9 +43,15 @@ export default function MycorrhizalImportDialog({ open, onClose, onImportComplet
   }, []);
 
   const handleClose = useCallback(() => {
+    // A session the wizard never received (Start not pressed) is invisible to
+    // wizard.cancel(), which would leave it -- and its server-side slot --
+    // open until it expires (issue #2916, mirroring MeerkatImportDialog).
+    if (upload?.session_id && upload.session_id !== wizard.sessionId) {
+      void cancelMycorrhizalImport(upload.session_id).catch(() => undefined);
+    }
     resetLocal();
     onClose();
-  }, [onClose, resetLocal]);
+  }, [upload, wizard.sessionId, onClose, resetLocal]);
 
   const handleComplete = useCallback(() => {
     resetLocal();

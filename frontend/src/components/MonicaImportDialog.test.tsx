@@ -3,6 +3,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { ApiError } from '../api/client';
 import { connectMonica, startMonicaFetch } from '../api/monicaImport';
+import { cancelSourceImport } from '../api/sourceImport';
 import MonicaImportDialog from './MonicaImportDialog';
 
 afterEach(cleanup);
@@ -16,9 +17,22 @@ vi.mock('../api/monicaImport', async (importOriginal) => {
   };
 });
 
-const connectMock = vi.mocked(connectMonica);
+// Cancelling an unowned session goes through the shared source-import layer.
+vi.mock('../api/sourceImport', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../api/sourceImport')>();
+  return {
+    ...actual,
+    cancelSourceImport: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
-afterEach(() => connectMock.mockReset());
+const connectMock = vi.mocked(connectMonica);
+const cancelMock = vi.mocked(cancelSourceImport);
+
+afterEach(() => {
+  connectMock.mockReset();
+  cancelMock.mockClear();
+});
 
 function renderOpen() {
   return render(<MonicaImportDialog open onClose={() => {}} onImportComplete={() => {}} />);
@@ -83,6 +97,111 @@ test('Cancel closes the dialog through the reset path', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
   expect(onClose).toHaveBeenCalledTimes(1);
+  // Nothing was connected, so there is no server session to release.
+  expect(cancelMock).not.toHaveBeenCalled();
+});
+
+// Issue #2916: a connected but not-yet-started session used to stay open on
+// the server when the dialog closed, counting toward the per-user import cap.
+test('Cancel after connecting releases the session the wizard never took over', async () => {
+  connectMock.mockResolvedValue({
+    session_id: 'sess-1',
+    totals: {
+      contacts: 1,
+      activities: 0,
+      notes: 0,
+      reminders: 0,
+      calls: 0,
+      tasks: 0,
+      gifts: 0,
+      debts: 0,
+    },
+    estimated_fetch_seconds: 60,
+  });
+  const onClose = vi.fn();
+  render(<MonicaImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'https://monica.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  await screen.findByRole('button', { name: 'Start import' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/contacts/import/monica', 'sess-1'));
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+// Issue #2916: once the wizard owns the session (Start pressed), the dialog's
+// close path must not cancel it a second time — the wizard's own cancel does.
+test('Cancel after starting does not double-cancel the wizard-owned session', async () => {
+  connectMock.mockResolvedValue({
+    session_id: 'sess-1',
+    totals: {
+      contacts: 1,
+      activities: 0,
+      notes: 0,
+      reminders: 0,
+      calls: 0,
+      tasks: 0,
+      gifts: 0,
+      debts: 0,
+    },
+    estimated_fetch_seconds: 60,
+  });
+  const onClose = vi.fn();
+  render(<MonicaImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'https://monica.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  await screen.findByRole('button', { name: 'Start import' });
+  fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+  await screen.findByRole('button', { name: 'Cancel' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/contacts/import/monica', 'sess-1'));
+  expect(cancelMock).toHaveBeenCalledTimes(1);
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+// Issue #2916: a failed best-effort cancel must never stop the dialog closing.
+test('a rejected cancel is swallowed and the dialog still closes', async () => {
+  connectMock.mockResolvedValue({
+    session_id: 'sess-2',
+    totals: {
+      contacts: 1,
+      activities: 0,
+      notes: 0,
+      reminders: 0,
+      calls: 0,
+      tasks: 0,
+      gifts: 0,
+      debts: 0,
+    },
+    estimated_fetch_seconds: 60,
+  });
+  cancelMock.mockImplementationOnce(() => Promise.reject(new Error('cancel failed')));
+  const onClose = vi.fn();
+  render(<MonicaImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'https://monica.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  await screen.findByRole('button', { name: 'Start import' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/contacts/import/monica', 'sess-2'));
 });
 
 test('the include-relationships switch toggles off and on', () => {
