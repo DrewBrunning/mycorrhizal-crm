@@ -3,6 +3,7 @@ package com.mycorrhizal.crm.feature.imports
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -284,7 +285,8 @@ private fun ImportRowCard(
             RowFixSection(row = row, edit = edit, onSave = onEditSave)
         }
         row.mergeDiff?.let { MergeDiffSummary(it) }
-        Row(
+        // #2948: the decision chips wrap onto another line as whole words at large font sizes.
+        FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(top = 4.dp)
         ) {

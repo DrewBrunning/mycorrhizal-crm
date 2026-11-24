@@ -25,6 +25,7 @@ import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
@@ -248,5 +249,43 @@ class FormScaffoldTest {
         composeTestRule.onNodeWithTag("form-save-top-action").performClick()
 
         assertEquals(1, saved)
+    }
+
+    // #2949: in a short (landscape) window the Save button moves into the top bar, which removed
+    // the only imePadding in the scaffold, so the keyboard covered the focused field. The form
+    // body must stay above the IME inset.
+    @Test
+    @Config(sdk = [35], qualifiers = "w800dp-h360dp")
+    fun `in a short window the form body stays above the keyboard inset`() {
+        composeTestRule.activityRule.scenario.onActivity { activity ->
+            androidx.core.view.WindowCompat.setDecorFitsSystemWindows(activity.window, false)
+        }
+        setContent(isDirty = false, content = { padding ->
+            Box(Modifier.padding(padding).fillMaxSize().testTag("form-body"))
+        })
+        composeTestRule.waitForIdle()
+
+        val imeHeightPx = 150
+        composeTestRule.activityRule.scenario.onActivity { activity ->
+            val insets = androidx.core.view.WindowInsetsCompat.Builder()
+                .setInsets(
+                    androidx.core.view.WindowInsetsCompat.Type.ime(),
+                    androidx.core.graphics.Insets.of(0, 0, 0, imeHeightPx)
+                )
+                .setVisible(androidx.core.view.WindowInsetsCompat.Type.ime(), true)
+                .build()
+            androidx.core.view.ViewCompat.dispatchApplyWindowInsets(
+                activity.window.decorView,
+                insets
+            )
+        }
+        composeTestRule.waitForIdle()
+
+        val body = composeTestRule.onNodeWithTag("form-body").fetchSemanticsNode().boundsInRoot
+        val windowHeightPx = composeTestRule.onRoot().fetchSemanticsNode().boundsInRoot.height
+        assertTrue(
+            "form body bottom ${body.bottom} must be above the keyboard top ${windowHeightPx - imeHeightPx}",
+            body.bottom <= windowHeightPx - imeHeightPx + 1f
+        )
     }
 }

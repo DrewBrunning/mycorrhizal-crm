@@ -54,6 +54,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Android layouts hold up at 200% font size and in landscape** ([#2948](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2948), [#2949](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2949)): organisation tabs, the duplicates heading and the import decision buttons no longer split words, and in landscape the field you are typing in on a form stays above the keyboard.
 - **Shared contact anniversaries on the web** ([#2908](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2908)): a shared contact card now reads "Birthday: 28.11.1985" in your language and date format instead of "birth: 1985-11-28".
 - **Occasion dates and reminder titles follow your language** ([#2914](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2914), [#2915](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2915)): a standing occasion's date now reads in your language's usual order ("3. März" in German, "March 3" in English), and reminders created from an occasion are titled in your language instead of always starting with the English word "Occasion". Reminders you already have keep their wording.
 - **A missing contact keeps its "not found" tab title** ([#2901](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2901)): opening a contact that no longer exists now leaves the browser tab on "Contact not found" instead of switching back to "Contacts".
