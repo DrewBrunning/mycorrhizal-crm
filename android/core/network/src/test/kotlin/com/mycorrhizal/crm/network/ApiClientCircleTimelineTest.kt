@@ -171,4 +171,16 @@ class ApiClientCircleTimelineTest {
         assertEquals("", circle.description)
         assertEquals("", circle.color)
     }
+
+    // Issue #2936: an older server serialises "no legacy circles" as the
+    // literal body `null`; that must decode to an empty list, not fail.
+    @Test
+    fun `legacy circles null body decodes to an empty list`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("null"))
+
+        val result = client.listLegacyCircles()
+
+        assertTrue(result.isSuccess)
+        assertEquals(emptyList<String>(), result.getOrNull())
+    }
 }
