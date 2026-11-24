@@ -89,7 +89,11 @@ trail, not the taste.
 3. **The next RC** is cut with `release.yml` (`version: vX.Y.Z-rc.(N+1)`, `ref: release/vX.Y.0`).
 4. **Traceability is automatic.** Each RC's GitHub Release notes are the `[Unreleased]` section of
    `CHANGELOG.md` (or `[X.Y.Z]` once renamed; promotion requires it); every PR links its
-   `rc-finding` issue. Add a short `## RC changes` section to the release body
+   `rc-finding` issue. Before tagging, run
+   `cd backend && go run ./cmd/changelogassemble -write` on the release branch, commit
+   `CHANGELOG.md` with the deleted `changelog.d/` fragments, then rename `[Unreleased]` for a
+   final release. `release.yml` and `promote-rc.yml` refuse to tag or promote while a fragment
+   is unassembled. Add a short `## RC changes` section to the release body
    naming the findings this RC closes.
 5. Successive RCs get **smaller**. An RC whose diff is larger than its predecessor's, or which
    introduces a new `sev1`/`sev2`, is a signal the series is not converging.
@@ -106,7 +110,9 @@ Promote `vX.Y.Z-rc.N` to `vX.Y.Z` when **all** of:
 - **Every mandatory gate is green** on the RC commit (the same battery `release.yml` and
   `docker-publish.yml` run for a final release; see the parity table below).
 
-Then run **`promote-rc.yml`** with `rc_tag: vX.Y.Z-rc.N`.
+Then assemble any outstanding `changelog.d/` fragments on the release branch
+(`cd backend && go run ./cmd/changelogassemble -write`) and commit the result,
+then run **`promote-rc.yml`** with `rc_tag: vX.Y.Z-rc.N`.
 
 ## Gate parity — RC vs final release
 
@@ -115,6 +121,7 @@ Then run **`promote-rc.yml`** with `rc_tag: vX.Y.Z-rc.N`.
 | Tag format gate (`validate-tag`) | ✅ | ✅ (pattern accepts `-rc.N`) |
 | `citecheck` (security-doc citations) | ✅ hard | ✅ hard |
 | `releasegatecheck` (gate registry coherent) | ✅ | ✅ |
+| `changelogassemble -check` (no unassembled fragments) | ✅ hard | ✅ hard |
 | Mandatory `release_gate: true` checks composed + green on the commit | ✅ | ✅ |
 | Release-tier suites composed + awaited | ✅ | ✅ (against `release/*`) |
 | `docker-publish.yml` `release-gate` + all `release-internal` jobs | ✅ | ✅ (identical) |

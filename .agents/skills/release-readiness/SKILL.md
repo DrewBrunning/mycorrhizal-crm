@@ -27,8 +27,11 @@ the operator notes. Read `docs/development/release-gates.md` and
 5. Attest or explicitly skip every manual gate that applies
    (`.github/manual-gates.json`, `attest_manual_gates`). A skip needs a reason;
    it is not a pass.
-6. Ensure `CHANGELOG.md` has the section for this release (rename
-   `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD` and start a new `[Unreleased]`); `release.yml` refuses to tag without it.
+6. Assemble the changelog before the section exists: run
+   `cd backend && go run ./cmd/changelogassemble -write`, commit `CHANGELOG.md`
+   with the deleted fragments, then rename or add the `[X.Y.Z]` section (rename
+   `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD` and start a new `[Unreleased]`);
+   `release.yml` refuses to tag with an unassembled fragment or without it.
 7. Run the release gates from the runbook and record failures as failures.
 
 ## DoD

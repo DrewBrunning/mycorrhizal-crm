@@ -739,6 +739,22 @@ class SettingsViewModelTest {
             assertEquals(SettingsEvent.LocaleChanged, vm.events.value)
         }
 
+    // #2937: "System default" clears the local override and never touches the server language.
+    @Test
+    fun `updateLanguage to system default clears the override without a server call`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            coEvery { appSettings.setLanguageOverride(null) } returns Unit
+            val vm = viewModel(SessionState(language = "de"))
+            advanceUntilIdle()
+
+            vm.updateLanguage(LANGUAGE_SYSTEM)
+            advanceUntilIdle()
+
+            coVerify { appSettings.setLanguageOverride(null) }
+            coVerify(exactly = 0) { authRepository.updateLanguage(any()) }
+            assertEquals(SettingsEvent.LocaleChanged, vm.events.value)
+        }
+
     @Test
     fun `updateLanguage to the current value is a no-op`() = runTest(
         mainDispatcherRule.testDispatcher

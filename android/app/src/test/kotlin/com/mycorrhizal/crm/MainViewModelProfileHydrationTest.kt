@@ -167,6 +167,69 @@ class MainViewModelProfileHydrationTest {
             coVerify(exactly = 1) { auth.fetchCurrentUser() }
         }
 
+    // #2939: an offline cold start left the drawer without a username and Administration
+    // hidden for the whole process, because the profile id was marked hydrated before the
+    // fetch succeeded. A failed fetch must be retryable on the next app resume.
+    @Test
+    fun `a failed hydration is retried on resume and then fills username and admin`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val manager = restoredManager()
+            val auth = mockk<AuthRepository> {
+                coEvery { fetchCurrentUser() } returnsMany listOf(
+                    Result.failure(IOException("offline")),
+                    Result.success(admin)
+                )
+            }
+
+            val viewModel = vm(manager, auth)
+            advanceUntilIdle()
+            assertNull(viewModel.session.value.username)
+
+            viewModel.onAppResumed()
+            advanceUntilIdle()
+
+            assertEquals("admin-alice", viewModel.session.value.username)
+            assertTrue(viewModel.session.value.isAdmin)
+            coVerify(exactly = 2) { auth.fetchCurrentUser() }
+        }
+
+    @Test
+    fun `resume does not refetch once the profile is hydrated`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val manager = restoredManager()
+            val auth = mockk<AuthRepository> {
+                coEvery { fetchCurrentUser() } returns Result.success(admin)
+            }
+
+            val viewModel = vm(manager, auth)
+            advanceUntilIdle()
+            viewModel.onAppResumed()
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { auth.fetchCurrentUser() }
+        }
+
+    // #2939: resuming while a profile fetch is still in flight must not start a second one.
+    @Test
+    fun `resume while a hydration is in flight does not start another fetch`() =
+        runTest(mainDispatcherRule.testDispatcher) {
+            val manager = restoredManager()
+            val gate = CompletableDeferred<Result<UserProfile>>()
+            val auth = mockk<AuthRepository> {
+                coEvery { fetchCurrentUser() } coAnswers { gate.await() }
+            }
+
+            val viewModel = vm(manager, auth)
+            advanceUntilIdle()
+            viewModel.onAppResumed()
+            advanceUntilIdle()
+            gate.complete(Result.success(admin))
+            advanceUntilIdle()
+
+            coVerify(exactly = 1) { auth.fetchCurrentUser() }
+            assertEquals("admin-alice", viewModel.session.value.username)
+        }
+
     @Test
     fun `a throwing fetch does not crash or log out`() = runTest(
         mainDispatcherRule.testDispatcher

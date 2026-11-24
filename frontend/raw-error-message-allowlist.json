@@ -1,23 +1,11 @@
 {
-  "src/components/CalendarSyncSettings.tsx": {
-    "count": 4,
-    "reason": "Calendar sync load/save/delete/sync failures show the raw thrown message; fixed by #2917."
-  },
   "src/components/CardDAVSyncScopeSettings.tsx": {
     "count": 2,
     "reason": "CardDAV scope load/save failures show the raw thrown message; fixed by #2917."
   },
-  "src/components/ContactFieldSettings.tsx": {
-    "count": 3,
-    "reason": "Custom-field load/save failures show the raw thrown message; fixed by #2917."
-  },
   "src/components/ContactFieldVisibilityDialog.tsx": {
     "count": 1,
     "reason": "Field-visibility save failure shows the raw thrown message; fixed by #2917."
-  },
-  "src/components/ContactSyncSettings.tsx": {
-    "count": 4,
-    "reason": "Contact-sync load/save/delete/sync failures show the raw thrown message; fixed by #2917."
   },
   "src/components/DAVPasswordSettings.tsx": {
     "count": 1,

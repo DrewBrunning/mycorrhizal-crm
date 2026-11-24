@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -375,6 +376,40 @@ class SettingsScreenTest {
         composeTestRule.onNodeWithText("English").performClick()
         composeTestRule.onNodeWithText("Deutsch").performClick()
         assertEquals("de", changedTo)
+    }
+
+    // #2937: the Language picker shows the language actually in use ("Use system default" when the
+    // UI follows the device, not the server's "English"), and offers that choice so the user can
+    // return to the device language from inside the app.
+    @Test
+    fun `language picker shows system default when the UI follows the device`() {
+        show {
+            AppearanceSettingsContent(
+                state = SettingsUiState(session = SessionState(language = "en")),
+                languageInUse = LANGUAGE_SYSTEM
+            )
+        }
+
+        composeTestRule.onAllNodesWithText("English").assertCountEquals(0)
+        // Language and Theme both read "Use system default".
+        composeTestRule.onAllNodesWithText("Use system default").assertCountEquals(2)
+    }
+
+    @Test
+    fun `language picker offers system default and reports it`() {
+        var changedTo: String? = null
+        show {
+            AppearanceSettingsContent(
+                state = SettingsUiState(session = SessionState(language = "de")),
+                languageInUse = "de",
+                onLanguageChange = { changedTo = it }
+            )
+        }
+
+        composeTestRule.onNodeWithText("Deutsch").performClick()
+        // Only the theme button and the open menu's entry read "Use system default" now.
+        composeTestRule.onAllNodesWithText("Use system default").onLast().performClick()
+        assertEquals(LANGUAGE_SYSTEM, changedTo)
     }
 
     @Test
