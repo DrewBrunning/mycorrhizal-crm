@@ -98,8 +98,16 @@ test('calls onEdit and onManageAttendees', () => {
   renderList({ onEdit, onManageAttendees });
   fireEvent.click(screen.getByRole('button', { name: /^Edit\b/ }));
   expect(onEdit).toHaveBeenCalledWith(baseEvent);
-  fireEvent.click(screen.getByRole('button', { name: 'Attendees' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Attendees of Summer BBQ' }));
   expect(onManageAttendees).toHaveBeenCalledWith(baseEvent);
+});
+
+// #2911: every row used to offer a button named just "Attendees".
+test('each attendees button names its event (#2911)', () => {
+  renderList({ events: [baseEvent, { ...baseEvent, id: 'ev-2', title: 'Book club' }] });
+  expect(screen.getByRole('button', { name: 'Attendees of Summer BBQ' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Attendees of Book club' })).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Attendees' })).not.toBeInTheDocument();
 });
 
 test('confirms before deleting', () => {
