@@ -276,6 +276,9 @@ fun SettingsRootContent(
     }
 }
 
+/** The Language picker's "follow the device language" choice (#2937). */
+internal const val LANGUAGE_SYSTEM = "system"
+
 @Composable
 internal fun languageName(tag: String): String = when (tag) {
     "de" -> "Deutsch"
