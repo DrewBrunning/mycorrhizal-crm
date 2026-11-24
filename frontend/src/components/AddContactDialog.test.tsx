@@ -276,7 +276,7 @@ test('typing a new circle name and clicking Add shows it as a removable chip', (
   fireEvent.change(within(section).getByLabelText('Or create new...'), {
     target: { value: 'Book Club' },
   });
-  fireEvent.click(within(section).getByRole('button', { name: 'Add' }));
+  fireEvent.click(within(section).getByRole('button', { name: 'Add circle' }));
 
   expect(within(section).getByText('Book Club')).toBeInTheDocument();
 
@@ -331,7 +331,8 @@ test('the add-row buttons name their field or item (#2911)', () => {
     .map((b) => b.getAttribute('aria-label') ?? (b.textContent ?? '').trim())
     .filter((name) => name === 'Add' || name.startsWith('Add '))
     .sort();
-  expect(addNames).toEqual(['Add', 'Add Email', 'Add Phone', 'Add tag']);
+  expect(addNames).toEqual(['Add Email', 'Add Phone', 'Add circle', 'Add tag']);
+  expect(addNames).not.toContain('Add');
   expect(new Set(addNames).size).toBe(addNames.length);
 });
 
@@ -365,7 +366,7 @@ test('creating a contact with a new circle and an existing tag wires up both mem
   fireEvent.change(within(circlesSection()).getByLabelText('Or create new...'), {
     target: { value: 'Book Club' },
   });
-  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add' }));
+  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add circle' }));
   fireEvent.mouseDown(within(tagsSection()).getByLabelText('Select existing tag...'));
   fireEvent.click(screen.getByRole('option', { name: 'Client' }));
   fireEvent.click(screen.getByRole('button', { name: 'Create' }));
@@ -406,7 +407,7 @@ test('a failed circle-membership call is swallowed -- the contact was already cr
   fireEvent.change(within(circlesSection()).getByLabelText('Or create new...'), {
     target: { value: 'Broken Circle' },
   });
-  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add' }));
+  fireEvent.click(within(circlesSection()).getByRole('button', { name: 'Add circle' }));
   fireEvent.click(screen.getByRole('button', { name: 'Create' }));
 
   await waitFor(() => expect(createMocked).toHaveBeenCalled());

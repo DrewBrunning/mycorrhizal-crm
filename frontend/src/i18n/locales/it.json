@@ -391,6 +391,7 @@
     "workInformation": "Informazioni Lavorative",
     "contactInformation": "Informazioni di Contatto Aggiuntive",
     "circles": "Cerchie",
+    "addCircleNamed": "Aggiungi cerchia",
     "selectCircle": "Seleziona cerchia esistente...",
     "newCircle": "Oppure crea nuova...",
     "tags": "Tag",

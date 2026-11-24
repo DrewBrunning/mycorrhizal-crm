@@ -381,6 +381,7 @@
     "workInformation": "Arbeitsinformationen",
     "contactInformation": "Zusätzliche Kontaktinformationen",
     "circles": "Kreise",
+    "addCircleNamed": "Kreis hinzufügen",
     "selectCircle": "Vorhandenen Kreis auswählen...",
     "newCircle": "Oder neu erstellen...",
     "tags": "Tags",

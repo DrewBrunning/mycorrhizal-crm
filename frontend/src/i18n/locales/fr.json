@@ -391,6 +391,7 @@
     "workInformation": "Informations professionnelles",
     "contactInformation": "Informations de contact supplémentaires",
     "circles": "Cercles",
+    "addCircleNamed": "Ajouter un cercle",
     "selectCircle": "Sélectionnez un cercle existant...",
     "newCircle": "Ou créez-en un nouveau...",
     "tags": "Étiquettes",

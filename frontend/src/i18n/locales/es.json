@@ -391,6 +391,7 @@
     "workInformation": "Información Laboral",
     "contactInformation": "Información de Contacto Adicional",
     "circles": "Círculos",
+    "addCircleNamed": "Agregar círculo",
     "selectCircle": "Seleccionar círculo existente...",
     "newCircle": "O crear nuevo...",
     "tags": "Etiquetas",

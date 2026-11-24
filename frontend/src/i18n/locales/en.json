@@ -381,6 +381,7 @@
     "workInformation": "Work Information",
     "contactInformation": "Additional Contact Information",
     "circles": "Circles",
+    "addCircleNamed": "Add circle",
     "selectCircle": "Select existing circle...",
     "newCircle": "Or create new...",
     "tags": "Tags",
