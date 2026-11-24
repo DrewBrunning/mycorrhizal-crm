@@ -95,6 +95,51 @@ test('Cancel after an upload releases the session the wizard never took over', a
   expect(onClose).toHaveBeenCalledTimes(1);
 });
 
+test('Cancel before any upload releases nothing', () => {
+  const onClose = vi.fn();
+  render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(cancelMock).not.toHaveBeenCalled();
+});
+
+// Issue #2916: once the wizard owns the uploaded session (Start pressed), the
+// dialog's close path must not cancel it a second time — the wizard's own
+// cancel does.
+test('Cancel after starting does not double-cancel the wizard-owned session', async () => {
+  uploadMock.mockResolvedValue({ session_id: 's1', version: 1, totals: bundleTotals() });
+  const onClose = vi.fn();
+  render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  pickFile();
+  await screen.findByRole('button', { name: 'Start import' });
+  fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+  await screen.findByRole('button', { name: 'Cancel' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/import/mycorrhizal', 's1'));
+  expect(cancelMock).toHaveBeenCalledTimes(1);
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+// Issue #2916: a failed best-effort cancel must never stop the dialog closing.
+test('a rejected cancel is swallowed and the dialog still closes', async () => {
+  uploadMock.mockResolvedValue({ session_id: 's3', version: 1, totals: bundleTotals() });
+  cancelMock.mockImplementationOnce(() => Promise.reject(new Error('cancel failed')));
+  const onClose = vi.fn();
+  render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  pickFile();
+  await screen.findByRole('button', { name: 'Start import' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/import/mycorrhizal', 's3'));
+});
+
 test('after upload the totals render and the import can start', async () => {
   uploadMock.mockResolvedValue({
     session_id: 's1',

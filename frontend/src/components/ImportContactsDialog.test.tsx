@@ -388,6 +388,56 @@ test('Continue is blocked until a map decision names a field', async () => {
   expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
 });
 
+// Issue #2909: only a "map" decision without a definition blocks Continue; the
+// other actions never carry one and must not strand the step.
+test('Continue follows the map decision when it changes to another action', async () => {
+  await loadVcfWithCandidates(
+    [{ name: 'x-hometown', value: 'Springfield' }],
+    [{ id: 'def-1', label: 'Hometown', target: 'contact' }],
+  );
+
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
+  fireEvent.click(await screen.findByRole('option', { name: /^Map to existing field/ }));
+  expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
+
+  // "Create new field" has no definition yet, but it is not a map decision.
+  fireEvent.mouseDown(screen.getByLabelText('x-hometown action'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Create new field' }));
+  expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
+  expect(screen.queryByLabelText('x-hometown field')).not.toBeInTheDocument();
+
+  // Passthrough is likewise complete.
+  fireEvent.mouseDown(screen.getByLabelText('x-hometown action'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Keep as passthrough' }));
+  expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
+});
+
+// Issue #2909: the guard considers every candidate, not just the first.
+test('one incomplete map among several decisions still blocks Continue', async () => {
+  await loadVcfWithCandidates(
+    [
+      { name: 'x-hometown', value: 'Springfield' },
+      { name: 'x-nickname', value: 'Speed' },
+    ],
+    [{ id: 'def-1', label: 'Hometown', target: 'contact' }],
+  );
+
+  // A complete map plus a create decision: Continue is allowed.
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown action'));
+  fireEvent.click(await screen.findByRole('option', { name: /^Map to existing field/ }));
+  fireEvent.mouseDown(await screen.findByLabelText('x-hometown field'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Hometown' }));
+  fireEvent.mouseDown(await screen.findByLabelText('x-nickname action'));
+  fireEvent.click(await screen.findByRole('option', { name: 'Create new field' }));
+  expect(screen.getByRole('button', { name: /continue/i })).toBeEnabled();
+
+  // Now the second row is a map without a field: blocked again.
+  fireEvent.mouseDown(await screen.findByLabelText('x-nickname action'));
+  fireEvent.click(await screen.findByRole('option', { name: /^Map to existing field/ }));
+  expect(screen.getByRole('button', { name: /continue/i })).toBeDisabled();
+  expect(screen.getAllByText('Choose a field, or pick another action')).toHaveLength(1);
+});
+
 test('confirm sends the promotion decisions as field_mappings', async () => {
   vi.mocked(confirmVCFImport).mockResolvedValue({
     total_processed: 1,
@@ -480,9 +530,12 @@ test('a duplicate row defaults to Merge, shows the match, and renders the diff',
     }),
   ]);
 
-  // The match line and the conflict heading.
+  // The match line and the conflict heading (an h3 under the dialog's h2 —
+  // issue #2910's heading-order fix).
   expect(screen.getByText(/Matches: Bob Smith/)).toBeInTheDocument();
-  expect(screen.getByText('Resolve Conflict (1 remaining)')).toBeInTheDocument();
+  expect(
+    screen.getByRole('heading', { level: 3, name: /resolve conflicts? \(1 remaining\)/i }),
+  ).toBeInTheDocument();
 
   // The diff describes exactly what Merge will do.
   expect(screen.getByText(/\+ new phone: \+15559998888/)).toBeInTheDocument();
@@ -512,8 +565,10 @@ test('resolving every conflict zeroes the remaining count', async () => {
   fireEvent.click(screen.getByRole('button', { name: /discard new/i }));
   expect(screen.getByText('1 to skip')).toBeInTheDocument();
   // The heading switches to the all-resolved copy, never the "no matches"
-  // claim (the row still matched something).
-  expect(screen.getByText(/all conflicts resolved/i)).toBeInTheDocument();
+  // claim (the row still matched something), and is an h3 (issue #2910).
+  expect(
+    screen.getByRole('heading', { level: 3, name: /all conflicts resolved — review/i }),
+  ).toBeInTheDocument();
 });
 
 // T96: a row that duplicates an EARLIER row of the same import is flagged with

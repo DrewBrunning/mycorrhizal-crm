@@ -8,6 +8,7 @@ import (
 
 	"mycorrhizal/config"
 	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/models"
 
 	"github.com/gin-gonic/gin"
@@ -195,6 +196,105 @@ func TestImportVCF_CustomFieldMapping_EmptyDefinitionIsLocalizable(t *testing.T)
 	assert.Contains(t, w.Body.String(), `"reason_code":"import_field_mapping_unknown_field"`)
 	assert.Contains(t, w.Body.String(), `"reason_params":{"property":"x-hometown"}`)
 	assert.NotContains(t, w.Body.String(), "record not found")
+}
+
+// Issue #2909: the reason is the same localizable code for every way a "map"
+// decision can name no usable definition — an empty id or an id that does not
+// exist — and the raw GORM sentence never reaches the client.
+func TestImportVCF_CustomFieldMapping_UnknownDefinitionIsLocalizable(t *testing.T) {
+	db := dbtest.New(t)
+	user := models.User{Username: "cfmunknown", Password: "password123!A", Email: "cfmunknown@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	registerImportRoutes(router, &config.Config{})
+
+	for _, tc := range []struct {
+		name string
+		id   string
+	}{
+		{name: "unset", id: ""},
+		{name: "unknown", id: "00000000-0000-4000-8000-000000000000"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			vcf := "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Cora Unknown\r\nN:Unknown;Cora;;;\r\nUID:99999999-9999-4999-8999-999999999999\r\nX-HOMETOWN:Springfield\r\nEND:VCARD\r\n"
+			w := httptest.NewRecorder()
+			router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/vcf/upload", "contacts.vcf", []byte(vcf)))
+			require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+			var preview models.ImportPreviewResponse
+			require.NoError(t, json.Unmarshal(w.Body.Bytes(), &preview))
+
+			w = httptest.NewRecorder()
+			router.ServeHTTP(w, newJSONRequest(t, "/contacts/import/vcf/confirm", models.ImportConfirmRequest{
+				SessionID: preview.SessionID,
+				Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+				FieldMappings: []models.ImportFieldMapping{
+					{PropertyName: "x-hometown", Action: "map", FieldDefinitionID: tc.id},
+				},
+			}))
+			require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+			assert.Equal(t, "INVALID_INPUT", decodeError(t, w).Error.Code)
+			assert.Contains(t, w.Body.String(), `"reason_code":"import_field_mapping_unknown_field"`)
+			assert.Contains(t, w.Body.String(), `"property":"x-hometown"`)
+			assert.NotContains(t, w.Body.String(), "record not found")
+
+			var contactCount int64
+			require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&contactCount).Error)
+			assert.Zero(t, contactCount, "the failed confirm writes nothing")
+		})
+	}
+}
+
+// Issue #2909: a real database failure while resolving the definition is
+// logged (the operator sees the SQL error) and still answers the localizable
+// contract error, never the raw GORM sentence or a half-applied import.
+func TestImportVCF_CustomFieldMapping_LookupFailureIsLocalizable(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test logs the hidden-table database failure and the request error")
+	db := dbtest.New(t)
+	user := models.User{Username: "cfmdberr", Password: "password123!A", Email: "cfmdberr@example.com"}
+	require.NoError(t, db.Create(&user).Error)
+
+	gin.SetMode(gin.ReleaseMode)
+	router := gin.Default()
+	router.Use(func(c *gin.Context) {
+		c.Set("db", db)
+		c.Set("userID", user.ID)
+		c.Next()
+	})
+	registerImportRoutes(router, &config.Config{})
+
+	vcf := "BEGIN:VCARD\r\nVERSION:4.0\r\nFN:Cora DbErr\r\nN:DbErr;Cora;;;\r\nUID:abababab-abab-4bab-8bab-abababababab\r\nX-HOMETOWN:Springfield\r\nEND:VCARD\r\n"
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, newFileUploadRequest(t, "/contacts/import/vcf/upload", "contacts.vcf", []byte(vcf)))
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var preview models.ImportPreviewResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &preview))
+
+	// Hide the definitions table only after the preview resolved the
+	// candidates, so the failure happens inside the confirm transaction.
+	dbtest.HideTable(t, db, "field_definitions")
+
+	w = httptest.NewRecorder()
+	router.ServeHTTP(w, newJSONRequest(t, "/contacts/import/vcf/confirm", models.ImportConfirmRequest{
+		SessionID: preview.SessionID,
+		Actions:   []models.RowImportAction{{RowIndex: 0, Action: "add"}},
+		FieldMappings: []models.ImportFieldMapping{
+			{PropertyName: "x-hometown", Action: "map", FieldDefinitionID: "11111111-1111-4111-8111-111111111111"},
+		},
+	}))
+	require.Equal(t, http.StatusBadRequest, w.Code, w.Body.String())
+	assert.Contains(t, w.Body.String(), `"reason_code":"import_field_mapping_unknown_field"`)
+	assert.NotContains(t, w.Body.String(), "no such table")
+
+	var contactCount int64
+	require.NoError(t, db.Model(&models.Contact{}).Where("user_id = ?", user.ID).Count(&contactCount).Error)
+	assert.Zero(t, contactCount, "the failed confirm rolls back")
 }
 
 // Issue #2567: mapping a property into an organisation/place/pet definition is
