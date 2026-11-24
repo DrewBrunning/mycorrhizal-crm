@@ -184,7 +184,7 @@ test('duplicate suggestions: find, then merge via the dialog', async () => {
   await screen.findByText('Acme');
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
   expect(await screen.findByText('Very similar name')).toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: 'Merge…' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Merge Acme and Acme, Inc' }));
   await screen.findByText(/will be deleted/);
   fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Merge' }));
   await waitFor(() => expect(mergeMock).toHaveBeenCalledWith('o2', { into: 'o1' }));
@@ -215,7 +215,7 @@ test('merging a same-named pair describes each side with the pair counts (#2743)
   }));
   renderPage();
   fireEvent.click(await screen.findByRole('button', { name: 'Find duplicates' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Merge…' }));
+  fireEvent.click(await screen.findByRole('button', { name: /^Merge Green Acres Co-op/ }));
   const intro = await screen.findByText(/will be deleted and its contacts move to/);
   expect(intro.textContent).toMatch(
     /\(updated .+, 1 contact\) will be deleted.*\(updated .+, 2 contacts\)\./,
@@ -241,7 +241,9 @@ test('"Not a duplicate" dismisses the pair for good', async () => {
   renderPage();
   await screen.findByText('Acme');
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Not a duplicate' }));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Acme and Acme, Inc are not duplicates' }),
+  );
   await waitFor(() => expect(dismissMock).toHaveBeenCalledWith('o1', 'o2'));
   await waitFor(() => expect(screen.queryByText('Same name')).not.toBeInTheDocument());
 });
