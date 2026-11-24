@@ -69,6 +69,7 @@ import com.mycorrhizal.crm.ui.components.ErrorState
 import com.mycorrhizal.crm.ui.components.HealthScoreDot
 import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
+import com.mycorrhizal.crm.ui.components.entityRoleLabelRes
 import com.mycorrhizal.crm.ui.components.healthBandLabel
 import com.mycorrhizal.crm.ui.components.localizedMessage
 import com.mycorrhizal.crm.ui.components.relationshipRoleLabel
@@ -559,6 +560,11 @@ private fun EntityOverlayRowView(row: EntityOverlayRow, onOpen: () -> Unit) {
             else -> R.string.shared_entities_kind_one_organisation
         }
     )
+    // #2946: the contact's role ("Employee") when the link has one, else the entity's kind.
+    val roleLabels = row.roles.map { role ->
+        entityRoleLabelRes(row.node.kind, role)?.let { stringResource(it) } ?: role
+    }
+    val roleOrKind = roleLabels.takeIf { it.isNotEmpty() }?.joinToString(", ") ?: kindLabel
     val description = stringResource(
         R.string.network_entities_description,
         row.node.label,
@@ -596,7 +602,7 @@ private fun EntityOverlayRowView(row: EntityOverlayRow, onOpen: () -> Unit) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = row.node.label, style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = listOf(kindLabel, row.contactNames.joinToString(", "))
+                text = listOf(roleOrKind, row.contactNames.joinToString(", "))
                     .filter { it.isNotBlank() }
                     .joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,

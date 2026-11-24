@@ -571,11 +571,14 @@ type GraphEntityNode struct {
 }
 
 // GraphEntityEdge links a contact node to an entity node. It is display-only:
-// no type, inverse, role, dates or status (those never leave as graph data).
+// no type, inverse, dates, status or free-text role_label (those never leave as graph
+// data). Role (issue #2946) is the link's closed-vocabulary role token, additive and
+// optional so clients that do not know it ignore it.
 type GraphEntityEdge struct {
 	ID     string `json:"id"`
 	Source string `json:"source"` // contact node ID ("c-<id>")
 	Target string `json:"target"` // entity node ID ("e-<entityID>")
+	Role   string `json:"role,omitempty"`
 }
 
 // GraphChainStep is one hop in a traversal chain (T10). Relation is

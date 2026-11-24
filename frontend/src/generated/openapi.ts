@@ -1797,6 +1797,7 @@ export type GraphEdge = {
 
 export type GraphEntityEdge = {
   id: string;
+  role?: string;
   source: string;
   target: string;
 };

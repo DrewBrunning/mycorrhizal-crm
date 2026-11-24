@@ -54,6 +54,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Android network overlay shows each contact's role** ([#2946](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2946)): with organisations, places and pets on, a row now reads "Employee · Ada Lovelace" instead of "Organisation · Ada Lovelace". The graph's entity edges gain an optional `role` field (an additive API change).
 - **Shared contact anniversaries on the web** ([#2908](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2908)): a shared contact card now reads "Birthday: 28.11.1985" in your language and date format instead of "birth: 1985-11-28".
 - **Occasion dates and reminder titles follow your language** ([#2914](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2914), [#2915](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2915)): a standing occasion's date now reads in your language's usual order ("3. März" in German, "March 3" in English), and reminders created from an occasion are titled in your language instead of always starting with the English word "Occasion". Reminders you already have keep their wording.
 - **A missing contact keeps its "not found" tab title** ([#2901](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2901)): opening a contact that no longer exists now leaves the browser tab on "Contact not found" instead of switching back to "Contacts".

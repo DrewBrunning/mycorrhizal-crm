@@ -790,6 +790,56 @@ class NetworkScreenTest {
         assertEquals("o1", opened)
     }
 
+    private fun showOverlayRow(row: EntityOverlayRow) {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NetworkScreenContent(
+                    uiState = state(chains = listOf(chain(7, "t7", "Ada", 1, emptyList()))).copy(
+                        showEntities = true,
+                        entityOverlay = listOf(row)
+                    ),
+                    showMenu = false,
+                    onBack = {},
+                    onMenuClick = {},
+                    onOpenContact = {},
+                    onDepthChange = {},
+                    onRelationInputChange = {},
+                    onRelationApply = {},
+                    onCircleSelect = {},
+                    onOpenPicker = {},
+                    onClosePicker = {},
+                    onSearchContacts = {},
+                    onSelectFrom = {},
+                    onErrorShown = {},
+                    onOpenEntity = {}
+                )
+            }
+        }
+    }
+
+    // #2946: the row subtitle names the contact's role ("Employee") when the link has one...
+    @Test
+    fun `an overlay row shows the link role when it has one`() {
+        showOverlayRow(
+            EntityOverlayRow(
+                GraphEntityNode("e-o1", "organisation", "Acme"),
+                listOf("Ada"),
+                roles = listOf("employee")
+            )
+        )
+        composeTestRule.onNodeWithText("Employee · Ada").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Organisation · Ada").assertDoesNotExist()
+    }
+
+    // ...and falls back to the entity kind only when the link has no role.
+    @Test
+    fun `an overlay row falls back to the kind when the link has no role`() {
+        showOverlayRow(
+            EntityOverlayRow(GraphEntityNode("e-o2", "organisation", "Globex"), listOf("Ada"))
+        )
+        composeTestRule.onNodeWithText("Organisation · Ada").assertIsDisplayed()
+    }
+
     @Test
     fun `an empty overlay says nothing is linked`() {
         composeTestRule.setContent {

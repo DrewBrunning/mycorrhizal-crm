@@ -118,6 +118,14 @@ func TestGetGraph_IncludeEntities_SeparateKeysAndLiveNormalOnly(t *testing.T) {
 		assert.Regexp(t, `^c-\d+$`, e.Source)
 		assert.Regexp(t, `^e-`, e.Target)
 	}
+	// #2946: each edge carries its link's role (organisation employee, place resident, pet owner).
+	roleByTarget := map[string]string{}
+	for _, n := range nodes {
+		roleByTarget[n.ID] = map[string]string{"organisation": "employee", "place": "resident", "pet": "owner"}[n.Kind]
+	}
+	for _, e := range edges {
+		assert.Equal(t, roleByTarget[e.Target], e.Role)
+	}
 
 	// Entity data never enters the regular arrays and carries no extra fields.
 	var plain []models.GraphNode
@@ -131,7 +139,8 @@ func TestGetGraph_IncludeEntities_SeparateKeysAndLiveNormalOnly(t *testing.T) {
 	var rawEdges []map[string]any
 	require.NoError(t, json.Unmarshal(m["entity_edges"], &rawEdges))
 	for _, e := range rawEdges {
-		assert.ElementsMatch(t, []string{"id", "source", "target"}, keysOf(e), "no type, role, dates or status")
+		// #2946: the one additive field is the link's closed-vocabulary role token.
+		assert.ElementsMatch(t, []string{"id", "source", "target", "role"}, keysOf(e), "no type, dates, status or role_label")
 	}
 }
 

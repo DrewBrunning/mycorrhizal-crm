@@ -21656,7 +21656,7 @@ components:
             $ref: "#/components/schemas/GraphEntityNode"
         entity_edges:
           type: array
-          description: "Present only with `include_entities=true`. Contact node to entity node; no type, role, dates or status."
+          description: "Present only with `include_entities=true`. Contact node to entity node; carries the link's closed-vocabulary `role` token (issue #2946) but no type, dates, status or free-text role label."
           items:
             $ref: "#/components/schemas/GraphEntityEdge"
     GraphEntityNode:
@@ -21673,6 +21673,7 @@ components:
         id: { type: string }
         source: { type: string, description: 'Contact node ID ("c-<contactID>").' }
         target: { type: string, description: 'Entity node ID ("e-<entityID>").' }
+        role: { type: string, description: 'The contact''s link role token, closed per entity kind (organisation employee|owner|contractor|volunteer|member|other; place resident|owner|visitor|other; pet owner|carer|other). Optional (issue #2946); absent from older servers.' }
     GraphConnectionsResponse:
       type: object
       description: The result of a multi-hop traversal from a starting contact.

@@ -228,9 +228,17 @@ data class GraphEntityNode(
     val label: String = ""
 )
 
-/** Contact node (`c-<contactID>`) to entity node (`e-<entityID>`); no type, role or status. */
+/**
+ * Contact node (`c-<contactID>`) to entity node (`e-<entityID>`); no type or status. [role] is the
+ * link's closed-vocabulary role token (issue #2946), absent ("") from older servers.
+ */
 @JsonClass(generateAdapter = true)
-data class GraphEntityEdge(val id: String = "", val source: String = "", val target: String = "")
+data class GraphEntityEdge(
+    val id: String = "",
+    val source: String = "",
+    val target: String = "",
+    val role: String = ""
+)
 
 /** A contact node of `GET /graph` (only the fields the entity overlay needs). */
 @JsonClass(generateAdapter = true)
