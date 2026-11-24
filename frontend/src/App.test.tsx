@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import App from './App';
 import { AppThemeProvider } from './AppThemeProvider';
@@ -502,13 +502,34 @@ test('expanding Settings moves the badge onto Shared with me, never two at once 
   expect(visibleBadges(PENDING_ONE)).toHaveLength(1);
 });
 
-test('the phone hamburger button carries the pending-share badge (#2690)', async () => {
+// #2906: the IconButton's aria-label used to override the Badge's role="img"
+// name, so the pending count was visible but never announced. The button name
+// now carries the count and the decorative badge is hidden from AT.
+test('the phone hamburger names the pending-share count and hides the badge (#2906)', async () => {
   setPhoneViewport(true);
   await setPending(1);
   vi.mocked(isAdmin).mockReturnValue(false);
   visit('/');
-  const toggle = await screen.findByRole('button', { name: 'Open navigation' });
-  await waitFor(() => expect(within(toggle).getByRole('img', { name: PENDING_ONE })).toBeVisible());
+  const toggle = await screen.findByRole('button', {
+    name: 'Open navigation, 1 share waiting for your answer',
+  });
+  expect(toggle).toBeInTheDocument();
+  const badge = toggle.querySelector('.MuiBadge-badge');
+  expect(badge).toHaveAttribute('aria-hidden', 'true');
+  expect(toggle.querySelector('[role="img"]')).toBeNull();
+});
+
+test('the phone hamburger keeps the plain name when nothing is pending (#2906)', async () => {
+  setPhoneViewport(true);
+  await setPending(0);
+  vi.mocked(isAdmin).mockReturnValue(false);
+  visit('/');
+  expect(await screen.findByRole('button', { name: 'Open navigation' })).toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', {
+      name: 'Open navigation, 0 shares waiting for your answer',
+    }),
+  ).toBeNull();
 });
 
 // #2712: the drawer toggle had a hard-coded English name and no state.

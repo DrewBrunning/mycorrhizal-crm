@@ -4,6 +4,8 @@
     "logout": "Abmelden",
     "accountMenu": "Konto",
     "openNavigation": "Navigation öffnen",
+    "openNavigationWithPending_one": "Navigation öffnen, {{count}} Freigabe wartet auf Ihre Antwort",
+    "openNavigationWithPending_other": "Navigation öffnen, {{count}} Freigaben warten auf Ihre Antwort",
     "update": {
       "available": "Eine neue Version von Mycorrhizal CRM ist verfügbar.",
       "reload": "Neu laden"
@@ -385,6 +387,7 @@
     "selectTag": "Vorhandenen Tag auswählen...",
     "setAsPreferred": "Als bevorzugt markieren",
     "newTag": "Oder neu erstellen...",
+    "addTag": "Tag hinzufügen",
     "add": {
       "button": "Kontakt hinzufügen",
       "title": "Neuen Kontakt hinzufügen",
@@ -1211,6 +1214,7 @@
     "delete": "Löschen",
     "deleteNamed": "{{name}} löschen",
     "deleteEntry": "Eintrag {{number}} löschen",
+    "addNamed": "{{name}} hinzufügen",
     "back": "Zurück",
     "continue": "Weiter",
     "add": "Hinzufügen",
@@ -3175,6 +3179,7 @@
       "notes": "Notizen",
       "deleteMessage": "Diese Veranstaltung löschen?",
       "manageAttendees": "Gäste",
+      "manageAttendeesNamed": "Gäste von {{event}}",
       "attendeesTitle": "Gäste — {{title}}",
       "noAttendees": "Noch niemand eingeladen.",
       "addAttendee": "Hinzufügen",
@@ -4473,7 +4478,9 @@
       "none": "Keine Duplikate gefunden.",
       "failed": "Die Suche nach Duplikaten ist fehlgeschlagen.",
       "merge": "Zusammenführen…",
+      "mergeNamed": "{{a}} und {{b}} zusammenführen",
       "dismiss": "Kein Duplikat",
+      "dismissNamed": "{{a}} und {{b}} sind keine Duplikate",
       "dismissed": "Dauerhaft ausgeblendet.",
       "pair": "{{a}} und {{b}}",
       "reason": {
