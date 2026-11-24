@@ -4,6 +4,9 @@
     "logout": "Esci",
     "accountMenu": "Account",
     "openNavigation": "Apri la navigazione",
+    "openNavigationWithPending_one": "Apri la navigazione, {{count}} condivisione attende la tua risposta",
+    "openNavigationWithPending_other": "Apri la navigazione, {{count}} condivisioni attendono la tua risposta",
+    "openNavigationWithPending_many": "Apri la navigazione, {{count}} condivisioni attendono la tua risposta",
     "update": {
       "available": "È disponibile una nuova versione di Mycorrhizal CRM.",
       "reload": "Ricarica"
@@ -388,12 +391,14 @@
     "workInformation": "Informazioni Lavorative",
     "contactInformation": "Informazioni di Contatto Aggiuntive",
     "circles": "Cerchie",
+    "addCircleNamed": "Aggiungi cerchia",
     "selectCircle": "Seleziona cerchia esistente...",
     "newCircle": "Oppure crea nuova...",
     "tags": "Tag",
     "selectTag": "Seleziona tag esistente...",
     "setAsPreferred": "Imposta come preferito",
     "newTag": "Oppure crea nuovo...",
+    "addTag": "Aggiungi tag",
     "add": {
       "button": "Aggiungi Contatto",
       "title": "Aggiungi Nuovo Contatto",
@@ -472,6 +477,7 @@
         "help": {
           "ignore": "Viene salvata intatta con il contatto e riesportata in seguito, ma qui non è ricercabile né modificabile. Non si perde nulla.",
           "map": "Inserisce il valore in un campo personalizzato che hai già creato, così è ricercabile e modificabile.",
+          "chooseField": "Scegli un campo o scegli un'altra azione.",
           "mapEmpty": "Non hai ancora campi personalizzati. Scegli «Crea nuovo campo» per crearne uno da questa proprietà.",
           "create": "Crea un nuovo campo personalizzato ricercabile da questa proprietà e lo compila per ogni contatto importato."
         }
@@ -1239,6 +1245,7 @@
     "delete": "Elimina",
     "deleteNamed": "Elimina {{name}}",
     "deleteEntry": "Elimina voce {{number}}",
+    "addNamed": "Aggiungi {{name}}",
     "back": "Indietro",
     "continue": "Continua",
     "add": "Aggiungi",
@@ -3280,6 +3287,7 @@
       "notes": "Note",
       "deleteMessage": "Eliminare questo evento?",
       "manageAttendees": "Invitati",
+      "manageAttendeesNamed": "Invitati di {{event}}",
       "attendeesTitle": "Invitati — {{title}}",
       "noAttendees": "Nessuno è ancora invitato.",
       "addAttendee": "Aggiungi",
@@ -4112,6 +4120,7 @@
       "validation_invalid_request_body": "Corpo della richiesta non valido",
       "import_session_not_found": "Sessione di importazione scaduta o non trovata",
       "import_session_expired": "Sessione di importazione scaduta",
+      "import_session_limit": "Sono in corso troppe importazioni. Terminane o annullane una prima.",
       "import_endpoint_csv_vcf_only": "Questo endpoint è riservato alle importazioni CSV o VCF",
       "import_endpoint_vcf_records_only": "Questo endpoint è riservato alle importazioni VCF o di record",
       "import_preview_required": "Genera prima un’anteprima",
@@ -4338,6 +4347,7 @@
       "import_csv_not_text": "Questo file non è un file CSV di solo testo. Esportalo di nuovo come CSV (UTF-8) e riprova.",
       "import_disk_space_low": "spazio su disco insufficiente per importare {{total}} contatti: {{reason}}",
       "import_field_mapping_target_invalid": "Un valore importato può essere inserito solo in un campo personalizzato valido per i contatti",
+      "import_field_mapping_unknown_field": "Scegli un campo esistente per «{{property}}» o scegli un'altra azione.",
       "import_field_mappings_invalid": "{{reason}}",
       "import_file_unreadable": "{{reason}}",
       "integration_request_body_invalid": "{{reason}}",
@@ -4598,7 +4608,9 @@
       "none": "Nessun duplicato trovato.",
       "failed": "Impossibile cercare i duplicati.",
       "merge": "Unisci…",
+      "mergeNamed": "Unisci {{a}} e {{b}}",
       "dismiss": "Non è un duplicato",
+      "dismissNamed": "{{a}} e {{b}} non sono duplicati",
       "dismissed": "Nascosto definitivamente.",
       "pair": "{{a}} e {{b}}",
       "reason": {

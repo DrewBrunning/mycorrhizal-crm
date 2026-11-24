@@ -573,6 +573,122 @@ describe('SharedByMePage', () => {
       expect(screen.queryByRole('alert')).toBeNull();
     });
 
+    // #2918: the row that held the opener unmounts, so focus used to fall to
+    // <body>. Move it to the next row's same action, else the previous row's,
+    // else the section heading.
+    test('removing an ended share focuses the next row Remove (#2918)', async () => {
+      serveOutgoing([ended({ id: 'e1', label: 'Old One' }), ended({ id: 'e2', label: 'Old Two' })]);
+      renderPage();
+      await openEnded();
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old One/ }));
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: /^Remove\b/ }),
+      );
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(screen.queryByText('Old One')).toBeNull());
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Remove share of Old Two to bob' }),
+      );
+    });
+
+    test('removing the last row of a section focuses the previous row Remove (#2918)', async () => {
+      serveOutgoing([ended({ id: 'e1', label: 'Old One' }), ended({ id: 'e2', label: 'Old Two' })]);
+      renderPage();
+      await openEnded();
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Two/ }));
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: /^Remove\b/ }),
+      );
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(screen.queryByText('Old Two')).toBeNull());
+      expect(document.activeElement).toBe(
+        screen.getByRole('button', { name: 'Remove share of Old One to bob' }),
+      );
+    });
+
+    test('removing the only share focuses the page, not <body> (#2918)', async () => {
+      serveOutgoing([ended()]);
+      renderPage();
+      await openEnded();
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Club/ }));
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: /^Remove\b/ }),
+      );
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(screen.queryByText('Old Club')).toBeNull());
+      await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+      expect(document.activeElement).toHaveAttribute('tabindex', '-1');
+      expect(document.activeElement).toHaveTextContent('Shared by me');
+    });
+
+    test('removing the last ended share falls back to a section heading (#2918)', async () => {
+      serveOutgoing([ended({ id: 'e1', label: 'Old Club' }), grant()]);
+      renderPage();
+      await openEnded();
+      fireEvent.click(await screen.findByRole('button', { name: /^Remove share of Old Club/ }));
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: /^Remove\b/ }),
+      );
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(screen.queryByText('Old Club')).toBeNull());
+      const heading = screen.getByRole('heading', { name: 'Live shares' });
+      await waitFor(() => expect(document.activeElement).toBe(heading));
+      expect(heading).toHaveAttribute('tabindex', '-1');
+    });
+
+    test('re-confirming a live share focuses that grant Edit button (#2918)', async () => {
+      mockApi(
+        'get',
+        '/share-grants/outgoing',
+        page([grant({ reconfirm_sections: ['addresses'] })]),
+      );
+      mockApi('post', '/share-grants/g1/reconfirm', {
+        share_grant: grant({ reconfirm_sections: [] }),
+      });
+      renderPage();
+      fireEvent.click(
+        await screen.findByRole('button', { name: /^Review and re-confirm Alice Anderson/ }),
+      );
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Confirm' }),
+      );
+
+      const edit = await screen.findByRole('button', { name: 'Edit Alice Anderson for bob' });
+      await waitFor(() => expect(document.activeElement).toBe(edit));
+    });
+
+    test('re-confirming into an ended grant falls back to the page when Edit is gone (#2918)', async () => {
+      mockApi(
+        'get',
+        '/share-grants/outgoing',
+        page([grant({ reconfirm_sections: ['addresses'] })]),
+      );
+      // The server can end the grant in the same round trip: the re-confirmed
+      // row then renders Remove, not Edit, so the saved Edit target is gone.
+      mockApi('post', '/share-grants/g1/reconfirm', {
+        share_grant: grant({ status: 'declined', reconfirm_sections: [] }),
+      });
+      renderPage();
+      fireEvent.click(
+        await screen.findByRole('button', { name: /^Review and re-confirm Alice Anderson/ }),
+      );
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Confirm' }),
+      );
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: 'Edit Alice Anderson for bob' })).toBeNull(),
+      );
+      await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+      expect(document.activeElement).toHaveAttribute('tabindex', '-1');
+      expect(document.activeElement).toHaveTextContent('Shared by me');
+    });
+
     test('a 409 share_grant_not_ended shows the localized reason and keeps the row', async () => {
       mockApi('get', '/share-grants/outgoing', page([ended()]));
       mockApi(

@@ -96,6 +96,8 @@ func TestUploadMycorrhizalBundle_SessionLimit(t *testing.T) {
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, newFileUploadRequest(t, "/import/mycorrhizal/upload", "bundle.json", body))
 	alAssertError(t, w, http.StatusTooManyRequests, "RATE_LIMIT_EXCEEDED", "")
+	// Issue #2916: the refusal is localizable, not an English-only sentence.
+	assert.Contains(t, w.Body.String(), `"reason_code":"import_session_limit"`)
 }
 
 // TestMycorrhizalHandlers_ErrorBranches covers the remaining validation and

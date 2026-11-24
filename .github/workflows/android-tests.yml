@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main, "release/**"]
+    # Draft PRs run the fast checks only; marking ready or adding `ci:full`
+    # starts the heavy suites (see the run_heavy gate below and
+    # .github/AGENTS.md "Draft PRs and the heavy-suite gate").
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
   # Issue #578, B5: the instrumented E2E job (android-e2e) moved OFF the PR
   # path onto push:main + nightly + on demand; `test` (Robolectric + detekt
   # + lint) is the fast PR gate. See android-e2e's header for the trade-off.
@@ -62,6 +66,7 @@ jobs:
       openapi: ${{ steps.resolve.outputs.openapi }}
       infra: ${{ steps.resolve.outputs.infra }}
       workflows: ${{ steps.resolve.outputs.workflows }}
+      run_heavy: ${{ steps.heavy.outputs.run_heavy }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -102,6 +107,29 @@ jobs:
           INFRA_CHANGED: ${{ steps.filter.outputs.infra }}
           WORKFLOWS_CHANGED: ${{ steps.filter.outputs.workflows }}
 
+      # Draft gate (item 1): heavy suites run for every non-PR event, for a
+      # non-draft PR (except an unrelated `labeled` event), and for any PR
+      # carrying `ci:full`. Fast required checks stay ungated; the `test`
+      # aggregator below is not gated so the required context always reports.
+      - name: Resolve heavy-suite gate
+        id: heavy
+        run: |
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            run_heavy=true
+          elif printf '%s' "$PR_LABELS" | grep -qF '"ci:full"'; then
+            run_heavy=true
+          elif [ "$PR_DRAFT" = "false" ] && [ "$PR_ACTION" != "labeled" ]; then
+            run_heavy=true
+          else
+            run_heavy=false
+          fi
+          echo "run_heavy=$run_heavy" | tee -a "$GITHUB_OUTPUT"
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_ACTION: ${{ github.event.action }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+
   android-unit:
     permissions:
       contents: read
@@ -116,7 +144,7 @@ jobs:
     # it the test-retry plugin's maxRetries=0-on-schedule tier would never
     # fire on a normal night (paths-filter is usually false with no
     # android/** change).
-    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && (github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true')
 
     steps:
       - name: Checkout repository
@@ -343,7 +371,7 @@ jobs:
     # it the test-retry plugin's maxRetries=0-on-schedule tier would never
     # fire on a normal night (paths-filter is usually false with no
     # android/** change).
-    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && (github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true')
 
     steps:
       - name: Checkout repository
@@ -390,7 +418,7 @@ jobs:
     # it the test-retry plugin's maxRetries=0-on-schedule tier would never
     # fire on a normal night (paths-filter is usually false with no
     # android/** change).
-    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && (github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.workflows == 'true')
 
     steps:
       - name: Checkout repository
@@ -462,7 +490,7 @@ jobs:
     # backend/** is included because the embedded server binary is
     # cross-compiled from backend/ here; a backend-only change can break the
     # GOOS=android build and must not merge untested (#1262).
-    if: github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    if: needs.changes.outputs.run_heavy == 'true' && (github.event_name == 'schedule' || needs.changes.outputs.android == 'true' || needs.changes.outputs.openapi == 'true' || needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true')
 
     steps:
       - name: Checkout repository

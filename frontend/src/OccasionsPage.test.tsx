@@ -240,7 +240,7 @@ test('opens the attendees dialog from an event row', async () => {
   });
   renderPage();
 
-  fireEvent.click(screen.getByRole('button', { name: 'Attendees' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Attendees of Summer BBQ' }));
   expect(await screen.findByText('Attendees — Summer BBQ')).toBeInTheDocument();
 });
 

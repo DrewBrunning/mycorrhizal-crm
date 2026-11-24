@@ -226,6 +226,52 @@ test('an activity shows its location and linked contacts; edit and delete action
   expect(onDeleteCompletion).toHaveBeenCalledWith(5);
 });
 
+// #2907: a participant link is a real target, not inline text. Inline text
+// measured 19.9 px tall; WCAG 2.5.8 wants at least 24 px.
+test('participant links meet the 24 px target size (#2907)', () => {
+  renderTimeline([
+    {
+      type: 'activity',
+      date: '2026-08-03T12:00:00Z',
+      data: {
+        ID: 11,
+        title: 'Dinner',
+        date: '2026-08-03T12:00:00Z',
+        contacts: [
+          { ID: 1, firstname: 'María José', lastname: 'García-Fernández' },
+          { ID: 2, firstname: '李', lastname: '小龙' },
+        ],
+        CreatedAt: '2026-08-03T12:00:00Z',
+        UpdatedAt: '2026-08-03T12:00:00Z',
+      } as never,
+    },
+  ]);
+
+  const links = screen.getAllByRole('button', { name: /García-Fernández|小龙/ });
+  expect(links).toHaveLength(2);
+  // jsdom reports the <button>'s resolved `display` as `flex` even when the
+  // applied rule says `inline-flex`, so read the declarations the class
+  // actually carries.
+  const applied = Array.from(document.styleSheets)
+    .flatMap((sheet) => {
+      try {
+        return Array.from(sheet.cssRules);
+      } catch {
+        return [];
+      }
+    })
+    .filter(
+      (rule): rule is CSSStyleRule =>
+        'selectorText' in rule && links[0].matches((rule as CSSStyleRule).selectorText),
+    )
+    .map((rule) => rule.style.cssText)
+    .join(';');
+  expect(applied).toContain('display: inline-flex');
+  for (const link of links) {
+    expect(link).toHaveStyle({ minHeight: '24px', alignItems: 'center' });
+  }
+});
+
 test('an activity with a missing date falls back to N/A in both date renders', () => {
   renderTimeline([
     {

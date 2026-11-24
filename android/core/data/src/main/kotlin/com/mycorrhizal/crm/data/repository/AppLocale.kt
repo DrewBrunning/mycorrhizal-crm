@@ -34,6 +34,14 @@ object AppLocale {
     fun shouldApplyInAppOverride(sdkInt: Int, systemHasLocale: Boolean): Boolean =
         sdkInt < Build.VERSION_CODES.TIRAMISU || !systemHasLocale
 
+    /**
+     * #2937: the in-app override to keep at start-up on API 33+, given the OS per-app [systemTag].
+     * The OS setting is authoritative in both directions: a chosen OS language is adopted, and an
+     * EMPTY OS locale means the user picked "System default" (or never chose), so any stored
+     * override is dropped (null) rather than re-seeded into the OS.
+     */
+    fun reconcileStoredOverride(systemTag: String?): String? = systemTag
+
     /** The OS per-app language tag on API 33+, or null when unset/unsupported. */
     fun systemLanguageTag(context: Context): String? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return null
