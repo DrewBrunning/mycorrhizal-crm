@@ -9,6 +9,8 @@ import (
 
 	"mycorrhizal/contactmodel"
 	apperrors "mycorrhizal/errors"
+	"mycorrhizal/internal/dbtest"
+	"mycorrhizal/internal/logtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
 
@@ -734,6 +736,233 @@ func TestEntityHelper_PlacesCarryAddressSensitivityAndName(t *testing.T) {
 	assert.Equal(t, "private", out.Created[0].Entity.Sensitivity, "the entity takes the strictest address sensitivity")
 	assert.NotContains(t, string(out.Created[0].Entity.Core), "sensitivity")
 	assert.Empty(t, e.suggestions(t, "mode=contact_values&kind=place").Groups)
+}
+
+// groupJSON mirrors the suggestion group and the helper's created rows through
+// raw JSON, so the test also proves the new fields are on the wire.
+type groupJSON struct {
+	Key string `json:"key"`
+	// Name is the proposed name; contacts are the group's members.
+	Name               string `json:"name"`
+	ExistingEntityID   string `json:"existing_entity_id"`
+	ExistingEntityName string `json:"existing_entity_name"`
+	Contacts           []struct {
+		ContactID uint `json:"contact_id"`
+	} `json:"contacts"`
+}
+
+type fromContactsJSON struct {
+	Created []struct {
+		Key    string `json:"key"`
+		Entity struct {
+			ID string `json:"id"`
+		} `json:"entity"`
+		Links []struct {
+			EntityID string `json:"entity_id"`
+		} `json:"links"`
+	} `json:"created"`
+	Skipped []struct {
+		Key    string `json:"key"`
+		Reason string `json:"reason"`
+	} `json:"skipped"`
+}
+
+func (e *mergeEnv) valueGroupsJSON(t *testing.T) []groupJSON {
+	t.Helper()
+	w := e.do(http.MethodGet, "/entities/suggestions?mode=contact_values&kind=organisation&limit=100", nil)
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var body struct {
+		Groups []groupJSON `json:"groups"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	return body.Groups
+}
+
+// Issue #2919: a contact value that already names a live entity of the same
+// kind is linked to that entity instead of creating a second one. The no-match
+// group must still create an entity.
+func TestEntityHelper_LinksToAnExistingSameKeyEntityInsteadOfCreatingADuplicate(t *testing.T) {
+	e := newMergeEnv(t)
+	existing := e.org(t, "Green Acres Co-op")
+	c1 := orgContact(e, t, "Ada", "Green Acres Co-op")
+	c2 := orgContact(e, t, "Bob", "Green Acres Coop") // same comparison key
+	c3 := orgContact(e, t, "Cy", "Globex")
+
+	groups := e.valueGroupsJSON(t)
+	require.Len(t, groups, 2)
+	byName := map[string]groupJSON{}
+	for _, g := range groups {
+		byName[g.Name] = g
+	}
+	green := byName["Green Acres Co-op"]
+	globex := byName["Globex"]
+	require.NotEmpty(t, green.Key)
+	require.NotEmpty(t, globex.Key)
+	assert.Equal(t, existing.ID, green.ExistingEntityID, "the group names the existing entity")
+	assert.Equal(t, "Green Acres Co-op", green.ExistingEntityName)
+	assert.Empty(t, globex.ExistingEntityID, "no live entity answers to Globex")
+
+	w := e.do(http.MethodPost, "/entities/from-contacts", map[string]any{"kind": "organisation", "groups": []map[string]any{
+		{"key": green.Key, "role": "employee", "existing_entity_id": existing.ID, "contact_ids": []uint{c1.ID, c2.ID}},
+		{"key": globex.Key, "role": "employee", "contact_ids": []uint{c3.ID}},
+	}})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var out fromContactsJSON
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
+	assert.Empty(t, out.Skipped)
+	require.Len(t, out.Created, 2)
+	created := map[string]struct {
+		ID    string
+		Links int
+	}{}
+	for _, cr := range out.Created {
+		created[cr.Key] = struct {
+			ID    string
+			Links int
+		}{cr.Entity.ID, len(cr.Links)}
+	}
+	assert.Equal(t, existing.ID, created[green.Key].ID, "the existing entity is reused, not duplicated")
+	assert.Equal(t, 2, created[green.Key].Links)
+	assert.NotEqual(t, existing.ID, created[globex.Key].ID)
+	assert.Equal(t, 1, created[globex.Key].Links)
+
+	var ents int64
+	require.NoError(t, e.db.Model(&models.Entity{}).Where("user_id = ?", e.userID).Count(&ents).Error)
+	assert.EqualValues(t, 2, ents, "one existing entity plus one genuinely new one")
+
+	var links []models.ContactEntityLink
+	require.NoError(t, e.db.Where("entity_id = ?", existing.ID).Find(&links).Error)
+	require.Len(t, links, 2)
+	assert.ElementsMatch(t, []string{c1.VCardUID, c2.VCardUID}, []string{links[0].ContactVCardUID, links[1].ContactVCardUID})
+
+	// Resumable: the linked values are no longer proposed.
+	assert.Empty(t, e.valueGroupsJSON(t))
+}
+
+// Issue #2919: an existing_entity_id that is unknown, another user's, or not
+// the group's own entity is skipped safely and writes nothing.
+func TestEntityHelper_RefusesAnExistingEntityIdThatIsNotTheGroupsOwn(t *testing.T) {
+	e := newMergeEnv(t)
+	existing := e.org(t, "Green Acres Co-op")
+	mismatched := e.org(t, "Globex")
+	c := orgContact(e, t, "Ada", "Green Acres Co-op")
+	green := e.valueGroupsJSON(t)[0]
+	require.Equal(t, existing.ID, green.ExistingEntityID)
+
+	foreignUser, _, _, _ := e.foreign(t)
+	foreignEnt := models.Entity{UserID: foreignUser.ID, Kind: models.EntityKindOrganisation, Name: "Green Acres Co-op", Core: "{}"}
+	require.NoError(t, e.db.Create(&foreignEnt).Error)
+
+	post := func(entityID string) fromContactsJSON {
+		w := e.do(http.MethodPost, "/entities/from-contacts", map[string]any{"kind": "organisation", "groups": []map[string]any{
+			{"key": green.Key, "role": "employee", "existing_entity_id": entityID, "contact_ids": []uint{c.ID}},
+		}})
+		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+		var out fromContactsJSON
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
+		assert.Empty(t, out.Created)
+		require.Len(t, out.Skipped, 1)
+		assert.Equal(t, "entity_not_found", out.Skipped[0].Reason)
+		return out
+	}
+	post(mismatched.ID)
+	post(foreignEnt.ID)
+	post("00000000-0000-4000-8000-000000000000")
+
+	var ents, links int64
+	require.NoError(t, e.db.Model(&models.Entity{}).Where("user_id = ?", e.userID).Count(&ents).Error)
+	require.NoError(t, e.db.Model(&models.ContactEntityLink{}).Where("user_id = ?", e.userID).Count(&links).Error)
+	assert.EqualValues(t, 2, ents, "no entity was created")
+	assert.EqualValues(t, 0, links, "no link was written")
+}
+
+// Issue #2919: a kind mismatch and a soft-deleted entity are treated exactly
+// like an unknown id (entity_not_found), and an explicitly empty
+// existing_entity_id behaves as if the field were omitted: the group links to
+// the live entity the suggestions offered, and a group without one still
+// creates.
+func TestEntityHelper_ExistingEntityIDKindAndLivenessMismatchesAreSkipped(t *testing.T) {
+	e := newMergeEnv(t)
+	existing := e.org(t, "Green Acres Co-op")
+	c := orgContact(e, t, "Ada", "Green Acres Co-op")
+	green := e.valueGroupsJSON(t)[0]
+	require.Equal(t, existing.ID, green.ExistingEntityID)
+
+	// A place entity: the helper's lookup is kind-scoped, so this id can never
+	// satisfy an organisation group.
+	place := e.place(t, "Green Acres Co-op")
+	// A soft-deleted organisation still answers to the same value key, but it
+	// is not live, so it must not be linked.
+	stale := models.Entity{UserID: e.userID, Kind: models.EntityKindOrganisation, Name: "Green Acres Co-op", Core: "{}"}
+	require.NoError(t, e.db.Create(&stale).Error)
+	require.NoError(t, e.db.Delete(&stale).Error)
+
+	post := func(entityID any) fromContactsJSON {
+		t.Helper()
+		group := map[string]any{"key": green.Key, "role": "employee", "contact_ids": []uint{c.ID}}
+		if entityID != nil {
+			group["existing_entity_id"] = entityID
+		}
+		w := e.do(http.MethodPost, "/entities/from-contacts", map[string]any{"kind": "organisation", "groups": []map[string]any{group}})
+		require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+		var out fromContactsJSON
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &out))
+		return out
+	}
+
+	for _, id := range []string{place.ID, stale.ID} {
+		out := post(id)
+		assert.Empty(t, out.Created, "id %s must not link", id)
+		require.Len(t, out.Skipped, 1)
+		assert.Equal(t, "entity_not_found", out.Skipped[0].Reason)
+	}
+
+	// An explicitly empty id is the same as omitting it: use the suggestion's
+	// existing entity rather than creating a duplicate.
+	out := post("")
+	require.Len(t, out.Created, 1, "an empty id should link to the suggested entity")
+	assert.Equal(t, existing.ID, out.Created[0].Entity.ID)
+	require.Len(t, out.Created[0].Links, 1)
+	// Re-posting the same decided group is a no-op: the value is now matched,
+	// so the group is no longer proposed.
+	w := e.do(http.MethodPost, "/entities/from-contacts", map[string]any{"kind": "organisation", "groups": []map[string]any{
+		{"key": green.Key, "role": "employee", "contact_ids": []uint{c.ID}},
+	}})
+	require.Equal(t, http.StatusCreated, w.Code, w.Body.String())
+	var again fromContactsJSON
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &again))
+	require.Len(t, again.Skipped, 1)
+	assert.Equal(t, "group_not_found", again.Skipped[0].Reason)
+
+	placeCount, _ := countEntitiesOfKind(t, e, models.EntityKindPlace)
+	orgCount, _ := countEntitiesOfKind(t, e, models.EntityKindOrganisation)
+	assert.EqualValues(t, 1, placeCount)
+	assert.EqualValues(t, 1, orgCount, "only the pre-existing live organisation; no duplicate and no resurrection")
+
+	var links int64
+	require.NoError(t, e.db.Model(&models.ContactEntityLink{}).Where("user_id = ?", e.userID).Count(&links).Error)
+	assert.EqualValues(t, 1, links, "exactly one link from the accepted post")
+}
+
+func countEntitiesOfKind(t *testing.T, e *mergeEnv, kind string) (int64, error) {
+	t.Helper()
+	var n int64
+	err := e.db.Model(&models.Entity{}).Where("user_id = ? AND kind = ?", e.userID, kind).Count(&n).Error
+	return n, err
+}
+
+// A database error while loading the live entities must surface as a 500, not
+// silently present every group as having no existing entity (which would
+// create duplicates on confirm).
+func TestEntityHelper_SuggestionLoadFailureIsAnError(t *testing.T) {
+	logtest.AllowWarnings(t, "the path under test logs the hidden-table database failure: Request error")
+	e := newMergeEnv(t)
+	orgContact(e, t, "Ada", "Green Acres Co-op")
+	dbtest.HideTable(t, e.db, "entities")
+
+	w := e.do(http.MethodGet, "/entities/suggestions?mode=contact_values&kind=organisation", nil)
+	assert.Equal(t, http.StatusInternalServerError, w.Code, w.Body.String())
+	assert.NotContains(t, w.Body.String(), "Green Acres", "no partial suggestion body on failure")
 }
 
 // Issue #2631: spelling variants of one organisation pair as normalized_name
