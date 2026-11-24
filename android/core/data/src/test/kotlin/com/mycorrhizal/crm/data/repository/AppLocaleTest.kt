@@ -1,6 +1,8 @@
 package com.mycorrhizal.crm.data.repository
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,5 +33,17 @@ class AppLocaleTest {
     fun `the local override is the fallback when API 33 has no OS locale`() {
         assertTrue(AppLocale.shouldApplyInAppOverride(sdkInt = 33, systemHasLocale = false))
         assertTrue(AppLocale.shouldApplyInAppOverride(sdkInt = 37, systemHasLocale = false))
+    }
+
+    // #2937: choosing "System default" in Android settings empties the OS per-app locale; the
+    // stored override must then be dropped, not copied back into the OS.
+    @Test
+    fun `an empty OS locale clears the stored override`() {
+        assertNull(AppLocale.reconcileStoredOverride(systemTag = null))
+    }
+
+    @Test
+    fun `a chosen OS locale is adopted as the override`() {
+        assertEquals("de", AppLocale.reconcileStoredOverride(systemTag = "de"))
     }
 }
