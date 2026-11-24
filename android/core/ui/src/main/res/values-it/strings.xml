@@ -2184,6 +2184,7 @@
     <string name="import_report_title">Righe non importate</string>
     <string name="import_report_row">Riga %1$d · %2$s</string>
     <string name="import_report_skipped">Saltata: %1$s</string>
+    <string name="import_report_skipped_by_choice">Saltata: hai scelto «Scarta nuovo»</string>
     <string name="import_report_failed">Non riuscita: %1$s</string>
     <string name="import_diag_birthday_warn">Il compleanno non è una data valida, quindi non verrà importato</string>
     <string name="import_diag_anniversary_warn">L’anniversario non è una data valida, quindi non verrà importato</string>

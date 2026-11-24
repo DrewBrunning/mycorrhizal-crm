@@ -2184,6 +2184,7 @@
     <string name="import_report_title">Lignes non importées</string>
     <string name="import_report_row">Ligne %1$d · %2$s</string>
     <string name="import_report_skipped">Ignorée : %1$s</string>
+    <string name="import_report_skipped_by_choice">Ignorée : vous avez choisi « Ignorer le nouveau »</string>
     <string name="import_report_failed">Échec : %1$s</string>
     <string name="import_diag_birthday_warn">La date de naissance n’est pas valide, elle ne sera donc pas importée</string>
     <string name="import_diag_anniversary_warn">L’anniversaire de mariage n’est pas une date valide, il ne sera donc pas importé</string>
