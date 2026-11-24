@@ -299,6 +299,11 @@ type valueRef struct {
 type valueGroup struct {
 	key    string
 	values []valueRef
+	// existingID/Name name the live entity of the same kind whose value key
+	// equals this group's, if any (issue #2919). Confirming the group links to
+	// it instead of creating a duplicate.
+	existingID   string
+	existingName string
 }
 
 func sensRank(s string) int {
@@ -314,8 +319,32 @@ func sensRank(s string) int {
 // loadValueGroups reads the user's live contacts' persisted ORG (or ADR)
 // values and groups the ones that compare equal, minus values already matched
 // by a live link of the same contact to a live entity with the same key (so a
-// re-run proposes only what is still unmatched). Read-only.
+// re-run proposes only what is still unmatched). A group whose key names a
+// live entity of the kind carries that entity, so confirming the group links to
+// it instead of creating a second one (issue #2919). Read-only.
 func loadValueGroups(db *gorm.DB, userID uint, kind string) ([]valueGroup, map[string]bool, error) {
+	// Live entities of the kind answer to the same value key as a contact's
+	// own value, whether or not any contact links to them yet.
+	var ents []models.Entity
+	if err := db.Select("id", "kind", "name", "core").
+		Where("user_id = ? AND kind = ?", userID, kind).
+		Order("created_at, id").Find(&ents).Error; err != nil {
+		return nil, nil, err
+	}
+	keyOf := make(map[string]string, len(ents))
+	existingByKey := make(map[string]*models.Entity, len(ents))
+	for i := range ents {
+		e := &ents[i]
+		k := entityValueKey(e)
+		keyOf[e.ID] = k
+		if k == "" {
+			continue
+		}
+		if _, ok := existingByKey[k]; !ok {
+			existingByKey[k] = e // oldest wins when the same key already has duplicates
+		}
+	}
+
 	// Keys already covered, per contact: "vcardUID|key".
 	var links []models.ContactEntityLink
 	if err := db.Where("user_id = ? AND kind = ?", userID, kind).Find(&links).Error; err != nil {
@@ -323,26 +352,12 @@ func loadValueGroups(db *gorm.DB, userID uint, kind string) ([]valueGroup, map[s
 	}
 	hasPrimary := map[string]bool{}
 	matched := map[string]bool{}
-	if len(links) > 0 {
-		ids := make([]string, 0, len(links))
-		for _, l := range links {
-			ids = append(ids, l.EntityID)
-			if l.IsPrimary {
-				hasPrimary[l.ContactVCardUID] = true
-			}
+	for _, l := range links {
+		if l.IsPrimary {
+			hasPrimary[l.ContactVCardUID] = true
 		}
-		var ents []models.Entity
-		if err := db.Where("user_id = ? AND id IN ?", userID, ids).Find(&ents).Error; err != nil {
-			return nil, nil, err
-		}
-		keyOf := map[string]string{}
-		for i := range ents {
-			keyOf[ents[i].ID] = entityValueKey(&ents[i])
-		}
-		for _, l := range links {
-			if k := keyOf[l.EntityID]; k != "" {
-				matched[l.ContactVCardUID+"|"+k] = true
-			}
+		if k := keyOf[l.EntityID]; k != "" {
+			matched[l.ContactVCardUID+"|"+k] = true
 		}
 	}
 
@@ -360,6 +375,9 @@ func loadValueGroups(db *gorm.DB, userID uint, kind string) ([]valueGroup, map[s
 		g := groups[v.key]
 		if g == nil {
 			g = &valueGroup{key: v.key}
+			if e := existingByKey[v.key]; e != nil {
+				g.existingID, g.existingName = e.ID, e.Name
+			}
 			groups[v.key] = g
 			order = append(order, v.key)
 		}
@@ -478,7 +496,11 @@ func (g valueGroup) response(kind string, hasPrimary map[string]bool) models.Ent
 			ValueName: v.name, HasPrimary: hasPrimary[v.vcardUID],
 		})
 	}
-	return models.EntityValueGroup{Key: g.key, Kind: kind, Name: variants[0], Reason: g.reason(kind), Variants: variants, Contacts: contacts}
+	return models.EntityValueGroup{
+		Key: g.key, Kind: kind, Name: variants[0], Reason: g.reason(kind),
+		Variants: variants, Contacts: contacts,
+		ExistingEntityID: g.existingID, ExistingEntityName: g.existingName,
+	}
 }
 
 // SuggestEntityValueGroups proposes groups of the user's own ORG (kind
@@ -564,13 +586,17 @@ type EntityFromContactsOutcome struct {
 	Skipped []models.EntityFromContactsSkip
 }
 
-// CreateEntitiesFromContacts creates, for each confirmed group, one entity and
-// one link per confirmed contact, in one transaction. The groups are
-// recomputed server-side from the contacts' persisted values: a key that is no
-// longer proposed (already matched, or never existed) and a contact that is
-// not in the group (including another user's id) are reported as skipped,
-// never trusted. A link is primary only when requested and the contact has no
-// other live primary of the kind. Contact rows are only read: no value is
+// CreateEntitiesFromContacts applies, for each confirmed group, one entity and
+// one link per confirmed contact, in one transaction. A group whose value
+// already names a live entity of the same kind links to that entity instead of
+// creating a duplicate (issue #2919); any other group gets a new entity. The
+// groups are recomputed server-side from the contacts' persisted values: a key
+// that is no longer proposed (already matched, or never existed) and a contact
+// that is not in the group (including another user's id) are reported as
+// skipped, never trusted; an existing_entity_id that is unknown, another
+// user's, not the kind, or not the group's value is skipped as
+// entity_not_found. A link is primary only when requested and the contact has
+// no other live primary of the kind. Contact rows are only read: no value is
 // edited or removed.
 func CreateEntitiesFromContacts(db *gorm.DB, userID uint, kind string, reqs []models.EntityFromContactsGroup) (*EntityFromContactsOutcome, error) {
 	out := &EntityFromContactsOutcome{Created: []EntityFromContactsCreated{}, Skipped: []models.EntityFromContactsSkip{}}
@@ -614,45 +640,70 @@ func CreateEntitiesFromContacts(db *gorm.DB, userID uint, kind string, reqs []mo
 			if len(chosen) == 0 {
 				continue
 			}
-			name := strings.TrimSpace(req.Name)
-			if name == "" {
-				name = g.variants()[0]
+			// A value that already names a live entity of the kind is linked
+			// to it instead of creating a second one (issue #2919). The group
+			// may name the entity explicitly; otherwise the live entity the
+			// suggestions offered is used. An id that is not the user's own,
+			// not of this kind, or not this group's value is skipped safely.
+			var ent models.Entity
+			existingID := req.ExistingEntityID
+			if existingID == "" {
+				existingID = g.existingID
 			}
-			if utf8.RuneCountInString(name) > models.EntityNameMaxLength {
-				out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "name_invalid"})
-				continue
-			}
-			rep := chosen[0]
-			for _, v := range chosen {
-				if v.name == name {
-					rep = v
-					break
+			if existingID != "" {
+				if err := tx.Where("user_id = ? AND kind = ? AND id = ?", userID, kind, existingID).First(&ent).Error; err != nil {
+					if errors.Is(err, gorm.ErrRecordNotFound) {
+						out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "entity_not_found"})
+						continue
+					}
+					return err
 				}
-			}
-			ent := models.Entity{UserID: userID, Kind: kind, Name: name, Sensitivity: models.RelationshipSensitivityNormal}
-			switch kind {
-			case models.EntityKindOrganisation:
-				org := *rep.org
-				org.ID = ""
-				if err := ent.SetCore(&models.OrganisationCore{Organization: org}); err != nil { // # pragma: no cover — the value came from a persisted Card and the core schema accepts every Organization the Card schema does
-					out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "core_invalid"})
+				if entityValueKey(&ent) != req.Key {
+					out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "entity_not_found"})
 					continue
 				}
-			case models.EntityKindPlace:
-				addr := *rep.addr
-				addr.ID, addr.Sensitivity = "", "" // the entity column is the single source of sensitivity
+			}
+			if existingID == "" {
+				name := strings.TrimSpace(req.Name)
+				if name == "" {
+					name = g.variants()[0]
+				}
+				if utf8.RuneCountInString(name) > models.EntityNameMaxLength {
+					out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "name_invalid"})
+					continue
+				}
+				rep := chosen[0]
 				for _, v := range chosen {
-					if sensRank(v.sens) > sensRank(ent.Sensitivity) {
-						ent.Sensitivity = v.sens
+					if v.name == name {
+						rep = v
+						break
 					}
 				}
-				if err := ent.SetCore(&models.PlaceCore{Address: addr}); err != nil { // # pragma: no cover — the value came from a persisted Card and its sensitivity was cleared above, the only thing the place core rejects
-					out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "core_invalid"})
-					continue
+				ent = models.Entity{UserID: userID, Kind: kind, Name: name, Sensitivity: models.RelationshipSensitivityNormal}
+				switch kind {
+				case models.EntityKindOrganisation:
+					org := *rep.org
+					org.ID = ""
+					if err := ent.SetCore(&models.OrganisationCore{Organization: org}); err != nil { // # pragma: no cover — the value came from a persisted Card and the core schema accepts every Organization the Card schema does
+						out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "core_invalid"})
+						continue
+					}
+				case models.EntityKindPlace:
+					addr := *rep.addr
+					addr.ID, addr.Sensitivity = "", "" // the entity column is the single source of sensitivity
+					for _, v := range chosen {
+						if sensRank(v.sens) > sensRank(ent.Sensitivity) {
+							ent.Sensitivity = v.sens
+						}
+					}
+					if err := ent.SetCore(&models.PlaceCore{Address: addr}); err != nil { // # pragma: no cover — the value came from a persisted Card and its sensitivity was cleared above, the only thing the place core rejects
+						out.Skipped = append(out.Skipped, models.EntityFromContactsSkip{Key: req.Key, Reason: "core_invalid"})
+						continue
+					}
 				}
-			}
-			if err := tx.Create(&ent).Error; err != nil {
-				return err
+				if err := tx.Create(&ent).Error; err != nil {
+					return err
+				}
 			}
 			created := EntityFromContactsCreated{Key: req.Key, Entity: ent, Links: []models.ContactEntityLink{}}
 			for _, v := range chosen {

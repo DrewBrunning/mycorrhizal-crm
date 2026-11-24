@@ -4667,6 +4667,14 @@
       "createPlace_one": "Créer {{count}} lieu",
       "createPlace_many": "Créer {{count}} lieux",
       "createPlace_other": "Créer {{count}} lieux",
+      "linkExisting": "Lier à l'entrée existante : {{name}}",
+      "linkExistingOrganisation_one": "Lier à l'organisation existante",
+      "linkExistingOrganisation_many": "Lier {{count}} groupes à des organisations existantes",
+      "linkExistingOrganisation_other": "Lier {{count}} groupes à des organisations existantes",
+      "linkExistingPlace_one": "Lier au lieu existant",
+      "linkExistingPlace_many": "Lier {{count}} groupes à des lieux existants",
+      "linkExistingPlace_other": "Lier {{count}} groupes à des lieux existants",
+      "createAndLink": "Créer les nouveaux groupes et lier les groupes existants",
       "createdOrganisation_one": "{{count}} organisation créée.",
       "createdOrganisation_many": "{{count}} organisations créées.",
       "createdOrganisation_other": "{{count}} organisations créées.",
@@ -4677,7 +4685,8 @@
         "group_not_found": "{{name}} : ignoré. Il existe peut-être déjà ou ne correspond plus à vos contacts.",
         "contact_not_in_group": "{{name}} : un contact n'en fait plus partie.",
         "name_invalid": "{{name}} : le nom n'est pas valide.",
-        "core_invalid": "{{name}} : ses informations ne sont pas valides."
+        "core_invalid": "{{name}} : ses informations ne sont pas valides.",
+        "entity_not_found": "{{name}} : l'organisation ou le lieu correspondant n'existe plus."
       }
     }
   },
