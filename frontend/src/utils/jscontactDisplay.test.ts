@@ -1,8 +1,17 @@
 import { afterEach, describe, expect, test } from 'vitest';
+import { type DateFormat, formatDateWithFormat } from '../DateFormatProvider';
 import i18n from '../i18n/config';
 import { describeJSContact } from './jscontactDisplay';
 
 const t = i18n.t.bind(i18n);
+
+// Pull just the anniversary items out of a card's display model.
+function anniversaryItems(card: Record<string, unknown>, dateFormat: DateFormat = 'eu') {
+  return (
+    describeJSContact(card, t, dateFormat).sections.find((s) => s.token === 'anniversaries')
+      ?.items ?? []
+  );
+}
 
 afterEach(async () => {
   await i18n.changeLanguage('en');
@@ -121,5 +130,55 @@ describe('describeJSContact', () => {
     expect(out.sections.find((s) => s.token === 'anniversaries')?.items).toEqual([
       'anniversary: 02.01.2000',
     ]);
+  });
+
+  test('renders a utc anniversary date, with and without a kind (#2908)', () => {
+    expect(
+      anniversaryItems({ anniversaries: { a1: { kind: 'birth', date: { utc: '1990-05-06' } } } }),
+    ).toEqual(['Birthday: 06.05.1990']);
+    // No kind: the date renders alone rather than as "kind: date".
+    expect(anniversaryItems({ anniversaries: { a1: { date: { utc: '2001-02-03' } } } })).toEqual([
+      '03.02.2001',
+    ]);
+  });
+
+  test('labels known kinds and keeps an unknown kind as the raw token (#2908)', () => {
+    expect(
+      anniversaryItems({
+        anniversaries: { a1: { kind: 'death', date: { year: 2000, month: 1, day: 2 } } },
+      }),
+    ).toEqual(['Date of death: 02.01.2000']);
+    expect(
+      anniversaryItems({
+        anniversaries: { a1: { kind: 'future-kind', date: { year: 2000, month: 1, day: 2 } } },
+      }),
+    ).toEqual(['future-kind: 02.01.2000']);
+    // A full date with no kind renders as the date alone.
+    expect(
+      anniversaryItems({ anniversaries: { a1: { date: { year: 2000, month: 1, day: 2 } } } }),
+    ).toEqual(['02.01.2000']);
+  });
+
+  test('omits an anniversary whose date is missing, empty or has no valid parts (#2908)', () => {
+    // No date at all, an empty date object, non-numeric/negative parts, and a
+    // date supplied as a bare string instead of a JSContact date object.
+    expect(anniversaryItems({ anniversaries: { a1: { kind: 'birth' } } })).toEqual([]);
+    expect(anniversaryItems({ anniversaries: { a1: { kind: 'birth', date: {} } } })).toEqual([]);
+    expect(
+      anniversaryItems({
+        anniversaries: { a1: { kind: 'birth', date: { year: Number.NaN, month: -1, day: 0 } } },
+      }),
+    ).toEqual([]);
+    expect(
+      anniversaryItems({ anniversaries: { a1: { kind: 'birth', date: '1985-11-28' } } }),
+    ).toEqual([]);
+  });
+
+  test('passes a year-only anniversary through the date formatter (#2908)', () => {
+    // With no month/day the partial parts are joined as "YYYY" and handed to
+    // the formatter unchanged (it parses a bare year as its own date).
+    expect(
+      anniversaryItems({ anniversaries: { a1: { kind: 'birth', date: { year: 1985 } } } }),
+    ).toEqual([`Birthday: ${formatDateWithFormat('1985', 'eu')}`]);
   });
 });
