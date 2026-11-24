@@ -1126,6 +1126,7 @@
   },
   "reminders": {
     "title": "Erinnerungen",
+    "occasionTitle": "Anlass — {{title}}",
     "add": "Erinnerung hinzufügen",
     "addReminder": "Erinnerung hinzufügen",
     "editReminder": "Erinnerung bearbeiten",
