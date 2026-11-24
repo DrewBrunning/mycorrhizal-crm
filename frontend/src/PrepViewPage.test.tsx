@@ -132,6 +132,39 @@ test('renders every briefing block from the composition endpoint', async () => {
   expect(screen.getByText('Upcoming dates')).toBeInTheDocument();
 });
 
+// #2920 item 4: only contact-provided text may be exempt from the pseudo-locale
+// scan, so the marked nodes must exist for real names/activities and must not
+// mark the translated fallback.
+test('marks contact-provided briefing text as user content', async () => {
+  mockBriefingFetch(fullBriefing);
+  renderPage();
+
+  const heading = await screen.findByRole('heading', { level: 1 });
+  expect(heading).toHaveTextContent('Alice Wonder');
+  expect(heading).toHaveAttribute('data-user-content');
+
+  expect(screen.getByText('Coffee (visit)')).toHaveAttribute('data-user-content');
+  expect(screen.getByText('Talked about her garden plans')).toHaveAttribute('data-user-content');
+});
+
+test('does not mark the translated fallback name or an absent description', async () => {
+  mockBriefingFetch({
+    ...fullBriefing,
+    name: '',
+    last_activity: { ...fullBriefing.last_activity, type: '', description: '' },
+  });
+  renderPage();
+
+  const heading = await screen.findByRole('heading', { level: 1 });
+  expect(heading).toHaveTextContent('Unknown');
+  expect(heading).not.toHaveAttribute('data-user-content');
+
+  // The activity title is still user-entered; the empty description renders
+  // no marked node.
+  expect(screen.getByText('Coffee')).toHaveAttribute('data-user-content');
+  expect(screen.queryByText('Talked about her garden plans')).toBeNull();
+});
+
 test('renders preferences and unbought gift ideas from their own endpoints', async () => {
   mockBriefingFetch(
     fullBriefing,
