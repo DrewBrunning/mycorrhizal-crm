@@ -136,6 +136,7 @@ class MainViewModel @Inject constructor(
     // emission) and a failed (offline) fetch is not retried in a loop.
     private var hydratedProfileId: String? = null
     private var profileHydration: Job? = null
+    private var inFlightProfileId: String? = null
 
     init {
         // Issues #528 + #692: resolve the server contract against whatever
@@ -199,7 +200,9 @@ class MainViewModel @Inject constructor(
     private suspend fun hydrateProfileIfNeeded() {
         val profileId = sessionManager.activeProfile()?.id ?: return
         if (profileId == hydratedProfileId) return
-        hydratedProfileId = profileId
+        // A fetch already in flight for this profile: let it finish rather than racing it.
+        if (profileHydration?.isActive == true && inFlightProfileId == profileId) return
+        inFlightProfileId = profileId
         profileHydration?.cancel()
         profileHydration = viewModelScope.launch {
             val user = try {
@@ -208,8 +211,9 @@ class MainViewModel @Inject constructor(
                 throw e
             } catch (_: Exception) {
                 null
-            } ?: return@launch
+            } ?: return@launch // #2939: leave hydratedProfileId unset so the next resume retries
             if (sessionManager.activeProfile()?.id != profileId) return@launch
+            hydratedProfileId = profileId
             sessionManager.setProfile(
                 ProfileUpdate(
                     userId = user.id.takeIf { it != 0 },
@@ -222,6 +226,17 @@ class MainViewModel @Inject constructor(
             )
             sessionManager.setSelfContactVCardUid(user.selfContactVCardUid)
         }
+    }
+
+    /**
+     * #2939: the app returned to the foreground. A session restored while the server was
+     * unreachable has no username/isAdmin (the drawer header and Administration depend on
+     * them), so retry the profile fetch now; a no-op once hydrated or while one is in flight.
+     */
+    fun onAppResumed() {
+        val state = session.value
+        if (!state.isLoggedIn || state.username != null) return
+        viewModelScope.launch { hydrateProfileIfNeeded() }
     }
 
     private fun runCheck() {

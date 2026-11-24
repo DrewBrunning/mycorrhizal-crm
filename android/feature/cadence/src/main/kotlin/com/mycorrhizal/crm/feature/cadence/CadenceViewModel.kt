@@ -111,7 +111,14 @@ class CadenceViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, policy = policies.firstOrNull()) }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+                    // #2938: no policy loaded yet = ErrorState + Retry, never "No cadence yet".
+                    _uiState.update {
+                        if (it.policy == null) {
+                            it.copy(isLoading = false, loadError = error, error = null)
+                        } else {
+                            it.copy(isLoading = false, error = error)
+                        }
+                    }
                 }
             )
         }
