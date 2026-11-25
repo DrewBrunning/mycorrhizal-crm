@@ -1,1 +1,0 @@
-- **"Couldn't reach the server" everywhere, not "Failed to fetch"** ([#2920](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2920)): sign-in, two-factor, passkeys, sessions, integrations, webhooks, notifications, users and address lookups now name a lost connection in your language instead of showing the browser's raw English error.
