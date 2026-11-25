@@ -4485,7 +4485,7 @@
       "merge": "Zusammenführen…",
       "mergeNamed": "{{a}} und {{b}} zusammenführen",
       "dismiss": "Kein Duplikat",
-      "dismissNamed": "{{a}} und {{b}} sind keine Duplikate",
+      "dismissNamed": "Kein Duplikat: {{a}} und {{b}}",
       "dismissed": "Dauerhaft ausgeblendet.",
       "pair": "{{a}} und {{b}}",
       "reason": {

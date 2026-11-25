@@ -10,7 +10,7 @@ import {
   ListItemText,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from './api/client';
 import type { TrashedContact, TrashedEntity } from './api/trash';
@@ -18,6 +18,7 @@ import LoadError from './components/LoadError';
 import ShareConfirmDialog from './components/ShareConfirmDialog';
 import { useSnackbar } from './context/SnackbarContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { useFocusAfterRemoval } from './hooks/useFocusAfterRemoval';
 import { useTrash } from './hooks/useTrash';
 import { formatDateTime } from './timeFormat';
 import { handleError } from './utils/errorHandler';
@@ -50,12 +51,24 @@ export default function TrashPage() {
     void refresh();
   }, [refresh]);
 
+  // Restore and Delete forever unmount the row that held focus; hand it to a
+  // neighbouring row's same button, else the page heading (#2918, #2920).
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const rows = useMemo(() => ({ items, entities }), [items, entities]);
+  const restoreFocus = useFocusAfterRemoval(headingRef, rows);
+  const purgeFocus = useFocusAfterRemoval(headingRef, items);
+  const restoreOrder = [
+    ...items.map((i) => `c${i.contact.id}`),
+    ...entities.map((e) => `e${e.entity.id}`),
+  ];
+
   // #2717: in-app, translated confirmations instead of window.confirm.
   const [confirm, setConfirm] = useState<
     { kind: 'purge'; item: TrashedContact } | { kind: 'empty' } | null
   >(null);
 
   const handleRestore = async (item: TrashedContact) => {
+    restoreFocus.request(restoreOrder, `c${item.contact.id}`);
     try {
       const result = await restore(item.contact.id);
       const lost = result.skipped.reduce((n, s) => n + s.count, 0);
@@ -70,6 +83,7 @@ export default function TrashPage() {
         showSuccess(t('trash.restored', { name: displayName(item) }));
       }
     } catch (err) {
+      restoreFocus.cancel();
       if (err instanceof ApiError && err.status === 409) {
         showError(t('trash.restoreConflict', { name: displayName(item) }));
       } else {
@@ -79,6 +93,7 @@ export default function TrashPage() {
   };
 
   const handleRestoreEntity = async (item: TrashedEntity) => {
+    restoreFocus.request(restoreOrder, `e${item.entity.id}`);
     try {
       const result = await restoreEntity(item.entity.id);
       showSuccess(t('entities.deleted.restored', { name: item.entity.name }));
@@ -86,15 +101,21 @@ export default function TrashPage() {
         showWarning(t('entities.deleted.sameNameLive'));
       }
     } catch (err) {
+      restoreFocus.cancel();
       handleError(err, { operation: 'restoring an entity' }, { showError });
     }
   };
 
   const handlePurge = async (item: TrashedContact) => {
+    purgeFocus.request(
+      items.map((i) => i.contact.id),
+      item.contact.id,
+    );
     try {
       await purge(item.contact.id);
       showSuccess(t('trash.purged', { name: displayName(item) }));
     } catch (err) {
+      purgeFocus.cancel();
       handleError(err, { operation: 'permanently deleting a contact' }, { showError });
     }
   };
@@ -118,7 +139,7 @@ export default function TrashPage() {
           mb: 1,
         }}
       >
-        <Typography variant="h5" component="h1">
+        <Typography variant="h5" component="h1" ref={headingRef} tabIndex={-1}>
           {t('trash.title')}
         </Typography>
         {items.length > 0 && (
@@ -173,6 +194,7 @@ export default function TrashPage() {
                   variant="contained"
                   aria-label={t('trash.restoreLabel', { name: displayName(item) })}
                   onClick={() => void handleRestore(item)}
+                  ref={restoreFocus.register(`c${item.contact.id}`)}
                 >
                   {t('trash.restore')}
                 </Button>
@@ -181,6 +203,7 @@ export default function TrashPage() {
                   color="error"
                   aria-label={t('trash.deleteForeverLabel', { name: displayName(item) })}
                   onClick={() => setConfirm({ kind: 'purge', item })}
+                  ref={purgeFocus.register(item.contact.id)}
                 >
                   {t('trash.deleteForever')}
                 </Button>
@@ -224,6 +247,7 @@ export default function TrashPage() {
                 variant="contained"
                 aria-label={t('trash.restoreLabel', { name: item.entity.name })}
                 onClick={() => void handleRestoreEntity(item)}
+                ref={restoreFocus.register(`e${item.entity.id}`)}
               >
                 {t('trash.restore')}
               </Button>

@@ -23,7 +23,9 @@ func init() { meerkatapi.DisableRateLimitForTesting() }
 
 func apiCfg(t *testing.T) *config.Config { return &config.Config{ProfilePhotoDir: t.TempDir()} }
 
-func reasonOf(e *apperrors.AppError) string {
+func reasonOf(t *testing.T, e *apperrors.AppError) string {
+	t.Helper()
+	requireNoReasonProse(t, e.ReasonCode, e.ReasonParams)
 	r, _ := e.Details["reason"].(string)
 	return r
 }
@@ -198,14 +200,14 @@ func TestMeerkatAPI_ConnectRejections(t *testing.T) {
 		srv := fakeWithContacts(t, 1)
 		_, appErr := mgr.Connect(ctx, user.ID, models.MeerkatConnectRequest{BaseURL: srv.URL, Username: "ada", Password: "SECRET-WRONG-PW"}, apiCfg(t))
 		require.NotNil(t, appErr)
-		assert.NotContains(t, reasonOf(appErr), "SECRET-WRONG-PW")
+		assert.NotContains(t, reasonOf(t, appErr), "SECRET-WRONG-PW")
 		assert.Equal(t, 0, mgr.CountActive(user.ID), "a failed connect leaves no credential-holding session")
 	})
 	t.Run("bad token", func(t *testing.T) {
 		srv := fakeWithContacts(t, 1)
 		_, appErr := mgr.Connect(ctx, user.ID, models.MeerkatConnectRequest{BaseURL: srv.URL, APIToken: "SECRET-BAD-TOKEN"}, apiCfg(t))
 		require.NotNil(t, appErr)
-		assert.NotContains(t, reasonOf(appErr), "SECRET-BAD-TOKEN")
+		assert.NotContains(t, reasonOf(t, appErr), "SECRET-BAD-TOKEN")
 		assert.Equal(t, apperrors.ErrCodeInvalidInput, appErr.Code)
 	})
 	t.Run("non-Meerkat host never sees the token", func(t *testing.T) {
@@ -225,7 +227,7 @@ func TestMeerkatAPI_ConnectRejections(t *testing.T) {
 		cfg.MeerkatBlockPrivateURLs = true
 		_, appErr := mgr.Connect(ctx, user.ID, tokenReq(srv), cfg)
 		require.NotNil(t, appErr)
-		assert.Contains(t, reasonOf(appErr), "private address")
+		assert.Contains(t, reasonOf(t, appErr), "private address")
 		assert.Empty(t, srv.Requests, "the guarded dialer refuses before any request is made")
 	})
 	t.Run("too many contacts", func(t *testing.T) {
@@ -242,7 +244,7 @@ func TestMeerkatAPI_ConnectRejections(t *testing.T) {
 		}
 		_, appErr := mgr.Connect(ctx, user.ID, tokenReq(srv), apiCfg(t))
 		require.NotNil(t, appErr)
-		assert.Contains(t, reasonOf(appErr), "at most")
+		assert.Contains(t, reasonOf(t, appErr), "at most")
 	})
 }
 
@@ -340,10 +342,14 @@ func TestMeerkatAPIErrorMapping(t *testing.T) {
 	for err, field := range cases {
 		appErr := meerkatAPIAppError(err)
 		assert.Equal(t, field, appErr.Details["field"], err.Error())
-		assert.NotEmpty(t, reasonOf(appErr))
+		assert.NotEmpty(t, reasonOf(t, appErr))
 	}
 	for _, err := range []error{meerkatapi.ErrInvalidData, meerkatapi.ErrUnreachable, context.DeadlineExceeded} {
 		appErr := meerkatAPIAppError(err)
+		// Issue #2912: the default branch used meerkat_upstream_error with the
+		// English sentence as a free-text reason param. This guard is what
+		// fails until it uses a localizable code (#2927).
+		requireNoReasonProse(t, appErr.ReasonCode, appErr.ReasonParams)
 		assert.Equal(t, 503, appErr.HTTPStatus, err.Error())
 		assert.NotEmpty(t, userSafeMeerkatAPIError(err))
 	}

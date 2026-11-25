@@ -1612,14 +1612,20 @@ fun PreferencesScreen(onBack: () -> Unit, viewModel: PreferencesViewModel = hilt
         // #386: explicit edit affordance next to the scaffold's delete, so the
         // edit path isn't only the row tap.
         extraAction = { item ->
-            IconButton(onClick = { editingId = item.id }) {
-                Icon(
-                    Icons.Outlined.Edit,
-                    contentDescription = stringResource(R.string.action_edit)
-                )
-            }
+            PreferenceEditAction(item = item, onClick = { editingId = item.id })
         }
     ) {}
+}
+
+/** The Edit icon next to a preference row; named after the row like Delete (#2942). */
+@Composable
+internal fun PreferenceEditAction(item: EntityItem, onClick: () -> Unit) {
+    IconButton(onClick = onClick) {
+        Icon(
+            Icons.Outlined.Edit,
+            contentDescription = stringResource(R.string.entities_edit_named, item.displayLabel())
+        )
+    }
 }
 
 @androidx.annotation.StringRes
@@ -2241,7 +2247,11 @@ internal fun EntityItem.displayLabel(): String {
 
         EntityLabelFamily.PREFERENCE -> {
             val category = preferenceCategoryText(token)
-            labelDetail?.let { "$category: $it" } ?: category
+            val keyText = labelKey?.let { k ->
+                knownPreferenceKeyLabelRes(k)?.let { stringResource(it) } ?: k
+            }
+            val detail = labelDetail?.let { d -> keyText?.let { "$it · $d" } ?: d } ?: keyText
+            detail?.let { "$category: $it" } ?: category
         }
 
         null -> label

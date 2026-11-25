@@ -1,0 +1,15 @@
+# Counted allowlist of reason_params values that are not translatable prose
+# (issue #2920, item 2). A ratchet: entries may only be removed, and each one
+# carries the reason it is data rather than a sentence.
+#
+# Format: code/key<TAB>reason, or */key<TAB>reason for a key that is never
+# prose on any code. The count must equal the number of entries below.
+# count: 8
+*/status	an upstream HTTP status string ("500 Internal Server Error") is data, not a sentence
+*/supported	an enumerated list of allowed values is data, not a sentence
+contact_field_value_invalid/reason	pre-existing passthrough of a field-value parser detail; #2920 item 2 adds the guard, not the localization
+import_file_unreadable/reason	pre-existing passthrough of an import parser detail; #2920 item 2 adds the guard, not the localization
+meerkat_api_error/reason	pre-existing user-safe Meerkat sentence; the credentials/URL branches remain passthrough after #2912 (#2927 fixes only the unreachable default)
+validation_cursor_invalid/reason	pre-existing passthrough of a cursor parser detail; #2920 item 2 adds the guard, not the localization
+validation_request_body_invalid/reason	pre-existing passthrough of a JSON bind error; #2920 item 2 adds the guard, not the localization
+validation_since_invalid/reason	pre-existing passthrough of a cursor parser detail; #2920 item 2 adds the guard, not the localization

@@ -8,6 +8,7 @@
  * so they can be unit-tested in jsdom (`focusOrder.vitest.ts`) without a
  * browser, the same split as `a11yRetry.ts`.
  */
+import type { Page } from '@playwright/test';
 
 /** One element that received focus from a `Tab` press. */
 export interface FocusStop {
@@ -120,6 +121,141 @@ export function keyboardFocusViolations(walk: TabWalk): string[] {
   }
 
   return violations;
+}
+
+/**
+ * The focused element, reduced to the facts the row-removal rule needs.
+ *
+ * `label` is for failure messages only. It is read from attributes and text, so
+ * a detached node (the opener after its list row unmounts) can still describe
+ * itself without touching layout or throwing.
+ */
+export interface ActiveElementState {
+  tag: string;
+  label: string;
+  /** The document body or root element: no control holds focus. */
+  isBody: boolean;
+  /** The element is still in the document (a removed row's button is not). */
+  isConnected: boolean;
+}
+
+/**
+ * Why focus is lost after an action removed the control that had it, or null.
+ *
+ * A browser moves focus to `<body>` when the focused element is removed from
+ * the document (Chromium does it immediately). Some engines/edge cases leave
+ * `document.activeElement` pointing at the detached node instead, which is
+ * just as lost to a keyboard user, so both are violations. The rule is
+ * deliberately narrow: it does not require a particular destination -- that is
+ * each action's own acceptance criterion (#2918) -- only that focus landed
+ * somewhere a keyboard user can carry on from.
+ */
+export function focusLossViolation(active: ActiveElementState | null): string | null {
+  if (!active || active.tag === 'none') {
+    return 'focus is lost: document.activeElement is null (nothing holds focus)';
+  }
+  if (active.isBody || active.tag === 'body' || active.tag === 'html') {
+    return 'focus fell to <body> after the action removed the focused control';
+  }
+  if (!active.isConnected) {
+    return `focus stayed on a detached ${active.label} that the action removed from the document`;
+  }
+  return null;
+}
+
+/**
+ * One destructive action that removes or replaces its own row, and the spec
+ * that proves focus survives it.
+ *
+ * This is a reviewed inventory, not a derived list: a new action that removes
+ * the control the user just pressed must add an entry here and an
+ * `expectFocusNotLost(page, '<action>')` call to its spec. `focusOrder.vitest.ts`
+ * fails on a call that is missing here, and on an entry no spec makes, so the
+ * list cannot silently go stale in either direction.
+ */
+export interface RowRemovingAction {
+  /** Exact tag passed to `expectFocusNotLost`; unique across the suite. */
+  action: string;
+  /** Spec file (under `e2e/`) that performs the action and asserts focus. */
+  spec: string;
+  /** What disappears, for the next person adding a similar action. */
+  removes: string;
+}
+
+export const ROW_REMOVING_ACTIONS: readonly RowRemovingAction[] = [
+  {
+    action: 'share Remove',
+    spec: 'contactShares.spec.ts',
+    removes: 'a removed (ended) grant row in Shared by me',
+  },
+  {
+    action: 'share re-confirm',
+    spec: 'contactShares.spec.ts',
+    removes: 'the row’s “Review and re-confirm” button when the grant is confirmed',
+  },
+  {
+    action: 'contacts: Not a duplicate',
+    spec: 'duplicateScan.spec.ts',
+    removes: 'a pair row in the Review duplicates dialog',
+  },
+  {
+    action: 'organisations: Not a duplicate',
+    spec: 'entities.spec.ts',
+    removes: 'a pair row in the Possible duplicates panel',
+  },
+  {
+    action: 'Trash: Restore',
+    spec: 'trash.spec.ts',
+    removes: 'a restored contact row from the Trash list',
+  },
+  {
+    action: 'Trash: Delete forever',
+    spec: 'trash.spec.ts',
+    removes: 'a purged contact row from the Trash list',
+  },
+  {
+    action: 'reminder delete',
+    spec: 'reminders.spec.ts',
+    removes: 'a deleted reminder card from a contact page',
+  },
+];
+
+/**
+ * The active element's tag/label and whether it is body/root, detached, or
+ * still a usable focus target.
+ */
+export async function readActiveElement(page: Page): Promise<ActiveElementState> {
+  return page.evaluate(() => {
+    const el = document.activeElement as HTMLElement | null;
+    if (!el) return { tag: 'none', label: 'none', isBody: true, isConnected: false };
+    const tag = el.tagName ? el.tagName.toLowerCase() : 'unknown';
+    const text = (el.getAttribute('aria-label') ?? el.textContent ?? '')
+      .trim()
+      .replace(/\s+/g, ' ');
+    return {
+      tag,
+      label: `${tag}${el.id ? `#${el.id}` : ''}${text ? ` "${text.slice(0, 50)}"` : ''}`,
+      isBody: tag === 'body' || tag === 'html',
+      isConnected: el.isConnected,
+    };
+  });
+}
+
+/**
+ * Asserts the action that just removed its own row left focus on a real,
+ * connected control rather than dropping it to `<body>` (issue #2918).
+ *
+ * Call it after the row is gone (and any dialog is closed), not immediately
+ * after the click: the action's state update is what unmounts the opener, and
+ * before that lands, focus is legitimately still on the button.
+ *
+ * Throws rather than using Playwright's `expect` so this module stays
+ * importable by the jsdom unit tests (`focusOrder.vitest.ts`); the message
+ * still lands in the Playwright failure output.
+ */
+export async function expectFocusNotLost(page: Page, action: string): Promise<void> {
+  const violation = focusLossViolation(await readActiveElement(page));
+  if (violation) throw new Error(`${action}: ${violation}`);
 }
 
 /** An element carrying an explicit `tabindex` attribute. */

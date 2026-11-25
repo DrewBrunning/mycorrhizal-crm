@@ -2132,6 +2132,7 @@
     <string name="import_report_title">Rows not imported</string>
     <string name="import_report_row">Row %1$d · %2$s</string>
     <string name="import_report_skipped">Skipped: %1$s</string>
+    <string name="import_report_skipped_by_choice">Skipped: you chose to discard it</string>
     <string name="import_report_failed">Failed: %1$s</string>
     <string name="import_diag_birthday_warn">The birthday is not a valid date, so it will not be imported</string>
     <string name="import_diag_anniversary_warn">The anniversary is not a valid date, so it will not be imported</string>
@@ -2449,7 +2450,6 @@
     <string name="occasions_sensitivity_normal">Normal</string>
     <string name="occasions_sensitivity_private">Private</string>
     <string name="occasions_sensitivity_secret">Secret</string>
-    <string name="occasions_time">Time</string>
     <string name="occasions_event_dialog_hint">A one-off event you are planning. Add invitees after saving, then record what each person told you.</string>
     <string name="occasions_create_title">Create an event</string>
     <string name="occasions_edit_title">Edit event</string>
@@ -2757,7 +2757,6 @@
     <string name="geopulse_title">Log from location history</string>
     <string name="geopulse_description">Pick a date to see the places GeoPulse recorded. Nothing is saved until you log one, and you choose who you were with.</string>
     <string name="geopulse_date">Date</string>
-    <string name="geopulse_pick_date">Pick a date</string>
     <string name="geopulse_look_up">Look up</string>
     <string name="geopulse_looking_up">Looking up…</string>
     <string name="geopulse_open_settings">Open GeoPulse settings</string>

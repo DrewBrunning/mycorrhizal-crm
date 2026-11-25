@@ -4,9 +4,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,7 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -218,7 +220,8 @@ internal fun EntitiesContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
-        PrimaryTabRow(
+        // #2948: scrollable, so a tab keeps its whole word at large font sizes.
+        PrimaryScrollableTabRow(
             selectedTabIndex = EntityKind.ALL.indexOf(state.kind).coerceAtLeast(0),
             modifier = Modifier.testTag("entities-tabs")
         ) {
@@ -380,15 +383,17 @@ private fun SuggestionsCard(
             .testTag("entity-suggestions")
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
+            // #2948: the button moves below the heading when it does not fit, instead of
+            // squeezing the heading into mid-word breaks at large font sizes.
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     stringResource(R.string.shared_entities_suggestions_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
+                    style = MaterialTheme.typography.titleMedium
                 )
                 OutlinedButton(onClick = onFind, enabled = !state.suggestionsLoading) {
                     Text(stringResource(R.string.shared_entities_suggestions_load))
@@ -457,18 +462,25 @@ private fun SuggestionRow(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        // #2935: stacked, each full width, so side B is never squeezed out by side A's label.
+        Column(Modifier.fillMaxWidth()) {
             TextButton(
                 onClick = { onOpen(pair.a.id) },
-                modifier = Modifier.testTag("suggestion-open-a-${pair.a.id}")
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag("suggestion-open-a-${pair.a.id}")
             ) {
-                SuggestionSideLabel(pair.a)
+                SuggestionSideLabel(pair.a, Modifier.weight(1f))
             }
             TextButton(
                 onClick = { onOpen(pair.b.id) },
-                modifier = Modifier.testTag("suggestion-open-b-${pair.b.id}")
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag("suggestion-open-b-${pair.b.id}")
             ) {
-                SuggestionSideLabel(pair.b)
+                SuggestionSideLabel(pair.b, Modifier.weight(1f))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -491,8 +503,8 @@ private fun SuggestionRow(
  * text is its accessibility label, by TalkBack too.
  */
 @Composable
-private fun SuggestionSideLabel(side: EntitySuggestionEntity) {
-    Column(horizontalAlignment = Alignment.Start) {
+private fun SuggestionSideLabel(side: EntitySuggestionEntity, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.Start) {
         Text(
             stringResource(R.string.shared_entities_suggestions_open, side.name),
             maxLines = 1,

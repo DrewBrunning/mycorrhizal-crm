@@ -288,6 +288,26 @@ export function formatDateWithFormat(dateString: string, format: DateFormat): st
 }
 
 /**
+ * Format a month and day for display in the active UI language (issue #2920).
+ *
+ * `month` is 1–12 and `day` is 1–31. Intl owns the order and punctuation —
+ * "March 3" in English, "3. März" in German, "3 mars" in French — so callers
+ * must not assemble `${month} ${day}` themselves.
+ *
+ * The date is pinned to 2000-01-01 UTC and formatted with `timeZone: 'UTC'`,
+ * so the calendar digits are the same in every time zone. Formatting a local
+ * `new Date(2000, month - 1, day)` shifts the day west of UTC, the same class
+ * of bug as #962.
+ */
+export function formatMonthDay(month: number, day: number, locale: string): string {
+  return new Intl.DateTimeFormat(locale, {
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(Date.UTC(2000, month - 1, day));
+}
+
+/**
  * Format a birthday (YYYY-MM-DD or --MM-DD) to the user's preferred display format
  * Optionally includes age calculation
  */

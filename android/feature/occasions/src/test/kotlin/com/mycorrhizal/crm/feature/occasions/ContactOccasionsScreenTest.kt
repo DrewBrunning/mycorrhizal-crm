@@ -410,8 +410,31 @@ class ContactOccasionsScreenTest {
         composeTestRule.onNodeWithText("Create").performClick()
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("nope").assertIsDisplayed()
+        composeTestRule.onNodeWithText("nope").performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("Add an occasion").assertIsDisplayed()
+    }
+
+    // #2943: a save failure is inline text in the form, kept until the user edits or retries; it
+    // used to be a 4-second snackbar.
+    @Test
+    fun `a rejected save keeps its error inline after the snackbar time and clears on an edit`() {
+        render(emptyList())
+        coEvery { repository.create(any()) } returns Result.failure(ApiError.Client(422, "nope"))
+        composeTestRule.onNodeWithContentDescription("Add occasion").performClick()
+        composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("x")
+        pickMonthAndDay("March", "9")
+        composeTestRule.onNodeWithText("Create").performClick()
+        composeTestRule.waitForIdle()
+
+        composeTestRule.mainClock.advanceTimeBy(10_000)
+        composeTestRule.onNodeWithTag(
+            "occasion-ob-save-error"
+        ).performScrollTo().assertIsDisplayed()
+        composeTestRule.onNodeWithText("nope").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("occasion-ob-label").performTextInput("y")
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("occasion-ob-save-error").assertDoesNotExist()
     }
 
     @Test

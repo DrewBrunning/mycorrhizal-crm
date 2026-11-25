@@ -36,6 +36,9 @@ func requireImportReason(t *testing.T, appErr *apperrors.AppError, want apperror
 		ReasonParams map[string]any `json:"reason_params"`
 	}
 	require.NoError(t, json.Unmarshal(raw, &body), string(raw))
+	// Issue #2920, item 2: every recorded failure response is also checked for
+	// free prose in reason_params, not just for the presence of a reason code.
+	requireNoReasonProse(t, body.ReasonCode, body.ReasonParams)
 	assert.Equal(t, string(want), body.ReasonCode, "marshalled: %s", raw)
 	if wantParams != nil {
 		for k, v := range wantParams {

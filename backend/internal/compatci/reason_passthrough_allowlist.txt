@@ -1,0 +1,27 @@
+# Counted allowlist of errors.reason.* templates that are only a passthrough
+# ({{reason}}), issue #2920 item 2. A ratchet: a new passthrough key fails, a
+# stale entry fails, and entries may only be removed. Each entry records why
+# the key is still a passthrough; a follow-up that gives the key its own
+# translated template must remove the entry.
+#
+# Format: key<TAB>reason. The count must equal the number of entries below.
+# count: 19
+entity_core_invalid	entity/place/pet core validation text comes from the JSON decoder; a follow-up replaces it with field-specific codes
+entity_merge_resolution_invalid	merge resolver rejection text; a follow-up localizes it
+meerkat_api_error	user-safe Meerkat upstream sentence for the credentials/URL branches (#2912/#2927 leaves these passthrough)
+meerkat_upstream_error	#2912's default branch used this passthrough; #2927 moves it to meerkat_fetch_unreachable and removes this entry
+auth_login_request_invalid	login request-body bind error text
+auth_webauthn_config_invalid	WebAuthn server-config validation error text
+calendar_sync_failed	upstream CalDAV sync error detail
+contact_field_value_invalid	custom-field value parser detail
+contact_share_payload_invalid	contact-share payload validation detail
+contact_subscription_sync_failed	upstream CardDAV sync error detail
+contact_sync_conflict_restore_failed	sync-conflict restore parser detail
+export_selection_invalid	export field-selection validation detail
+import_field_mappings_invalid	import field-mapping validation detail
+import_file_unreadable	import parser failure detail
+integration_request_body_invalid	integration request-body JSON error
+integration_save_failed	integration config save validation detail
+validation_cursor_invalid	cursor decode detail
+validation_request_body_invalid	request-body JSON bind error
+validation_since_invalid	since-cursor decode detail

@@ -6,6 +6,7 @@ import {
   stableClick,
   test,
 } from './fixtures';
+import { expectFocusNotLost } from './focusOrder';
 import { API_BASE_URL } from './global-setup';
 
 // Issue #2301 (ADR 0043): reusable organisations, places and pets. The
@@ -71,6 +72,43 @@ test.describe('Entities', () => {
       // trash.spec.ts's "Empty trash" (contacts only) runs as the same per-worker
       // user and would then never reach the "Trash is empty" state (issue #2484).
       // The worker user's account is deleted at worker teardown, which removes it.
+    }
+  });
+
+  test('"Not a duplicate" in Possible duplicates keeps focus on the page', async ({ page }) => {
+    const suffix = Date.now().toString();
+    const name = `E2E Duplicate Org ${suffix}`;
+    const created: { id: string; revision: number }[] = [];
+    try {
+      for (let i = 0; i < 2; i++) {
+        const response = await page.request.post(`${API_BASE_URL}/entities`, {
+          data: { kind: 'organisation', name, core: { organization: { name } } },
+        });
+        expect(response.ok(), `failed to create entity: ${response.status()}`).toBeTruthy();
+        created.push(await response.json());
+      }
+
+      await page.goto('/entities');
+      const panel = page.getByRole('region', { name: 'Possible duplicates' });
+      await stableClick(panel.getByRole('button', { name: 'Find duplicates' }));
+
+      const row = panel.getByRole('listitem').filter({ hasText: name }).first();
+      await expect(row).toBeVisible({ timeout: 10000 });
+      const dismiss = row.getByRole('button', { name: /^Not a duplicate/i });
+      await stableClick(dismiss);
+      await expect(dismiss).toHaveCount(0);
+
+      // #2920 item 7: dismissing removed the pair row (and the button that had
+      // focus); focus must not fall to <body> (#2918).
+      await expectFocusNotLost(page, 'organisations: Not a duplicate');
+    } finally {
+      for (const entity of created) {
+        await page.request
+          .delete(`${API_BASE_URL}/entities/${entity.id}`, {
+            headers: { 'If-Match': String(entity.revision) },
+          })
+          .catch(() => {});
+      }
     }
   });
 });

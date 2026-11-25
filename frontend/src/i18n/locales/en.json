@@ -4485,7 +4485,7 @@
       "merge": "Merge…",
       "mergeNamed": "Merge {{a}} and {{b}}",
       "dismiss": "Not a duplicate",
-      "dismissNamed": "{{a}} and {{b}} are not duplicates",
+      "dismissNamed": "Not a duplicate: {{a}} and {{b}}",
       "dismissed": "Hidden for good.",
       "pair": "{{a}} and {{b}}",
       "reason": {

@@ -51,6 +51,22 @@ class ImportResultReportTest {
         composeTestRule.onNodeWithText("Failed: Could not save").assertIsDisplayed()
     }
 
+    // #2950: a row the user left as "Discard new" arrives with the bare reason "Skipped"; the line
+    // must not repeat its own status ("Skipped: Skipped").
+    @Test
+    fun `a row skipped by choice does not repeat its status as its reason`() {
+        show(
+            ImportResult(
+                totalProcessed = 1,
+                skipped = 1,
+                issues = listOf(ImportRowIssue(5, "Ada Lovelace", "", "", "skipped", "Skipped"))
+            )
+        )
+
+        composeTestRule.onNodeWithText("Skipped: you chose to discard it").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("Skipped: Skipped").assertCountEquals(0)
+    }
+
     @Test
     fun `the share button hands the issues to the callback`() {
         var shared: List<ImportRowIssue>? = null

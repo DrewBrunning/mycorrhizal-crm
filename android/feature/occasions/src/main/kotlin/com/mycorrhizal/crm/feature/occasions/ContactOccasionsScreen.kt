@@ -52,8 +52,11 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -111,10 +114,14 @@ fun ContactOccasionsScreen(
             viewModel.onSavedHandled()
         }
     }
-    errorMessage?.let { message ->
-        LaunchedEffect(message) {
-            snackbarHostState.showSnackbar(message)
-            currentOnErrorShown.value()
+    // #2943: while the form is open a save error is inline text in the form (kept until an edit
+    // or the next Create); only list-level errors (a failed delete) use the snackbar.
+    if (!showForm) {
+        errorMessage?.let { message ->
+            LaunchedEffect(message) {
+                snackbarHostState.showSnackbar(message)
+                currentOnErrorShown.value()
+            }
         }
     }
 
@@ -132,6 +139,7 @@ fun ContactOccasionsScreen(
             isSaving = state.isSaving,
             snackbarHostState = snackbarHostState,
             serverAnchorError = anchorError,
+            saveError = errorMessage,
             onAnchorEdited = viewModel::onErrorShown,
             onSave = { form -> viewModel.save(editing, form) },
             onBack = {
@@ -368,6 +376,7 @@ private fun OccasionObligationForm(
     isSaving: Boolean,
     snackbarHostState: SnackbarHostState,
     serverAnchorError: ApiError?,
+    saveError: String?,
     onAnchorEdited: () -> Unit,
     onSave: (OccasionObligationFormData) -> Unit,
     onBack: () -> Unit
@@ -404,6 +413,12 @@ private fun OccasionObligationForm(
         notes = notes
     )
     val errors = validateOccasionForm(formData, initial)
+    // #2943: a save error stays until the user edits the form (or presses Create again).
+    val dataAtError = remember(saveError) { formData }
+    val currentOnEdited = rememberUpdatedState(onAnchorEdited)
+    LaunchedEffect(formData) {
+        if (saveError != null && formData != dataAtError) currentOnEdited.value()
+    }
     val serverField = serverAnchorError?.anchorDateField()
     val serverText = serverAnchorError?.localizedMessage()
     val labelError = errors.label?.takeIf { attempted || labelTouched }
@@ -577,6 +592,15 @@ private fun OccasionObligationForm(
                 label = { Text(stringResource(R.string.occasions_notes)) },
                 modifier = Modifier.fillMaxWidth().testTag("occasion-ob-notes")
             )
+            saveError?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.testTag("occasion-ob-save-error")
+                        .semantics { liveRegion = LiveRegionMode.Assertive }
+                )
+            }
         }
     }
 }

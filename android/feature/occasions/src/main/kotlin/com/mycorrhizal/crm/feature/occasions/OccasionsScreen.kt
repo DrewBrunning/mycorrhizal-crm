@@ -16,12 +16,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Event
 import androidx.compose.material.icons.outlined.Group
 import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -35,15 +32,11 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDatePickerState
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -59,12 +52,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.OccasionEvent
 import com.mycorrhizal.crm.model.registry.OccasionSensitivity
+import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.LocalIs24Hour
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
 import com.mycorrhizal.crm.ui.components.BrandFab
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.DiscardChangesDialog
 import com.mycorrhizal.crm.ui.components.EmptyState
 import com.mycorrhizal.crm.ui.components.ErrorState
@@ -412,7 +407,8 @@ internal fun OccasionEventDialog(
                 }
                 InstantField(
                     stringResource(R.string.occasions_ends_at),
-                    endsAt
+                    endsAt,
+                    optional = true
                 ) {
                     endsAt = it
                     error = null
@@ -512,88 +508,39 @@ private fun sensitivityLabel(value: String): String = when (value) {
     else -> stringResource(R.string.occasions_sensitivity_normal)
 }
 
+/**
+ * An event start/end as the shared [DateField] (typed entry in the user's date format, its
+ * picker and time step; #2947). The stored value stays an RFC 3339 UTC instant.
+ */
 @Composable
-private fun InstantField(label: String, value: String, onChange: (String) -> Unit) {
-    var picking by remember { mutableStateOf(false) }
-    OutlinedTextField(
-        value = instantToDisplay(value, LocalDateFormat.current, LocalIs24Hour.current),
-        onValueChange = {},
-        readOnly = true,
-        label = { Text(label) },
-        trailingIcon = {
-            IconButton(onClick = { picking = true }) {
-                Icon(Icons.Outlined.Event, contentDescription = label)
-            }
-        },
+private fun InstantField(
+    label: String,
+    value: String,
+    optional: Boolean = false,
+    onChange: (String) -> Unit
+) {
+    DateField(
+        value = value.ifBlank { null },
+        onValueChange = { onChange(normalizeEventInstant(it)) },
+        label = label,
+        mode = DateFieldMode.DATE_TIME,
+        allowClear = optional,
+        onClear = { onChange("") },
         modifier = Modifier.fillMaxWidth()
     )
-    if (picking) {
-        InstantPickerDialog(
-            initial = value,
-            onConfirm = { iso ->
-                onChange(iso)
-                picking = false
-            },
-            onDismiss = { picking = false }
-        )
-    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun InstantPickerDialog(
-    initial: String,
-    onConfirm: (String) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val fallback = remember { Instant.now() }
-    val initialInstant = remember(
-        initial
-    ) { runCatching { Instant.parse(initial) }.getOrDefault(fallback) }
-    val initialLocal = remember(initialInstant) { pickerInitial(initialInstant) }
-    val is24Hour = LocalIs24Hour.current
-    var step by remember { mutableIntStateOf(0) }
-    val dateState = rememberDatePickerState(initialSelectedDateMillis = initialLocal.dateMillis)
-    val timeState = rememberTimePickerState(
-        initialHour = initialLocal.hour,
-        initialMinute = initialLocal.minute,
-        is24Hour = is24Hour
-    )
-
-    if (step == 0) {
-        DatePickerDialog(
-            onDismissRequest = onDismiss,
-            confirmButton = {
-                TextButton(
-                    onClick = { step = 1 }
-                ) { Text(stringResource(R.string.action_confirm)) }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = onDismiss
-                ) { Text(stringResource(R.string.action_cancel)) }
-            }
-        ) {
-            DatePicker(state = dateState, showModeToggle = false)
-        }
-    } else {
-        AlertDialog(
-            onDismissRequest = onDismiss,
-            title = { Text(stringResource(R.string.occasions_time)) },
-            text = { TimePicker(state = timeState) },
-            confirmButton = {
-                TextButton(onClick = {
-                    val millis = dateState.selectedDateMillis ?: initialLocal.dateMillis
-                    onConfirm(toRfc3339(millis, timeState.hour, timeState.minute))
-                }) { Text(stringResource(R.string.action_confirm)) }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = onDismiss
-                ) { Text(stringResource(R.string.action_cancel)) }
-            }
-        )
-    }
+/**
+ * Normalizes what [DateField] reports (an offset date-time, an instant, or a bare date) to the
+ * RFC 3339 UTC instant events store; a bare date means midnight in [zone]. Blank stays blank
+ * and anything unrecognised is returned unchanged.
+ */
+internal fun normalizeEventInstant(raw: String, zone: ZoneId = ZoneId.systemDefault()): String {
+    if (raw.isBlank()) return ""
+    runCatching { return Instant.parse(raw).toString() }
+    runCatching { return java.time.OffsetDateTime.parse(raw).toInstant().toString() }
+    runCatching { return java.time.LocalDate.parse(raw).atStartOfDay(zone).toInstant().toString() }
+    return raw
 }
 
 /**

@@ -1,3 +1,4 @@
+import type { Page } from '@playwright/test';
 import {
   createTestContact,
   deleteTestContact,
@@ -10,7 +11,29 @@ import {
   test,
   waitForLoading,
 } from './fixtures';
+import { expectFocusNotLost } from './focusOrder';
 import { API_BASE_URL } from './global-setup';
+
+/** The id of a registered user as the worker's own directory lookup sees it. */
+async function directoryUserID(page: Page, username: string): Promise<number> {
+  const directory = await page.request.get(`${API_BASE_URL}/users/directory`);
+  expect(directory.ok(), `directory lookup failed: ${await directory.text()}`).toBeTruthy();
+  const users = (await directory.json()).users as { id: number; username: string }[];
+  const found = users.find((u) => u.username === username);
+  expect(found, `recipient ${username} must appear in the share directory`).toBeTruthy();
+  return found?.id ?? 0;
+}
+
+/** Registers a throwaway recipient so the worker can address a standing-share grant to it. */
+async function registerShareRecipient(page: Page): Promise<ReturnType<typeof makeThrowawayUser>> {
+  const recipient = makeThrowawayUser('standing_share_recipient');
+  const registered = await page.request.post(`${API_BASE_URL}/register`, { data: recipient });
+  expect(
+    registered.ok(),
+    `recipient registration should succeed: ${await registered.text()}`,
+  ).toBeTruthy();
+  return recipient;
+}
 
 // Each test below registers its own uniquely-suffixed throwaway recipient
 // account, rather than sharing one fixed username across both tests: this
@@ -154,6 +177,138 @@ test.describe('Contact sharing', () => {
       expect(senderResp.ok()).toBeTruthy();
     } finally {
       await recipientContext.close();
+      await deleteTestContact(page.request, contact.ID);
+      await deleteThrowawayUser(recipient.username);
+    }
+  });
+
+  test('removing an ended share keeps focus on the page', async ({ page }) => {
+    const recipient = await registerShareRecipient(page);
+    const contact = await createTestContact(page.request, {
+      firstname: 'E2EShareRemove',
+      lastname: `Test${Date.now()}`,
+    });
+    const fullName = `${contact.firstname} ${contact.lastname}`;
+
+    try {
+      const toUserID = await directoryUserID(page, recipient.username);
+      const created = await page.request.post(`${API_BASE_URL}/share-grants`, {
+        data: {
+          to_user_id: toUserID,
+          entity_type: 'contact',
+          entity_id: contact.uid,
+          sections: ['emails'],
+        },
+      });
+      expect(created.ok(), `grant create failed: ${await created.text()}`).toBeTruthy();
+      const grant = (await created.json()).share_grant as { id: string };
+      const revoked = await page.request.post(`${API_BASE_URL}/share-grants/${grant.id}/revoke`);
+      expect(revoked.ok(), `grant revoke failed: ${await revoked.text()}`).toBeTruthy();
+
+      await page.goto('/shared-by-me');
+      await expect(page.getByRole('heading', { level: 1, name: 'Shared by me' })).toBeVisible();
+      await page.getByRole('button', { name: /^Ended shares/ }).click();
+
+      const row = page.getByRole('listitem').filter({ hasText: fullName });
+      await expect(row).toBeVisible();
+      await row.getByRole('button', { name: /^Remove share of/ }).click();
+
+      const confirm = page.getByRole('dialog');
+      await expect(confirm.getByRole('heading', { name: 'Remove this share?' })).toBeVisible();
+      await confirm.getByRole('button', { name: 'Remove', exact: true }).click();
+      await expect(confirm).toBeHidden();
+      await expect(row).toHaveCount(0);
+
+      // #2920 item 7: the removed row held focus; it must not fall to <body>.
+      await expectFocusNotLost(page, 'share Remove');
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+      await deleteThrowawayUser(recipient.username);
+    }
+  });
+
+  test('re-confirming a share keeps focus on the page', async ({ page }) => {
+    const recipient = await registerShareRecipient(page);
+    const contact = await createTestContact(page.request, {
+      firstname: 'E2EShareReconfirm',
+      lastname: `Test${Date.now()}`,
+      addresses: [
+        {
+          type: 'home',
+          street: '1 Reconfirm Street',
+          city: 'Testville',
+          region: '',
+          postal: '',
+          country: '',
+          sensitivity: 'normal',
+        },
+      ],
+    });
+    const fullName = `${contact.firstname} ${contact.lastname}`;
+    let grantID = '';
+
+    try {
+      const toUserID = await directoryUserID(page, recipient.username);
+      const created = await page.request.post(`${API_BASE_URL}/share-grants`, {
+        data: {
+          to_user_id: toUserID,
+          entity_type: 'contact',
+          entity_id: contact.uid,
+          sections: ['addresses'],
+        },
+      });
+      expect(created.ok(), `grant create failed: ${await created.text()}`).toBeTruthy();
+      const grant = (await created.json()).share_grant as { id: string };
+      grantID = grant.id;
+
+      // Reclassify the shared address to private: the grant must withhold the
+      // section until the owner re-confirms (ADR 0042 decision 5).
+      const read = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
+      const body = await read.json();
+      const record = body.contact ?? body;
+      record.card.addresses[0].sensitivity = 'private';
+      const save = await page.request.put(`${API_BASE_URL}/contacts/${contact.ID}`, {
+        data: record,
+      });
+      expect(save.ok(), `contact update failed: ${await save.text()}`).toBeTruthy();
+
+      await expect
+        .poll(
+          async () => {
+            const response = await page.request.get(`${API_BASE_URL}/share-grants/outgoing`);
+            const grants = (await response.json()).share_grants as {
+              id: string;
+              reconfirm_sections: string[];
+            }[];
+            return grants.find((g) => g.id === grant.id)?.reconfirm_sections ?? [];
+          },
+          { message: 'the reclassified address must withhold the grant section', timeout: 10000 },
+        )
+        .toContain('addresses');
+
+      await page.goto('/shared-by-me');
+      const row = page.getByRole('listitem').filter({ hasText: fullName });
+      await expect(row).toBeVisible();
+      const reconfirm = row.getByRole('button', { name: /^Review and re-confirm/ });
+      await reconfirm.click();
+
+      const confirm = page.getByRole('dialog');
+      await expect(
+        confirm.getByRole('heading', { name: 'Share these sections again?' }),
+      ).toBeVisible();
+      await confirm.getByRole('button', { name: 'Confirm', exact: true }).click();
+      await expect(confirm).toBeHidden();
+      await expect(reconfirm).toHaveCount(0);
+
+      // #2920 item 7: confirming replaced the row and removed the button that
+      // had focus; it must not fall to <body>.
+      await expectFocusNotLost(page, 'share re-confirm');
+    } finally {
+      // A live grant refuses DELETE; revoke it first, then dismiss the ended row.
+      if (grantID) {
+        await page.request.post(`${API_BASE_URL}/share-grants/${grantID}/revoke`).catch(() => {});
+        await page.request.delete(`${API_BASE_URL}/share-grants/${grantID}`).catch(() => {});
+      }
       await deleteTestContact(page.request, contact.ID);
       await deleteThrowawayUser(recipient.username);
     }
