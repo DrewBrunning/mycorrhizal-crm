@@ -47,7 +47,7 @@ class ImportResultReportTest {
         composeTestRule.onNodeWithText("Rows not imported").assertIsDisplayed()
         composeTestRule.onNodeWithText("Row 3 · Erin").assertIsDisplayed()
         composeTestRule.onNodeWithText("Skipped: Invalid email").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Row 7 · —").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Row 7 · Name not kept").assertIsDisplayed()
         composeTestRule.onNodeWithText("Failed: Could not save").assertIsDisplayed()
     }
 
@@ -65,6 +65,30 @@ class ImportResultReportTest {
 
         composeTestRule.onNodeWithText("Skipped: you chose to discard it").assertIsDisplayed()
         composeTestRule.onAllNodesWithText("Skipped: Skipped").assertCountEquals(0)
+    }
+
+    // #2950: import history never stores an email or phone (#2563), so a nameless row's stored
+    // name is blank. The report says so in words instead of showing a bare dash.
+    @Test
+    fun `a row with no stored name says the name was not kept, not a dash`() {
+        show(
+            ImportResult(
+                totalProcessed = 1,
+                created = 1,
+                issues = listOf(warning.copy(row = 2, name = "", email = ""))
+            )
+        )
+
+        composeTestRule.onNodeWithText("Row 2 · Name not kept").assertIsDisplayed()
+        composeTestRule.onAllNodesWithText("—", substring = true).assertCountEquals(0)
+    }
+
+    @Test
+    @Config(qualifiers = "de")
+    fun `the no-name label is localized`() {
+        show(ImportResult(created = 1, issues = listOf(warning.copy(row = 2, name = ""))))
+
+        composeTestRule.onNodeWithText("Zeile 2 · Name nicht gespeichert").assertIsDisplayed()
     }
 
     @Test

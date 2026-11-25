@@ -2183,6 +2183,7 @@
     <string name="import_row_fix_save">Enregistrer la correction</string>
     <string name="import_report_title">Lignes non importées</string>
     <string name="import_report_row">Ligne %1$d · %2$s</string>
+    <string name="import_report_no_name">Nom non conservé</string>
     <string name="import_report_skipped">Ignorée : %1$s</string>
     <string name="import_report_skipped_by_choice">Ignorée : vous avez choisi « Ignorer le nouveau »</string>
     <string name="import_report_failed">Échec : %1$s</string>

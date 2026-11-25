@@ -556,6 +556,7 @@
         "downloadCsv": "Descargar como CSV",
         "colRow": "Fila",
         "colName": "Contacto",
+        "nameNotKept": "Nombre no guardado",
         "colStatus": "Resultado",
         "colReason": "Motivo",
         "statusFailed": "Error",

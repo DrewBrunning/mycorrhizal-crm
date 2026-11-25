@@ -2183,6 +2183,7 @@
     <string name="import_row_fix_save">Guardar corrección</string>
     <string name="import_report_title">Filas no importadas</string>
     <string name="import_report_row">Fila %1$d · %2$s</string>
+    <string name="import_report_no_name">Nombre no guardado</string>
     <string name="import_report_skipped">Omitida: %1$s</string>
     <string name="import_report_skipped_by_choice">Omitida: elegiste «Descartar nuevo»</string>
     <string name="import_report_failed">Fallida: %1$s</string>

@@ -70,6 +70,24 @@ class SharedContactProjectionTest {
         assertEquals(listOf("L-hobby: Chess"), byToken["personal_info"])
     }
 
+    // #2626: a value with no kind shows on its own, never behind a hard-coded English "date:" or
+    // "info:" prefix that no locale translates.
+    @Test
+    fun `an anniversary or personal-info value without a kind has no English placeholder prefix`() {
+        val view = projectSharedContact(
+            card(
+                """{"name":{"full":"X"},
+                "anniversaries":{"a":{"date":"2010-06-01"}},
+                "personalInfo":{"i":{"value":"Chess"}}}"""
+            ),
+            grantedSections = null,
+            kindLabel = { "L-$it" }
+        )
+        val byToken = view.sections.associate { it.token to it.lines }
+        assertEquals(listOf("2010-06-01"), byToken["anniversaries"])
+        assertEquals(listOf("Chess"), byToken["personal_info"])
+    }
+
     @Test
     fun `every section projects its allowlisted fields in canonical order`() {
         val all = projectSharedContact(full, grantedSections = null)
