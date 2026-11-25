@@ -114,6 +114,12 @@ fun CsvImportScreenContent(
     onConfirm: () -> Unit = {},
     onErrorShown: () -> Unit = {}
 ) {
+    val errorMessage = uiState.errorRes?.let {
+        stringResource(
+            it
+        )
+    } ?: uiState.error?.localizedMessage()
+    val inlinePickError = uiState.step == CsvImportStep.PICK
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
@@ -172,7 +178,8 @@ fun CsvImportScreenContent(
                 )
 
                 uiState.step == CsvImportStep.PICK -> CsvPickStep(
-                    onPick = { filePicker.launch("*/*") }
+                    onPick = { filePicker.launch("*/*") },
+                    error = errorMessage
                 )
 
                 uiState.step == CsvImportStep.MAPPING && uiState.upload != null ->
@@ -214,17 +221,17 @@ fun CsvImportScreenContent(
                 uiState.step == CsvImportStep.RESULT && uiState.result != null ->
                     ImportResultReport(result = uiState.result, onDone = onDone)
 
-                else -> CsvPickStep(onPick = { filePicker.launch("*/*") })
+                else -> CsvPickStep(
+                    onPick = { filePicker.launch("*/*") },
+                    error = errorMessage
+                )
             }
         }
     }
 
-    val errorMessage = uiState.errorRes?.let {
-        stringResource(
-            it
-        )
-    } ?: uiState.error?.localizedMessage()
-    if (errorMessage != null) {
+    // #2943: on the pick step a rejected file stays under the picker (until another file is
+    // picked, which clears it) instead of a 4-second snackbar; elsewhere it stays a snackbar.
+    if (errorMessage != null && !inlinePickError) {
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(errorMessage)
             currentOnErrorShown.value()
@@ -233,7 +240,7 @@ fun CsvImportScreenContent(
 }
 
 @Composable
-private fun CsvPickStep(onPick: () -> Unit) {
+private fun CsvPickStep(onPick: () -> Unit, error: String?) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxSize().padding(24.dp)
@@ -251,6 +258,7 @@ private fun CsvPickStep(onPick: () -> Unit) {
         Button(onClick = onPick) {
             Text(stringResource(R.string.import_csv_pick))
         }
+        PickError(error)
     }
 }
 
