@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { startMycorrhizalFetch, uploadMycorrhizalBundle } from '../api/mycorrhizalImport';
-import { getSourceImportStatus } from '../api/sourceImport';
+import { cancelSourceImport, getSourceImportStatus } from '../api/sourceImport';
 import MycorrhizalImportDialog from './MycorrhizalImportDialog';
 
 afterEach(cleanup);
@@ -24,6 +24,7 @@ vi.mock('../api/sourceImport', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../api/sourceImport')>();
   return {
     ...actual,
+    cancelSourceImport: vi.fn().mockResolvedValue(undefined),
     getSourceImportStatus: vi.fn().mockResolvedValue({
       session_id: 's1',
       phase: 'fetching_contacts',
@@ -36,10 +37,12 @@ vi.mock('../api/sourceImport', async (importOriginal) => {
 const uploadMock = vi.mocked(uploadMycorrhizalBundle);
 const fetchMock = vi.mocked(startMycorrhizalFetch);
 const statusMock = vi.mocked(getSourceImportStatus);
+const cancelMock = vi.mocked(cancelSourceImport);
 beforeEach(() => {
   uploadMock.mockReset();
   fetchMock.mockClear();
   statusMock.mockClear();
+  cancelMock.mockClear();
 });
 
 function renderOpen() {
@@ -51,6 +54,91 @@ function pickFile(name = 'bundle.json') {
   const file = new File(['{}'], name, { type: 'application/json' });
   fireEvent.change(input, { target: { files: [file] } });
 }
+
+function bundleTotals() {
+  return {
+    contacts: 1,
+    relationships: 0,
+    notes: 0,
+    reminders: 0,
+    reminder_completions: 0,
+    activities: 0,
+    life_events: 0,
+    gifts: 0,
+    preferences: 0,
+    conversation_agenda: 0,
+    cadence_policies: 0,
+    data_decay_policies: 0,
+    households: 0,
+    circles: 0,
+    tags: 0,
+    custom_field_definitions: 0,
+    custom_field_values: 0,
+    occasions: 0,
+    occasion_events: 0,
+  };
+}
+
+// Issue #2916: a bundle uploaded but not yet handed to the wizard (Start not
+// pressed) used to keep its server session until it expired, and enough
+// cancelled tries hit the per-user 429 cap.
+test('Cancel after an upload releases the session the wizard never took over', async () => {
+  uploadMock.mockResolvedValue({ session_id: 's1', version: 1, totals: bundleTotals() });
+  const onClose = vi.fn();
+  render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  pickFile();
+  await screen.findByRole('button', { name: 'Start import' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/import/mycorrhizal', 's1'));
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+test('Cancel before any upload releases nothing', () => {
+  const onClose = vi.fn();
+  render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  expect(onClose).toHaveBeenCalledTimes(1);
+  expect(cancelMock).not.toHaveBeenCalled();
+});
+
+// Issue #2916: once the wizard owns the uploaded session (Start pressed), the
+// dialog's close path must not cancel it a second time — the wizard's own
+// cancel does.
+test('Cancel after starting does not double-cancel the wizard-owned session', async () => {
+  uploadMock.mockResolvedValue({ session_id: 's1', version: 1, totals: bundleTotals() });
+  const onClose = vi.fn();
+  render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  pickFile();
+  await screen.findByRole('button', { name: 'Start import' });
+  fireEvent.click(screen.getByRole('button', { name: 'Start import' }));
+  await screen.findByRole('button', { name: 'Cancel' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/import/mycorrhizal', 's1'));
+  expect(cancelMock).toHaveBeenCalledTimes(1);
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+// Issue #2916: a failed best-effort cancel must never stop the dialog closing.
+test('a rejected cancel is swallowed and the dialog still closes', async () => {
+  uploadMock.mockResolvedValue({ session_id: 's3', version: 1, totals: bundleTotals() });
+  cancelMock.mockImplementationOnce(() => Promise.reject(new Error('cancel failed')));
+  const onClose = vi.fn();
+  render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  pickFile();
+  await screen.findByRole('button', { name: 'Start import' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/import/mycorrhizal', 's3'));
+});
 
 test('after upload the totals render and the import can start', async () => {
   uploadMock.mockResolvedValue({

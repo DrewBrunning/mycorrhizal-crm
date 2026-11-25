@@ -30,6 +30,8 @@ function group(overrides: Partial<EntityValueGroup> = {}): EntityValueGroup {
     name: 'Acme Corp',
     reason: 'normalized_name',
     variants: ['Acme Corp', 'Acme, Inc'],
+    existing_entity_id: '',
+    existing_entity_name: '',
     contacts: [
       {
         contact_id: 1,
@@ -162,6 +164,245 @@ test('skipped groups are reported with a reason, never silently dropped', async 
   fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Include Acme Corp' }));
   fireEvent.click(within(dialog).getByRole('button', { name: 'Create 1 organisation' }));
   expect(await within(dialog).findByText(/Acme Corp: the name is not valid/)).toBeInTheDocument();
+});
+
+// Issue #2919: a group that already matches a live entity links to it instead
+// of creating a second organisation with the same name.
+test('a group matching an existing entity offers to link to it, not create it', async () => {
+  suggestMock.mockResolvedValue(
+    page([
+      group({
+        key: 'green',
+        name: 'Green Acres Co-op',
+        variants: ['Green Acres Co-op'],
+        existing_entity_id: 'e-green',
+        existing_entity_name: 'Green Acres Co-op',
+        contacts: [
+          {
+            contact_id: 11,
+            firstname: 'Alice',
+            lastname: 'A',
+            value_name: 'Green Acres Co-op',
+            has_primary: false,
+          },
+        ],
+      }),
+    ]),
+  );
+  createMock.mockResolvedValue({
+    created: [
+      {
+        key: 'green',
+        entity: { id: 'e-green', name: 'Green Acres Co-op' } as never,
+        links: [],
+      },
+    ],
+    skipped: [],
+  });
+  renderCard();
+  const dialog = await openWizard();
+  await within(dialog).findByText('Green Acres Co-op — 1 contact');
+
+  fireEvent.click(
+    within(dialog).getByRole('checkbox', { name: 'Link to existing Green Acres Co-op' }),
+  );
+  expect(within(dialog).queryByLabelText('Name of Green Acres Co-op')).toBeNull();
+  fireEvent.click(
+    within(dialog).getByRole('button', { name: 'Link to existing Green Acres Co-op' }),
+  );
+
+  await waitFor(() => expect(createMock).toHaveBeenCalled());
+  expect(createMock).toHaveBeenCalledWith({
+    kind: 'organisation',
+    groups: [
+      {
+        key: 'green',
+        name: 'Green Acres Co-op',
+        role: 'employee',
+        set_primary: false,
+        contact_ids: [11],
+        existing_entity_id: 'e-green',
+      },
+    ],
+  });
+});
+
+// Issue #2919: the action copy distinguishes creating, linking and a mixed
+// selection, so the user is told exactly what the helper will do.
+test('the create button copy distinguishes create, link and mixed selections', async () => {
+  suggestMock.mockResolvedValue(
+    page([
+      group({
+        key: 'green',
+        name: 'Green Acres Co-op',
+        variants: ['Green Acres Co-op'],
+        existing_entity_id: 'e-green',
+        existing_entity_name: 'Green Acres Co-op',
+      }),
+      group({
+        key: 'beta',
+        name: 'Beta Co',
+        variants: ['Beta Co'],
+        existing_entity_id: 'e-beta',
+        // No stored name: the group's own name is the fallback label.
+        existing_entity_name: '',
+      }),
+      group({ key: 'globex', name: 'Globex', variants: ['Globex'] }),
+    ]),
+  );
+  renderCard();
+  const dialog = await openWizard();
+  await within(dialog).findByText('Green Acres Co-op — 2 contacts');
+
+  const createButton = () => within(dialog).getByRole('button', { name: /^(Create|Link)/ });
+  const toggle = (name: string) =>
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: `Include ${name}` }));
+  const toggleLink = (name: string) =>
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: `Link to existing ${name}` }));
+
+  // Only a create group: the original create copy.
+  toggle('Globex');
+  expect(createButton()).toHaveTextContent('Create 1 organisation');
+  toggle('Globex'); // nothing selected
+
+  // Only one link group: its existing name is in the label.
+  toggleLink('Green Acres Co-op');
+  expect(createButton()).toHaveTextContent('Link to existing Green Acres Co-op');
+  toggleLink('Green Acres Co-op');
+
+  // A link group with no stored existing name falls back to the group name.
+  toggleLink('Beta Co');
+  expect(createButton()).toHaveTextContent('Link to existing Beta Co');
+
+  // Two link groups: the plural link label.
+  toggleLink('Green Acres Co-op');
+  expect(createButton()).toHaveTextContent('Link 2 groups to existing organisations');
+
+  // Mixing in a create group switches to the combined copy.
+  toggle('Globex');
+  expect(createButton()).toHaveTextContent('Create new groups and link existing ones');
+
+  fireEvent.click(createButton());
+  await waitFor(() => expect(createMock).toHaveBeenCalled());
+  const sent = createMock.mock.calls[0][0];
+  const byKey = Object.fromEntries(sent.groups.map((g) => [g.key, g]));
+  expect(byKey.green.existing_entity_id).toBe('e-green');
+  expect(byKey.beta.existing_entity_id).toBe('e-beta');
+  expect(byKey.globex.existing_entity_id).toBeUndefined();
+});
+
+// Issue #2919: the same link copy has a place variant, and a place group with
+// no existing entity still offers the place create label.
+test('place groups use the place link and create copy', async () => {
+  suggestMock.mockResolvedValue(page([]));
+  renderCard();
+  const dialog = await openWizard();
+  await within(dialog).findByText('Nothing left to create from your contacts.');
+
+  suggestMock.mockResolvedValue(
+    page([
+      group({
+        key: 'p1',
+        kind: 'place',
+        name: '1 Main St',
+        variants: ['1 Main St'],
+        existing_entity_id: 'e-p1',
+        existing_entity_name: '1 Main St',
+      }),
+      group({
+        key: 'p2',
+        kind: 'place',
+        name: '2 Main St',
+        variants: ['2 Main St'],
+        existing_entity_id: 'e-p2',
+        existing_entity_name: '2 Main St',
+      }),
+      group({ key: 'p3', kind: 'place', name: '3 Main St', variants: ['3 Main St'] }),
+    ]),
+  );
+  fireEvent.click(within(dialog).getByRole('tab', { name: 'Places' }));
+  await within(dialog).findByText('1 Main St — 2 contacts');
+
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Link to existing 1 Main St' }));
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Link to existing 2 Main St' }));
+  expect(
+    within(dialog).getByRole('button', { name: 'Link 2 groups to existing places' }),
+  ).toBeInTheDocument();
+
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Include 3 Main St' }));
+  expect(
+    within(dialog).getByRole('button', { name: 'Create new groups and link existing ones' }),
+  ).toBeInTheDocument();
+
+  // Only the new place selected: the place create label.
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Link to existing 1 Main St' }));
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Link to existing 2 Main St' }));
+  expect(within(dialog).getByRole('button', { name: 'Create 1 place' })).toBeInTheDocument();
+});
+
+test('every skip reason is explained in the user’s words', async () => {
+  suggestMock.mockResolvedValue(
+    page([
+      group({ key: 'acme', name: 'Acme Corp' }),
+      group({ key: 'beta', name: 'Beta Co' }),
+      group({ key: 'gamma', name: 'Gamma Ltd' }),
+    ]),
+  );
+  createMock.mockResolvedValue({
+    created: [],
+    skipped: [
+      { key: 'acme', reason: 'group_not_found' },
+      { key: 'beta', contact_id: 2, reason: 'contact_not_in_group' },
+      { key: 'gamma', reason: 'core_invalid' },
+    ],
+  });
+  renderCard();
+  const dialog = await openWizard();
+  await within(dialog).findByText('Acme Corp — 2 contacts');
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Include Acme Corp' }));
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Include Beta Co' }));
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Include Gamma Ltd' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Create 3 organisations' }));
+
+  expect(
+    await within(dialog).findByText(/Acme Corp: skipped\. It may already exist or no longer match/),
+  ).toBeInTheDocument();
+  expect(
+    within(dialog).getByText(/Beta Co: a contact no longer belongs to it\./),
+  ).toBeInTheDocument();
+  expect(within(dialog).getByText(/Gamma Ltd: its details are not valid\./)).toBeInTheDocument();
+});
+
+test('an entity_not_found skip names the group and explains the link failed', async () => {
+  suggestMock.mockResolvedValue(
+    page([
+      group({
+        key: 'green',
+        name: 'Green Acres Co-op',
+        variants: ['Green Acres Co-op'],
+        existing_entity_id: 'e-green',
+        existing_entity_name: 'Green Acres Co-op',
+      }),
+    ]),
+  );
+  createMock.mockResolvedValue({
+    created: [],
+    skipped: [{ key: 'green', reason: 'entity_not_found' }],
+  });
+  renderCard();
+  const dialog = await openWizard();
+  await within(dialog).findByText('Green Acres Co-op — 2 contacts');
+  fireEvent.click(
+    within(dialog).getByRole('checkbox', { name: 'Link to existing Green Acres Co-op' }),
+  );
+  fireEvent.click(
+    within(dialog).getByRole('button', { name: 'Link to existing Green Acres Co-op' }),
+  );
+  expect(
+    await within(dialog).findByText(
+      /Green Acres Co-op: the organisation or place it matched no longer exists/,
+    ),
+  ).toBeInTheDocument();
 });
 
 test('a failed scan or create shows the error and keeps the dialog', async () => {

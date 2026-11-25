@@ -938,7 +938,8 @@ func GetCircles(c *gin.Context) {
 	}
 
 	if c.Query("legacy") == "true" {
-		var circleNames []string
+		// Non-nil so no rows serialises as [] not null (issue #2936).
+		circleNames := []string{}
 		err := db.Raw(`SELECT DISTINCT json_each.value AS circle
 			FROM contacts, json_each(contacts.circles)
 			WHERE contacts.user_id = ?`, userID).Scan(&circleNames).Error

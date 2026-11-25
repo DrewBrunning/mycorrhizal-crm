@@ -1372,6 +1372,7 @@ export type EntityFromContactsCreated = {
 
 export type EntityFromContactsGroup = {
   contact_ids: number[];
+  existing_entity_id?: string;
   key: string;
   name?: string;
   role: string;
@@ -1391,7 +1392,7 @@ export type EntityFromContactsResponse = {
 export type EntityFromContactsSkip = {
   contact_id?: number;
   key: string;
-  reason: 'group_not_found' | 'contact_not_in_group' | 'name_invalid' | 'core_invalid';
+  reason: 'group_not_found' | 'contact_not_in_group' | 'name_invalid' | 'core_invalid' | 'entity_not_found';
 };
 
 export type EntityInput = {
@@ -1467,6 +1468,8 @@ export type EntitySuggestionsResponse = {
 
 export type EntityValueGroup = {
   contacts: EntityValueGroupContact[];
+  existing_entity_id: string;
+  existing_entity_name: string;
   key: string;
   kind: 'organisation' | 'place';
   name: string;

@@ -1226,6 +1226,21 @@ func TestGetCircles(t *testing.T) {
 	assert.ElementsMatch(t, []string{"Friends", "Family", "Work"}, responseBody)
 }
 
+// Issue #2936: with no legacy circle strings the legacy listing must be the
+// JSON array "[]", never "null" (a nil slice), or typed clients fail to decode.
+func TestGetCircles_LegacyEmptyIsEmptyArray(t *testing.T) {
+	_, router := setupRouter(t)
+	router.GET("/contacts/circles", GetCircles)
+
+	req, _ := http.NewRequest("GET", "/contacts/circles?legacy=true", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.JSONEq(t, "[]", w.Body.String())
+	assert.Equal(t, "[]", strings.TrimSpace(w.Body.String()))
+}
+
 func TestDeleteContactCleansUpPhotos(t *testing.T) {
 	db, router := setupRouter(t)
 

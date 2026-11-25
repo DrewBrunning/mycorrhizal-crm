@@ -55,6 +55,23 @@ test('selects an existing circle', async () => {
   expect(onChange).toHaveBeenLastCalledWith({ circleIds: ['c-1'], tagIds: [] });
 });
 
+// Issue #2910: the section heading must be an h3 under the dialog's h2; it
+// rendered as an h6 (Typography variant="subtitle2") and skipped levels.
+test('the section heading is an h3, not an h6', async () => {
+  vi.mocked(listCircles).mockResolvedValue({
+    circles: [],
+    total: 0,
+    next_cursor: '',
+    limit: 200,
+  });
+  vi.mocked(listTags).mockResolvedValue({ tags: [], total: 0, next_cursor: '', limit: 200 });
+  render(<Harness onChange={vi.fn()} />);
+
+  expect(
+    await screen.findByRole('heading', { level: 3, name: 'Add every imported contact to' }),
+  ).toBeInTheDocument();
+});
+
 test('creates a new circle from typed text', async () => {
   vi.mocked(listCircles).mockResolvedValue({
     circles: [circle('c-1', 'Family')],
