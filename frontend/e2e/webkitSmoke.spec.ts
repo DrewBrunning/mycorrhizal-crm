@@ -1,5 +1,22 @@
-import { expect, LOGGED_OUT, test } from './fixtures';
+import type { Page } from '@playwright/test';
+import {
+  assertNoBlockingA11yViolations,
+  assertNoRepeatedAccessibleNames,
+  expect,
+  LOGGED_OUT,
+  test,
+} from './fixtures';
 import { TEST_USER } from './global-setup';
+
+/** Logs the shared test user in through the real login form. */
+async function loginThroughUi(page: Page): Promise<void> {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /login/i })).toBeVisible();
+  await page.getByLabel(/username or email/i).fill(TEST_USER.username);
+  await page.getByLabel(/password/i).fill(TEST_USER.password);
+  await page.getByRole('button', { name: /login/i }).click();
+  await expect(page.getByRole('heading', { name: /dashboard/i })).toBeVisible({ timeout: 10000 });
+}
 
 // Issue #992 (split from #917 finding G6): docs/development/supported-runtime-matrix.md's
 // "Browsers" row and docs/supported-versions.md's "Web browser" row set the
@@ -89,5 +106,28 @@ test.describe('WebKit smoke (issue #992)', () => {
         'docs/development/supported-runtime-matrix.md and docs/supported-versions.md to say the ' +
         'Push API surface is unverifiable again',
     ).toBe(true);
+  });
+
+  // Issue #2920 item 5: the shared gate's heading-order and repeated-name
+  // checks must run on WebKit too, not only Chromium. One test per rule so a
+  // failure in one does not hide the other; both scan only the dialog subtree,
+  // leaving the rest of this engine smoke unchanged.
+  test('the import dialog passes the heading-order check (#2910)', async ({ page }) => {
+    await loginThroughUi(page);
+    await page.goto('/contacts');
+    await page.getByRole('button', { name: /import/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await assertNoBlockingA11yViolations(page, '[role="dialog"]');
+  });
+
+  test('the add-contact dialog names its repeated actions (#2911)', async ({ page }) => {
+    await loginThroughUi(page);
+    await page.goto('/contacts');
+    await page.getByRole('button', { name: /add/i }).first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await assertNoBlockingA11yViolations(page, '[role="dialog"]');
+    await assertNoRepeatedAccessibleNames(page, '[role="dialog"]');
   });
 });
