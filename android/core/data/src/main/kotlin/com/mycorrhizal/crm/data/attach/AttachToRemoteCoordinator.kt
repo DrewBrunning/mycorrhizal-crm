@@ -91,14 +91,14 @@ enum class AttachFailure {
     NothingToConfirm,
     NoLocalProfile,
     TimedOut,
-    ImportFailed,
+    ImportFailed
 }
 
 /** A wizard step failed for a reason the user can act on; [failure] says which. */
 class AttachException(
     val failure: AttachFailure,
     detail: String? = null,
-    cause: Throwable? = null,
+    cause: Throwable? = null
 ) : Exception(detail ?: failure.name, cause)
 
 /**
@@ -217,7 +217,8 @@ class AttachToRemoteCoordinator @Inject constructor(
     }
 
     private suspend fun finishTwoFactor(result: Result<LoginResult>): Result<AttachSignInResult> {
-        val profileId = remoteProfileId ?: return Result.failure(AttachException(AttachFailure.NotSignedIn))
+        val profileId = remoteProfileId
+            ?: return Result.failure(AttachException(AttachFailure.NotSignedIn))
         val login = result.getOrElse { return Result.failure(it) }
         val token = login.token
         if (token.isNullOrBlank()) {

@@ -134,8 +134,12 @@ class WebhooksScreenTest {
         val repository = mockk<WebhookRepository>()
         coEvery { repository.list() } returns Result.success(listOf(webhook(1, name = "Hook A")))
         coEvery { repository.test(1) } returnsMany listOf(
-            Result.success(WebhookDelivery(id = 10, webhookId = 1, eventType = "test", statusCode = 502)),
-            Result.success(WebhookDelivery(id = 11, webhookId = 1, eventType = "test", statusCode = null))
+            Result.success(
+                WebhookDelivery(id = 10, webhookId = 1, eventType = "test", statusCode = 502)
+            ),
+            Result.success(
+                WebhookDelivery(id = 11, webhookId = 1, eventType = "test", statusCode = null)
+            )
         )
         val viewModel = WebhooksViewModel(repository)
         setScreen(viewModel)
@@ -158,7 +162,12 @@ class WebhooksScreenTest {
                     testing = false,
                     expanded = true,
                     deliveries = listOf(
-                        WebhookDelivery(id = 1, webhookId = 1, eventType = "contact.created", statusCode = null)
+                        WebhookDelivery(
+                            id = 1,
+                            webhookId = 1,
+                            eventType = "contact.created",
+                            statusCode = null
+                        )
                     ),
                     onTest = {},
                     onEdit = {},

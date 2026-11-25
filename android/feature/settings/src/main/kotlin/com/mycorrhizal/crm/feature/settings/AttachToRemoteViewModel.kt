@@ -124,7 +124,7 @@ class AttachToRemoteViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     errorRes = R.string.servers_add_invalid_url,
-                    error = null,
+                    error = null
                 )
             }
             return
@@ -133,7 +133,7 @@ class AttachToRemoteViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     errorRes = R.string.attach_error_credentials,
-                    error = null,
+                    error = null
                 )
             }
             return
@@ -167,7 +167,7 @@ class AttachToRemoteViewModel @Inject constructor(
                 it.copy(
                     step = AttachStep.Working,
                     errorRes = null,
-                    error = null,
+                    error = null
                 )
             }
             coordinator.completeTwoFactor(code.trim()).fold(
@@ -198,7 +198,7 @@ class AttachToRemoteViewModel @Inject constructor(
                 it.copy(
                     step = AttachStep.Working,
                     errorRes = null,
-                    error = null,
+                    error = null
                 )
             }
             val options = coordinator.beginPasskey().getOrElse { failure ->
@@ -302,7 +302,7 @@ class AttachToRemoteViewModel @Inject constructor(
                 it.copy(
                     step = AttachStep.Working,
                     errorRes = null,
-                    error = null,
+                    error = null
                 )
             }
             if (_uiState.value.importApplied) {

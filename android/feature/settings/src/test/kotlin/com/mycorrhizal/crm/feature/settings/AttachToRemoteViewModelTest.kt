@@ -68,7 +68,11 @@ class AttachToRemoteViewModelTest {
 
     private fun viewModel(beginOk: Boolean = true): AttachToRemoteViewModel {
         coEvery { coordinator.begin() } returns
-            if (beginOk) Result.success(local) else Result.failure(AttachException(AttachFailure.NotSignedIn))
+            if (beginOk) {
+                Result.success(local)
+            } else {
+                Result.failure(AttachException(AttachFailure.NotSignedIn))
+            }
         coEvery { session.profiles() } returns listOf(local, remoteProfile)
         return AttachToRemoteViewModel(coordinator, session, passkeyClient)
     }
@@ -704,7 +708,8 @@ class AttachToRemoteViewModelTest {
                     any()
                 )
             } returns Result.success(SourceImportResult())
-            coEvery { coordinator.finish(any()) } throws AttachException(AttachFailure.NoLocalProfile)
+            coEvery { coordinator.finish(any()) } throws
+                AttachException(AttachFailure.NoLocalProfile)
             val vm = viewModel()
             toReview(vm)
 

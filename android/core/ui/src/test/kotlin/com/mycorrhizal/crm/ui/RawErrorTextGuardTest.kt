@@ -76,12 +76,13 @@ class RawErrorTextGuardTest {
                     "    R.string.x,",
                     "    error ?: result.message",
                     "        ?: \"unknown\"",
-                    ")",
+                    ")"
                 ).joinToString("\n")
             )
             deleteOnExit()
         }
-        val lines = scanFile(probe, checkNotNull(probe.parentFile)).map { it.split(": ")[1].toInt() }
+        val lines = scanFile(probe, checkNotNull(probe.parentFile))
+            .map { it.split(": ")[1].toInt() }
         assertEquals(listOf(1, 2, 3, 4, 15, 20), lines)
     }
 
@@ -90,8 +91,10 @@ class RawErrorTextGuardTest {
     private fun uiSourceRoots(): List<File> {
         // Gradle runs a module's unit tests from that module (core/ui).
         val root = androidRoot()
-        val features = File(root, "feature").listFiles().orEmpty().map { File(it, "src/main/kotlin") }
-        return (features + File(root, "core/ui/src/main/kotlin") + File(root, "app/src/main/kotlin"))
+        val features = File(root, "feature").listFiles().orEmpty()
+            .map { File(it, "src/main/kotlin") }
+        val shared = listOf("core/ui", "app").map { File(root, "$it/src/main/kotlin") }
+        return (features + shared)
             .filter { it.isDirectory }
             .sortedBy { it.path }
     }
@@ -105,11 +108,17 @@ class RawErrorTextGuardTest {
             val why = when {
                 THROWABLE_MESSAGE.containsMatchIn(line) && !isLogging(lines, index) ->
                     "an exception's message is English"
+
                 LITERAL_FALLBACK.containsMatchIn(line) && shownAsText(lines, index) ->
                     "an English literal fallback shown as text"
+
                 else -> null
-            } ?: return@mapIndexedNotNull null
-            if (ALLOWED.keys.any { "$rel: $trimmed".startsWith(it) }) null else "$rel: ${index + 1}: $trimmed — $why"
+            }
+            when {
+                why == null -> null
+                ALLOWED.keys.any { "$rel: $trimmed".startsWith(it) } -> null
+                else -> "$rel: ${index + 1}: $trimmed — $why"
+            }
         }
     }
 
@@ -123,7 +132,8 @@ class RawErrorTextGuardTest {
         // Only a wrapped continuation (`?: "x"` starting its own line) belongs
         // to the statement above; any other line is its own statement.
         if (!lines[index].trimStart().startsWith("?:")) return false
-        return (maxOf(0, index - CONTEXT_LINES) until index).any { UI_TEXT.containsMatchIn(lines[it]) }
+        val before = maxOf(0, index - CONTEXT_LINES) until index
+        return before.any { UI_TEXT.containsMatchIn(lines[it]) }
     }
 
     private fun isLogging(lines: List<String>, index: Int): Boolean =

@@ -69,7 +69,11 @@ class AttachToRemoteScreenTest {
 
     private fun show(beginOk: Boolean = true, remotes: List<ServerProfile> = listOf(home)) {
         coEvery { coordinator.begin() } returns
-            if (beginOk) Result.success(local) else Result.failure(AttachException(AttachFailure.NotSignedIn))
+            if (beginOk) {
+                Result.success(local)
+            } else {
+                Result.failure(AttachException(AttachFailure.NotSignedIn))
+            }
         coEvery { session.profiles() } returns listOf(local) + remotes
         val vm = AttachToRemoteViewModel(coordinator, session, FakePasskeyClient())
         composeTestRule.setContent {
@@ -258,7 +262,10 @@ class AttachToRemoteScreenTest {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
             Result.success(AttachSignInResult.SignedIn)
         coEvery { coordinator.prepare(any()) } returnsMany
-            listOf(Result.failure(AttachException(AttachFailure.NotSignedIn)), Result.success(preview))
+            listOf(
+                Result.failure(AttachException(AttachFailure.NotSignedIn)),
+                Result.success(preview)
+            )
         show()
 
         composeTestRule.onNodeWithTag("attach-identifier").performTextInput("alice")

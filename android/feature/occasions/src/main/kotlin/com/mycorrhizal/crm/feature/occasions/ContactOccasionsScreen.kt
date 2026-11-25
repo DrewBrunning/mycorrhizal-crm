@@ -298,7 +298,8 @@ internal fun OccasionObligationRow(obligation: OccasionObligation, modifier: Mod
             )
             // A row saved before dates were required has none, so it can never remind.
             Text(
-                anchorText(obligation, LocalConfiguration.current.locales[0]) ?: stringResource(R.string.occasion_ob_no_date),
+                anchorText(obligation, LocalConfiguration.current.locales[0])
+                    ?: stringResource(R.string.occasion_ob_no_date),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

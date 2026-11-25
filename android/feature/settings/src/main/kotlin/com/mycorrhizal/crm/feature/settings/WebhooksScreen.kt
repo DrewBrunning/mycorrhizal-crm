@@ -202,7 +202,9 @@ fun WebhooksScreen(onBack: () -> Unit, viewModel: WebhooksViewModel = hiltViewMo
                     if (state.error != null || state.deliveryFailure != null) {
                         item {
                             Text(
-                                text = state.error?.localizedMessage() ?: state.deliveryFailure?.message().orEmpty(),
+                                text =
+                                    state.error?.localizedMessage()
+                                        ?: state.deliveryFailure?.message().orEmpty(),
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier
