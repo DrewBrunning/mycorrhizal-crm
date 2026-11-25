@@ -257,7 +257,10 @@
     "passkeyFailed": "Passkey sign-in failed. Please try again or enter a code.",
     "passkeyLogin": "Sign in with a passkey",
     "passkeyLoginCancelled": "Passkey sign-in was cancelled. You can try again or use your password.",
-    "passkeyLoginFailed": "Passkey sign-in failed. Try again or use your password."
+    "passkeyLoginFailed": "Passkey sign-in failed. Try again or use your password.",
+    "tooManyAttempts": "Too many failed attempts. Please try again later.",
+    "passkeyStartFailed": "Unable to start passkey sign-in.",
+    "passkeyVerifyFailed": "Passkey could not be verified."
   },
   "sessionExpired": {
     "bannerMessage": "Your session has expired.",

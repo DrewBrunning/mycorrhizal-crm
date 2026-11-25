@@ -266,7 +266,10 @@
     "passkeyFailed": "Accesso con passkey non riuscito. Riprova o inserisci un codice.",
     "passkeyLogin": "Accedi con una passkey",
     "passkeyLoginCancelled": "L'accesso con passkey è stato annullato. Puoi riprovare o usare la password.",
-    "passkeyLoginFailed": "Accesso con passkey non riuscito. Riprova o usa la password."
+    "passkeyLoginFailed": "Accesso con passkey non riuscito. Riprova o usa la password.",
+    "tooManyAttempts": "Troppi tentativi falliti. Riprova più tardi.",
+    "passkeyStartFailed": "Impossibile avviare l'accesso con passkey.",
+    "passkeyVerifyFailed": "Impossibile verificare la passkey."
   },
   "sessionExpired": {
     "bannerMessage": "La tua sessione è scaduta.",

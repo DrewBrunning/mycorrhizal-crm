@@ -257,7 +257,10 @@
     "passkeyFailed": "Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder geben Sie einen Code ein.",
     "passkeyLogin": "Mit einem Passkey anmelden",
     "passkeyLoginCancelled": "Die Anmeldung mit Passkey wurde abgebrochen. Versuchen Sie es erneut oder verwenden Sie Ihr Passwort.",
-    "passkeyLoginFailed": "Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder verwenden Sie Ihr Passwort."
+    "passkeyLoginFailed": "Die Anmeldung mit Passkey ist fehlgeschlagen. Versuchen Sie es erneut oder verwenden Sie Ihr Passwort.",
+    "tooManyAttempts": "Zu viele fehlgeschlagene Versuche. Bitte versuchen Sie es später erneut.",
+    "passkeyStartFailed": "Die Anmeldung mit Passkey konnte nicht gestartet werden.",
+    "passkeyVerifyFailed": "Der Passkey konnte nicht überprüft werden."
   },
   "sessionExpired": {
     "bannerMessage": "Ihre Sitzung ist abgelaufen.",

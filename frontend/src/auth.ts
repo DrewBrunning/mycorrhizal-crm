@@ -3,6 +3,7 @@
 // Token is stored in httpOnly cookie (not accessible from JS for security)
 // User info is cached in localStorage for UI purposes
 
+import i18n from './i18n/config';
 import { localizeReason } from './i18n/reason';
 import { initializeTimeFormatFromBackend } from './timeFormat';
 import { clearAllSessionDrafts } from './utils/sessionDraftStorage';
@@ -56,7 +57,7 @@ export async function loginUser(identifier: string, password: string): Promise<L
     body: JSON.stringify({ identifier, password }),
   });
   if (!response.ok) {
-    throw new UserFacingError(await signInErrorMessage(response, 'Login failed'));
+    throw new UserFacingError(await signInErrorMessage(response, i18n.t('login.loginFailed')));
   }
   const data = await response.json();
 
@@ -99,9 +100,7 @@ export async function login2FA(code: string): Promise<LoginResponse> {
     throw new UserFacingError(
       await signInErrorMessage(
         response,
-        response.status === 429
-          ? 'Too many failed attempts. Please try again later.'
-          : 'Invalid code',
+        response.status === 429 ? i18n.t('login.tooManyAttempts') : i18n.t('login.invalidCode'),
       ),
     );
   }
@@ -126,7 +125,7 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
     credentials: 'include',
   });
   if (!begin.ok) {
-    throw new UserFacingError(await signInErrorMessage(begin, 'Unable to start passkey sign-in.'));
+    throw new UserFacingError(await signInErrorMessage(begin, i18n.t('login.passkeyStartFailed')));
   }
   const assertion = await getAssertion(await begin.json());
 
@@ -137,7 +136,9 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
     body: JSON.stringify(assertion),
   });
   if (!finish.ok) {
-    throw new UserFacingError(await signInErrorMessage(finish, 'Passkey could not be verified.'));
+    throw new UserFacingError(
+      await signInErrorMessage(finish, i18n.t('login.passkeyVerifyFailed')),
+    );
   }
   const data = await finish.json();
 
@@ -160,11 +161,11 @@ export async function loginWithPasskeyPasswordless(): Promise<LoginResponse> {
     credentials: 'include',
   });
   if (!begin.ok) {
-    throw new UserFacingError(await signInErrorMessage(begin, 'Unable to start passkey sign-in.'));
+    throw new UserFacingError(await signInErrorMessage(begin, i18n.t('login.passkeyStartFailed')));
   }
   const options = (await begin.json()) as WireRequestOptions & { ceremony_token?: unknown };
   if (typeof options.ceremony_token !== 'string' || options.ceremony_token === '') {
-    throw new UserFacingError('Unable to start passkey sign-in.');
+    throw new UserFacingError(i18n.t('login.passkeyStartFailed'));
   }
   const assertion = await getAssertion(options);
 
@@ -175,7 +176,9 @@ export async function loginWithPasskeyPasswordless(): Promise<LoginResponse> {
     body: JSON.stringify({ ceremony_token: options.ceremony_token, assertion }),
   });
   if (!finish.ok) {
-    throw new UserFacingError(await signInErrorMessage(finish, 'Passkey could not be verified.'));
+    throw new UserFacingError(
+      await signInErrorMessage(finish, i18n.t('login.passkeyVerifyFailed')),
+    );
   }
   const data = await finish.json();
 

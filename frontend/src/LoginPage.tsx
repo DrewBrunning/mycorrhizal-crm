@@ -116,15 +116,10 @@ export default function LoginPage({ setToken }: LoginPageProps) {
       const result = await login2FA(code.trim());
       await finishLogin(result);
     } catch (err) {
-      // login2FA throws a bare "Invalid code" for a rejected code (mapped to
-      // the translated message here) but a real backend message for account
-      // lockout (429) — surface that as-is so a locked-out user sees the
-      // lockout text, not a generic "invalid code" that invites more guessing.
-      const rawMessage = getErrorMessageOr(err, '');
-      const errorMessage =
-        rawMessage === 'Invalid code'
-          ? t('login.invalidCode')
-          : rawMessage || t('login.invalidCode');
+      // login2FA throws the localized reason, the lockout text, or its own
+      // translated "Invalid code" fallback; show it as-is so a locked-out user
+      // sees the lockout text, not a generic "invalid code" that invites guessing.
+      const errorMessage = getErrorMessageOr(err, t('login.invalidCode'));
       setError(errorMessage);
     } finally {
       setLoading(false);
