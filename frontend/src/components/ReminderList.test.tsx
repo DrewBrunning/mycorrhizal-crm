@@ -241,3 +241,18 @@ test('deleting a reminder moves focus to the next row, then the empty state', as
     expect(document.activeElement).toBe(screen.getByText('No reminders yet').parentElement),
   );
 });
+
+test('a failed delete keeps the row and does not move focus later', async () => {
+  const onDelete = vi.fn().mockRejectedValue(new Error('boom'));
+  const unhandled = vi.fn();
+  process.on('unhandledRejection', unhandled);
+  renderList({ reminders: [reminder({ ID: 5, message: 'Keep me' })], onDelete });
+  const trigger = screen.getByLabelText(/^Delete Keep me/);
+  trigger.focus();
+  fireEvent.click(trigger);
+  const dialog = await screen.findByRole('dialog');
+  fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
+  await waitFor(() => expect(onDelete).toHaveBeenCalledWith(5));
+  expect(screen.getByLabelText(/^Delete Keep me/)).toBeInTheDocument();
+  process.off('unhandledRejection', unhandled);
+});

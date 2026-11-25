@@ -242,7 +242,7 @@ test('"Not a duplicate" dismisses the pair for good', async () => {
   await screen.findByText('Acme');
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
   fireEvent.click(
-    await screen.findByRole('button', { name: 'Acme and Acme, Inc are not duplicates' }),
+    await screen.findByRole('button', { name: 'Not a duplicate: Acme and Acme, Inc' }),
   );
   await waitFor(() => expect(dismissMock).toHaveBeenCalledWith('o1', 'o2'));
   await waitFor(() => expect(screen.queryByText('Same name')).not.toBeInTheDocument());

@@ -94,7 +94,7 @@ test.describe('Entities', () => {
 
       const row = panel.getByRole('listitem').filter({ hasText: name }).first();
       await expect(row).toBeVisible({ timeout: 10000 });
-      const dismiss = row.getByRole('button', { name: /are not duplicates/i });
+      const dismiss = row.getByRole('button', { name: /^Not a duplicate/i });
       await stableClick(dismiss);
       await expect(dismiss).toHaveCount(0);
 
