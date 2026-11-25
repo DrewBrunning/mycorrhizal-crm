@@ -12,6 +12,7 @@ import {
   LOGGED_OUT,
   SKIP_A11Y_SCAN,
   test,
+  uniqueToken,
   waitForLoading,
 } from './fixtures';
 import { keyboardFocusViolations, positiveTabindexViolations } from './focusOrder';
@@ -441,8 +442,12 @@ test.describe('status text and landmarks (#1792)', {
       page,
       request,
     }) => {
-      const onTrack = await createTestContact(request, { firstname: 'A11yOnTrack' });
-      const overdue = await createTestContact(request, { firstname: 'A11yOverdue' });
+      // Unique names: this test runs once per theme and its contacts are
+      // soft-deleted into the Trash, where same-named rows from earlier runs
+      // tripped the Trash route scan's repeated-accessible-name check.
+      const token = uniqueToken();
+      const onTrack = await createTestContact(request, { firstname: `A11yOnTrack${token}` });
+      const overdue = await createTestContact(request, { firstname: `A11yOverdue${token}` });
       try {
         const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000).toISOString();
         for (const [contact, date] of [
