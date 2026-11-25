@@ -156,6 +156,42 @@ test('dismissing a pair calls the dismiss endpoint and refetches the scan', asyn
   expect(screen.getByText('Carol Clark')).toBeInTheDocument();
 });
 
+test('dismissing a pair moves focus to the next pair, then the dialog title (#2920)', async () => {
+  let remaining = [
+    {
+      a: summary(1, 'alice-uid', 'Alice', 'Adams'),
+      b: summary(2, 'bob-uid', 'Bob', 'Brown'),
+      reasons: ['name'],
+      confidence: 0.7,
+    },
+    {
+      a: summary(3, 'carol-uid', 'Carol', 'Clark'),
+      b: summary(4, 'dave-uid', 'Dave', 'Dale'),
+      reasons: ['name'],
+      confidence: 0.5,
+    },
+  ];
+  mockFetch({
+    pairs: () => pairsResponse(remaining),
+    onDismiss: () => {
+      remaining = remaining.slice(1);
+    },
+  });
+  renderDialog();
+  await screen.findByText('Alice Adams');
+  vi.spyOn(window, 'confirm').mockReturnValue(true);
+
+  fireEvent.click(screen.getAllByRole('button', { name: 'Not a duplicate' })[0]);
+  await waitFor(() => expect(screen.queryByText('Alice Adams')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Not a duplicate' })),
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate' }));
+  await screen.findByText('No duplicate candidates found.');
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByText('Review duplicates')));
+});
+
 test('merge opens MergeContactsDialog pre-populated with the pair', async () => {
   mockFetch({
     preview: true,

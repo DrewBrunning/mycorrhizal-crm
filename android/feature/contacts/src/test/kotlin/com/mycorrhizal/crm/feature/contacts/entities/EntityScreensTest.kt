@@ -36,7 +36,9 @@ import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.PartialDate
 import com.mycorrhizal.crm.model.network.TemporalRange
 import com.mycorrhizal.crm.network.ApiError
+import com.mycorrhizal.crm.testing.WithFontScale
 import com.mycorrhizal.crm.testing.a11y.assertAccessibleSemantics
+import com.mycorrhizal.crm.testing.assertNoMidWordBreak
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -313,6 +315,34 @@ class EntityScreensTest {
             .assertTextContains(
                 "Organisation \u00b7 Linked to 0 contacts \u00b7 Updated 05.01.2026"
             )
+    }
+
+    // #2948: at 200% font size a word must not split ("Organisa/tions", "Possible duplicate/s").
+    @Test
+    @Config(sdk = [35], qualifiers = "w411dp-h891dp")
+    fun `entity tabs and the duplicates heading never break inside a word at 200 percent font`() {
+        composeTestRule.setContent {
+            WithFontScale(2f) {
+                MycorrhizalTheme {
+                    EntitiesContent(
+                        state = EntitiesUiState(
+                            entities = listOf(acme),
+                            suggestions = listOf(twinPair)
+                        ),
+                        onSelectKind = {},
+                        onQueryChange = {},
+                        onOpenEntity = {},
+                        onLoadMore = {},
+                        onRetry = {},
+                        onAdd = {}
+                    )
+                }
+            }
+        }
+        listOf("Organisations", "Places", "Pets", "Possible duplicates").forEach { text ->
+            composeTestRule.onNodeWithText(text, useUnmergedTree = true)
+                .assertNoMidWordBreak()
+        }
     }
 
     // #2935 (regression of #2645): both sides of a pair must be fully visible, each a full-width

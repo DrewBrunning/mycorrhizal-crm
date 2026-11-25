@@ -11,12 +11,13 @@ import {
   Divider,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Contact } from '../api/contacts';
 import type { DuplicatePair, DuplicateReason } from '../api/duplicates';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useDuplicatePairs } from '../hooks/useDuplicatePairs';
+import { useFocusAfterRemoval } from '../hooks/useFocusAfterRemoval';
 import AppDialog from './AppDialog';
 import MergeContactsDialog from './MergeContactsDialog';
 
@@ -24,6 +25,8 @@ interface ReviewDuplicatesDialogProps {
   open: boolean;
   onClose: () => void;
 }
+
+const pairKey = (p: DuplicatePair) => `${p.a.uid}-${p.b.uid}`;
 
 function contactName(c: Contact): string {
   return [c.firstname, c.lastname].filter(Boolean).join(' ').trim() || c.uid || '';
@@ -35,8 +38,10 @@ function PairLine({
   pair,
   onMerge,
   onDismiss,
+  dismissRef,
 }: {
   pair: DuplicatePair;
+  dismissRef?: (el: HTMLButtonElement | null) => void;
   onMerge: (pair: DuplicatePair) => void;
   // The real implementation (ReviewDuplicatesDialog's handleDismiss) is
   // async — it awaits the dismiss API call so the caller can show the
@@ -148,6 +153,7 @@ function PairLine({
           color="inherit"
           onClick={() => void handleDismiss()}
           disabled={dismissing}
+          ref={dismissRef}
         >
           {dismissing ? <CircularProgress size={14} /> : t('duplicates.notDuplicate')}
         </Button>
@@ -173,11 +179,18 @@ export default function ReviewDuplicatesDialog({ open, onClose }: ReviewDuplicat
     if (open) void refresh();
   }, [open, refresh]);
 
+  // Dismissing unmounts the pair that held focus: move it to a neighbouring
+  // pair's button, else the dialog title (#2918, #2920).
+  const titleRef = useRef<HTMLHeadingElement>(null);
+  const dismissFocus = useFocusAfterRemoval(titleRef, pairs, !loading);
+
   const handleDismiss = async (pair: DuplicatePair) => {
+    dismissFocus.request(pairs.map(pairKey), pairKey(pair));
     try {
       await dismiss(pair);
     } catch {
       // useDuplicatePairs surfaced the error via the snackbar.
+      dismissFocus.cancel();
     }
   };
 
@@ -190,7 +203,9 @@ export default function ReviewDuplicatesDialog({ open, onClose }: ReviewDuplicat
 
   return (
     <AppDialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{t('duplicates.reviewTitle')}</DialogTitle>
+      <DialogTitle ref={titleRef} tabIndex={-1}>
+        {t('duplicates.reviewTitle')}
+      </DialogTitle>
       <DialogContent>
         {loading && pairs.length === 0 ? (
           <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
@@ -214,9 +229,14 @@ export default function ReviewDuplicatesDialog({ open, onClose }: ReviewDuplicat
               {t('duplicates.count', { count: total })}
             </Typography>
             {pairs.map((pair, index) => (
-              <Box key={`${pair.a.uid}-${pair.b.uid}`}>
+              <Box key={pairKey(pair)}>
                 {index > 0 && <Divider />}
-                <PairLine pair={pair} onMerge={setMergePair} onDismiss={handleDismiss} />
+                <PairLine
+                  pair={pair}
+                  onMerge={setMergePair}
+                  onDismiss={handleDismiss}
+                  dismissRef={dismissFocus.register(pairKey(pair))}
+                />
               </Box>
             ))}
           </>
