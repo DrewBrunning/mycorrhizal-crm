@@ -273,6 +273,55 @@ test('testing a webhook reports a failed delivery without throwing', async () =>
   );
 });
 
+test.each([
+  [502, 'Test failed: the webhook URL answered with status 502'],
+  [null, 'Test failed: the webhook URL did not answer'],
+])(
+  'a failed delivery with no error text is worded in the UI language (status %s, #2920)',
+  async (statusCode, expected) => {
+    // Was the hardcoded English `status ${code ?? 'unknown'}`.
+    vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 4, name: 'Silent Hook' })]);
+    vi.mocked(testWebhook).mockResolvedValue({
+      delivery: {
+        id: 3,
+        event_type: 'contact.created',
+        status_code: statusCode,
+        error: null,
+        attempts: 1,
+        created_at: '2026-01-01T00:00:00Z',
+      },
+    });
+
+    render(<WebhooksSettings />);
+    await waitFor(() => expect(screen.getByText('Silent Hook')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /^Test\b/ }));
+
+    await waitFor(() => expect(screen.getByText(expected)).toBeInTheDocument());
+  },
+);
+
+test('a delivery with no status code shows a translated Error chip, not "err" (#2920)', async () => {
+  vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 9, name: 'Unreachable Hook' })]);
+  vi.mocked(getWebhookDeliveries).mockResolvedValue([
+    {
+      id: 1,
+      event_type: 'contact.updated',
+      status_code: null,
+      error: 'dial tcp: connection refused',
+      attempts: 1,
+      created_at: '2026-01-01T00:00:00Z',
+    },
+  ]);
+
+  render(<WebhooksSettings />);
+  await waitFor(() => expect(screen.getByText('Unreachable Hook')).toBeInTheDocument());
+  fireEvent.click(screen.getByRole('button', { name: /recent deliveries/i }));
+
+  await waitFor(() => expect(screen.getByText('contact.updated')).toBeInTheDocument());
+  expect(screen.getByText('Error')).toBeInTheDocument();
+  expect(screen.queryByText('err')).not.toBeInTheDocument();
+});
+
 test('expanding deliveries fetches them once and shows recent attempts', async () => {
   vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 8, name: 'Hook With History' })]);
   vi.mocked(getWebhookDeliveries).mockResolvedValue([

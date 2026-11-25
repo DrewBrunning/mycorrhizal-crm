@@ -210,10 +210,14 @@ export default function WebhooksSettings() {
       if (d.status_code && d.status_code >= 200 && d.status_code < 300) {
         setSuccess(t('settings.webhooks.testSuccess', { statusCode: d.status_code }));
       } else {
+        // #2920: the server's own error text when it sent one, else a line in
+        // the UI language (never a hand-built English `status …`).
         setError(
-          t('settings.webhooks.testFailed', {
-            error: d.error || `status ${d.status_code ?? 'unknown'}`,
-          }),
+          d.error
+            ? t('settings.webhooks.testFailed', { error: d.error })
+            : d.status_code
+              ? t('settings.webhooks.testFailedStatus', { statusCode: d.status_code })
+              : t('settings.webhooks.testFailedNoResponse'),
         );
       }
       // Prepend the new delivery into the cached list so it shows immediately
@@ -463,7 +467,7 @@ export default function WebhooksSettings() {
                               >
                                 <Chip
                                   size="small"
-                                  label={d.status_code ?? 'err'}
+                                  label={d.status_code ?? t('settings.webhooks.deliveryErrorChip')}
                                   color={d.status_code && d.status_code < 300 ? 'success' : 'error'}
                                   sx={{ height: 18, fontSize: '0.7rem', minWidth: 36 }}
                                 />
