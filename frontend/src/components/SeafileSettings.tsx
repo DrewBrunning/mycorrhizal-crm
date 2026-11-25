@@ -12,10 +12,11 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useSeafile } from '../hooks/useSeafile';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import { isHttpUrlString } from '../utils/linkResolution';
 import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
@@ -24,6 +25,9 @@ import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 // encrypted server-side and never shown again after save.
 export default function SeafileSettings() {
   const { t } = useTranslation();
+  // Save/Remove repeat across every integration card; the card title tells
+  // them apart for assistive tech (#2920 repeated-name check).
+  const titleId = useId();
   const { showSuccess, showError } = useSnackbar();
   const seafile = useSeafile({ showError });
 
@@ -82,7 +86,7 @@ export default function SeafileSettings() {
         setBaseUrl(saved.base_url);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('seafile.settings.saveFailed');
+      const msg = getErrorMessageOr(err, t('seafile.settings.saveFailed'));
       setSaveError(msg);
     } finally {
       setSaving(false);
@@ -97,7 +101,7 @@ export default function SeafileSettings() {
       setApiToken('');
       showSuccess(t('seafile.settings.removed'));
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('seafile.settings.saveFailed'));
+      showError(getErrorMessageOr(err, t('seafile.settings.saveFailed')));
     }
   };
 
@@ -108,7 +112,7 @@ export default function SeafileSettings() {
           <SvgIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }}>
             <path d={mdiFolderMultipleOutline} />
           </SvgIcon>
-          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
+          <Typography id={titleId} variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
             {t('seafile.settings.title')}
           </Typography>
         </Box>
@@ -179,6 +183,7 @@ export default function SeafileSettings() {
 
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
+                aria-describedby={titleId}
                 variant="contained"
                 size="small"
                 onClick={() => void handleSave()}
@@ -188,6 +193,7 @@ export default function SeafileSettings() {
               </Button>
               {seafile.config?.has_api_token && (
                 <Button
+                  aria-describedby={titleId}
                   variant="outlined"
                   size="small"
                   onClick={() => {
@@ -204,6 +210,7 @@ export default function SeafileSettings() {
               )}
               {seafile.config && (
                 <Button
+                  aria-describedby={titleId}
                   variant="outlined"
                   size="small"
                   color="error"

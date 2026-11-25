@@ -39,7 +39,7 @@ import {
   updateCalendarSubscription,
 } from '../api/calendars';
 import { formatLocalDate, formatDateTime as formatLocalDateTime } from '../timeFormat';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import { daysSince, terminalReasonKey } from '../utils/syncHealth';
 import LoadError from './LoadError';
 
@@ -92,9 +92,7 @@ export default function CalendarSyncSettings() {
       const data = await getCalendarSubscriptions();
       setCalendars(data);
     } catch (err) {
-      setLoadError(
-        err instanceof Error ? getErrorMessage(err) : t('settings.calendarSync.loadError'),
-      );
+      setLoadError(getErrorMessageOr(err, t('settings.calendarSync.loadError')));
     } finally {
       setLoading(false);
     }
@@ -168,7 +166,7 @@ export default function CalendarSyncSettings() {
         await handleSync(created);
       }
     } catch (err) {
-      setError(err instanceof Error ? getErrorMessage(err) : t('settings.calendarSync.saveError'));
+      setError(getErrorMessageOr(err, t('settings.calendarSync.saveError')));
     } finally {
       setSaving(false);
     }
@@ -188,9 +186,7 @@ export default function CalendarSyncSettings() {
       setDeleteDialogOpen(false);
       setCalendarToDelete(null);
     } catch (err) {
-      setError(
-        err instanceof Error ? getErrorMessage(err) : t('settings.calendarSync.deleteError'),
-      );
+      setError(getErrorMessageOr(err, t('settings.calendarSync.deleteError')));
       setDeleteDialogOpen(false);
     } finally {
       setDeleting(false);
@@ -211,7 +207,7 @@ export default function CalendarSyncSettings() {
         }),
       );
     } catch (err) {
-      setError(err instanceof Error ? getErrorMessage(err) : t('settings.calendarSync.syncError'));
+      setError(getErrorMessageOr(err, t('settings.calendarSync.syncError')));
     } finally {
       setSyncing((prev) => ({ ...prev, [cal.id]: false }));
       await loadCalendars();

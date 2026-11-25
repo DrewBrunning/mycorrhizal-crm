@@ -449,3 +449,28 @@ test('a restore clicked before the load effect flushes keeps focus on failure', 
   expect(restore).not.toBeNull();
   expect(document.activeElement).toBe(restore);
 });
+
+// #2920: two trashed contacts (or entities) with the same name gave their
+// Restore / Delete forever buttons the same accessible name. Each row's
+// buttons are described by that row's own deleted/purge dates.
+test('same-named rows: each row button is described by its own dates (#2920)', async () => {
+  rows = rows.map((r) => ({ ...r, contact: { ...r.contact, firstname: 'Ada', fn: 'Ada Test' } }));
+  seedEntities();
+  entityRows = entityRows.map((r) => ({ ...r, entity: { ...r.entity, name: 'Acme' } }));
+  renderPage();
+  await waitFor(() => expect(screen.getAllByText('Ada Test')).toHaveLength(2));
+  await waitFor(() => expect(screen.getAllByText('Acme')).toHaveLength(2));
+
+  const describe = (el: HTMLElement) =>
+    (el.getAttribute('aria-describedby') ?? '')
+      .split(/\s+/)
+      .map((id) => (id ? (document.getElementById(id)?.textContent?.trim() ?? '') : ''))
+      .join(' ')
+      .trim();
+  for (const name of ['Restore Ada Test', 'Delete forever: Ada Test', 'Restore Acme']) {
+    const [a, b] = screen.getAllByRole('button', { name }).map(describe);
+    expect(a, name).not.toBe('');
+    expect(b, name).not.toBe('');
+    expect(a, name).not.toBe(b);
+  }
+});

@@ -44,7 +44,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material/Select';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
 import { type ThemePreference, useThemePreference } from './AppThemeProvider';
@@ -95,9 +95,12 @@ import {
   type TimeFormat,
   useTimeFormat,
 } from './timeFormat';
+import { getErrorMessageOr } from './utils/errorHandler';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
+  // "Revoke All" also appears on the feeds card (#2920 repeated-name check).
+  const apiTokensTitleId = useId();
   useDocumentTitle(t('nav.profile'));
   const { preference: themePreference, setPreference: setThemePreference } = useThemePreference();
   const { dateFormat, setDateFormat } = useDateFormat();
@@ -148,7 +151,7 @@ export default function SettingsPage() {
       const response = await getApiTokens();
       setTokens(response.tokens);
     } catch (err) {
-      setTokensError(err instanceof Error ? err.message : t('apiTokens.loadError'));
+      setTokensError(getErrorMessageOr(err, t('apiTokens.loadError')));
     } finally {
       setTokensLoading(false);
     }
@@ -178,7 +181,7 @@ export default function SettingsPage() {
       setCopied(false);
       await fetchTokens();
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('apiTokens.createError'));
+      showError(getErrorMessageOr(err, t('apiTokens.createError')));
     } finally {
       setCreateLoading(false);
     }
@@ -241,7 +244,7 @@ export default function SettingsPage() {
       showSuccess(t('apiTokens.revokeSuccess'));
       await fetchTokens();
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('apiTokens.revokeError'));
+      showError(getErrorMessageOr(err, t('apiTokens.revokeError')));
     } finally {
       setRevokeLoading(false);
     }
@@ -266,7 +269,7 @@ export default function SettingsPage() {
       showSuccess(t('apiTokens.revokeAllSuccess', { count: result.revoked }));
       await fetchTokens();
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('apiTokens.revokeAllError'));
+      showError(getErrorMessageOr(err, t('apiTokens.revokeAllError')));
     } finally {
       setRevokeAllLoading(false);
     }
@@ -285,7 +288,7 @@ export default function SettingsPage() {
       showSuccess(t('apiTokens.rotateSuccess'));
       await fetchTokens();
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('apiTokens.rotateError'));
+      showError(getErrorMessageOr(err, t('apiTokens.rotateError')));
     } finally {
       setRotateLoading(false);
     }
@@ -358,7 +361,7 @@ export default function SettingsPage() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : t('settings.password.error');
+      const errorMessage = getErrorMessageOr(error, t('settings.password.error'));
       setPasswordError(errorMessage);
     } finally {
       setChangingPassword(false);
@@ -430,7 +433,7 @@ export default function SettingsPage() {
         contact ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'),
       );
     } catch (error) {
-      showError(error instanceof Error ? error.message : t('settings.selfContact.saveError'));
+      showError(getErrorMessageOr(error, t('settings.selfContact.saveError')));
     } finally {
       setSelfContactSaving(false);
     }
@@ -750,12 +753,18 @@ export default function SettingsPage() {
           >
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <KeyIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-              <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
+              <Typography
+                id={apiTokensTitleId}
+                variant="subtitle1"
+                component="h2"
+                sx={{ fontWeight: 500 }}
+              >
                 {t('apiTokens.title')}
               </Typography>
             </Box>
             <Stack direction="row" spacing={1}>
               <Button
+                aria-describedby={apiTokensTitleId}
                 variant="outlined"
                 size="small"
                 color="error"

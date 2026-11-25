@@ -165,6 +165,12 @@ export default function ContactHeader({
   onToggleMe,
 }: ContactHeaderProps) {
   const { t, i18n } = useTranslation();
+  // The three pencils (name, circles, tags) share the name "Edit"; each is
+  // described by the text it edits (#2920 repeated-name check). The two name
+  // headings are exclusive layout branches, so they share one id.
+  const nameHeadingId = useId();
+  const circlesLabelId = useId();
+  const tagsLabelId = useId();
   const enabled = enabledFields ?? resolveEnabledFields(null);
   // Overflow menu for the header action buttons on narrow viewports (T28).
   const [actionsMenuAnchor, setActionsMenuAnchor] = useState<HTMLElement | null>(null);
@@ -743,6 +749,7 @@ export default function ContactHeader({
                           copy — mark it so the pseudo-locale pass does not
                           report it as an untranslated string. */}
                       <Typography
+                        id={nameHeadingId}
                         variant="h5"
                         component="h1"
                         data-user-content
@@ -856,6 +863,7 @@ export default function ContactHeader({
                         color="primary"
                         onClick={onStartEditProfile}
                         aria-label={t('contactDetail.edit')}
+                        aria-describedby={nameHeadingId}
                         sx={{
                           ml: 1,
                           opacity: 0,
@@ -933,6 +941,7 @@ export default function ContactHeader({
                           copy — mark it so the pseudo-locale pass does not
                           report it as an untranslated string. */}
                       <Typography
+                        id={nameHeadingId}
                         variant="h5"
                         component="h1"
                         data-user-content
@@ -1025,6 +1034,7 @@ export default function ContactHeader({
                         color="primary"
                         onClick={onStartEditProfile}
                         aria-label={t('contactDetail.edit')}
+                        aria-describedby={nameHeadingId}
                         sx={{
                           ml: 1,
                           opacity: 0,
@@ -1218,6 +1228,7 @@ export default function ContactHeader({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <GroupIcon fontSize="small" color="action" />
                 <Typography
+                  id={circlesLabelId}
                   variant="caption"
                   sx={{
                     color: 'text.secondary',
@@ -1235,6 +1246,7 @@ export default function ContactHeader({
                   color="primary"
                   onClick={() => setEditingCircles(!editingCircles)}
                   aria-label={t('contactDetail.edit')}
+                  aria-describedby={circlesLabelId}
                   sx={{
                     ml: 1,
                     flexShrink: 0,
@@ -1327,6 +1339,7 @@ export default function ContactHeader({
                       size="small"
                       variant="contained"
                       disabled={!newCircleName.trim()}
+                      aria-describedby={circlesLabelId}
                       onClick={() => {
                         onAddCircle({
                           id: '',
@@ -1374,6 +1387,7 @@ export default function ContactHeader({
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 0.5 }}>
                 <LocalOfferIcon fontSize="small" color="action" />
                 <Typography
+                  id={tagsLabelId}
                   variant="caption"
                   sx={{
                     color: 'text.secondary',
@@ -1388,6 +1402,7 @@ export default function ContactHeader({
                   color="primary"
                   onClick={() => setEditingTags(!editingTags)}
                   aria-label={t('contactDetail.edit')}
+                  aria-describedby={tagsLabelId}
                   sx={{
                     ml: 1,
                     flexShrink: 0,
@@ -1478,6 +1493,7 @@ export default function ContactHeader({
                       size="small"
                       variant="contained"
                       disabled={!newTagName.trim()}
+                      aria-describedby={tagsLabelId}
                       onClick={() => {
                         onAddTag({
                           id: '',

@@ -84,6 +84,15 @@ test('Contact section heading is always visible (phones and emails are default-e
   expect(screen.getByText('Contact')).toBeInTheDocument();
 });
 
+// The Circles/Tags labels rendered as MUI subtitle2's default <h6>, skipping
+// from the dialog's <h2> straight to <h6> (axe heading-order; #2920 review).
+test('Circles and Tags are level-3 headings under the dialog title', () => {
+  renderDialog();
+  expect(screen.getByRole('heading', { level: 3, name: 'Circles' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 3, name: 'Tags' })).toBeInTheDocument();
+  expect(screen.queryByRole('heading', { level: 6 })).toBeNull();
+});
+
 test('Name section heading is always visible', () => {
   renderDialog();
   expect(screen.getByText('Name')).toBeInTheDocument();

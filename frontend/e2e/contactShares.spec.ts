@@ -227,6 +227,46 @@ test.describe('Contact sharing', () => {
     }
   });
 
+  // #2920 follow-up: Revoke moves its row out of the live list; the Revoke
+  // button that held focus unmounts, and focus used to fall to <body>.
+  test('revoking a live share keeps focus on the page', async ({ page }) => {
+    const recipient = await registerShareRecipient(page);
+    const contact = await createTestContact(page.request, {
+      firstname: 'E2EShareRevoke',
+      lastname: `Test${Date.now()}`,
+    });
+    const fullName = `${contact.firstname} ${contact.lastname}`;
+
+    try {
+      const toUserID = await directoryUserID(page, recipient.username);
+      const created = await page.request.post(`${API_BASE_URL}/share-grants`, {
+        data: {
+          to_user_id: toUserID,
+          entity_type: 'contact',
+          entity_id: contact.uid,
+          sections: ['emails'],
+        },
+      });
+      expect(created.ok(), `grant create failed: ${await created.text()}`).toBeTruthy();
+
+      await page.goto('/shared-by-me');
+      await expect(page.getByRole('heading', { level: 1, name: 'Shared by me' })).toBeVisible();
+      const row = page.getByRole('listitem').filter({ hasText: fullName });
+      await row.getByRole('button', { name: /^Revoke / }).click();
+
+      const confirm = page.getByRole('dialog');
+      await expect(confirm.getByRole('heading', { name: 'Revoke this share?' })).toBeVisible();
+      await confirm.getByRole('button', { name: 'Revoke', exact: true }).click();
+      await expect(confirm).toBeHidden();
+      await expect(row.getByRole('button', { name: /^Revoke / })).toHaveCount(0);
+
+      await expectFocusNotLost(page, 'share Revoke');
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+      await deleteThrowawayUser(recipient.username);
+    }
+  });
+
   test('re-confirming a share keeps focus on the page', async ({ page }) => {
     const recipient = await registerShareRecipient(page);
     const contact = await createTestContact(page.request, {

@@ -1847,6 +1847,8 @@
       "testNamed": "Tester le webhook {{name}}",
       "testSuccess": "Test livré ({{statusCode}})",
       "testFailed": "Test échoué : {{error}}",
+      "testFailedStatus": "Échec du test : l’URL du webhook a répondu avec le statut {{statusCode}}",
+      "testFailedNoResponse": "Échec du test : l’URL du webhook n’a pas répondu",
       "deliveries": "Livraisons récentes",
       "loadingDeliveries": "Chargement des livraisons...",
       "noDeliveries": "Aucune livraison pour l'instant.",
@@ -1888,7 +1890,8 @@
         "confirm": "Supprimer",
         "cancel": "Annuler"
       },
-      "keepFullData": "Conserver toutes les données"
+      "keepFullData": "Conserver toutes les données",
+      "deliveryErrorChip": "Erreur"
     },
     "customFields": {
       "title": "Champs personnalisés",

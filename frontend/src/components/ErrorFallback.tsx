@@ -2,6 +2,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import { Alert, AlertTitle, Box, Button, Typography } from '@mui/material';
 import type React from 'react';
+import { getErrorMessage } from '../utils/errorHandler';
 
 /**
  * Props for ErrorFallback component
@@ -122,7 +123,7 @@ export const SectionErrorFallback: React.FC<ErrorFallbackProps> = ({
       }
     >
       <AlertTitle>{title}</AlertTitle>
-      {message || error?.message || 'An unexpected error occurred.'}
+      {message || (error && getErrorMessage(error)) || 'An unexpected error occurred.'}
     </Alert>
   );
 };

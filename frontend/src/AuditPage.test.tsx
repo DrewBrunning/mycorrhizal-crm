@@ -104,6 +104,30 @@ test('renders events with the Undo button only on contact update rows', async ()
 });
 
 // Issue #2002: a contact restored from / purged from the trash is audited.
+test('each Undo is described by the contact and time it restores (#2920)', async () => {
+  // Two undoable rows used to be two identical "Undo" buttons to a screen reader.
+  const bob = contact('uid-2', 6, 'Bob', 'Smith');
+  contactsByUidMock.mockResolvedValue(
+    new Map<string, Contact>([
+      ['uid-1', contact('uid-1', 5, 'Alice', 'Johnson')],
+      ['uid-2', bob],
+    ]),
+  );
+  auditGetMock.mockResolvedValue({
+    audit_events: [
+      ev({ id: 4, entity_id: 'uid-1', created_at: '2026-08-02T12:00:00Z' }),
+      ev({ id: 3, entity_id: 'uid-2', created_at: '2026-08-03T09:30:00Z' }),
+    ],
+    total: 2,
+  });
+  renderPage();
+
+  const [first, second] = await screen.findAllByRole('button', { name: 'Undo' });
+  await waitFor(() => expect(first).toHaveAccessibleDescription(/Alice Johnson/));
+  expect(second).toHaveAccessibleDescription(/Bob Smith/);
+  expect(first.getAttribute('aria-describedby')).not.toBe(second.getAttribute('aria-describedby'));
+});
+
 test('labels restore and purge events (no raw i18n key, no Undo button)', async () => {
   auditGetMock.mockResolvedValue({
     audit_events: [

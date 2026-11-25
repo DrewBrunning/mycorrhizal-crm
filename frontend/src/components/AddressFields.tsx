@@ -22,6 +22,7 @@ import type { AddressSensitivity, ContactAddress } from '../api/contacts';
 import { formatGeoUri, geocodeDraft, parseCoordinateInput, parseGeoUri } from '../api/map';
 import { CONTACT_TYPE_OPTIONS } from '../contactFields';
 import { useRowKeys } from '../hooks/useRowKeys';
+import { getErrorMessage } from '../utils/errorHandler';
 
 interface AddressFieldsProps {
   label: string;
@@ -137,7 +138,7 @@ export default function AddressFields({ label, value, onChange, contactId }: Add
       setCoordDrafts((prev) => omitKey(prev, rowKey));
       updateAddr(index, { coordinates: result.coordinates });
     } catch (err) {
-      const message = err instanceof Error && err.message ? err.message : '';
+      const message = err instanceof Error && err.message ? getErrorMessage(err) : '';
       setGeocodeErrors((prev) => ({
         ...prev,
         [rowKey]: message || t('contacts.addressFields.findCoordinatesFailed'),

@@ -7,6 +7,7 @@ import { Autocomplete, Box, IconButton, Paper, Stack, TextField, Typography } fr
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CLOTHING_TYPE_SUGGESTIONS, type Preference } from '../api/preferences';
+import { usePanelTitleId } from './PanelTitleIdContext';
 
 interface ClothingSizesPanelProps {
   sizes: Preference[];
@@ -29,6 +30,7 @@ export default function ClothingSizesPanel({
   onDelete,
 }: ClothingSizesPanelProps) {
   const { t } = useTranslation();
+  const panelTitleId = usePanelTitleId();
   const [newKey, setNewKey] = useState('');
   const [newValue, setNewValue] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -190,6 +192,7 @@ export default function ClothingSizesPanel({
                     onClick={() => void handleAdd()}
                     disabled={busy || !newValue.trim()}
                     aria-label={t('gifts.add')}
+                    aria-describedby={panelTitleId}
                   >
                     <AddIcon />
                   </IconButton>

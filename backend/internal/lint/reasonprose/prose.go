@@ -20,10 +20,13 @@ import (
 )
 
 // proseWordThreshold is the point at which a param value reads as a sentence
-// rather than a field name or user value. A field label like "Work email
-// address" is data the template interpolates; "The Meerkat instance could not
-// be reached" is prose that cannot be translated.
-const proseWordThreshold = 4
+// rather than a field name or user value. A label like "relationship edges" or
+// "0.6 MiB" is data the template interpolates; "Instance not reachable" or "The
+// Meerkat instance could not be reached" is prose that cannot be translated.
+// It was 4 until the #2920 review showed three-word prose slipping through; a
+// census of every string param the controller/service suites attach found no
+// three-word data value.
+const proseWordThreshold = 3
 
 //go:embed prose_allowlist.txt
 var allowlistText string
@@ -71,10 +74,7 @@ func Check(code string, params map[string]any) []Problem {
 		if len(strings.Fields(value)) < proseWordThreshold {
 			continue
 		}
-		if _, ok := allow.reasons[code+"/"+key]; ok {
-			continue
-		}
-		if _, ok := allow.reasons["*/"+key]; ok {
+		if allow.allows(code + "/" + key) {
 			continue
 		}
 		problems = append(problems, Problem{
@@ -96,6 +96,16 @@ func sortProblems(problems []Problem) {
 		}
 		return problems[i].Value < problems[j].Value
 	})
+}
+
+// allows reports whether key ("code/param") has an exact or a "*/param" entry.
+func (a allowlist) allows(key string) bool {
+	if _, ok := a.reasons[key]; ok {
+		return true
+	}
+	_, param, _ := strings.Cut(key, "/")
+	_, ok := a.reasons["*/"+param]
+	return ok
 }
 
 func loadAllowlist() (allowlist, error) {

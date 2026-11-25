@@ -24,7 +24,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@mui/material';
-import { type MouseEvent, useEffect, useMemo, useState } from 'react';
+import { type MouseEvent, useEffect, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useSearchParams } from 'react-router';
 import { createUnassignedNote, deleteNote, type Note, updateNote } from './api/notes';
@@ -49,6 +49,8 @@ import { calendarDateOnly } from './utils/localDate';
 
 const NotesPage: React.FC = () => {
   const { t } = useTranslation();
+  // #2920: row ids for aria-describedby, unique per page instance.
+  const rowIdPrefix = useId();
   useDocumentTitle(t('nav.notes'));
   const { announce } = useAnnouncer();
   const { formatDate } = useDateFormat();
@@ -376,7 +378,9 @@ const NotesPage: React.FC = () => {
                   flex: 0.2,
                 }}
               >
-                <Typography variant="body2">{formatDate(calendarDateOnly(note.date))}</Typography>
+                <Typography variant="body2" id={`${rowIdPrefix}-${note.ID}-date`}>
+                  {formatDate(calendarDateOnly(note.date))}
+                </Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">
@@ -414,6 +418,7 @@ const NotesPage: React.FC = () => {
                           i18nPrefix="noteImages"
                           editable
                           onChanged={() => void refetch()}
+                          describedBy={`${rowIdPrefix}-${note.ID}-date`}
                         />
                       </Box>
                       <Box
@@ -424,6 +429,7 @@ const NotesPage: React.FC = () => {
                           <IconButton
                             size="small"
                             onClick={() => setSharingNote(note)}
+                            aria-describedby={`${rowIdPrefix}-${note.ID}-date`}
                             aria-label={t('standingShares.shareNoteNamed', {
                               name: itemLabel(note.content),
                             })}
@@ -434,6 +440,7 @@ const NotesPage: React.FC = () => {
                         <IconButton
                           size="small"
                           onClick={() => handleEditClick(note)}
+                          aria-describedby={`${rowIdPrefix}-${note.ID}-date`}
                           aria-label={t('contactDetail.editNoteNamed', {
                             name: itemLabel(note.content),
                           })}

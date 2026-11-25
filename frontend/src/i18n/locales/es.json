@@ -1847,6 +1847,8 @@
       "testNamed": "Probar el webhook {{name}}",
       "testSuccess": "Prueba entregada ({{statusCode}})",
       "testFailed": "Prueba fallida: {{error}}",
+      "testFailedStatus": "Prueba fallida: la URL del webhook respondió con el estado {{statusCode}}",
+      "testFailedNoResponse": "Prueba fallida: la URL del webhook no respondió",
       "deliveries": "Entregas Recientes",
       "loadingDeliveries": "Cargando entregas...",
       "noDeliveries": "Aún no hay entregas.",
@@ -1888,7 +1890,8 @@
         "confirm": "Eliminar",
         "cancel": "Cancelar"
       },
-      "keepFullData": "Conservar todos los datos"
+      "keepFullData": "Conservar todos los datos",
+      "deliveryErrorChip": "Error"
     },
     "customFields": {
       "title": "Campos Personalizados",

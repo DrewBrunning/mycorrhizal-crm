@@ -2,7 +2,7 @@
 // @vitest-environment node
 //
 // Tests for check-month-day-format.mjs (issue #2920, work item 3), the guard
-// that fails when a `.tsx` file assembles a month and day by hand instead of
+// that fails when a `.ts`/`.tsx` file assembles a month and day by hand instead of
 // calling formatMonthDay(). The last describe runs it against the REAL repo,
 // so `vitest run` (the required "Frontend (Vitest)" job) enforces it with no
 // workflow edit.
@@ -53,8 +53,33 @@ describe('findOffenders', () => {
     expect(findOffenders([file('src/DateFormatProvider.tsx', source)])).toEqual([]);
   });
 
-  test('only scans .tsx files (the scope of the ESLint rule)', () => {
-    expect(findOffenders([file('src/util.ts', 'const x = `${month}-${day}`;')])).toEqual([]);
+  test('scans .ts helpers too (the #2908 date came from one)', () => {
+    expect(findOffenders([file('src/utils/x.ts', 'const x = `${month}/${day}`;')])).toHaveLength(1);
+  });
+
+  test('flags the Date accessors, not only identifiers named month/day', () => {
+    const source = 'const x = `${d.getMonth() + 1}/${d.getDate()}`;';
+    expect(findOffenders([file('src/Probe.tsx', source)])).toHaveLength(1);
+    const utc = 'const x = `${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`;';
+    expect(findOffenders([file('src/Probe.ts', utc)])).toHaveLength(1);
+  });
+
+  test('ignores machine ISO shapes (input values and API parameters)', () => {
+    const sources = [
+      file('src/A.ts', 'const x = `${year}-${month}-${day}`;'),
+      file('src/B.ts', 'const x = `--${month}-${day}`;'),
+      file('src/C.tsx', 'const x = `${y}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${h}:${m}`;'),
+    ];
+    expect(findOffenders(sources)).toEqual([]);
+  });
+
+  test('still flags an ISO-looking template with display text around it', () => {
+    const source = 'const x = `Due ${year}-${month}-${day}`;';
+    expect(findOffenders([file('src/Probe.tsx', source)])).toHaveLength(1);
+  });
+
+  test('skips declaration files', () => {
+    expect(loadSourceFiles().some(({ file: f }) => f.endsWith('.d.ts'))).toBe(false);
   });
 
   test('reports the one-based line number', () => {
@@ -135,5 +160,43 @@ describe('the real repository', () => {
     const offenders = findOffenders(loadSourceFiles());
     const result = compareAllowlist(offenders, loadAllowlist());
     expect(result).toMatchObject({ ok: true, added: [], stale: [], badReasons: [] });
+  });
+});
+
+describe('the ESLint selector and this script agree', () => {
+  // The lint rule (eslint.config.js) and this script are two encodings of one
+  // rule; a probe table run through both keeps them from drifting.
+  const probes = [
+    ['`${month} ${day}`', true],
+    ['`${month}/${day}`', true],
+    ['`${d.getMonth() + 1}/${d.getDate()}`', true],
+    ['`${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`', true],
+    ['`Due ${year}-${month}-${day}`', true],
+    ['`${year}-${month}-${day}`', false],
+    ['`--${month}-${day}`', false],
+    ['`${y}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${h}:${m}`', false],
+    ['`${month}`', false],
+    ['`${day} ${weekday}`', false],
+  ];
+
+  test.each(probes)('%s -> flagged: %s', async (expr, flagged) => {
+    const { Linter } = await import('eslint');
+    const tseslint = (await import('typescript-eslint')).default;
+    const { monthDaySelector } = await import('../eslint.config.js');
+    const code = `declare const d: Date; declare const month: number, day: number, year: number, weekday: string, y: number, h: number, m: number; declare function pad(n: number): string;\nexport const x = ${expr};\n`;
+    const messages = new Linter({ configType: 'flat' }).verify(
+      code,
+      [
+        {
+          files: ['**/*.ts'],
+          languageOptions: { parser: tseslint.parser },
+          rules: { 'no-restricted-syntax': ['error', monthDaySelector] },
+        },
+      ],
+      'probe.ts',
+    );
+    expect(messages.filter((msg) => msg.fatal)).toEqual([]);
+    expect(messages.length > 0).toBe(flagged);
+    expect(findOffenders([file('src/probe.ts', code)]).length > 0).toBe(flagged);
   });
 });

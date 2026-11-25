@@ -32,6 +32,7 @@ import {
 import { useSnackbar } from '../context/SnackbarContext';
 import { useWebAuthn } from '../hooks/useWebAuthn';
 import { formatLocalDate } from '../timeFormat';
+import { getErrorMessage } from '../utils/errorHandler';
 import { isCeremonyCancelled, isWebAuthnSupported } from '../webauthnCeremony';
 import AppDialog from './AppDialog';
 import LoadError from './LoadError';
@@ -113,7 +114,7 @@ export default function PasskeySettings() {
         isCeremonyCancelled(err)
           ? t('settings.passkeys.cancelled')
           : err instanceof Error && err.message
-            ? err.message
+            ? getErrorMessage(err)
             : t('settings.passkeys.addError'),
       );
     }
@@ -143,7 +144,7 @@ export default function PasskeySettings() {
         isCeremonyCancelled(err)
           ? t('settings.passkeys.cancelled')
           : err instanceof Error && err.message
-            ? err.message
+            ? getErrorMessage(err)
             : t('settings.passkeys.invalidProof'),
       );
     } finally {
@@ -175,7 +176,9 @@ export default function PasskeySettings() {
       showSuccess(t('settings.passkeys.renameSuccess'));
     } catch (err) {
       setRenameError(
-        err instanceof Error && err.message ? err.message : t('settings.passkeys.renameError'),
+        err instanceof Error && err.message
+          ? getErrorMessage(err)
+          : t('settings.passkeys.renameError'),
       );
     } finally {
       setRenameBusy(false);
@@ -197,7 +200,7 @@ export default function PasskeySettings() {
         isCeremonyCancelled(err)
           ? t('settings.passkeys.cancelled')
           : err instanceof Error && err.message
-            ? err.message
+            ? getErrorMessage(err)
             : t('settings.passkeys.invalidProof'),
       );
     } finally {
@@ -221,7 +224,7 @@ export default function PasskeySettings() {
         isCeremonyCancelled(err)
           ? t('settings.passkeys.cancelled')
           : err instanceof Error && err.message
-            ? err.message
+            ? getErrorMessage(err)
             : t('settings.passkeys.invalidProof'),
       );
       setBusy(false);

@@ -216,3 +216,30 @@ test('a file-system identity renders in the file links surface with its metadata
     'https://paperless.example/documents/42/details',
   );
 });
+
+// #2920: a failed link or unlink is worded by getErrorMessageOr, so a network
+// failure names the condition rather than the raw "Failed to fetch".
+const networkError = "Couldn't reach the server. Check your connection and try again.";
+
+test('a failed unlink shows the translated network error (#2920)', async () => {
+  vi.stubGlobal(
+    'confirm',
+    vi.fn(() => true),
+  );
+  const onUnlinkImmich = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+  renderPanel({ identities: [identity], immichSummary: summary, onUnlinkImmich });
+
+  fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
+  expect((await screen.findAllByText(networkError)).length).toBeGreaterThan(0);
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+});
+
+test('a failed link shows the translated network error (#2920)', async () => {
+  const onLinkImmich = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+  renderPanel({ onLinkImmich });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Link a person' }));
+  fireEvent.click(await screen.findByText('Alice Example'));
+  expect((await screen.findAllByText(networkError)).length).toBeGreaterThan(0);
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+});

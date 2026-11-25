@@ -21,6 +21,7 @@ import type { ConversationAgenda } from '../api/conversationAgenda';
 import { useDateFormat } from '../DateFormatProvider';
 import { itemLabel } from '../utils/itemLabel';
 import { isHttpUrlString } from '../utils/linkResolution';
+import { usePanelTitleId } from './PanelTitleIdContext';
 
 interface ConversationAgendaListProps {
   items: ConversationAgenda[];
@@ -43,6 +44,7 @@ export default function ConversationAgendaList({
   onDelete,
 }: ConversationAgendaListProps) {
   const { t } = useTranslation();
+  const panelTitleId = usePanelTitleId();
   const { formatDate } = useDateFormat();
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
@@ -191,6 +193,7 @@ export default function ConversationAgendaList({
                   onClick={() => void handleAdd()}
                   disabled={adding || !draft.trim()}
                   aria-label={t('conversationAgenda.add')}
+                  aria-describedby={panelTitleId}
                 >
                   <AddIcon />
                 </IconButton>
