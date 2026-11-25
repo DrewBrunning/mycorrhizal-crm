@@ -422,6 +422,34 @@ test('a failed restore does not move focus later', async () => {
   expect(document.activeElement).toBe(restore);
 });
 
+// The click can land between the commit that first renders the rows and the
+// passive effect that commit scheduled (a fast click, or a loaded machine). That
+// late effect saw the list "change" and moved focus to the next row even though
+// the restore then failed. A MutationObserver callback runs in the microtask
+// after the commit, before the scheduler flushes passive effects, so it pins
+// the click into that window on every run.
+test('a restore clicked before the load effect flushes keeps focus on failure', async () => {
+  restoreStatus = 409;
+  let restore: HTMLElement | null = null;
+  const observer = new MutationObserver(() => {
+    if (restore) return;
+    const button = screen.queryByRole('button', { name: 'Restore Ada Test' });
+    if (!button) return;
+    restore = button;
+    button.focus();
+    fireEvent.click(button);
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+  try {
+    renderPage();
+    await screen.findByText(/already uses this contact/i);
+  } finally {
+    observer.disconnect();
+  }
+  expect(restore).not.toBeNull();
+  expect(document.activeElement).toBe(restore);
+});
+
 // #2920: two trashed contacts (or entities) with the same name gave their
 // Restore / Delete forever buttons the same accessible name. Each row's
 // buttons are described by that row's own deleted/purge dates.
