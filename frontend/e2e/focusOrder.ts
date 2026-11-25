@@ -189,6 +189,11 @@ export const ROW_REMOVING_ACTIONS: readonly RowRemovingAction[] = [
     removes: 'a removed (ended) grant row in Shared by me',
   },
   {
+    action: 'share Revoke',
+    spec: 'contactShares.spec.ts',
+    removes: 'the live row’s Revoke button when the grant moves to Ended shares',
+  },
+  {
     action: 'share re-confirm',
     spec: 'contactShares.spec.ts',
     removes: 'the row’s “Review and re-confirm” button when the grant is confirmed',
