@@ -54,7 +54,7 @@ guava = "28.2-android"
 # there is no AGP-version gate to satisfy — the :macrobenchmark module is a
 # plain `com.android.test` module.
 benchmark = "1.3.4"
-uiautomator = "2.3.0"
+uiautomator = "2.4.1"
 # Issue #268: retry failed JVM/Robolectric tests in CI so a flake doesn't
 # fail the required check; flaky tests are surfaced by the CI step that
 # scans the test-results XML (a test that passed only on retry still leaves
