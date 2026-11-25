@@ -1042,7 +1042,7 @@
     <string name="activity_edit">Aktivität bearbeiten</string>
     <string name="activity_title">Titel</string>
     <string name="activity_type">Art</string>
-    <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
+    <string name="activity_type_hint">Anruf, Besuch, Essen, Nachricht, Geschenk, …</string>
     <string name="activity_date">Datum</string>
     <string name="activity_end_date">Enddatum (optional)</string>
     <string name="activity_end_before_start">Das Enddatum darf nicht vor dem Startdatum liegen</string>
