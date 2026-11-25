@@ -20,8 +20,12 @@ list here.
 5. Attest or skip each applicable manual gate in `.github/manual-gates.json`.
    `manualgatecheck validate` checks the ledger shape; `status`/`check` answer
    whether the evidence is fresh for this commit.
-6. Verify `CHANGELOG.md` has the `## [X.Y.Z]` section (with an `> **Upgrade**`
-   blockquote and breaking changes where MAINT-02 requires them).
+6. Assemble the changelog: run
+   `cd backend && go run ./cmd/changelogassemble -write`, commit `CHANGELOG.md`
+   with the deleted `changelog.d/` fragments, then verify the `## [X.Y.Z]`
+   section (with an `> **Upgrade**` blockquote and breaking changes where
+   MAINT-02 requires them). `release.yml` refuses to tag with an unassembled
+   fragment or without the section.
 
 ## Dispatch
 
@@ -43,6 +47,7 @@ list here.
 | manual gate fails | missing/stale attestation or unreported applicable gate | re-run `scripts/android-local-mode-device-test.sh --record` or record a reasoned skip |
 | release-gate fails | a required per-PR check is red on the release commit | fix it and cut again; do not override silently |
 | release notes missing notes | changelog entry missing | add the entry to the release section before tagging; after tagging, edit the Release body |
+| `changelogassemble -check` fails | a `changelog.d/` fragment is not in `[Unreleased]` | run `cd backend && go run ./cmd/changelogassemble -write`, commit `CHANGELOG.md` with the deleted fragments, then cut again |
 
 ## Evidence
 

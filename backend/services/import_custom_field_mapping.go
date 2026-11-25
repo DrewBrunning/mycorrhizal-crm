@@ -135,6 +135,21 @@ var errInvalidImportFieldMapping = errors.New("invalid import field mapping")
 // and carries its own reason code for clients to localize.
 var errImportFieldMappingTargetInvalid = fmt.Errorf("%w: the field does not apply to contacts", errInvalidImportFieldMapping)
 
+// importFieldMappingUnknownFieldError is the "map" decision naming no usable
+// definition: an empty id (the wizard's select left unset) or one that is not
+// the user's. It wraps errInvalidImportFieldMapping, so ConfirmVCF still
+// answers 400, and carries the property name for the localizable reason
+// (issue #2909). The underlying GORM error is logged, never returned.
+type importFieldMappingUnknownFieldError struct {
+	property string
+}
+
+func (e *importFieldMappingUnknownFieldError) Error() string {
+	return fmt.Sprintf("%s: no existing field for property %q", errInvalidImportFieldMapping, e.property)
+}
+
+func (e *importFieldMappingUnknownFieldError) Unwrap() error { return errInvalidImportFieldMapping }
+
 // contactTargetSQL matches the definitions that apply to contacts: the
 // "contact" target, or a blank one (the column is NOT NULL, never NULL).
 const contactTargetSQL = "(target = 'contact' OR target = '')"
@@ -196,7 +211,14 @@ func buildImportFieldPlan(tx *gorm.DB, userID uint, mappings []models.ImportFiel
 		case "map":
 			var def models.FieldDefinition
 			if err := tx.Where("id = ? AND user_id = ?", m.FieldDefinitionID, userID).First(&def).Error; err != nil {
-				return nil, fmt.Errorf("%w: field_definition_id %q is not one of your definitions: %v", errInvalidImportFieldMapping, m.FieldDefinitionID, err)
+				// Never echo GORM's sentence ("record not found", or a schema
+				// error) to the client: log it and return a localizable
+				// contract error naming the property (issue #2909).
+				logger.Warn().Err(err).Uint("user_id", userID).
+					Str("property", m.PropertyName).
+					Str("field_definition_id", m.FieldDefinitionID).
+					Msg("buildImportFieldPlan: field mapping names no usable definition")
+				return nil, &importFieldMappingUnknownFieldError{property: m.PropertyName}
 			}
 			// An entity (organisation/place/pet) definition would get a value
 			// keyed to the contact's vcard_uid it can never read back.

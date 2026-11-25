@@ -35,7 +35,7 @@ path. Three categories replace it with their own verification — not with no ve
 
 - **Documentation-only** (`docs/`, `*.md`, context files): no test is expected; run the unconditional
   gates listed in [`docs/AGENTS.md`](../AGENTS.md) (`docscheck`, `citecheck`, `typos`, `depexceptions`,
-  `deprecations`, `contextcheck`, `changelogcheck`, `releasegatecheck`, `governancecheck`,
+  `deprecations`, `contextcheck`, `changelogcheck`, `changelogfragmentcheck`, `releasegatecheck`, `governancecheck`,
   `codecovcheck`, `pragmacheck`, `nightlyalertcheck`, `mainalertcheck`, `androidskipcheck`).
 - **Generated artifacts:** regenerate with the owning area's command, commit the diff, and run the
   named drift test. Never hand-edit.

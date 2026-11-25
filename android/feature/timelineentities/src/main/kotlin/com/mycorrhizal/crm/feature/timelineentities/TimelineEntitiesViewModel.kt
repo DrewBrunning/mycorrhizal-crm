@@ -256,7 +256,15 @@ class LifeEventsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+                    // #2938: nothing loaded yet = ErrorState + Retry; with a list already on
+                    // screen keep it and report the failed refresh as a snackbar.
+                    _uiState.update {
+                        if (it.items.isEmpty()) {
+                            it.copy(isLoading = false, loadError = error, error = null)
+                        } else {
+                            it.copy(isLoading = false, error = error)
+                        }
+                    }
                 }
             )
         }
@@ -506,7 +514,15 @@ class GiftsViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+                    // #2938: nothing loaded yet = ErrorState + Retry; with a list already on
+                    // screen keep it and report the failed refresh as a snackbar.
+                    _uiState.update {
+                        if (it.items.isEmpty()) {
+                            it.copy(isLoading = false, loadError = error, error = null)
+                        } else {
+                            it.copy(isLoading = false, error = error)
+                        }
+                    }
                 }
             )
             loadPickers(uid)
@@ -836,7 +852,15 @@ class PreferencesViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+                    // #2938: nothing loaded yet = ErrorState + Retry; with a list already on
+                    // screen keep it and report the failed refresh as a snackbar.
+                    _uiState.update {
+                        if (it.items.isEmpty()) {
+                            it.copy(isLoading = false, loadError = error, error = null)
+                        } else {
+                            it.copy(isLoading = false, error = error)
+                        }
+                    }
                 }
             )
         }
@@ -1034,7 +1058,15 @@ class ConversationAgendaViewModel @Inject constructor(
                     }
                 },
                 onError = { error ->
-                    _uiState.update { it.copy(isLoading = false, error = error) }
+                    // #2938: nothing loaded yet = ErrorState + Retry; with a list already on
+                    // screen keep it and report the failed refresh as a snackbar.
+                    _uiState.update {
+                        if (it.items.isEmpty()) {
+                            it.copy(isLoading = false, loadError = error, error = null)
+                        } else {
+                            it.copy(isLoading = false, error = error)
+                        }
+                    }
                 }
             )
             activityRepository.listForContact(

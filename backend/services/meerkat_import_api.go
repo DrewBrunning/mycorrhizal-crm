@@ -70,7 +70,10 @@ func meerkatAPIAppError(err error) *apperrors.AppError {
 		errors.Is(err, meerkatapi.ErrNotMeerkat), errors.Is(err, meerkatapi.ErrTooLarge):
 		return apperrors.ErrInvalidInput("base_url", userSafeMeerkatAPIError(err)).WithReason(apperrors.ReasonMeerkatAPIError, map[string]any{"reason": userSafeMeerkatAPIError(err)})
 	default:
-		return apperrors.ErrExternal("meerkat", userSafeMeerkatAPIError(err)).WithError(err).WithReason(apperrors.ReasonMeerkatUpstreamError, map[string]any{"reason": userSafeMeerkatAPIError(err)})
+		// The same localizable code the background fetch uses (issue #2912):
+		// the English sentence stays the fallback message, but no free-text
+		// {reason} param, so clients can render the translated template.
+		return apperrors.ErrExternal("meerkat", userSafeMeerkatAPIError(err)).WithError(err).WithReason(apperrors.ReasonMeerkatFetchUnreachable, nil)
 	}
 }
 

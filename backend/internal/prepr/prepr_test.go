@@ -439,6 +439,22 @@ func TestGovernanceStepsIncludeTypos(t *testing.T) {
 	t.Errorf("GovernanceSteps missing docs: typos; got %v", labelsOf(GovernanceSteps))
 }
 
+func TestGovernanceStepsIncludeChangelogFragmentCheck(t *testing.T) {
+	for _, step := range GovernanceSteps {
+		if step.Label == "docs: changelogfragmentcheck" {
+			want := []string{"go", "run", "./cmd/changelogfragmentcheck"}
+			if strings.Join(step.Argv, " ") != strings.Join(want, " ") {
+				t.Errorf("changelogfragmentcheck argv = %v, want %v", step.Argv, want)
+			}
+			if step.Dir != "backend" {
+				t.Errorf("changelogfragmentcheck Dir = %q, want backend", step.Dir)
+			}
+			return
+		}
+	}
+	t.Errorf("GovernanceSteps missing docs: changelogfragmentcheck; got %v", labelsOf(GovernanceSteps))
+}
+
 func TestAndroidFastUsesFailWarningAndBothLintFlavors(t *testing.T) {
 	area, ok := Lookup("android")
 	if !ok {

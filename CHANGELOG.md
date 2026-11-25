@@ -54,6 +54,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
+- **Circle & tag triage opens when you have no legacy circles** ([#2936](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2936)): the server now answers with an empty list instead of `null`, and Android treats a `null` from an older server as empty, so the screen shows its empty state instead of "Unexpected server response".
 - **Android shows saved contacts in the same order as online** ([#2940](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2940)): when the server can't be reached, the saved contact list is grouped A to Z by last name (else first name), with each letter appearing once.
 - **Shared contact anniversaries on the web** ([#2908](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2908)): a shared contact card now reads "Birthday: 28.11.1985" in your language and date format instead of "birth: 1985-11-28".
 - **Occasion dates and reminder titles follow your language** ([#2914](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2914), [#2915](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2915)): a standing occasion's date now reads in your language's usual order ("3. März" in German, "March 3" in English), and reminders created from an occasion are titled in your language instead of always starting with the English word "Occasion". Reminders you already have keep their wording.

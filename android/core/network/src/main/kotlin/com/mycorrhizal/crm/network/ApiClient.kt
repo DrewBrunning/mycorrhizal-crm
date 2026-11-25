@@ -1265,7 +1265,7 @@ class ApiClient(
         executeGet("$PLACEHOLDER_ORIGIN$CONTACTS_PATH/circles?legacy=true") { _, body ->
             moshi.adapter<List<String>>(
                 com.squareup.moshi.Types.newParameterizedType(List::class.java, String::class.java)
-            ).fromJson(body)
+            ).fromJson(body) ?: emptyList() // older servers send `null` for none (#2936)
         }
 
     /** GET /api/v1/contacts/{id} (full neutral Record/Card). */

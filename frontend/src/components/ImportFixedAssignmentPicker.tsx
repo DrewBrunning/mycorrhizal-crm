@@ -92,7 +92,7 @@ export default function ImportFixedAssignmentPicker({ circleIds, tagIds, onChang
 
   return (
     <Box sx={{ mb: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-      <Typography variant="subtitle2">
+      <Typography variant="subtitle2" component="h3">
         {t('contacts.import.fixedAssignment.title', 'Add every imported contact to')}
       </Typography>
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>

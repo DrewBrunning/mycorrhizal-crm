@@ -32,7 +32,7 @@ func rejectMonicaSessionOverLimit(c *gin.Context) bool {
 			apperrors.ErrCodeRateLimitExceeded,
 			"Too many in-progress Monica imports. Finish or cancel an existing one before starting another.",
 			http.StatusTooManyRequests,
-		))
+		).WithReason(apperrors.ReasonImportSessionLimit, nil))
 		return true
 	}
 	return false

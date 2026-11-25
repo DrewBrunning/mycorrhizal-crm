@@ -454,7 +454,7 @@ definition of that kind (they already key by `entity_id`).
 fields, and a "People" list (roles, periods, primary); on the contact page, a new "Organisations, places & pets"
 section (needs both a `SectionGroup` id *and* a `ContactJumpNav` `sections[]` entry, per the recorded gotcha) with
 add/edit link, primary toggle, and the adopt / link-from-existing actions; a merge dialog reached from suggestions; a
-Settings "Create entities from my contacts" wizard; the graph entity-node style (decision 2). **Android:** the same
+Settings "Create entities from my contacts" wizard; the graph entity-node style (decision 2). A group whose value already matches a live entity of the same kind is linked to that entity instead of creating a second one with the same name (issue #2919). **Android:** the same
 contact section and entity list/detail with the existing `DateField` period inputs (ADR 0025), the same adopt and
 merge flows, and the graph opt-in; delivered as its own tier, backend-first. All UI strings go through the
 localization skill; the contact page never shows a projected value without a "from <entity>" chip, so users can tell it
