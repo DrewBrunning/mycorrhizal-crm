@@ -67,6 +67,35 @@
     "reason": "e2e/monicaImport.spec.ts submits an unreachable Monica connection and asserts the inline error; the controller logs the client's failed connect before returning the 4xx. Environment-inherent to the negative test. Scoped to the one route that logs it; bound 2 = the spec's single driving action x 2 for Playwright's single CI retry. Observed 1 on run 38410573640 (Run E2E Tests; 0 in the production-defaults leg, which runs a subset); bound = observed x 2 for one Playwright retry (#1664)."
   },
   {
+    "message": "HTTP request",
+    "fields": {
+      "method": "POST",
+      "path": "/api/v1/contacts/import/meerkat/connect",
+      "status": "503"
+    },
+    "max_count": 4,
+    "reason": "e2e/pseudoLocale.spec.ts drives the Meerkat import dialog with an unreachable URL and asserts the inline error is localised; the controller answers 503 and logs this line for it. Environment-inherent to the negative test, not a server fault. Scoped to the one route; observed 2 on run 45525840564 (Run E2E Tests: the dialog is opened at both scanned viewports); bound 4 = observed x 2 for Playwright's single CI retry (#1664)."
+  },
+  {
+    "message": "Request error",
+    "fields": {
+      "method": "POST",
+      "path": "/api/v1/contacts/import/meerkat/connect",
+      "status": "503"
+    },
+    "max_count": 4,
+    "reason": "e2e/pseudoLocale.spec.ts drives the Meerkat import dialog with an unreachable URL and asserts the inline error is localised; the controller answers 503 and logs this line for it. Environment-inherent to the negative test, not a server fault. Scoped to the one route; observed 2 on run 45525840564 (Run E2E Tests: the dialog is opened at both scanned viewports); bound 4 = observed x 2 for Playwright's single CI retry (#1664)."
+  },
+  {
+    "message": "Meerkat connect failed",
+    "fields": {
+      "method": "POST",
+      "path": "/api/v1/contacts/import/meerkat/connect"
+    },
+    "max_count": 4,
+    "reason": "e2e/pseudoLocale.spec.ts drives the Meerkat import dialog with an unreachable URL and asserts the inline error is localised; the controller answers 503 and logs this line for it. Environment-inherent to the negative test, not a server fault. Scoped to the one route; observed 2 on run 45525840564 (Run E2E Tests: the dialog is opened at both scanned viewports); bound 4 = observed x 2 for Playwright's single CI retry (#1664)."
+  },
+  {
     "message": "Test notification channel failed",
     "fields": {
       "path": "/api/v1/notifications/config/test"
