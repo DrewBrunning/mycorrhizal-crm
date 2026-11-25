@@ -2,8 +2,8 @@
 # Manual edits can break the build and are not advised.
 # This file is expected to be part of source control.
 # To regenerate this file, run: ./gradlew :core:domain:dependencies --write-locks
-com.squareup.moshi:moshi-kotlin:1.15.1=releaseRuntimeClasspath
-com.squareup.moshi:moshi:1.15.1=releaseCompileClasspath,releaseRuntimeClasspath
+com.squareup.moshi:moshi-kotlin:1.15.2=releaseRuntimeClasspath
+com.squareup.moshi:moshi:1.15.2=releaseCompileClasspath,releaseRuntimeClasspath
 com.squareup.okio:okio-jvm:3.7.0=releaseCompileClasspath,releaseRuntimeClasspath
 com.squareup.okio:okio:3.7.0=releaseCompileClasspath,releaseRuntimeClasspath
 javax.inject:javax.inject:1=releaseCompileClasspath
