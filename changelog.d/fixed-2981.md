@@ -1,1 +1,0 @@
-- **Shared contact relationships are named in your language on Android** ([#2981](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2981)): the Relationships section of a shared contact, and its "What they will see" preview, now reads "Coworker", "Neighbour" or "Emergency contact" instead of raw keys like "co-worker".
