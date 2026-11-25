@@ -246,6 +246,24 @@ deleted**. There is no automatic merge. The app shows a "Changed elsewhere" prom
 These writes are online-only: the app's offline queue (call/SMS capture, replayed as new
 activities) only ever *creates* records, so it never sends `If-Match` and cannot collide this way.
 
+## Sharing, organisations and merging
+
+These features need a server at `v1.7.0` or later; against an older server the app hides their entry
+points rather than offering actions that would fail (see
+[client compatibility](client-compatibility-policy.md)).
+
+- **Standing shares.** **Contact shares** lists what is shared with you and by you. A recipient
+  accepts, declines, leaves or blocks a share; an owner revokes it, and an ended share can be removed
+  from the list. Declining, leaving and blocking look the same to the sender. See
+  [ADR 0042](adrs/0042-standing-shares.md).
+- **Organisations, places & pets.** A list and detail screen, a section on each contact for linking
+  and unlinking, duplicate suggestions with a **Merge** action, and restore from **Trash**. The
+  network graph shows them only if you turn that on. See [ADR 0043](adrs/0043-reusable-entities.md).
+- **Merging contacts.** Select several contacts in the list and merge them; the merge screen shows
+  the duplicate pair, asks which value wins per conflicting field, and refuses to merge a pair again.
+- **Cached screens.** A screen served from the offline copy says **Showing saved data**, and a failed
+  load offers **Retry**.
+
 ## Contact timeline
 
 A contact's page shows the **5 most recent** events of its merged timeline (activities, notes,
@@ -287,7 +305,7 @@ rail would not leave vertical room for its items: the permanent rail and two-pan
 Medium height, and a landscape phone keeps the modal navigation drawer, which scrolls as one list so every destination
 stays reachable.
 
-The rail shows the seven **People** destinations (Dashboard, Contacts, Circles, Tags, Households, Network, Map) and a
+The rail shows the eight **People** destinations (Dashboard, Contacts, Circles, Tags, Households, Organisations, places & pets, Network, Map) and a
 **More** item; More opens the full grouped drawer, so Interactions, Data & admin and Settings stay one tap away without
 making the rail scroll or truncate its labels. The rail is painted clear of the status bar (its top inset is filled with
 the primary bar colour, matching the status icons) and the selected item uses the Material 3 indicator pill.
@@ -301,8 +319,9 @@ columns.
 The navigation drawer (and, at Medium/Expanded widths, the rail) is built from one destination registry,
 `android/app/src/main/kotlin/com/mycorrhizal/crm/NavDestinations.kt` (issues #1758, #1759, #1757):
 
-- **People**: Dashboard, Contacts, Circles, Tags, Households, Network, Map. **Interactions**: Activities,
-  Unassigned notes, Occasions, Contact shares. **Data & admin**: Data, Import contacts, Audit log. **Settings** is
+- **People**: Dashboard, Contacts, Circles, Tags, Households, Organisations, places & pets, Network, Map.
+  **Interactions**: Activities, Unassigned notes, Occasions, Contact shares (one-time and standing).
+  **Data & admin**: Data, Import contacts, Audit log, Trash. **Settings** is
   pinned below the scrolling list.
 - The current destination is the `selected` item (announced by TalkBack); the header shows the signed-in user and
   the server host and opens **Servers**. Every destination opens with the Menu icon, and back from one returns to the
