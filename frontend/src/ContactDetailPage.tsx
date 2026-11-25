@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import MenuItem from '@mui/material/MenuItem';
 import Select, { type SelectChangeEvent } from '@mui/material/Select';
-import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import type { CadencePolicy, CadencePolicyInput } from './api/cadencePolicies';
@@ -98,6 +98,7 @@ import OccasionObligationDialog, {
 } from './components/OccasionObligationDialog';
 import OccasionObligationList from './components/OccasionObligationList';
 import OrganizationDialog, { type OrganizationFormData } from './components/OrganizationDialog';
+import { PanelTitleIdContext } from './components/PanelTitleIdContext';
 import PersonalInfoDialog, { type PersonalInfoFormData } from './components/PersonalInfoDialog';
 import PersonalInfoList from './components/PersonalInfoList';
 import PreferenceDialog, {
@@ -209,11 +210,15 @@ function SectionGroup({
 
 function PanelCard({
   title,
+  titleId: titleIdProp,
   actions,
   children,
   fullWidth,
 }: {
   title: string;
+  // Set when an `actions` control describes itself by the title; children
+  // read it from PanelTitleIdContext either way.
+  titleId?: string;
   actions?: ReactNode;
   children: ReactNode;
   // T74: for a card that needs the section's full width even inside a
@@ -221,6 +226,8 @@ function PanelCard({
   // the parent SectionGroup is actually a grid.
   fullWidth?: boolean;
 }) {
+  const generatedTitleId = useId();
+  const titleId = titleIdProp ?? generatedTitleId;
   return (
     <Card sx={{ mb: 2, ...(fullWidth && { gridColumn: { lg: '1 / -1' } }) }}>
       <CardContent sx={{ py: 2 }}>
@@ -234,13 +241,13 @@ function PanelCard({
             mb: 1,
           }}
         >
-          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
+          <Typography id={titleId} variant="subtitle1" component="h2" sx={{ fontWeight: 600 }}>
             {title}
           </Typography>
           {actions}
         </Box>
         <Divider sx={{ mb: 1.5 }} />
-        {children}
+        <PanelTitleIdContext.Provider value={titleId}>{children}</PanelTitleIdContext.Provider>
       </CardContent>
     </Card>
   );
@@ -372,6 +379,10 @@ const timelineActionButtonSx = {
 
 export default function ContactDetailPage() {
   const { t } = useTranslation();
+  // Two "Add Preference" buttons (Preferences panel, gift preferences);
+  // each is described by its own heading (#2920 repeated-name check).
+  const preferencesTitleId = useId();
+  const giftPreferencesHeadingId = useId();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showError, showSuccess, showInfo } = useSnackbar();
@@ -1447,8 +1458,10 @@ export default function ContactDetailPage() {
         />
         <PanelCard
           title={t('preference.title')}
+          titleId={preferencesTitleId}
           actions={
             <Button
+              aria-describedby={preferencesTitleId}
               startIcon={<AddIcon />}
               onClick={preferenceDialog.openCreate}
               variant="contained"
@@ -1803,10 +1816,11 @@ export default function ContactDetailPage() {
             {/* #196: component="h3" keeps the visual, fixes heading order --
                 subtitle2 renders <h6>, jumping h2->h6. Matches GiftList's
                 Ideas/Given/Received sub-headings. */}
-            <Typography variant="subtitle2" component="h3">
+            <Typography id={giftPreferencesHeadingId} variant="subtitle2" component="h3">
               {t('gifts.preferencesHeading')}
             </Typography>
             <Button
+              aria-describedby={giftPreferencesHeadingId}
               startIcon={<AddIcon />}
               onClick={giftPreferenceDialog.openCreate}
               variant="outlined"

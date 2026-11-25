@@ -399,3 +399,45 @@ test('a different origin saves once the secret is re-entered', async () => {
     app_password: 'new-secret',
   });
 });
+
+// #2920: a failed save or remove is worded by getErrorMessageOr, so a network
+// failure names the condition instead of showing the raw "Failed to fetch".
+for (const action of ['Save connection', 'Remove connection']) {
+  test(`a failed "${action}" shows the translated network error`, async () => {
+    vi.stubGlobal('confirm', () => true);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (!url.includes('/nextcloud/config')) throw new Error(`unexpected fetch: ${url}`);
+        if (init?.method === 'PUT' || init?.method === 'DELETE')
+          throw new TypeError('Failed to fetch');
+        return {
+          ok: true,
+          json: async () => ({
+            base_url: 'https://nextcloud.example.com',
+            username: 'alice',
+            has_app_password: true,
+          }),
+        };
+      }),
+    );
+    render(
+      <SnackbarProvider>
+        <NextcloudSettings />
+      </SnackbarProvider>,
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Remove connection' })).toBeInTheDocument(),
+    );
+    await settle();
+    fireEvent.click(screen.getByRole('button', { name: action }));
+    expect(
+      (
+        await screen.findAllByText(
+          "Couldn't reach the server. Check your connection and try again.",
+        )
+      ).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+  });
+}

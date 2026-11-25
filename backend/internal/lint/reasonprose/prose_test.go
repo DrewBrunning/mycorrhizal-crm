@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/token"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -15,6 +16,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/tools/go/analysis/analysistest"
 )
 
 func TestParseAllowlist(t *testing.T) {
@@ -64,15 +66,15 @@ func TestCheck(t *testing.T) {
 		want   []string
 	}{
 		{
-			name:   "four words is prose",
+			name:   "three words is prose",
 			code:   "some_code",
-			params: map[string]any{"detail": "one two three four"},
+			params: map[string]any{"detail": "Instance not reachable"},
 			want:   []string{"detail"},
 		},
 		{
-			name:   "three words is a value",
+			name:   "two words is a value",
 			code:   "some_code",
-			params: map[string]any{"detail": "one two three"},
+			params: map[string]any{"detail": "relationship edges"},
 		},
 		{
 			name:   "whitespace-only is not prose",
@@ -146,7 +148,7 @@ func TestCheckProblemFields(t *testing.T) {
 	assert.Equal(t, "some_code", p.Code)
 	assert.Equal(t, "detail", p.Key)
 	assert.Equal(t, "one two three four", p.Value)
-	assert.Contains(t, p.Why, "4 or more words")
+	assert.Contains(t, p.Why, "3 or more words")
 	assert.Contains(t, p.Why, "allowlist entry")
 }
 
@@ -344,4 +346,122 @@ func reasonConstants(t *testing.T, path string) map[string]string {
 		}
 	}
 	return out
+}
+
+// --- Static half (issue #2920 follow-up) -------------------------------------
+
+func TestStaticAnalyzer(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), StaticAnalyzer, "a")
+}
+
+// TestNoUnallowlistedProseSourcesInProduction is the static gate: every
+// production WithReason param that is a definite prose source (long constant,
+// err.Error(), Sprintf) must be a reasoned allowlist entry, whether or not any
+// test reaches that path. The runtime guard (RunGuarded) cannot see untested
+// paths; #2920's review found 23 err.Error() passthroughs it never reached.
+func TestNoUnallowlistedProseSourcesInProduction(t *testing.T) {
+	findings, err := ScanPackages("../../..", "./...")
+	require.NoError(t, err)
+	require.NotEmpty(t, findings, "the scan found no WithReason prose sources at all; the analyzer is probably not matching the real errors package")
+	for _, f := range findings {
+		assert.True(t, Allowed(f.Key), "%s: %s -- use a localizable reason code/template, or add a reasoned entry to prose_allowlist.txt", f.Position, f.Message)
+	}
+}
+
+// TestProseReasonEntriesAreDeclaredPassthroughs ties this allowlist to the web
+// passthrough ratchet: an allowlisted prose `reason` param is only acceptable
+// while the client deliberately renders it through a {{reason}}-only template
+// (compatci's reason_passthrough_allowlist.txt). Localizing the template
+// without dropping the prose param, or the reverse, fails here.
+func TestProseReasonEntriesAreDeclaredPassthroughs(t *testing.T) {
+	raw, err := os.ReadFile("../../compatci/reason_passthrough_allowlist.txt")
+	require.NoError(t, err)
+	passthrough := map[string]bool{}
+	for _, line := range strings.Split(string(raw), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, _, _ := strings.Cut(line, "\t")
+		passthrough[strings.TrimSpace(key)] = true
+	}
+	allow, err := allowlistForTest()
+	require.NoError(t, err)
+	for key := range allow.reasons {
+		code, param, _ := strings.Cut(key, "/")
+		if param != "reason" {
+			continue
+		}
+		assert.True(t, passthrough[code], "%s is allowlisted as prose but errors.reason.%s is not a declared {{reason}} passthrough", key, code)
+	}
+}
+
+type fakeRunner struct{ run func() int }
+
+func (f fakeRunner) Run() int { return f.run() }
+
+// TestRunGuarded proves the whole-package guard sees a reason attached
+// anywhere during m.Run, fails a green run, and keeps a red run red.
+func TestRunGuarded(t *testing.T) {
+	prose := func() int {
+		apperrors.ErrInvalidInput("x", "y").WithReason(apperrors.ReasonMeerkatUpstreamError, map[string]any{"reason": "The Meerkat instance could not be reached at all"})
+		return 0
+	}
+	var out strings.Builder
+	assert.Equal(t, 1, runGuarded(fakeRunner{prose}, &out))
+	assert.Contains(t, out.String(), `reason_params["reason"] for meerkat_upstream_error is free prose`)
+
+	out.Reset()
+	assert.Equal(t, 3, runGuarded(fakeRunner{func() int { prose(); return 3 }}, &out), "a failing run keeps its own exit code")
+
+	out.Reset()
+	clean := func() int {
+		apperrors.ErrInvalidInput("x", "y").WithReason(apperrors.ReasonMeerkatRemoteTooManyContacts, map[string]any{"total": 9, "max": 5})
+		return 0
+	}
+	assert.Equal(t, 0, runGuarded(fakeRunner{clean}, &out))
+	assert.Empty(t, out.String())
+
+	// Per-field validation reasons are observed too.
+	out.Reset()
+	fieldProse := func() int {
+		apperrors.ErrValidationFields([]apperrors.ValidationError{{
+			Field: "name", Message: "m", ReasonCode: apperrors.ReasonMeerkatUpstreamError,
+			ReasonParams: map[string]any{"reason": "this field value could not be parsed"},
+		}})
+		return 0
+	}
+	assert.Equal(t, 1, runGuarded(fakeRunner{fieldProse}, &out))
+
+	// The observer is removed afterwards.
+	out.Reset()
+	prose()
+	assert.Empty(t, out.String())
+}
+
+// TestAllowedMatchesExactAndWildcardEntriesAndFailsClosed pins Allowed's three
+// outcomes against a swapped-in allowlist (see TestCheckMalformedAllowlistFailsClosed).
+func TestAllowedMatchesExactAndWildcardEntriesAndFailsClosed(t *testing.T) {
+	_, _ = loadAllowlist()
+	prevLoaded, prevErr := loaded, loadError
+	t.Cleanup(func() { loaded, loadError = prevLoaded, prevErr })
+
+	allow, err := parseAllowlist("# count: 2\nfoo_bar/reason\tparser detail\n*/status\thttp status\n")
+	require.NoError(t, err)
+	loaded, loadError = allow, nil
+	assert.True(t, Allowed("foo_bar/reason"), "exact entry")
+	assert.True(t, Allowed("any_code/status"), "*/param entry")
+	assert.False(t, Allowed("foo_bar/detail"), "same code, other param")
+	assert.False(t, Allowed("other_code/reason"), "same param, other code")
+
+	loadError = errors.New("boom")
+	assert.False(t, Allowed("foo_bar/reason"), "a malformed allowlist allows nothing")
+}
+
+func TestScanPackagesReportsLoadErrors(t *testing.T) {
+	_, err := ScanPackages(t.TempDir(), "./does-not-exist/...")
+	require.Error(t, err)
+
+	_, err = ScanPackages(filepath.Join(t.TempDir(), "missing-dir"), "./...")
+	require.Error(t, err)
 }

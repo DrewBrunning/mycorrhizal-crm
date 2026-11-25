@@ -300,3 +300,14 @@ test('row buttons name the gift they act on', () => {
     screen.getByRole('button', { name: 'Mark She liked the ceramics shop as given' }),
   ).toBeInTheDocument();
 });
+
+test('each section’s repeated Add buttons are described by that section’s heading (#2920)', () => {
+  // "Add" and "Add with details" repeat in all three sections; the heading is
+  // what tells a screen-reader user which section a button adds to.
+  renderList();
+  for (const name of ['Ideas', 'Given', 'Received']) {
+    const s = section(name);
+    expect(s.getByRole('button', { name: 'Add' })).toHaveAccessibleDescription(name);
+    expect(s.getByRole('button', { name: 'Add with details' })).toHaveAccessibleDescription(name);
+  }
+});

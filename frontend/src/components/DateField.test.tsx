@@ -60,6 +60,28 @@ describe('DateField display', () => {
   });
 });
 
+describe('DateField calendar button', () => {
+  test('is described by the field label, so two date fields’ buttons differ (#2920)', () => {
+    render(
+      <DateFormatProvider>
+        <DateField label="From" value="" onChange={vi.fn()} />
+        <DateField label="To" value="" onChange={vi.fn()} />
+      </DateFormatProvider>,
+    );
+    const [from, to] = screen.getAllByRole('button', { name: 'Open calendar' });
+    expect(from).toHaveAccessibleDescription('From');
+    expect(to).toHaveAccessibleDescription('To');
+  });
+
+  test('keeps a caller-supplied id for the field and its label', () => {
+    renderField({ id: 'due' });
+    expect(screen.getByRole('button', { name: 'Open calendar' })).toHaveAttribute(
+      'aria-describedby',
+      'due-label',
+    );
+  });
+});
+
 describe('DateField picker', () => {
   test('selects a day, reports it as YYYY-MM-DD, and closes', async () => {
     const { onChange } = renderField();

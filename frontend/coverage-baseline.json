@@ -3,8 +3,8 @@
   "tolerancePct": 1.5,
   "files": {
     "src/ActivitiesPage.tsx": {
-      "lines": 92.85,
-      "linesTotal": 112,
+      "lines": 92.92,
+      "linesTotal": 113,
       "branches": 93.18,
       "branchesTotal": 88
     },
@@ -21,8 +21,8 @@
       "branchesTotal": 31
     },
     "src/AuditPage.tsx": {
-      "lines": 97.36,
-      "linesTotal": 76,
+      "lines": 97.46,
+      "linesTotal": 79,
       "branches": 96,
       "branchesTotal": 50
     },
@@ -39,10 +39,10 @@
       "branchesTotal": 40
     },
     "src/ContactDetailPage.tsx": {
-      "lines": 87.85,
-      "linesTotal": 420,
-      "branches": 78.54,
-      "branchesTotal": 303
+      "lines": 87.97,
+      "linesTotal": 424,
+      "branches": 78.68,
+      "branchesTotal": 305
     },
     "src/ContactSharesPage.tsx": {
       "lines": 95.65,
@@ -65,8 +65,8 @@
     "src/DataSettingsPage.tsx": {
       "lines": 100,
       "linesTotal": 143,
-      "branches": 96.2,
-      "branchesTotal": 79
+      "branches": 100,
+      "branchesTotal": 69
     },
     "src/DateFormatProvider.tsx": {
       "lines": 96.16,
@@ -95,8 +95,8 @@
     "src/LoginPage.tsx": {
       "lines": 96.38,
       "linesTotal": 83,
-      "branches": 85.96,
-      "branchesTotal": 57
+      "branches": 88.67,
+      "branchesTotal": 53
     },
     "src/MapPage.tsx": {
       "lines": 100,
@@ -117,8 +117,8 @@
       "branchesTotal": 0
     },
     "src/NotesPage.tsx": {
-      "lines": 93.1,
-      "linesTotal": 87,
+      "lines": 93.18,
+      "linesTotal": 88,
       "branches": 94.73,
       "branchesTotal": 76
     },
@@ -137,8 +137,8 @@
     "src/RegisterPage.tsx": {
       "lines": 91.83,
       "linesTotal": 49,
-      "branches": 68.42,
-      "branchesTotal": 38
+      "branches": 69.44,
+      "branchesTotal": 36
     },
     "src/SearchResultsPage.tsx": {
       "lines": 98.55,
@@ -147,10 +147,10 @@
       "branchesTotal": 83
     },
     "src/SettingsPage.tsx": {
-      "lines": 83.13,
-      "linesTotal": 249,
-      "branches": 70.83,
-      "branchesTotal": 144
+      "lines": 84.8,
+      "linesTotal": 250,
+      "branches": 76.15,
+      "branchesTotal": 130
     },
     "src/ShareTargetPage.tsx": {
       "lines": 92.85,
@@ -183,16 +183,16 @@
       "branchesTotal": 124
     },
     "src/TrashPage.tsx": {
-      "lines": 88.88,
-      "linesTotal": 63,
+      "lines": 89.06,
+      "linesTotal": 64,
       "branches": 91.48,
       "branchesTotal": 47
     },
     "src/UsersPage.tsx": {
       "lines": 91.95,
       "linesTotal": 174,
-      "branches": 76.92,
-      "branchesTotal": 78
+      "branches": 84.84,
+      "branchesTotal": 66
     },
     "src/api/activities.ts": {
       "lines": 100,
@@ -803,14 +803,14 @@
     "src/components/CalendarSyncSettings.tsx": {
       "lines": 91.86,
       "linesTotal": 123,
-      "branches": 85.05,
-      "branchesTotal": 87
+      "branches": 83.54,
+      "branchesTotal": 79
     },
     "src/components/CardDAVSyncScopeSettings.tsx": {
       "lines": 89.28,
       "linesTotal": 112,
-      "branches": 67.56,
-      "branchesTotal": 111
+      "branches": 69.15,
+      "branchesTotal": 107
     },
     "src/components/CardNotesEditor.tsx": {
       "lines": 100,
@@ -831,8 +831,8 @@
       "branchesTotal": 53
     },
     "src/components/ClothingSizesPanel.tsx": {
-      "lines": 85.41,
-      "linesTotal": 48,
+      "lines": 85.71,
+      "linesTotal": 49,
       "branches": 71.87,
       "branchesTotal": 32
     },
@@ -869,8 +869,8 @@
     "src/components/ContactFieldSettings.tsx": {
       "lines": 100,
       "linesTotal": 45,
-      "branches": 95,
-      "branchesTotal": 20
+      "branches": 92.85,
+      "branchesTotal": 14
     },
     "src/components/ContactFieldToolbar.tsx": {
       "lines": 90.9,
@@ -885,8 +885,8 @@
       "branchesTotal": 28
     },
     "src/components/ContactHeader.tsx": {
-      "lines": 94.01,
-      "linesTotal": 117,
+      "lines": 94.16,
+      "linesTotal": 120,
       "branches": 91.41,
       "branchesTotal": 163
     },
@@ -911,8 +911,8 @@
     "src/components/ContactSyncSettings.tsx": {
       "lines": 87.03,
       "linesTotal": 108,
-      "branches": 66.21,
-      "branchesTotal": 74
+      "branches": 62.12,
+      "branchesTotal": 66
     },
     "src/components/ContactTimeline.tsx": {
       "lines": 93.1,
@@ -927,8 +927,8 @@
       "branchesTotal": 20
     },
     "src/components/ConversationAgendaList.tsx": {
-      "lines": 94.59,
-      "linesTotal": 37,
+      "lines": 94.73,
+      "linesTotal": 38,
       "branches": 91.42,
       "branchesTotal": 35
     },
@@ -959,8 +959,8 @@
     "src/components/DAVPasswordSettings.tsx": {
       "lines": 96.87,
       "linesTotal": 32,
-      "branches": 85.71,
-      "branchesTotal": 14
+      "branches": 100,
+      "branchesTotal": 12
     },
     "src/components/DataDecayDialog.tsx": {
       "lines": 94.28,
@@ -981,16 +981,16 @@
       "branchesTotal": 14
     },
     "src/components/DateField.tsx": {
-      "lines": 95.23,
-      "linesTotal": 105,
-      "branches": 90.12,
-      "branchesTotal": 81
+      "lines": 95.32,
+      "linesTotal": 107,
+      "branches": 90.36,
+      "branchesTotal": 83
     },
     "src/components/DeleteAccountSettings.tsx": {
       "lines": 100,
       "linesTotal": 41,
-      "branches": 88,
-      "branchesTotal": 25
+      "branches": 91.3,
+      "branchesTotal": 23
     },
     "src/components/DiagnosticsPanel.tsx": {
       "lines": 100,
@@ -1073,20 +1073,20 @@
     "src/components/ErrorFallback.tsx": {
       "lines": 100,
       "linesTotal": 7,
-      "branches": 77.41,
-      "branchesTotal": 31
+      "branches": 78.12,
+      "branchesTotal": 32
     },
     "src/components/ExportFieldPickerDialog.tsx": {
       "lines": 94.59,
       "linesTotal": 37,
-      "branches": 83.33,
-      "branchesTotal": 18
+      "branches": 87.5,
+      "branchesTotal": 16
     },
     "src/components/ExternalLinkPanel.tsx": {
       "lines": 84.61,
       "linesTotal": 26,
-      "branches": 80.95,
-      "branchesTotal": 42
+      "branches": 89.47,
+      "branchesTotal": 38
     },
     "src/components/FeedCreateDialog.tsx": {
       "lines": 100,
@@ -1107,16 +1107,16 @@
       "branchesTotal": 4
     },
     "src/components/FeedsSettings.tsx": {
-      "lines": 90.47,
-      "linesTotal": 21,
+      "lines": 90.9,
+      "linesTotal": 22,
       "branches": 100,
       "branchesTotal": 9
     },
     "src/components/FieldDefinitionDialog.tsx": {
       "lines": 94.18,
       "linesTotal": 86,
-      "branches": 89.47,
-      "branchesTotal": 95
+      "branches": 89.24,
+      "branchesTotal": 93
     },
     "src/components/FieldSectionPicker.tsx": {
       "lines": 92.85,
@@ -1133,20 +1133,20 @@
     "src/components/FileLinksPanel.tsx": {
       "lines": 91.66,
       "linesTotal": 60,
-      "branches": 87.77,
-      "branchesTotal": 90
+      "branches": 87.5,
+      "branchesTotal": 88
     },
     "src/components/ForgotPasswordDialog.tsx": {
       "lines": 70.88,
       "linesTotal": 79,
-      "branches": 71.42,
-      "branchesTotal": 42
+      "branches": 76.31,
+      "branchesTotal": 38
     },
     "src/components/GeoPulseSettings.tsx": {
       "lines": 100,
-      "linesTotal": 51,
-      "branches": 93.18,
-      "branchesTotal": 44
+      "linesTotal": 52,
+      "branches": 97.5,
+      "branchesTotal": 40
     },
     "src/components/GeoPulseSuggestionsDialog.tsx": {
       "lines": 96.61,
@@ -1161,8 +1161,8 @@
       "branchesTotal": 79
     },
     "src/components/GiftList.tsx": {
-      "lines": 88.88,
-      "linesTotal": 63,
+      "lines": 89.06,
+      "linesTotal": 64,
       "branches": 79.62,
       "branchesTotal": 54
     },
@@ -1209,10 +1209,10 @@
       "branchesTotal": 27
     },
     "src/components/ImmichSettings.tsx": {
-      "lines": 76.78,
-      "linesTotal": 56,
-      "branches": 76,
-      "branchesTotal": 50
+      "lines": 89.47,
+      "linesTotal": 57,
+      "branches": 86.95,
+      "branchesTotal": 46
     },
     "src/components/ImportContactsDialog.tsx": {
       "lines": 94.51,
@@ -1371,10 +1371,10 @@
       "branchesTotal": 42
     },
     "src/components/NextcloudSettings.tsx": {
-      "lines": 91.8,
-      "linesTotal": 61,
-      "branches": 85.41,
-      "branchesTotal": 48
+      "lines": 96.77,
+      "linesTotal": 62,
+      "branches": 95.45,
+      "branchesTotal": 44
     },
     "src/components/NotFoundState.tsx": {
       "lines": 100,
@@ -1389,10 +1389,10 @@
       "branchesTotal": 23
     },
     "src/components/NotificationSettings.tsx": {
-      "lines": 79.73,
-      "linesTotal": 153,
-      "branches": 71.09,
-      "branchesTotal": 128
+      "lines": 80.12,
+      "linesTotal": 156,
+      "branches": 77.58,
+      "branchesTotal": 116
     },
     "src/components/OccasionEventAttendeesDialog.tsx": {
       "lines": 100,
@@ -1454,6 +1454,12 @@
       "branches": 100,
       "branchesTotal": 8
     },
+    "src/components/PanelTitleIdContext.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 0
+    },
     "src/components/PaperlessDocumentSearchDialog.tsx": {
       "lines": 83.87,
       "linesTotal": 31,
@@ -1461,10 +1467,10 @@
       "branchesTotal": 19
     },
     "src/components/PaperlessSettings.tsx": {
-      "lines": 94.23,
-      "linesTotal": 52,
-      "branches": 86.36,
-      "branchesTotal": 44
+      "lines": 100,
+      "linesTotal": 53,
+      "branches": 97.5,
+      "branchesTotal": 40
     },
     "src/components/PasskeySettings.tsx": {
       "lines": 100,
@@ -1587,10 +1593,10 @@
       "branchesTotal": 56
     },
     "src/components/SeafileSettings.tsx": {
-      "lines": 94.23,
-      "linesTotal": 52,
-      "branches": 86.36,
-      "branchesTotal": 44
+      "lines": 100,
+      "linesTotal": 53,
+      "branches": 97.5,
+      "branchesTotal": 40
     },
     "src/components/SearchNotesActivities.tsx": {
       "lines": 84.21,
@@ -1619,8 +1625,8 @@
     "src/components/SessionExpiredGate.tsx": {
       "lines": 98.38,
       "linesTotal": 62,
-      "branches": 85.71,
-      "branchesTotal": 28
+      "branches": 91.66,
+      "branchesTotal": 24
     },
     "src/components/SessionExpiredNotice.tsx": {
       "lines": 100,
@@ -1631,8 +1637,8 @@
     "src/components/SessionsSettings.tsx": {
       "lines": 100,
       "linesTotal": 40,
-      "branches": 86.66,
-      "branchesTotal": 30
+      "branches": 95.83,
+      "branchesTotal": 24
     },
     "src/components/ShareConfirmDialog.tsx": {
       "lines": 100,
@@ -1713,10 +1719,10 @@
       "branchesTotal": 27
     },
     "src/components/TwoFactorSettings.tsx": {
-      "lines": 93.1,
+      "lines": 93.79,
       "linesTotal": 145,
-      "branches": 76.81,
-      "branchesTotal": 69
+      "branches": 82.53,
+      "branchesTotal": 63
     },
     "src/components/UpcomingOccasionsWidget.tsx": {
       "lines": 100,
@@ -1725,10 +1731,10 @@
       "branchesTotal": 23
     },
     "src/components/WebhooksSettings.tsx": {
-      "lines": 86.4,
+      "lines": 88.8,
       "linesTotal": 125,
-      "branches": 80.58,
-      "branchesTotal": 103
+      "branches": 90.52,
+      "branchesTotal": 95
     },
     "src/components/WorkInformationDialog.tsx": {
       "lines": 100,
@@ -2542,9 +2548,9 @@
     },
     "src/utils/errorHandler.ts": {
       "lines": 100,
-      "linesTotal": 28,
+      "linesTotal": 29,
       "branches": 100,
-      "branchesTotal": 24
+      "branchesTotal": 26
     },
     "src/utils/graphBudget.ts": {
       "lines": 100,

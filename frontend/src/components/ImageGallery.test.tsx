@@ -120,7 +120,7 @@ function imageFor(owner: OwnerCase) {
 // The real owner props, as each call site passes them.
 function renderGallery(
   owner: OwnerCase,
-  props: { editable?: boolean; onChanged?: () => void } = {},
+  props: { editable?: boolean; onChanged?: () => void; describedBy?: string } = {},
 ) {
   const common = { ownerId: 4, i18nPrefix: owner.i18nPrefix, ...props };
   switch (owner.name) {
@@ -158,6 +158,21 @@ describe.each(owners)('ImageGallery ($name)', (owner) => {
     renderGallery(owner, { editable: true });
     fireEvent.click(await screen.findByRole('button', { name: /delete photo/i }));
     await waitFor(() => expect(owner.remove).toHaveBeenCalledWith(4, 9));
+  });
+
+  // #2920: Add photos / Delete photo repeat on every row of a list; the
+  // owner row's label tells a screen-reader user which row they act on.
+  it('describes its add and delete controls by the owner row label', async () => {
+    const { container } = renderGallery(owner, { editable: true, describedBy: 'row-4-date' });
+    const label = document.createElement('span');
+    label.id = 'row-4-date';
+    label.textContent = 'Jan 5, 2026';
+    container.appendChild(label);
+    const del = await screen.findByRole('button', { name: /delete photo/i });
+    expect(del).toHaveAccessibleDescription('Jan 5, 2026');
+    expect(screen.getByRole('button', { name: /add photos/i })).toHaveAccessibleDescription(
+      'Jan 5, 2026',
+    );
   });
 
   it('renders nothing read-only when there are no images', async () => {

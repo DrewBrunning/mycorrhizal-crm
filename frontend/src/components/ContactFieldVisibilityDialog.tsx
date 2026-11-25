@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { ContactFieldVisibility, FieldStateInput } from '../api/contactFieldVisibility';
 import { CONTACT_FIELD_GROUPS, CONTACT_FIELDS, type ContactFieldKey } from '../contactFields';
+import { getErrorMessage } from '../utils/errorHandler';
 
 // "Customize fields" for ONE contact (issue #1997): per-field show / hide /
 // default and the hide-empty mode. Purely a display preference -- the dialog
@@ -74,7 +75,9 @@ export default function ContactFieldVisibilityDialog({
       onClose();
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : t('contactDetail.fieldVisibility.dialog.saveError'),
+        err instanceof Error
+          ? getErrorMessage(err)
+          : t('contactDetail.fieldVisibility.dialog.saveError'),
       );
     } finally {
       setBusy(false);

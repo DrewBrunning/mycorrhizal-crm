@@ -4,6 +4,7 @@
 // real duplicate inside the innermost scope, with narrow exemptions.
 import { describe, expect, it } from 'vitest';
 import {
+  A11Y_VIOLATION_NODE_EXEMPTIONS,
   BLOCKING_A11Y_IMPACTS,
   describedByDistinguishes,
   EXTRA_A11Y_RULES,
@@ -49,6 +50,23 @@ describe('findRepeatedAccessibleNames', () => {
       ]),
     ).toEqual([{ scope: 'dialog', name: 'Merge', count: 2 }]);
   });
+
+  it.each(['navigation', 'banner'])(
+    'flags a repeated name in a %s landmark (#2920 review)',
+    (role) => {
+      expect(
+        findRepeatedAccessibleNames([
+          {
+            role,
+            children: [
+              { role: 'link', name: 'Open' },
+              { role: 'link', name: 'Open' },
+            ],
+          },
+        ]),
+      ).toEqual([{ scope: role, name: 'Open', count: 2 }]);
+    },
+  );
 
   it('flags links as well as buttons', () => {
     expect(
@@ -191,15 +209,9 @@ describe('findRepeatedAccessibleNames', () => {
 });
 
 describe('isExemptA11yViolationNode', () => {
-  it('matches the committed AddContactDialog heading skip only', () => {
-    expect(isExemptA11yViolationNode('heading-order', '<h6 class="x">Circles</h6>')).toBe(true);
-    expect(
-      isExemptA11yViolationNode(
-        'heading-order',
-        '<h6 class="x">Drag and drop a CSV or VCF file here, or click to select</h6>',
-      ),
-    ).toBe(false);
-    expect(isExemptA11yViolationNode('label-content-name-mismatch', '>Circles</h6>')).toBe(false);
+  it('exempts nothing once the list is empty (the Circles h6 skip was fixed)', () => {
+    expect(A11Y_VIOLATION_NODE_EXEMPTIONS).toEqual([]);
+    expect(isExemptA11yViolationNode('heading-order', '<h6 class="x">Circles</h6>')).toBe(false);
   });
 });
 

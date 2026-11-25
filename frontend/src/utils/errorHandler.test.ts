@@ -2,7 +2,7 @@ import { cleanup } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import { ApiError } from '../api/client';
 import i18n from '../i18n/config';
-import { getErrorMessage, handleError, handleFetchError } from './errorHandler';
+import { getErrorMessage, getErrorMessageOr, handleError, handleFetchError } from './errorHandler';
 
 const originalOnLine = Object.getOwnPropertyDescriptor(window.navigator, 'onLine');
 
@@ -115,4 +115,16 @@ test('handleFetchError logs and returns the user-facing network message', () => 
   expect(log).toHaveBeenCalledOnce();
   expect(log.mock.calls[0]?.[0]).toBe('[fetching contacts] Error:');
   expect(log.mock.calls[0]?.[1]).toMatchObject({ message: i18n.t('common.networkError') });
+});
+
+test('getErrorMessageOr maps an Error and falls back for anything else (#2920)', () => {
+  setOnline(true);
+  expect(getErrorMessageOr(new TypeError('Failed to fetch'), 'Save failed')).toBe(
+    i18n.t('common.networkError'),
+  );
+  expect(getErrorMessageOr(new ApiError('Contact not found', 'NOT_FOUND', 404), 'x')).toBe(
+    'Contact not found',
+  );
+  expect(getErrorMessageOr({ not: 'an error' }, 'Save failed')).toBe('Save failed');
+  expect(getErrorMessageOr('oops', 'Save failed')).toBe('Save failed');
 });

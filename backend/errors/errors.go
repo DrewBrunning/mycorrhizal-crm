@@ -333,6 +333,7 @@ func ErrValidationFields(verrs []ValidationError) *AppError {
 		if appErr.FieldReasons == nil {
 			appErr.FieldReasons = make(map[string]FieldReason, len(verrs))
 		}
+		observeReason(ve.ReasonCode, ve.ReasonParams)
 		appErr.FieldReasons[ve.Field] = FieldReason{
 			ReasonCode:   ve.ReasonCode,
 			ReasonParams: ve.ReasonParams,

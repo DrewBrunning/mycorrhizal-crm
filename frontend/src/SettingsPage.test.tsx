@@ -590,3 +590,54 @@ test('Settings offers the create-entities-from-contacts helper without scanning 
     screen.getByRole('button', { name: 'Create organisations and places from my contacts…' }),
   ).toBeInTheDocument();
 });
+
+// #2920: each token action's failure is worded by getErrorMessageOr, so a
+// network failure names the condition rather than the raw "Failed to fetch".
+test.each([
+  {
+    action: 'create',
+    run: () => {
+      vi.mocked(createApiTokenWithScopes).mockRejectedValue(new TypeError('Failed to fetch'));
+      fireEvent.click(screen.getByRole('button', { name: /create token/i }));
+      fireEvent.change(screen.getByLabelText(/description/i), { target: { value: 'New' } });
+      fireEvent.click(screen.getByRole('button', { name: /^create$/i }));
+    },
+  },
+  {
+    action: 'revoke',
+    run: () => {
+      vi.mocked(revokeApiToken).mockRejectedValue(new TypeError('Failed to fetch'));
+      fireEvent.click(screen.getByRole('button', { name: /revoke token/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^revoke$/i }));
+    },
+  },
+  {
+    action: 'revoke all',
+    run: () => {
+      vi.mocked(revokeAllApiTokens).mockRejectedValue(new TypeError('Failed to fetch'));
+      fireEvent.click(screen.getByRole('button', { name: /^revoke all$/i }));
+      fireEvent.click(
+        within(screen.getByRole('dialog')).getByRole('button', { name: /^revoke all$/i }),
+      );
+    },
+  },
+  {
+    action: 'rotate',
+    run: () => {
+      vi.mocked(rotateApiToken).mockRejectedValue(new TypeError('Failed to fetch'));
+      fireEvent.click(screen.getByRole('button', { name: /rotate token/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^rotate$/i }));
+    },
+  },
+])('a failed token $action shows the translated network error (#2920)', async ({ run }) => {
+  vi.mocked(getApiTokens).mockResolvedValue({ tokens: [apiToken({ id: 4, name: 'Runner' })] });
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Runner')).toBeInTheDocument());
+
+  run();
+
+  expect(
+    await screen.findByText("Couldn't reach the server. Check your connection and try again."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+});

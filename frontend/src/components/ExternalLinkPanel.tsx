@@ -25,6 +25,7 @@ import type { WebDAVItem } from '../api/nextcloud';
 import type { PaperlessDocument } from '../api/paperless';
 import type { SeafileItem, SeafileLibrary } from '../api/seafile';
 import { useDateFormat } from '../DateFormatProvider';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import { isHttpUrlString } from '../utils/linkResolution';
 import AuthImg from './AuthImg';
 import FileLinksPanel, { type FileSystem } from './FileLinksPanel';
@@ -104,7 +105,7 @@ export default function ExternalLinkPanel({
       await onLinkImmich(person);
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('immich.search.linkFailed'));
+      setError(getErrorMessageOr(err, t('immich.search.linkFailed')));
       throw err;
     }
   };
@@ -115,7 +116,7 @@ export default function ExternalLinkPanel({
       await onUnlinkImmich();
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('immich.panel.unlinkFailed'));
+      setError(getErrorMessageOr(err, t('immich.panel.unlinkFailed')));
     }
   };
 

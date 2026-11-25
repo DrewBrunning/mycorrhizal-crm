@@ -46,6 +46,7 @@ import {
   type WebhookDelivery,
 } from '../api/webhooks';
 import { formatDateTime as formatLocalDateTime } from '../timeFormat';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import LoadError from './LoadError';
 
 const SUPPORTED_EVENTS = [
@@ -128,7 +129,7 @@ export default function WebhooksSettings() {
       const data = await getWebhooks();
       setWebhooks(data);
     } catch (err) {
-      setLoadError(err instanceof Error ? err.message : t('settings.webhooks.loadError'));
+      setLoadError(getErrorMessageOr(err, t('settings.webhooks.loadError')));
     } finally {
       setLoading(false);
     }
@@ -172,7 +173,7 @@ export default function WebhooksSettings() {
         setSecretCopied(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.webhooks.saveError'));
+      setError(getErrorMessageOr(err, t('settings.webhooks.saveError')));
     } finally {
       setSaving(false);
     }
@@ -192,7 +193,7 @@ export default function WebhooksSettings() {
       setDeleteDialogOpen(false);
       setWebhookToDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.webhooks.deleteError'));
+      setError(getErrorMessageOr(err, t('settings.webhooks.deleteError')));
       setDeleteDialogOpen(false);
     } finally {
       setDeleting(false);
@@ -209,10 +210,14 @@ export default function WebhooksSettings() {
       if (d.status_code && d.status_code >= 200 && d.status_code < 300) {
         setSuccess(t('settings.webhooks.testSuccess', { statusCode: d.status_code }));
       } else {
+        // #2920: the server's own error text when it sent one, else a line in
+        // the UI language (never a hand-built English `status …`).
         setError(
-          t('settings.webhooks.testFailed', {
-            error: d.error || `status ${d.status_code ?? 'unknown'}`,
-          }),
+          d.error
+            ? t('settings.webhooks.testFailed', { error: d.error })
+            : d.status_code
+              ? t('settings.webhooks.testFailedStatus', { statusCode: d.status_code })
+              : t('settings.webhooks.testFailedNoResponse'),
         );
       }
       // Prepend the new delivery into the cached list so it shows immediately
@@ -220,11 +225,7 @@ export default function WebhooksSettings() {
       // Auto-expand deliveries so the user can see the result
       setExpandedDeliveries((prev) => ({ ...prev, [wh.id]: true }));
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t('settings.webhooks.testFailed', { error: 'unknown' }),
-      );
+      setError(getErrorMessageOr(err, t('settings.webhooks.testFailed', { error: 'unknown' })));
     } finally {
       setTesting((prev) => ({ ...prev, [wh.id]: false }));
     }
@@ -462,7 +463,7 @@ export default function WebhooksSettings() {
                               >
                                 <Chip
                                   size="small"
-                                  label={d.status_code ?? 'err'}
+                                  label={d.status_code ?? t('settings.webhooks.deliveryErrorChip')}
                                   color={d.status_code && d.status_code < 300 ? 'success' : 'error'}
                                   sx={{ height: 18, fontSize: '0.7rem', minWidth: 36 }}
                                 />

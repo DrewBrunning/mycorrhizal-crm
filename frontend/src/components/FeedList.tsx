@@ -30,6 +30,11 @@ interface FeedListProps {
   onRotate: (feed: Feed) => Promise<void>;
   onRevoke: (feed: Feed) => Promise<void>;
   onRevokeAll: () => Promise<void>;
+  /**
+   * Id of the visible section title. "Revoke All" also appears on the API
+   * tokens card, so the title tells the two apart (#2920 repeated-name check).
+   */
+  titleId?: string;
 }
 
 type Pending = { action: 'rotate' | 'revoke'; feed: Feed } | { action: 'revokeAll' } | null;
@@ -42,6 +47,7 @@ export default function FeedList({
   onRotate,
   onRevoke,
   onRevokeAll,
+  titleId,
 }: FeedListProps) {
   const { t } = useTranslation();
   const [pending, setPending] = useState<Pending>(null);
@@ -78,6 +84,7 @@ export default function FeedList({
     <>
       <Stack direction="row" sx={{ justifyContent: 'flex-end', mb: 1 }}>
         <Button
+          aria-describedby={titleId}
           variant="outlined"
           size="small"
           color="error"

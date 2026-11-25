@@ -23,6 +23,7 @@ import {
 } from '../api/auth';
 import { getTwoFactorStatus } from '../api/users';
 import { logoutAndRedirect } from '../auth';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
 // DeleteAccountSettings is the settings-page danger zone for issue #972:
@@ -80,7 +81,7 @@ export default function DeleteAccountSettings() {
         setCandidates(err.candidates);
         setError('');
       } else {
-        setError(err instanceof Error ? err.message : t('settings.deleteAccount.error'));
+        setError(getErrorMessageOr(err, t('settings.deleteAccount.error')));
       }
     } finally {
       setBusy(false);

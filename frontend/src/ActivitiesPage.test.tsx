@@ -830,3 +830,46 @@ test('the search query parameter prefills the search box and filters the list', 
     expect(listCall?.url).toContain('search=lunch');
   });
 });
+
+// #2920: two activities with the same title gave every row action the same
+// accessible name ("Edit activity Coffee", "Share activity Coffee", "Add
+// photos"). Each row's actions are described by that row's own date.
+test('same-titled activities: each row action is described by its own date (#2920)', async () => {
+  mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: {
+        body: {
+          activities: [
+            activity({ ID: 1, uuid: 'a-1', title: 'Coffee', date: '2026-01-05T00:00:00Z' }),
+            activity({ ID: 2, uuid: 'a-2', title: 'Coffee', date: '2026-02-07T00:00:00Z' }),
+          ],
+          next_cursor: '',
+          limit: 25,
+        },
+      },
+    },
+  ]);
+  renderPage();
+  await waitFor(() => expect(screen.getAllByText('Coffee')).toHaveLength(2));
+  await waitFor(() =>
+    expect(screen.getAllByRole('button', { name: 'Add photos' })).toHaveLength(2),
+  );
+
+  for (const name of ['Edit activity Coffee', 'Share activity Coffee', 'Add photos']) {
+    const [first, second] = screen.getAllByRole('button', { name });
+    const a = first.getAttribute('aria-describedby') ? computeDescription(first) : '';
+    const b = second.getAttribute('aria-describedby') ? computeDescription(second) : '';
+    expect(a, name).not.toBe('');
+    expect(b, name).not.toBe('');
+    expect(a, name).not.toBe(b);
+  }
+});
+
+function computeDescription(el: HTMLElement): string {
+  return (el.getAttribute('aria-describedby') ?? '')
+    .split(/\s+/)
+    .map((id) => document.getElementById(id)?.textContent?.trim() ?? '')
+    .join(' ')
+    .trim();
+}

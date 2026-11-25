@@ -50,7 +50,7 @@ import MycorrhizalImportDialog from './components/MycorrhizalImportDialog';
 import RelationshipSuggestionsInbox from './components/RelationshipSuggestionsInbox';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { formatDateTime as formatLocalDateTime } from './timeFormat';
-import { getErrorMessage, handleFetchError } from './utils/errorHandler';
+import { getErrorMessage, getErrorMessageOr, handleFetchError } from './utils/errorHandler';
 
 export default function DataSettingsPage() {
   const { t } = useTranslation();
@@ -95,11 +95,7 @@ export default function DataSettingsPage() {
       setImportHistory(await getImportHistory());
       setImportHistoryError('');
     } catch (error) {
-      setImportHistoryError(
-        error instanceof Error
-          ? getErrorMessage(error)
-          : t('settings.data.import.history.loadError'),
-      );
+      setImportHistoryError(getErrorMessageOr(error, t('settings.data.import.history.loadError')));
     }
   }, [t]);
 
@@ -118,11 +114,7 @@ export default function DataSettingsPage() {
       const detail = await getImportRun(run.id);
       setReportIssues(detail.issues ?? []);
     } catch (error) {
-      setReportError(
-        error instanceof Error
-          ? getErrorMessage(error)
-          : t('settings.data.import.history.reportLoadError'),
-      );
+      setReportError(getErrorMessageOr(error, t('settings.data.import.history.reportLoadError')));
     } finally {
       setReportLoading(false);
     }
@@ -193,8 +185,7 @@ export default function DataSettingsPage() {
       await exportDataAsCsv();
       setExportSuccess(t('settings.export.success'));
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? getErrorMessage(error) : t('settings.export.error');
+      const errorMessage = getErrorMessageOr(error, t('settings.export.error'));
       setExportError(errorMessage);
     } finally {
       setExporting(false);
@@ -232,8 +223,7 @@ export default function DataSettingsPage() {
       await exportContactsAsVcf();
       setExportVcfSuccess(t('settings.exportVcf.success'));
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? getErrorMessage(error) : t('settings.exportVcf.error');
+      const errorMessage = getErrorMessageOr(error, t('settings.exportVcf.error'));
       setExportVcfError(errorMessage);
     } finally {
       setExportingVcf(false);
@@ -248,10 +238,7 @@ export default function DataSettingsPage() {
       await exportContacts(format, selection);
       setCustomExportSuccess(t('settings.exportFieldPicker.success'));
     } catch (error) {
-      const errorMessage =
-        error instanceof Error
-          ? getErrorMessage(error)
-          : t('settings.exportFieldPicker.exportError');
+      const errorMessage = getErrorMessageOr(error, t('settings.exportFieldPicker.exportError'));
       setCustomExportError(errorMessage);
     } finally {
       setCustomExporting(false);

@@ -23,7 +23,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { type MouseEvent, useEffect, useMemo, useState } from 'react';
+import { type MouseEvent, useEffect, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink, useSearchParams } from 'react-router';
 import { type Activity, createActivity, deleteActivity, updateActivity } from './api/activities';
@@ -57,6 +57,8 @@ import { itemLabel } from './utils/itemLabel';
 
 const ActivitiesPage: React.FC = () => {
   const { t } = useTranslation();
+  // #2920: row ids for aria-describedby, unique per page instance.
+  const rowIdPrefix = useId();
   useDocumentTitle(t('nav.activities'));
   const { announce } = useAnnouncer();
   const { dateFormat } = useDateFormat();
@@ -378,7 +380,9 @@ const ActivitiesPage: React.FC = () => {
                   flex: 0.2,
                 }}
               >
-                <Typography variant="body2">{activityDateLabel(activity)}</Typography>
+                <Typography variant="body2" id={`${rowIdPrefix}-${activity.ID}-date`}>
+                  {activityDateLabel(activity)}
+                </Typography>
               </TimelineOppositeContent>
               <TimelineSeparator>
                 <TimelineDot color="primary">
@@ -453,6 +457,7 @@ const ActivitiesPage: React.FC = () => {
                           i18nPrefix="activityImages"
                           editable
                           onChanged={() => void refetch()}
+                          describedBy={`${rowIdPrefix}-${activity.ID}-date`}
                         />
                       </Box>
                       <Box
@@ -468,6 +473,7 @@ const ActivitiesPage: React.FC = () => {
                           <IconButton
                             size="small"
                             onClick={() => setSharingActivity(activity)}
+                            aria-describedby={`${rowIdPrefix}-${activity.ID}-date`}
                             aria-label={t('standingShares.shareActivityNamed', {
                               name: itemLabel(activity.title),
                             })}
@@ -478,6 +484,7 @@ const ActivitiesPage: React.FC = () => {
                         <IconButton
                           size="small"
                           onClick={() => void handleEditClick(activity)}
+                          aria-describedby={`${rowIdPrefix}-${activity.ID}-date`}
                           aria-label={t('contactDetail.editActivityNamed', {
                             name: itemLabel(activity.title),
                           })}

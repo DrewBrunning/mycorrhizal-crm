@@ -74,6 +74,14 @@ const OPERATION_COLORS: Record<AuditEvent['operation'], 'success' | 'info' | 'er
 // with an entity-type/entity-id filter toolbar and a Contact-only Undo
 // affordance on update events (POST /audit/:id/undo; every other entity or a
 // delete event is 400 server-side, so the button is gated to match).
+// Every undoable row has an "Undo" button; each is described by the contact
+// and the time of the change it restores, so a screen reader can tell them
+// apart (#2920 repeated-name check). The card and table layouts are exclusive,
+// so one id per event is unique on the page.
+const undoEntityId = (event: AuditEvent) => `audit-event-${event.id}-entity`;
+const undoTimeId = (event: AuditEvent) => `audit-event-${event.id}-time`;
+const undoDescribedBy = (event: AuditEvent) => `${undoEntityId(event)} ${undoTimeId(event)}`;
+
 export default function AuditPage() {
   const { t } = useTranslation();
   useDocumentTitle(t('nav.audit'));
@@ -259,7 +267,9 @@ export default function AuditPage() {
         >
           {events.map((event) => (
             <Paper component="li" key={event.id} sx={{ p: 1.5 }}>
-              <Typography variant="body2">{formatDateTime(event.created_at)}</Typography>
+              <Typography id={undoTimeId(event)} variant="body2">
+                {formatDateTime(event.created_at)}
+              </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, my: 0.75 }}>
                 <Chip
                   size="small"
@@ -272,7 +282,7 @@ export default function AuditPage() {
                   label={t(`audit.operations.${event.operation}`)}
                 />
               </Box>
-              <Box sx={{ overflowWrap: 'anywhere' }}>
+              <Box id={undoEntityId(event)} sx={{ overflowWrap: 'anywhere' }}>
                 <EntityIdCell event={event} contact={contactsByUid.get(event.entity_id)} />
               </Box>
               {event.operation === 'update' && event.entity_type === 'contact' && (
@@ -281,6 +291,7 @@ export default function AuditPage() {
                   color="inherit"
                   startIcon={<UndoIcon />}
                   onClick={() => setPendingUndo(event)}
+                  aria-describedby={undoDescribedBy(event)}
                   sx={{ mt: 0.5, ml: -1 }}
                 >
                   {t('audit.undo.button')}
@@ -313,7 +324,9 @@ export default function AuditPage() {
               {events.map((event) => (
                 <TableRow key={event.id} hover>
                   <TableCell>
-                    <Typography variant="body2">{formatDateTime(event.created_at)}</Typography>
+                    <Typography id={undoTimeId(event)} variant="body2">
+                      {formatDateTime(event.created_at)}
+                    </Typography>
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -329,7 +342,7 @@ export default function AuditPage() {
                       label={t(`audit.operations.${event.operation}`)}
                     />
                   </TableCell>
-                  <TableCell sx={{ overflowWrap: 'anywhere' }}>
+                  <TableCell id={undoEntityId(event)} sx={{ overflowWrap: 'anywhere' }}>
                     <EntityIdCell event={event} contact={contactsByUid.get(event.entity_id)} />
                   </TableCell>
                   <TableCell align="right">
@@ -339,6 +352,7 @@ export default function AuditPage() {
                         color="inherit"
                         startIcon={<UndoIcon />}
                         onClick={() => setPendingUndo(event)}
+                        aria-describedby={undoDescribedBy(event)}
                       >
                         {t('audit.undo.button')}
                       </Button>

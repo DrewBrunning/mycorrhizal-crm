@@ -481,3 +481,24 @@ test('Escape closes the removal dialog without removing', async () => {
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   expect(screen.getByText('Laptop')).toBeInTheDocument();
 });
+
+// Issue #2920: `err instanceof Error && err.message ? err.message : …` showed
+// the raw browser text; getErrorMessage() names a network failure instead.
+test('a network failure during enrollment shows the localized network message', async () => {
+  stubWebAuthn({
+    create: () => {
+      throw new TypeError('Failed to fetch');
+    },
+  });
+  mockFetch({
+    'GET /webauthn/credentials': () => ({ credentials: [] }),
+    'POST /webauthn/register/begin': () => creationOptionsWire,
+  });
+  renderCard();
+  await screen.findByText('No passkeys yet.');
+  fireEvent.click(screen.getByRole('button', { name: 'Add a passkey' }));
+  expect(
+    await screen.findByText("Couldn't reach the server. Check your connection and try again."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument();
+});

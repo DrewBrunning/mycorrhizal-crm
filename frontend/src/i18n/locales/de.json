@@ -1808,6 +1808,8 @@
       "testNamed": "Webhook {{name}} testen",
       "testSuccess": "Test zugestellt ({{statusCode}})",
       "testFailed": "Test fehlgeschlagen: {{error}}",
+      "testFailedStatus": "Test fehlgeschlagen: Die Webhook-URL antwortete mit Status {{statusCode}}",
+      "testFailedNoResponse": "Test fehlgeschlagen: Die Webhook-URL hat nicht geantwortet",
       "deliveries": "Letzte Zustellungen",
       "loadingDeliveries": "Zustellungen werden geladen...",
       "noDeliveries": "Noch keine Zustellungen.",
@@ -1849,7 +1851,8 @@
         "confirm": "Löschen",
         "cancel": "Abbrechen"
       },
-      "keepFullData": "Volle Daten beibehalten"
+      "keepFullData": "Volle Daten beibehalten",
+      "deliveryErrorChip": "Fehler"
     },
     "customFields": {
       "title": "Benutzerdefinierte Felder",

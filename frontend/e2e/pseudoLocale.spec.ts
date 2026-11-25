@@ -97,7 +97,49 @@ function escapeRegExp(value: string): string {
 }
 
 /** Sets the pseudo-locale switch before the app bundle runs, then pins fonts/clock. */
+/**
+ * Server prose seen on each page: every string `reason_params` value of three
+ * or more words in an error response (top-level and per-field), collected for
+ * the page's whole life. A `{{reason}}`-only template pseudo-localizes its
+ * brackets around the server's English, so the bracket rule cannot see it;
+ * scanPage checks these strings on every surface (#2912, #2920), not only the
+ * one a spec author thought to wire up. The threshold matches the backend's
+ * reasonprose guard (internal/lint/reasonprose).
+ */
+const serverProseByPage = new WeakMap<Page, Set<string>>();
+const SERVER_PROSE_MIN_WORDS = 3;
+
+function collectServerProse(page: Page): void {
+  if (serverProseByPage.has(page)) return;
+  const seen = new Set<string>();
+  serverProseByPage.set(page, seen);
+  const add = (params: unknown) => {
+    if (!params || typeof params !== 'object') return;
+    for (const value of Object.values(params as Record<string, unknown>)) {
+      if (typeof value === 'string' && value.trim().split(/\s+/).length >= SERVER_PROSE_MIN_WORDS) {
+        seen.add(value.trim());
+      }
+    }
+  };
+  page.on('response', async (response) => {
+    if (response.status() < 400 || !response.url().includes('/api/')) return;
+    try {
+      const body = (await response.json()) as {
+        error?: {
+          reason_params?: unknown;
+          field_reasons?: Record<string, { reason_params?: unknown }>;
+        };
+      };
+      add(body.error?.reason_params);
+      for (const field of Object.values(body.error?.field_reasons ?? {})) add(field?.reason_params);
+    } catch {
+      // Not JSON, or the page closed mid-read: nothing to collect.
+    }
+  });
+}
+
 async function enterPseudoLocale(page: Page): Promise<void> {
+  collectServerProse(page);
   await page.addInitScript(() => localStorage.setItem('i18nextLng', 'qps'));
   // The account language wins over the detected one on load (#2685): the
   // worker user's account is English, so without this the app switches itself
@@ -383,7 +425,7 @@ async function scanPage(page: Page, options: ScanOptions = {}): Promise<Offence[
     },
     {
       forceScan: options.forceScan ?? [],
-      serverProse: options.serverProse ?? [],
+      serverProse: [...(options.serverProse ?? []), ...(serverProseByPage.get(page) ?? [])],
       pseudoMonths: PSEUDO_MONTHS,
       intlYearlessMonthDay: INTL_YEARLESS_MONTH_DAY.source,
       intlInstant: INTL_INSTANT.source,
@@ -707,26 +749,11 @@ const DIALOG_SURFACES: readonly Surface[] = [
         await stableClick(
           dialog.getByRole('button', { name: pseudo('settings.meerkatImport.live.connect') }),
         );
-        const response = await responsePromise;
-        // The server's reason params are prose, not user content. The client
-        // interpolates `{{reason}}` into a pseudo-localized template, so the
-        // bracket rule alone cannot see the English (#2912).
-        const serverProse: string[] = [];
-        try {
-          const body = (await response.json()) as {
-            error?: { reason_params?: Record<string, unknown> };
-          };
-          for (const value of Object.values(body.error?.reason_params ?? {})) {
-            if (typeof value === 'string' && value.trim().split(/\s+/).length >= 4) {
-              serverProse.push(value);
-            }
-          }
-        } catch {
-          // A non-JSON failure still renders a translated client message; the
-          // scan below covers whatever is on screen.
-        }
+        // Its reason params reach the scan through the page-wide collector
+        // (collectServerProse), like every other surface's (#2912).
+        await responsePromise;
         await expect(dialog.getByRole('alert')).toBeVisible({ timeout: 15000 });
-        await record('unreachable', { serverProse });
+        await record('unreachable');
         await dialog.getByRole('button', { name: pseudo('common.cancel') }).click();
         await expect(dialog).toBeHidden();
       },

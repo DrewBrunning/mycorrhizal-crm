@@ -2,14 +2,32 @@
 # (issue #2920, item 2). A ratchet: entries may only be removed, and each one
 # carries the reason it is data rather than a sentence.
 #
-# Format: code/key<TAB>reason, or */key<TAB>reason for a key that is never
-# prose on any code. The count must equal the number of entries below.
-# count: 8
-*/status	an upstream HTTP status string ("500 Internal Server Error") is data, not a sentence
-*/supported	an enumerated list of allowed values is data, not a sentence
+# Format: code/key<TAB>reason. A */key wildcard (a key that is never prose on
+# any code) is supported but unused: it would also excuse every future code.
+# The count must equal the number of entries below.
+# count: 25
+account_language_unsupported/supported	an enumerated list of allowed values is data, not a sentence
+auth_login_request_invalid/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
+auth_webauthn_config_invalid/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
+calendar_sync_failed/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
 contact_field_value_invalid/reason	pre-existing passthrough of a field-value parser detail; #2920 item 2 adds the guard, not the localization
+contact_share_payload_invalid/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
+contact_subscription_sync_failed/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
+contact_sync_conflict_restore_failed/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
+entity_core_invalid/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
+entity_merge_resolution_invalid/reason	pre-existing passthrough of a merge-resolution parser detail behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
+export_selection_invalid/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
+geopulse_upstream_error/status	an upstream HTTP status string ("500 Internal Server Error") is data, not a sentence
+immich_upstream_error/status	an upstream HTTP status string ("500 Internal Server Error") is data, not a sentence
 import_file_unreadable/reason	pre-existing passthrough of an import parser detail; #2920 item 2 adds the guard, not the localization
+integration_request_body_invalid/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
+integration_save_failed/reason	pre-existing err.Error() passthrough behind a {{reason}}-only template (compatci reason_passthrough_allowlist.txt); localizing it changes the reason_params shape (docs/breaking-change-policy.md)
 meerkat_api_error/reason	pre-existing user-safe Meerkat sentence; the credentials/URL branches remain passthrough after #2912 (#2927 fixes only the unreachable default)
+paperless_upstream_error/status	an upstream HTTP status string ("500 Internal Server Error") is data, not a sentence
+seafile_upstream_error/status	an upstream HTTP status string ("500 Internal Server Error") is data, not a sentence
+timeline_type_invalid/supported	an enumerated list of allowed values is data, not a sentence
 validation_cursor_invalid/reason	pre-existing passthrough of a cursor parser detail; #2920 item 2 adds the guard, not the localization
 validation_request_body_invalid/reason	pre-existing passthrough of a JSON bind error; #2920 item 2 adds the guard, not the localization
 validation_since_invalid/reason	pre-existing passthrough of a cursor parser detail; #2920 item 2 adds the guard, not the localization
+validation_sort_invalid/supported	an enumerated list of allowed values is data, not a sentence
+webdav_upstream_error/status	an upstream HTTP status string ("500 Internal Server Error") is data, not a sentence

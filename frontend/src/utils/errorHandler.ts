@@ -76,6 +76,16 @@ export function getErrorMessage(error: unknown): string {
 }
 
 /**
+ * The display message for a thrown Error, or [fallback] (the caller's own
+ * translated "… failed" text) when the thrown value is not an Error at all.
+ * One call instead of the `err instanceof Error ? getErrorMessage(err) :
+ * fallback` ternary repeated across catch blocks (#2920).
+ */
+export function getErrorMessageOr(error: unknown, fallback: string): string {
+  return error instanceof Error ? getErrorMessage(error) : fallback;
+}
+
+/**
  * Get the error code if available
  */
 function getErrorCode(error: unknown): string | undefined {

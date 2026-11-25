@@ -13,6 +13,7 @@ import type { WebDAVItem } from '../api/nextcloud';
 import type { PaperlessDocument } from '../api/paperless';
 import type { SeafileItem, SeafileLibrary } from '../api/seafile';
 import { useDateFormat } from '../DateFormatProvider';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import { isHttpUrlString } from '../utils/linkResolution';
 import NextcloudFilePickerDialog from './NextcloudFilePickerDialog';
 import PaperlessDocumentSearchDialog from './PaperlessDocumentSearchDialog';
@@ -93,7 +94,7 @@ export default function FileLinksPanel({
       await onUnlink(system, identityId);
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('fileLinks.unlinkFailed'));
+      setError(getErrorMessageOr(err, t('fileLinks.unlinkFailed')));
     }
   };
 

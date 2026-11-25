@@ -5,6 +5,7 @@ import {
   assertNoAaaContrastViolations,
   assertNoAxeRuleViolations,
   assertNoBlockingA11yViolations,
+  assertNoRepeatedAccessibleNames,
   createTestContact,
   deleteTestContact,
   expect,
@@ -157,6 +158,10 @@ test.describe('accessibility route scans', {
           const resolved = route.replace(':contactId', String(contactId));
           await gotoWithTheme(page, resolved, theme);
           await assertNoBlockingViolations(page);
+          // #2920 review: the repeated-name check (#2911's class) ran only in
+          // three hand-picked states. Every route scan runs it too; names do
+          // not change with the theme, so once per route is enough.
+          if (theme === THEMES[0]) await assertNoRepeatedAccessibleNames(page);
         });
       }
     }

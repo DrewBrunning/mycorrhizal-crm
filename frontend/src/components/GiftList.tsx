@@ -16,7 +16,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Activity } from '../api/activities';
 import type { Gift, GiftStatus } from '../api/gifts';
@@ -95,6 +95,9 @@ function GiftSection({
   onAddFull,
 }: GiftSectionProps) {
   const { t } = useTranslation();
+  // Every section repeats "Add" and "Add with details"; the section heading
+  // tells them apart (#2920 repeated-name check).
+  const headingId = useId();
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
@@ -124,6 +127,7 @@ function GiftSection({
     >
       {divider && <Divider />}
       <Typography
+        id={headingId}
         variant="subtitle2"
         component="h3"
         sx={{
@@ -165,6 +169,7 @@ function GiftSection({
                     onClick={() => void handleAdd()}
                     disabled={adding || !draft.trim()}
                     aria-label={t('gifts.add')}
+                    aria-describedby={headingId}
                   >
                     <AddIcon />
                   </IconButton>
@@ -179,6 +184,7 @@ function GiftSection({
           size="small"
           startIcon={<AddIcon />}
           onClick={() => onAddFull(status)}
+          aria-describedby={headingId}
           sx={{ flexShrink: 0, height: 40, whiteSpace: 'nowrap' }}
         >
           {t('gifts.addFull')}
