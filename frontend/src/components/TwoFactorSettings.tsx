@@ -28,6 +28,7 @@ import {
 } from '../api/users';
 import { listPasskeys, proveWithAnyPasskey, type SecondFactorProof } from '../api/webauthn';
 import { useSnackbar } from '../context/SnackbarContext';
+import { getErrorMessage } from '../utils/errorHandler';
 import { isCeremonyCancelled, isWebAuthnSupported } from '../webauthnCeremony';
 import AppDialog from './AppDialog';
 import SecondFactorProofDialog from './SecondFactorProofDialog';
@@ -109,7 +110,8 @@ export default function TwoFactorSettings() {
       setSetupOpen(true);
       return '';
     } catch (err) {
-      const message = err instanceof Error ? err.message : t('settings.twoFactor.setupError');
+      const message =
+        err instanceof Error ? getErrorMessage(err) : t('settings.twoFactor.setupError');
       setSetupError(message);
       return message;
     } finally {
@@ -144,7 +146,7 @@ export default function TwoFactorSettings() {
         isCeremonyCancelled(err)
           ? t('settings.passkeys.cancelled')
           : err instanceof Error && err.message
-            ? err.message
+            ? getErrorMessage(err)
             : t('settings.passkeys.invalidProof'),
       );
     } finally {
@@ -168,7 +170,9 @@ export default function TwoFactorSettings() {
       window.dispatchEvent(new Event('mycorrhizal:second-factor-changed'));
       showSuccess(t('settings.twoFactor.enableSuccess'));
     } catch (err) {
-      setSetupError(err instanceof Error ? err.message : t('settings.twoFactor.invalidCode'));
+      setSetupError(
+        err instanceof Error ? getErrorMessage(err) : t('settings.twoFactor.invalidCode'),
+      );
     } finally {
       setEnrolling(false);
     }
@@ -208,7 +212,9 @@ export default function TwoFactorSettings() {
       setAction(null);
       setActionCode('');
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : t('settings.twoFactor.invalidCode'));
+      setActionError(
+        err instanceof Error ? getErrorMessage(err) : t('settings.twoFactor.invalidCode'),
+      );
     } finally {
       setActionBusy(false);
     }
@@ -240,7 +246,7 @@ export default function TwoFactorSettings() {
         isCeremonyCancelled(err)
           ? t('settings.passkeys.cancelled')
           : err instanceof Error && err.message
-            ? err.message
+            ? getErrorMessage(err)
             : t('settings.passkeys.invalidProof'),
       );
     } finally {

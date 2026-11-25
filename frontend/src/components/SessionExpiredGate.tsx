@@ -21,6 +21,7 @@ import {
 import { login2FA, loginUser, logoutAndRedirect, startOidcLogin } from '../auth';
 import { useErrorAlertFocus } from '../hooks/useErrorAlertFocus';
 import { useOIDCConfig } from '../hooks/useOIDCConfig';
+import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
 type ReauthStep = 'credentials' | 'twoFactor';
@@ -102,7 +103,7 @@ export default function SessionExpiredGate() {
       }
       handleAuthenticated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('login.loginFailed'));
+      setError(err instanceof Error ? getErrorMessage(err) : t('login.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -116,7 +117,7 @@ export default function SessionExpiredGate() {
       await login2FA(code.trim());
       handleAuthenticated();
     } catch (err) {
-      const rawMessage = err instanceof Error ? err.message : '';
+      const rawMessage = err instanceof Error ? getErrorMessage(err) : '';
       setError(rawMessage === 'Invalid code' ? t('login.invalidCode') : rawMessage);
     } finally {
       setLoading(false);

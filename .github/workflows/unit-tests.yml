@@ -1370,13 +1370,6 @@ jobs:
         working-directory: frontend
         run: yarn month-day:check
 
-      # Issue #2920 item 1: counted ratchet for raw err.message in UI text.
-      # ESLint above covers files with no existing sites; this covers the
-      # allowlisted files by count.
-      - name: Raw error-message guard
-        working-directory: frontend
-        run: node scripts/check-raw-error-message.mjs
-
       # Issue #1907: dead-weight detection the type/lint/bundle gates cannot
       # see -- files and exports nothing imports, and unused dependencies.
       # The i18n key-usage guard runs with vitest above.

@@ -45,6 +45,7 @@ export default defineConfig({
       'viteConfig.test.ts',
       'devProxy.test.ts',
       'scripts/*.test.mjs',
+      'eslint-rules/*.test.mjs',
       'e2e/*.vitest.ts',
     ],
     exclude: [...configDefaults.exclude, 'src/**/*.browser.test.{ts,tsx}'],

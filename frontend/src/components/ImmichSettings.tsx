@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useImmich } from '../hooks/useImmich';
+import { getErrorMessage } from '../utils/errorHandler';
 import { isHttpUrlString } from '../utils/linkResolution';
 import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
@@ -92,7 +93,7 @@ export default function ImmichSettings() {
         setSyncEnabled(saved.sync_enabled);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('immich.settings.saveFailed');
+      const msg = err instanceof Error ? getErrorMessage(err) : t('immich.settings.saveFailed');
       setSaveError(msg);
     } finally {
       setSaving(false);
@@ -107,7 +108,7 @@ export default function ImmichSettings() {
       setApiKey('');
       showSuccess(t('immich.settings.removed'));
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('immich.settings.saveFailed'));
+      showError(err instanceof Error ? getErrorMessage(err) : t('immich.settings.saveFailed'));
     }
   };
 

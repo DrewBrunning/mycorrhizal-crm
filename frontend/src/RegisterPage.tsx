@@ -10,6 +10,7 @@ import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
 import i18n from './i18n/config';
 import { initializeTimeFormatFromBackend } from './timeFormat';
+import { getErrorMessage } from './utils/errorHandler';
 
 type RegisterPageProps = {
   setToken?: (token: string | null) => void;
@@ -82,7 +83,8 @@ export default function RegisterPage({ setToken }: RegisterPageProps) {
         setTimeout(() => void navigate('/login'), 1500);
       }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : t('register.registrationFailed');
+      const errorMessage =
+        err instanceof Error ? getErrorMessage(err) : t('register.registrationFailed');
       setError(errorMessage);
     } finally {
       setLoading(false);

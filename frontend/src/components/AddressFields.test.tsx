@@ -387,3 +387,16 @@ test('changing sensitivity updates Find coordinates live', () => {
   expect(findButton()).toBeEnabled();
   expect(screen.queryByText(/never sent to the geocoder/)).not.toBeInTheDocument();
 });
+
+// Issue #2920: the geocode failure used `err instanceof Error && err.message ?
+// err.message : …`, a raw-message shape the first lint missed, so a network
+// failure showed the browser's "Failed to fetch".
+test('a network failure shows the localized network message, not "Failed to fetch"', async () => {
+  geocodeMock.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+  renderWithContact([addr({ id: 'a' })]);
+  fireEvent.click(findButton());
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    "Couldn't reach the server. Check your connection and try again.",
+  );
+  expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument();
+});

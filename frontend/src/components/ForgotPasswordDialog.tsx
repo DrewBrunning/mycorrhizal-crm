@@ -12,6 +12,7 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { confirmPasswordReset, requestPasswordReset } from '../api/auth';
 import { useErrorAlertFocus } from '../hooks/useErrorAlertFocus';
+import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
 type ForgotPasswordDialogProps = {
@@ -73,7 +74,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
       setStep('confirm');
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : t('passwordReset.errors.requestFailed');
+        err instanceof Error ? getErrorMessage(err) : t('passwordReset.errors.requestFailed');
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -106,7 +107,7 @@ export default function ForgotPasswordDialog({ open, onClose }: ForgotPasswordDi
       setStep('done');
     } catch (err) {
       const errorMessage =
-        err instanceof Error ? err.message : t('passwordReset.errors.confirmFailed');
+        err instanceof Error ? getErrorMessage(err) : t('passwordReset.errors.confirmFailed');
       setError(errorMessage);
     } finally {
       setLoading(false);

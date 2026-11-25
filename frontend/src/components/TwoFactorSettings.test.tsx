@@ -187,3 +187,30 @@ test('regenerates recovery codes after confirming with a code', async () => {
     expect(screen.getByText(code)).toBeInTheDocument();
   }
 });
+
+// Issue #2920: the disable path used `err instanceof Error && err.message ?
+// err.message : …`, so a dropped connection showed "Failed to fetch".
+test('a network failure while disabling shows the localized network message', async () => {
+  mockFetchByUrl({
+    '/users/2fa/status': () => ({ enabled: true }),
+    '/users/2fa/disable': () => {
+      throw new TypeError('Failed to fetch');
+    },
+  });
+
+  render(
+    <SnackbarProvider>
+      <TwoFactorSettings />
+    </SnackbarProvider>,
+  );
+
+  fireEvent.click(await screen.findByText('Disable'));
+  await waitFor(() => expect(screen.getByText(/Enter a current code/)).toBeInTheDocument());
+  fireEvent.change(screen.getByLabelText('Verification code *'), { target: { value: '123456' } });
+  fireEvent.click(screen.getByText('Confirm'));
+
+  expect(
+    await screen.findByText("Couldn't reach the server. Check your connection and try again."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Failed to fetch/)).not.toBeInTheDocument();
+});

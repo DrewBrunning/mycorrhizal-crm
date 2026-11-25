@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useNextcloud } from '../hooks/useNextcloud';
+import { getErrorMessage } from '../utils/errorHandler';
 import { isHttpUrlString } from '../utils/linkResolution';
 import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
@@ -92,7 +93,7 @@ export default function NextcloudSettings() {
         setUsername(saved.username);
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : t('nextcloud.settings.saveFailed');
+      const msg = err instanceof Error ? getErrorMessage(err) : t('nextcloud.settings.saveFailed');
       setSaveError(msg);
     } finally {
       setSaving(false);
@@ -108,7 +109,7 @@ export default function NextcloudSettings() {
       setAppPassword('');
       showSuccess(t('nextcloud.settings.removed'));
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('nextcloud.settings.saveFailed'));
+      showError(err instanceof Error ? getErrorMessage(err) : t('nextcloud.settings.saveFailed'));
     }
   };
 

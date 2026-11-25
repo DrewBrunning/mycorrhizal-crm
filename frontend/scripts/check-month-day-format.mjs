@@ -30,7 +30,9 @@ export const ALLOWLIST_FILE = path.join(root, 'month-day-allowlist.json');
 const EXEMPT_FILE = 'src/DateFormatProvider.tsx';
 
 const MONTH = /month/i;
-const DAY = /day/i;
+// `getDate()`/`getUTCDate()` is the Date API's day-of-month accessor; without
+// it `${d.getMonth() + 1}/${d.getDate()}` slipped past a /day/i match.
+const DAY = /day|^get(UTC)?Date$/i;
 
 /** Every Identifier name beneath `node`, including nested template literals. */
 function identifiersIn(node) {
@@ -51,7 +53,29 @@ function identifiersIn(node) {
 export function isMonthDayTemplate(node) {
   if (!ts.isTemplateExpression(node)) return false;
   const names = node.templateSpans.flatMap((span) => identifiersIn(span.expression));
-  return names.some((name) => MONTH.test(name)) && names.some((name) => DAY.test(name));
+  if (!names.some((name) => MONTH.test(name)) || !names.some((name) => DAY.test(name))) {
+    return false;
+  }
+  return !isMachineDateShape(node);
+}
+
+// Literal text a machine-readable ISO 8601 date/time uses between its parts
+// (`YYYY-MM-DD`, `--MM-DD`, `YYYY-MM-DDTHH:mm`). A template whose literal parts
+// are only these characters builds an <input type="date"> value or an API
+// parameter, not display text, so it is not a hand-built *display* date.
+const MACHINE_DATE_LITERAL = /^[-T:]*$/;
+
+/** True when every literal part of the template (nested ones too) is ISO glue. */
+function isMachineDateShape(node) {
+  const literals = [];
+  const visit = (n) => {
+    if (ts.isTemplateExpression(n)) {
+      literals.push(n.head.text, ...n.templateSpans.map((span) => span.literal.text));
+    }
+    ts.forEachChild(n, visit);
+  };
+  visit(node);
+  return literals.every((text) => MACHINE_DATE_LITERAL.test(text));
 }
 
 /**
@@ -64,13 +88,13 @@ export function findOffenders(files) {
   const offenders = [];
   for (const { file, source } of files) {
     if (file === EXEMPT_FILE) continue;
-    if (!file.endsWith('.tsx')) continue;
+    if (!/\.tsx?$/.test(file)) continue;
     const sourceFile = ts.createSourceFile(
       file,
       source,
       ts.ScriptTarget.Latest,
       true,
-      ts.ScriptKind.TSX,
+      file.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
     );
     const visit = (node) => {
       if (isMonthDayTemplate(node)) {
@@ -141,14 +165,14 @@ export function compareAllowlist(offenders, allowlist) {
   };
 }
 
-/** Recursively read every `.tsx` under `dir`, keyed POSIX-relative to frontend/. */
+/** Recursively read every `.ts`/`.tsx` under `dir`, keyed POSIX-relative to frontend/. */
 export function loadSourceFiles(dir = SRC_DIR) {
   const files = [];
   const walk = (current) => {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
       const full = path.join(current, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.isFile() && entry.name.endsWith('.tsx')) {
+      else if (entry.isFile() && /\.tsx?$/.test(entry.name) && !entry.name.endsWith('.d.ts')) {
         files.push({
           file: path.relative(root, full).split(path.sep).join('/'),
           source: fs.readFileSync(full, 'utf8'),

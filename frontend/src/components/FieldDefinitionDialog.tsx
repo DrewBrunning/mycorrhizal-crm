@@ -28,6 +28,7 @@ import {
 import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { useRowKeys } from '../hooks/useRowKeys';
 import { groupLength, MAX_GROUP_LENGTH } from '../utils/customFieldGroups';
+import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
 interface FieldDefinitionDialogProps {
@@ -201,7 +202,7 @@ export default function FieldDefinitionDialog({
       await onSave(input);
       handleClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('customFields.saveError'));
+      setError(err instanceof Error ? getErrorMessage(err) : t('customFields.saveError'));
     } finally {
       setSaving(false);
     }

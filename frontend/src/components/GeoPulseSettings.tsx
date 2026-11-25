@@ -16,6 +16,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useGeoPulse } from '../hooks/useGeoPulse';
+import { getErrorMessage } from '../utils/errorHandler';
 import { isHttpUrlString } from '../utils/linkResolution';
 import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
@@ -85,7 +86,7 @@ export default function GeoPulseSettings() {
         setBaseUrl(saved.base_url);
       }
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : t('geopulse.settings.saveFailed'));
+      setSaveError(err instanceof Error ? getErrorMessage(err) : t('geopulse.settings.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -99,7 +100,7 @@ export default function GeoPulseSettings() {
       setApiKey('');
       showSuccess(t('geopulse.settings.removed'));
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('geopulse.settings.saveFailed'));
+      showError(err instanceof Error ? getErrorMessage(err) : t('geopulse.settings.saveFailed'));
     }
   };
 

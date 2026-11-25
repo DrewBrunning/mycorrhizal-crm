@@ -13,6 +13,7 @@ import { getCurrentUser } from '../api/admin';
 import { getTwoFactorStatus, updateDAVPasswordPolicy } from '../api/users';
 import { listPasskeys } from '../api/webauthn';
 import { useSnackbar } from '../context/SnackbarContext';
+import { getErrorMessage } from '../utils/errorHandler';
 
 // Issue #2010: the account password is accepted on CardDAV/CalDAV only when
 // the user opts in and has no second factor enrolled. This card makes that
@@ -59,7 +60,7 @@ export default function DAVPasswordSettings() {
       setAllow(next);
       showSuccess(t('davPassword.success'));
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('davPassword.error'));
+      setError(err instanceof Error ? getErrorMessage(err) : t('davPassword.error'));
     } finally {
       setSaving(false);
     }

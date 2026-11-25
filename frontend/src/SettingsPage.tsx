@@ -95,6 +95,7 @@ import {
   type TimeFormat,
   useTimeFormat,
 } from './timeFormat';
+import { getErrorMessage } from './utils/errorHandler';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
@@ -148,7 +149,7 @@ export default function SettingsPage() {
       const response = await getApiTokens();
       setTokens(response.tokens);
     } catch (err) {
-      setTokensError(err instanceof Error ? err.message : t('apiTokens.loadError'));
+      setTokensError(err instanceof Error ? getErrorMessage(err) : t('apiTokens.loadError'));
     } finally {
       setTokensLoading(false);
     }
@@ -178,7 +179,7 @@ export default function SettingsPage() {
       setCopied(false);
       await fetchTokens();
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('apiTokens.createError'));
+      showError(err instanceof Error ? getErrorMessage(err) : t('apiTokens.createError'));
     } finally {
       setCreateLoading(false);
     }
@@ -241,7 +242,7 @@ export default function SettingsPage() {
       showSuccess(t('apiTokens.revokeSuccess'));
       await fetchTokens();
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('apiTokens.revokeError'));
+      showError(err instanceof Error ? getErrorMessage(err) : t('apiTokens.revokeError'));
     } finally {
       setRevokeLoading(false);
     }
@@ -266,7 +267,7 @@ export default function SettingsPage() {
       showSuccess(t('apiTokens.revokeAllSuccess', { count: result.revoked }));
       await fetchTokens();
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('apiTokens.revokeAllError'));
+      showError(err instanceof Error ? getErrorMessage(err) : t('apiTokens.revokeAllError'));
     } finally {
       setRevokeAllLoading(false);
     }
@@ -285,7 +286,7 @@ export default function SettingsPage() {
       showSuccess(t('apiTokens.rotateSuccess'));
       await fetchTokens();
     } catch (err) {
-      showError(err instanceof Error ? err.message : t('apiTokens.rotateError'));
+      showError(err instanceof Error ? getErrorMessage(err) : t('apiTokens.rotateError'));
     } finally {
       setRotateLoading(false);
     }
@@ -358,7 +359,8 @@ export default function SettingsPage() {
       setNewPassword('');
       setConfirmPassword('');
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : t('settings.password.error');
+      const errorMessage =
+        error instanceof Error ? getErrorMessage(error) : t('settings.password.error');
       setPasswordError(errorMessage);
     } finally {
       setChangingPassword(false);
@@ -430,7 +432,9 @@ export default function SettingsPage() {
         contact ? t('settings.selfContact.saveSuccess') : t('settings.selfContact.clearSuccess'),
       );
     } catch (error) {
-      showError(error instanceof Error ? error.message : t('settings.selfContact.saveError'));
+      showError(
+        error instanceof Error ? getErrorMessage(error) : t('settings.selfContact.saveError'),
+      );
     } finally {
       setSelfContactSaving(false);
     }
