@@ -140,6 +140,9 @@ interface ImageGalleryProps<I extends GalleryImage> {
   editable?: boolean;
   // Called after a successful add/delete so a parent can refetch a summary.
   onChanged?: () => void;
+  // Id of the owner row's visible label (its date), so the add/delete controls
+  // that repeat on every row say which row they act on (#2920).
+  describedBy?: string;
 }
 
 // ImageGallery renders an owner's images from the dedicated owner-nested
@@ -153,6 +156,7 @@ export default function ImageGallery<I extends GalleryImage>({
   i18nPrefix,
   editable = false,
   onChanged,
+  describedBy,
 }: ImageGalleryProps<I>) {
   const { t } = useTranslation();
   const labels = LABELS[i18nPrefix];
@@ -273,6 +277,7 @@ export default function ImageGallery<I extends GalleryImage>({
                   size="small"
                   color="error"
                   aria-label={t(labels.delete)}
+                  aria-describedby={describedBy}
                   disabled={busy}
                   onClick={() => void handleDelete(image)}
                   sx={{ position: 'absolute', top: -8, right: -8, bgcolor: 'background.paper' }}
@@ -309,6 +314,7 @@ export default function ImageGallery<I extends GalleryImage>({
             size="small"
             startIcon={busy ? <CircularProgress size={16} /> : <PhotoLibraryIcon />}
             disabled={busy}
+            aria-describedby={describedBy}
             onClick={() => inputRef.current?.click()}
           >
             {busy ? t(labels.uploading) : t(labels.add)}

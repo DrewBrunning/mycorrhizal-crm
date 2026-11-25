@@ -967,3 +967,34 @@ test('a long contact name chip is allowed to wrap inside the note card', async (
   expect(getComputedStyle(label).whiteSpace).toBe('normal');
   expect(getComputedStyle(label).overflowWrap).toBe('anywhere');
 });
+
+// #2920: two notes with the same text gave their row actions the same
+// accessible name ("Edit note …", "Add photos"). Each row's actions are
+// described by that row's own date.
+test('same-text notes: each row action is described by its own date (#2920)', async () => {
+  const same = () => {
+    const r = twoUnfiledNotesResponse();
+    r.notes = r.notes.map((n) => ({ ...n, content: 'Same note', uuid: `n-${n.ID}` }));
+    return r;
+  };
+  mockFetchByUrl({ '/notes?': same });
+  renderPage();
+  await waitFor(() => expect(screen.getAllByText('Same note')).toHaveLength(2));
+  await waitFor(() =>
+    expect(screen.getAllByRole('button', { name: 'Add photos' })).toHaveLength(2),
+  );
+
+  const edits = screen.getAllByRole('button', { name: /^Edit note/ });
+  for (const buttons of [edits, screen.getAllByRole('button', { name: 'Add photos' })]) {
+    const [a, b] = buttons.map((el) =>
+      (el.getAttribute('aria-describedby') ?? '')
+        .split(/\s+/)
+        .map((id) => (id ? (document.getElementById(id)?.textContent?.trim() ?? '') : ''))
+        .join(' ')
+        .trim(),
+    );
+    expect(a).not.toBe('');
+    expect(b).not.toBe('');
+    expect(a).not.toBe(b);
+  }
+});

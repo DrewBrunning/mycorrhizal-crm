@@ -10,7 +10,7 @@ import {
   ListItemText,
   Typography,
 } from '@mui/material';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from './api/client';
 import type { TrashedContact, TrashedEntity } from './api/trash';
@@ -32,6 +32,8 @@ function displayName(item: TrashedContact): string {
 // contacts the user deleted.
 export default function TrashPage() {
   const { t } = useTranslation();
+  // #2920: row ids for aria-describedby, unique per page instance.
+  const rowIdPrefix = useId();
   useDocumentTitle(t('nav.trash'));
   const { showError, showSuccess, showWarning } = useSnackbar();
   const {
@@ -175,6 +177,7 @@ export default function TrashPage() {
               </ListItemAvatar>
               <ListItemText
                 primary={<span data-user-content>{displayName(item)}</span>}
+                slotProps={{ secondary: { id: `${rowIdPrefix}-c${item.contact.id}-dates` } }}
                 secondary={[
                   t('trash.deletedOn', {
                     date: formatDateTime(item.deleted_at),
@@ -193,6 +196,7 @@ export default function TrashPage() {
                   size="small"
                   variant="contained"
                   aria-label={t('trash.restoreLabel', { name: displayName(item) })}
+                  aria-describedby={`${rowIdPrefix}-c${item.contact.id}-dates`}
                   onClick={() => void handleRestore(item)}
                   ref={restoreFocus.register(`c${item.contact.id}`)}
                 >
@@ -202,6 +206,7 @@ export default function TrashPage() {
                   size="small"
                   color="error"
                   aria-label={t('trash.deleteForeverLabel', { name: displayName(item) })}
+                  aria-describedby={`${rowIdPrefix}-c${item.contact.id}-dates`}
                   onClick={() => setConfirm({ kind: 'purge', item })}
                   ref={purgeFocus.register(item.contact.id)}
                 >
@@ -226,6 +231,7 @@ export default function TrashPage() {
                     <Chip size="small" label={t(`entities.kind.${item.entity.kind}`)} />
                   </Box>
                 }
+                slotProps={{ secondary: { id: `${rowIdPrefix}-e${item.entity.id}-dates` } }}
                 secondary={[
                   item.merged_into_name
                     ? t('trash.mergedInto', { name: item.merged_into_name })
@@ -246,6 +252,7 @@ export default function TrashPage() {
                 size="small"
                 variant="contained"
                 aria-label={t('trash.restoreLabel', { name: item.entity.name })}
+                aria-describedby={`${rowIdPrefix}-e${item.entity.id}-dates`}
                 onClick={() => void handleRestoreEntity(item)}
                 ref={restoreFocus.register(`e${item.entity.id}`)}
               >
