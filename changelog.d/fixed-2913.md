@@ -1,1 +1,0 @@
-- **A vCard with only a full name now keeps that name** ([#2913](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2913)): when a contact card has FN but not the optional structured name, importing it now gives "Fn" and "Only" as the first and last names instead of leaving the contact unnamed.

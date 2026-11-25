@@ -15,7 +15,7 @@ hiltNavigationCompose = "1.2.0"
 room = "2.8.5"
 okhttp = "4.12.0"
 moshi = "1.15.1"
-coil = "3.0.4"
+coil = "3.6.3"
 ucrop = "2.2.9"
 kotlinxDatetime = "0.6.1"
 kotlinxCoroutines = "1.11.0"
@@ -46,7 +46,7 @@ espresso = "3.7.0"
 accessibilityTestFramework = "3.1.2"
 # ATF's public hierarchy-check API returns Guava's ImmutableSet, so Guava is a
 # compile-time requirement even though ATF declares it implementation-scoped.
-guava = "28.2-android"
+guava = "33.8.0-android"
 # Issue #263: the :macrobenchmark module — androidx.benchmark.macro
 # (MacrobenchmarkRule) for cold/warm/hot startup + dashboard frame timing,
 # plus uiautomator to drive the login flow before the dashboard scenario.
@@ -54,7 +54,7 @@ guava = "28.2-android"
 # there is no AGP-version gate to satisfy — the :macrobenchmark module is a
 # plain `com.android.test` module.
 benchmark = "1.3.4"
-uiautomator = "2.3.0"
+uiautomator = "2.4.1"
 # Issue #268: retry failed JVM/Robolectric tests in CI so a flake doesn't
 # fail the required check; flaky tests are surfaced by the CI step that
 # scans the test-results XML (a test that passed only on retry still leaves
