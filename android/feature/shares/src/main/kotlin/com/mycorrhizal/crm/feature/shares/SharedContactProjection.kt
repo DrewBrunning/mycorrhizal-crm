@@ -30,11 +30,13 @@ fun projectSharedContact(
     formatDate: (year: Int?, month: Int?, day: Int?) -> String = ::isoDate,
     // Anniversary and personal-info kinds are stored tokens (`birth`); the screen supplies the
     // localized label so the recipient never reads a raw token (issue #2626).
-    kindLabel: (String) -> String = { it }
+    kindLabel: (String) -> String = { it },
+    // relatedTo relation keys (`co-worker`) have their own vocabulary (issue #2981).
+    relationLabel: (String) -> String = { it }
 ): SharedContactView {
     val sections = SECTION_ORDER.mapNotNull { token ->
         if (grantedSections != null && token !in grantedSections) return@mapNotNull null
-        val lines = sectionLines(card, token, formatDate, kindLabel)
+        val lines = sectionLines(card, token, formatDate, kindLabel, relationLabel)
         if (lines.isEmpty()) null else SharedContactSection(token, lines)
     }
     return SharedContactView(
@@ -55,7 +57,8 @@ private fun sectionLines(
     card: Map<String, Any?>,
     token: String,
     formatDate: (Int?, Int?, Int?) -> String,
-    kindLabel: (String) -> String
+    kindLabel: (String) -> String,
+    relationLabel: (String) -> String
 ): List<String> = when (token) {
     "emails" -> entries(card["emails"]).mapNotNull { e ->
         text(e["address"])?.let { addr -> text(e["label"])?.let { "$addr ($it)" } ?: addr }
@@ -99,7 +102,7 @@ private fun sectionLines(
 
     // The target is a (detached) contact id with no meaning to the recipient; only the relation
     // kinds are shown.
-    "related_to" -> entries(card["relatedTo"]).flatMap { keys(it["relation"]) }
+    "related_to" -> entries(card["relatedTo"]).flatMap { keys(it["relation"]) }.map(relationLabel)
 
     "personal_info" -> entries(card["personalInfo"]).mapNotNull { p ->
         text(p["value"])?.let { value ->

@@ -54,6 +54,8 @@ fun ShareGrantContentScreen(
     LaunchedEffect(dateFormatter) { viewModel.setDateFormatter(dateFormatter) }
     val kindLabel = rememberGrantKindLabel()
     LaunchedEffect(kindLabel) { viewModel.setKindLabel(kindLabel) }
+    val relationLabel = rememberGrantRelationLabel()
+    LaunchedEffect(relationLabel) { viewModel.setRelationLabel(relationLabel) }
     Scaffold(
         topBar = {
             TopAppBar(

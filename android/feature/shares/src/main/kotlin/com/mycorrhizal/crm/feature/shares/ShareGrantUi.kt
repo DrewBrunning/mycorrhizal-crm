@@ -19,6 +19,7 @@ import com.mycorrhizal.crm.model.network.ShareGrantStatuses
 import com.mycorrhizal.crm.model.util.DateFormat
 import com.mycorrhizal.crm.ui.LocalDateFormat
 import com.mycorrhizal.crm.ui.R
+import com.mycorrhizal.crm.ui.components.relatedToRelationLabelText
 import com.mycorrhizal.crm.ui.components.typeOptionLabelText
 
 /** The human name of a grant's entity type. An unknown type (a newer server) reads as a generic share. */
@@ -155,6 +156,13 @@ internal fun rememberGrantDateFormatter(): (Int?, Int?, Int?) -> String {
 internal fun rememberGrantKindLabel(): (String) -> String {
     val context = LocalContext.current
     return remember(context) { { token -> typeOptionLabelText(context, token) } }
+}
+
+/** Localized label for a `relatedTo` relation key (`co-worker`), issue #2981. */
+@Composable
+internal fun rememberGrantRelationLabel(): (String) -> String {
+    val context = LocalContext.current
+    return remember(context) { { token -> relatedToRelationLabelText(context, token) } }
 }
 
 /** A titled block of lines; used by the read view. */

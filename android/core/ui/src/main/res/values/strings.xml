@@ -2829,6 +2829,27 @@
     <string name="relationship_role_gets_along_with">Gets along with</string>
     <string name="relationship_role_conflicts_with">Conflicts with</string>
     <string name="relationship_role_related_to">Related to</string>
+    <!-- #2981: JSContact relatedTo relation keys (RFC 6350 §6.6.6 RELATED TYPE registry). -->
+    <string name="related_relation_acquaintance">Acquaintance</string>
+    <string name="related_relation_agent">Agent</string>
+    <string name="related_relation_child">Child</string>
+    <string name="related_relation_co_resident">Housemate</string>
+    <string name="related_relation_co_worker">Coworker</string>
+    <string name="related_relation_colleague">Colleague</string>
+    <string name="related_relation_contact">Contact</string>
+    <string name="related_relation_crush">Crush</string>
+    <string name="related_relation_date">Date</string>
+    <string name="related_relation_emergency">Emergency contact</string>
+    <string name="related_relation_friend">Friend</string>
+    <string name="related_relation_kin">Relative</string>
+    <string name="related_relation_me">Me</string>
+    <string name="related_relation_met">Met in person</string>
+    <string name="related_relation_muse">Muse</string>
+    <string name="related_relation_neighbor">Neighbour</string>
+    <string name="related_relation_parent">Parent</string>
+    <string name="related_relation_sibling">Sibling</string>
+    <string name="related_relation_spouse">Spouse</string>
+    <string name="related_relation_sweetheart">Sweetheart</string>
     <string name="life_event_type_married">Married</string>
     <string name="life_event_type_graduated">Graduated</string>
     <string name="life_event_type_job_change">Started a new job</string>
