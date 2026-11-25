@@ -278,10 +278,10 @@ the pointer in `threat-model.md` (Multi-user instances) only.
 - **Whole-section re-confirmation** withholds more than the reclassified item (settled by the maintainer). Fail-closed.
 - **Block scope.** A block covers share grants and one-time `ContactShare`s (#2294; see ADR 0042 decision 8): a blocked one-time create looks identical to an unblocked pending one for the sender, is stored with an empty snapshot, and is invisible to the recipient.
 - **Pre-acceptance label.** A mis-addressed recipient sees the label (for a contact, its display name) before accepting. Accepted by the maintainer; mitigation: nothing beyond the label is visible until the recipient accepts, and the owner can revoke a pending grant.
-- **Directory exposure** (P13) means any user can be named as a recipient; acceptance, blocking and caps bound the harm.
+- **Directory exposure** (P13) means any user can be named as a recipient; acceptance, blocking and caps bound the harm. `SHARE_DIRECTORY_MODE=search` (#2787, the outcome of #2218) lets an operator stop enumeration.
 - **Notification channels** are third parties; payloads carry no content. The general send path is its own review item.
 - **Attachments and images** are deliberately out of v1; adding them is a new review (path traversal, MIME, EXIF
   stripping per P10 apply to a recipient read route).
 - **Re-review gates.** Repeat this review as a code review when the backend PR lands, record the result as a
   changelog row in `asvs-l2-verification-report.md`, and re-run it before any of: editable grants, group/household
-  grants, `include_sensitive` for grants, attachment sharing, or a restricted-directory change (#2218).
+  grants, `include_sensitive` for grants, attachment sharing, or a further change to the directory (the `SHARE_DIRECTORY_MODE=search` option shipped in #2787).

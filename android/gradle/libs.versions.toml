@@ -14,7 +14,7 @@ hilt = "2.60.1"
 hiltNavigationCompose = "1.2.0"
 room = "2.8.5"
 okhttp = "4.12.0"
-moshi = "1.15.1"
+moshi = "1.15.2"
 coil = "3.6.3"
 ucrop = "2.2.9"
 kotlinxDatetime = "0.6.1"
@@ -26,7 +26,7 @@ work = "2.9.1"
 turbine = "1.2.1"
 # 1.14.x: its ByteBuddy line supports the JDK 25 test JVM (1.13.x predates
 # Java 25 class files). Test-only, so no release lockfile is affected.
-mockk = "1.14.9"
+mockk = "1.14.12"
 junit = "4.13.2"
 robolectric = "4.16.1"
 # Issue #2534: Compose screenshot regression on the Robolectric stack this repo

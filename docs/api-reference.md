@@ -6,6 +6,8 @@ has_children: false
 
 # API Reference
 
+This page is a guide to the main endpoints, not the full list. [`backend/openapi.yaml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/backend/openapi.yaml) is the complete, tested contract (every route, parameter, response and reason code), including the groups not tabulated here: circles, occasions, standing shares (`/share-grants`, `/share-blocks`), reusable entities (`/entities`, with links, merge and suggestions), `GET /search`, and the import history and report routes.
+
 ## Base URL
 
 ```
@@ -111,7 +113,7 @@ These routes, and everything else under `/webauthn/*`, are absent from an embedd
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/contacts` | List contacts (supports search and circle filter) |
+| `GET` | `/contacts` | List contacts (supports search and circle filter). Pages by `offset` + `limit` with an exact `total` when `include_total=true` (the web list's page controls); an opaque `cursor` is still accepted |
 | `POST` | `/contacts` | Create a contact |
 | `GET` | `/contacts/:id` | Get a contact (supports filtering the returned fields) |
 | `PUT` | `/contacts/:id` | Update a contact |

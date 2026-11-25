@@ -285,8 +285,8 @@ symmetric down migration test and a populated-database upgrade check.
   not shared.
 - **P13 directory.** The picker keeps using `GET /users/directory`; no new exposure is added. Create returns `404`
   for an unknown `to_user_id`, which the directory already makes discoverable. The pending-grant spam and
-  wrong-recipient risks P13 raises are addressed by acceptance (7), blocking (8) and the caps (11). A restricted
-  directory stays follow-up #2218.
+  wrong-recipient risks P13 raises are addressed by acceptance (7), blocking (8) and the caps (11). An operator
+  restriction later shipped as `SHARE_DIRECTORY_MODE=search` (#2218, #2787).
 - **Outward surfaces.** Granted data is excluded from the recipient's contact list, search and FTS, timeline,
   reminders, graph, dedupe, exports, account bundle, change feed, CardDAV/CalDAV, MCP, webhooks and feeds. The grant
   read route is added to the outward census (`backend/models/contact_record_outward_census_test.go`). The account
@@ -320,8 +320,8 @@ symmetric down migration test and a populated-database upgrade check.
    frozen-list option.
 2. **No owner access history.** The owner sees no per-read audit and no `last_read_at`; the read path stays read-only.
 3. **Re-confirmation withholds the whole section** until the owner re-confirms (decision 5). No per-item tracking.
-4. **A block also stops one-time `ContactShare`s from that sender.** This is a committed v1.7.0 follow-up issue, not
-   part of the first implementation of this ADR.
+4. **A block also stops one-time `ContactShare`s from that sender.** This shipped as the #2294 follow-up in v1.7.0, not
+   in the first implementation of this ADR.
 5. **Pending TTL and pre-acceptance label: keep both.** Pending grants expire after 30 days, and the recipient sees
    the label (contact display name, circle name, activity title; a note shows only "Note") before accepting. A
    mis-addressed recipient can therefore see a contact's display name; the maintainer accepted this, and the

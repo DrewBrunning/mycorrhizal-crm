@@ -10,7 +10,7 @@
   `docs/adrs/0015-temporal-semantics.md`, `docs/adrs/0016-unicode-normalization-and-search-semantics.md`,
   `docs/adrs/0025-temporal-periods.md`, `docs/adrs/0035-service-boundary-and-delete-cascade-registry.md`,
   `docs/adrs/0037-contact-trash-and-restore.md`, `docs/adrs/0038-error-reason-codes.md`,
-  ADR 0042 (standing shares, PR #2250, not yet on `main`), backend/AGENTS.md traps #5–#7.
+  ADR 0042 (standing shares), backend/AGENTS.md traps #5–#7.
 - **Soft dependencies:** #1997 (per-contact field visibility), #1993 (CardDAV ORG/ADR projection), #1998 (standing shares).
 
 ## Context

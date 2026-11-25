@@ -42,6 +42,8 @@ shipped broken at least once. Test against the real migrated schema, never `Auto
    counted ratchet in `internal/lint/reasoncode/allowlist.txt` (lower it with `-write-allowlist`). It
    reached empty in v1.6.0 and must stay empty: `release.yml` runs `reasoncodecheck -release-tag` and
    refuses a v1.6.0+ tag (RCs included) while any entry remains (ADR 0038, issue #2093).
+   `reason_params` values are data (ids, counts, names), never English sentences:
+   `controllers/reason_params_prose_test.go` (issue #2920) fails on a multi-word prose value.
 
 5. <a id="trap-5"></a>**Ownership is enforced at the data-access boundary.** Every user-scoped
    handler must scope by `user_id` (or `Contact.VCardUID` for graph entities). Treat a missing or
