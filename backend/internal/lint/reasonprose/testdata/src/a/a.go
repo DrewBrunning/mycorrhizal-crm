@@ -33,4 +33,8 @@ func cases(err error, name string, n int) {
 	e.WithReason(apperrors.ReasonX, map[string]any{"reason": fmt.Sprintf("%d items", n)})
 	e.WithReason(apperrors.ReasonX, nil)
 	other{}.WithReason("common_x", map[string]any{"reason": err.Error()})
+	// A key that is not a constant cannot be matched to an allowlist entry or
+	// a template slot; it is left to the runtime guard.
+	key := "reason"
+	e.WithReason(apperrors.ReasonX, map[string]any{key: "The server could not be reached"})
 }

@@ -63,10 +63,9 @@ func runStatic(pass *analysis.Pass) (any, error) {
 			return
 		}
 		for _, elt := range lit.Elts {
-			kv, ok := elt.(*ast.KeyValueExpr)
-			if !ok {
-				continue
-			}
+			// The params argument is a map[string]any, so every element of a
+			// literal for it is a key: value pair.
+			kv := elt.(*ast.KeyValueExpr)
 			key := constString(pass, kv.Key)
 			if key == "" {
 				continue
@@ -160,7 +159,6 @@ func ScanPackages(dir string, patterns ...string) ([]StaticFinding, error) {
 		return nil, err
 	}
 	var out []StaticFinding
-	seen := map[string]bool{}
 	for act := range graph.All() {
 		if act.Analyzer != StaticAnalyzer {
 			continue
@@ -168,13 +166,7 @@ func ScanPackages(dir string, patterns ...string) ([]StaticFinding, error) {
 		for _, d := range act.Diagnostics {
 			key, _, _ := strings.Cut(d.Message, ": ")
 			pos := act.Package.Fset.Position(d.Pos)
-			f := StaticFinding{Key: key, Position: fmt.Sprintf("%s:%d", pos.Filename, pos.Line), Message: d.Message}
-			id := f.Position + "\x00" + f.Message
-			if seen[id] {
-				continue
-			}
-			seen[id] = true
-			out = append(out, f)
+			out = append(out, StaticFinding{Key: key, Position: fmt.Sprintf("%s:%d", pos.Filename, pos.Line), Message: d.Message})
 		}
 	}
 	sort.Slice(out, func(i, j int) bool {
@@ -188,15 +180,8 @@ func ScanPackages(dir string, patterns ...string) ([]StaticFinding, error) {
 
 // Allowed reports whether key ("code/param") is covered by the embedded
 // allowlist, either exactly or through a "*/param" entry.
+// A malformed allowlist allows nothing (fail closed).
 func Allowed(key string) bool {
 	allow, err := loadAllowlist()
-	if err != nil {
-		return false
-	}
-	if _, ok := allow.reasons[key]; ok {
-		return true
-	}
-	_, param, _ := strings.Cut(key, "/")
-	_, ok := allow.reasons["*/"+param]
-	return ok
+	return err == nil && allow.allows(key)
 }

@@ -438,3 +438,30 @@ func TestRunGuarded(t *testing.T) {
 	prose()
 	assert.Empty(t, out.String())
 }
+
+// TestAllowedMatchesExactAndWildcardEntriesAndFailsClosed pins Allowed's three
+// outcomes against a swapped-in allowlist (see TestCheckMalformedAllowlistFailsClosed).
+func TestAllowedMatchesExactAndWildcardEntriesAndFailsClosed(t *testing.T) {
+	_, _ = loadAllowlist()
+	prevLoaded, prevErr := loaded, loadError
+	t.Cleanup(func() { loaded, loadError = prevLoaded, prevErr })
+
+	allow, err := parseAllowlist("# count: 2\nfoo_bar/reason\tparser detail\n*/status\thttp status\n")
+	require.NoError(t, err)
+	loaded, loadError = allow, nil
+	assert.True(t, Allowed("foo_bar/reason"), "exact entry")
+	assert.True(t, Allowed("any_code/status"), "*/param entry")
+	assert.False(t, Allowed("foo_bar/detail"), "same code, other param")
+	assert.False(t, Allowed("other_code/reason"), "same param, other code")
+
+	loadError = errors.New("boom")
+	assert.False(t, Allowed("foo_bar/reason"), "a malformed allowlist allows nothing")
+}
+
+func TestScanPackagesReportsLoadErrors(t *testing.T) {
+	_, err := ScanPackages(t.TempDir(), "./does-not-exist/...")
+	require.Error(t, err)
+
+	_, err = ScanPackages(filepath.Join(t.TempDir(), "missing-dir"), "./...")
+	require.Error(t, err)
+}

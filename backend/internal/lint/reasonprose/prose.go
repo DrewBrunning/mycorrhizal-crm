@@ -74,10 +74,7 @@ func Check(code string, params map[string]any) []Problem {
 		if len(strings.Fields(value)) < proseWordThreshold {
 			continue
 		}
-		if _, ok := allow.reasons[code+"/"+key]; ok {
-			continue
-		}
-		if _, ok := allow.reasons["*/"+key]; ok {
+		if allow.allows(code + "/" + key) {
 			continue
 		}
 		problems = append(problems, Problem{
@@ -99,6 +96,16 @@ func sortProblems(problems []Problem) {
 		}
 		return problems[i].Value < problems[j].Value
 	})
+}
+
+// allows reports whether key ("code/param") has an exact or a "*/param" entry.
+func (a allowlist) allows(key string) bool {
+	if _, ok := a.reasons[key]; ok {
+		return true
+	}
+	_, param, _ := strings.Cut(key, "/")
+	_, ok := a.reasons["*/"+param]
+	return ok
 }
 
 func loadAllowlist() (allowlist, error) {
