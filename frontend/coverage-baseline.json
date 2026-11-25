@@ -2044,9 +2044,9 @@
     },
     "src/hooks/useFocusAfterRemoval.ts": {
       "lines": 100,
-      "linesTotal": 19,
-      "branches": 94.11,
-      "branchesTotal": 17
+      "linesTotal": 23,
+      "branches": 94.44,
+      "branchesTotal": 18
     },
     "src/hooks/useGeoPulse.ts": {
       "lines": 100,
