@@ -19170,6 +19170,11 @@
           "required": true
         },
         {
+          "name": "role",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "source",
           "type": "string",
           "required": true

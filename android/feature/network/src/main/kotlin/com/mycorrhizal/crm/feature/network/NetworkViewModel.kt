@@ -78,7 +78,12 @@ data class NetworkUiState(
 }
 
 /** One display-only entity node with the names of the in-scope contacts linked to it. */
-data class EntityOverlayRow(val node: GraphEntityNode, val contactNames: List<String>)
+data class EntityOverlayRow(
+    val node: GraphEntityNode,
+    val contactNames: List<String>,
+    /** #2946: the distinct link role tokens of this entity's edges; empty from an older server. */
+    val roles: List<String> = emptyList()
+)
 
 /**
  * The overlay rows of a `GET /graph?include_entities=true` response: each entity node with the
@@ -93,7 +98,9 @@ internal fun GraphEntitiesResponse.toOverlayRows(): List<EntityOverlayRow> {
             node = node,
             contactNames = edges.filter { it.target == node.id }
                 .mapNotNull { contactLabels[it.source]?.takeIf { label -> label.isNotBlank() } }
-                .distinct()
+                .distinct(),
+            roles = edges.filter { it.target == node.id }.map { it.role }
+                .filter { it.isNotBlank() }.distinct()
         )
     }.sortedWith(compareBy({ kindOrder(it.node.kind) }, { it.node.label.lowercase() }))
 }

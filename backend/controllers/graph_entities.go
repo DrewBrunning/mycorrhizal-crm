@@ -16,6 +16,7 @@ type graphEntityRow struct {
 	EntityID        string
 	Kind            string
 	Name            string
+	Role            string
 }
 
 // buildGraphEntities implements ?include_entities=true (issue #2298, ADR 0043
@@ -34,7 +35,7 @@ func buildGraphEntities(db *gorm.DB, userID uint, scope graphScope, nodeIDByVCar
 	edges := make([]models.GraphEntityEdge, 0)
 
 	q := db.Table("contact_entity_links AS l").
-		Select("l.id AS link_id, l.contact_vcard_uid AS contact_vcard_uid, e.id AS entity_id, e.kind AS kind, e.name AS name").
+		Select("l.id AS link_id, l.contact_vcard_uid AS contact_vcard_uid, e.id AS entity_id, e.kind AS kind, e.name AS name, l.role AS role").
 		Joins("JOIN entities e ON e.id = l.entity_id AND e.user_id = ? AND e.deleted_at IS NULL AND e.sensitivity = ?", userID, models.RelationshipSensitivityNormal).
 		Where("l.user_id = ? AND l.deleted_at IS NULL AND l.sensitivity = ?", userID, models.RelationshipSensitivityNormal).
 		Order("l.id ASC")
@@ -57,7 +58,7 @@ func buildGraphEntities(db *gorm.DB, userID uint, scope graphScope, nodeIDByVCar
 			seen[r.EntityID] = true
 			nodes = append(nodes, models.GraphEntityNode{ID: entityNode, Kind: r.Kind, Label: r.Name})
 		}
-		edges = append(edges, models.GraphEntityEdge{ID: fmt.Sprintf("ee-%s", r.LinkID), Source: contactNode, Target: entityNode})
+		edges = append(edges, models.GraphEntityEdge{ID: fmt.Sprintf("ee-%s", r.LinkID), Source: contactNode, Target: entityNode, Role: r.Role})
 	}
 	return nodes, edges, nil
 }

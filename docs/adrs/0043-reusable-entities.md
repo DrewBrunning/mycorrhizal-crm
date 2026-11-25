@@ -112,7 +112,7 @@ The graph endpoint (`backend/controllers/graph_controller.go#GetGraph`) keeps it
 a client opts in with `?include_entities=true` it additionally returns `entity_nodes` and `entity_edges` arrays
 (separate keys, never mixed into `nodes`/`edges`), built from live links of normal sensitivity, scoped by the same
 `full`/`from`/`depth` rules: an entity node appears only if at least one in-scope contact links to it, and `depth`
-counts a contact→entity hop as one. Entity edges are display-only: they carry no type, no inverse, no status and are
+counts a contact→entity hop as one. Entity edges are display-only: they carry no type, no inverse, no status (the one link field they carry is the closed-vocabulary `role` token, added in #2946 so a client can label a row "Employee"; never the free-text `role_label`, dates or sensitivity) and are
 never fed to traversal, household inference or the suggestion engine. The web graph and the Android graph render
 them with a distinct node style and no edit affordances; editing happens on the contact or entity page. The default
 response is unchanged, so no existing client sees a difference. Entity nodes count against the web render ceiling

@@ -142,4 +142,21 @@ class NetworkEntitiesOverlayTest {
         }
 
     private fun assertNull(value: Any?) = org.junit.Assert.assertNull(value)
+
+    // #2946: each overlay row carries the distinct link roles of its edges, in edge order; an
+    // older server's role-less edges give no roles.
+    @Test
+    fun `overlay rows carry the distinct link roles of their edges`() {
+        val withRoles = overlay.copy(
+            entityEdges = listOf(
+                GraphEntityEdge("x1", "c-1", "e-o1", role = "employee"),
+                GraphEntityEdge("x2", "c-7", "e-o1", role = "employee"),
+                GraphEntityEdge("x3", "c-7", "e-p1", role = "resident")
+            )
+        )
+        val rows = withRoles.toOverlayRows().associateBy { it.node.id }
+        assertEquals(listOf("employee"), rows.getValue("e-o1").roles)
+        assertEquals(listOf("resident"), rows.getValue("e-p1").roles)
+        assertTrue(overlay.toOverlayRows().all { it.roles.isEmpty() })
+    }
 }

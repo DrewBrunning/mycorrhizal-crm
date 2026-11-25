@@ -422,7 +422,7 @@ class ApiClientEntitiesTest {
             enqueue(
                 """{"nodes":[{"id":"c-7","type":"contact","label":"Ada"}],
                 "entity_nodes":[{"id":"e-e1","kind":"organisation","label":"Acme"}],
-                "entity_edges":[{"id":"x","source":"c-7","target":"e-e1"}]}"""
+                "entity_edges":[{"id":"x","source":"c-7","target":"e-e1","role":"employee"}]}"""
             )
             val response = client.getGraphWithEntities(from = "u1", depth = 2).getOrThrow()
             val request = server.takeRequest()
@@ -432,6 +432,8 @@ class ApiClientEntitiesTest {
             assertEquals("2", request.requestUrl?.queryParameter("depth"))
             assertEquals("Acme", response.entityNodes?.single()?.label)
             assertEquals("c-7", response.entityEdges?.single()?.source)
+            // #2946: the link's role token rides on the edge (absent from older servers: "").
+            assertEquals("employee", response.entityEdges?.single()?.role)
             assertNull(response.nodes?.firstOrNull { it.type == "activity" })
         }
 
