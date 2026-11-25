@@ -128,6 +128,59 @@ class WebhooksScreenTest {
         composeTestRule.onNodeWithText("Test delivered (200)").assertIsDisplayed()
     }
 
+    @Test
+    fun `a failed test with no server text shows a translated status line (#2920)`() {
+        // Was the hardcoded English "status 502" / "status unknown".
+        val repository = mockk<WebhookRepository>()
+        coEvery { repository.list() } returns Result.success(listOf(webhook(1, name = "Hook A")))
+        coEvery { repository.test(1) } returnsMany listOf(
+            Result.success(
+                WebhookDelivery(id = 10, webhookId = 1, eventType = "test", statusCode = 502)
+            ),
+            Result.success(
+                WebhookDelivery(id = 11, webhookId = 1, eventType = "test", statusCode = null)
+            )
+        )
+        val viewModel = WebhooksViewModel(repository)
+        setScreen(viewModel)
+
+        composeTestRule.runOnIdle { viewModel.test(webhook(1, name = "Hook A")) }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Delivery failed (status 502)").assertIsDisplayed()
+
+        composeTestRule.runOnIdle { viewModel.test(webhook(1, name = "Hook A")) }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Delivery failed").assertIsDisplayed()
+    }
+
+    @Test
+    fun `a delivery with no status code shows a translated Error chip, not err (#2920)`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                WebhookRow(
+                    webhook = webhook(1),
+                    testing = false,
+                    expanded = true,
+                    deliveries = listOf(
+                        WebhookDelivery(
+                            id = 1,
+                            webhookId = 1,
+                            eventType = "contact.created",
+                            statusCode = null
+                        )
+                    ),
+                    onTest = {},
+                    onEdit = {},
+                    onDelete = {},
+                    onToggleDeliveries = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Error").assertIsDisplayed()
+        composeTestRule.onNodeWithText("err").assertDoesNotExist()
+    }
+
     // Lines 195-197: the row's `onEdit` lambda only runs when the real
     // top-level screen is mounted and its Edit action is clicked. The direct
     // WebhookRow test below supplies its own onEdit, so it never reaches this.
