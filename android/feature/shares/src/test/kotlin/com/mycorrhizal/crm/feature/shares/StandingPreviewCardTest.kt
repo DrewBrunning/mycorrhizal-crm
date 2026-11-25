@@ -42,4 +42,27 @@ class StandingPreviewCardTest {
         composeTestRule.onNodeWithText("Birth: 03.12.1990").assertIsDisplayed()
         composeTestRule.onNodeWithText("birth: 03.12.1990").assertDoesNotExist()
     }
+
+    // #2981: the "What they will see" preview names relations in words, never raw keys.
+    @Test
+    fun `the preview shows relation keys as human labels`() {
+        val card = mapOf<String, Any?>(
+            "name" to mapOf("full" to "Dana White"),
+            "relatedTo" to mapOf(
+                "u1" to mapOf("relation" to mapOf("co-worker" to true, "neighbor" to true))
+            )
+        )
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                StandingPreviewCard(
+                    preview = StandingPreview.Ready(card),
+                    selectedSections = setOf("related_to")
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText("Coworker").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Neighbour").assertIsDisplayed()
+        composeTestRule.onNodeWithText("co-worker").assertDoesNotExist()
+    }
 }

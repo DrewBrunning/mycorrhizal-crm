@@ -103,6 +103,25 @@ class ShareGrantContentScreenTest {
         composeTestRule.onNodeWithText("birth: 03.12.1990").assertDoesNotExist()
     }
 
+    // #2981: the recipient's read view localizes relation keys.
+    @Test
+    @Config(sdk = [35], qualifiers = "de")
+    fun `relation keys read as localized labels`() {
+        coEvery { repository.content("g1") } returns Result.success(
+            content(
+                "contact",
+                contact = mapOf(
+                    "name" to mapOf("full" to "Dana White"),
+                    "relatedTo" to mapOf("u1" to mapOf("relation" to mapOf("friend" to true)))
+                )
+            )
+        )
+        screen(sections = "related_to")
+
+        composeTestRule.onNodeWithText("Freund").assertIsDisplayed()
+        composeTestRule.onNodeWithText("friend").assertDoesNotExist()
+    }
+
     @Test
     fun `the read view is titled like the list that opens it`() {
         coEvery { repository.content("g1") } returns Result.success(

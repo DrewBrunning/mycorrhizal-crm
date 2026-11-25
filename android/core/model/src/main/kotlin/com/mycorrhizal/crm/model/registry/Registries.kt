@@ -472,3 +472,18 @@ object OccasionSensitivity {
 
     val ALL = listOf(NORMAL, PRIVATE, SECRET)
 }
+
+/**
+ * Issue #2981: the JSContact `relatedTo[*].relation` keys (RFC 9553 §2.3.6), which reuse
+ * the vCard RELATED TYPE registry of RFC 6350 §6.6.6 (the XFN 1.1 vocabulary plus
+ * `agent`/`emergency` from RFC 6473/9554 usage). The backend passes these through
+ * unvalidated, so this is an IANA-registry mirror, not a `oneof` mirror; any other key is
+ * still legal and is humanized for display.
+ */
+object RelatedToRelations {
+    val ALL = listOf(
+        "acquaintance", "agent", "child", "co-resident", "co-worker", "colleague", "contact",
+        "crush", "date", "emergency", "friend", "kin", "me", "met", "muse", "neighbor",
+        "parent", "sibling", "spouse", "sweetheart"
+    )
+}

@@ -88,6 +88,21 @@ class SharedContactProjectionTest {
         assertEquals(listOf("Chess"), byToken["personal_info"])
     }
 
+    // #2981: relatedTo relation keys go through their own label, not the kind label.
+    @Test
+    fun `relation keys are shown through the supplied relation label`() {
+        val view = projectSharedContact(
+            card(
+                """{"name":{"full":"X"},
+                "relatedTo":{"u1":{"relation":{"friend":true,"co-worker":true}}}}"""
+            ),
+            grantedSections = setOf("related_to"),
+            kindLabel = { "K-$it" },
+            relationLabel = { "R-$it" }
+        )
+        assertEquals(listOf("R-friend", "R-co-worker"), view.sections.single().lines)
+    }
+
     @Test
     fun `every section projects its allowlisted fields in canonical order`() {
         val all = projectSharedContact(full, grantedSections = null)
