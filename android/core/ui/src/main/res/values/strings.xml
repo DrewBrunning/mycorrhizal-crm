@@ -2132,6 +2132,7 @@
     <string name="import_report_title">Rows not imported</string>
     <string name="import_report_row">Row %1$d · %2$s</string>
     <string name="import_report_skipped">Skipped: %1$s</string>
+    <string name="import_report_skipped_by_choice">Skipped: you chose to discard it</string>
     <string name="import_report_failed">Failed: %1$s</string>
     <string name="import_diag_birthday_warn">The birthday is not a valid date, so it will not be imported</string>
     <string name="import_diag_anniversary_warn">The anniversary is not a valid date, so it will not be imported</string>
