@@ -329,6 +329,16 @@ func TestBuildImportFieldPlan_MapRequiresOwnedDefinition(t *testing.T) {
 	})
 	require.ErrorIs(t, err, errInvalidImportFieldMapping)
 
+	// An empty ID (the wizard's "Map to existing field" left unset) is the
+	// same contract error, and the raw GORM text must never leak into the
+	// message the client shows (issue #2909).
+	_, err = buildImportFieldPlan(db, user.ID, []models.ImportFieldMapping{
+		{PropertyName: "x-hometown", Action: "map"},
+	})
+	require.ErrorIs(t, err, errInvalidImportFieldMapping)
+	assert.NotContains(t, err.Error(), "record not found")
+	assert.Contains(t, err.Error(), "x-hometown")
+
 	// A valid owned definition maps.
 	ownDef := models.FieldDefinition{
 		UserID: user.ID, Label: "Color", Key: "color",

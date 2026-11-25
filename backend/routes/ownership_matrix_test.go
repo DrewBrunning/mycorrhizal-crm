@@ -84,6 +84,7 @@ import (
 	"time"
 
 	"mycorrhizal/config"
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/middleware"
 	"mycorrhizal/models"
@@ -442,6 +443,69 @@ func buildBodyOwnershipTable(fx ownFixtures) map[string]ownRow {
 			h.assertMasked(http.MethodPost, "/api/v1/entities/"+h.fx.ownerEntityID+"/merge",
 				func(uid string) string { return fmt.Sprintf(`{"into":%s}`, jstr(uid)) },
 				h.fx.ownerEntity2ID, h.fx.victimEntityID, ownNonexistentUID, http.StatusNotFound, true)
+		}),
+		// POST /entities/from-contacts never 404s a foreign or unknown
+		// existing_entity_id: the group is reported as skipped with the same
+		// entity_not_found reason either way, so the wire answer is not an
+		// existence oracle. Control first (an owned entity whose value key
+		// matches the group's), then another user's id and an unknown one,
+		// checking the database rather than trusting the response alone.
+		"EntityFromContactsGroup.ExistingEntityID": dto(func(t *testing.T, h *ownHarness) {
+			const orgName = "Own Matrix Existing Org"
+			existing := models.Entity{UserID: h.fx.ownerID, Kind: models.EntityKindOrganisation, Name: orgName}
+			require.NoError(t, h.db.Create(&existing).Error)
+			key := "org:" + services.OrganisationComparisonKey(orgName)
+
+			mkContact := func(first string) models.Contact {
+				c := models.Contact{UserID: h.fx.ownerID, Firstname: first}
+				c.Card.Organizations = []contactmodel.Organization{{ID: "o-" + first, Name: orgName}}
+				// A Card set by direct field mutation is dropped by BeforeSave;
+				// ApplyRecordToContact marks it authoritative for this save.
+				models.ApplyRecordToContact(&c, &contactmodel.Record{Card: c.Card}, "")
+				c.Firstname = first
+				require.NoError(t, h.db.Create(&c).Error)
+				return c
+			}
+			post := func(contactID uint, entityID string) (int, models.EntityFromContactsResponse) {
+				st, body := h.req(http.MethodPost, "/api/v1/entities/from-contacts",
+					fmt.Sprintf(`{"kind":"organisation","groups":[{"key":%s,"role":"employee","existing_entity_id":%s,"contact_ids":[%d]}]}`,
+						jstr(key), jstr(entityID), contactID))
+				var out models.EntityFromContactsResponse
+				_ = json.Unmarshal([]byte(body), &out)
+				return st, out
+			}
+
+			control := mkContact("OwnMatrixControl")
+			st, out := post(control.ID, existing.ID)
+			require.Equalf(t, http.StatusCreated, st, "control probe with an owned same-key entity -> %d", st)
+			require.Emptyf(t, out.Skipped, "control probe skipped a group with an owned same-key entity")
+			require.Lenf(t, out.Created, 1, "control probe created %d results; want 1", len(out.Created))
+			require.Equalf(t, existing.ID, out.Created[0].Entity.ID, "an owned same-key entity is reused, not duplicated")
+			require.Lenf(t, out.Created[0].Links, 1, "control probe wrote %d links; want 1", len(out.Created[0].Links))
+
+			var entsBefore int64
+			require.NoError(t, h.db.Model(&models.Entity{}).Where("user_id = ?", h.fx.ownerID).Count(&entsBefore).Error)
+
+			foreign := mkContact("OwnMatrixForeign")
+			missing := mkContact("OwnMatrixMissing")
+			fSt, fOut := post(foreign.ID, h.fx.victimEntityID)
+			mSt, mOut := post(missing.ID, ownNonexistentUID)
+			require.Equalf(t, http.StatusCreated, fSt, "a foreign existing_entity_id -> %d; want a 201 per-group skip", fSt)
+			require.Equalf(t, fSt, mSt, "foreign existing_entity_id -> %d but nonexistent -> %d (status is an existence oracle)", fSt, mSt)
+			require.Emptyf(t, fOut.Created, "a foreign existing_entity_id created an entity")
+			require.Emptyf(t, mOut.Created, "an unknown existing_entity_id created an entity")
+			require.Lenf(t, fOut.Skipped, 1, "foreign existing_entity_id skipped %d groups; want 1", len(fOut.Skipped))
+			require.Lenf(t, mOut.Skipped, 1, "unknown existing_entity_id skipped %d groups; want 1", len(mOut.Skipped))
+			require.Equalf(t, "entity_not_found", fOut.Skipped[0].Reason, "foreign existing_entity_id reason = %q", fOut.Skipped[0].Reason)
+			require.Equalf(t, fOut.Skipped[0].Reason, mOut.Skipped[0].Reason,
+				"foreign vs unknown existing_entity_id reasons differ (%q vs %q) — existence oracle", fOut.Skipped[0].Reason, mOut.Skipped[0].Reason)
+
+			var entsAfter int64
+			require.NoError(t, h.db.Model(&models.Entity{}).Where("user_id = ?", h.fx.ownerID).Count(&entsAfter).Error)
+			require.Equalf(t, entsBefore, entsAfter, "a skipped group created an entity")
+			var victimLinks int64
+			require.NoError(t, h.db.Model(&models.ContactEntityLink{}).Where("entity_id = ?", h.fx.victimEntityID).Count(&victimLinks).Error)
+			require.Zerof(t, victimLinks, "a foreign existing_entity_id wrote %d links", victimLinks)
 		}),
 		// ── single contact-UID body fields (foreign → 404, masked) ──────────
 		"ContactShareInput.VCardUID": dto(func(t *testing.T, h *ownHarness) {

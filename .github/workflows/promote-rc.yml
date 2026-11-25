@@ -157,6 +157,15 @@ jobs:
           set -eu
           bash .github/scripts/release-obligations.sh adversarial --release "$FINAL_TAG" --ack "${ACK_ADVERSARIAL_DELTA:-}"
 
+      # REL-05: changelog.d/ fragments must be assembled before the RC commit
+      # can be promoted (docs/changelog-policy.md).
+      - name: Gate - changelog fragments are assembled (changelogassemble)
+        run: |
+          if ! (cd backend && go run ./cmd/changelogassemble -check); then
+            echo "::error::changelog.d/ fragments are not assembled in CHANGELOG.md [Unreleased]. Run 'cd backend && go run ./cmd/changelogassemble -write', then commit CHANGELOG.md and the deleted fragment files before promoting the release."
+            exit 1
+          fi
+
       # Issue #2242: the final Release body is the RC commit's `## [X.Y.Z]`
       # CHANGELOG.md section, so the promoted RC must carry the renamed
       # section. Read it here, before any mutation.

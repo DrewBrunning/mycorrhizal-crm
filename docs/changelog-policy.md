@@ -8,7 +8,8 @@ nav_order: 13
 **This is the canonical changelog statement (REL-05, issue #449).** It defines
 what the changelog *is* for this project, how the Release notes are produced,
 where operator actions go, when a change must carry an entry, and where the
-record begins. `cmd/changelogsection` and
+record begins. `cmd/changelogsection`, `cmd/changelogcheck`,
+`cmd/changelogfragmentcheck`, `cmd/changelogassemble` and
 the `changelog-note` job in `.github/workflows/unit-tests.yml` are defined
 against this document; a change here is a change to those, and vice versa (see
 [Document consistency](#document-consistency)).
@@ -25,9 +26,11 @@ There are two records, with different audiences:
 1. **`CHANGELOG.md`** — the human-readable changelog, in
    [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. It is
    written for people who use or self-host the app: plain language, one short
-   bullet per user-visible change, grouped by release. Every user-visible change
-   adds its entry to `[Unreleased]` in the same pull request, so contributors see
-   what is coming and the release section is already written at tag time.
+   bullet per user-visible change, grouped by release. A pull request adds a
+   one-file **fragment** under [`changelog.d/`](../changelog.d/README.md)
+   instead of editing `[Unreleased]` directly, so parallel PRs do not conflict
+   on the shared section; the release assembly writes the section before tag
+   time.
 2. **The GitHub Release notes** — a copy. `docker-publish.yml` writes the
    Release body from the `CHANGELOG.md` section for the tag (via
    `cmd/changelogsection`), plus the Docker image block and a compare link to the
@@ -36,15 +39,44 @@ There are two records, with different audiences:
    section; `release.yml` refuses to tag without one, and the Release job fails
    on a missing or empty section. A release candidate publishes `[X.Y.Z]` if it
    exists, else `[Unreleased]`. `promote-rc.yml` publishes the RC commit's
-   `[X.Y.Z]` section and refuses to promote without one, so rename
-   `[Unreleased]` before the last RC.
+   `[X.Y.Z]` section and refuses to promote without one, so assemble the
+   fragments and rename `[Unreleased]` before the last RC.
 
 GitHub's generated "What's Changed" list and the harvest of `## Upgrade notes`
 blocks from PR bodies ([#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242))
 no longer feed the Release. Operator actions go in the `> **Upgrade**` blockquote
 of the changelog section.
 
-## Writing `CHANGELOG.md` entries
+## Adding an entry: `changelog.d/` fragments
+
+One file per change, never a direct edit to `[Unreleased]`:
+
+- **Name:** `<section>-<issue>[-<n>].md`, where `<section>` is one of
+  `added`, `changed`, `deprecated`, `removed`, `fixed`, `security`, `internal`
+  (the lowercase form of the `CHANGELOG.md` heading) and `<issue>` is the GitHub
+  issue number. Add `-<n>` for a second fragment for the same issue and section.
+  Examples: `fixed-2917.md`, `added-2513-2.md`. [`changelog.d/README.md`](../changelog.d/README.md)
+  is ignored by the loader.
+- **Content:** exactly one Keep-a-Changelog bullet line, with no section heading
+  and no sub-bullets:
+
+  ```markdown
+  - **Data settings says when the server cannot be reached** ([#2917](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2917)): the page now explains the connection failure instead of showing an empty form.
+  ```
+
+- **Rules:** the bullet rules below apply unchanged, and the issue number in the
+  filename must appear in an `issues/<n>` URL in the bullet.
+- A follow-up PR that finishes the same feature edits that feature's fragment
+  (or adds a `-<n>` fragment when the first already merged) rather than writing a
+  second bullet.
+
+Fragments exist so a batch of pull requests can merge in any order without
+editing the same lines of `[Unreleased]`: each PR touches its own file, and the
+release notes are assembled once, at release time. `cmd/changelogfragmentcheck`
+validates every fragment in CI and the pre-commit hook, so a malformed filename,
+section, bullet or issue link fails the PR rather than the release.
+
+## Writing entries
 
 Sections, in this order, using only those that apply: `Added`, `Changed`,
 `Deprecated`, `Removed`, `Fixed`, `Security`, `Internal`.
@@ -73,12 +105,29 @@ Format: `- **Bold lead phrase** ([#123](https://github.com/DrewBrunning/mycorrhi
   refactors, dependency bumps and tidy-ups get no entry.
 - A PR with no user-visible effect (test-only, CI, refactor, docs-only) adds no
   entry and says `no-changelog: <reason>` in its description.
-- The maintainer renames `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD` as part of the
-  release.
+- The maintainer assembles the fragments, commits the result, then renames
+  `[Unreleased]` to `[X.Y.Z] - YYYY-MM-DD` as part of the release.
 - `cmd/changelogcheck` lints `[Unreleased]` for section names and order, the
   bold lead phrase, sub-bullets, the word limit, full-URL issue links and the
   `Internal` cap, in CI and the pre-commit hook. Released sections are not
   checked.
+
+## Assembling the release
+
+`cmd/changelogassemble` is the only writer of fragments into `CHANGELOG.md`:
+
+- `cd backend && go run ./cmd/changelogassemble -check` fails unless every
+  fragment's exact bullet is already present in `[Unreleased]`. `release.yml`
+  and `promote-rc.yml` run this gate immediately before the
+  `changelogsection` gate, so a release cannot tag unassembled notes.
+- `cd backend && go run ./cmd/changelogassemble -write` inserts the missing
+  bullets under their canonical `### Section`, creating a section in policy
+  order when absent. It preserves existing content (including the
+  `> **Upgrade**` blockquote) and the existing bullets' order, dedupes exact
+  bullet text, then deletes the folded fragment files. Commit `CHANGELOG.md`
+  together with those deletions. `-keep` retains the fragment files.
+- A second `-write` changes nothing; the command does not touch released
+  sections.
 
 ## Related policies
 
@@ -89,8 +138,8 @@ are classified by [`breaking-change-policy.md`](breaking-change-policy.md)
 
 ## When a pull request must carry a changelog entry
 
-A user-visible change adds its entry to `[Unreleased]` in the same pull request.
-Operator-visible changes need one without exception:
+A user-visible change adds a fragment under `changelog.d/` in the same pull
+request. Operator-visible changes need one without exception:
 
 - a **database migration** (add, rename, retype, drop);
 - a **configuration variable** (add, rename, or change of default or meaning);
@@ -110,8 +159,8 @@ security-relevant surface also needs a per-release delta row
 If a PR touches one of the tracked paths (`backend/database/migrations/**`,
 `backend/config/config.go`, `.env.example`) but genuinely needs no entry, put
 `no-changelog: <reason>` in the PR description. The `changelog-note` CI job
-fails a PR that touches those paths, does not change `CHANGELOG.md`, and has no
-`no-changelog:` line.
+fails a PR that touches those paths, adds no `changelog.d/*.md` fragment (and
+does not change `CHANGELOG.md`), and has no `no-changelog:` line.
 
 Internal refactors, test-only changes and other changes with no user-visible
 effect need no entry.
@@ -146,8 +195,14 @@ upgrades from below the floor in one hop anyway.
 
 ## Document consistency
 
+- `cmd/changelogcheck`, `cmd/changelogfragmentcheck` and
+  `cmd/changelogassemble` share section order and bullet validation in
+  `internal/changelog`, so the per-PR fragment check and the `[Unreleased]`
+  lint cannot drift apart.
 - `cmd/changelogsection` is covered by its unit tests; `release.yml` and
   `docker-publish.yml` both call it.
+- `changelogfragmentcheck` runs in CI and the pre-commit hook;
+  `changelogassemble -check` gates `release.yml` and `promote-rc.yml`.
 
 These run in the normal `go test ./...` and CI, so the policy cannot drift from
 the tooling without a red build.

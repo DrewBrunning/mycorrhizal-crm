@@ -21021,7 +21021,7 @@ components:
         has_primary: { type: boolean, description: "The contact already has a live primary link of this kind." }
     EntityValueGroup:
       type: object
-      required: [key, kind, name, reason, variants, contacts]
+      required: [key, kind, name, reason, variants, contacts, existing_entity_id, existing_entity_name]
       properties:
         key: { type: string, description: "Opaque group key; echo it to POST /entities/from-contacts." }
         kind: { type: string, enum: [organisation, place] }
@@ -21034,6 +21034,8 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/EntityValueGroupContact"
+        existing_entity_id: { type: string, format: uuid, description: "Issue #2919 — the live entity of this kind whose value key equals the group's; empty when none matches. Confirming the group links to it instead of creating a duplicate." }
+        existing_entity_name: { type: string, description: "The existing entity's name (empty when existing_entity_id is empty)." }
     EntitySuggestionsResponse:
       type: object
       required: [mode, pairs, groups, next_cursor, limit]
@@ -21068,7 +21070,8 @@ components:
       required: [key, role, contact_ids]
       properties:
         key: { type: string, maxLength: 500 }
-        name: { type: string, maxLength: 200, description: "Optional entity name; defaults to the group's proposed name." }
+        name: { type: string, maxLength: 200, description: "Optional entity name; defaults to the group's proposed name. Ignored when existing_entity_id is set." }
+        existing_entity_id: { type: string, format: uuid, description: "Issue #2919 — link the group's contacts to this live entity of the same kind instead of creating one. Must be the user's own live entity whose value key equals key; anything else is skipped as entity_not_found." }
         role: { type: string, description: "A role valid for the kind (organisation: employee, owner, ...; place: resident, ...)." }
         set_primary: { type: boolean }
         contact_ids:
@@ -21104,7 +21107,7 @@ components:
       properties:
         key: { type: string }
         contact_id: { type: integer }
-        reason: { type: string, enum: [group_not_found, contact_not_in_group, name_invalid, core_invalid] }
+        reason: { type: string, enum: [group_not_found, contact_not_in_group, name_invalid, core_invalid, entity_not_found] }
     EntityFromContactsResponse:
       type: object
       required: [created, skipped]

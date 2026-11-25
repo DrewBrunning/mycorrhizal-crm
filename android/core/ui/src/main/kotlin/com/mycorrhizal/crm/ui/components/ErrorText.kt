@@ -928,6 +928,9 @@ private fun localizedReason(reason: ErrorReason?): String? {
         ErrorReasonCode.IMPORT_SESSION_EXPIRED ->
             stringResource(R.string.error_reason_import_session_expired)
 
+        ErrorReasonCode.IMPORT_SESSION_LIMIT ->
+            stringResource(R.string.error_reason_import_session_limit)
+
         ErrorReasonCode.IMPORT_ENDPOINT_CSV_VCF_ONLY ->
             stringResource(R.string.error_reason_import_endpoint_csv_vcf_only)
 
@@ -1897,6 +1900,10 @@ private fun localizedReason(reason: ErrorReason?): String? {
 
         ErrorReasonCode.IMPORT_FIELD_MAPPING_TARGET_INVALID ->
             stringResource(R.string.error_reason_import_field_mapping_target_invalid)
+
+        ErrorReasonCode.IMPORT_FIELD_MAPPING_UNKNOWN_FIELD -> reason.str(
+            "property"
+        )?.let { stringResource(R.string.error_reason_import_field_mapping_unknown_field, it) }
 
         ErrorReasonCode.IMPORT_FIELD_MAPPINGS_INVALID -> reason.str(
             "reason"

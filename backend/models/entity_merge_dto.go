@@ -104,6 +104,12 @@ type EntityValueGroup struct {
 	Reason   string                    `json:"reason"`
 	Variants []string                  `json:"variants"`
 	Contacts []EntityValueGroupContact `json:"contacts"`
+	// ExistingEntityID and ExistingEntityName name the live entity of the same
+	// kind whose value key equals the group's (issue #2919). When set, the
+	// group already has an entity: confirming it links the contacts to that
+	// entity instead of creating a duplicate. Both are empty when none matches.
+	ExistingEntityID   string `json:"existing_entity_id"`
+	ExistingEntityName string `json:"existing_entity_name"`
 }
 
 // EntitySuggestionsResponse is GET /entities/suggestions. Pairs is set in
@@ -129,13 +135,19 @@ type EntityDismissResponse struct {
 }
 
 // EntityFromContactsGroup confirms one proposed group: the entity to create
-// and the subset of the group's contacts to link.
+// (or the existing entity to link to) and the subset of the group's contacts
+// to link.
 type EntityFromContactsGroup struct {
-	Key        string `json:"key" validate:"required,max=500"`
-	Name       string `json:"name,omitempty" validate:"max=200"`
-	Role       string `json:"role" validate:"required"`
-	SetPrimary bool   `json:"set_primary"`
-	ContactIDs []uint `json:"contact_ids" validate:"required,min=1,max=1000"`
+	Key  string `json:"key" validate:"required,max=500"`
+	Name string `json:"name,omitempty" validate:"max=200"`
+	// ExistingEntityID, when set, asks to link the group's contacts to that
+	// live entity of the same kind instead of creating one (issue #2919). It
+	// must be one of the user's own live entities whose value key matches the
+	// group key; anything else is skipped as entity_not_found.
+	ExistingEntityID string `json:"existing_entity_id,omitempty" validate:"omitempty,uuid4"`
+	Role             string `json:"role" validate:"required"`
+	SetPrimary       bool   `json:"set_primary"`
+	ContactIDs       []uint `json:"contact_ids" validate:"required,min=1,max=1000"`
 }
 
 // EntityFromContactsInput is the body of POST /entities/from-contacts.
@@ -152,7 +164,9 @@ type EntityFromContactsCreated struct {
 }
 
 // EntityFromContactsSkip reports a confirmed group or contact that was not
-// applied: group_not_found (stale or already matched), contact_not_in_group.
+// applied: group_not_found (stale or already matched), contact_not_in_group,
+// entity_not_found (the requested existing_entity_id is unknown, another
+// user's, or does not answer to the group key).
 type EntityFromContactsSkip struct {
 	Key       string `json:"key"`
 	ContactID uint   `json:"contact_id,omitempty"`

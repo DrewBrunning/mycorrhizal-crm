@@ -39,6 +39,7 @@ import {
   updateContactSubscription,
 } from '../api/contactSubscriptions';
 import { formatLocalDate, formatDateTime as formatLocalDateTime } from '../timeFormat';
+import { getErrorMessage } from '../utils/errorHandler';
 import { daysSince, terminalReasonKey } from '../utils/syncHealth';
 
 // CardDAV address-book subscriptions. The CalDAV analog is CalendarSyncSettings;
@@ -86,7 +87,7 @@ export default function ContactSyncSettings() {
       setLoading(true);
       setSubscriptions(await getContactSubscriptions());
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.contactSync.loadError'));
+      setError(err instanceof Error ? getErrorMessage(err) : t('settings.contactSync.loadError'));
     } finally {
       setLoading(false);
     }
@@ -147,7 +148,7 @@ export default function ContactSyncSettings() {
         await handleSync(created);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.contactSync.saveError'));
+      setError(err instanceof Error ? getErrorMessage(err) : t('settings.contactSync.saveError'));
     } finally {
       setSaving(false);
     }
@@ -162,7 +163,7 @@ export default function ContactSyncSettings() {
       setDeleteDialogOpen(false);
       setToDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.contactSync.deleteError'));
+      setError(err instanceof Error ? getErrorMessage(err) : t('settings.contactSync.deleteError'));
       setDeleteDialogOpen(false);
     } finally {
       setDeleting(false);
@@ -184,7 +185,7 @@ export default function ContactSyncSettings() {
         }),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.contactSync.syncError'));
+      setError(err instanceof Error ? getErrorMessage(err) : t('settings.contactSync.syncError'));
     } finally {
       setSyncing((prev) => ({ ...prev, [sub.id]: false }));
       await load();

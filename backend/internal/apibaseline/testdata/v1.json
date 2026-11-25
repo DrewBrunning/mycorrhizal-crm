@@ -17402,6 +17402,11 @@
           "required": true
         },
         {
+          "name": "existing_entity_id",
+          "type": "string",
+          "required": false
+        },
+        {
           "name": "key",
           "type": "string",
           "required": true
@@ -17478,7 +17483,8 @@
             "group_not_found",
             "contact_not_in_group",
             "name_invalid",
-            "core_invalid"
+            "core_invalid",
+            "entity_not_found"
           ]
         }
       ]
@@ -17771,6 +17777,16 @@
         {
           "name": "contacts",
           "type": "array\u003cobject\u003e",
+          "required": true
+        },
+        {
+          "name": "existing_entity_id",
+          "type": "string",
+          "required": true
+        },
+        {
+          "name": "existing_entity_name",
+          "type": "string",
           "required": true
         },
         {

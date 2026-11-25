@@ -141,6 +141,7 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
           role: state[g.key].role,
           set_primary: state[g.key].primary,
           contact_ids: g.contacts.map((c) => c.contact_id),
+          existing_entity_id: g.existing_entity_id || undefined,
         })),
       });
       setCreatedCount(res.created.length);
@@ -161,10 +162,28 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const createCount = chosen.filter((g) => !g.existing_entity_id).length;
+  const linkGroups = chosen.filter((g) => g.existing_entity_id);
   const createLabel =
     kind === 'place'
-      ? t('entities.fromContacts.createPlace', { count: chosen.length })
-      : t('entities.fromContacts.createOrganisation', { count: chosen.length });
+      ? t('entities.fromContacts.createPlace', { count: createCount })
+      : t('entities.fromContacts.createOrganisation', { count: createCount });
+  // Issue #2919: a group that already matches a live entity is linked to it,
+  // so the action says so instead of offering to create a duplicate.
+  const linkLabel =
+    kind === 'place'
+      ? t('entities.fromContacts.linkExistingPlace', { count: linkGroups.length })
+      : t('entities.fromContacts.linkExistingOrganisation', { count: linkGroups.length });
+  const actionLabel =
+    linkGroups.length === 0
+      ? createLabel
+      : createCount > 0
+        ? t('entities.fromContacts.createAndLink')
+        : linkGroups.length === 1
+          ? t('entities.fromContacts.linkExisting', {
+              name: linkGroups[0].existing_entity_name || linkGroups[0].name,
+            })
+          : linkLabel;
   const hasPrimaryKey =
     kind === 'place'
       ? 'entities.fromContacts.hasPrimaryPlace'
@@ -225,6 +244,7 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
           {groups.map((g) => {
             const gs = state[g.key] ?? defaultState(g, kind);
             const withPrimary = g.contacts.filter((c) => c.has_primary).length;
+            const existingName = g.existing_entity_name || g.name;
             return (
               <Box
                 component="li"
@@ -236,7 +256,11 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
                     checked={gs.selected}
                     onChange={(e) => patch(g.key, { selected: e.target.checked })}
                     slotProps={{
-                      input: { 'aria-label': t('entities.fromContacts.include', { name: g.name }) },
+                      input: {
+                        'aria-label': g.existing_entity_id
+                          ? t('entities.fromContacts.linkExisting', { name: existingName })
+                          : t('entities.fromContacts.include', { name: g.name }),
+                      },
                     }}
                   />
                   <Typography sx={{ fontWeight: 500 }}>
@@ -251,6 +275,11 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
                     <Chip key={v} size="small" variant="outlined" label={v} />
                   ))}
                 </Box>
+                {g.existing_entity_id && (
+                  <Typography variant="body2" color="text.secondary" sx={{ ml: 1.5, mb: 1 }}>
+                    {t('entities.fromContacts.linkExisting', { name: existingName })}
+                  </Typography>
+                )}
                 {withPrimary > 0 && (
                   <Typography variant="body2" color="text.secondary" sx={{ ml: 1.5, mb: 1 }}>
                     {t(hasPrimaryKey, { count: withPrimary })}
@@ -266,13 +295,15 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
                       ml: 1.5,
                     }}
                   >
-                    <TextField
-                      size="small"
-                      label={t('entities.fromContacts.nameOf', { name: g.name })}
-                      value={gs.name}
-                      onChange={(e) => patch(g.key, { name: e.target.value })}
-                      slotProps={{ htmlInput: { maxLength: 200 } }}
-                    />
+                    {!g.existing_entity_id && (
+                      <TextField
+                        size="small"
+                        label={t('entities.fromContacts.nameOf', { name: g.name })}
+                        value={gs.name}
+                        onChange={(e) => patch(g.key, { name: e.target.value })}
+                        slotProps={{ htmlInput: { maxLength: 200 } }}
+                      />
+                    )}
                     <TextField
                       select
                       size="small"
@@ -321,7 +352,7 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
             onClick={() => void handleCreate()}
             disabled={creating || chosen.length === 0}
           >
-            {chosen.length === 0 ? t('entities.fromContacts.selectSome') : createLabel}
+            {chosen.length === 0 ? t('entities.fromContacts.selectSome') : actionLabel}
           </Button>
         )}
       </DialogActions>
@@ -339,5 +370,7 @@ function skipText(t: TFunction, s: EntityFromContactsSkip, name: string): string
       return t('entities.fromContacts.skip.name_invalid', { name });
     case 'core_invalid':
       return t('entities.fromContacts.skip.core_invalid', { name });
+    case 'entity_not_found':
+      return t('entities.fromContacts.skip.entity_not_found', { name });
   }
 }
