@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useGeoPulse } from '../hooks/useGeoPulse';
@@ -27,6 +27,9 @@ import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
 export default function GeoPulseSettings() {
   const { t } = useTranslation();
+  // Save/Remove repeat across every integration card; the card title tells
+  // them apart for assistive tech (#2920 repeated-name check).
+  const titleId = useId();
   const { showSuccess, showError } = useSnackbar();
   const geopulse = useGeoPulse({ showError });
 
@@ -111,7 +114,7 @@ export default function GeoPulseSettings() {
           <SvgIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }}>
             <path d={mdiMapMarkerOutline} />
           </SvgIcon>
-          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
+          <Typography id={titleId} variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
             {t('geopulse.settings.title')}
           </Typography>
         </Box>
@@ -177,6 +180,7 @@ export default function GeoPulseSettings() {
 
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
+                aria-describedby={titleId}
                 variant="contained"
                 size="small"
                 onClick={() => void handleSave()}
@@ -186,6 +190,7 @@ export default function GeoPulseSettings() {
               </Button>
               {geopulse.config?.has_api_key && (
                 <Button
+                  aria-describedby={titleId}
                   variant="outlined"
                   size="small"
                   onClick={() => {
@@ -202,6 +207,7 @@ export default function GeoPulseSettings() {
               )}
               {geopulse.config?.has_api_key && (
                 <Button
+                  aria-describedby={titleId}
                   variant="outlined"
                   size="small"
                   color="error"

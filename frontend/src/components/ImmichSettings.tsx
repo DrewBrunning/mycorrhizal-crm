@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useImmich } from '../hooks/useImmich';
@@ -27,6 +27,9 @@ import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 // encrypted server-side and never shown again after save.
 export default function ImmichSettings() {
   const { t } = useTranslation();
+  // Save/Remove repeat across every integration card; the card title tells
+  // them apart for assistive tech (#2920 repeated-name check).
+  const titleId = useId();
   const { showSuccess, showError } = useSnackbar();
   const immich = useImmich({ showError });
 
@@ -119,7 +122,7 @@ export default function ImmichSettings() {
           <SvgIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }}>
             <path d={mdiImageMultipleOutline} />
           </SvgIcon>
-          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
+          <Typography id={titleId} variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
             {t('immich.settings.title')}
           </Typography>
         </Box>
@@ -209,6 +212,7 @@ export default function ImmichSettings() {
 
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
+                aria-describedby={titleId}
                 variant="contained"
                 size="small"
                 onClick={() => void handleSave()}
@@ -218,6 +222,7 @@ export default function ImmichSettings() {
               </Button>
               {immich.config?.has_api_key && (
                 <Button
+                  aria-describedby={titleId}
                   variant="outlined"
                   size="small"
                   onClick={() => {
@@ -234,6 +239,7 @@ export default function ImmichSettings() {
               )}
               {immich.config && (
                 <Button
+                  aria-describedby={titleId}
                   variant="outlined"
                   size="small"
                   color="error"

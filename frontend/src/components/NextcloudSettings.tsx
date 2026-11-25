@@ -12,7 +12,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { useNextcloud } from '../hooks/useNextcloud';
@@ -27,6 +27,9 @@ import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 // account password.
 export default function NextcloudSettings() {
   const { t } = useTranslation();
+  // Save/Remove repeat across every integration card; the card title tells
+  // them apart for assistive tech (#2920 repeated-name check).
+  const titleId = useId();
   const { showSuccess, showError } = useSnackbar();
   const nextcloud = useNextcloud({ showError });
 
@@ -120,7 +123,7 @@ export default function NextcloudSettings() {
           <SvgIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }}>
             <path d={mdiCloudOutline} />
           </SvgIcon>
-          <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
+          <Typography id={titleId} variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
             {t('nextcloud.settings.title')}
           </Typography>
         </Box>
@@ -202,6 +205,7 @@ export default function NextcloudSettings() {
 
             <Box sx={{ display: 'flex', gap: 1 }}>
               <Button
+                aria-describedby={titleId}
                 variant="contained"
                 size="small"
                 onClick={() => void handleSave()}
@@ -211,6 +215,7 @@ export default function NextcloudSettings() {
               </Button>
               {nextcloud.config?.has_app_password && (
                 <Button
+                  aria-describedby={titleId}
                   variant="outlined"
                   size="small"
                   onClick={() => {
@@ -227,6 +232,7 @@ export default function NextcloudSettings() {
               )}
               {nextcloud.config && (
                 <Button
+                  aria-describedby={titleId}
                   variant="outlined"
                   size="small"
                   color="error"

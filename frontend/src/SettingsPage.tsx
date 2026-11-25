@@ -44,7 +44,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { SelectChangeEvent } from '@mui/material/Select';
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { type FormEvent, useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link as RouterLink } from 'react-router';
 import { type ThemePreference, useThemePreference } from './AppThemeProvider';
@@ -99,6 +99,8 @@ import { getErrorMessage } from './utils/errorHandler';
 
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
+  // "Revoke All" also appears on the feeds card (#2920 repeated-name check).
+  const apiTokensTitleId = useId();
   useDocumentTitle(t('nav.profile'));
   const { preference: themePreference, setPreference: setThemePreference } = useThemePreference();
   const { dateFormat, setDateFormat } = useDateFormat();
@@ -754,12 +756,18 @@ export default function SettingsPage() {
           >
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
               <KeyIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-              <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
+              <Typography
+                id={apiTokensTitleId}
+                variant="subtitle1"
+                component="h2"
+                sx={{ fontWeight: 500 }}
+              >
                 {t('apiTokens.title')}
               </Typography>
             </Box>
             <Stack direction="row" spacing={1}>
               <Button
+                aria-describedby={apiTokensTitleId}
                 variant="outlined"
                 size="small"
                 color="error"

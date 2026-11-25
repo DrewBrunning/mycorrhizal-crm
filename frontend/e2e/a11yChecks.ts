@@ -59,14 +59,9 @@ export interface A11yViolationNodeExemption {
   reason: string;
 }
 
-export const A11Y_VIOLATION_NODE_EXEMPTIONS: A11yViolationNodeExemption[] = [
-  {
-    rule: 'heading-order',
-    htmlIncludes: '>Circles</h6>',
-    reason:
-      'AddContactDialog renders its Circles section label as h6 after the dialog h2; found by this gate, not one of the #2906-#2919 fixes',
-  },
-];
+// Empty: the AddContactDialog Circles/Tags h6 skip this list held was fixed
+// (component="h3"). Add an entry only for a reviewed existing offender.
+export const A11Y_VIOLATION_NODE_EXEMPTIONS: A11yViolationNodeExemption[] = [];
 
 /** True when an axe node is a committed existing offender for `rule`. */
 export function isExemptA11yViolationNode(rule: string, html: string): boolean {
@@ -90,8 +85,20 @@ export interface A11yNode {
   children?: Array<A11yNode | string>;
 }
 
-/** Containers whose controls must be individually nameable. */
-export const REPEATED_NAME_SCOPES = ['dialog', 'main', 'list', 'grid'] as const;
+/**
+ * Containers whose controls must be individually nameable. `navigation` and
+ * `banner` were added after the #2920 review: two "Open" links in the app bar
+ * or nav drawer are as ambiguous as two in `main`, and neither sits inside
+ * `main`, so they were never checked.
+ */
+export const REPEATED_NAME_SCOPES = [
+  'dialog',
+  'main',
+  'list',
+  'grid',
+  'navigation',
+  'banner',
+] as const;
 export type RepeatedNameScope = (typeof REPEATED_NAME_SCOPES)[number];
 
 /**

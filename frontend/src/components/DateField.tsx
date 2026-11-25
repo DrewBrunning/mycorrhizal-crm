@@ -125,6 +125,10 @@ export default function DateField({
   const { formatDate, formatBirthdayForInput, parseDateInput, getDatePlaceholder } =
     useDateFormat();
   const errorId = useId();
+  // The calendar button repeats on every date field; MUI ids the visible label
+  // `${id}-label`, which tells the buttons apart (#2920 repeated-name check).
+  const generatedId = useId();
+  const fieldId = id ?? generatedId;
   // The text being typed, or null when the field mirrors `value`.
   const [draft, setDraft] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
@@ -231,7 +235,7 @@ export default function DateField({
   return (
     <Box ref={anchorRef} sx={sx ?? { width: '100%' }}>
       <TextField
-        id={id}
+        id={fieldId}
         label={label}
         value={shown}
         placeholder={getDatePlaceholder()}
@@ -265,6 +269,7 @@ export default function DateField({
                   size="small"
                   edge="end"
                   aria-label={t('common.openCalendar')}
+                  aria-describedby={`${fieldId}-label`}
                   aria-haspopup="dialog"
                   onClick={openPicker}
                 >

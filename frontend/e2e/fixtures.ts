@@ -281,7 +281,7 @@ export async function assertNoRepeatedAccessibleNames(page: Page, context?: stri
       continue;
     }
     for (const finding of findRepeatedAccessibleNames(snapshot)) {
-      if (await everyDuplicateHasItsOwnDescription(page, finding.name)) continue;
+      if (await everyDuplicateHasItsOwnDescription(root, finding.name)) continue;
       findings.push({
         ...finding,
         reason:
@@ -298,9 +298,11 @@ export async function assertNoRepeatedAccessibleNames(page: Page, context?: stri
  * different, non-empty `aria-describedby` target text. Resolves the attribute
  * through the real DOM so a broken id reference does not count.
  */
-async function everyDuplicateHasItsOwnDescription(page: Page, name: string): Promise<boolean> {
+async function everyDuplicateHasItsOwnDescription(root: Locator, name: string): Promise<boolean> {
+  // Scoped to the checked subtree: a same-named, differently described control
+  // elsewhere on the page must not excuse the duplicates under this root.
   for (const role of ['button', 'link'] as const) {
-    const matches = await page.getByRole(role, { name, exact: true }).all();
+    const matches = await root.getByRole(role, { name, exact: true }).all();
     if (matches.length < 2) continue;
     const descriptions = await Promise.all(
       matches.map((match) =>

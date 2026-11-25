@@ -384,7 +384,7 @@ export default function AddContactDialog({
           )}
 
           <Box>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" component="h3" gutterBottom>
               {t('contacts.circles')}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>
@@ -464,7 +464,7 @@ export default function AddContactDialog({
             </Box>
           </Box>
           <Box>
-            <Typography variant="subtitle2" gutterBottom>
+            <Typography variant="subtitle2" component="h3" gutterBottom>
               {t('contacts.tags')}
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 1, flexWrap: 'wrap' }}>

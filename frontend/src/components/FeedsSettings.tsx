@@ -13,7 +13,7 @@ import {
   Divider,
   Typography,
 } from '@mui/material';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Feed, FeedCreateResponse } from '../api/feeds';
 import { useSnackbar } from '../context/SnackbarContext';
@@ -27,6 +27,7 @@ import FeedUrlReveal from './FeedUrlReveal';
 // API tokens: same list / create / rotate / revoke / revoke-all shape.
 export default function FeedsSettings() {
   const { t } = useTranslation();
+  const titleId = useId();
   const { showError, showSuccess } = useSnackbar();
   const {
     feeds,
@@ -65,7 +66,7 @@ export default function FeedsSettings() {
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <RssFeedIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
-            <Typography variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
+            <Typography id={titleId} variant="subtitle1" component="h2" sx={{ fontWeight: 500 }}>
               {t('feeds.title')}
             </Typography>
           </Box>
@@ -91,6 +92,7 @@ export default function FeedsSettings() {
             onRotate={onRotate}
             onRevoke={onRevoke}
             onRevokeAll={onRevokeAll}
+            titleId={titleId}
           />
         )}
       </CardContent>

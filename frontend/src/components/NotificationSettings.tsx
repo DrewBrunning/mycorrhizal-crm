@@ -21,7 +21,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   createPushSubscription,
@@ -69,6 +69,11 @@ function isPrivateAddressURL(raw: string): boolean {
 
 export default function NotificationSettings() {
   const { t } = useTranslation();
+  // "Send test notification" repeats per channel; each channel's switch label
+  // tells them apart (#2920 repeated-name check).
+  const ntfyLabelId = useId();
+  const gotifyLabelId = useId();
+  const pushLabelId = useId();
   const { showSuccess, showError } = useSnackbar();
 
   const [config, setConfig] = useState<NotificationConfig | null>(null);
@@ -337,7 +342,7 @@ export default function NotificationSettings() {
                     size="small"
                   />
                 }
-                label={t('notifications.settings.ntfy.enable')}
+                label={<span id={ntfyLabelId}>{t('notifications.settings.ntfy.enable')}</span>}
               />
               <Stack spacing={1.5} sx={{ mt: 1 }}>
                 <TextField
@@ -414,6 +419,7 @@ export default function NotificationSettings() {
                     size="small"
                     startIcon={<PlayArrowIcon />}
                     onClick={() => void handleTest('ntfy')}
+                    aria-describedby={ntfyLabelId}
                     disabled={
                       testing === 'ntfy' || !notifyNtfy || !ntfyUrl.trim() || !ntfyTopic.trim()
                     }
@@ -437,7 +443,7 @@ export default function NotificationSettings() {
                     size="small"
                   />
                 }
-                label={t('notifications.settings.gotify.enable')}
+                label={<span id={gotifyLabelId}>{t('notifications.settings.gotify.enable')}</span>}
               />
               <Stack spacing={1.5} sx={{ mt: 1 }}>
                 <TextField
@@ -482,6 +488,7 @@ export default function NotificationSettings() {
                     size="small"
                     startIcon={<PlayArrowIcon />}
                     onClick={() => void handleTest('gotify')}
+                    aria-describedby={gotifyLabelId}
                     disabled={
                       testing === 'gotify' ||
                       !notifyGotify ||
@@ -508,7 +515,7 @@ export default function NotificationSettings() {
                     size="small"
                   />
                 }
-                label={t('notifications.settings.push.enable')}
+                label={<span id={pushLabelId}>{t('notifications.settings.push.enable')}</span>}
               />
               <Typography
                 variant="body2"
@@ -601,6 +608,7 @@ export default function NotificationSettings() {
                     size="small"
                     startIcon={<PlayArrowIcon />}
                     onClick={() => void handleTest('push')}
+                    aria-describedby={pushLabelId}
                     disabled={
                       testing === 'push' ||
                       !notifyPush ||
