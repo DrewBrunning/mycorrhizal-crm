@@ -65,7 +65,7 @@ import type { Page } from '@playwright/test';
 import { loadRoutes } from '../scripts/check-e2e-routes.mjs';
 import en from '../src/i18n/locales/en.json' with { type: 'json' };
 import { pseudoLocalize } from '../src/i18n/pseudo';
-import { expect, SKIP_A11Y_SCAN, stableClick, waitForLoading } from './fixtures';
+import { deleteTestContact, expect, SKIP_A11Y_SCAN, stableClick, waitForLoading } from './fixtures';
 import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 import { awaitPinFonts, pinRenderingEnvironment } from './pinnedEnvironment';
 import {
