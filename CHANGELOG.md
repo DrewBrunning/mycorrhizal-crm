@@ -54,9 +54,6 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Android share status chips are easier to tell apart in the light theme** ([#2941](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2941)): Active is green, Declined salmon, Pending lavender and Expired sand, instead of near-identical pinks and beiges. Tonal buttons that shared the Pending colour are now lavender too.
-- **Android preference rows use translated wording** ([#2942](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2942)): on a contact's Preferences screen the Delete and Edit buttons read like "Edit Drink: Favorite · matcha" instead of "favorite = matcha" and a bare "Edit".
-- **Android activity type hint is translated** ([#2952](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2952)): the placeholder in the activity Type field is no longer English in German, Spanish, French and Italian.
 - **Android shows saved contacts in the same order as online** ([#2940](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2940)): when the server can't be reached, the saved contact list is grouped A to Z by last name (else first name), with each letter appearing once.
 - **Shared contact anniversaries on the web** ([#2908](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2908)): a shared contact card now reads "Birthday: 28.11.1985" in your language and date format instead of "birth: 1985-11-28".
 - **Occasion dates and reminder titles follow your language** ([#2914](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2914), [#2915](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2915)): a standing occasion's date now reads in your language's usual order ("3. März" in German, "March 3" in English), and reminders created from an occasion are titled in your language instead of always starting with the English word "Occasion". Reminders you already have keep their wording.
