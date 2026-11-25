@@ -1,1 +1,0 @@
-- **Android "System default" language now sticks** ([#2937](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2937)): choosing System default for the app's language in Android settings, or the new "Use system default" entry in Settings → Appearance → Language, makes the app follow the device language, and the Language row shows the language actually in use.
