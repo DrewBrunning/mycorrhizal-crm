@@ -736,6 +736,13 @@ also prove the seed rendered, so an empty/not-found page cannot scan clean.
 
 On each surface the spec:
 
+- collects every string `reason_params` value of three or more words (top-level
+  and per-field) from each error response the page receives, and fails when one
+  is rendered, even inside `⟦…⟧`. The threshold matches the backend half,
+  `backend/internal/lint/reasonprose`: `RunGuarded` checks every reason the
+  controllers/services/middleware/carddav suites attach (wired from each
+  package's `TestMain`), and `StaticAnalyzer` checks every production
+  `WithReason` call, tested or not, against `prose_allowlist.txt`;
 - collects **text nodes** (not `innerText`, so a translated label and an
   adjacent user-supplied name in the same parent stay distinguishable) and the
   `aria-label`/`placeholder`/`title`/`alt` attributes, which are rendered by

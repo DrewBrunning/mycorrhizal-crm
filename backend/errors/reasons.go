@@ -1164,6 +1164,7 @@ func (e *AppError) applyReason(code ReasonCode, params map[string]any, setDetail
 	e.ReasonCode = string(code)
 	e.ReasonParams = params
 	e.Message = rendered
+	observeReason(code, params)
 	if setDetail {
 		e.WithDetails("reason", rendered)
 	}

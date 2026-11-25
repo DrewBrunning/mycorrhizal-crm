@@ -20,10 +20,13 @@ import (
 )
 
 // proseWordThreshold is the point at which a param value reads as a sentence
-// rather than a field name or user value. A field label like "Work email
-// address" is data the template interpolates; "The Meerkat instance could not
-// be reached" is prose that cannot be translated.
-const proseWordThreshold = 4
+// rather than a field name or user value. A label like "relationship edges" or
+// "0.6 MiB" is data the template interpolates; "Instance not reachable" or "The
+// Meerkat instance could not be reached" is prose that cannot be translated.
+// It was 4 until the #2920 review showed three-word prose slipping through; a
+// census of every string param the controller/service suites attach found no
+// three-word data value.
+const proseWordThreshold = 3
 
 //go:embed prose_allowlist.txt
 var allowlistText string
