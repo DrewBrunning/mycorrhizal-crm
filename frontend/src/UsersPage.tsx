@@ -50,7 +50,7 @@ import { useSnackbar } from './context/SnackbarContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { formatLocalDate } from './timeFormat';
 import type { User, UserCreateInput, UserUpdateInput } from './types';
-import { getErrorMessage } from './utils/errorHandler';
+import { getErrorMessageOr } from './utils/errorHandler';
 
 export default function UsersPage() {
   const { t } = useTranslation();
@@ -122,7 +122,7 @@ export default function UsersPage() {
       setUsers(response.users);
       setTotal(response.total);
     } catch (err) {
-      const errorMessage = err instanceof Error ? getErrorMessage(err) : t('users.loadError');
+      const errorMessage = getErrorMessageOr(err, t('users.loadError'));
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -172,7 +172,7 @@ export default function UsersPage() {
       await fetchUsers();
       handleCreateClose();
     } catch (err) {
-      const errorMessage = err instanceof Error ? getErrorMessage(err) : t('users.createError');
+      const errorMessage = getErrorMessageOr(err, t('users.createError'));
       setCreateError(errorMessage);
     } finally {
       setCreateLoading(false);
@@ -225,7 +225,7 @@ export default function UsersPage() {
       setUsers(users.map((u) => (u.id === updatedUser.id ? updatedUser : u)));
       handleEditClose();
     } catch (err) {
-      const errorMessage = err instanceof Error ? getErrorMessage(err) : t('users.updateError');
+      const errorMessage = getErrorMessageOr(err, t('users.updateError'));
       setEditError(errorMessage);
     } finally {
       setEditLoading(false);
@@ -239,8 +239,7 @@ export default function UsersPage() {
       await triggerReminders();
       showSuccess(t('users.triggerRemindersSuccess'));
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? getErrorMessage(err) : t('users.triggerRemindersError');
+      const errorMessage = getErrorMessageOr(err, t('users.triggerRemindersError'));
       showError(errorMessage);
     } finally {
       setTriggerLoading(false);
@@ -272,7 +271,7 @@ export default function UsersPage() {
       setTotal(total - 1);
       handleDeleteClose();
     } catch (err) {
-      const errorMessage = err instanceof Error ? getErrorMessage(err) : t('users.deleteError');
+      const errorMessage = getErrorMessageOr(err, t('users.deleteError'));
       setDeleteError(errorMessage);
     } finally {
       setDeleteLoading(false);
@@ -303,8 +302,7 @@ export default function UsersPage() {
       showSuccess(t('users.resetTwoFactorSuccess', { username: resettingTwoFactorUser.username }));
       handleResetTwoFactorClose();
     } catch (err) {
-      const errorMessage =
-        err instanceof Error ? getErrorMessage(err) : t('users.resetTwoFactorError');
+      const errorMessage = getErrorMessageOr(err, t('users.resetTwoFactorError'));
       setResetTwoFactorError(errorMessage);
     } finally {
       setResetTwoFactorLoading(false);

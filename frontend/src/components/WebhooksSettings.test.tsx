@@ -392,3 +392,37 @@ test('marks an individual permanently-failed delivery row', async () => {
   await waitFor(() => expect(screen.getByText('contact.created')).toBeInTheDocument());
   expect(screen.getByText('Will not retry')).toBeInTheDocument();
 });
+
+// #2920: a failed save or delete is worded by getErrorMessageOr, so a network
+// failure names the condition rather than the raw "Failed to fetch".
+const networkError = "Couldn't reach the server. Check your connection and try again.";
+
+test('a failed save shows the translated network error (#2920)', async () => {
+  vi.mocked(getWebhooks).mockResolvedValue([]);
+  vi.mocked(createWebhook).mockRejectedValue(new TypeError('Failed to fetch'));
+  render(<WebhooksSettings />);
+  await waitFor(() => expect(screen.getByText('No webhooks configured yet.')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /add webhook/i }));
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'New Hook' } });
+  fireEvent.change(screen.getByLabelText('URL *'), { target: { value: 'https://example.com/n' } });
+  fireEvent.mouseDown(screen.getByLabelText(/events \*/i));
+  fireEvent.click(await screen.findByRole('option', { name: 'Contact Created' }));
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  expect(await screen.findByText(networkError)).toBeInTheDocument();
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+});
+
+test('a failed delete shows the translated network error (#2920)', async () => {
+  vi.mocked(getWebhooks).mockResolvedValue([webhook({ id: 6, name: 'To Delete' })]);
+  vi.mocked(deleteWebhook).mockRejectedValue(new TypeError('Failed to fetch'));
+  render(<WebhooksSettings />);
+  await waitFor(() => expect(screen.getByText('To Delete')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
+  fireEvent.click(screen.getAllByRole('button', { name: /delete/i }).slice(-1)[0]);
+
+  expect(await screen.findByText(networkError)).toBeInTheDocument();
+  expect(screen.getByText('To Delete')).toBeInTheDocument();
+});

@@ -29,7 +29,7 @@ import {
 import { type Circle, listCircles } from '../api/circles';
 import { getHealth } from '../api/health';
 import { useSnackbar } from '../context/SnackbarContext';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 
 async function loadAllCircles(): Promise<Circle[]> {
   const circles: Circle[] = [];
@@ -88,7 +88,7 @@ export default function CardDAVSyncScopeSettings() {
         setDefaultCircleID(loaded.default_circle_id);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? getErrorMessage(err) : t('carddavSyncScope.loadError'));
+          setError(getErrorMessageOr(err, t('carddavSyncScope.loadError')));
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -192,7 +192,7 @@ export default function CardDAVSyncScopeSettings() {
       setPreview(null);
       showSuccess(t('carddavSyncScope.saveSuccess'));
     } catch (err) {
-      setError(err instanceof Error ? getErrorMessage(err) : t('carddavSyncScope.saveError'));
+      setError(getErrorMessageOr(err, t('carddavSyncScope.saveError')));
     } finally {
       setSaving(false);
     }

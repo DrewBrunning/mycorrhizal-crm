@@ -24,7 +24,7 @@ import {
   type ContactFieldKey,
   DEFAULT_ENABLED_CONTACT_FIELDS,
 } from '../contactFields';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 
 export default function ContactFieldSettings() {
   const { t } = useTranslation();
@@ -49,9 +49,7 @@ export default function ContactFieldSettings() {
           stored == null ? DEFAULT_ENABLED_CONTACT_FIELDS : (stored as ContactFieldKey[]);
         setEnabled(new Set(keys));
       } catch (err) {
-        setError(
-          err instanceof Error ? getErrorMessage(err) : t('settings.contactFields.loadError'),
-        );
+        setError(getErrorMessageOr(err, t('settings.contactFields.loadError')));
       } finally {
         setLoading(false);
       }
@@ -72,7 +70,7 @@ export default function ContactFieldSettings() {
       setError('');
       await updateEnabledContactFields(Array.from(next));
     } catch (err) {
-      setError(err instanceof Error ? getErrorMessage(err) : t('settings.contactFields.saveError'));
+      setError(getErrorMessageOr(err, t('settings.contactFields.saveError')));
     } finally {
       setSaving(false);
     }
@@ -87,7 +85,7 @@ export default function ContactFieldSettings() {
       setError('');
       await updateHideEmptyFields(next);
     } catch (err) {
-      setError(err instanceof Error ? getErrorMessage(err) : t('settings.contactFields.saveError'));
+      setError(getErrorMessageOr(err, t('settings.contactFields.saveError')));
     } finally {
       setSaving(false);
     }

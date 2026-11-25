@@ -16,7 +16,7 @@ import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSnackbar } from '../context/SnackbarContext';
 import { usePaperless } from '../hooks/usePaperless';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import { isHttpUrlString } from '../utils/linkResolution';
 import { secretRequiredForOriginChange } from '../utils/urlOrigin';
 
@@ -87,7 +87,7 @@ export default function PaperlessSettings() {
         setBaseUrl(saved.base_url);
       }
     } catch (err) {
-      const msg = err instanceof Error ? getErrorMessage(err) : t('paperless.settings.saveFailed');
+      const msg = getErrorMessageOr(err, t('paperless.settings.saveFailed'));
       setSaveError(msg);
     } finally {
       setSaving(false);
@@ -102,7 +102,7 @@ export default function PaperlessSettings() {
       setApiToken('');
       showSuccess(t('paperless.settings.removed'));
     } catch (err) {
-      showError(err instanceof Error ? getErrorMessage(err) : t('paperless.settings.saveFailed'));
+      showError(getErrorMessageOr(err, t('paperless.settings.saveFailed')));
     }
   };
 

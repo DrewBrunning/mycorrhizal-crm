@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { getSessions, revokeOtherSessions, revokeSession, type Session } from '../api/sessions';
 import { useSnackbar } from '../context/SnackbarContext';
 import { formatDateTime as formatLocalDateTime } from '../timeFormat';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import { describeUserAgent } from '../utils/userAgent';
 
 // SessionsSettings is the settings-page card for issue #866 (ASVS 3.3.4): the
@@ -43,7 +43,7 @@ export default function SessionsSettings() {
       setSessions(response.sessions);
       setError('');
     } catch (err) {
-      setError(err instanceof Error ? getErrorMessage(err) : t('sessions.loadError'));
+      setError(getErrorMessageOr(err, t('sessions.loadError')));
     } finally {
       setLoading(false);
     }
@@ -63,7 +63,7 @@ export default function SessionsSettings() {
       );
       await refresh();
     } catch (err) {
-      showError(err instanceof Error ? getErrorMessage(err) : t('sessions.revokeError'));
+      showError(getErrorMessageOr(err, t('sessions.revokeError')));
     } finally {
       setBusyId(null);
     }
@@ -76,7 +76,7 @@ export default function SessionsSettings() {
       showSuccess(t('sessions.revokeOthersSuccess', { count: result.revoked }));
       await refresh();
     } catch (err) {
-      showError(err instanceof Error ? getErrorMessage(err) : t('sessions.revokeOthersError'));
+      showError(getErrorMessageOr(err, t('sessions.revokeOthersError')));
     } finally {
       setRevokingOthers(false);
     }

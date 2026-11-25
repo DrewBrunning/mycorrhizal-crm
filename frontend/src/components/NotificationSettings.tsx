@@ -40,7 +40,7 @@ import {
 import { useSnackbar } from '../context/SnackbarContext';
 import { browserSupportsPush, subscribeBrowserPush } from '../pushSubscription';
 import { formatDateTime as formatLocalDateTime } from '../timeFormat';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 
 // isPrivateAddressURL does a lightweight client-side check for the most
 // common private/loopback targets so the Settings card can warn BEFORE the
@@ -121,9 +121,7 @@ export default function NotificationSettings() {
       setNotifyGotify(data.notify_gotify);
       setNotifyPush(data.notify_push);
     } catch (err) {
-      setLoadError(
-        err instanceof Error ? getErrorMessage(err) : t('notifications.settings.loadError'),
-      );
+      setLoadError(getErrorMessageOr(err, t('notifications.settings.loadError')));
     } finally {
       setLoading(false);
     }
@@ -185,8 +183,7 @@ export default function NotificationSettings() {
       setNotifyPush(saved.notify_push);
       showSuccess(t('notifications.settings.saved'));
     } catch (err) {
-      const msg =
-        err instanceof Error ? getErrorMessage(err) : t('notifications.settings.saveFailed');
+      const msg = getErrorMessageOr(err, t('notifications.settings.saveFailed'));
       setSaveError(msg);
     } finally {
       setSaving(false);
@@ -219,7 +216,7 @@ export default function NotificationSettings() {
       setTestResult({
         channel,
         ok: false,
-        error: err instanceof Error ? getErrorMessage(err) : t('notifications.settings.testFailed'),
+        error: getErrorMessageOr(err, t('notifications.settings.testFailed')),
       });
     } finally {
       setTesting(null);
@@ -241,9 +238,7 @@ export default function NotificationSettings() {
           ? t('notifications.settings.pushPermissionDenied')
           : err instanceof Error && err.message === 'push unsupported'
             ? t('notifications.settings.pushUnsupported')
-            : err instanceof Error
-              ? getErrorMessage(err)
-              : t('notifications.settings.pushEnableFailed');
+            : getErrorMessageOr(err, t('notifications.settings.pushEnableFailed'));
       setSaveError(msg);
     } finally {
       setEnablingPush(false);
@@ -263,11 +258,7 @@ export default function NotificationSettings() {
       setSubscriptions((prev) => prev.filter((s) => s.id !== sub.id));
       showSuccess(t('notifications.settings.deviceDeleted'));
     } catch (err) {
-      showError(
-        err instanceof Error
-          ? getErrorMessage(err)
-          : t('notifications.settings.deviceDeleteFailed'),
-      );
+      showError(getErrorMessageOr(err, t('notifications.settings.deviceDeleteFailed')));
     }
   };
 
@@ -286,11 +277,7 @@ export default function NotificationSettings() {
       setDevices((prev) => prev.filter((d) => d.id !== device.id));
       showSuccess(t('notifications.settings.deviceDeleted'));
     } catch (err) {
-      showError(
-        err instanceof Error
-          ? getErrorMessage(err)
-          : t('notifications.settings.deviceDeleteFailed'),
-      );
+      showError(getErrorMessageOr(err, t('notifications.settings.deviceDeleteFailed')));
     }
   };
 

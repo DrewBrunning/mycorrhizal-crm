@@ -20,7 +20,7 @@ import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
 import i18n from './i18n/config';
 import { initializeTimeFormatFromBackend } from './timeFormat';
-import { getErrorMessage } from './utils/errorHandler';
+import { getErrorMessage, getErrorMessageOr } from './utils/errorHandler';
 import { isCeremonyCancelled, isWebAuthnSupported } from './webauthnCeremony';
 
 type LoginPageProps = {
@@ -101,7 +101,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
       }
       await finishLogin(result);
     } catch (err) {
-      const errorMessage = err instanceof Error ? getErrorMessage(err) : t('login.loginFailed');
+      const errorMessage = getErrorMessageOr(err, t('login.loginFailed'));
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -120,7 +120,7 @@ export default function LoginPage({ setToken }: LoginPageProps) {
       // the translated message here) but a real backend message for account
       // lockout (429) — surface that as-is so a locked-out user sees the
       // lockout text, not a generic "invalid code" that invites more guessing.
-      const rawMessage = err instanceof Error ? getErrorMessage(err) : '';
+      const rawMessage = getErrorMessageOr(err, '');
       const errorMessage =
         rawMessage === 'Invalid code'
           ? t('login.invalidCode')

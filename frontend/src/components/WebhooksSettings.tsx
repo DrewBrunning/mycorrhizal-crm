@@ -46,7 +46,7 @@ import {
   type WebhookDelivery,
 } from '../api/webhooks';
 import { formatDateTime as formatLocalDateTime } from '../timeFormat';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import LoadError from './LoadError';
 
 const SUPPORTED_EVENTS = [
@@ -129,7 +129,7 @@ export default function WebhooksSettings() {
       const data = await getWebhooks();
       setWebhooks(data);
     } catch (err) {
-      setLoadError(err instanceof Error ? getErrorMessage(err) : t('settings.webhooks.loadError'));
+      setLoadError(getErrorMessageOr(err, t('settings.webhooks.loadError')));
     } finally {
       setLoading(false);
     }
@@ -173,7 +173,7 @@ export default function WebhooksSettings() {
         setSecretCopied(false);
       }
     } catch (err) {
-      setError(err instanceof Error ? getErrorMessage(err) : t('settings.webhooks.saveError'));
+      setError(getErrorMessageOr(err, t('settings.webhooks.saveError')));
     } finally {
       setSaving(false);
     }
@@ -193,7 +193,7 @@ export default function WebhooksSettings() {
       setDeleteDialogOpen(false);
       setWebhookToDelete(null);
     } catch (err) {
-      setError(err instanceof Error ? getErrorMessage(err) : t('settings.webhooks.deleteError'));
+      setError(getErrorMessageOr(err, t('settings.webhooks.deleteError')));
       setDeleteDialogOpen(false);
     } finally {
       setDeleting(false);
@@ -225,11 +225,7 @@ export default function WebhooksSettings() {
       // Auto-expand deliveries so the user can see the result
       setExpandedDeliveries((prev) => ({ ...prev, [wh.id]: true }));
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? getErrorMessage(err)
-          : t('settings.webhooks.testFailed', { error: 'unknown' }),
-      );
+      setError(getErrorMessageOr(err, t('settings.webhooks.testFailed', { error: 'unknown' })));
     } finally {
       setTesting((prev) => ({ ...prev, [wh.id]: false }));
     }
