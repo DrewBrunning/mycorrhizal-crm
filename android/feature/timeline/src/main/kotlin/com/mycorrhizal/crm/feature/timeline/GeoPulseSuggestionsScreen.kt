@@ -14,27 +14,20 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -52,13 +45,12 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.mycorrhizal.crm.model.network.GeoPulseStaySuggestion
+import com.mycorrhizal.crm.model.util.DateFieldMode
 import com.mycorrhizal.crm.ui.R
 import com.mycorrhizal.crm.ui.components.AccessibleIconButton
+import com.mycorrhizal.crm.ui.components.DateField
 import com.mycorrhizal.crm.ui.components.localizedMessage
-import java.time.Instant
-import java.time.LocalDate
 import java.time.ZoneId
-import java.time.ZoneOffset
 
 /**
  * Issue #160 (ADR 0033): "Log from location history". [onLogStay] opens the activity form
@@ -96,7 +88,6 @@ fun GeoPulseSuggestionsContent(
     onLogStay: (GeoPulseStaySuggestion, prefillDate: String) -> Unit = { _, _ -> },
     onOpenSettings: () -> Unit = {}
 ) {
-    var showDatePicker by remember { mutableStateOf(false) }
     val zone = remember(
         state.timezone
     ) { runCatching { ZoneId.of(state.timezone) }.getOrDefault(ZoneId.systemDefault()) }
@@ -145,22 +136,12 @@ fun GeoPulseSuggestionsContent(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    OutlinedTextField(
+                    // #2947: the shared DateField (typed entry, the user's date format).
+                    DateField(
                         value = state.date,
-                        onValueChange = {},
-                        readOnly = true,
-                        singleLine = true,
-                        label = { Text(stringResource(R.string.geopulse_date)) },
-                        trailingIcon = {
-                            AccessibleIconButton(onClick = { showDatePicker = true }) {
-                                Icon(
-                                    Icons.Outlined.CalendarToday,
-                                    contentDescription = stringResource(
-                                        R.string.geopulse_pick_date
-                                    )
-                                )
-                            }
-                        },
+                        onValueChange = onDateChange,
+                        label = stringResource(R.string.geopulse_date),
+                        mode = DateFieldMode.DATE_ONLY,
                         modifier = Modifier.weight(1f)
                     )
                     Button(
@@ -331,37 +312,6 @@ fun GeoPulseSuggestionsContent(
                     }
                 }
             }
-        }
-    }
-
-    if (showDatePicker) {
-        val initialMillis = runCatching {
-            LocalDate.parse(
-                state.date
-            ).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
-        }.getOrNull()
-        val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    pickerState.selectedDateMillis?.let { millis ->
-                        onDateChange(
-                            Instant.ofEpochMilli(
-                                millis
-                            ).atZone(ZoneOffset.UTC).toLocalDate().toString()
-                        )
-                    }
-                    showDatePicker = false
-                }) { Text(stringResource(R.string.action_confirm)) }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { showDatePicker = false }
-                ) { Text(stringResource(R.string.action_cancel)) }
-            }
-        ) {
-            DatePicker(state = pickerState, showModeToggle = false)
         }
     }
 }

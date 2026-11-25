@@ -4,21 +4,26 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.domain.repository.OccasionEventRepository
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
 import com.mycorrhizal.crm.model.network.OccasionEvent
+import com.mycorrhizal.crm.model.network.OccasionEventInput
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import io.mockk.coEvery
 import io.mockk.mockk
+import io.mockk.slot
 import java.time.Instant
 import java.util.Locale
 import java.util.TimeZone
@@ -191,9 +196,33 @@ class OccasionsScreenTest {
     fun `the start field opens the date picker and then the time picker`() {
         render(emptyList())
         composeTestRule.onNodeWithContentDescription("New event").performClick()
-        composeTestRule.onNodeWithContentDescription("Starts").performClick()
-        composeTestRule.onNodeWithText("Confirm").performClick()
+        // #2947: the shared DateField's calendar icon (Starts is the first one).
+        composeTestRule.onAllNodesWithContentDescription("Pick a date")[0].performClick()
+        composeTestRule.onNodeWithText("Add time").performClick()
         composeTestRule.onNodeWithText("Time").assertIsDisplayed()
+    }
+
+    // #2947: the event dates are the shared DateField: a date can be typed in the user's format
+    // (the stored time is kept), instead of a picker-only read-only box.
+    @Test
+    fun `a typed date in the start field is saved with the stored time`() {
+        coEvery { repository.list() } returns Result.success(listOf(event()))
+        val saved = slot<OccasionEventInput>()
+        coEvery { repository.update("e1", capture(saved)) } returns Result.success(event())
+        val viewModel = OccasionsViewModel(repository)
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                OccasionsScreen(onMenuClick = {}, onOpenAttendees = {}, viewModel = viewModel)
+            }
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithContentDescription("Edit Summer BBQ").performClick()
+        composeTestRule.onNode(hasText("Starts") and hasSetTextAction())
+            .performTextReplacement("05.07.2026")
+        composeTestRule.onNodeWithText("Save").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals("2026-07-05T15:00:00Z", saved.captured.startsAt)
     }
 
     @Test
