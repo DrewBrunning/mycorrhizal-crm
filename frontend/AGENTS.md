@@ -64,6 +64,17 @@ This file is the frontend contract. Android shares the trap IDs below.
   use this tier for anything jsdom can already prove (mock `matchMedia`/`scrollIntoView` there
   instead of moving the test here) or for multi-page flows (that is E2E). Stryker mutates the jsdom
   config only. Layer policy: `docs/development/testing.md`.
+- **User-facing text never comes from `err.message` or hand-assembled dates (issue #2920).** UI
+  catch blocks render `getErrorMessage(err)` / `getErrorMessageOr(err, fallback)`
+  (`src/utils/errorHandler.ts`), which translates network failures and `ApiError` reason codes;
+  the type-aware ESLint rule `local/no-raw-error-message` (`eslint-rules/`) fails any other read of
+  an Error's `.message` used as a value. A month and day are formatted with `formatMonthDay`
+  (`DateFormatProvider.tsx`), never concatenated; the `no-restricted-syntax` selector in
+  `eslint.config.js` plus `yarn month-day:check` (`month-day-allowlist.json`, counts only go down)
+  enforce it. A list row removed by an action hands focus on with `useFocusAfterRemoval`
+  (`src/hooks/`); the e2e suite asserts focus survives. `e2e/pseudoLocale.spec.ts` (`qps`) and
+  the nightly populated axe sweep catch untranslated text and a11y regressions the unit tests
+  cannot (`docs/development/testing.md`).
 - Generated TS types: `src/generated/openapi.ts` is generated from `openapi.yaml` by
   `cd backend && go run ./cmd/gentsapi` — never hand-edited. The hand-written types in `src/api/*.ts`
   are pinned to it by `src/api/contractConformance.ts` (types only; imported by nothing): `tsc` fails

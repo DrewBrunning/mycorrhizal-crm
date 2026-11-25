@@ -1,1 +1,0 @@
-- **Android explains move-to-server and test failures in your language** ([#2920](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2920)): moving the on-device profile to a server no longer shows raw English errors, and webhook and integration test results no longer say "unknown", "err" or "status …". Occasion dates on a contact follow your language's day-month order.

@@ -61,6 +61,10 @@ and commit the PNG diff (the diff is the review). Diffs land in
 `build/outputs/roborazzi/`. Record on Linux, CI's platform — never hand-edit or
 delete a golden to turn a build green.
 
+UI code never shows a raw exception message or an English literal fallback:
+`RawErrorTextGuardTest` (`core/ui`, issue #2920) fails on it; render a translated string, or list a
+non-UI finding in its `ALLOWED` set with a reason.
+
 Issue #2535: the **pseudo-locale (en-XA)** pass is the one exception to the
 module-local rule. It lives in `:app` — tests in
 `src/testObtainiumDebug/kotlin/.../screenshot/`, goldens in

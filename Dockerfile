@@ -8,7 +8,7 @@
 # =============================================================================
 # Stage 1: Build Go backend (cross-compiled, CGO disabled - pure-Go SQLite)
 # =============================================================================
-FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine@sha256:0a5f7fe796599ff487605987432e7619ae45beeb2fba4c2ce0b907879932aebf AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280 AS backend-builder
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -167,10 +167,11 @@ FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5
 # 2026-11-18 (alpine-pin-bump, automated): nginx 1.30.6-r0 -> 1.30.7-r0. Alpine pruned the old version from the index.
 # 2026-11-19 (alpine-pin-bump, automated): libssl3 3.5.9-r0 -> 3.5.9-r1, libcrypto3 3.5.9-r0 -> 3.5.9-r1. Alpine pruned the old version from the index.
 # 2026-11-23 (alpine-pin-bump, automated): shadow 4.18.0-r1 -> 4.20.4-r0. Alpine pruned the old version from the index.
+# 2026-11-25: nginx 1.30.7-r0 -> 1.30.8-r0. Alpine pruned the old version from the index ("nginx-1.30.8-r0: breaks: world[nginx=1.30.7-r0]").
 RUN apk add --no-cache \
     ca-certificates=20261020-r0 \
     tzdata=2026f-r0 \
-    nginx=1.30.7-r0 \
+    nginx=1.30.8-r0 \
     supervisor=4.3.0-r1 \
     shadow=4.20.4-r0 \
     libc6-compat=1.1.0-r4 \
