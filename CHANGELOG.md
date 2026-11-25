@@ -54,7 +54,6 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Android import polish** ([#2951](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2951), part of [#2950](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2950)): the Monica import's Connect button is full width with its error directly above it, like Meerkat, and a row you discarded as a duplicate now reads "Skipped: you chose Discard new" instead of "Skipped: Skipped".
 - **Android "System default" language now sticks** ([#2937](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2937)): choosing System default for the app's language in Android settings, or the new "Use system default" entry in Settings → Appearance → Language, makes the app follow the device language, and the Language row shows the language actually in use.
 - **Android shows saved contacts in the same order as online** ([#2940](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2940)): when the server can't be reached, the saved contact list is grouped A to Z by last name (else first name), with each letter appearing once.
 - **Shared contact anniversaries on the web** ([#2908](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2908)): a shared contact card now reads "Birthday: 28.11.1985" in your language and date format instead of "birth: 1985-11-28".
