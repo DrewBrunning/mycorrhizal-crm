@@ -1363,6 +1363,13 @@ jobs:
         working-directory: frontend
         run: yarn lint
 
+      # Issue #2920 (item 3): month-day text must go through formatMonthDay
+      # (Intl) instead of hand-assembled `${month} ${day}`. The ESLint rule
+      # flags new sites; this script keeps the counted allowlist honest.
+      - name: Month-day formatting guard
+        working-directory: frontend
+        run: yarn month-day:check
+
       # Issue #2920 item 1: counted ratchet for raw err.message in UI text.
       # ESLint above covers files with no existing sites; this covers the
       # allowlisted files by count.
