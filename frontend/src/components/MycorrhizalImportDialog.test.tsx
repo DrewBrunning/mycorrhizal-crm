@@ -249,3 +249,45 @@ test('the stepper names the file upload, not Connect/Fetch', () => {
   );
   expect(labels).toEqual(['Upload', 'Review', 'Import', 'Done']);
 });
+
+// Issue #2916 follow-up: Cancel stays enabled while a bundle is uploading. An
+// upload that finishes after the dialog closed still opened a server session,
+// and nothing was left to cancel it, so it held a slot until it expired.
+test('Cancel during an upload releases the session once the upload finishes', async () => {
+  let finish!: (v: Awaited<ReturnType<typeof uploadMycorrhizalBundle>>) => void;
+  uploadMock.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const onClose = vi.fn();
+  render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  pickFile();
+  await screen.findByRole('button', { name: 'Uploading…' });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(onClose).toHaveBeenCalledTimes(1);
+
+  finish({ session_id: 'late', version: 1, totals: bundleTotals() });
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/import/mycorrhizal', 'late'));
+  // The late result is dropped, not shown when the dialog opens again.
+  expect(screen.queryByRole('button', { name: 'Start import' })).not.toBeInTheDocument();
+});
+
+test('an upload that fails after Cancel shows no error', async () => {
+  let fail!: (e: Error) => void;
+  uploadMock.mockReturnValue(
+    new Promise((_, reject) => {
+      fail = reject;
+    }),
+  );
+  render(<MycorrhizalImportDialog open onClose={() => {}} onImportComplete={() => {}} />);
+  pickFile();
+  await screen.findByRole('button', { name: 'Uploading…' });
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  fail(new Error('upload exploded'));
+  await new Promise((r) => setTimeout(r, 0));
+  expect(screen.queryByText('upload exploded')).not.toBeInTheDocument();
+  expect(cancelMock).not.toHaveBeenCalled();
+});
