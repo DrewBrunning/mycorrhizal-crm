@@ -49,6 +49,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -78,7 +79,9 @@ import com.mycorrhizal.crm.ui.components.LoadingSkeleton
 import com.mycorrhizal.crm.ui.components.RefreshableContent
 import com.mycorrhizal.crm.ui.components.ScreenTitle
 import com.mycorrhizal.crm.ui.components.localizedMessage
+import java.time.LocalDate
 import java.time.Month
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -295,7 +298,7 @@ internal fun OccasionObligationRow(obligation: OccasionObligation, modifier: Mod
             )
             // A row saved before dates were required has none, so it can never remind.
             Text(
-                anchorText(obligation) ?: stringResource(R.string.occasion_ob_no_date),
+                anchorText(obligation, LocalConfiguration.current.locales[0]) ?: stringResource(R.string.occasion_ob_no_date),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -339,12 +342,19 @@ private fun Badge(text: String) {
     }
 }
 
-/** "December 25": the month spelled in the device locale, then the day; null without an anchor. */
-private fun anchorText(obligation: OccasionObligation): String? {
+/**
+ * The anchor date with the month spelled out, ordered and punctuated by the
+ * locale ("December 25", "25 de diciembre", "25 décembre"); null without an
+ * anchor. Issue #2920, Android parity with the web's #2914 fix: this used to
+ * hardcode the English "<month> <day>" order in every language.
+ */
+internal fun anchorText(obligation: OccasionObligation, locale: Locale): String? {
     val month = obligation.anchorMonth
     val day = obligation.anchorDay
     if (month == null || day == null) return null
-    return "${monthName(month)} $day"
+    val pattern = android.text.format.DateFormat.getBestDateTimePattern(locale, "MMMMd")
+    // 2000 is a leap year, so a Feb 29 anchor formats too.
+    return DateTimeFormatter.ofPattern(pattern, locale).format(LocalDate.of(2000, month, day))
 }
 
 internal fun monthName(month: Int): String =
