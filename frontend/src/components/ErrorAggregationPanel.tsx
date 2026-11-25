@@ -86,7 +86,7 @@ export default function ErrorAggregationPanel({
       />
 
       {error && (
-        <Typography color="error" variant="body2" sx={{ mb: 1 }}>
+        <Typography color="error" variant="body2" data-user-content sx={{ mb: 1 }}>
           {error}
         </Typography>
       )}
@@ -177,11 +177,14 @@ function ErrorBucketRow({
           )}
         </Box>
       </TableCell>
-      <TableCell sx={{ overflowWrap: 'anywhere' }}>{componentLabel}</TableCell>
+      <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
+        {componentLabel}
+      </TableCell>
       <TableCell sx={{ overflowWrap: 'anywhere' }}>
         <Typography
           variant="body2"
           component="span"
+          data-user-content
           sx={{ wordBreak: 'break-word', color: statusTextColor('error') }}
         >
           {bucket.sample_error || bucket.cause}

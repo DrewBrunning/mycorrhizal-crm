@@ -744,25 +744,36 @@ On each surface the spec:
   `scrollWidth > clientWidth + 1` unless the element has
   `text-overflow: ellipsis`.
 
-Two markup contracts keep that rule strict without false positives:
+Two markup contracts — plus one allowance for machine-formatted values — keep
+that rule strict without false positives:
 
 - **`data-user-content`** marks content owned by the data layer, never by the
   translation catalog: user-entered records (contact names, emails, phones,
   addresses, notes, reminder messages), server-provided values (link field type
-  names and protocol templates) and environment-derived descriptions
-  (user-agent device descriptions, build versions). Add it to the element that
-  renders the value, not a container that also holds UI copy. A render site
-  without it fails the spec, so the exemption cannot rot silently.
+  names and protocol templates), admin-table values (user ids/usernames/emails,
+  a system event's component/operation/detail, background-job identifiers and
+  their last-error text) and environment-derived descriptions (user-agent
+  device descriptions, build versions). Add it to the element that renders the
+  value, not a container that also holds UI copy. A render site without it fails
+  the spec, so the exemption cannot rot silently.
 - **`translate="no"`** marks a literal machine value that must never be
   translated, such as an example URL in a placeholder. It is the standard HTML
   attribute, so translation tooling honours it too.
+- **Machine-formatted instants** are allowed without a marker: a timestamp
+  rendered through the user's Date/Time-format preferences, optionally with an
+  `Intl.RelativeTimeFormat` hint — `24.11.2026 10:44 PM (in 101 days)`, `Nov
+  24, 2026 10:44 PM (2 hours ago)`. Neither half is translatable copy, and the
+  whole value must match, so a sentence that merely contains a date is still an
+  offence and #2914's month/day check is unaffected. Admin health panels render
+  many of these; it is why they are not a wall of `PM`/`in … days` offences.
 
 MUI's own built-in control labels (Autocomplete's Clear/Open, the Alert close
-action, …) are exempt: they come from `@mui/material/locale` via
-`i18n/muiLocale.ts`, which has no `qps` entry by design, so they are not
-i18next keys and cannot be pseudo-localized. MapLibre's own controls are exempt
-for the same reason (third-party widget chrome). When adding a surface, extend
-the spec's selector rather than reporting them as app copy.
+action, TablePagination's `Rows per page:` and paging labels, …) are exempt:
+they come from `@mui/material/locale` via `i18n/muiLocale.ts`, which has no
+`qps` entry by design, so they are not i18next keys and cannot be
+pseudo-localized. MapLibre's own controls are exempt for the same reason
+(third-party widget chrome). When adding a surface, extend the spec's selector
+rather than reporting them as app copy.
 
 Server-originated strings are scanned too. The spec collects the API error's
 `reason_params` and fails on a 4+-word prose value even when it renders inside

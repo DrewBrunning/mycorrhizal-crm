@@ -180,16 +180,38 @@ const PSEUDO_MONTHS = Array.from({ length: 12 }, (_, i) => pseudo(`occasions.mon
 const INTL_YEARLESS_MONTH_DAY =
   /^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}$|^\d{1,2}\s+(January|February|March|April|May|June|July|August|September|October|November|December)$/;
 
+// A timestamp the app builds from the user's Date/Time-format preferences,
+// optionally followed by an `Intl.RelativeTimeFormat` hint:
+// `24.11.2026 10:44 PM (in 101 days)`, `Nov 24, 2026 10:44 PM (2 hours ago)`.
+// The date half is one of DateFormatProvider's nine formats, the time half is
+// the user's hour cycle, and the relative half is machine-generated — none of
+// it is translatable copy, so the 3+ letter rule could only ever report `PM`
+// and `in … days` here. The *whole* value must match, so a hardcoded sentence
+// that merely contains a date is still an offence, and hand-assembled
+// month/day labels stay caught by the #2914 check below.
+const DATE_TOKENS =
+  '(?:\\d{1,2}[./-]\\d{1,2}[./-]\\d{4}|\\d{4}-\\d{2}-\\d{2}|' +
+  '(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\\s\\d{1,2},?\\s\\d{4}|' +
+  '\\d{1,2}\\s(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*,?\\s\\d{4})';
+const INTL_INSTANT = new RegExp(
+  // `\\s` rather than a literal space: Intl puts a narrow no-break space before
+  // `PM` in some ICU versions.
+  `^${DATE_TOKENS}\\s\\d{1,2}:\\d{2}(?::\\d{2})?(?:\\s?[AP]M)?` +
+    '(?:\\s\\((?:in\\s\\d+\\s(?:second|minute|hour|day|week|month|quarter|year)s?' +
+    '|\\d+\\s(?:second|minute|hour|day|week|month|quarter|year)s?\\sago)\\))?$',
+);
+
 /**
  * Runs every scan in the page. Everything is computed in one evaluate so React
  * cannot re-render between the text scan and the overflow scan.
  */
 async function scanPage(page: Page, options: ScanOptions = {}): Promise<Offence[]> {
   return page.evaluate(
-    ({ forceScan, serverProse, pseudoMonths, intlYearlessMonthDay }) => {
+    ({ forceScan, serverProse, pseudoMonths, intlYearlessMonthDay, intlInstant }) => {
       const offences: Offence[] = [];
       const ASCII_RUN = /[A-Za-z]{3,}/;
       const INTL_YEARLESS = new RegExp(intlYearlessMonthDay);
+      const INTL_TIMESTAMP = new RegExp(intlInstant);
       const MONTH_DAY = pseudoMonths.map(
         (month) => new RegExp(`${month.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+\\d{1,2}(?!\\d)`),
       );
@@ -223,8 +245,13 @@ async function scanPage(page: Page, options: ScanOptions = {}): Promise<Offence[
       // copy. If another MUI control string appears on a surface, this selector
       // list is where it belongs.
       // MUI's Alert close action is a built-in English "Close" label from
-      // @mui/material, like the Autocomplete strings above.
-      const MUI_BUILTIN_LABELS = '.MuiAutocomplete-endAdornment, .MuiAlert-action';
+      // @mui/material, like the Autocomplete strings above. TablePagination's
+      // own chrome ("Rows per page:", "Go to previous page", …) is the same
+      // kind of label and arrives with the paginated admin tables, so the whole
+      // widget is exempt via its root class (the child slots carry
+      // MuiTablePagination-* names, which `.MuiTablePagination` does not match).
+      const MUI_BUILTIN_LABELS =
+        '.MuiAutocomplete-endAdornment, .MuiAlert-action, .MuiTablePagination-root';
       // MapLibre's own controls and canvas labels ("MapLibre", "Map", "Toggle
       // attribution") are third-party widget chrome, not this app's copy.
       const THIRD_PARTY_MAP_LABELS = '.maplibregl-map';
@@ -276,6 +303,11 @@ async function scanPage(page: Page, options: ScanOptions = {}): Promise<Offence[
       };
 
       const checkValue = (el: Element, value: string, where: string): void => {
+        // An instant rendered by Intl carries no translatable copy — see
+        // INTL_INSTANT above.
+        if (INTL_TIMESTAMP.test(value.trim())) {
+          return;
+        }
         const prose = serverProseHit(value);
         if (prose) {
           offences.push({ kind: 'server-prose', where, detail: prose.slice(0, 160) });
@@ -358,6 +390,7 @@ async function scanPage(page: Page, options: ScanOptions = {}): Promise<Offence[
       serverProse: options.serverProse ?? [],
       pseudoMonths: PSEUDO_MONTHS,
       intlYearlessMonthDay: INTL_YEARLESS_MONTH_DAY.source,
+      intlInstant: INTL_INSTANT.source,
     },
   );
 }

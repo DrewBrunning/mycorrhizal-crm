@@ -132,6 +132,31 @@ test('renders every briefing block from the composition endpoint', async () => {
   expect(screen.getByText('Upcoming dates')).toBeInTheDocument();
 });
 
+// #2915: a reminder materialized from an occasion is machine-synthesized and
+// its stored message carries the server's English "Occasion — " prefix. Every
+// reminder view must render it through reminderTitle() so the localized title
+// replaces that prefix; the prep view printed the stored message as-is, which
+// is what the pseudo-locale pass caught on /contacts/:id/prep.
+test('renders an occasion reminder through the localized title (#2915)', async () => {
+  mockBriefingFetch({
+    ...fullBriefing,
+    upcoming_reminders: [
+      {
+        ID: 6,
+        // New rows store "label: name" with no prefix; the view adds the
+        // localized occasion title.
+        message: 'Birthday: Alice Wonder',
+        remind_at: '2026-08-10T09:00:00Z',
+        occasion_obligation_id: 'ob-1',
+      },
+    ],
+  });
+  renderPage();
+
+  await waitFor(() => expect(screen.getByText('Alice Wonder')).toBeInTheDocument());
+  expect(screen.getByText(/Occasion — Birthday: Alice Wonder/)).toBeInTheDocument();
+});
+
 // #2920 item 4: only contact-provided text may be exempt from the pseudo-locale
 // scan, so the marked nodes must exist for real names/activities and must not
 // mark the translated fallback.

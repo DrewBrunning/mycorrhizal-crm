@@ -153,7 +153,7 @@ export default function TrashPage() {
                 </Avatar>
               </ListItemAvatar>
               <ListItemText
-                primary={displayName(item)}
+                primary={<span data-user-content>{displayName(item)}</span>}
                 secondary={[
                   t('trash.deletedOn', {
                     date: formatDateTime(item.deleted_at),
@@ -199,7 +199,7 @@ export default function TrashPage() {
                       gap: 1,
                     }}
                   >
-                    {item.entity.name}
+                    <span data-user-content>{item.entity.name}</span>
                     <Chip size="small" label={t(`entities.kind.${item.entity.kind}`)} />
                   </Box>
                 }
