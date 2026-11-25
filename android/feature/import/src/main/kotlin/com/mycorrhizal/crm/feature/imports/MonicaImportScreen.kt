@@ -240,14 +240,7 @@ private fun ConnectStep(
             onValueChange = onBaseUrlChange,
             label = { Text(stringResource(R.string.monica_import_url_label)) },
             placeholder = { Text("https://app.monicahq.com") },
-            supportingText = {
-                val unreachable = uiState.unreachable
-                if (unreachable == null) {
-                    Text(stringResource(R.string.monica_import_url_help))
-                } else {
-                    UnreachableNotice(unreachable)
-                }
-            },
+            supportingText = { Text(stringResource(R.string.monica_import_url_help)) },
             isError = uiState.unreachable != null,
             singleLine = true,
             enabled = !locked,
@@ -282,11 +275,13 @@ private fun ConnectStep(
             onCheckedChange = onIncludeExtrasChange,
             tag = "monica-import-extras"
         )
+        // #2951: as Meerkat, the error sits directly above a full-width Connect.
+        uiState.unreachable?.let { UnreachableNotice(it) }
         if (connected == null) {
             Button(
                 onClick = onConnect,
                 enabled = uiState.canConnect,
-                modifier = Modifier.testTag("monica-import-connect")
+                modifier = Modifier.fillMaxWidth().testTag("monica-import-connect")
             ) {
                 Text(
                     stringResource(

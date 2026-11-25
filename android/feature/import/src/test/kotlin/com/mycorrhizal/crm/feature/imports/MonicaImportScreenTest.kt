@@ -7,11 +7,13 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.mycorrhizal.crm.model.network.DuplicateMatch
 import com.mycorrhizal.crm.model.network.ErrorReason
 import com.mycorrhizal.crm.model.network.ErrorReasonCode
@@ -25,6 +27,7 @@ import com.mycorrhizal.crm.model.network.SourceImportResult
 import com.mycorrhizal.crm.network.ApiError
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -306,7 +309,7 @@ class MonicaImportScreenTest {
 
     // Issue #2620: the address field carries a sticky, localized unreachable message.
     @Test
-    fun `an unreachable Monica is explained under the address field with the host and ref`() {
+    fun `an unreachable Monica is explained above Connect with the host and ref`() {
         setContent(
             MonicaImportUiState(
                 baseUrl = "https://monica.example",
@@ -314,11 +317,37 @@ class MonicaImportScreenTest {
                 unreachable = MonicaUnreachable("monica.example", "req-9")
             )
         )
-        composeTestRule.onNodeWithTag("monica-import-unreachable")
+        composeTestRule.onNodeWithTag("monica-import-unreachable").performScrollTo()
             .assertTextContains("Couldn't reach Monica at monica.example", substring = true)
-        composeTestRule.onNodeWithText("(ref: req-9)", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithText("(ref: req-9)", substring = true)
+            .performScrollTo().assertIsDisplayed()
         composeTestRule.onNodeWithText("monica service error", substring = true)
             .assertDoesNotExist()
+    }
+
+    // #2951: same layout as Meerkat: a full-width Connect with the error directly above it
+    // (below the form fields), not tucked under the address field.
+    @Test
+    fun `connect is full width with the unreachable error directly above it`() {
+        setContent(
+            MonicaImportUiState(
+                baseUrl = "https://monica.example",
+                apiToken = "t",
+                unreachable = MonicaUnreachable("monica.example", "req-9")
+            )
+        )
+
+        val connect = composeTestRule.onNodeWithTag("monica-import-connect")
+            .performScrollTo().assertWidthIsAtLeast(280.dp).fetchSemanticsNode().boundsInRoot
+        val error = composeTestRule.onNodeWithTag("monica-import-unreachable")
+            .fetchSemanticsNode().boundsInRoot
+        val token = composeTestRule.onNodeWithTag("monica-import-token")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue("error ends at or above Connect", error.bottom <= connect.top + 1f)
+        assertTrue(
+            "error sits below the token field, not under the address",
+            error.top >= token.bottom
+        )
     }
 
     @Test
@@ -329,7 +358,8 @@ class MonicaImportScreenTest {
                 unreachable = MonicaUnreachable("monica.example", null)
             )
         )
-        composeTestRule.onNodeWithTag("monica-import-unreachable").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("monica-import-unreachable").performScrollTo()
+            .assertIsDisplayed()
         composeTestRule.onNodeWithText("(ref:", substring = true).assertDoesNotExist()
     }
 

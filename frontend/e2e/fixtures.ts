@@ -10,6 +10,15 @@ import {
   type Page,
 } from '@playwright/test';
 import { toContactRecordInput } from '../src/api/contacts';
+import {
+  type A11yNode,
+  describedByDistinguishes,
+  EXTRA_A11Y_RULES,
+  findRepeatedAccessibleNames,
+  isBlockingA11yViolation,
+  isExemptA11yViolationNode,
+  WCAG_A11Y_TAGS,
+} from './a11yChecks';
 import { allCandidatesAreToast, toastRetryCandidates } from './a11yRetry';
 import { API_BASE_URL, E2E_CONTACT_PREFIX, TEST_USER } from './global-setup';
 import {
@@ -42,11 +51,10 @@ export const LOGGED_OUT = { cookies: [], origins: [] };
 // teardown only ever runs for tests that actually requested a page.
 // ---------------------------------------------------------------------------
 
-/** Blocking impact levels -- shared with accessibility.spec.ts so the two never drift. */
-export const BLOCKING_A11Y_IMPACTS = ['critical', 'serious'];
-
-/** axe-core tags mapping to the WCAG 2.0/2.1/2.2 A+AA levels the #148 audit ran. */
-export const WCAG_A11Y_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
+// Blocking impact levels, the WCAG tag set, and the extra any-impact rules
+// live in a11yChecks.ts so vitest can pin them and the automatic per-test scan
+// and accessibility.spec.ts cannot drift.
+export { EXTRA_A11Y_RULES, WCAG_A11Y_TAGS };
 
 /**
  * axe's WCAG 1.4.6 Contrast (Enhanced) rule, the AAA (7:1) sibling of
@@ -186,13 +194,29 @@ async function onlyTransientToastContrast(
  */
 export async function assertNoBlockingA11yViolations(page: Page, context?: string): Promise<void> {
   await waitForAnimationsToSettle(page);
+  // axe's runOnly takes one selector type. Tag selection cannot be combined
+  // with withRules(), so pass the tag set as runOnly and opt the extra rules
+  // back in through `rules` (rule-level `enabled` is consulted before the tag
+  // filter -- see axe-core's ruleShouldRun).
+  const extraRules = Object.fromEntries(EXTRA_A11Y_RULES.map((id) => [id, { enabled: true }]));
   const scan = async () => {
-    const builder = new AxeBuilder({ page }).withTags(WCAG_A11Y_TAGS);
+    const builder = new AxeBuilder({ page }).options({
+      runOnly: { type: 'tag', values: WCAG_A11Y_TAGS },
+      rules: extraRules,
+    });
     if (context) {
       builder.include(context);
     }
     const results = await builder.analyze();
-    return results.violations.filter((v) => BLOCKING_A11Y_IMPACTS.includes(v.impact ?? ''));
+    return results.violations
+      .map((violation) => ({
+        ...violation,
+        nodes: violation.nodes.filter(
+          (node) => !isExemptA11yViolationNode(violation.id, node.html),
+        ),
+      }))
+      .filter((violation) => violation.nodes.length > 0)
+      .filter(isBlockingA11yViolation);
   };
   let blocking = await scan();
   // Nightly #2086: the success toast's 4s autoHideDuration (SnackbarContext
@@ -215,6 +239,86 @@ export async function assertNoBlockingA11yViolations(page: Page, context?: strin
     firstTarget: v.nodes[0]?.target,
   }));
   expect(blocking, JSON.stringify(detail, null, 2)).toEqual([]);
+}
+
+/**
+ * Fails when two or more `button`/`link` controls inside one dialog, `main`,
+ * list or grid share an accessible name (issue #2911). axe has no rule for
+ * this class, and the repeated names ("Merge", "Not a duplicate", four "Add"
+ * buttons) are distinct actions a screen-reader user cannot tell apart.
+ *
+ * Deliberately NOT part of the automatic per-test scan: on a populated account
+ * legitimate user data repeats an action name (two activities both titled
+ * "Coffee", two soft-deleted contacts with the same name), so running it over
+ * every page would be flaky rather than wrong. Specs that build a known
+ * populated state call it explicitly (accessibleNames.spec.ts and the browser
+ * smoke specs); the broad axe gate above only adds the rules that are safe to
+ * run everywhere.
+ *
+ * The walk reads Playwright's accessibility snapshot (ariaSnapshotJSON), so
+ * names are the browser's computed accessible names, not raw text. Controls
+ * inside a nested scope belong to that scope, not its parent. A repeated name
+ * is exempt when every occurrence has its own non-empty `aria-describedby`
+ * text, or when the name is in the narrow committed allowlist (a row-scoped
+ * "Remove"); see a11yChecks.ts.
+ *
+ * Pass `context` (a CSS selector, e.g. `[role="dialog"]`) to limit the check to
+ * that subtree.
+ */
+export async function assertNoRepeatedAccessibleNames(page: Page, context?: string): Promise<void> {
+  await waitForAnimationsToSettle(page);
+  const roots = context ? await page.locator(context).all() : [page.locator('body')];
+  const findings: Array<{ scope: string; name: string; count: number; reason: string }> = [];
+
+  for (const root of roots) {
+    if ((await root.count()) === 0) continue;
+    let snapshot: A11yNode[];
+    try {
+      snapshot = (await root.ariaSnapshotJSON()) as unknown as A11yNode[];
+    } catch {
+      // A page torn down mid-test is not a repeated-name finding; the existing
+      // axe path already reports that failure.
+      continue;
+    }
+    for (const finding of findRepeatedAccessibleNames(snapshot)) {
+      if (await everyDuplicateHasItsOwnDescription(page, finding.name)) continue;
+      findings.push({
+        ...finding,
+        reason:
+          'two or more controls share this accessible name; name each action, or add aria-describedby',
+      });
+    }
+  }
+
+  expect(findings, JSON.stringify(findings, null, 2)).toEqual([]);
+}
+
+/**
+ * The documented escape hatch: every same-named button/link carries a
+ * different, non-empty `aria-describedby` target text. Resolves the attribute
+ * through the real DOM so a broken id reference does not count.
+ */
+async function everyDuplicateHasItsOwnDescription(page: Page, name: string): Promise<boolean> {
+  for (const role of ['button', 'link'] as const) {
+    const matches = await page.getByRole(role, { name, exact: true }).all();
+    if (matches.length < 2) continue;
+    const descriptions = await Promise.all(
+      matches.map((match) =>
+        match.evaluate((node) => {
+          const ids = (node.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean);
+          if (ids.length === 0) return null;
+          const text = ids
+            .map((id) => document.getElementById(id)?.textContent ?? '')
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          return text || null;
+        }),
+      ),
+    );
+    if (describedByDistinguishes(descriptions)) return true;
+  }
+  return false;
 }
 
 /**

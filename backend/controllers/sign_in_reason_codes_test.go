@@ -33,6 +33,9 @@ func wireReason(t *testing.T, w *httptest.ResponseRecorder) (string, map[string]
 		} `json:"error"`
 	}
 	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body), "body: %s", w.Body.String())
+	// Issue #2920, item 2: every recorded failure response is also checked for
+	// free prose in reason_params, not just for the presence of a reason code.
+	requireNoReasonProse(t, body.Error.ReasonCode, body.Error.ReasonParams)
 	return body.Error.ReasonCode, body.Error.ReasonParams
 }
 

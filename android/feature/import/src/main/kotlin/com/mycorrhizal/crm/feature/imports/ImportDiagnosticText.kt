@@ -52,7 +52,13 @@ internal fun importWarningIssueRes(concept: String): Int? = when (concept) {
 internal fun ImportRowIssue.localizedLine(): String = when (status) {
     "failed" -> stringResource(R.string.import_report_failed, reason)
 
-    "skipped" -> stringResource(R.string.import_report_skipped, reason)
+    // #2950: a row left as "Discard new" carries the bare reason "Skipped" (older servers too);
+    // say what happened instead of repeating the status as its own reason.
+    "skipped" -> if (reason.isBlank() || reason.equals("Skipped", ignoreCase = true)) {
+        stringResource(R.string.import_report_skipped_by_choice)
+    } else {
+        stringResource(R.string.import_report_skipped, reason)
+    }
 
     "warning" -> importWarningIssueRes(concept)?.let { stringResource(it) }
         ?: stringResource(R.string.import_report_warning, reason)

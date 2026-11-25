@@ -5,6 +5,15 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import security from 'eslint-plugin-security';
 import tseslint from 'typescript-eslint';
 
+// Issue #2920 item 3: existing hand-assembled month/day sites, counted and
+// reasoned. The list is the same committed file `scripts/check-month-day-format.mjs`
+// ratchets down (a new site in an allowlisted file still fails that script).
+const monthDayAllowlist = JSON.parse(
+  readFileSync(new URL('./month-day-allowlist.json', import.meta.url), 'utf8'),
+);
+const monthDayAllowlistedFiles = Object.keys(monthDayAllowlist.files);
+const monthDayExemptFiles = ['src/DateFormatProvider.tsx', ...monthDayAllowlistedFiles];
+
 // Issue #2920 item 1: files that already contain raw `err.message` sites are
 // covered by the counted allowlist (one entry per file, checked by
 // scripts/check-raw-error-message.mjs). The rule below applies to everything
@@ -12,6 +21,29 @@ import tseslint from 'typescript-eslint';
 const rawErrorAllowlist = JSON.parse(
   readFileSync(new URL('./raw-error-message-allowlist.json', import.meta.url), 'utf8'),
 );
+const rawErrorExemptFiles = [
+  'src/**/*.test.*',
+  'src/**/*.spec.*',
+  'src/setupTests.ts',
+  ...Object.keys(rawErrorAllowlist),
+];
+
+// The two #2920 guards both use `no-restricted-syntax`, but ESLint replaces a
+// rule's whole option list when a later config object matches the same file
+// (it does not append). The config objects below therefore run in three
+// passes: each guard alone for the files exempt from the other guard, then
+// both together for everything else -- otherwise the second object would
+// silently drop the first selector.
+const monthDaySelector = {
+  selector: 'TemplateLiteral:has(Identifier[name=/month/i]):has(Identifier[name=/day/i])',
+  message:
+    'Do not assemble a month and day by hand. Use formatMonthDay(month, day, locale) from DateFormatProvider (#2920).',
+};
+const rawErrorMessageSelector = {
+  selector:
+    "ConditionalExpression[test.type='BinaryExpression'][test.operator='instanceof'][test.right.type='Identifier'][test.right.name='Error'][consequent.type='MemberExpression'][consequent.property.type='Identifier'][consequent.property.name='message']",
+  message: 'Use getErrorMessage(err) from utils/errorHandler (#1915)',
+};
 
 export default tseslint.config(
   {
@@ -133,6 +165,22 @@ export default tseslint.config(
     },
   },
   {
+    // Issue #2920 item 3: a year-less month/day is display text, so Intl must
+    // own its order and punctuation ("March 3" vs "3. März"). Ban the
+    // hand-assembled template literal; DateFormatProvider.tsx owns the
+    // formatters (and its existing numeric/MONTHS_* builders are exempt).
+    // Existing sites live in month-day-allowlist.json, whose exact counts
+    // scripts/check-month-day-format.mjs enforces.
+    //
+    // This pass covers the files the raw-error guard exempts (tests and
+    // allowlisted files) so the month-day rule still applies there.
+    files: ['src/**/*.tsx'],
+    ignores: [...monthDayExemptFiles],
+    rules: {
+      'no-restricted-syntax': ['error', monthDaySelector],
+    },
+  },
+  {
     // Issue #2920 item 1 / #1915: a raw `err.message` in UI text ("Failed to
     // fetch", a server-internal string) tells the user nothing.
     // getErrorMessage() (src/utils/errorHandler.ts) maps network failures and
@@ -142,21 +190,18 @@ export default tseslint.config(
     // text. A selector cannot compare `X` across nodes, so this matches any
     // `… instanceof Error ? … .message` ternary (all current sites share X).
     files: ['src/**/*.{ts,tsx}'],
-    ignores: [
-      'src/**/*.test.*',
-      'src/**/*.spec.*',
-      'src/setupTests.ts',
-      ...Object.keys(rawErrorAllowlist),
-    ],
+    ignores: [...rawErrorExemptFiles],
     rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector:
-            "ConditionalExpression[test.type='BinaryExpression'][test.operator='instanceof'][test.right.type='Identifier'][test.right.name='Error'][consequent.type='MemberExpression'][consequent.property.type='Identifier'][consequent.property.name='message']",
-          message: 'Use getErrorMessage(err) from utils/errorHandler (#1915)',
-        },
-      ],
+      'no-restricted-syntax': ['error', rawErrorMessageSelector],
+    },
+  },
+  {
+    // Files subject to both #2920 guards: carry both selectors, since a later
+    // matching object replaces the whole `no-restricted-syntax` option list.
+    files: ['src/**/*.tsx'],
+    ignores: [...monthDayExemptFiles, ...rawErrorExemptFiles],
+    rules: {
+      'no-restricted-syntax': ['error', monthDaySelector, rawErrorMessageSelector],
     },
   },
   {
