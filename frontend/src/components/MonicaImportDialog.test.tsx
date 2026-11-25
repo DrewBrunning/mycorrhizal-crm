@@ -357,3 +357,66 @@ test('an unreachable Monica with an address that is not a URL names it as typed,
   expect(alert).toHaveTextContent("Couldn't reach Monica at monica.example");
   expect(alert).not.toHaveTextContent('ref:');
 });
+
+// Issue #2916 follow-up: Cancel stays enabled while Connect is in flight. A
+// connect that finished after the dialog closed still opened a server session
+// that nothing cancelled.
+test('Cancel during a connect releases the session once the connect finishes', async () => {
+  let finish!: (v: Awaited<ReturnType<typeof connectMonica>>) => void;
+  connectMock.mockReturnValue(
+    new Promise((resolve) => {
+      finish = resolve;
+    }),
+  );
+  const onClose = vi.fn();
+  render(<MonicaImportDialog open onClose={onClose} onImportComplete={() => {}} />);
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'https://monica.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  await waitFor(() => expect(connectMock).toHaveBeenCalled());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(onClose).toHaveBeenCalledTimes(1);
+
+  finish({
+    session_id: 'late',
+    totals: {
+      contacts: 1,
+      activities: 0,
+      notes: 0,
+      reminders: 0,
+      calls: 0,
+      tasks: 0,
+      gifts: 0,
+      debts: 0,
+    },
+    estimated_fetch_seconds: 60,
+  });
+  await waitFor(() => expect(cancelMock).toHaveBeenCalledWith('/contacts/import/monica', 'late'));
+  // The late result is dropped, not shown when the dialog opens again.
+  expect(screen.queryByRole('button', { name: 'Start import' })).not.toBeInTheDocument();
+});
+
+test('a connect that fails after Cancel shows no error', async () => {
+  let fail!: (e: Error) => void;
+  connectMock.mockReturnValue(
+    new Promise((_, reject) => {
+      fail = reject;
+    }),
+  );
+  renderOpen();
+  fireEvent.change(screen.getByLabelText('Monica address'), {
+    target: { value: 'https://monica.example' },
+  });
+  fireEvent.change(screen.getByLabelText('API token'), { target: { value: 'tok' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }));
+  await waitFor(() => expect(connectMock).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+  fail(new Error('Monica rejected the API token'));
+  await new Promise((r) => setTimeout(r, 0));
+  expect(screen.queryByText('Monica rejected the API token')).not.toBeInTheDocument();
+  expect(cancelMock).not.toHaveBeenCalled();
+});
