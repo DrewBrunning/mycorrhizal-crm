@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -24,7 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -219,7 +220,8 @@ internal fun EntitiesContent(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
-        PrimaryTabRow(
+        // #2948: scrollable, so a tab keeps its whole word at large font sizes.
+        PrimaryScrollableTabRow(
             selectedTabIndex = EntityKind.ALL.indexOf(state.kind).coerceAtLeast(0),
             modifier = Modifier.testTag("entities-tabs")
         ) {
@@ -381,15 +383,17 @@ private fun SuggestionsCard(
             .testTag("entity-suggestions")
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Row(
+            // #2948: the button moves below the heading when it does not fit, instead of
+            // squeezing the heading into mid-word breaks at large font sizes.
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                itemVerticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     stringResource(R.string.shared_entities_suggestions_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
+                    style = MaterialTheme.typography.titleMedium
                 )
                 OutlinedButton(onClick = onFind, enabled = !state.suggestionsLoading) {
                     Text(stringResource(R.string.shared_entities_suggestions_load))

@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.ui.components
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -233,7 +234,11 @@ fun FormScaffold(
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        content = content
+        content = { padding ->
+            // #2949: the pinned save bar (which carries imePadding) is absent when Save moves to
+            // the top bar, so without this the keyboard covers the focused field in landscape.
+            Box(if (saveInTopBar) Modifier.imePadding() else Modifier) { content(padding) }
+        }
     )
 
     if (showDiscardDialog) {

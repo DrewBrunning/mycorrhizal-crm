@@ -19,6 +19,8 @@ import com.mycorrhizal.crm.model.network.DuplicateMatch
 import com.mycorrhizal.crm.model.network.ImportDiagnostic
 import com.mycorrhizal.crm.model.network.ImportRowEdit
 import com.mycorrhizal.crm.model.network.ImportRowPreview
+import com.mycorrhizal.crm.testing.WithFontScale
+import com.mycorrhizal.crm.testing.assertNoMidWordBreak
 import com.mycorrhizal.crm.ui.LocalServerVersion
 import com.mycorrhizal.crm.ui.theme.MycorrhizalTheme
 import org.junit.Assert.assertEquals
@@ -75,6 +77,29 @@ class ImportReviewStepTest {
                     )
                 }
             }
+        }
+    }
+
+    // #2948: at 200% font size the decision chips wrap as whole words ("Discar/d new").
+    @Test
+    @Config(sdk = [35], qualifiers = "w411dp-h891dp")
+    fun `decision chips never break inside a word at 200 percent font`() {
+        composeTestRule.setContent {
+            WithFontScale(2f) {
+                MycorrhizalTheme {
+                    ImportReviewStep(
+                        rows = listOf(dupRow),
+                        rowActions = mapOf(dupRow.rowIndex to dupRow.suggestedAction),
+                        onRowActionChange = { _, _ -> },
+                        onResolveAll = {},
+                        onConfirm = {}
+                    )
+                }
+            }
+        }
+        listOf("Keep both", "Merge", "Discard new").forEach { text ->
+            composeTestRule.onNodeWithText(text, useUnmergedTree = true)
+                .assertNoMidWordBreak()
         }
     }
 
