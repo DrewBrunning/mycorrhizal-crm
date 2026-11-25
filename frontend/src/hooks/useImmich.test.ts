@@ -15,6 +15,7 @@ import {
   testImmichConnection,
   unlinkImmichPerson,
 } from '../api/immich';
+import { UserFacingError } from '../utils/userFacingError';
 import { useImmich } from './useImmich';
 
 afterEach(() => {
@@ -105,7 +106,7 @@ test('refreshConfig loads the config and clears loading', async () => {
 });
 
 test('refreshConfig surfaces a fetch error and clears loading', async () => {
-  vi.mocked(getImmichConfig).mockRejectedValue(new Error('boom'));
+  vi.mocked(getImmichConfig).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useImmich());
   await act(async () => {
@@ -131,7 +132,7 @@ test('saveConfig stores the returned config and returns it', async () => {
 });
 
 test('saveConfig notifies and rethrows on failure', async () => {
-  vi.mocked(saveImmichConfig).mockRejectedValue(new Error('save failed'));
+  vi.mocked(saveImmichConfig).mockRejectedValue(new UserFacingError('save failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useImmich({ showError }));
@@ -173,7 +174,7 @@ test('browsePeople loads, stores and returns the people', async () => {
 });
 
 test('browsePeople notifies and rethrows on failure', async () => {
-  vi.mocked(getImmichPeople).mockRejectedValue(new Error('people failed'));
+  vi.mocked(getImmichPeople).mockRejectedValue(new UserFacingError('people failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useImmich({ showError }));
@@ -197,7 +198,7 @@ test('loadSummary stores and returns a person summary', async () => {
 });
 
 test('loadSummary returns null on failure without throwing', async () => {
-  vi.mocked(getImmichContactSummary).mockRejectedValue(new Error('nope'));
+  vi.mocked(getImmichContactSummary).mockRejectedValue(new UserFacingError('nope'));
 
   const { result } = renderHook(() => useImmich());
   let fetched: ImmichPersonSummary | null = summary;
@@ -253,7 +254,7 @@ test('runSync syncs, refreshes the config and clears syncing', async () => {
 });
 
 test('runSync notifies and rethrows on failure', async () => {
-  vi.mocked(syncImmich).mockRejectedValue(new Error('sync failed'));
+  vi.mocked(syncImmich).mockRejectedValue(new UserFacingError('sync failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useImmich({ showError }));
@@ -280,7 +281,7 @@ test('testConnection stores the diagnostic result and clears testing', async () 
 
 test('testConnection resets a stale result and notifies on failure', async () => {
   const showError = vi.fn();
-  vi.mocked(testImmichConnection).mockRejectedValue(new Error('conn failed'));
+  vi.mocked(testImmichConnection).mockRejectedValue(new UserFacingError('conn failed'));
 
   const { result } = renderHook(() => useImmich({ showError }));
   await expect(result.current.testConnection()).rejects.toThrow('conn failed');

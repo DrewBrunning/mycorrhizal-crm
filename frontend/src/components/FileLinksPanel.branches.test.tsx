@@ -5,6 +5,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { ExternalIdentity } from '../api/externalLinks';
 import { DateFormatProvider } from '../DateFormatProvider';
+import { UserFacingError } from '../utils/userFacingError';
 import FileLinksPanel from './FileLinksPanel';
 
 afterEach(() => {
@@ -135,7 +136,7 @@ test('an unlink failure shows the error message; a non-Error rejection shows the
   );
   const onUnlink = vi
     .fn()
-    .mockRejectedValueOnce(new Error('server said no'))
+    .mockRejectedValueOnce(new UserFacingError('server said no'))
     .mockRejectedValueOnce('boom');
   renderPanel({ identities: [identity], onUnlink });
   fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));
@@ -151,7 +152,7 @@ test('a later successful unlink clears the previous error', async () => {
   );
   const onUnlink = vi
     .fn()
-    .mockRejectedValueOnce(new Error('first'))
+    .mockRejectedValueOnce(new UserFacingError('first'))
     .mockResolvedValueOnce(undefined);
   renderPanel({ identities: [identity], onUnlink });
   fireEvent.click(screen.getByRole('button', { name: /^Unlink\b/ }));

@@ -14,6 +14,7 @@ import { useOIDCConfig } from './hooks/useOIDCConfig';
 import i18n from './i18n/config';
 import LoginPage from './LoginPage';
 import { getTimeFormat, setTimeFormat } from './timeFormat';
+import { UserFacingError } from './utils/userFacingError';
 import { cancelledError, stubWebAuthn, unstubWebAuthn } from './webauthnTestUtils';
 
 vi.mock('./auth', async (importOriginal) => {
@@ -111,7 +112,7 @@ describe('LoginPage two-factor step', () => {
 
   test('shows an error and stays on the 2FA step for a rejected code', async () => {
     loginUserMock.mockResolvedValue({ two_factor_required: true });
-    login2FAMock.mockRejectedValue(new Error('Invalid code'));
+    login2FAMock.mockRejectedValue(new UserFacingError('Invalid code'));
     renderLogin();
 
     fireEvent.change(screen.getByLabelText(/username or email/i), { target: { value: 'alice' } });
@@ -149,7 +150,7 @@ describe('LoginPage two-factor step', () => {
 // programmatic link between the error and the fields it concerns.
 describe('LoginPage failed-login focus and error association', () => {
   test('moves focus to the error and associates it with both fields on a rejected credentials submit', async () => {
-    loginUserMock.mockRejectedValue(new Error('Invalid username or password'));
+    loginUserMock.mockRejectedValue(new UserFacingError('Invalid username or password'));
     renderLogin();
 
     const identifierInput = screen.getByLabelText(/username or email/i);
@@ -171,7 +172,7 @@ describe('LoginPage failed-login focus and error association', () => {
 
   test('moves focus to the error on a rejected 2FA code', async () => {
     loginUserMock.mockResolvedValue({ two_factor_required: true });
-    login2FAMock.mockRejectedValue(new Error('Invalid code'));
+    login2FAMock.mockRejectedValue(new UserFacingError('Invalid code'));
     renderLogin();
 
     fireEvent.change(screen.getByLabelText(/username or email/i), { target: { value: 'alice' } });
@@ -280,7 +281,9 @@ describe('LoginPage passwordless passkey', () => {
 
   test('a backend rejection shows its message', async () => {
     stubWebAuthn();
-    loginWithPasskeyPasswordlessMock.mockRejectedValue(new Error('Passkey could not be verified'));
+    loginWithPasskeyPasswordlessMock.mockRejectedValue(
+      new UserFacingError('Passkey could not be verified'),
+    );
     renderLogin();
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign in with a passkey' }));
@@ -352,7 +355,7 @@ describe('LoginPage passkey option', () => {
 
   test('a backend rejection shows its message', async () => {
     stubWebAuthn();
-    loginWithPasskeyMock.mockRejectedValue(new Error('Passkey could not be verified'));
+    loginWithPasskeyMock.mockRejectedValue(new UserFacingError('Passkey could not be verified'));
     await toTwoFactorStep(['totp', 'webauthn']);
 
     fireEvent.click(screen.getByRole('button', { name: 'Use a passkey instead' }));

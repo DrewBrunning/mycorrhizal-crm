@@ -1,6 +1,8 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { getContactNotes, getUnassignedNotes, type Note, type NotesResponse } from '../api/notes';
+import i18n from '../i18n/config';
+import { UserFacingError } from '../utils/userFacingError';
 import { useNotes } from './useNotes';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -183,14 +185,15 @@ test('sets an auth error when not authenticated', async () => {
   const { result } = renderHook(() => useNotes());
   await waitFor(() => expect(result.current.loading).toBe(false));
 
-  expect(result.current.error).toBe('No authentication token found');
+  // The guard's own text is developer English; the UI shows translated text (#2920).
+  expect(result.current.error).toBe(i18n.t('common.unexpectedError'));
   expect(result.current.notes).toEqual([]);
   expect(getUnassignedNotes).not.toHaveBeenCalled();
 });
 
 test('sets an error when the first fetch fails', async () => {
   localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
-  vi.mocked(getUnassignedNotes).mockRejectedValue(new Error('boom'));
+  vi.mocked(getUnassignedNotes).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useNotes());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -203,7 +206,7 @@ test('sets an error when loadMore fails', async () => {
   localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
   vi.mocked(getUnassignedNotes)
     .mockResolvedValueOnce(unassignedResponse({ next_cursor: 'abc' }))
-    .mockRejectedValueOnce(new Error('paging failed'));
+    .mockRejectedValueOnce(new UserFacingError('paging failed'));
 
   const { result } = renderHook(() => useNotes());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -292,7 +295,7 @@ test('the unassigned list prefers the server limit, and keeps a total of zero', 
 
 test('reports loading while in flight, and a refetch clears an earlier error', async () => {
   signIn();
-  vi.mocked(getUnassignedNotes).mockRejectedValueOnce(new Error('boom'));
+  vi.mocked(getUnassignedNotes).mockRejectedValueOnce(new UserFacingError('boom'));
   const { result } = renderHook(() => useNotes());
   await waitFor(() => expect(result.current.error).toBe('boom'));
   expect(console.error).toHaveBeenCalledWith('[fetching notes] Error:', expect.anything());
@@ -331,7 +334,7 @@ test('loadMore reports loading, keeps the total when the page omits it, and logs
   expect(result.current.total).toBe(5);
   expect(result.current.nextCursor).toBe('c2');
 
-  vi.mocked(getUnassignedNotes).mockRejectedValueOnce(new Error('later'));
+  vi.mocked(getUnassignedNotes).mockRejectedValueOnce(new UserFacingError('later'));
   await act(async () => {
     await result.current.loadMore();
   });

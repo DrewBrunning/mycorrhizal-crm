@@ -1,7 +1,9 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { getGraph } from '../api/graph';
+import i18n from '../i18n/config';
 import type { GraphResponse } from '../types/graph';
+import { UserFacingError } from '../utils/userFacingError';
 import { useGraph } from './useGraph';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -61,14 +63,15 @@ test('sets an auth error when not authenticated', async () => {
   const { result } = renderHook(() => useGraph());
   await waitFor(() => expect(result.current.loading).toBe(false));
 
-  expect(result.current.error).toBe('No authentication token found');
+  // The guard's own text is developer English; the UI shows translated text (#2920).
+  expect(result.current.error).toBe(i18n.t('common.unexpectedError'));
   expect(result.current.data).toBeNull();
   expect(getGraph).not.toHaveBeenCalled();
 });
 
 test('sets error when the fetch fails', async () => {
   localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
-  vi.mocked(getGraph).mockRejectedValue(new Error('boom'));
+  vi.mocked(getGraph).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useGraph());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -148,7 +151,7 @@ test('defaults to empty arrays when the response omits nodes or edges', async ()
 
 test('starts empty; loading is true while the graph loads and an old error is cleared by refetch', async () => {
   localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
-  vi.mocked(getGraph).mockRejectedValueOnce(new Error('boom'));
+  vi.mocked(getGraph).mockRejectedValueOnce(new UserFacingError('boom'));
   const { result } = renderHook(() => useGraph());
   expect(result.current.data).toBeNull();
   await waitFor(() => expect(result.current.error).toBe('boom'));

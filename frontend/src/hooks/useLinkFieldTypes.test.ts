@@ -9,6 +9,7 @@ import {
   reorderLinkFieldTypes,
   updateLinkFieldType,
 } from '../api/linkFieldTypes';
+import { UserFacingError } from '../utils/userFacingError';
 import { useLinkFieldTypes } from './useLinkFieldTypes';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -84,7 +85,7 @@ test('refresh toggles loading, stores the list, and a failure sets (and a retry 
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.linkFieldTypes.map((t) => t.id)).toEqual(['a']);
 
-  vi.mocked(getLinkFieldTypes).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getLinkFieldTypes).mockRejectedValueOnce(new UserFacingError('offline'));
   await act(async () => {
     await result.current.refreshLinkFieldTypes();
   });
@@ -149,7 +150,7 @@ test('saving an edited type updates it by id and closes the dialog', async () =>
 });
 
 test('a failed save keeps the dialog open, notifies, logs, and rethrows', async () => {
-  vi.mocked(createLinkFieldType).mockRejectedValue(new Error('dup'));
+  vi.mocked(createLinkFieldType).mockRejectedValue(new UserFacingError('dup'));
   const showError = vi.fn();
   const { result } = renderHook(() => useLinkFieldTypes({ showError }));
   act(() => result.current.handleAddLinkFieldType());
@@ -173,7 +174,7 @@ test('delete calls the API then reloads; a failure notifies, logs, and rethrows'
   expect(deleteLinkFieldType).toHaveBeenCalledWith('a');
   expect(getLinkFieldTypes).toHaveBeenCalledTimes(1);
 
-  vi.mocked(deleteLinkFieldType).mockRejectedValueOnce(new Error('in use'));
+  vi.mocked(deleteLinkFieldType).mockRejectedValueOnce(new UserFacingError('in use'));
   await act(async () => {
     await expect(result.current.handleDeleteLinkFieldType('a')).rejects.toThrow('in use');
   });
@@ -219,7 +220,7 @@ test('move is a no-op for an unknown id or past either end of its category', asy
 test('a failed move notifies, logs, keeps the list, and rethrows', async () => {
   const showError = vi.fn();
   const { result } = await loaded([lt('a1', 'A'), lt('a2', 'A')], { showError });
-  vi.mocked(reorderLinkFieldTypes).mockRejectedValue(new Error('conflict'));
+  vi.mocked(reorderLinkFieldTypes).mockRejectedValue(new UserFacingError('conflict'));
   await act(async () => {
     await expect(result.current.handleMoveLinkFieldType('a1', 1)).rejects.toThrow('conflict');
   });

@@ -4,6 +4,7 @@ import '../i18n/config';
 import { ApiError } from '../api/client';
 import { connectMonica, startMonicaFetch } from '../api/monicaImport';
 import { cancelSourceImport } from '../api/sourceImport';
+import { UserFacingError } from '../utils/userFacingError';
 import MonicaImportDialog from './MonicaImportDialog';
 
 afterEach(cleanup);
@@ -76,7 +77,7 @@ test('surfaces a connect failure inline without leaving the connect step', async
   // rejected promise (flagged as an unhandled rejection under vitest v4 before
   // handleConnect's await attaches its catch).
   connectMock.mockImplementationOnce(() =>
-    Promise.reject(new Error('Monica rejected the API token')),
+    Promise.reject(new UserFacingError('Monica rejected the API token')),
   );
 
   renderOpen();
@@ -187,7 +188,7 @@ test('a rejected cancel is swallowed and the dialog still closes', async () => {
     },
     estimated_fetch_seconds: 60,
   });
-  cancelMock.mockImplementationOnce(() => Promise.reject(new Error('cancel failed')));
+  cancelMock.mockImplementationOnce(() => Promise.reject(new UserFacingError('cancel failed')));
   const onClose = vi.fn();
   render(<MonicaImportDialog open onClose={onClose} onImportComplete={() => {}} />);
 

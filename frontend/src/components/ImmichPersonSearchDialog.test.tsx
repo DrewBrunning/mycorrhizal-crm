@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { ImmichPerson } from '../api/immich';
+import { UserFacingError } from '../utils/userFacingError';
 import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
 
 afterEach(cleanup);
@@ -54,7 +55,7 @@ test('picking a person calls onSelect and closes', async () => {
 });
 
 test('a fetch failure surfaces the real error message, not a generic one', async () => {
-  renderDialog({ onFetchPeople: vi.fn().mockRejectedValue(new Error('down')) });
+  renderDialog({ onFetchPeople: vi.fn().mockRejectedValue(new UserFacingError('down')) });
   await waitFor(() => {
     expect(screen.getByText('down')).toBeInTheDocument();
   });

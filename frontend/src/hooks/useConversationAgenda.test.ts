@@ -9,6 +9,7 @@ import {
   getConversationAgenda,
   updateConversationAgenda,
 } from '../api/conversationAgenda';
+import { UserFacingError } from '../utils/userFacingError';
 import { useConversationAgenda } from './useConversationAgenda';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -153,7 +154,7 @@ test('handleDelete deletes the item and refreshes', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getConversationAgenda).mockRejectedValue(new Error('boom'));
+  vi.mocked(getConversationAgenda).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useConversationAgenda('uid-1'));
   await act(async () => {
@@ -203,7 +204,7 @@ test('an override entity id wins; a response without the list yields none', asyn
 });
 
 test('a failed refresh is logged by operation and the next refresh clears the error', async () => {
-  vi.mocked(getConversationAgenda).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getConversationAgenda).mockRejectedValueOnce(new UserFacingError('offline'));
   const { result } = renderHook(() => useConversationAgenda('uid-1'));
   await act(async () => {
     await result.current.refresh();

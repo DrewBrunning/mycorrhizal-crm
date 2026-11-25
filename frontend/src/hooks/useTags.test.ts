@@ -9,6 +9,7 @@ import {
   type TagListResponse,
   updateTag,
 } from '../api/tags';
+import { UserFacingError } from '../utils/userFacingError';
 import { useTags } from './useTags';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -126,7 +127,7 @@ test('handleDelete deletes and refreshes', async () => {
 
 test('mutation errors notify through the notifier and rethrow', async () => {
   vi.mocked(listTags).mockResolvedValue(listResponse([tag], []));
-  vi.mocked(deleteTag).mockRejectedValue(new Error('boom'));
+  vi.mocked(deleteTag).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useTags({ showError }));
@@ -137,7 +138,7 @@ test('mutation errors notify through the notifier and rethrow', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(listTags).mockRejectedValue(new Error('boom'));
+  vi.mocked(listTags).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useTags());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -180,7 +181,7 @@ test('tolerates a response without tags or contacts', async () => {
 });
 
 test('a failed load logs its operation, and a refresh clears the error', async () => {
-  vi.mocked(listTags).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(listTags).mockRejectedValueOnce(new UserFacingError('offline'));
   const { result } = renderHook(() => useTags());
   await waitFor(() => expect(result.current.error).toBe('offline'));
   expect(console.error).toHaveBeenCalledWith('[fetching tags] Error:', expect.anything());
@@ -219,9 +220,9 @@ test('tagNamesByUid collects every tag name per contact and tracks reloaded data
 
 test('rename, delete and create log their own operation and use the latest notifier', async () => {
   vi.mocked(listTags).mockResolvedValue(listResponse([tag], []));
-  vi.mocked(createTag).mockRejectedValue(new Error('c'));
-  vi.mocked(updateTag).mockRejectedValue(new Error('u'));
-  vi.mocked(deleteTag).mockRejectedValue(new Error('d'));
+  vi.mocked(createTag).mockRejectedValue(new UserFacingError('c'));
+  vi.mocked(updateTag).mockRejectedValue(new UserFacingError('u'));
+  vi.mocked(deleteTag).mockRejectedValue(new UserFacingError('d'));
   const first = { showError: vi.fn() };
   const second = { showError: vi.fn() };
   const { result, rerender } = renderHook(({ n }) => useTags(n), { initialProps: { n: first } });

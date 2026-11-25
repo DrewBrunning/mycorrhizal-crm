@@ -5,6 +5,7 @@ import '../i18n/config';
 import { ApiError } from '../api/client';
 import { getAllContacts } from '../api/contacts';
 import { deleteNote, type Note, updateNote } from '../api/notes';
+import { UserFacingError } from '../utils/userFacingError';
 import { useTimelineEditing } from './useTimelineEditing';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -237,7 +238,7 @@ test('handleDeleteActivity deletes, refreshes and resets', async () => {
 });
 
 test('update errors notify through the notifier but keep the editor open', async () => {
-  vi.mocked(updateNote).mockRejectedValue(new Error('boom'));
+  vi.mocked(updateNote).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
   const onRefresh = vi.fn().mockResolvedValue(undefined);
   const { result } = renderHook(() => useTimelineEditing(42, onRefresh, { showError }));
@@ -255,7 +256,7 @@ test('update errors notify through the notifier but keep the editor open', async
 });
 
 test('contact autocomplete fetch failures are swallowed', async () => {
-  vi.mocked(getAllContacts).mockRejectedValue(new Error('boom'));
+  vi.mocked(getAllContacts).mockRejectedValue(new UserFacingError('boom'));
   const { result } = renderHook(() => useTimelineEditing(42, vi.fn()));
 
   await act(async () => {
@@ -315,7 +316,7 @@ test('the autocomplete fetch asks for up to 1000 contacts, tolerates an empty an
   expect(getAllContacts).toHaveBeenCalledWith({ limit: 1000 });
   expect(result.current.allContacts).toEqual([]);
 
-  vi.mocked(getAllContacts).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getAllContacts).mockRejectedValueOnce(new UserFacingError('offline'));
   await act(async () => {
     await result.current.handleStartEditTimelineItem('activity', activity);
   });
@@ -420,10 +421,10 @@ test('an activity saved with only a title defaults description, location, date a
 });
 
 test('each failing operation notifies, logs its own label, skips the refresh and keeps the editor open', async () => {
-  vi.mocked(updateNote).mockRejectedValue(new Error('un'));
-  vi.mocked(updateActivity).mockRejectedValue(new Error('ua'));
-  vi.mocked(deleteNote).mockRejectedValue(new Error('dn'));
-  vi.mocked(deleteActivity).mockRejectedValue(new Error('da'));
+  vi.mocked(updateNote).mockRejectedValue(new UserFacingError('un'));
+  vi.mocked(updateActivity).mockRejectedValue(new UserFacingError('ua'));
+  vi.mocked(deleteNote).mockRejectedValue(new UserFacingError('dn'));
+  vi.mocked(deleteActivity).mockRejectedValue(new UserFacingError('da'));
   const showError = vi.fn();
   const onRefresh = vi.fn().mockResolvedValue(undefined);
   const { result } = renderHook(() => useTimelineEditing(42, onRefresh, { showError }));

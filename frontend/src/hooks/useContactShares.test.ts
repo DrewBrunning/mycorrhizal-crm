@@ -7,6 +7,7 @@ import {
   getIncomingContactShares,
   getOutgoingContactShares,
 } from '../api/contactShares';
+import { UserFacingError } from '../utils/userFacingError';
 import { useContactShares } from './useContactShares';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -106,7 +107,7 @@ test('refresh reports loading, surfaces a failure with its operation, and a retr
   });
   await waitFor(() => expect(result.current.loading).toBe(false));
 
-  vi.mocked(getOutgoingContactShares).mockRejectedValueOnce(new Error('down'));
+  vi.mocked(getOutgoingContactShares).mockRejectedValueOnce(new UserFacingError('down'));
   await act(async () => {
     await result.current.refresh();
   });
@@ -162,9 +163,9 @@ test('decline calls the API and refreshes', async () => {
 });
 
 test('each failing action notifies, logs its operation, rethrows, and does not refresh', async () => {
-  vi.mocked(acceptContactShare).mockRejectedValue(new Error('p'));
-  vi.mocked(confirmContactShare).mockRejectedValue(new Error('c'));
-  vi.mocked(declineContactShare).mockRejectedValue(new Error('d'));
+  vi.mocked(acceptContactShare).mockRejectedValue(new UserFacingError('p'));
+  vi.mocked(confirmContactShare).mockRejectedValue(new UserFacingError('c'));
+  vi.mocked(declineContactShare).mockRejectedValue(new UserFacingError('d'));
   const showError = vi.fn();
   const { result } = renderHook(() => useContactShares({ showError }));
   await act(async () => {

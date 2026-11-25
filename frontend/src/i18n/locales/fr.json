@@ -1279,7 +1279,9 @@
     "retry": "Réessayer",
     "loadFailed": "Impossible de charger ces données",
     "offlineMessage": "Vous êtes hors ligne. Vérifiez votre connexion et réessayez.",
-    "networkError": "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez."
+    "networkError": "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.",
+    "unexpectedError": "Une erreur s'est produite. Veuillez réessayer.",
+    "requestTimeout": "La requête a expiré après {{seconds}} secondes. Vérifiez votre connexion et réessayez."
   },
   "dateFormat": {
     "placeholder": {

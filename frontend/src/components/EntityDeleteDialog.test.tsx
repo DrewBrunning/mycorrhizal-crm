@@ -8,6 +8,7 @@ import {
   type EntityContactLink,
   type EntityDeleteResponse,
 } from '../api/entities';
+import { UserFacingError } from '../utils/userFacingError';
 import EntityDeleteDialog from './EntityDeleteDialog';
 
 vi.mock('../api/entities', async (importOriginal) => {
@@ -83,7 +84,7 @@ test('while the delete is in flight both buttons are disabled, then onDeleted fi
 });
 
 test('a failed delete shows the error, re-enables the buttons and does not report a delete', async () => {
-  deleteMock.mockRejectedValue(new Error('revision conflict'));
+  deleteMock.mockRejectedValue(new UserFacingError('revision conflict'));
   const { onDeleted } = renderDialog();
   fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));
 
@@ -94,7 +95,7 @@ test('a failed delete shows the error, re-enables the buttons and does not repor
 });
 
 test('a failed adopt reports the count and never deletes the entity', async () => {
-  adoptMock.mockRejectedValueOnce(new Error('nope')).mockResolvedValueOnce({} as never);
+  adoptMock.mockRejectedValueOnce(new UserFacingError('nope')).mockResolvedValueOnce({} as never);
   const { onDeleted } = renderDialog();
   fireEvent.click(screen.getByRole('checkbox'));
   fireEvent.click(screen.getByRole('button', { name: /^Delete\b/ }));

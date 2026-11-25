@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { type Entity, listEntities } from '../api/entities';
+import { UserFacingError } from '../utils/userFacingError';
 import LinkFromOwnValueDialog, { type OwnValue } from './LinkFromOwnValueDialog';
 
 vi.mock('../api/entities', async (importOriginal) => {
@@ -54,7 +55,7 @@ test('while linking, Link and Cancel are disabled; success closes the dialog', a
 });
 
 test('a failed link shows the error, stays open and re-enables the buttons', async () => {
-  const onLink = vi.fn().mockRejectedValue(new Error('link refused'));
+  const onLink = vi.fn().mockRejectedValue(new UserFacingError('link refused'));
   const { onClose } = renderDialog(onLink);
   fireEvent.click(screen.getByRole('button', { name: 'Link' }));
 
@@ -65,7 +66,7 @@ test('a failed link shows the error, stays open and re-enables the buttons', asy
 });
 
 test('a failed match lookup leaves only the create-new choice; a found match can be picked', async () => {
-  listMock.mockRejectedValueOnce(new Error('lookup down'));
+  listMock.mockRejectedValueOnce(new UserFacingError('lookup down'));
   renderDialog();
   await waitFor(() =>
     expect(listMock).toHaveBeenCalledWith({ kind: 'organisation', q: 'Acme', limit: 5 }),

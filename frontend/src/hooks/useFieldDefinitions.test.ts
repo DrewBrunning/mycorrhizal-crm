@@ -10,6 +10,7 @@ import {
   replaceContactFieldValues,
   updateFieldDefinition,
 } from '../api/fieldDefinitions';
+import { UserFacingError } from '../utils/userFacingError';
 import { useContactFieldValues, useFieldDefinitions } from './useFieldDefinitions';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -207,7 +208,7 @@ describe('behavior', () => {
   });
 
   test('refresh surfaces a failure, logs the operation, and a later refresh clears the error', async () => {
-    vi.mocked(getFieldDefinitions).mockRejectedValueOnce(new Error('nope'));
+    vi.mocked(getFieldDefinitions).mockRejectedValueOnce(new UserFacingError('nope'));
     const { result } = renderHook(() => useFieldDefinitions());
     await act(async () => {
       await result.current.refresh();
@@ -261,7 +262,7 @@ describe('behavior', () => {
   ] as const)(
     '%s notifies, logs its operation, rethrows, and skips the reload on failure',
     async (name, api, op) => {
-      vi.mocked(api).mockRejectedValue(new Error('denied'));
+      vi.mocked(api).mockRejectedValue(new UserFacingError('denied'));
       const showError = vi.fn();
       const { result } = renderHook(() => useFieldDefinitions({ showError }));
       await act(async () => {
@@ -328,7 +329,7 @@ describe('behavior', () => {
 
   test('handleMove reports a failed reorder, keeps the list, and rethrows', async () => {
     const { result, showError } = await loaded(['a', 'b']);
-    vi.mocked(reorderFieldDefinitions).mockRejectedValue(new Error('conflict'));
+    vi.mocked(reorderFieldDefinitions).mockRejectedValue(new UserFacingError('conflict'));
     await act(async () => {
       await expect(result.current.handleMove('a', 1)).rejects.toThrow('conflict');
     });
@@ -341,9 +342,9 @@ describe('behavior', () => {
   });
 
   test('mutating handlers always use the latest notifier', async () => {
-    vi.mocked(createFieldDefinition).mockRejectedValue(new Error('c'));
-    vi.mocked(updateFieldDefinition).mockRejectedValue(new Error('u'));
-    vi.mocked(deleteFieldDefinition).mockRejectedValue(new Error('d'));
+    vi.mocked(createFieldDefinition).mockRejectedValue(new UserFacingError('c'));
+    vi.mocked(updateFieldDefinition).mockRejectedValue(new UserFacingError('u'));
+    vi.mocked(deleteFieldDefinition).mockRejectedValue(new UserFacingError('d'));
     const first = vi.fn();
     const second = vi.fn();
     const { result, rerender } = renderHook(({ n }) => useFieldDefinitions(n), {
@@ -365,7 +366,7 @@ describe('behavior', () => {
     vi.mocked(getFieldDefinitions).mockResolvedValue(
       page([definition('a', 'a', 0), definition('b', 'b', 1)]),
     );
-    vi.mocked(reorderFieldDefinitions).mockRejectedValue(new Error('x'));
+    vi.mocked(reorderFieldDefinitions).mockRejectedValue(new UserFacingError('x'));
     const { result, rerender } = renderHook(({ n }) => useFieldDefinitions(n), {
       initialProps: { n: { showError: first } },
     });
@@ -435,7 +436,7 @@ describe('behavior', () => {
     });
 
     test('a failed refresh sets the error, notifies with the current notifier, and logs', async () => {
-      vi.mocked(getContactFieldValues).mockRejectedValue(new Error('gone'));
+      vi.mocked(getContactFieldValues).mockRejectedValue(new UserFacingError('gone'));
       const showError = vi.fn();
       const { result } = renderHook(() => useContactFieldValues(1, { showError }));
       await act(async () => {
@@ -514,7 +515,7 @@ describe('behavior', () => {
     });
 
     test('a failed save notifies, logs, and rethrows without touching the values', async () => {
-      vi.mocked(replaceContactFieldValues).mockRejectedValue(new Error('rejected'));
+      vi.mocked(replaceContactFieldValues).mockRejectedValue(new UserFacingError('rejected'));
       const showError = vi.fn();
       const { result } = renderHook(() => useContactFieldValues(3, { showError }));
       await act(async () => {

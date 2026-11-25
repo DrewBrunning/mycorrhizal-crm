@@ -8,6 +8,7 @@ import {
   type OccasionObligationInput,
   updateOccasionObligation,
 } from '../api/occasionObligations';
+import { UserFacingError } from '../utils/userFacingError';
 import { useOccasionObligations } from './useOccasionObligations';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -139,7 +140,7 @@ test('delete errors notify through the notifier and rethrow', async () => {
     next_cursor: '',
     limit: 100,
   });
-  vi.mocked(deleteOccasionObligation).mockRejectedValue(new Error('boom'));
+  vi.mocked(deleteOccasionObligation).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useOccasionObligations('uid-1', { showError }));
@@ -159,7 +160,7 @@ test('save errors notify through the notifier and rethrow', async () => {
     next_cursor: '',
     limit: 100,
   });
-  vi.mocked(createOccasionObligation).mockRejectedValue(new Error('boom'));
+  vi.mocked(createOccasionObligation).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useOccasionObligations('uid-1', { showError }));
@@ -172,7 +173,7 @@ test('save errors notify through the notifier and rethrow', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getOccasionObligations).mockRejectedValue(new Error('boom'));
+  vi.mocked(getOccasionObligations).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useOccasionObligations('uid-1'));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -214,7 +215,7 @@ test('a response without the list yields none, and a failed load is logged then 
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.obligations).toEqual([]);
 
-  vi.mocked(getOccasionObligations).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getOccasionObligations).mockRejectedValueOnce(new UserFacingError('offline'));
   await act(async () => {
     await result.current.refresh();
   });
@@ -250,8 +251,8 @@ test('refetches when the entity id changes', async () => {
 
 test('save and delete failures log their operations and use the latest notifier', async () => {
   vi.mocked(getOccasionObligations).mockResolvedValue({ occasion_obligations: [] } as never);
-  vi.mocked(createOccasionObligation).mockRejectedValue(new Error('s'));
-  vi.mocked(deleteOccasionObligation).mockRejectedValue(new Error('d'));
+  vi.mocked(createOccasionObligation).mockRejectedValue(new UserFacingError('s'));
+  vi.mocked(deleteOccasionObligation).mockRejectedValue(new UserFacingError('d'));
   const first = { showError: vi.fn() };
   const second = { showError: vi.fn() };
   const { result, rerender } = renderHook(({ n }) => useOccasionObligations('uid-1', n), {

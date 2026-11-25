@@ -10,6 +10,7 @@ import {
   updateDataDecayPolicy,
   verifyDataDecayPolicy,
 } from '../api/dataDecayPolicies';
+import { UserFacingError } from '../utils/userFacingError';
 import { useDataDecayPolicy } from './useDataDecayPolicy';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -155,7 +156,7 @@ test('handleDelete is a no-op when no policy is loaded', async () => {
 
 test('delete errors notify through the notifier and rethrow', async () => {
   vi.mocked(getDataDecayPolicies).mockResolvedValue(listResponse([policy]));
-  vi.mocked(deleteDataDecayPolicy).mockRejectedValue(new Error('boom'));
+  vi.mocked(deleteDataDecayPolicy).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useDataDecayPolicy('uid-1', { showError }));
@@ -166,7 +167,7 @@ test('delete errors notify through the notifier and rethrow', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getDataDecayPolicies).mockRejectedValue(new Error('boom'));
+  vi.mocked(getDataDecayPolicies).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useDataDecayPolicy('uid-1'));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -206,7 +207,7 @@ test('handleVerify is a no-op when no policy is loaded', async () => {
 
 test('verify errors notify through the notifier and rethrow', async () => {
   vi.mocked(getDataDecayPolicies).mockResolvedValue(listResponse([policy]));
-  vi.mocked(verifyDataDecayPolicy).mockRejectedValue(new Error('boom'));
+  vi.mocked(verifyDataDecayPolicy).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useDataDecayPolicy('uid-1', { showError }));
@@ -219,7 +220,7 @@ test('verify errors notify through the notifier and rethrow', async () => {
 // --- behavior pins (issue #1662) ---
 
 test('a failed load is logged by operation, and the next refresh clears the error', async () => {
-  vi.mocked(getDataDecayPolicies).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getDataDecayPolicies).mockRejectedValueOnce(new UserFacingError('offline'));
   const { result } = renderHook(() => useDataDecayPolicy('uid-1'));
   await waitFor(() => expect(result.current.error).toBe('offline'));
   expect(console.error).toHaveBeenCalledWith(
@@ -262,8 +263,8 @@ test('saving for a different entity than the loaded policy creates instead of up
 
 test('delete and verify failures log their operations, notify, and rethrow', async () => {
   vi.mocked(getDataDecayPolicies).mockResolvedValue(listResponse([policy]));
-  vi.mocked(deleteDataDecayPolicy).mockRejectedValue(new Error('d'));
-  vi.mocked(verifyDataDecayPolicy).mockRejectedValue(new Error('v'));
+  vi.mocked(deleteDataDecayPolicy).mockRejectedValue(new UserFacingError('d'));
+  vi.mocked(verifyDataDecayPolicy).mockRejectedValue(new UserFacingError('v'));
   const showError = vi.fn();
   const { result } = renderHook(() => useDataDecayPolicy('uid-1', { showError }));
   await waitFor(() => expect(result.current.policy).toEqual(policy));

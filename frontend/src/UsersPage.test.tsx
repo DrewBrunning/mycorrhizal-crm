@@ -14,6 +14,7 @@ import { isAdmin } from './auth';
 import { SnackbarProvider } from './context/SnackbarContext';
 import type { User } from './types';
 import UsersPage from './UsersPage';
+import { UserFacingError } from './utils/userFacingError';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -163,7 +164,7 @@ test('shows the empty state when there are no users', async () => {
 });
 
 test('a load failure surfaces the error', async () => {
-  vi.mocked(getUsers).mockRejectedValue(new Error('network down'));
+  vi.mocked(getUsers).mockRejectedValue(new UserFacingError('network down'));
   renderPage();
 
   await waitFor(() => expect(screen.getByText('network down')).toBeInTheDocument());
@@ -257,7 +258,7 @@ test('a failed create surfaces the error and keeps the dialog open', async () =>
     limit: 25,
     total_pages: 0,
   });
-  vi.mocked(createUser).mockRejectedValue(new Error('Username or email already in use'));
+  vi.mocked(createUser).mockRejectedValue(new UserFacingError('Username or email already in use'));
 
   renderPage();
   await waitFor(() => expect(screen.getByText('No users found')).toBeInTheDocument());
@@ -379,7 +380,7 @@ test('a failed delete surfaces the error and keeps the user listed', async () =>
     limit: 25,
     total_pages: 1,
   });
-  vi.mocked(deleteUser).mockRejectedValue(new Error('cannot delete the last admin'));
+  vi.mocked(deleteUser).mockRejectedValue(new UserFacingError('cannot delete the last admin'));
 
   renderPage();
   await waitFor(() => expect(screen.getByText('stubborn')).toBeInTheDocument());
@@ -432,7 +433,7 @@ test('a failed 2FA reset surfaces the error in the dialog and keeps it open', as
     limit: 25,
     total_pages: 1,
   });
-  vi.mocked(resetUserTwoFactor).mockRejectedValue(new Error('User not found'));
+  vi.mocked(resetUserTwoFactor).mockRejectedValue(new UserFacingError('User not found'));
 
   renderPage();
   await waitFor(() => expect(screen.getByText('stubborn-lockout')).toBeInTheDocument());

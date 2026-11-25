@@ -12,6 +12,7 @@ import {
   rejectRelationshipEdge,
   updateRelationshipEdge,
 } from '../api/relationshipEdges';
+import { UserFacingError } from '../utils/userFacingError';
 import { useRelationshipEdges } from './useRelationshipEdges';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -244,7 +245,7 @@ test('handleRejectSuggestion rejects and refreshes', async () => {
 test('save errors notify through the notifier and rethrow', async () => {
   vi.mocked(getRelationshipEdges).mockResolvedValue(listResponse([]));
   vi.mocked(getContactsByUid).mockResolvedValue(new Map());
-  vi.mocked(createRelationshipEdge).mockRejectedValue(new Error('boom'));
+  vi.mocked(createRelationshipEdge).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
 
@@ -273,7 +274,7 @@ test('refreshRelationshipEdges is a no-op with no uid and no override', async ()
 
 test('resets loading to false and clears a previous error on a successful refresh', async () => {
   vi.mocked(getRelationshipEdges)
-    .mockRejectedValueOnce(new Error('first failure'))
+    .mockRejectedValueOnce(new UserFacingError('first failure'))
     .mockResolvedValueOnce(listResponse([]));
   vi.mocked(getContactsByUid).mockResolvedValue(new Map());
 
@@ -323,7 +324,7 @@ test('handleAddRelationshipEdge clears any edge that was being edited', async ()
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getRelationshipEdges).mockRejectedValue(new Error('boom'));
+  vi.mocked(getRelationshipEdges).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useRelationshipEdges('alice-uid'));
   await act(async () => {
@@ -370,7 +371,7 @@ test('an override uid wins over the viewed uid', async () => {
 });
 
 test('a failed fetch logs its operation', async () => {
-  vi.mocked(getRelationshipEdges).mockRejectedValue(new Error('down'));
+  vi.mocked(getRelationshipEdges).mockRejectedValue(new UserFacingError('down'));
   const { result } = renderHook(() => useRelationshipEdges('alice-uid'));
   await act(async () => {
     await result.current.refreshRelationshipEdges();
@@ -394,10 +395,10 @@ test('refresh follows the viewed contact when it changes', async () => {
 });
 
 test('every failing action logs its own operation, notifies, rethrows, and keeps the dialog state', async () => {
-  vi.mocked(createRelationshipEdge).mockRejectedValue(new Error('s'));
-  vi.mocked(deleteRelationshipEdge).mockRejectedValue(new Error('d'));
-  vi.mocked(acceptRelationshipEdge).mockRejectedValue(new Error('a'));
-  vi.mocked(rejectRelationshipEdge).mockRejectedValue(new Error('r'));
+  vi.mocked(createRelationshipEdge).mockRejectedValue(new UserFacingError('s'));
+  vi.mocked(deleteRelationshipEdge).mockRejectedValue(new UserFacingError('d'));
+  vi.mocked(acceptRelationshipEdge).mockRejectedValue(new UserFacingError('a'));
+  vi.mocked(rejectRelationshipEdge).mockRejectedValue(new UserFacingError('r'));
   const showError = vi.fn();
   const { result } = renderHook(() => useRelationshipEdges('alice-uid', { showError }));
   await act(async () => {

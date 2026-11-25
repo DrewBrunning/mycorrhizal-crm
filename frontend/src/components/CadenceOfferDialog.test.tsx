@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
+import { UserFacingError } from '../utils/userFacingError';
 import CadenceOfferDialog from './CadenceOfferDialog';
 
 afterEach(cleanup);
@@ -58,7 +59,7 @@ test('"Not now" closes without making a request', () => {
 test('a failed accept keeps the dialog open, says why, and clears on retry', async () => {
   const onAccept = vi
     .fn()
-    .mockRejectedValueOnce(new Error('nope'))
+    .mockRejectedValueOnce(new UserFacingError('nope'))
     .mockResolvedValueOnce(undefined);
   const onClose = vi.fn();
   renderDialog({ onAccept, onClose });

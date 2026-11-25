@@ -8,6 +8,7 @@ import {
   type PreferenceInput,
   updatePreference,
 } from '../api/preferences';
+import { UserFacingError } from '../utils/userFacingError';
 import { usePreferences } from './usePreferences';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -137,7 +138,7 @@ test('save errors notify through the notifier and rethrow', async () => {
     next_cursor: '',
     limit: 200,
   });
-  vi.mocked(createPreference).mockRejectedValue(new Error('boom'));
+  vi.mocked(createPreference).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => usePreferences('uid-1', { showError }));
@@ -150,7 +151,7 @@ test('save errors notify through the notifier and rethrow', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getPreferences).mockRejectedValue(new Error('boom'));
+  vi.mocked(getPreferences).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => usePreferences('uid-1'));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -189,7 +190,7 @@ test('a response without preferences yields an empty list, and a failed load is 
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.preferences).toEqual([]);
 
-  vi.mocked(getPreferences).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getPreferences).mockRejectedValueOnce(new UserFacingError('offline'));
   await act(async () => {
     await result.current.refresh();
   });
@@ -220,8 +221,8 @@ test('refetches when the entity id changes', async () => {
 
 test('save and delete failures log their operations and use the latest notifier', async () => {
   vi.mocked(getPreferences).mockResolvedValue({ preferences: [] } as never);
-  vi.mocked(createPreference).mockRejectedValue(new Error('s'));
-  vi.mocked(deletePreference).mockRejectedValue(new Error('d'));
+  vi.mocked(createPreference).mockRejectedValue(new UserFacingError('s'));
+  vi.mocked(deletePreference).mockRejectedValue(new UserFacingError('d'));
   const first = { showError: vi.fn() };
   const second = { showError: vi.fn() };
   const { result, rerender } = renderHook(({ n }) => usePreferences('uid-1', n), {

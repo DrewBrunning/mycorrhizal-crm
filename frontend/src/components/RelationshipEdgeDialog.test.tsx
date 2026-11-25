@@ -7,6 +7,7 @@ import { getContacts } from '../api/contacts';
 import type { RelationshipEdge } from '../api/relationshipEdges';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import { UserFacingError } from '../utils/userFacingError';
 import RelationshipEdgeDialog from './RelationshipEdgeDialog';
 
 vi.mock('../api/contacts', async (importOriginal) => {
@@ -149,7 +150,9 @@ test('linked mode with no contact selected shows the contact-required error', as
 });
 
 test('a rejected save surfaces the error inside the dialog', async () => {
-  const onSave = vi.fn().mockImplementation(() => Promise.reject(new Error('backend exploded')));
+  const onSave = vi
+    .fn()
+    .mockImplementation(() => Promise.reject(new UserFacingError('backend exploded')));
   renderDialog({ onSave });
 
   fireEvent.mouseDown(screen.getAllByRole('combobox')[0]);

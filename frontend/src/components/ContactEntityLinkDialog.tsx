@@ -26,7 +26,7 @@ import { useDirtyDialog } from '../hooks/useDirtyDialog';
 import { coreToForm, formToCore } from '../utils/entityCore';
 import { ENTITY_KIND_KEYS, ENTITY_SENSITIVITY_KEYS, roleKey } from '../utils/entityLabels';
 import { periodFromYears, yearsFromPeriod } from '../utils/entityPeriod';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 import EntityPicker, { type EntityChoice } from './EntityPicker';
 
@@ -127,7 +127,7 @@ export default function ContactEntityLinkDialog({
       clearDirty();
       onClose();
     } catch (err) {
-      setError(getErrorMessage(err) || t('contactDetail.entityLinks.saveFailed'));
+      setError(getErrorMessageOr(err, t('contactDetail.entityLinks.saveFailed')));
     } finally {
       setSaving(false);
     }

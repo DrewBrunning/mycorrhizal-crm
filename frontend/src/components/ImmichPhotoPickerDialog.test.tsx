@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
-import '../i18n/config';
 import type { ImmichPerson } from '../api/immich';
+import i18n from '../i18n/config';
 import ImmichPhotoPickerDialog from './ImmichPhotoPickerDialog';
 
 afterEach(() => {
@@ -97,17 +97,16 @@ test('an already-linked contact browses photos directly', async () => {
   await screen.findByAltText('Current Immich thumbnail');
 });
 
-test('a load failure surfaces the real error message', async () => {
+test('a load failure shows translated text, never the raw error message (#2920)', async () => {
   mockFetchByUrl({
     '/immich/contacts/contact-1/assets': () => {
-      throw new Error('unreachable');
+      throw new Error('raw english');
     },
   });
   renderPicker();
 
-  await waitFor(() => {
-    expect(screen.getByText('unreachable')).toBeInTheDocument();
-  });
+  expect(await screen.findByText(i18n.t('common.unexpectedError'))).toBeInTheDocument();
+  expect(screen.queryByText('raw english')).not.toBeInTheDocument();
 });
 
 test('picking a photo fetches it and hands back a data URL', async () => {

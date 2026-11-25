@@ -1,6 +1,8 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { type Contact, type ContactsResponse, getContacts } from '../api/contacts';
+import i18n from '../i18n/config';
+import { UserFacingError } from '../utils/userFacingError';
 import { useContacts } from './useContacts';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -75,7 +77,7 @@ test('loadMore appends the next page and passes the cursor (does not refetch pag
 test('loadMore surfaces an error and stops loading when the next page fails', async () => {
   vi.mocked(getContacts)
     .mockResolvedValueOnce(page([contact(1, 'A')], 'cursor-1'))
-    .mockRejectedValueOnce(new Error('page two boom'));
+    .mockRejectedValueOnce(new UserFacingError('page two boom'));
 
   const { result } = renderHook(() => useContacts());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -257,7 +259,8 @@ test('does not fetch when unauthenticated', async () => {
   await waitFor(() => expect(result.current.loading).toBe(false));
 
   expect(getContacts).not.toHaveBeenCalled();
-  expect(result.current.error).toBe('No authentication token found');
+  // The guard's own text is developer English; the UI shows translated text (#2920).
+  expect(result.current.error).toBe(i18n.t('common.unexpectedError'));
 });
 
 // --- behavior pins (issue #1662) ---
@@ -310,7 +313,7 @@ test('tolerates a page without contacts or cursor', async () => {
 });
 
 test('a failed load is logged by operation, and a refetch clears the error while loading', async () => {
-  vi.mocked(getContacts).mockRejectedValueOnce(new Error('down'));
+  vi.mocked(getContacts).mockRejectedValueOnce(new UserFacingError('down'));
   const { result } = renderHook(() => useContacts());
   await waitFor(() => expect(result.current.error).toBe('down'));
   expect(console.error).toHaveBeenCalledWith('[fetching contacts] Error:', expect.anything());
@@ -332,7 +335,7 @@ test('loadMore logs its failure by operation, clears the error next time, and re
   const { result } = renderHook(() => useContacts());
   await waitFor(() => expect(result.current.nextCursor).toBe('c1'));
 
-  vi.mocked(getContacts).mockRejectedValueOnce(new Error('page 2 down'));
+  vi.mocked(getContacts).mockRejectedValueOnce(new UserFacingError('page 2 down'));
   await act(async () => {
     await result.current.loadMore();
   });

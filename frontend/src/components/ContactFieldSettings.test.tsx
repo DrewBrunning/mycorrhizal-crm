@@ -7,6 +7,7 @@ import {
   updateEnabledContactFields,
   updateHideEmptyFields,
 } from '../api/users';
+import { UserFacingError } from '../utils/userFacingError';
 import ContactFieldSettings from './ContactFieldSettings';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -66,7 +67,7 @@ test('the stored enabled fields determine which switches are checked', async () 
 });
 
 test('a load failure shows an error message', async () => {
-  vi.mocked(getEnabledContactFields).mockRejectedValue(new Error('Backend unreachable'));
+  vi.mocked(getEnabledContactFields).mockRejectedValue(new UserFacingError('Backend unreachable'));
 
   render(<ContactFieldSettings />);
 
@@ -109,7 +110,7 @@ test('toggling a field on saves the updated set including that key', async () =>
 
 test('a save failure shows an error message but the optimistic toggle stays applied', async () => {
   vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
-  vi.mocked(updateEnabledContactFields).mockRejectedValue(new Error('Save failed hard'));
+  vi.mocked(updateEnabledContactFields).mockRejectedValue(new UserFacingError('Save failed hard'));
 
   render(<ContactFieldSettings />);
   await waitFor(() => expect(screen.getByLabelText('Websites')).not.toBeChecked());
@@ -177,7 +178,9 @@ test('toggling hide-empty saves the account default without touching the field l
 
 test('a failed hide-empty save shows an error', async () => {
   vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
-  vi.mocked(updateHideEmptyFields).mockRejectedValue(new Error('Could not save hide-empty'));
+  vi.mocked(updateHideEmptyFields).mockRejectedValue(
+    new UserFacingError('Could not save hide-empty'),
+  );
 
   render(<ContactFieldSettings />);
   await waitFor(() => expect(screen.getByLabelText('Hide empty fields')).toBeInTheDocument());

@@ -10,6 +10,7 @@ import {
   updateContactSubscription,
 } from '../api/contactSubscriptions';
 import { formatLocalDate } from '../timeFormat';
+import { UserFacingError } from '../utils/userFacingError';
 import ContactSyncSettings from './ContactSyncSettings';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -126,7 +127,9 @@ test('editing an address book prefills the form and saves via update', async () 
 
 test('a sync failure surfaces the error instead of throwing', async () => {
   vi.mocked(getContactSubscriptions).mockResolvedValue([sub({ id: 2, name: 'Broken' })]);
-  vi.mocked(syncContactSubscription).mockRejectedValue(new Error('address book not found'));
+  vi.mocked(syncContactSubscription).mockRejectedValue(
+    new UserFacingError('address book not found'),
+  );
 
   render(<ContactSyncSettings />);
   await waitFor(() => expect(screen.getByText('Broken')).toBeInTheDocument());

@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { type DuplicatePair, dismissDuplicatePair, getDuplicatePairs } from '../api/duplicates';
+import { UserFacingError } from '../utils/userFacingError';
 import { useDuplicatePairs } from './useDuplicatePairs';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -102,7 +103,7 @@ test('the page loop is capped at 50 requests even if the total is never reached'
 });
 
 test('a refresh restarts from an empty list and clears the previous error', async () => {
-  vi.mocked(getDuplicatePairs).mockRejectedValueOnce(new Error('scan failed'));
+  vi.mocked(getDuplicatePairs).mockRejectedValueOnce(new UserFacingError('scan failed'));
   const { result } = renderHook(() => useDuplicatePairs());
   await act(async () => {
     await result.current.refresh();
@@ -161,7 +162,7 @@ test('dismiss sends both uids (blank when missing) and then rescans', async () =
 });
 
 test('a failed dismiss notifies with the latest notifier, logs, rethrows, and skips the rescan', async () => {
-  vi.mocked(dismissDuplicatePair).mockRejectedValue(new Error('denied'));
+  vi.mocked(dismissDuplicatePair).mockRejectedValue(new UserFacingError('denied'));
   const first = vi.fn();
   const second = vi.fn();
   const { result, rerender } = renderHook(({ n }) => useDuplicatePairs(n), {

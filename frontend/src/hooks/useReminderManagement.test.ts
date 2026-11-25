@@ -10,6 +10,7 @@ import {
   type ReminderFormData,
   updateReminder,
 } from '../api/reminders';
+import { UserFacingError } from '../utils/userFacingError';
 import { useReminderManagement } from './useReminderManagement';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -89,7 +90,7 @@ test('refreshReminders is a no-op without a contact id', async () => {
 });
 
 test('refreshReminders sets an error when the fetch fails', async () => {
-  vi.mocked(getRemindersForContact).mockRejectedValue(new Error('boom'));
+  vi.mocked(getRemindersForContact).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useReminderManagement('7'));
   await act(async () => {
@@ -149,7 +150,7 @@ test('handleSaveReminder is a no-op without a contact id', async () => {
 
 test('handleSaveReminder rethrows and notifies on failure', async () => {
   const notifier = { showError: vi.fn() };
-  vi.mocked(createReminder).mockRejectedValue(new Error('save failed'));
+  vi.mocked(createReminder).mockRejectedValue(new UserFacingError('save failed'));
 
   const { result } = renderHook(() => useReminderManagement('7', notifier));
   await expect(
@@ -180,7 +181,7 @@ test('handleCompleteReminder completes and refreshes', async () => {
 });
 
 test('handleCompleteReminder rethrows on failure', async () => {
-  vi.mocked(completeReminder).mockRejectedValue(new Error('complete failed'));
+  vi.mocked(completeReminder).mockRejectedValue(new UserFacingError('complete failed'));
 
   const { result } = renderHook(() => useReminderManagement('7'));
   await expect(
@@ -260,7 +261,7 @@ test('handleDeleteReminder answered 412 calls onConflict and does not refresh or
 });
 
 test('handleDeleteReminder rethrows on failure', async () => {
-  vi.mocked(deleteReminder).mockRejectedValue(new Error('delete failed'));
+  vi.mocked(deleteReminder).mockRejectedValue(new UserFacingError('delete failed'));
 
   const { result } = renderHook(() => useReminderManagement('7'));
   await expect(
@@ -297,7 +298,7 @@ test('setReminderDialogOpen and setReminderEditing expose setters', async () => 
 // --- behavior pins (issue #1662) ---
 
 test('a failed fetch is logged by operation and the next refresh clears the error', async () => {
-  vi.mocked(getRemindersForContact).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getRemindersForContact).mockRejectedValueOnce(new UserFacingError('offline'));
   const { result } = renderHook(() => useReminderManagement('1'));
   await act(async () => {
     await result.current.refreshReminders();
@@ -328,9 +329,9 @@ test('a successful save closes the dialog and forgets the edited reminder', asyn
 });
 
 test('each failing action logs its own operation', async () => {
-  vi.mocked(createReminder).mockRejectedValue(new Error('s'));
-  vi.mocked(completeReminder).mockRejectedValue(new Error('c'));
-  vi.mocked(deleteReminder).mockRejectedValue(new Error('d'));
+  vi.mocked(createReminder).mockRejectedValue(new UserFacingError('s'));
+  vi.mocked(completeReminder).mockRejectedValue(new UserFacingError('c'));
+  vi.mocked(deleteReminder).mockRejectedValue(new UserFacingError('d'));
   const showError = vi.fn();
   const { result } = renderHook(() => useReminderManagement('1', { showError }));
   await act(async () => {

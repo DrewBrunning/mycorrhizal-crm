@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
-import '../i18n/config';
 import { EXPORT_FIELD_SECTIONS } from '../api/export';
+import i18n from '../i18n/config';
 import ShareContactDialog from './ShareContactDialog';
 
 afterEach(cleanup);
@@ -138,7 +138,7 @@ test('revealing and selecting a sensitive section sends the explicit opt-in', as
 });
 
 // issue #2569: restores the branches the standing-shares PR left uncovered.
-test('a failed directory load shows the error', async () => {
+test('a failed directory load shows translated text, not the raw error (#2920)', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => {
@@ -146,7 +146,8 @@ test('a failed directory load shows the error', async () => {
     }),
   );
   renderDialog();
-  expect(await screen.findByText(/directory down/)).toBeInTheDocument();
+  expect(await screen.findByText(i18n.t('common.unexpectedError'))).toBeInTheDocument();
+  expect(screen.queryByText(/directory down/)).not.toBeInTheDocument();
 });
 
 test('unchecking a section removes it from what is shared', async () => {
@@ -195,7 +196,9 @@ test('a failed share shows the error and keeps the dialog open', async () => {
   fireEvent.mouseDown(await screen.findByLabelText('Recipient'));
   fireEvent.click(await screen.findByText('bob'));
   fireEvent.click(screen.getByRole('button', { name: 'Share' }));
-  expect(await screen.findByText(/share refused/)).toBeInTheDocument();
+  // A plain Error from the transport is developer text: translated copy only.
+  expect(await screen.findByText(i18n.t('common.unexpectedError'))).toBeInTheDocument();
+  expect(screen.queryByText(/share refused/)).not.toBeInTheDocument();
   expect(onClose).not.toHaveBeenCalled();
 });
 

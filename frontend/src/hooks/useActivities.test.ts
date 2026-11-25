@@ -1,6 +1,8 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { type Activity, getActivities, getContactActivities } from '../api/activities';
+import i18n from '../i18n/config';
+import { UserFacingError } from '../utils/userFacingError';
 import { useActivities } from './useActivities';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -143,14 +145,15 @@ test('sets an auth error when no token exists', async () => {
   const { result } = renderHook(() => useActivities());
   await waitFor(() => expect(result.current.loading).toBe(false));
 
-  expect(result.current.error).toBe('No authentication token found');
+  // The guard's own text is developer English; the UI shows translated text (#2920).
+  expect(result.current.error).toBe(i18n.t('common.unexpectedError'));
   expect(result.current.activities).toEqual([]);
   expect(getActivities).not.toHaveBeenCalled();
 });
 
 test('sets error when the fetch fails', async () => {
   localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
-  vi.mocked(getActivities).mockRejectedValue(new Error('boom'));
+  vi.mocked(getActivities).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useActivities());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -163,7 +166,7 @@ test('sets error when loading more fails', async () => {
   localStorage.setItem('user_info', JSON.stringify({ user_id: 1 }));
   vi.mocked(getActivities)
     .mockResolvedValueOnce({ activities: [activity(1, 'one')], next_cursor: 'cursor-1', limit: 25 })
-    .mockRejectedValueOnce(new Error('boom'));
+    .mockRejectedValueOnce(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useActivities());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -310,7 +313,7 @@ test('switching to a contact-scoped list drops the previous cursor', async () =>
 
 test('loading is true while the first page is in flight and an old error is cleared by a refetch', async () => {
   signIn();
-  vi.mocked(getActivities).mockRejectedValueOnce(new Error('boom'));
+  vi.mocked(getActivities).mockRejectedValueOnce(new UserFacingError('boom'));
   const { result } = renderHook(() => useActivities());
   await waitFor(() => expect(result.current.error).toBe('boom'));
   expect(console.error).toHaveBeenCalledWith('[fetching activities] Error:', expect.anything());
@@ -438,7 +441,7 @@ test('loadMore tolerates a page with no activities and clears a previous error w
   signIn();
   vi.mocked(getActivities)
     .mockResolvedValueOnce({ activities: [activity(1, 'one')], next_cursor: 'c1', limit: 25 })
-    .mockRejectedValueOnce(new Error('first fail'))
+    .mockRejectedValueOnce(new UserFacingError('first fail'))
     .mockResolvedValueOnce({} as Page);
   const { result } = renderHook(() => useActivities());
   await waitFor(() => expect(result.current.nextCursor).toBe('c1'));

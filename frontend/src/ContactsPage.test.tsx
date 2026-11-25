@@ -14,6 +14,7 @@ import ContactsPage from './ContactsPage';
 import { AnnouncerProvider } from './context/AnnouncerContext';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
+import { UserFacingError } from './utils/userFacingError';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
 afterEach(cleanup);
@@ -188,7 +189,7 @@ function renderPage(initialEntry = '/contacts') {
 
 test('a failed first-page fetch shows the error with a Try again, not a silently empty list (issue #1478)', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  vi.mocked(getContacts).mockRejectedValueOnce(new Error('Contacts are unavailable'));
+  vi.mocked(getContacts).mockRejectedValueOnce(new UserFacingError('Contacts are unavailable'));
   vi.mocked(getContacts).mockResolvedValueOnce({
     contacts: [contact(1, 'uid-1', 'Alice')],
     next_cursor: '',
@@ -440,7 +441,7 @@ test('bulk delete asks for confirmation naming the count before running', async 
 // etc.), not just a partial per-item failure.
 test('a bulk operation that throws alerts a generic error and leaves the selection in place', async () => {
   mockTwoPages();
-  vi.mocked(runBulkOperation).mockRejectedValue(new Error('network down'));
+  vi.mocked(runBulkOperation).mockRejectedValue(new UserFacingError('network down'));
   const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   renderPage();
   await screen.findByLabelText('Select Alice');
@@ -571,7 +572,7 @@ test('bulk Edit fields offers only contact custom fields, never organisation/pla
 
 test('bulk Edit fields still opens when custom fields fail to load, and Cancel closes it', async () => {
   mockTwoPages();
-  vi.mocked(getFieldDefinitions).mockRejectedValue(new Error('down'));
+  vi.mocked(getFieldDefinitions).mockRejectedValue(new UserFacingError('down'));
   renderPage();
   await screen.findByLabelText('Select Alice');
 
@@ -1255,7 +1256,7 @@ test('a failed favorite toggle rolls back the optimistic star and refetches', as
     next_cursor: '',
     limit: 10,
   });
-  vi.mocked(favoriteContact).mockRejectedValue(new Error('server exploded'));
+  vi.mocked(favoriteContact).mockRejectedValue(new UserFacingError('server exploded'));
   const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
   renderPage();
 

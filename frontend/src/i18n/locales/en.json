@@ -1290,7 +1290,9 @@
     "retry": "Retry",
     "loadFailed": "Couldn't load this data",
     "offlineMessage": "You're offline. Check your connection and try again.",
-    "networkError": "Couldn't reach the server. Check your connection and try again."
+    "networkError": "Couldn't reach the server. Check your connection and try again.",
+    "unexpectedError": "Something went wrong. Please try again.",
+    "requestTimeout": "The request timed out after {{seconds}} seconds. Check your connection and try again."
   },
   "dateFormat": {
     "placeholder": {

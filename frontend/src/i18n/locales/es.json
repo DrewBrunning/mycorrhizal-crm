@@ -1279,7 +1279,9 @@
     "retry": "Reintentar",
     "loadFailed": "No se pudieron cargar estos datos",
     "offlineMessage": "Estás sin conexión. Comprueba tu conexión e inténtalo de nuevo.",
-    "networkError": "No se puede conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo."
+    "networkError": "No se puede conectar con el servidor. Comprueba tu conexión e inténtalo de nuevo.",
+    "unexpectedError": "Algo salió mal. Inténtalo de nuevo.",
+    "requestTimeout": "La solicitud agotó el tiempo de espera tras {{seconds}} segundos. Comprueba tu conexión e inténtalo de nuevo."
   },
   "dateFormat": {
     "placeholder": {

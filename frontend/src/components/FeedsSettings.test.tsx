@@ -12,6 +12,7 @@ import {
   rotateFeed,
 } from '../api/feeds';
 import { SnackbarProvider } from '../context/SnackbarContext';
+import { UserFacingError } from '../utils/userFacingError';
 import FeedsSettings from './FeedsSettings';
 
 afterEach(() => {
@@ -78,7 +79,7 @@ test('loads and lists the feeds under a Feeds heading', async () => {
 });
 
 test('a load failure shows an error instead of the list', async () => {
-  vi.mocked(listFeeds).mockRejectedValue(new Error('down'));
+  vi.mocked(listFeeds).mockRejectedValue(new UserFacingError('down'));
   renderSettings();
   expect(await screen.findByText('Failed to load feeds')).toBeInTheDocument();
   expect(screen.queryByRole('table')).not.toBeInTheDocument();
@@ -115,7 +116,7 @@ test('rotating shows the replacement URL once', async () => {
 });
 
 test('a failed rotate surfaces the error and shows no URL', async () => {
-  vi.mocked(rotateFeed).mockRejectedValue(new Error('rotate failed'));
+  vi.mocked(rotateFeed).mockRejectedValue(new UserFacingError('rotate failed'));
   renderSettings();
   await screen.findByText('Everyone');
 

@@ -28,7 +28,7 @@ import {
   type PlaceForm,
 } from '../utils/entityCore';
 import { ENTITY_NEW_KEYS, ENTITY_SENSITIVITY_KEYS } from '../utils/entityLabels';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
 interface EntityFormDialogProps {
@@ -114,7 +114,7 @@ export default function EntityFormDialog({
       allowNavigation();
       onSaved(saved);
     } catch (err) {
-      setError(getErrorMessage(err) || t('entities.form.saveFailed'));
+      setError(getErrorMessageOr(err, t('entities.form.saveFailed')));
     } finally {
       setSaving(false);
     }

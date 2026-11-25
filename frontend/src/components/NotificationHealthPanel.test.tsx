@@ -5,6 +5,7 @@ import {
   getNotificationChannelHealth,
   type NotificationChannelHealth,
 } from '../api/notificationHealth';
+import { UserFacingError } from '../utils/userFacingError';
 import NotificationHealthPanel from './NotificationHealthPanel';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -99,7 +100,9 @@ test('shows the device count and FCM hint for a push channel', async () => {
 });
 
 test('surfaces a load error', async () => {
-  vi.mocked(getNotificationChannelHealth).mockRejectedValue(new Error('the backend is down'));
+  vi.mocked(getNotificationChannelHealth).mockRejectedValue(
+    new UserFacingError('the backend is down'),
+  );
 
   render(<NotificationHealthPanel />);
 

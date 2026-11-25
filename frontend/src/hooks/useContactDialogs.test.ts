@@ -2,6 +2,7 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { createActivity } from '../api/activities';
 import { createNote } from '../api/notes';
+import { UserFacingError } from '../utils/userFacingError';
 import { useContactDialogs } from './useContactDialogs';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -76,7 +77,7 @@ test('handleSaveNote does nothing without a contact id', async () => {
 });
 
 test('handleSaveNote errors notify through the notifier and rethrow', async () => {
-  vi.mocked(createNote).mockRejectedValue(new Error('boom'));
+  vi.mocked(createNote).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useContactDialogs('42', vi.fn(), { showError }));
@@ -118,7 +119,7 @@ test('handleSaveActivity creates the activity with its contacts and refreshes', 
 });
 
 test('handleSaveActivity errors notify through the notifier and rethrow', async () => {
-  vi.mocked(createActivity).mockRejectedValue(new Error('boom'));
+  vi.mocked(createActivity).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useContactDialogs('42', vi.fn(), { showError }));
@@ -137,7 +138,7 @@ test('handleSaveActivity errors notify through the notifier and rethrow', async 
 // --- behavior pins (issue #1662) ---
 
 test('a failed note save is logged by operation, notified, and rethrown with the message', async () => {
-  vi.mocked(createNote).mockRejectedValue(new Error('note down'));
+  vi.mocked(createNote).mockRejectedValue(new UserFacingError('note down'));
   const showError = vi.fn();
   const { result } = renderHook(() => useContactDialogs('42', vi.fn(), { showError }));
   await act(async () => {
@@ -150,7 +151,7 @@ test('a failed note save is logged by operation, notified, and rethrown with the
 });
 
 test('a failed activity save is logged by operation, notified, and rethrown with the message', async () => {
-  vi.mocked(createActivity).mockRejectedValue(new Error('activity down'));
+  vi.mocked(createActivity).mockRejectedValue(new UserFacingError('activity down'));
   const showError = vi.fn();
   const { result } = renderHook(() => useContactDialogs('42', vi.fn(), { showError }));
   await act(async () => {

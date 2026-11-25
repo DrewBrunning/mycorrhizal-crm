@@ -11,7 +11,7 @@ import { useSnackbar } from '../context/SnackbarContext';
 import { useDateFormat } from '../DateFormatProvider';
 import { nameWithDetail, sameEntityName } from '../utils/entityDisambiguation';
 import { ENTITY_REASON_KEYS } from '../utils/entityLabels';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessage, getErrorMessageOr } from '../utils/errorHandler';
 
 interface EntitySuggestionsPanelProps {
   kind: EntityKind;
@@ -63,7 +63,7 @@ export default function EntitySuggestionsPanel({
       setPairs(res.pairs);
       setScannedKind(kind);
     } catch (err) {
-      setError(getErrorMessage(err) || t('entities.suggestions.failed'));
+      setError(getErrorMessageOr(err, t('entities.suggestions.failed')));
     } finally {
       setLoading(false);
     }

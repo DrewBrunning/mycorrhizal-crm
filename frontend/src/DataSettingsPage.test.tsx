@@ -13,6 +13,7 @@ import {
 import { getImportHistory, getImportRun } from './api/import';
 import { suggestRelationshipEdges } from './api/relationshipEdges';
 import DataSettingsPage from './DataSettingsPage';
+import { UserFacingError } from './utils/userFacingError';
 
 // This codebase's vitest has no auto-cleanup (CLAUDE.md frontend trap #1).
 afterEach(() => {
@@ -249,7 +250,7 @@ test('View report opens a dialog itemizing the skipped and failed rows', async (
 
 test('View report shows an error when the report cannot be loaded', async () => {
   historyMock.mockResolvedValue([runWithIssues]);
-  runMock.mockRejectedValue(new Error('nope'));
+  runMock.mockRejectedValue(new UserFacingError('nope'));
   renderPage();
 
   fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
@@ -284,7 +285,7 @@ test('View report tolerates a detail without an issues list', async () => {
 });
 
 test('surfaces a load error', async () => {
-  historyMock.mockRejectedValue(new Error('boom'));
+  historyMock.mockRejectedValue(new UserFacingError('boom'));
   renderPage();
 
   await waitFor(() => expect(screen.getByText('boom')).toBeInTheDocument());
@@ -393,7 +394,7 @@ test('suggesting relationships reports when nothing new was found', async () => 
 });
 
 test('surfaces an error when suggesting relationships fails', async () => {
-  suggestRelationshipsMock.mockRejectedValue(new Error('network down'));
+  suggestRelationshipsMock.mockRejectedValue(new UserFacingError('network down'));
   renderPage();
 
   const button = await screen.findByRole('button', { name: 'Suggest relationships' });
@@ -428,7 +429,7 @@ test('suggesting addresses reports when nothing was found', async () => {
 });
 
 test('surfaces an error when suggesting addresses fails', async () => {
-  suggestAddressesMock.mockRejectedValue(new Error('network down'));
+  suggestAddressesMock.mockRejectedValue(new UserFacingError('network down'));
   renderPage();
 
   const button = await screen.findByRole('button', { name: 'Suggest addresses' });
@@ -449,7 +450,7 @@ test('downloading the CSV export shows a success message', async () => {
 });
 
 test('surfaces the CSV export error message from a thrown Error', async () => {
-  exportCsvMock.mockRejectedValue(new Error('disk full'));
+  exportCsvMock.mockRejectedValue(new UserFacingError('disk full'));
   renderPage();
 
   const button = await screen.findByRole('button', { name: 'Download CSV' });
@@ -482,7 +483,7 @@ test('downloading the VCF export shows a success message', async () => {
 });
 
 test('surfaces the VCF export error message from a thrown Error', async () => {
-  exportVcfMock.mockRejectedValue(new Error('timed out'));
+  exportVcfMock.mockRejectedValue(new UserFacingError('timed out'));
   renderPage();
 
   const button = await screen.findByRole('button', { name: 'Download VCF' });
@@ -518,7 +519,7 @@ test('opening the custom export picker and completing an export shows a success 
 });
 
 test('surfaces the custom export error message from a thrown Error', async () => {
-  exportCustomMock.mockRejectedValue(new Error('bad selection'));
+  exportCustomMock.mockRejectedValue(new UserFacingError('bad selection'));
   renderPage();
 
   fireEvent.click(await screen.findByRole('button', { name: 'Custom export...' }));
@@ -771,7 +772,7 @@ test('static informational notices are status regions, not alerts, on load', asy
 });
 
 test('a real error is still announced as an alert', async () => {
-  historyMock.mockRejectedValue(new Error('history down'));
+  historyMock.mockRejectedValue(new UserFacingError('history down'));
   renderPage();
 
   expect(await screen.findByRole('alert')).toHaveTextContent('history down');

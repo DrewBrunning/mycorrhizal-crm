@@ -1,3 +1,4 @@
+import { UserFacingError } from '../utils/userFacingError';
 import { API_BASE_URL, apiFetch, getAuthHeaders } from './client';
 import { type ErrorDetails, extractDetailMessage, handleResponse } from './errorHandling';
 
@@ -54,7 +55,7 @@ export interface AccountDeletionCandidate {
 // Thrown when the caller is the only admin and other users exist — deleting
 // alone would strand them with no admin forever, so the caller must name one
 // of `candidates` to promote to admin first (promoteUserId on a retry).
-export class AccountDeletionRequiresPromotionError extends Error {
+export class AccountDeletionRequiresPromotionError extends UserFacingError {
   candidates: AccountDeletionCandidate[];
 
   constructor(message: string, candidates: AccountDeletionCandidate[]) {
@@ -145,5 +146,5 @@ export async function deleteOwnAccount(
   } else if (typeof data === 'string' && data.trim().length > 0) {
     message = data.trim();
   }
-  throw new Error(message);
+  throw new UserFacingError(message);
 }

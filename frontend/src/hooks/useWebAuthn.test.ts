@@ -7,6 +7,7 @@ import {
   registerPasskey,
   removePasskey,
 } from '../api/webauthn';
+import { UserFacingError } from '../utils/userFacingError';
 import { useWebAuthn } from './useWebAuthn';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -40,7 +41,7 @@ test('a failed load keeps the existing list and still stops loading', async () =
   const { result } = renderHook(() => useWebAuthn());
   await waitFor(() => expect(result.current.passkeys).toEqual([key('a')]));
 
-  vi.mocked(listPasskeys).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(listPasskeys).mockRejectedValueOnce(new UserFacingError('offline'));
   await act(async () => {
     await result.current.refresh();
   });
@@ -50,7 +51,7 @@ test('a failed load keeps the existing list and still stops loading', async () =
 });
 
 test('a successful load reports no error, and a retry clears a previous one (issue #1779)', async () => {
-  vi.mocked(listPasskeys).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(listPasskeys).mockRejectedValueOnce(new UserFacingError('offline'));
   const { result } = renderHook(() => useWebAuthn());
   await waitFor(() => expect(result.current.error).toBe('offline'));
 
@@ -64,7 +65,7 @@ test('a successful load reports no error, and a retry clears a previous one (iss
 });
 
 test('a failed first load leaves an empty list and stops loading', async () => {
-  vi.mocked(listPasskeys).mockRejectedValue(new Error('offline'));
+  vi.mocked(listPasskeys).mockRejectedValue(new UserFacingError('offline'));
   const { result } = renderHook(() => useWebAuthn());
   await waitFor(() => expect(result.current.loading).toBe(false));
   expect(result.current.passkeys).toEqual([]);
@@ -89,7 +90,7 @@ test('register forwards the name and proof, reloads the list, and returns the en
 
 test('register propagates a failure without reloading', async () => {
   vi.mocked(listPasskeys).mockResolvedValue([]);
-  vi.mocked(registerPasskey).mockRejectedValue(new Error('cancelled'));
+  vi.mocked(registerPasskey).mockRejectedValue(new UserFacingError('cancelled'));
   const { result } = renderHook(() => useWebAuthn());
   await waitFor(() => expect(result.current.loading).toBe(false));
   vi.mocked(listPasskeys).mockClear();
@@ -113,7 +114,7 @@ test('remove forwards the id and proof, then reloads; failures propagate', async
   expect(removePasskey).toHaveBeenCalledWith('a', proof);
   expect(result.current.passkeys).toEqual([]);
 
-  vi.mocked(removePasskey).mockRejectedValueOnce(new Error('denied'));
+  vi.mocked(removePasskey).mockRejectedValueOnce(new UserFacingError('denied'));
   await act(async () => {
     await expect(result.current.remove('a', proof)).rejects.toThrow('denied');
   });

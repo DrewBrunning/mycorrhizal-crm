@@ -9,6 +9,7 @@ import {
   updateCircle,
 } from '../api/circles';
 import { ApiError } from '../api/client';
+import { UserFacingError } from '../utils/userFacingError';
 import { useCircles } from './useCircles';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -93,7 +94,7 @@ test('refresh replaces circles and members', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(listCircles).mockRejectedValue(new Error('boom'));
+  vi.mocked(listCircles).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useCircles());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -229,7 +230,7 @@ test('handleDelete removes the circle and refreshes the list', async () => {
 
 test('handleDelete rethrows and notifies on failure', async () => {
   vi.mocked(listCircles).mockResolvedValue(emptyListResponse());
-  vi.mocked(deleteCircle).mockRejectedValue(new Error('delete failed'));
+  vi.mocked(deleteCircle).mockRejectedValue(new UserFacingError('delete failed'));
   const notifier = { showError: vi.fn() };
 
   const { result } = renderHook(() => useCircles(notifier));
@@ -278,7 +279,7 @@ test('tolerates a response without circles or members', async () => {
 });
 
 test('a failed load logs its operation, and a refresh clears the error', async () => {
-  vi.mocked(listCircles).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(listCircles).mockRejectedValueOnce(new UserFacingError('offline'));
   const { result } = renderHook(() => useCircles());
   await waitFor(() => expect(result.current.error).toBe('offline'));
   expect(console.error).toHaveBeenCalledWith('[fetching circles] Error:', expect.anything());
@@ -322,9 +323,9 @@ test('circleNamesByUid collects several circles per contact and tracks reloads',
 
 test('create, rename and delete failures log their operation and use the latest notifier', async () => {
   vi.mocked(listCircles).mockResolvedValue(emptyListResponse() as never);
-  vi.mocked(createCircle).mockRejectedValue(new Error('c'));
-  vi.mocked(updateCircle).mockRejectedValue(new Error('u'));
-  vi.mocked(deleteCircle).mockRejectedValue(new Error('d'));
+  vi.mocked(createCircle).mockRejectedValue(new UserFacingError('c'));
+  vi.mocked(updateCircle).mockRejectedValue(new UserFacingError('u'));
+  vi.mocked(deleteCircle).mockRejectedValue(new UserFacingError('d'));
   const first = { showError: vi.fn() };
   const second = { showError: vi.fn() };
   const { result, rerender } = renderHook(({ n }) => useCircles(n), {

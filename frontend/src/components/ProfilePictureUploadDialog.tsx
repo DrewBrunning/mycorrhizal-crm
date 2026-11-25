@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { API_BASE_URL, apiFetch } from '../api/client';
 import type { ImmichPerson } from '../api/immich';
 import { getErrorMessage, handleError } from '../utils/errorHandler';
+import { UserFacingError } from '../utils/userFacingError';
 import AppDialog from './AppDialog';
 import ImmichPhotoPickerDialog from './ImmichPhotoPickerDialog';
 
@@ -159,18 +160,18 @@ export default function ProfilePictureUploadDialog({
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || t('profilePicture.urlFetchError'));
+        throw new UserFacingError(data.error || t('profilePicture.urlFetchError'));
       }
 
       const contentType = response.headers.get('content-type');
       if (!contentType?.startsWith('image/')) {
-        throw new Error(t('profilePicture.invalidFileType'));
+        throw new UserFacingError(t('profilePicture.invalidFileType'));
       }
 
       const blob = await response.blob();
 
       if (blob.size > MAX_FILE_SIZE) {
-        throw new Error(t('profilePicture.fileTooLarge'));
+        throw new UserFacingError(t('profilePicture.fileTooLarge'));
       }
 
       const reader = new FileReader();

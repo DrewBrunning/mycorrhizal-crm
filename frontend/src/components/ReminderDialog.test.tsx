@@ -5,6 +5,7 @@ import type { Reminder } from '../api/reminders';
 import { DateFormatProvider, formatDateWithFormat, getDateFormat } from '../DateFormatProvider';
 import { openDatePicker } from '../testSupport/dateField';
 import { localISODate, todayLocalISODate } from '../utils/localDate';
+import { UserFacingError } from '../utils/userFacingError';
 import ReminderDialog from './ReminderDialog';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -144,7 +145,7 @@ test('changing the recurrence re-schedules the date for a new reminder', async (
 
 test('a failed save surfaces the error and keeps the dialog open', async () => {
   const { onClose } = renderDialog({
-    onSave: vi.fn().mockRejectedValue(new Error('server down')),
+    onSave: vi.fn().mockRejectedValue(new UserFacingError('server down')),
   });
 
   fireEvent.change(screen.getByLabelText('Message *'), { target: { value: 'Water the plants' } });

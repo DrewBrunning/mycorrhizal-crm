@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { startMycorrhizalFetch, uploadMycorrhizalBundle } from '../api/mycorrhizalImport';
 import { cancelSourceImport, getSourceImportStatus } from '../api/sourceImport';
+import { UserFacingError } from '../utils/userFacingError';
 import MycorrhizalImportDialog from './MycorrhizalImportDialog';
 
 afterEach(cleanup);
@@ -128,7 +129,7 @@ test('Cancel after starting does not double-cancel the wizard-owned session', as
 // Issue #2916: a failed best-effort cancel must never stop the dialog closing.
 test('a rejected cancel is swallowed and the dialog still closes', async () => {
   uploadMock.mockResolvedValue({ session_id: 's3', version: 1, totals: bundleTotals() });
-  cancelMock.mockImplementationOnce(() => Promise.reject(new Error('cancel failed')));
+  cancelMock.mockImplementationOnce(() => Promise.reject(new UserFacingError('cancel failed')));
   const onClose = vi.fn();
   render(<MycorrhizalImportDialog open onClose={onClose} onImportComplete={() => {}} />);
   pickFile();
@@ -176,7 +177,7 @@ test('after upload the totals render and the import can start', async () => {
 
 test('a rejected upload shows the error inline and stays on the connect step', async () => {
   uploadMock.mockImplementationOnce(() =>
-    Promise.reject(new Error('Unsupported account bundle version')),
+    Promise.reject(new UserFacingError('Unsupported account bundle version')),
   );
   renderOpen();
   pickFile();

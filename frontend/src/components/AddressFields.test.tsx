@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { ContactAddress } from '../api/contacts';
+import { UserFacingError } from '../utils/userFacingError';
 import AddressFields from './AddressFields';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -285,7 +286,7 @@ test('is disabled while a lookup is in flight', async () => {
 });
 
 test('a failed lookup shows the error and leaves coordinates alone, then clears on retry', async () => {
-  geocodeMock.mockRejectedValueOnce(new Error('the provider could not be reached'));
+  geocodeMock.mockRejectedValueOnce(new UserFacingError('the provider could not be reached'));
   const { last } = renderWithContact([addr({ id: 'a' })]);
   fireEvent.click(findButton());
   expect(await screen.findByRole('alert')).toHaveTextContent('the provider could not be reached');
@@ -298,7 +299,7 @@ test('a failed lookup shows the error and leaves coordinates alone, then clears 
 });
 
 test('a failure with no message falls back to a generic one', async () => {
-  geocodeMock.mockRejectedValueOnce(new Error(''));
+  geocodeMock.mockRejectedValueOnce(new UserFacingError(''));
   renderWithContact([addr({ id: 'a' })]);
   fireEvent.click(findButton());
   expect(await screen.findByRole('alert')).toHaveTextContent(

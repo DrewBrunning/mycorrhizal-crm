@@ -1,3 +1,5 @@
+import { UserFacingError } from '../utils/userFacingError';
+
 // Shared error handling utilities for API responses
 
 export type ErrorDetails = Record<string, unknown> | undefined | null;
@@ -95,5 +97,6 @@ export async function handleResponse(
     message = data.trim();
   }
 
-  throw new Error(message);
+  // A server message (or the caller's fallback) meant for display (#2920).
+  throw new UserFacingError(message);
 }

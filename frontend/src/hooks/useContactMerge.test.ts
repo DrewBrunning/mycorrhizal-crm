@@ -5,6 +5,7 @@ import {
   commitContactMerge,
   previewContactMerge,
 } from '../api/contactMerge';
+import { UserFacingError } from '../utils/userFacingError';
 import { useContactMerge } from './useContactMerge';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -109,7 +110,7 @@ test('loadPreview does not clobber a populated resolution', async () => {
 });
 
 test('loadPreview surfaces the fetch error and clears the preview', async () => {
-  vi.mocked(previewContactMerge).mockRejectedValue(new Error('boom'));
+  vi.mocked(previewContactMerge).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useContactMerge());
   await act(async () => {
@@ -213,7 +214,7 @@ test('commit passes the resolutions through and clears committing afterwards', a
 });
 
 test('commit notifies the notifier and rethrows on failure', async () => {
-  vi.mocked(commitContactMerge).mockRejectedValue(new Error('merge failed'));
+  vi.mocked(commitContactMerge).mockRejectedValue(new UserFacingError('merge failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useContactMerge({ showError }));
@@ -261,7 +262,7 @@ test('starts with no preview, no resolutions, and nothing in flight', () => {
 });
 
 test('loadPreview reports loading while in flight and clears a previous error', async () => {
-  vi.mocked(previewContactMerge).mockRejectedValueOnce(new Error('first'));
+  vi.mocked(previewContactMerge).mockRejectedValueOnce(new UserFacingError('first'));
   const { result } = renderHook(() => useContactMerge());
   await act(async () => {
     await result.current.loadPreview(1, 2);
@@ -300,7 +301,7 @@ test('committing is true while the merge request is in flight, and failures are 
   });
   await waitFor(() => expect(result.current.committing).toBe(false));
 
-  vi.mocked(commitContactMerge).mockRejectedValueOnce(new Error('nope'));
+  vi.mocked(commitContactMerge).mockRejectedValueOnce(new UserFacingError('nope'));
   await act(async () => {
     await expect(result.current.commit(1, 2)).rejects.toThrow('nope');
   });
@@ -308,7 +309,7 @@ test('committing is true while the merge request is in flight, and failures are 
 });
 
 test('commit sends the resolutions chosen after the hook first rendered, and the latest notifier', async () => {
-  vi.mocked(commitContactMerge).mockRejectedValue(new Error('merge failed'));
+  vi.mocked(commitContactMerge).mockRejectedValue(new UserFacingError('merge failed'));
   const first = { showError: vi.fn() };
   const second = { showError: vi.fn() };
   const { result, rerender } = renderHook(({ n }) => useContactMerge(n), {
@@ -327,7 +328,7 @@ test('commit sends the resolutions chosen after the hook first rendered, and the
 });
 
 test('reset clears an error left by a failed preview', async () => {
-  vi.mocked(previewContactMerge).mockRejectedValueOnce(new Error('x'));
+  vi.mocked(previewContactMerge).mockRejectedValueOnce(new UserFacingError('x'));
   const { result } = renderHook(() => useContactMerge());
   await act(async () => {
     await result.current.loadPreview(1, 2);
@@ -344,7 +345,7 @@ test('a failed preview after a successful one clears the stale preview', async (
     await result.current.loadPreview(1, 2);
   });
   expect(result.current.preview).not.toBeNull();
-  vi.mocked(previewContactMerge).mockRejectedValueOnce(new Error('gone'));
+  vi.mocked(previewContactMerge).mockRejectedValueOnce(new UserFacingError('gone'));
   await act(async () => {
     await result.current.loadPreview(1, 3);
   });

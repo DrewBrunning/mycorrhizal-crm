@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { type ContactScoreResponse, getContactScore } from '../api/contactScore';
+import { UserFacingError } from '../utils/userFacingError';
 import { useContactScore } from './useContactScore';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -97,7 +98,7 @@ test('refetches when the contact id changes', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getContactScore).mockRejectedValue(new Error('boom'));
+  vi.mocked(getContactScore).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useContactScore(1));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -121,7 +122,7 @@ test('refreshScore re-fetches on demand', async () => {
 // --- behavior pins (issue #1662) ---
 
 test('a failed load is logged by operation and the next refresh clears the error', async () => {
-  vi.mocked(getContactScore).mockRejectedValueOnce(new Error('down'));
+  vi.mocked(getContactScore).mockRejectedValueOnce(new UserFacingError('down'));
   const { result } = renderHook(() => useContactScore(1));
   await waitFor(() => expect(result.current.error).toBe('down'));
   expect(console.error).toHaveBeenCalledWith(

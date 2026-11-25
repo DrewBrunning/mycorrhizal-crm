@@ -11,6 +11,7 @@ import { useOIDCConfig } from './hooks/useOIDCConfig';
 import i18n from './i18n/config';
 import { initializeTimeFormatFromBackend } from './timeFormat';
 import { getErrorMessageOr } from './utils/errorHandler';
+import { UserFacingError } from './utils/userFacingError';
 
 type RegisterPageProps = {
   setToken?: (token: string | null) => void;
@@ -60,10 +61,10 @@ export default function RegisterPage({ setToken }: RegisterPageProps) {
 
           const combinedMessage = [baseMessage, detailMessages].filter(Boolean).join(': ');
 
-          throw new Error(combinedMessage || t('register.registrationFailed'));
+          throw new UserFacingError(combinedMessage || t('register.registrationFailed'));
         }
 
-        throw new Error(t('register.registrationFailed'));
+        throw new UserFacingError(t('register.registrationFailed'));
       }
       // Issue #1793: registration used to dump the user back on the Login
       // form to retype the credentials they had just chosen. Sign them in

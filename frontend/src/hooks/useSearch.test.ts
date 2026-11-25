@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { type SearchResult, searchAll } from '../api/search';
+import { UserFacingError } from '../utils/userFacingError';
 import { useSearch } from './useSearch';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -69,7 +70,7 @@ test('a two-character query is searched; a shorter one (after trimming) is not',
 });
 
 test('a too-short query also clears an earlier error', async () => {
-  vi.mocked(searchAll).mockRejectedValueOnce(new Error('bad'));
+  vi.mocked(searchAll).mockRejectedValueOnce(new UserFacingError('bad'));
   const { result } = renderHook(() => useSearch());
   await act(async () => {
     await result.current.runSearch('abc');
@@ -82,7 +83,9 @@ test('a too-short query also clears an earlier error', async () => {
 });
 
 test('a failed search sets the error, drops the previous result, logs, and stops loading', async () => {
-  vi.mocked(searchAll).mockResolvedValueOnce(hit).mockRejectedValueOnce(new Error('timeout'));
+  vi.mocked(searchAll)
+    .mockResolvedValueOnce(hit)
+    .mockRejectedValueOnce(new UserFacingError('timeout'));
   const { result } = renderHook(() => useSearch());
   await act(async () => {
     await result.current.runSearch('abc');
@@ -98,7 +101,7 @@ test('a failed search sets the error, drops the previous result, logs, and stops
 });
 
 test('a new search clears the previous error while it is in flight', async () => {
-  vi.mocked(searchAll).mockRejectedValueOnce(new Error('bad'));
+  vi.mocked(searchAll).mockRejectedValueOnce(new UserFacingError('bad'));
   const { result } = renderHook(() => useSearch());
   await act(async () => {
     await result.current.runSearch('abc');

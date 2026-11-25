@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { getSystemEvents, type SystemEvent, type SystemEventsResponse } from '../api/systemEvents';
+import { UserFacingError } from '../utils/userFacingError';
 import { useSystemEvents } from './useSystemEvents';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -66,7 +67,7 @@ test('defaults to an empty list when the response omits system_events', async ()
 });
 
 test('surfaces the fetch error', async () => {
-  vi.mocked(getSystemEvents).mockRejectedValue(new Error('boom'));
+  vi.mocked(getSystemEvents).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useSystemEvents());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -367,7 +368,7 @@ test('clearFilters returns the window to the default limit', async () => {
 });
 
 test('a refetch clears the error while loading, and the failure is logged by operation', async () => {
-  vi.mocked(getSystemEvents).mockRejectedValueOnce(new Error('down'));
+  vi.mocked(getSystemEvents).mockRejectedValueOnce(new UserFacingError('down'));
   const { result } = renderHook(() => useSystemEvents());
   await waitFor(() => expect(result.current.error).toBe('down'));
   expect(console.error).toHaveBeenCalledWith('[fetching system events] Error:', expect.anything());

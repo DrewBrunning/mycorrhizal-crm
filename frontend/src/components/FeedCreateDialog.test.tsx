@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { type Contact, getContacts } from '../api/contacts';
 import { createFeed, type Feed } from '../api/feeds';
+import { UserFacingError } from '../utils/userFacingError';
 import FeedCreateDialog from './FeedCreateDialog';
 
 afterEach(cleanup);
@@ -184,7 +185,7 @@ test('Done closes the dialog', async () => {
 });
 
 test('a create failure shows the error and keeps the form', async () => {
-  vi.mocked(createFeed).mockRejectedValue(new Error('feed limit reached'));
+  vi.mocked(createFeed).mockRejectedValue(new UserFacingError('feed limit reached'));
   const { onCreated } = renderDialog();
   create();
   expect(await screen.findByText('feed limit reached')).toBeInTheDocument();
@@ -200,7 +201,7 @@ test('Cancel closes without creating', () => {
 });
 
 test('a contact-search failure leaves the picker empty instead of throwing', async () => {
-  vi.mocked(getContacts).mockRejectedValue(new Error('down'));
+  vi.mocked(getContacts).mockRejectedValue(new UserFacingError('down'));
   renderDialog();
   fireEvent.click(screen.getByRole('radio', { name: 'One contact' }));
   fireEvent.mouseDown(await screen.findByLabelText(/^Contact/));

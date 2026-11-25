@@ -10,6 +10,7 @@ import {
   updateCalendarSubscription,
 } from '../api/calendars';
 import { formatLocalDate } from '../timeFormat';
+import { UserFacingError } from '../utils/userFacingError';
 import CalendarSyncSettings from './CalendarSyncSettings';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -173,7 +174,9 @@ test('manual sync reports the result and reloads the list', async () => {
 
 test('a sync failure surfaces the error instead of throwing', async () => {
   vi.mocked(getCalendarSubscriptions).mockResolvedValue([calendar({ id: 2, name: 'Broken Cal' })]);
-  vi.mocked(syncCalendarSubscription).mockRejectedValue(new Error('calendar unreachable'));
+  vi.mocked(syncCalendarSubscription).mockRejectedValue(
+    new UserFacingError('calendar unreachable'),
+  );
 
   render(<CalendarSyncSettings />);
   await waitFor(() => expect(screen.getByText('Broken Cal')).toBeInTheDocument());

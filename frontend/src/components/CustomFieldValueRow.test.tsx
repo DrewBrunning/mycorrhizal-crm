@@ -4,6 +4,7 @@ import '../i18n/config';
 import type { FieldDefinition } from '../api/fieldDefinitions';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import { UserFacingError } from '../utils/userFacingError';
 import CustomFieldValueRow from './CustomFieldValueRow';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -108,7 +109,7 @@ test('clearing the value to empty saves null (remove signal)', async () => {
 });
 
 test('a save failure surfaces the error via the snackbar and keeps edit mode open', async () => {
-  const onSave = vi.fn().mockRejectedValue(new Error('Network down'));
+  const onSave = vi.fn().mockRejectedValue(new UserFacingError('Network down'));
   renderRow({ value: 'Teal', onSave });
 
   fireEvent.click(screen.getByLabelText(/^Edit\b/));

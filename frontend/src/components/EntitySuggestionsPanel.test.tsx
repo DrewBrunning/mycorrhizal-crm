@@ -9,6 +9,7 @@ import {
 } from '../api/entities';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import { UserFacingError } from '../utils/userFacingError';
 import EntitySuggestionsPanel from './EntitySuggestionsPanel';
 
 vi.mock('../api/entities', async (importOriginal) => {
@@ -81,7 +82,7 @@ test('nothing is listed before the user asks, and the scan button is disabled wh
 });
 
 test('a failed scan shows the error and no result list', async () => {
-  listMock.mockRejectedValue(new Error('scan broke'));
+  listMock.mockRejectedValue(new UserFacingError('scan broke'));
   renderPanel();
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('scan broke');
@@ -109,7 +110,7 @@ test('a failed dismiss shows the error and keeps the pair; a successful one remo
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
   await screen.findByText('Acme and Acme Ltd');
 
-  dismissMock.mockRejectedValueOnce(new Error('dismiss broke'));
+  dismissMock.mockRejectedValueOnce(new UserFacingError('dismiss broke'));
   fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate: Acme and Acme Ltd' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('dismiss broke');
   expect(screen.getByText('Acme and Acme Ltd')).toBeInTheDocument();
@@ -166,7 +167,7 @@ test('merge is offered the pair with both counts so the dialog need not re-fetch
 });
 
 test('a scan that fails without a message falls back to the generic failure text (#2743)', async () => {
-  listMock.mockRejectedValue(new Error(''));
+  listMock.mockRejectedValue(new UserFacingError(''));
   renderPanel();
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
   expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't look for duplicates.");

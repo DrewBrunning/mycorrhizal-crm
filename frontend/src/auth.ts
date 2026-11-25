@@ -6,6 +6,7 @@
 import { localizeReason } from './i18n/reason';
 import { initializeTimeFormatFromBackend } from './timeFormat';
 import { clearAllSessionDrafts } from './utils/sessionDraftStorage';
+import { UserFacingError } from './utils/userFacingError';
 import { getAssertion, type WireRequestOptions } from './webauthnCeremony';
 
 // `?.` (not just `||`) because this module is also loaded directly by Node in
@@ -55,7 +56,7 @@ export async function loginUser(identifier: string, password: string): Promise<L
     body: JSON.stringify({ identifier, password }),
   });
   if (!response.ok) {
-    throw new Error(await signInErrorMessage(response, 'Login failed'));
+    throw new UserFacingError(await signInErrorMessage(response, 'Login failed'));
   }
   const data = await response.json();
 
@@ -95,7 +96,7 @@ export async function login2FA(code: string): Promise<LoginResponse> {
     // body carries the retry_after, so surface that instead of a generic
     // "Invalid code" that would make a locked-out user keep guessing. Any
     // other failure shows its localized reason code (issue #2101).
-    throw new Error(
+    throw new UserFacingError(
       await signInErrorMessage(
         response,
         response.status === 429
@@ -125,7 +126,7 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
     credentials: 'include',
   });
   if (!begin.ok) {
-    throw new Error(await signInErrorMessage(begin, 'Unable to start passkey sign-in.'));
+    throw new UserFacingError(await signInErrorMessage(begin, 'Unable to start passkey sign-in.'));
   }
   const assertion = await getAssertion(await begin.json());
 
@@ -136,7 +137,7 @@ export async function loginWithPasskey(): Promise<LoginResponse> {
     body: JSON.stringify(assertion),
   });
   if (!finish.ok) {
-    throw new Error(await signInErrorMessage(finish, 'Passkey could not be verified.'));
+    throw new UserFacingError(await signInErrorMessage(finish, 'Passkey could not be verified.'));
   }
   const data = await finish.json();
 
@@ -159,11 +160,11 @@ export async function loginWithPasskeyPasswordless(): Promise<LoginResponse> {
     credentials: 'include',
   });
   if (!begin.ok) {
-    throw new Error(await signInErrorMessage(begin, 'Unable to start passkey sign-in.'));
+    throw new UserFacingError(await signInErrorMessage(begin, 'Unable to start passkey sign-in.'));
   }
   const options = (await begin.json()) as WireRequestOptions & { ceremony_token?: unknown };
   if (typeof options.ceremony_token !== 'string' || options.ceremony_token === '') {
-    throw new Error('Unable to start passkey sign-in.');
+    throw new UserFacingError('Unable to start passkey sign-in.');
   }
   const assertion = await getAssertion(options);
 
@@ -174,7 +175,7 @@ export async function loginWithPasskeyPasswordless(): Promise<LoginResponse> {
     body: JSON.stringify({ ceremony_token: options.ceremony_token, assertion }),
   });
   if (!finish.ok) {
-    throw new Error(await signInErrorMessage(finish, 'Passkey could not be verified.'));
+    throw new UserFacingError(await signInErrorMessage(finish, 'Passkey could not be verified.'));
   }
   const data = await finish.json();
 

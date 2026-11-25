@@ -7,6 +7,7 @@ import {
   type TimelineItem,
   type TimelineResponse,
 } from '../api/timeline';
+import { UserFacingError } from '../utils/userFacingError';
 import { useTimeline } from './useTimeline';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -223,7 +224,7 @@ test('refresh tolerates a response with no items or cursor', async () => {
 });
 
 test('a failed refresh reports the error and logs the operation; the next refresh clears it', async () => {
-  vi.mocked(getTimeline).mockRejectedValueOnce(new Error('down'));
+  vi.mocked(getTimeline).mockRejectedValueOnce(new UserFacingError('down'));
   const { result } = renderHook(() => useTimeline(5));
   await act(async () => {
     await result.current.refresh();
@@ -353,7 +354,7 @@ test('loadMore tolerates an empty page, reports failures, and clears the error n
   await act(async () => {
     await result.current.refresh();
   });
-  vi.mocked(getTimeline).mockRejectedValueOnce(new Error('nope'));
+  vi.mocked(getTimeline).mockRejectedValueOnce(new UserFacingError('nope'));
   await act(async () => {
     await result.current.loadMore();
   });
@@ -462,7 +463,7 @@ test('switching contacts clears a lingering error, cursor, and load-more spinner
   await waitFor(() => expect(result.current.loadingMore).toBe(false));
   expect(result.current.nextCursor).toBe('');
 
-  vi.mocked(getTimeline).mockRejectedValueOnce(new Error('bad'));
+  vi.mocked(getTimeline).mockRejectedValueOnce(new UserFacingError('bad'));
   await act(async () => {
     await result.current.refresh();
   });
