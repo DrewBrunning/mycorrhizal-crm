@@ -54,7 +54,6 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Android event and GeoPulse dates can be typed and follow your date format** ([#2947](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2947)): the Starts and Ends fields when creating an event, and the date on GeoPulse suggestions, now use the same date field as activities, so you can type a date and the calendar shows it in your format.
 - **Android "System default" language now sticks** ([#2937](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2937)): choosing System default for the app's language in Android settings, or the new "Use system default" entry in Settings → Appearance → Language, makes the app follow the device language, and the Language row shows the language actually in use.
 - **Android shows saved contacts in the same order as online** ([#2940](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2940)): when the server can't be reached, the saved contact list is grouped A to Z by last name (else first name), with each letter appearing once.
 - **Shared contact anniversaries on the web** ([#2908](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2908)): a shared contact card now reads "Birthday: 28.11.1985" in your language and date format instead of "birth: 1985-11-28".
