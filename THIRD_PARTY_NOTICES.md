@@ -138,8 +138,8 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `@mapbox/tiny-sdf` | `2.3.0` | BSD-2-Clause | https://github.com/mapbox/tiny-sdf |
 | `@mapbox/unitbezier` | `1.0.0` | BSD-2-Clause | https://github.com/mapbox/unitbezier |
 | `@mapbox/vector-tile` | `3.0.0` | BSD-3-Clause | https://github.com/mapbox/vector-tile-js |
-| `@maplibre/geojson-vt` | `6.3.0` | ISC | https://github.com/maplibre/geojson-vt |
-| `@maplibre/maplibre-gl-style-spec` | `26.8.0` | ISC | https://github.com/maplibre/maplibre-style-spec |
+| `@maplibre/geojson-vt` | `6.3.3` | ISC | https://github.com/maplibre/geojson-vt |
+| `@maplibre/maplibre-gl-style-spec` | `26.9.0` | ISC | https://github.com/maplibre/maplibre-style-spec |
 | `@maplibre/mlt` | `1.3.0` | (MIT OR Apache-2.0) | https://github.com/maplibre/maplibre-tile-spec |
 | `@maplibre/vt-pbf` | `4.3.3` | MIT | https://github.com/maplibre/vt-pbf |
 | `@mdi/js` | `7.4.47` | Apache-2.0 | https://github.com/Templarian/MaterialDesign-JS |
@@ -207,8 +207,8 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `hasown` | `2.0.4` | MIT | https://github.com/inspect-js/hasOwn |
 | `hoist-non-react-statics` | `3.3.2` | BSD-3-Clause | https://github.com/mridgway/hoist-non-react-statics |
 | `html-parse-stringify` | `4.0.1` | MIT | https://github.com/i18next/html-parse-stringify |
-| `i18next` | `27.1.1` | MIT | https://github.com/i18next/i18next |
-| `i18next-browser-languagedetector` | `8.3.0` | MIT | https://github.com/i18next/i18next-browser-languageDetector |
+| `i18next` | `27.1.5` | MIT | https://github.com/i18next/i18next |
+| `i18next-browser-languagedetector` | `8.3.1` | MIT | https://github.com/i18next/i18next-browser-languageDetector |
 | `idb` | `7.1.1` | ISC | https://github.com/jakearchibald/idb |
 | `import-fresh` | `3.3.1` | MIT | https://github.com/sindresorhus/import-fresh |
 | `index-array-by` | `1.4.2` | MIT | https://github.com/vasturiano/index-array-by |
@@ -225,7 +225,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `lines-and-columns` | `1.2.4` | MIT | https://github.com/eventualbuddha/lines-and-columns |
 | `lodash-es` | `4.18.1` | MIT | https://github.com/lodash/lodash |
 | `loose-envify` | `1.4.0` | MIT | https://github.com/zertosh/loose-envify |
-| `maplibre-gl` | `6.18.0` | BSD-3-Clause | https://github.com/maplibre/maplibre-gl-js |
+| `maplibre-gl` | `6.19.0` | BSD-3-Clause | https://github.com/maplibre/maplibre-gl-js |
 | `minimist` | `1.2.8` | MIT | https://github.com/minimistjs/minimist |
 | `ms` | `2.1.3` | MIT | https://github.com/vercel/ms |
 | `murmurhash-js` | `1.0.0` | MIT | https://github.com/mikolalysenko/murmurhash-js |
@@ -247,11 +247,11 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `react-dom` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-easy-crop` | `6.2.5` | MIT | https://github.com/ValentinH/react-easy-crop |
 | `react-force-graph-2d` | `1.29.2` | MIT | https://github.com/vasturiano/react-force-graph |
-| `react-i18next` | `18.0.1` | MIT | https://github.com/i18next/react-i18next |
+| `react-i18next` | `18.0.2` | MIT | https://github.com/i18next/react-i18next |
 | `react-is` | `16.13.1` | MIT | https://github.com/facebook/react |
 | `react-is` | `19.3.1` | MIT | https://github.com/react/react |
 | `react-kapsule` | `2.6.0` | MIT | https://github.com/vasturiano/react-kapsule |
-| `react-router` | `8.5.1` | MIT | https://github.com/remix-run/react-router |
+| `react-router` | `8.5.2` | MIT | https://github.com/remix-run/react-router |
 | `react-transition-group` | `4.4.5` | BSD-3-Clause | https://github.com/reactjs/react-transition-group |
 | `require-from-string` | `2.0.2` | MIT | https://github.com/floatdrop/require-from-string |
 | `resolve` | `1.22.12` | MIT | https://github.com/browserify/resolve |
@@ -271,6 +271,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `workbox-routing` | `7.4.1` | MIT | https://github.com/googlechrome/workbox |
 | `workbox-strategies` | `7.4.1` | MIT | https://github.com/googlechrome/workbox |
 | `yaml` | `1.10.3` | ISC | https://github.com/eemeli/yaml |
+| `zustand` | `5.1.0` | MIT | https://github.com/pmndrs/zustand |
 
 ## License texts
 
@@ -8844,4 +8845,34 @@ INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
 OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
 TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
 THIS SOFTWARE.
+```
+
+---
+
+### 156. MIT
+
+Applies to: `zustand`
+
+```text
+MIT License
+
+Copyright (c) 2019 Paul Henschel
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
