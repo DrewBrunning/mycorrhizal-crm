@@ -151,3 +151,38 @@ test('edit and delete buttons name the obligation they act on', () => {
   expect(screen.getByRole('button', { name: 'Edit Christmas card' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Delete Christmas card' })).toBeInTheDocument();
 });
+
+test('marks a private or secret obligation, and leaves a normal one unmarked', () => {
+  render(
+    <OccasionObligationList
+      obligations={[
+        { ...baseObligation, id: 'o1', label: 'Normal card' },
+        { ...baseObligation, id: 'o2', label: 'Private card', sensitivity: 'private' },
+        { ...baseObligation, id: 'o3', label: 'Secret card', sensitivity: 'secret' },
+      ]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  expect(screen.getByText('Private')).toBeInTheDocument();
+  expect(screen.getByText('Secret')).toBeInTheDocument();
+  expect(screen.queryByText('Normal')).not.toBeInTheDocument();
+});
+
+test('shows an obligation’s notes, and nothing extra when it has none', () => {
+  render(
+    <OccasionObligationList
+      obligations={[
+        { ...baseObligation, id: 'o1', notes: 'Use the\nfancy stamps' },
+        { ...baseObligation, id: 'o2', label: 'No-notes card' },
+      ]}
+      onEdit={vi.fn()}
+      onDelete={vi.fn()}
+    />,
+  );
+  // Multi-line notes keep their line break.
+  expect(
+    screen.getByText((_, el) => el?.textContent === 'Use the\nfancy stamps'),
+  ).toBeInTheDocument();
+  expect(screen.getAllByText(/fancy stamps/)).toHaveLength(1);
+});

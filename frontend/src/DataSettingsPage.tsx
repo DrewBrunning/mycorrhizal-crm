@@ -96,7 +96,9 @@ export default function DataSettingsPage() {
       setImportHistoryError('');
     } catch (error) {
       setImportHistoryError(
-        error instanceof Error ? error.message : t('settings.data.import.history.loadError'),
+        error instanceof Error
+          ? getErrorMessage(error)
+          : t('settings.data.import.history.loadError'),
       );
     }
   }, [t]);
@@ -117,7 +119,9 @@ export default function DataSettingsPage() {
       setReportIssues(detail.issues ?? []);
     } catch (error) {
       setReportError(
-        error instanceof Error ? error.message : t('settings.data.import.history.reportLoadError'),
+        error instanceof Error
+          ? getErrorMessage(error)
+          : t('settings.data.import.history.reportLoadError'),
       );
     } finally {
       setReportLoading(false);
@@ -189,7 +193,8 @@ export default function DataSettingsPage() {
       await exportDataAsCsv();
       setExportSuccess(t('settings.export.success'));
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : t('settings.export.error');
+      const errorMessage =
+        error instanceof Error ? getErrorMessage(error) : t('settings.export.error');
       setExportError(errorMessage);
     } finally {
       setExporting(false);
@@ -227,7 +232,8 @@ export default function DataSettingsPage() {
       await exportContactsAsVcf();
       setExportVcfSuccess(t('settings.exportVcf.success'));
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : t('settings.exportVcf.error');
+      const errorMessage =
+        error instanceof Error ? getErrorMessage(error) : t('settings.exportVcf.error');
       setExportVcfError(errorMessage);
     } finally {
       setExportingVcf(false);
@@ -243,7 +249,9 @@ export default function DataSettingsPage() {
       setCustomExportSuccess(t('settings.exportFieldPicker.success'));
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : t('settings.exportFieldPicker.exportError');
+        error instanceof Error
+          ? getErrorMessage(error)
+          : t('settings.exportFieldPicker.exportError');
       setCustomExportError(errorMessage);
     } finally {
       setCustomExporting(false);

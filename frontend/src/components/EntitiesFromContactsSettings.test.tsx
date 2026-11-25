@@ -225,6 +225,70 @@ test('a group matching an existing entity offers to link to it, not create it', 
       },
     ],
   });
+  // The server returns the linked group under `created`, but nothing was
+  // created: the result must say it was linked.
+  expect(
+    await within(dialog).findByText('Linked 1 group to an existing organisation.'),
+  ).toBeInTheDocument();
+  expect(within(dialog).queryByText(/^Created/)).toBeNull();
+});
+
+// Issue #2919 follow-up: a mixed run reports created and linked groups
+// separately, for organisations and places alike.
+test.each([
+  {
+    tab: undefined,
+    expected: 'Created 1 organisation. Linked 1 group to an existing organisation.',
+  },
+  {
+    tab: 'Places',
+    expected: 'Created 1 place. Linked 1 group to an existing place.',
+  },
+])('a mixed run reports created and linked groups apart ($expected)', async ({ tab, expected }) => {
+  const kind = tab ? 'place' : 'organisation';
+  const groups = [
+    group({
+      key: 'green',
+      kind,
+      name: 'Green Acres',
+      variants: ['Green Acres'],
+      existing_entity_id: 'e-green',
+      existing_entity_name: 'Green Acres',
+    }),
+    group({ key: 'globex', kind, name: 'Globex', variants: ['Globex'] }),
+  ];
+  suggestMock.mockResolvedValue(page(groups));
+  createMock.mockResolvedValue({
+    created: [
+      {
+        key: 'green',
+        entity: { id: 'e-green', name: 'Green Acres' } as never,
+        links: [],
+      },
+      {
+        key: 'globex',
+        entity: { id: 'e-new', name: 'Globex' } as never,
+        links: [],
+      },
+    ],
+    skipped: [],
+  });
+  renderCard();
+  const dialog = await openWizard();
+  if (tab) fireEvent.click(within(dialog).getByRole('tab', { name: tab }));
+  await within(dialog).findByText('Green Acres — 2 contacts');
+  fireEvent.click(
+    within(dialog).getByRole('checkbox', {
+      name: 'Link to existing Green Acres',
+    }),
+  );
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Include Globex' }));
+  fireEvent.click(
+    within(dialog).getByRole('button', {
+      name: 'Create new groups and link existing ones',
+    }),
+  );
+  expect(await within(dialog).findByText(expected)).toBeInTheDocument();
 });
 
 // Issue #2919: the action copy distinguishes creating, linking and a mixed

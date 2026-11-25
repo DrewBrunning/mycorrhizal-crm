@@ -202,3 +202,30 @@ test('changing contact clears the previous score before the new request settles'
   });
   expect(result.current.score?.contact_id).toBe(2);
 });
+
+test('a stale failure for the previous contact cannot put an error on the current one', async () => {
+  let failOld!: (e: Error) => void;
+  const oldRequest = new Promise<ContactScoreResponse>((_, reject) => {
+    failOld = reject;
+  });
+  vi.mocked(getContactScore)
+    .mockReturnValueOnce(oldRequest)
+    .mockResolvedValueOnce({ ...score, contact_id: 2 });
+
+  const { result, rerender } = renderHook(({ id }) => useContactScore(id), {
+    initialProps: { id: 1 },
+  });
+  await waitFor(() => expect(getContactScore).toHaveBeenCalledWith(1));
+
+  rerender({ id: 2 });
+  await waitFor(() => expect(result.current.score?.contact_id).toBe(2));
+
+  await act(async () => {
+    failOld(new Error('contact 1 failed'));
+    await oldRequest.catch(() => undefined);
+  });
+
+  expect(result.current.error).toBeNull();
+  expect(result.current.score?.contact_id).toBe(2);
+  expect(result.current.loading).toBe(false);
+});

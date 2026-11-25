@@ -10,7 +10,9 @@ test('renders nothing when there are no issues', () => {
   expect(container).toBeEmptyDOMElement();
 });
 
-test('labels skipped and failed rows and falls back to a dash for a missing name', () => {
+// #2950: import history never stores an email or phone (#2563), so a nameless row's stored name
+// is blank; the table says so in words rather than showing a bare dash.
+test('labels skipped and failed rows and says the name was not kept when it is missing', () => {
   render(
     <ImportIssuesReport
       issues={[
@@ -21,8 +23,23 @@ test('labels skipped and failed rows and falls back to a dash for a missing name
   );
   expect(screen.getByText('Skipped')).toBeInTheDocument();
   expect(screen.getByText('Failed')).toBeInTheDocument();
-  expect(screen.getByText('—')).toBeInTheDocument();
+  expect(screen.getByText('Name not kept')).toBeInTheDocument();
+  expect(screen.queryByText('—')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Download as CSV' })).toBeInTheDocument();
+});
+
+test('the not-kept name label follows the language', async () => {
+  await i18n.changeLanguage('de');
+  try {
+    render(
+      <ImportIssuesReport
+        issues={[{ row: 5, name: '', email: '', phone: '', status: 'failed', reason: 'bad email' }]}
+      />,
+    );
+    expect(screen.getByText('Name nicht gespeichert')).toBeInTheDocument();
+  } finally {
+    await i18n.changeLanguage('en');
+  }
 });
 
 // --- #2741: the 'warning' status ----------------------------------------------

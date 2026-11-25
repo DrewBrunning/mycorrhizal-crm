@@ -74,7 +74,9 @@ private fun sectionLines(
 
     "anniversaries" -> entries(card["anniversaries"]).mapNotNull { a ->
         partialDate(a["date"])?.let { (y, m, d) ->
-            "${text(a["kind"])?.let(kindLabel) ?: "date"}: ${formatDate(y, m, d)}"
+            // #2626: no kind means no prefix, not an untranslated English placeholder.
+            val date = formatDate(y, m, d)
+            text(a["kind"])?.let { "${kindLabel(it)}: $date" } ?: date
         }
     }
 
@@ -100,7 +102,9 @@ private fun sectionLines(
     "related_to" -> entries(card["relatedTo"]).flatMap { keys(it["relation"]) }
 
     "personal_info" -> entries(card["personalInfo"]).mapNotNull { p ->
-        text(p["value"])?.let { "${text(p["kind"])?.let(kindLabel) ?: "info"}: $it" }
+        text(p["value"])?.let { value ->
+            text(p["kind"])?.let { "${kindLabel(it)}: $value" } ?: value
+        }
     }
 
     "speak_to_as" -> (card["speakToAs"] as? Map<*, *>)

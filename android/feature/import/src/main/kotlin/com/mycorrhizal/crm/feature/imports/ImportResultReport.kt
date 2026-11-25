@@ -113,7 +113,9 @@ private fun IssueRow(issue: ImportRowIssue) {
             text = stringResource(
                 R.string.import_report_row,
                 issue.row,
-                issue.name.ifBlank { "—" }
+                // #2950: history never stores an email or phone (#2563), so a nameless row's
+                // stored name is blank; say so instead of showing a bare dash.
+                issue.name.ifBlank { stringResource(R.string.import_report_no_name) }
             ),
             style = MaterialTheme.typography.bodyMedium
         )
