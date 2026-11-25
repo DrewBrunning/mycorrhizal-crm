@@ -1329,10 +1329,10 @@
       "branchesTotal": 128
     },
     "src/components/MonicaImportDialog.tsx": {
-      "lines": 96.61,
-      "linesTotal": 59,
-      "branches": 94.44,
-      "branchesTotal": 36
+      "lines": 96.96,
+      "linesTotal": 66,
+      "branches": 95.23,
+      "branchesTotal": 42
     },
     "src/components/MultiValueField.tsx": {
       "lines": 96.55,
@@ -1341,10 +1341,10 @@
       "branchesTotal": 42
     },
     "src/components/MycorrhizalImportDialog.tsx": {
-      "lines": 92.3,
-      "linesTotal": 39,
-      "branches": 90,
-      "branchesTotal": 20
+      "lines": 93.47,
+      "linesTotal": 46,
+      "branches": 92.3,
+      "branchesTotal": 26
     },
     "src/components/NetworkGraph.tsx": {
       "lines": 79.19,

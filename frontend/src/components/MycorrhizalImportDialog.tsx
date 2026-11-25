@@ -1,5 +1,5 @@
 import { Alert, Box, Button, CircularProgress, Stack, Typography } from '@mui/material';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   cancelMycorrhizalImport,
@@ -31,6 +31,10 @@ export default function MycorrhizalImportDialog({ open, onClose, onImportComplet
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [upload, setUpload] = useState<MycorrhizalUploadResponse | null>(null);
+  // Bumped on close. Cancel stays enabled during an upload, so an upload that
+  // resolves after the dialog closed belongs to a dead attempt: its session is
+  // released and its result dropped (issue #2916).
+  const attempt = useRef(0);
 
   const startFetch = useCallback((sessionId: string) => startMycorrhizalFetch(sessionId), []);
   const wizard = useSourceImportWizard({ basePath: MYCORRHIZAL_IMPORT_BASE, startFetch });
@@ -43,6 +47,7 @@ export default function MycorrhizalImportDialog({ open, onClose, onImportComplet
   }, []);
 
   const handleClose = useCallback(() => {
+    attempt.current += 1;
     // A session the wizard never received (Start not pressed) is invisible to
     // wizard.cancel(), which would leave it -- and its server-side slot --
     // open until it expires (issue #2916, mirroring MeerkatImportDialog).
@@ -59,17 +64,23 @@ export default function MycorrhizalImportDialog({ open, onClose, onImportComplet
   }, [onImportComplete, resetLocal]);
 
   const handleFile = async (file: File) => {
+    const mine = attempt.current;
     setFileName(file.name);
     setUploading(true);
     setUploadError(null);
     try {
       const resp = await uploadMycorrhizalBundle(file);
+      if (attempt.current !== mine) {
+        void cancelMycorrhizalImport(resp.session_id).catch(() => undefined);
+        return;
+      }
       setUpload(resp);
     } catch (err) {
+      if (attempt.current !== mine) return;
       setUploadError(getErrorMessage(err));
       setFileName('');
     } finally {
-      setUploading(false);
+      if (attempt.current === mine) setUploading(false);
     }
   };
 

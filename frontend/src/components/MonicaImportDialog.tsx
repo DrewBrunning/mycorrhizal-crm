@@ -82,6 +82,10 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState<ConnectError | null>(null);
   const [connectResp, setConnectResp] = useState<MonicaConnectResponse | null>(null);
+  // Bumped on close. Cancel stays enabled during Connect, so a connect that
+  // resolves after the dialog closed belongs to a dead attempt: its session is
+  // released and its result dropped (issue #2916).
+  const attempt = useRef(0);
 
   // beginFetch runs after connect, so the wizard's startFetch reads the
   // options through a ref rather than a stale closure.
@@ -110,6 +114,7 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
   }, []);
 
   const handleClose = useCallback(() => {
+    attempt.current += 1;
     // A session the wizard never received (Start not pressed) is invisible to
     // wizard.cancel(), which would leave it open on the server until it
     // expires (issue #2916, mirroring MeerkatImportDialog).
@@ -126,17 +131,23 @@ export default function MonicaImportDialog({ open, onClose, onImportComplete }: 
   }, [onImportComplete, resetLocal]);
 
   const handleConnect = async () => {
+    const mine = attempt.current;
     setConnecting(true);
     setConnectError(null);
     try {
       const resp = await connectMonica(baseUrl.trim(), apiToken);
+      if (attempt.current !== mine) {
+        void cancelMonicaImport(resp.session_id).catch(() => undefined);
+        return;
+      }
       setConnectResp(resp);
       // The token has done its job client-side; the server holds it now.
       setApiToken('');
     } catch (err) {
+      if (attempt.current !== mine) return;
       setConnectError(describeConnectError(err, baseUrl.trim(), t));
     } finally {
-      setConnecting(false);
+      if (attempt.current === mine) setConnecting(false);
     }
   };
 
