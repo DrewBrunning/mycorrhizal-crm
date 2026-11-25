@@ -175,6 +175,138 @@ test('terminal notice shows a recent success as a date rather than "0 days ago"'
   ).toBeInTheDocument();
 });
 
+// Issue #2917: a network failure must not surface the browser's raw
+// "Failed to fetch"; the shared getErrorMessage() names the condition.
+const NETWORK_ERROR = "Couldn't reach the server. Check your connection and try again.";
+
+function expectNetworkError() {
+  return waitFor(() => expect(screen.getByText(NETWORK_ERROR)).toBeInTheDocument());
+}
+
+function expectNoRawFetchMessage() {
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+}
+
+test('a load network failure shows the localized network message', async () => {
+  vi.mocked(getContactSubscriptions).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<ContactSyncSettings />);
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+test('a save network failure shows the localized network message', async () => {
+  vi.mocked(getContactSubscriptions).mockResolvedValue([]);
+  vi.mocked(createContactSubscription).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<ContactSyncSettings />);
+  await waitFor(() =>
+    expect(screen.getByText('No address books connected yet.')).toBeInTheDocument(),
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: /add address book/i }));
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Family' } });
+  fireEvent.change(screen.getByLabelText(/address book url/i), {
+    target: { value: 'https://dav.example.com/ab/family/' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+test('a delete network failure shows the localized network message', async () => {
+  vi.mocked(getContactSubscriptions).mockResolvedValue([sub({ id: 3, name: 'To Delete' })]);
+  vi.mocked(deleteContactSubscription).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<ContactSyncSettings />);
+  await waitFor(() => expect(screen.getByText('To Delete')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete To Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+test('a sync network failure shows the localized network message', async () => {
+  vi.mocked(getContactSubscriptions).mockResolvedValue([sub({ id: 2, name: 'Broken' })]);
+  vi.mocked(syncContactSubscription).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<ContactSyncSettings />);
+  await waitFor(() => expect(screen.getByText('Broken')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /sync now/i }));
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+// Issue #2917: each catch site keeps its localized fallback for a non-Error
+// throwable, so both arms of `err instanceof Error ? ... : t(...)` are covered.
+test('a non-Error load rejection still shows the localized fallback message', async () => {
+  vi.mocked(getContactSubscriptions).mockRejectedValue('offline');
+
+  render(<ContactSyncSettings />);
+
+  await waitFor(() =>
+    expect(screen.getByText('Failed to load contact subscriptions.')).toBeInTheDocument(),
+  );
+});
+
+test('a non-Error save rejection still shows the localized fallback message', async () => {
+  vi.mocked(getContactSubscriptions).mockResolvedValue([]);
+  vi.mocked(createContactSubscription).mockRejectedValue('offline');
+
+  render(<ContactSyncSettings />);
+  await waitFor(() =>
+    expect(screen.getByText('No address books connected yet.')).toBeInTheDocument(),
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: /add address book/i }));
+  fireEvent.change(screen.getByLabelText('Name *'), { target: { value: 'Family' } });
+  fireEvent.change(screen.getByLabelText(/address book url/i), {
+    target: { value: 'https://dav.example.com/ab/family/' },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+  await waitFor(() =>
+    expect(screen.getByText('Failed to save the contact subscription.')).toBeInTheDocument(),
+  );
+});
+
+test('a non-Error delete rejection still shows the localized fallback message', async () => {
+  vi.mocked(getContactSubscriptions).mockResolvedValue([sub({ id: 3, name: 'To Delete' })]);
+  vi.mocked(deleteContactSubscription).mockRejectedValue('offline');
+
+  render(<ContactSyncSettings />);
+  await waitFor(() => expect(screen.getByText('To Delete')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete To Delete' }));
+  fireEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+
+  await waitFor(() =>
+    expect(screen.getByText('Failed to delete the contact subscription.')).toBeInTheDocument(),
+  );
+});
+
+test('a non-Error sync rejection still shows the localized fallback message', async () => {
+  vi.mocked(getContactSubscriptions).mockResolvedValue([sub({ id: 2, name: 'Broken' })]);
+  vi.mocked(syncContactSubscription).mockRejectedValue('offline');
+
+  render(<ContactSyncSettings />);
+  await waitFor(() => expect(screen.getByText('Broken')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByRole('button', { name: /sync now/i }));
+
+  await waitFor(() =>
+    expect(
+      screen.getByText('Contact sync failed. Please check the URL and credentials.'),
+    ).toBeInTheDocument(),
+  );
+});
+
 test('a never-succeeded terminal subscription says so', async () => {
   vi.mocked(getContactSubscriptions).mockResolvedValue([
     sub({

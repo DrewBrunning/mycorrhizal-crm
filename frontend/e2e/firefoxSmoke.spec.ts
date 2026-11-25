@@ -1,5 +1,7 @@
 import * as fs from 'node:fs';
 import {
+  assertNoBlockingA11yViolations,
+  assertNoRepeatedAccessibleNames,
   createTestContact,
   deleteTestContact,
   expect,
@@ -161,5 +163,26 @@ test.describe('Firefox smoke (issue #1479)', () => {
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
+  });
+
+  // Issue #2920 item 5: the shared gate's heading-order and repeated-name
+  // checks must run on this engine too, not only Chromium. One test per rule so
+  // a failure in one does not hide the other; both scan only the dialog
+  // subtree, leaving the rest of the smoke run unchanged.
+  test('the import dialog passes the heading-order check (#2910)', async ({ page }) => {
+    await page.goto('/contacts');
+    await page.getByRole('button', { name: /import/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await assertNoBlockingA11yViolations(page, '[role="dialog"]');
+  });
+
+  test('the add-contact dialog names its repeated actions (#2911)', async ({ page }) => {
+    await page.goto('/contacts');
+    await page.getByRole('button', { name: /add/i }).first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await assertNoBlockingA11yViolations(page, '[role="dialog"]');
+    await assertNoRepeatedAccessibleNames(page, '[role="dialog"]');
   });
 });

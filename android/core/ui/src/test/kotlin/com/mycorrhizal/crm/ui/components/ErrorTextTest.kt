@@ -315,7 +315,8 @@ class ErrorTextTest {
             "type" to "x",
             "used" to "x",
             "resource" to "x",
-            "env_var" to "x"
+            "env_var" to "x",
+            "property" to "x"
         )
         val rendered = mutableMapOf<String, String>()
         composeTestRule.setContent {
@@ -428,6 +429,42 @@ class ErrorTextTest {
             }
         )
         assertEquals(codes.map { it.second }, rendered)
+    }
+
+    @Test
+    fun `the import session-limit and unknown-field codes render their own copy`() {
+        val rendered = renderAll(
+            listOf(
+                ApiError.Client(
+                    429,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.IMPORT_SESSION_LIMIT, emptyMap())
+                ),
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(
+                        ErrorReasonCode.IMPORT_FIELD_MAPPING_UNKNOWN_FIELD,
+                        mapOf("property" to "X-Hometown")
+                    )
+                ),
+                // Without the property param the template cannot render, so the
+                // server text is the fallback.
+                ApiError.Client(
+                    400,
+                    "Server says no",
+                    ErrorReason(ErrorReasonCode.IMPORT_FIELD_MAPPING_UNKNOWN_FIELD, emptyMap())
+                )
+            )
+        )
+        assertEquals(
+            listOf(
+                "Too many imports are in progress. Finish or cancel one first.",
+                "Choose an existing field for “X-Hometown”, or pick another action.",
+                "Server says no"
+            ),
+            rendered
+        )
     }
 
     @Test

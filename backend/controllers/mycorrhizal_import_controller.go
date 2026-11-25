@@ -27,7 +27,7 @@ func rejectMycorrhizalSessionOverLimit(c *gin.Context) bool {
 			apperrors.ErrCodeRateLimitExceeded,
 			"Too many in-progress Mycorrhizal imports. Finish or cancel an existing one first.",
 			http.StatusTooManyRequests,
-		))
+		).WithReason(apperrors.ReasonImportSessionLimit, nil))
 		return true
 	}
 	return false
