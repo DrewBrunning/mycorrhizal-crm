@@ -4610,7 +4610,7 @@
       "merge": "Fusionner…",
       "mergeNamed": "Fusionner {{a}} et {{b}}",
       "dismiss": "Pas un doublon",
-      "dismissNamed": "{{a}} et {{b}} ne sont pas des doublons",
+      "dismissNamed": "Pas un doublon : {{a}} et {{b}}",
       "dismissed": "Masqué définitivement.",
       "pair": "{{a}} et {{b}}",
       "reason": {
