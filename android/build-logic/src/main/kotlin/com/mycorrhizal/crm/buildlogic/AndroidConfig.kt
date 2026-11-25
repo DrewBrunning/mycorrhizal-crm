@@ -257,6 +257,20 @@ internal fun Project.configureAndroidTestCommon() {
         }
         // Robolectric needs the Android resources to resolve themes/drawables.
         systemProperty("robolectric.enabledSdks", "35")
+        // Issues #2854/#2886: Robolectric fetches its android-all jar itself,
+        // outside Gradle's dependency resolution, so the repository lists in
+        // settings.gradle.kts cannot redirect it -- and that unthrottled
+        // fetch is exactly the shared-runner traffic Sonatype answers with
+        // HTTP 429 (a ~130 MB download per CI run). Point it at the same
+        // Maven Central mirror the Gradle resolution uses. The jar is pinned
+        // by enabledSdks above. The mirror syncs Maven Central a few times a
+        // day, so a brand-new Robolectric SDK jar can lag it by hours; if
+        // that ever fails a build, wait for the sync rather than pointing
+        // this back at repo1.maven.org.
+        systemProperty(
+            "robolectric.dependency.repo.url",
+            "https://maven-central.storage-download.googleapis.com/maven2/",
+        )
     }
 }
 

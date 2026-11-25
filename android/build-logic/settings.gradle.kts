@@ -15,6 +15,13 @@ dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
     repositories {
         google()
+        // Issue #2854: the Kotlin/AGP/detekt jars this build needs for its
+        // own classpath are redirected from the Gradle Plugin Portal to Maven
+        // Central, where a runner's burst of fresh fetches earns HTTP 429 and
+        // the build dies in configuration. Resolve through Google's mirror of
+        // Maven Central first (no per-IP throttle); mavenCentral() stays below
+        // as the fallback for artifacts the mirror has not synced yet.
+        maven("https://maven-central.storage-download.googleapis.com/maven2/")
         mavenCentral()
         // Issue #268: the org.gradle.test-retry plugin is published only to
         // the Gradle Plugin Portal (not mavenCentral); build-logic needs it
