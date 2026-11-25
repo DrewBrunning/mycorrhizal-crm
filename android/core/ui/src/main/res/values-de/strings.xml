@@ -1042,7 +1042,7 @@
     <string name="activity_edit">Aktivität bearbeiten</string>
     <string name="activity_title">Titel</string>
     <string name="activity_type">Art</string>
-    <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
+    <string name="activity_type_hint">Anruf, Besuch, Essen, Nachricht, Geschenk, …</string>
     <string name="activity_date">Datum</string>
     <string name="activity_end_date">Enddatum (optional)</string>
     <string name="activity_end_before_start">Das Enddatum darf nicht vor dem Startdatum liegen</string>
@@ -2115,6 +2115,7 @@
     <string name="import_report_title">Nicht importierte Zeilen</string>
     <string name="import_report_row">Zeile %1$d · %2$s</string>
     <string name="import_report_skipped">Übersprungen: %1$s</string>
+    <string name="import_report_skipped_by_choice">Übersprungen: Sie haben „Neuen verwerfen“ gewählt</string>
     <string name="import_report_failed">Fehlgeschlagen: %1$s</string>
     <string name="import_diag_birthday_warn">Der Geburtstag ist kein gültiges Datum und wird daher nicht importiert</string>
     <string name="import_diag_anniversary_warn">Der Jahrestag ist kein gültiges Datum und wird daher nicht importiert</string>
@@ -2432,7 +2433,6 @@
     <string name="occasions_sensitivity_normal">Normal</string>
     <string name="occasions_sensitivity_private">Privat</string>
     <string name="occasions_sensitivity_secret">Geheim</string>
-    <string name="occasions_time">Uhrzeit</string>
     <string name="occasions_event_dialog_hint">Eine einmalige Veranstaltung, die Sie planen. Fügen Sie nach dem Speichern Gäste hinzu und halten Sie fest, was Ihnen jede Person gesagt hat.</string>
     <string name="occasions_create_title">Veranstaltung erstellen</string>
     <string name="occasions_edit_title">Veranstaltung bearbeiten</string>
@@ -2740,7 +2740,6 @@
     <string name="geopulse_title">Aus Standortverlauf erfassen</string>
     <string name="geopulse_description">Wählen Sie ein Datum, um die von GeoPulse aufgezeichneten Orte zu sehen. Nichts wird gespeichert, bis Sie einen erfassen, und Sie entscheiden, mit wem Sie dort waren.</string>
     <string name="geopulse_date">Datum</string>
-    <string name="geopulse_pick_date">Datum wählen</string>
     <string name="geopulse_look_up">Abrufen</string>
     <string name="geopulse_looking_up">Wird abgerufen…</string>
     <string name="geopulse_open_settings">GeoPulse-Einstellungen öffnen</string>

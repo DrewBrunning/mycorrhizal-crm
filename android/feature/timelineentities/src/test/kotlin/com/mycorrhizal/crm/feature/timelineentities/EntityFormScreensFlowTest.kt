@@ -298,7 +298,9 @@ class EntityFormScreensFlowTest {
             }
         }
 
-        composeTestRule.onNodeWithContentDescription("Edit").performClick()
+        // #2942: the Edit icon is named after its row ("Edit Drink: Favorite · matcha"), like Delete.
+        composeTestRule.onNodeWithContentDescription("Edit Drink: Favorite · matcha")
+            .performClick()
         composeTestRule.onNodeWithText("Edit preference").assertIsDisplayed()
         composeTestRule.onNodeWithText("matcha").assertIsDisplayed()
         composeTestRule.onNodeWithText("Save").performClick()

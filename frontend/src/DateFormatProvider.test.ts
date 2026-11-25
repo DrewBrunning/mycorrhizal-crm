@@ -8,6 +8,7 @@ import {
   formatBirthdayForInputWithFormat,
   formatBirthdayWithFormat,
   formatDateWithFormat,
+  formatMonthDay,
   getDateFormat,
   initializeDateFormatFromBackend,
   parseDateInputWithFormat,
@@ -50,6 +51,37 @@ describe('formatDateWithFormat', () => {
   test('formats a year-less date-only string (--MM-DD)', () => {
     expect(formatDateWithFormat('--06-11', 'iso')).toBe('06-11');
     expect(formatDateWithFormat('--06-11', 'eu')).toBe('11.06.');
+  });
+});
+
+// Issue #2920 item 3: a year-less month/day is display text, not a numeric
+// date. Intl owns the order and punctuation, so these must not all read like
+// English "March 3". The five supported UI languages are the table.
+describe('formatMonthDay (#2920)', () => {
+  const LOCALES: Array<[string, string]> = [
+    ['en', 'March 3'],
+    ['de', '3. März'],
+    ['fr', '3 mars'],
+    ['es', '3 de marzo'],
+    ['it', '3 marzo'],
+  ];
+
+  test.each(LOCALES)('%s renders the locale order and month name', (locale, expected) => {
+    expect(formatMonthDay(3, 3, locale)).toBe(expected);
+  });
+
+  test('uses the full month name and a non-padded day', () => {
+    expect(formatMonthDay(1, 1, 'en')).toBe('January 1');
+    expect(formatMonthDay(12, 25, 'de')).toBe('25. Dezember');
+    expect(formatMonthDay(1, 1, 'fr')).toBe('1 janvier');
+  });
+
+  test('anchors the date in UTC so the calendar day never shifts', () => {
+    // 2000-01-01 UTC is still 1 January west of UTC, and 2000-12-31 UTC is
+    // still 31 December east of it. A local-zone Date would roll either one
+    // to the neighbouring day.
+    expect(formatMonthDay(1, 1, 'en')).toBe('January 1');
+    expect(formatMonthDay(12, 31, 'en')).toBe('December 31');
   });
 });
 

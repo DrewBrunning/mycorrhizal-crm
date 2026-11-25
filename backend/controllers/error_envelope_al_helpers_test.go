@@ -17,9 +17,11 @@ import (
 // test file's decoder.
 type alEnvelope struct {
 	Error struct {
-		Code    string                 `json:"code"`
-		Message string                 `json:"message"`
-		Details map[string]interface{} `json:"details"`
+		Code         string                 `json:"code"`
+		Message      string                 `json:"message"`
+		Details      map[string]interface{} `json:"details"`
+		ReasonCode   string                 `json:"reason_code"`
+		ReasonParams map[string]interface{} `json:"reason_params"`
 	} `json:"error"`
 }
 
@@ -38,6 +40,7 @@ func alAssertError(t *testing.T, w *httptest.ResponseRecorder, status int, code,
 	require.Equal(t, status, w.Code, "body: %s", w.Body.String())
 	env := alDecode(t, w)
 	require.Equal(t, code, env.Error.Code, "body: %s", w.Body.String())
+	requireNoReasonProse(t, env.Error.ReasonCode, env.Error.ReasonParams)
 	if field != "" {
 		assert.Equal(t, field, env.Error.Details["field"], "body: %s", w.Body.String())
 	}
@@ -50,6 +53,7 @@ func alAssertValidation(t *testing.T, w *httptest.ResponseRecorder, field string
 	require.Equal(t, 400, w.Code, "body: %s", w.Body.String())
 	env := alDecode(t, w)
 	require.Equal(t, "VALIDATION_ERROR", env.Error.Code, "body: %s", w.Body.String())
+	requireNoReasonProse(t, env.Error.ReasonCode, env.Error.ReasonParams)
 	assert.Contains(t, env.Error.Details, field, "body: %s", w.Body.String())
 	return env
 }

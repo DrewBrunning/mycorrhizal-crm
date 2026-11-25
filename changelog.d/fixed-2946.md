@@ -1,0 +1,1 @@
+- **Android network overlay shows each contact's role** ([#2946](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2946)): with organisations, places and pets on, a row reads "Employee · Ada Lovelace" instead of "Organisation · Ada Lovelace". The graph's entity edges gain an optional `role` field (an additive API change).

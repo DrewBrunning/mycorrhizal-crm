@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -461,18 +462,25 @@ private fun SuggestionRow(
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        // #2935: stacked, each full width, so side B is never squeezed out by side A's label.
+        Column(Modifier.fillMaxWidth()) {
             TextButton(
                 onClick = { onOpen(pair.a.id) },
-                modifier = Modifier.testTag("suggestion-open-a-${pair.a.id}")
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag("suggestion-open-a-${pair.a.id}")
             ) {
-                SuggestionSideLabel(pair.a)
+                SuggestionSideLabel(pair.a, Modifier.weight(1f))
             }
             TextButton(
                 onClick = { onOpen(pair.b.id) },
-                modifier = Modifier.testTag("suggestion-open-b-${pair.b.id}")
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 48.dp)
+                    .testTag("suggestion-open-b-${pair.b.id}")
             ) {
-                SuggestionSideLabel(pair.b)
+                SuggestionSideLabel(pair.b, Modifier.weight(1f))
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -495,8 +503,8 @@ private fun SuggestionRow(
  * text is its accessibility label, by TalkBack too.
  */
 @Composable
-private fun SuggestionSideLabel(side: EntitySuggestionEntity) {
-    Column(horizontalAlignment = Alignment.Start) {
+private fun SuggestionSideLabel(side: EntitySuggestionEntity, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.Start) {
         Text(
             stringResource(R.string.shared_entities_suggestions_open, side.name),
             maxLines = 1,

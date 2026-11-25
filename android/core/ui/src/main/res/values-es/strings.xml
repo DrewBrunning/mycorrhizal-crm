@@ -1065,7 +1065,7 @@
     <string name="activity_edit">Editar actividad</string>
     <string name="activity_title">Título</string>
     <string name="activity_type">Tipo</string>
-    <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
+    <string name="activity_type_hint">llamada, visita, comida, mensaje, regalo, …</string>
     <string name="activity_date">Fecha</string>
     <string name="activity_end_date">Fecha de fin (opcional)</string>
     <string name="activity_end_before_start">La fecha de fin no puede ser anterior a la fecha de inicio</string>
@@ -2184,6 +2184,7 @@
     <string name="import_report_title">Filas no importadas</string>
     <string name="import_report_row">Fila %1$d · %2$s</string>
     <string name="import_report_skipped">Omitida: %1$s</string>
+    <string name="import_report_skipped_by_choice">Omitida: elegiste «Descartar nuevo»</string>
     <string name="import_report_failed">Fallida: %1$s</string>
     <string name="import_diag_birthday_warn">El cumpleaños no es una fecha válida, así que no se importará</string>
     <string name="import_diag_anniversary_warn">El aniversario no es una fecha válida, así que no se importará</string>
@@ -2516,7 +2517,6 @@
     <string name="occasions_sensitivity_normal">Normal</string>
     <string name="occasions_sensitivity_private">Privado</string>
     <string name="occasions_sensitivity_secret">Secreto</string>
-    <string name="occasions_time">Hora</string>
     <string name="occasions_event_dialog_hint">Un evento puntual que estás planeando. Agrega invitados después de guardar y anota lo que te dijo cada persona.</string>
     <string name="occasions_create_title">Crear un evento</string>
     <string name="occasions_edit_title">Editar evento</string>
@@ -2844,7 +2844,6 @@
     <string name="geopulse_title">Registrar desde el historial de ubicaciones</string>
     <string name="geopulse_description">Elige una fecha para ver los lugares que registró GeoPulse. No se guarda nada hasta que registres uno, y tú decides con quién estabas.</string>
     <string name="geopulse_date">Fecha</string>
-    <string name="geopulse_pick_date">Elegir fecha</string>
     <string name="geopulse_look_up">Buscar</string>
     <string name="geopulse_looking_up">Buscando…</string>
     <string name="geopulse_open_settings">Abrir ajustes de GeoPulse</string>

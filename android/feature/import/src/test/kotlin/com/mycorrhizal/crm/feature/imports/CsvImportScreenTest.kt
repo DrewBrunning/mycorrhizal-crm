@@ -71,6 +71,21 @@ class CsvImportScreenTest {
         composeTestRule.onNodeWithText("Select a .csv file").assertIsDisplayed()
     }
 
+    // #2943: a rejected file stays on screen under the picker until another file is picked; it was
+    // a 4-second snackbar the user could miss.
+    @Test
+    fun `a rejected file keeps its error under the picker after the snackbar time has passed`() {
+        setContent(
+            CsvImportUiState(
+                step = CsvImportStep.PICK,
+                errorRes = com.mycorrhizal.crm.ui.R.string.import_csv_error_invalid_file
+            )
+        )
+        composeTestRule.mainClock.advanceTimeBy(10_000)
+        composeTestRule.onNodeWithText("Couldn't read that file. Choose a .csv file.")
+            .assertIsDisplayed()
+    }
+
     @Test
     fun `mapping step renders each column header and its suggested field`() {
         setContent(

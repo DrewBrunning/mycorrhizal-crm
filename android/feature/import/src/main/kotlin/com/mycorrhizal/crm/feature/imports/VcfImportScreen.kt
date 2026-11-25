@@ -100,6 +100,12 @@ fun VcfImportScreenContent(
     onConfirm: () -> Unit = {},
     onErrorShown: () -> Unit = {}
 ) {
+    val errorMessage = uiState.errorRes?.let {
+        stringResource(
+            it
+        )
+    } ?: uiState.error?.localizedMessage()
+    val inlinePickError = uiState.step == VcfImportStep.PICK && uiState.preview == null
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val currentOnErrorShown = rememberUpdatedState(onErrorShown)
@@ -162,7 +168,8 @@ fun VcfImportScreenContent(
                 )
 
                 uiState.step == VcfImportStep.PICK -> PickStep(
-                    onPick = { filePicker.launch("*/*") }
+                    onPick = { filePicker.launch("*/*") },
+                    error = errorMessage
                 )
 
                 uiState.step == VcfImportStep.CUSTOM_FIELDS -> CustomFieldsStep(
@@ -193,12 +200,9 @@ fun VcfImportScreenContent(
         }
     }
 
-    val errorMessage = uiState.errorRes?.let {
-        stringResource(
-            it
-        )
-    } ?: uiState.error?.localizedMessage()
-    if (errorMessage != null) {
+    // #2943: on the pick step a rejected file stays under the picker (until another file is
+    // picked, which clears it) instead of a 4-second snackbar; elsewhere it stays a snackbar.
+    if (errorMessage != null && !inlinePickError) {
         LaunchedEffect(errorMessage) {
             snackbarHostState.showSnackbar(errorMessage)
             currentOnErrorShown.value()
@@ -207,7 +211,7 @@ fun VcfImportScreenContent(
 }
 
 @Composable
-private fun PickStep(onPick: () -> Unit) {
+private fun PickStep(onPick: () -> Unit, error: String?) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.fillMaxSize().padding(24.dp)
@@ -225,6 +229,7 @@ private fun PickStep(onPick: () -> Unit) {
         Button(onClick = onPick) {
             Text(stringResource(R.string.import_vcf_pick))
         }
+        PickError(error)
     }
 }
 

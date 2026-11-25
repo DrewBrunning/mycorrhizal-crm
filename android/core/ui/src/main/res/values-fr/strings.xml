@@ -1065,7 +1065,7 @@
     <string name="activity_edit">Modifier l\'activité</string>
     <string name="activity_title">Titre</string>
     <string name="activity_type">Type</string>
-    <string name="activity_type_hint">call, visit, meal, message, gift, …</string>
+    <string name="activity_type_hint">appel, visite, repas, message, cadeau, …</string>
     <string name="activity_date">Date</string>
     <string name="activity_end_date">Date de fin (facultative)</string>
     <string name="activity_end_before_start">La date de fin ne peut pas être antérieure à la date de début</string>
@@ -2184,6 +2184,7 @@
     <string name="import_report_title">Lignes non importées</string>
     <string name="import_report_row">Ligne %1$d · %2$s</string>
     <string name="import_report_skipped">Ignorée : %1$s</string>
+    <string name="import_report_skipped_by_choice">Ignorée : vous avez choisi « Ignorer le nouveau »</string>
     <string name="import_report_failed">Échec : %1$s</string>
     <string name="import_diag_birthday_warn">La date de naissance n’est pas valide, elle ne sera donc pas importée</string>
     <string name="import_diag_anniversary_warn">L’anniversaire de mariage n’est pas une date valide, il ne sera donc pas importé</string>
@@ -2516,7 +2517,6 @@
     <string name="occasions_sensitivity_normal">Normal</string>
     <string name="occasions_sensitivity_private">Privé</string>
     <string name="occasions_sensitivity_secret">Secret</string>
-    <string name="occasions_time">Heure</string>
     <string name="occasions_event_dialog_hint">Un événement ponctuel que vous organisez. Ajoutez des invités après l’enregistrement, puis notez ce que chaque personne vous a dit.</string>
     <string name="occasions_create_title">Créer un événement</string>
     <string name="occasions_edit_title">Modifier l\'événement</string>
@@ -2844,7 +2844,6 @@
     <string name="geopulse_title">Enregistrer depuis l\'historique de localisation</string>
     <string name="geopulse_description">Choisissez une date pour voir les lieux enregistrés par GeoPulse. Rien n\'est sauvegardé tant que vous n\'en enregistrez pas un, et vous décidez avec qui vous étiez.</string>
     <string name="geopulse_date">Date</string>
-    <string name="geopulse_pick_date">Choisir une date</string>
     <string name="geopulse_look_up">Rechercher</string>
     <string name="geopulse_looking_up">Recherche…</string>
     <string name="geopulse_open_settings">Ouvrir les paramètres GeoPulse</string>

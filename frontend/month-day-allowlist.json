@@ -1,0 +1,9 @@
+{
+  "_comment": "Counted allowlist for check-month-day-format.mjs (issue #2920 item 3). A new hand-assembled month/day fails; a stale count also fails. Each entry names the ticket that removes it. src/utils/jscontactDisplay.ts is a .ts helper (not the .tsx template-literal rule) and is fixed by #2908/#2923, so it has no entry here.",
+  "files": {
+    "src/components/GeoPulseSuggestionsDialog.tsx": {
+      "count": 1,
+      "reason": "Builds the YYYY-MM-DD query parameter sent to the API; it is a calendar value, not displayed text."
+    }
+  }
+}
