@@ -54,7 +54,6 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Fixed
 
-- **Android layouts hold up at 200% font size and in landscape** ([#2948](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2948), [#2949](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2949)): organisation tabs, the duplicates heading and the import decision buttons no longer split words, and in landscape the field you are typing in on a form stays above the keyboard.
 - **Android "System default" language now sticks** ([#2937](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2937)): choosing System default for the app's language in Android settings, or the new "Use system default" entry in Settings → Appearance → Language, makes the app follow the device language, and the Language row shows the language actually in use.
 - **Android shows saved contacts in the same order as online** ([#2940](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2940)): when the server can't be reached, the saved contact list is grouped A to Z by last name (else first name), with each letter appearing once.
 - **Shared contact anniversaries on the web** ([#2908](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2908)): a shared contact card now reads "Birthday: 28.11.1985" in your language and date format instead of "birth: 1985-11-28".
