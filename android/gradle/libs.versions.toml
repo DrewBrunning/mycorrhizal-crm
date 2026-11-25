@@ -46,7 +46,7 @@ espresso = "3.7.0"
 accessibilityTestFramework = "3.1.2"
 # ATF's public hierarchy-check API returns Guava's ImmutableSet, so Guava is a
 # compile-time requirement even though ATF declares it implementation-scoped.
-guava = "28.2-android"
+guava = "33.8.0-android"
 # Issue #263: the :macrobenchmark module — androidx.benchmark.macro
 # (MacrobenchmarkRule) for cold/warm/hot startup + dashboard frame timing,
 # plus uiautomator to drive the login flow before the dashboard scenario.
