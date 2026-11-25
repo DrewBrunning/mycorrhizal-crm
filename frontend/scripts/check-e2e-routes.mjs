@@ -39,6 +39,15 @@ export function parseRoutes(appSource) {
 }
 
 /**
+ * The same table from the committed App.tsx, for callers that need the live
+ * route inventory rather than a source string (e2e/pseudoLocale.spec.ts scans
+ * every route, issue #2920).
+ */
+export function loadRoutes(file = APP_FILE) {
+  return parseRoutes(fs.readFileSync(file, 'utf8'));
+}
+
+/**
  * Regex that matches `routePath` as a *whole path literal* inside spec source:
  * preceded by a quote/backtick, a `:param` segment standing for any one
  * segment (a literal id or a `${expr}`), and not followed by more path
@@ -101,7 +110,7 @@ export function loadExemptions(file = EXEMPTIONS_FILE) {
 }
 
 export function run() {
-  const routes = parseRoutes(fs.readFileSync(APP_FILE, 'utf8'));
+  const routes = loadRoutes();
   const result = checkRoutes(routes, loadSpecSources(), loadExemptions());
   if (result.ok) {
     console.log(`e2e route coverage OK: ${routes.length} routes, all covered or exempted.`);

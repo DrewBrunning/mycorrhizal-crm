@@ -95,7 +95,7 @@ export default function BackgroundJobsPanel() {
       />
 
       {error && (
-        <Typography color="error" variant="body2" sx={{ mb: 1 }}>
+        <Typography color="error" variant="body2" data-user-content sx={{ mb: 1 }}>
           {error}
         </Typography>
       )}
@@ -162,7 +162,10 @@ function JobRow({ job }: { job: JobRunHealth }) {
           '&:hover': { bgcolor: 'action.hover' },
         }}
       >
-        <Tooltip title={job.job_name}>
+        {/* The tooltip reveals the raw scheduler identifier, which is a data
+            value rather than a translatable label: `backgroundJobs.jobs.*` must
+            stay the only copy here (see the pass in pseudoLocale.spec.ts). */}
+        <Tooltip title={<span data-user-content>{job.job_name}</span>}>
           <Typography variant="body2" component="span" sx={{ fontWeight: 600, flexGrow: 1 }}>
             {t(`backgroundJobs.jobs.${job.job_name}`, job.job_name)}
           </Typography>
@@ -224,6 +227,7 @@ function JobRow({ job }: { job: JobRunHealth }) {
         <Typography
           variant="caption"
           color="error"
+          data-user-content
           sx={{ display: 'block', px: 1.25, pb: 1, wordBreak: 'break-word' }}
         >
           {job.last_error}
@@ -247,7 +251,7 @@ function JobRow({ job }: { job: JobRunHealth }) {
             </Box>
           )}
           {history.error && (
-            <Typography color="error" variant="caption" sx={{ display: 'block' }}>
+            <Typography color="error" variant="caption" data-user-content sx={{ display: 'block' }}>
               {history.error}
             </Typography>
           )}
@@ -297,7 +301,7 @@ function JobRow({ job }: { job: JobRunHealth }) {
                       <TableCell align="right">
                         {run.items_processed != null ? run.items_processed : '—'}
                       </TableCell>
-                      <TableCell sx={{ wordBreak: 'break-word', maxWidth: 320 }}>
+                      <TableCell sx={{ wordBreak: 'break-word', maxWidth: 320 }} data-user-content>
                         {run.error || ''}
                       </TableCell>
                     </TableRow>

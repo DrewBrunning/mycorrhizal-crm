@@ -67,7 +67,7 @@ export default function NotificationHealthPanel() {
       />
 
       {error && (
-        <Typography color="error" variant="body2" sx={{ mb: 1 }}>
+        <Typography color="error" variant="body2" data-user-content sx={{ mb: 1 }}>
           {error}
         </Typography>
       )}
@@ -112,10 +112,14 @@ function ChannelCard({ health }: { health: NotificationChannelHealth }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          // The channel card is a grid cell: at 600px it is ~248px wide and
+          // the pseudo-locale title ("⟦Nótífícátíóns⟧") plus the status chip
+          // do not fit on one line, so they must wrap instead of overflowing.
+          flexWrap: 'wrap',
           gap: 1,
         }}
       >
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
           {t(`notificationHealth.channels.${health.channel}`)}
         </Typography>
         <Chip
@@ -205,7 +209,12 @@ function ChannelCard({ health }: { health: NotificationChannelHealth }) {
       </Typography>
 
       {failing && health.last_error && (
-        <Typography variant="caption" color="error" sx={{ wordBreak: 'break-word', mt: 0.25 }}>
+        <Typography
+          variant="caption"
+          color="error"
+          data-user-content
+          sx={{ wordBreak: 'break-word', mt: 0.25 }}
+        >
           {health.last_error}
         </Typography>
       )}

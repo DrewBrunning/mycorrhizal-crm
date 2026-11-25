@@ -97,12 +97,17 @@ export default function OccasionObligationList({
                   />
                 )}
               </Box>
-              <Typography variant="body1" sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
+              <Typography
+                variant="body1"
+                data-user-content
+                sx={{ mt: 0.5, overflowWrap: 'anywhere' }}
+              >
                 {o.label}
               </Typography>
               {o.notes && (
                 <Typography
                   variant="body2"
+                  data-user-content
                   sx={{
                     color: 'text.secondary',
                     mt: 0.5,

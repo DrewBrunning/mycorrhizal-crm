@@ -285,11 +285,15 @@ export default function SystemEventsPage() {
                       label={t(`systemEvents.severities.${event.severity}`)}
                     />
                   </TableCell>
-                  <TableCell sx={{ overflowWrap: 'anywhere' }}>{event.component || '—'}</TableCell>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
+                    {event.component || '—'}
+                  </TableCell>
                   <TableCell sx={{ overflowWrap: 'anywhere' }}>
                     {t(`systemEvents.eventTypes.${event.event_type}`)}
                   </TableCell>
-                  <TableCell sx={{ overflowWrap: 'anywhere' }}>{event.operation || '—'}</TableCell>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
+                    {event.operation || '—'}
+                  </TableCell>
                   <TableCell>
                     {event.result ? (
                       <Chip
@@ -354,10 +358,10 @@ export default function SystemEventsPage() {
               <DetailRow label={t('systemEvents.columns.severity')}>
                 {t(`systemEvents.severities.${selected.severity}`)}
               </DetailRow>
-              <DetailRow label={t('systemEvents.columns.component')}>
+              <DetailRow label={t('systemEvents.columns.component')} userContent>
                 {selected.component || '—'}
               </DetailRow>
-              <DetailRow label={t('systemEvents.columns.operation')}>
+              <DetailRow label={t('systemEvents.columns.operation')} userContent>
                 {selected.operation || '—'}
               </DetailRow>
               <DetailRow label={t('systemEvents.columns.result')}>
@@ -366,20 +370,20 @@ export default function SystemEventsPage() {
               <DetailRow label={t('systemEvents.columns.duration')}>
                 {formatDuration(selected.duration_ms)}
               </DetailRow>
-              <DetailRow label={t('systemEvents.details.correlationId')}>
+              <DetailRow label={t('systemEvents.details.correlationId')} userContent>
                 <Typography variant="body2" component="span" sx={{ wordBreak: 'break-all' }}>
                   {selected.correlation_id || '—'}
                 </Typography>
               </DetailRow>
               {selected.detail && (
-                <DetailRow label={t('systemEvents.details.detail')}>
+                <DetailRow label={t('systemEvents.details.detail')} userContent>
                   <Typography variant="body2" component="span" sx={{ wordBreak: 'break-word' }}>
                     {selected.detail}
                   </Typography>
                 </DetailRow>
               )}
               {selected.error && (
-                <DetailRow label={t('systemEvents.details.error')}>
+                <DetailRow label={t('systemEvents.details.error')} userContent>
                   <Typography
                     variant="body2"
                     component="span"
@@ -409,7 +413,15 @@ export default function SystemEventsPage() {
   );
 }
 
-function DetailRow({ label, children }: { label: string; children: React.ReactNode }) {
+function DetailRow({
+  label,
+  userContent,
+  children,
+}: {
+  label: string;
+  userContent?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <>
       <Typography
@@ -422,7 +434,12 @@ function DetailRow({ label, children }: { label: string; children: React.ReactNo
       >
         {label}
       </Typography>
-      <Typography component="dd" variant="body2" sx={{ m: 0 }}>
+      <Typography
+        component="dd"
+        variant="body2"
+        sx={{ m: 0 }}
+        data-user-content={userContent ? true : undefined}
+      >
         {children}
       </Typography>
     </>

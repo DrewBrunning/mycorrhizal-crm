@@ -144,10 +144,15 @@ function SubsystemCard({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
+          // The card is a grid cell: at 600px it is ~248px wide and the
+          // pseudo-locale title ("⟦Nótífícátíóns⟧") plus the status chip do
+          // not fit on one line, so they wrap instead of spilling over the
+          // neighbouring card.
+          flexWrap: 'wrap',
           gap: 1,
         }}
       >
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
           {t(`subsystemHealth.subsystems.${health.subsystem}`)}
         </Typography>
         <Chip
@@ -196,7 +201,12 @@ function SubsystemCard({
       </Typography>
 
       {failing && health.last_error && (
-        <Typography variant="caption" color="error" sx={{ wordBreak: 'break-word', mt: 0.25 }}>
+        <Typography
+          variant="caption"
+          color="error"
+          data-user-content
+          sx={{ wordBreak: 'break-word', mt: 0.25 }}
+        >
           {health.last_error}
         </Typography>
       )}

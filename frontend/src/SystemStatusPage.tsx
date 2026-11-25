@@ -194,13 +194,13 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function DetailGrid({ rows }: { rows: [string, string][] }) {
+function DetailGrid({ rows }: { rows: [string, string, boolean?][] }) {
   return (
     <Box
       component="dl"
       sx={{ display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: 1, m: 0 }}
     >
-      {rows.map(([label, value]) => (
+      {rows.map(([label, value, userContent]) => (
         <Fragment key={label}>
           <Typography
             component="dt"
@@ -213,7 +213,12 @@ function DetailGrid({ rows }: { rows: [string, string][] }) {
           >
             {label}
           </Typography>
-          <Typography component="dd" variant="body2" sx={{ m: 0, wordBreak: 'break-word' }}>
+          <Typography
+            component="dd"
+            variant="body2"
+            sx={{ m: 0, wordBreak: 'break-word' }}
+            data-user-content={userContent ? true : undefined}
+          >
             {value}
           </Typography>
         </Fragment>
@@ -229,9 +234,9 @@ function VersionUptimeCard({ status }: { status: SystemStatusResponse }) {
     <Section title={t('systemStatus.version.title')}>
       <DetailGrid
         rows={[
-          [t('systemStatus.version.version'), dash(version?.version)],
-          [t('systemStatus.version.commit'), dash(version?.commit)],
-          [t('systemStatus.version.buildDate'), dash(version?.build_date)],
+          [t('systemStatus.version.version'), dash(version?.version), true],
+          [t('systemStatus.version.commit'), dash(version?.commit), true],
+          [t('systemStatus.version.buildDate'), dash(version?.build_date), true],
           [t('systemStatus.version.startedAt'), formatDateTime(status.uptime?.started_at)],
           [t('systemStatus.version.uptime'), formatUptime(status.uptime?.uptime_seconds)],
         ]}
@@ -270,8 +275,8 @@ function UpdateCard({ status }: { status: SystemStatusResponse }) {
       <Box sx={{ mt: 1 }}>
         <DetailGrid
           rows={[
-            [t('systemStatus.update.current'), dash(update.current)],
-            [t('systemStatus.update.latest'), dash(update.latest)],
+            [t('systemStatus.update.current'), dash(update.current), true],
+            [t('systemStatus.update.latest'), dash(update.latest), true],
             [t('systemStatus.update.checkedAt'), formatDateTime(update.checked_at ?? undefined)],
           ]}
         />
@@ -341,7 +346,9 @@ function HealthChecksCard({ status }: { status: SystemStatusResponse }) {
             <TableBody>
               {facets.map((f) => (
                 <TableRow key={f.key}>
-                  <TableCell sx={{ overflowWrap: 'anywhere' }}>{f.label}</TableCell>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
+                    {f.label}
+                  </TableCell>
                   <TableCell>
                     <Chip
                       size="small"
@@ -359,7 +366,7 @@ function HealthChecksCard({ status }: { status: SystemStatusResponse }) {
                       label={t(`systemStatus.status.${f.detail.status}`)}
                     />
                   </TableCell>
-                  <TableCell sx={{ overflowWrap: 'anywhere' }}>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
                     {f.detail.reason ? f.detail.reason : '—'}
                   </TableCell>
                 </TableRow>
@@ -379,9 +386,9 @@ function MigrationCard({ status }: { status: SystemStatusResponse }) {
     <Section title={t('systemStatus.migration.title')}>
       <DetailGrid
         rows={[
-          [t('systemStatus.migration.applied'), dash(migration?.applied)],
-          [t('systemStatus.migration.latest'), dash(migration?.latest)],
-          [t('systemStatus.migration.pending'), dash(migration?.pending)],
+          [t('systemStatus.migration.applied'), dash(migration?.applied), true],
+          [t('systemStatus.migration.latest'), dash(migration?.latest), true],
+          [t('systemStatus.migration.pending'), dash(migration?.pending), true],
           [
             t('systemStatus.migration.dirty'),
             migration?.dirty == null
@@ -437,8 +444,10 @@ function ConfigCard({ status }: { status: SystemStatusResponse }) {
             <TableBody>
               {validation.map((v) => (
                 <TableRow key={`${v.field}-${v.message}`}>
-                  <TableCell sx={{ overflowWrap: 'anywhere' }}>{v.field}</TableCell>
-                  <TableCell sx={{ overflowWrap: 'anywhere' }}>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
+                    {v.field}
+                  </TableCell>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
                     <Typography color="error">{v.message}</Typography>
                   </TableCell>
                 </TableRow>
@@ -491,8 +500,8 @@ function DatabaseCard({ status }: { status: SystemStatusResponse }) {
     <Section title={t('systemStatus.database.title')}>
       <DetailGrid
         rows={[
-          [t('systemStatus.database.sqliteVersion'), dash(database?.sqlite_version)],
-          [t('systemStatus.database.journalMode'), dash(database?.journal_mode)],
+          [t('systemStatus.database.sqliteVersion'), dash(database?.sqlite_version), true],
+          [t('systemStatus.database.journalMode'), dash(database?.journal_mode), true],
           [t('systemStatus.database.walBytes'), formatBytes(database?.wal_bytes)],
         ]}
       />
@@ -611,7 +620,9 @@ function StorageCard({ status }: { status: SystemStatusResponse }) {
               <TableBody>
                 {directories.map((dir) => (
                   <TableRow key={dir.path}>
-                    <TableCell sx={{ overflowWrap: 'anywhere' }}>{dir.path}</TableCell>
+                    <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
+                      {dir.path}
+                    </TableCell>
                     <TableCell align="right">
                       <Box
                         component="span"

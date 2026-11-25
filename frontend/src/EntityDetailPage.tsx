@@ -273,7 +273,7 @@ export default function EntityDetailPage() {
         </Alert>
       )}
       <PageHeader
-        title={entity.name}
+        title={<span data-user-content>{entity.name}</span>}
         actions={
           <>
             <Button variant="outlined" onClick={() => setEditing(true)}>

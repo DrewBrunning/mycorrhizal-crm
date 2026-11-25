@@ -37,6 +37,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 import { handleFetchError } from './utils/errorHandler';
 import { humanizeToken } from './utils/humanizeToken';
 import { calendarDateOnly } from './utils/localDate';
+import { reminderTitle } from './utils/reminderTitle';
 
 // N2 prep view: the "person
 // briefing" — everything the user wants to remember in the five minutes
@@ -141,6 +142,8 @@ export default function PrepViewPage() {
             <Typography
               variant="h5"
               component="h1"
+              // The contact's own name, unless the translated fallback is used.
+              data-user-content={briefing.name ? true : undefined}
               sx={{ fontWeight: 500, overflowWrap: 'anywhere' }}
             >
               {briefing.name || t('prep.unknownContact')}
@@ -358,6 +361,7 @@ export default function PrepViewPage() {
               <Typography
                 variant="subtitle1"
                 component="p"
+                data-user-content
                 sx={{
                   fontWeight: 500,
                 }}
@@ -376,6 +380,7 @@ export default function PrepViewPage() {
               {briefing.last_activity.description && (
                 <Typography
                   variant="body2"
+                  data-user-content
                   sx={{ mt: 0.5, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}
                 >
                   {briefing.last_activity.description}
@@ -510,8 +515,8 @@ export default function PrepViewPage() {
             </Stack>
             <Stack spacing={0.5} sx={{ mt: 0.5 }}>
               {briefing.upcoming_reminders.map((reminder) => (
-                <Typography key={reminder.ID} variant="body2">
-                  • {reminder.message}{' '}
+                <Typography key={reminder.ID} variant="body2" data-user-content>
+                  • {reminderTitle(t, reminder)}{' '}
                   <Typography
                     component="span"
                     variant="caption"

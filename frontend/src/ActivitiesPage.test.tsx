@@ -698,6 +698,59 @@ test('an activity without a title renders its description without a title line',
   expect(screen.queryByText('Coffee catch-up')).toBeNull();
 });
 
+// #2920 item 4: the pseudo-locale pass exempts only text the user typed, so a
+// populated row must mark its title, description, location and contact chips,
+// and an empty list must mark nothing.
+test('the empty list marks no text as user content', async () => {
+  mockFetchRoutes([
+    { pattern: '/activities?', handler: { body: { activities: [], next_cursor: '', limit: 25 } } },
+  ]);
+
+  const { container } = renderPage();
+  expect(await screen.findByText('No activities found')).toBeInTheDocument();
+  expect(container.querySelectorAll('[data-user-content]')).toHaveLength(0);
+});
+
+test('a populated row marks user-entered fields, including an omitted description', async () => {
+  mockFetchRoutes([
+    {
+      pattern: '/activities?',
+      handler: {
+        body: {
+          activities: [
+            activity(),
+            // `description` omitted (not just empty) takes the `?? ''` arm and
+            // renders an empty MarkdownText inside the marked box.
+            activity({
+              ID: 2,
+              title: 'Walk in the park',
+              description: undefined,
+              location: '',
+              contacts: [],
+            }),
+          ],
+          next_cursor: '',
+          limit: 25,
+        },
+      },
+    },
+    { pattern: '/contacts?', handler: { body: emptyContactsPage() } },
+  ]);
+
+  renderPage();
+  await waitFor(() => expect(screen.getByText('Coffee catch-up')).toBeInTheDocument());
+
+  expect(screen.getByText('Coffee catch-up')).toHaveAttribute('data-user-content');
+  expect(screen.getByText('Long overdue').closest('[data-user-content]')).not.toBeNull();
+  expect(screen.getByText(/Downtown Cafe/)).toHaveAttribute('data-user-content');
+  expect(screen.getByText('Bob Jones').closest('[data-user-content]')).not.toBeNull();
+
+  // The row with no description still renders, with its title marked and no
+  // location chip.
+  expect(screen.getByText('Walk in the park')).toHaveAttribute('data-user-content');
+  expect(screen.getAllByText(/Downtown Cafe/)).toHaveLength(1);
+});
+
 test('saving an activity with no description, location, date or contacts sends the blank fallbacks', async () => {
   const calls = mockFetchRoutes([
     {

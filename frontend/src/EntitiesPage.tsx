@@ -107,7 +107,7 @@ export default function EntitiesPage() {
             <ListItem key={e.id} disablePadding divider>
               <ListItemButton component={Link} to={`/entities/${e.id}`} sx={{ borderRadius: 1 }}>
                 <ListItemText
-                  primary={e.name}
+                  primary={<span data-user-content>{e.name}</span>}
                   secondary={
                     [
                       coreSummary(e),

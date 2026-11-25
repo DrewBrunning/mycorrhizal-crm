@@ -116,6 +116,7 @@ export default function UpcomingOccasionsWidget({
                     <Typography
                       variant="body2"
                       noWrap
+                      data-user-content
                       title={`${o.contact_name}${o.source !== 'birthday' && o.source !== 'anniversary' ? ` — ${o.label}` : ''}`}
                       sx={{ fontWeight: 500, mt: 0.25 }}
                     >

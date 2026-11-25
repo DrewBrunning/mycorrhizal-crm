@@ -144,7 +144,12 @@ export default function SharedByMePage() {
     return (
       <ListItem key={g.id} divider sx={{ display: 'block' }}>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
-          <Typography variant="subtitle1" component="span" sx={{ overflowWrap: 'anywhere' }}>
+          <Typography
+            variant="subtitle1"
+            component="span"
+            data-user-content
+            sx={{ overflowWrap: 'anywhere' }}
+          >
             {g.label}
           </Typography>
           <Chip size="small" label={t(`standingShares.entityTypes.${g.entity_type}`)} />

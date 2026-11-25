@@ -299,6 +299,9 @@ export default function ContactTimeline({
                 <Typography
                   variant="subtitle1"
                   component="p"
+                  // An activity title is user content; the note/completion
+                  // labels in the same slot are translated UI copy (#2920).
+                  data-user-content={item.type === 'activity' ? true : undefined}
                   sx={{ fontWeight: 500, overflowWrap: 'anywhere', pr: 4 }}
                 >
                   {item.type === 'note'
@@ -309,11 +312,17 @@ export default function ContactTimeline({
                 </Typography>
                 {bodyText &&
                   (item.type === 'completion' ? (
-                    <Typography variant="body2" sx={{ mt: 1, overflowWrap: 'anywhere' }}>
+                    <Typography
+                      variant="body2"
+                      data-user-content
+                      sx={{ mt: 1, overflowWrap: 'anywhere' }}
+                    >
                       {bodyText}
                     </Typography>
                   ) : (
-                    <MarkdownText text={bodyText} sx={{ mt: 1 }} />
+                    <Box data-user-content>
+                      <MarkdownText text={bodyText} sx={{ mt: 1 }} />
+                    </Box>
                   ))}
                 {item.type === 'activity' && (
                   <ImageGallery
@@ -332,6 +341,7 @@ export default function ContactTimeline({
                 {item.type === 'activity' && (item.data as Activity).location && (
                   <Typography
                     variant="caption"
+                    data-user-content
                     sx={{
                       color: 'text.secondary',
                       mt: 1,
@@ -360,6 +370,7 @@ export default function ContactTimeline({
                           <Link
                             component="button"
                             variant="caption"
+                            data-user-content
                             onClick={(e) => {
                               e.preventDefault();
                               void navigate(`/contacts/${activityContact.ID}`);

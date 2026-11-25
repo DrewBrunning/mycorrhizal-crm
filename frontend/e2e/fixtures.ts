@@ -681,10 +681,17 @@ export async function waitForLoading(page: Page): Promise<void> {
           const rect = el.getBoundingClientRect();
           return rect.width > 0 && rect.height > 0;
         };
+        // A *determinate* progress bar is content, not an indicator: MUI sets
+        // aria-valuenow only when it is given a value. /system-status renders
+        // the storage-usage bar, which a populated instance always has, so it
+        // used to keep this predicate false on a page that had long finished
+        // loading (and the timeout below was passed as the function argument,
+        // which silently made it Playwright's 30s default).
         return ![...document.querySelectorAll('[role="progressbar"], .MuiSkeleton-root')].some(
-          isVisible,
+          (el) => el.getAttribute('aria-valuenow') === null && isVisible(el),
         );
       },
+      undefined,
       { timeout: 10000 },
     )
     .catch(() => {});

@@ -460,9 +460,13 @@ export default function UsersPage() {
             <TableBody>
               {users.map((user) => (
                 <TableRow key={user.id}>
-                  <TableCell>{user.id}</TableCell>
-                  <TableCell sx={{ overflowWrap: 'anywhere' }}>{user.username}</TableCell>
-                  <TableCell sx={{ overflowWrap: 'anywhere' }}>{user.email}</TableCell>
+                  <TableCell data-user-content>{user.id}</TableCell>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
+                    {user.username}
+                  </TableCell>
+                  <TableCell sx={{ overflowWrap: 'anywhere' }} data-user-content>
+                    {user.email}
+                  </TableCell>
                   <TableCell>
                     <Chip
                       label={user.is_admin ? t('users.roles.admin') : t('users.roles.user')}

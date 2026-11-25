@@ -104,6 +104,9 @@ export default function MeerkatLiveConnect({
       <TextField
         label={t('settings.meerkatImport.live.urlLabel')}
         placeholder="https://meerkat.example.com"
+        // An example URL is a literal machine value, not app copy: the
+        // pseudo-locale pass and translation tooling must leave it alone.
+        slotProps={{ htmlInput: { translate: 'no' } }}
         value={baseUrl}
         onChange={(e) => setBaseUrl(e.target.value)}
         fullWidth

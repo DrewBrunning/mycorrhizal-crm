@@ -163,6 +163,16 @@ test('lists trashed contacts with deleted and purge dates', async () => {
   expect(screen.getAllByText(/Deletes forever/).length).toBe(2);
 });
 
+// #2920 item 4: the row's name is contact/entity data, not app copy, so the
+// pseudo-locale pass needs it inside [data-user-content]; the surrounding
+// labels stay translatable.
+test('marks trashed contact and entity names as user content', async () => {
+  seedEntities();
+  renderPage();
+  expect((await screen.findByText('Ada Test')).closest('[data-user-content]')).not.toBeNull();
+  expect(screen.getByText('Acme').closest('[data-user-content]')).not.toBeNull();
+});
+
 test('retention 0 says it is kept until emptied instead of showing a purge date', async () => {
   retention = 0;
   rows = rows.map((r) => ({ ...r, purge_at: null }));

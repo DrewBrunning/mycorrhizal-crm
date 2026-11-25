@@ -140,7 +140,7 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
                     }}
                   />
                 )}
-                <ListItemText primary={contact.label} />
+                <ListItemText primary={<span data-user-content>{contact.label}</span>} />
                 {bandLabel && (
                   <Typography
                     variant="caption"
@@ -176,7 +176,7 @@ export default function NetworkListView({ nodes, links, onContactClick }: Networ
             {entityNodes.map((entity) => (
               <ListItem key={entity.id} disableGutters disablePadding>
                 <ListItemText
-                  primary={entity.label}
+                  primary={<span data-user-content>{entity.label}</span>}
                   secondary={t(ENTITY_KIND_KEYS[entity.entity_kind ?? 'organisation'])}
                 />
               </ListItem>
