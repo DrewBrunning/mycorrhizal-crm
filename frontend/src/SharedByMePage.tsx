@@ -38,7 +38,7 @@ type Confirm = { kind: 'revoke' | 'reconfirm' | 'remove'; grant: ShareGrantOwner
 
 // What to focus once the list re-renders after an action (#2918): a nearby row's
 // same action button, or a stable fallback when that row was the only one.
-type FocusRequest = { kind: 'remove'; id: string } | { kind: 'edit'; id: string };
+type FocusRequest = { kind: 'remove' | 'revoke' | 'edit'; id: string };
 
 const isLive = (g: ShareGrantOwnerView) => g.status === 'pending' || g.status === 'active';
 
@@ -65,6 +65,7 @@ export default function SharedByMePage() {
   const [editing, setEditing] = useState<ShareGrantOwnerView | null>(null);
   const removeButtons = useRef(new Map<string, HTMLButtonElement | null>());
   const editButtons = useRef(new Map<string, HTMLButtonElement | null>());
+  const revokeButtons = useRef(new Map<string, HTMLButtonElement | null>());
   const liveHeadingRef = useRef<HTMLHeadingElement>(null);
   const endedHeadingRef = useRef<HTMLHeadingElement>(null);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -104,7 +105,13 @@ export default function SharedByMePage() {
     setActionError('');
     try {
       if (kind === 'revoke') {
-        replace(await revokeShareGrant(grant.id));
+        const revoked = await revokeShareGrant(grant.id);
+        // The revoked row leaves the live list, taking its Revoke button with
+        // it: the next live row's Revoke, else the previous one's (#2918).
+        const index = liveItems.findIndex((g) => g.id === grant.id);
+        const neighbour = liveItems[index + 1] ?? liveItems[index - 1];
+        focusRequest.current = { kind: 'revoke', id: neighbour?.id ?? '' };
+        replace(revoked);
         announce(t('standingShares.byMe.revoked', params(grant)));
       } else if (kind === 'remove') {
         await dismissGrant(grant);
@@ -241,6 +248,10 @@ export default function SharedByMePage() {
               disabled={busy}
               aria-label={t('standingShares.byMe.revokeLabel', p)}
               onClick={() => setConfirm({ kind: 'revoke', grant: g })}
+              ref={(el) => {
+                if (el) revokeButtons.current.set(g.id, el);
+                else revokeButtons.current.delete(g.id);
+              }}
             >
               {t('standingShares.byMe.revoke')}
             </Button>
@@ -261,10 +272,12 @@ export default function SharedByMePage() {
     const request = focusRequest.current;
     if (!request) return;
     focusRequest.current = null;
-    const button =
-      request.kind === 'edit'
-        ? editButtons.current.get(request.id)
-        : removeButtons.current.get(request.id);
+    const buttons = {
+      edit: editButtons,
+      revoke: revokeButtons,
+      remove: removeButtons,
+    }[request.kind];
+    const button = buttons.current.get(request.id);
     if (button) {
       button.focus();
       return;
@@ -274,6 +287,12 @@ export default function SharedByMePage() {
       // Remove button remains, that section is empty, so the live heading (or
       // the page when nothing else is left) is the nearest stable target.
       (liveHeadingRef.current ?? pageRef.current)?.focus();
+      return;
+    }
+    if (request.kind === 'revoke') {
+      // No live row is left to move to; the revoked share is now under
+      // "Ended shares", so that heading is where it went.
+      (endedHeadingRef.current ?? pageRef.current)?.focus();
       return;
     }
     pageRef.current?.focus();

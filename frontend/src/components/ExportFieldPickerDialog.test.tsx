@@ -187,3 +187,19 @@ function labelFor(token: string): string {
   };
   return labels[token];
 }
+
+// Issue #2917 follow-up: an unreachable server must not surface the browser's
+// raw "Failed to fetch"; the dialog names the condition instead.
+test('an unreachable server shows the localized network message, not "Failed to fetch"', async () => {
+  const onExport = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'));
+  const onClose = vi.fn();
+  renderDialog({ onExport, onClose });
+
+  fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+
+  expect(
+    await screen.findByText("Couldn't reach the server. Check your connection and try again."),
+  ).toBeInTheDocument();
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+  expect(onClose).not.toHaveBeenCalled();
+});
