@@ -110,10 +110,9 @@ class ShareGrantContentViewModel @Inject constructor(
         }
     }
 
-    private fun project(content: ShareGrantContent): SharedContactView? =
-        content.contact?.let {
-            projectSharedContact(it, grantedSections, dateFormatter, kindLabel, relationLabel)
-        }
+    private fun project(content: ShareGrantContent): SharedContactView? = content.contact?.let {
+        projectSharedContact(it, grantedSections, dateFormatter, kindLabel, relationLabel)
+    }
 
     private fun ApiError.isGrantGone(): Boolean = this is ApiError.Client &&
         (reason?.code == ErrorReasonCode.SHARE_GRANT_NOT_FOUND || code == NOT_FOUND)

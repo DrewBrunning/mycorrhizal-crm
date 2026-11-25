@@ -71,7 +71,13 @@ private fun PreviewBody(
             val formatter = rememberGrantDateFormatter()
             val kindLabel = rememberGrantKindLabel()
             val relationLabel = rememberGrantRelationLabel()
-            val view = remember(preview.card, selectedSections, formatter, kindLabel, relationLabel) {
+            val view = remember(
+                preview.card,
+                selectedSections,
+                formatter,
+                kindLabel,
+                relationLabel
+            ) {
                 projectSharedContact(
                     preview.card,
                     selectedSections,
