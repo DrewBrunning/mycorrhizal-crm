@@ -230,6 +230,15 @@ describe('describeJSContact', () => {
       expect(relatedItems({ 'x-mentor': true })).toEqual(['X mentor']);
     });
 
+    test('yields no label for an entry without a relation map', () => {
+      const sections = describeJSContact(
+        { relatedTo: { 'urn:uuid:x': {}, 'urn:uuid:y': { relation: 'friend' } } },
+        t,
+        'eu',
+      ).sections;
+      expect(sections.find((s) => s.token === 'related_to')?.items ?? []).toEqual([]);
+    });
+
     test('renders German labels', async () => {
       await i18n.changeLanguage('de');
       expect(relatedItems({ friend: true, 'co-worker': true })).toEqual(['Freund, Arbeitskollege']);
