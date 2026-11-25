@@ -4567,6 +4567,28 @@
     }
   },
   "standingShares": {
+    "relatedToRelations": {
+      "acquaintance": "Acquaintance",
+      "agent": "Agent",
+      "child": "Child",
+      "co-resident": "Housemate",
+      "co-worker": "Coworker",
+      "colleague": "Colleague",
+      "contact": "Contact",
+      "crush": "Crush",
+      "date": "Date",
+      "emergency": "Emergency contact",
+      "friend": "Friend",
+      "kin": "Relative",
+      "me": "Me",
+      "met": "Met in person",
+      "muse": "Muse",
+      "neighbor": "Neighbour",
+      "parent": "Parent",
+      "sibling": "Sibling",
+      "spouse": "Spouse",
+      "sweetheart": "Sweetheart"
+    },
     "entityTypes": {
       "contact": "Contact",
       "note": "Note",
