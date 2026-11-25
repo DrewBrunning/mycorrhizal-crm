@@ -54,6 +54,7 @@ class ShareGrantContentViewModel @Inject constructor(
 
     private var dateFormatter: (Int?, Int?, Int?) -> String = ::isoDate
     private var kindLabel: (String) -> String = { it }
+    private var relationLabel: (String) -> String = { it }
 
     init {
         load()
@@ -70,6 +71,14 @@ class ShareGrantContentViewModel @Inject constructor(
     /** The screen supplies localized kind labels (anniversary, personal info); display only. */
     fun setKindLabel(label: (String) -> String) {
         kindLabel = label
+        _uiState.value.content?.let { content ->
+            _uiState.update { it.copy(contact = project(content)) }
+        }
+    }
+
+    /** The screen supplies localized `relatedTo` relation labels (issue #2981); display only. */
+    fun setRelationLabel(label: (String) -> String) {
+        relationLabel = label
         _uiState.value.content?.let { content ->
             _uiState.update { it.copy(contact = project(content)) }
         }
@@ -102,7 +111,9 @@ class ShareGrantContentViewModel @Inject constructor(
     }
 
     private fun project(content: ShareGrantContent): SharedContactView? =
-        content.contact?.let { projectSharedContact(it, grantedSections, dateFormatter, kindLabel) }
+        content.contact?.let {
+            projectSharedContact(it, grantedSections, dateFormatter, kindLabel, relationLabel)
+        }
 
     private fun ApiError.isGrantGone(): Boolean = this is ApiError.Client &&
         (reason?.code == ErrorReasonCode.SHARE_GRANT_NOT_FOUND || code == NOT_FOUND)

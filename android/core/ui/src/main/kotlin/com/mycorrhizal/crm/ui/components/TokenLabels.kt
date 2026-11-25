@@ -202,3 +202,33 @@ fun lifeEventTypeLabelText(context: Context, token: String): String =
 /** Non-composable label for a card sub-kind token (anniversary `birth`, personal-info `hobby`). */
 fun typeOptionLabelText(context: Context, token: String): String =
     typeOptionLabelRes(token)?.let { context.getString(it) } ?: humanizeToken(token)
+
+/** Issue #2981: label for a JSContact `relatedTo` relation key (`RelatedToRelations`). */
+@StringRes
+fun relatedToRelationLabelRes(token: String): Int? = when (token.tokenKey()) {
+    "acquaintance" -> R.string.related_relation_acquaintance
+    "agent" -> R.string.related_relation_agent
+    "child" -> R.string.related_relation_child
+    "co-resident" -> R.string.related_relation_co_resident
+    "co-worker" -> R.string.related_relation_co_worker
+    "colleague" -> R.string.related_relation_colleague
+    "contact" -> R.string.related_relation_contact
+    "crush" -> R.string.related_relation_crush
+    "date" -> R.string.related_relation_date
+    "emergency" -> R.string.related_relation_emergency
+    "friend" -> R.string.related_relation_friend
+    "kin" -> R.string.related_relation_kin
+    "me" -> R.string.related_relation_me
+    "met" -> R.string.related_relation_met
+    "muse" -> R.string.related_relation_muse
+    "neighbor" -> R.string.related_relation_neighbor
+    "parent" -> R.string.related_relation_parent
+    "sibling" -> R.string.related_relation_sibling
+    "spouse" -> R.string.related_relation_spouse
+    "sweetheart" -> R.string.related_relation_sweetheart
+    else -> null
+}
+
+/** Non-composable label for a `relatedTo` relation key; unknown keys are humanized. */
+fun relatedToRelationLabelText(context: Context, token: String): String =
+    relatedToRelationLabelRes(token)?.let { context.getString(it) } ?: humanizeToken(token)

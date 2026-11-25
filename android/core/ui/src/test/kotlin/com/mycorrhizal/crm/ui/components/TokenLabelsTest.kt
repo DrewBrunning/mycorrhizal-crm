@@ -6,6 +6,7 @@ import com.mycorrhizal.crm.model.network.RelationshipEdgeTypes
 import com.mycorrhizal.crm.model.registry.CadenceQualifyingType
 import com.mycorrhizal.crm.model.registry.LifeEventTypes
 import com.mycorrhizal.crm.model.registry.PhoneFeature
+import com.mycorrhizal.crm.model.registry.RelatedToRelations
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
@@ -138,6 +139,28 @@ class TokenLabelsTest {
         assertEquals(null, typeOptionLabelRes("satellite"))
     }
 
+    // Issue #2981: the RFC 6350 §6.6.6 RELATED TYPE registry (reused by RFC 9553
+    // relatedTo.relation) is labelled in full, each token with its own English label.
+    @Test
+    fun `every relatedTo relation key has a distinct label`() {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        assertEquals(20, RelatedToRelations.ALL.size)
+        val missing = RelatedToRelations.ALL.filter { relatedToRelationLabelRes(it) == null }
+        assertEquals("relation keys without a label", emptyList<String>(), missing)
+        val labels = RelatedToRelations.ALL.map { ctx.getString(relatedToRelationLabelRes(it)!!) }
+        assertEquals("two relation keys share a label", labels.size, labels.toSet().size)
+    }
+
+    @Test
+    fun `relation labels read as words and unknown keys are humanized`() {
+        val ctx = ApplicationProvider.getApplicationContext<Context>()
+        assertEquals("Coworker", relatedToRelationLabelText(ctx, " Co-Worker "))
+        assertEquals("Neighbour", relatedToRelationLabelText(ctx, "neighbor"))
+        assertEquals("Emergency contact", relatedToRelationLabelText(ctx, "emergency"))
+        assertEquals(null, relatedToRelationLabelRes("x-mentor"))
+        assertEquals("X mentor", relatedToRelationLabelText(ctx, "x-mentor"))
+    }
+
     @Test
     fun `lookup is case and whitespace tolerant`() {
         assertEquals(typeOptionLabelRes("cell"), typeOptionLabelRes(" Cell "))
@@ -169,5 +192,7 @@ class TokenLabelsTest {
         assertNotEquals("Partner of", ctx.getString(relationshipRoleLabelRes("partner_of")!!))
         assertEquals("Elternteil", ctx.getString(relationshipRoleLabelRes("parent_of")!!))
         assertEquals("Hobby", ctx.getString(typeOptionLabelRes("hobby")!!))
+        assertEquals("Freund", relatedToRelationLabelText(ctx, "friend"))
+        assertEquals("Mitbewohner", relatedToRelationLabelText(ctx, "co-resident"))
     }
 }

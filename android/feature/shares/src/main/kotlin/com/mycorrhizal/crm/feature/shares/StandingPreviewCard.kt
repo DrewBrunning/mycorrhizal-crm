@@ -70,8 +70,15 @@ private fun PreviewBody(
         is StandingPreview.Ready -> {
             val formatter = rememberGrantDateFormatter()
             val kindLabel = rememberGrantKindLabel()
-            val view = remember(preview.card, selectedSections, formatter, kindLabel) {
-                projectSharedContact(preview.card, selectedSections, formatter, kindLabel)
+            val relationLabel = rememberGrantRelationLabel()
+            val view = remember(preview.card, selectedSections, formatter, kindLabel, relationLabel) {
+                projectSharedContact(
+                    preview.card,
+                    selectedSections,
+                    formatter,
+                    kindLabel,
+                    relationLabel
+                )
             }
             Column(modifier = modifier) {
                 if (view.displayName.isNotBlank()) {
