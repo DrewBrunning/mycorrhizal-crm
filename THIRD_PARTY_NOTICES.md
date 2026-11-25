@@ -87,7 +87,7 @@ THIRD_PARTY_SOURCES.md, shipped in the container at
 | `go.uber.org/atomic` | `v1.11.0` | MIT | https://pkg.go.dev/go.uber.org/atomic@v1.11.0 |
 | `golang.org/x/crypto` | `v0.59.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/crypto@v0.59.0 |
 | `golang.org/x/mod` | `v0.43.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/mod@v0.43.0 |
-| `golang.org/x/net` | `v0.62.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/net@v0.62.0 |
+| `golang.org/x/net` | `v0.63.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/net@v0.63.0 |
 | `golang.org/x/oauth2` | `v0.38.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/oauth2@v0.38.0 |
 | `golang.org/x/sync` | `v0.25.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/sync@v0.25.0 |
 | `golang.org/x/sys` | `v0.50.0` | BSD-3-Clause | https://pkg.go.dev/golang.org/x/sys@v0.50.0 |
