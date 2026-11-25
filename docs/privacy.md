@@ -65,7 +65,8 @@ controller — and the controller for everyone else's data on that instance too.
   deployment decision (full-disk encryption, an operator you trust) — not something the software
   provides on its own.
 - **Usernames are visible to every other user on the same instance** (this is needed for sharing
-  a contact with another user). Email addresses and everything else are not.
+  a contact with another user). Email addresses and everything else are not. An operator can set
+  `SHARE_DIRECTORY_MODE=search` so usernames are found only by typing at least 3 characters of one.
 
 [Supported versions → The deployment shape](supported-versions.html#the-deployment-shape) states the
 cross-user isolation guarantee in full, along with the per-user vs per-instance split and the

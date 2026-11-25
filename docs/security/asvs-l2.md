@@ -440,11 +440,13 @@ here so it is not mistaken for a leak.
   known username could otherwise be used to lock a victim out (issue #867). Operators who do not want
   unknown people on the instance can set `DISABLE_REGISTRATION=true`
   (`docs/supported-versions.md`, "Registration").
-- **Decision.** Accepted as-is. A restriction option (for example an operator setting that limits the
-  directory to users the caller already shares with) is **not planned in this change**; whether one is
-  wanted is a separate product decision.
-- **Revisit when:** a hosted multi-tenant mode exists, the directory gains any field beyond id and
-  username, or an operator-restriction setting is adopted.
+- **Decision.** Accepted as the default (`SHARE_DIRECTORY_MODE=all`). Issue #2218 decided to add the
+  operator restriction: `SHARE_DIRECTORY_MODE=search` (issue #2787) makes the directory return nothing
+  until a query of at least 3 characters is sent, then only username-prefix matches, capped
+  (`backend/controllers/admin_user_controller.go#ListUserDirectory`), so accounts cannot be
+  enumerated. The default becomes `search` in v2.0.0.
+- **Revisit when:** a hosted multi-tenant mode exists, or the directory gains any field beyond id and
+  username.
 
 ---
 
