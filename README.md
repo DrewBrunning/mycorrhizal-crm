@@ -143,13 +143,20 @@ attachments together - a scheduled integrity check and a periodic restore drill 
 non-restorable backup long before you'd ever need it (see
 [Deployment → Backups](https://drewbrunning.github.io/mycorrhizal-crm/deployment.html#backups)).
 **One-time cross-user sharing** lets you hand a specific contact (with granular field selection) to
-another user on the same instance as a point-in-time copy, not an ongoing sync.
+another user on the same instance as a point-in-time copy, not an ongoing sync. **Standing shares**
+instead give another user a live, read-only view of a contact, note, activity or circle that you can
+revoke at any time; the recipient accepts (or blocks) each one, and a share is re-confirmed when its
+content becomes more sensitive ([ADR 0042](docs/adrs/0042-standing-shares.md)). **Organisations,
+places and pets** are reusable records you link to many contacts, with merge and duplicate
+suggestions ([ADR 0043](docs/adrs/0043-reusable-entities.md)). Imports show a review step and keep an
+itemised report, and several selected contacts can be merged at once.
 
 ### Account security
 
 Two-factor authentication is available on interactive login as either a TOTP authenticator app
-(RFC 6238) or a **passkey / security key** (FIDO2/WebAuthn, enrolled from the web UI; Android
-support is tracked separately), with single-use recovery codes for when you lose the device. Passkeys are
+(RFC 6238) or a **passkey / security key** (FIDO2/WebAuthn, enrolled from the web UI or the Android
+app), with single-use recovery codes for when you lose the device. A passkey can also be your only
+sign-in method, with no username or password to type ([ADR 0044](docs/adrs/0044-passwordless-passkeys.md)). Passkeys are
 bound to the hostname in `FRONTEND_URL`, so moving the instance to a new hostname invalidates them
 (see [Deployment](https://drewbrunning.github.io/mycorrhizal-crm/deployment.html#moving-to-a-new-hostname-passkeys)).
 SSO via OIDC remains available as an alternative, and CardDAV/API-token auth is unaffected either way.
@@ -161,7 +168,7 @@ contact list and detail view with an offline cache and favorites, a tablet two-p
 dashboard and Prep View, call/SMS tracking with a quick-capture overlay, device-contacts and VCF
 import, circles, tags, households, relationships and the network graph (colored by relationship
 health), the timeline (life events, gifts, preferences, agenda), occasions and RSVP tracking,
-reminders, cadence, contact sharing, the audit trail, custom-field management, push notifications,
+reminders, cadence, contact and standing sharing, organisations/places/pets, the Monica import assistant, the audit trail, custom-field management, push notifications,
 and per-user settings.
 
 The same source builds three distribution variants (see [ADR 0022](docs/adrs/0022-distribution-variants.md)):

@@ -71,6 +71,23 @@ These three are related but different. Pick by asking whether the thing already 
 
 The overlap between occasions and reminders is intended: an active occasion creates its own reminder at its lead time, so you are nudged without creating a second item. The reminder is the nudge, not a separate occasion.
 
+## Organisations, places and pets
+
+An **organisation**, **place** or **pet** is a reusable record that many contacts can point at, so a
+shared employer or address is edited once. Link a contact to one from its page (with an optional role
+and dates); the primary current link also shows as the contact's organisation or address in
+CardDAV, vCard exports and one-time shares. Duplicate suggestions help you merge near-identical
+records, and a deleted one goes to Trash and can be restored. Entities appear in the network graph
+only if you turn them on. See [ADR 0043](adrs/0043-reusable-entities.md).
+
+## Sharing
+
+A **one-time share** hands another user a copy of a contact; later edits are not sent. A **standing
+share** gives the recipient a live, read-only view of a contact, note, activity or circle until you
+revoke it or it expires. The recipient must accept it, can leave or block the sender, and the owner is
+asked to re-confirm if the shared content becomes more sensitive. Private and secret data is never
+included. See [ADR 0042](adrs/0042-standing-shares.md).
+
 ## Relationships
 
 Relationships let you map connections between contacts. You can select a suggested relationship or enter your own title. 

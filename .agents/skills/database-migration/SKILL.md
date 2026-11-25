@@ -27,7 +27,9 @@ sub-floor database must still refuse to migrate.
 5. If a new entity is added, register its contact cascade in
    `backend/services/contact_delete.go` (ADR 0035), add it to the hand-written
    user cascade in `backend/controllers/user_delete_cascade.go`
-   (`delete_cascade_coverage_test.go` fails until both are swept), and decide
+   (`delete_cascade_coverage_test.go` fails until both are swept); a reusable-entity or
+   share-grant table also goes in `services.EntityCascadeRegistry`
+   (`backend/services/entity_delete.go`, backend/AGENTS.md trap 6), and decide
    soft vs hard delete once, on the model
    (`docs/adrs/0004-soft-vs-hard-delete-semantics.md`).
 6. Open the [migration test matrix](references/migration-test-matrix.md) before
