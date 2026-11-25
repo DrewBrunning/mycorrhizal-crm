@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { useState } from 'react';
 import { afterAll, afterEach, beforeAll, expect, test, vi } from 'vitest';
 import type { Reminder } from '../api/reminders';
 import { DateFormatProvider } from '../DateFormatProvider';
@@ -201,4 +202,42 @@ test('leaves a reminder with no occasion link unchanged (#2915)', () => {
   renderList({ reminders: [reminder({ message: 'Occasion — just a message' })] });
 
   expect(screen.getByText('Occasion — just a message')).toBeInTheDocument();
+});
+
+// #2918 / #2920: deleting a reminder unmounts the row that held focus.
+function Harness({ initial }: { initial: Reminder[] }) {
+  const [reminders, setReminders] = useState(initial);
+  return (
+    <DateFormatProvider>
+      <ReminderList
+        reminders={reminders}
+        onComplete={vi.fn()}
+        onEdit={vi.fn()}
+        onDelete={async (id) => setReminders((r) => r.filter((x) => x.ID !== id))}
+      />
+    </DateFormatProvider>
+  );
+}
+
+test('deleting a reminder moves focus to the next row, then the empty state', async () => {
+  render(
+    <Harness
+      initial={[reminder({ ID: 1, message: 'First' }), reminder({ ID: 2, message: 'Second' })]}
+    />,
+  );
+  const confirmDelete = async () => {
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: /^Delete\b/ }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  };
+
+  fireEvent.click(screen.getByLabelText(/^Delete First/));
+  await confirmDelete();
+  await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText(/^Delete Second/)));
+
+  fireEvent.click(screen.getByLabelText(/^Delete Second/));
+  await confirmDelete();
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByText('No reminders yet').parentElement),
+  );
 });

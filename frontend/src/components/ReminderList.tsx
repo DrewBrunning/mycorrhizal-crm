@@ -20,10 +20,11 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Reminder } from '../api/reminders';
 import { useDateFormat } from '../DateFormatProvider';
+import { useFocusAfterRemoval } from '../hooks/useFocusAfterRemoval';
 import { itemLabel } from '../utils/itemLabel';
 import { calendarDateOnly, isBeforeLocalToday } from '../utils/localDate';
 import { reminderTitle } from '../utils/reminderTitle';
@@ -46,6 +47,10 @@ export default function ReminderList({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [reminderToDelete, setReminderToDelete] = useState<number | null>(null);
   const [loading, setLoading] = useState<number | null>(null);
+  // Deleting unmounts the row that held focus: move it to a neighbouring row's
+  // delete button, else the empty state (#2918, #2920).
+  const emptyRef = useRef<HTMLDivElement>(null);
+  const deleteFocus = useFocusAfterRemoval(emptyRef, reminders);
 
   const handleCompleteClick = async (reminderId: number) => {
     try {
@@ -65,9 +70,16 @@ export default function ReminderList({
     if (reminderToDelete) {
       try {
         setLoading(reminderToDelete);
+        deleteFocus.request(
+          reminders.map((r) => r.ID),
+          reminderToDelete,
+        );
         await onDelete(reminderToDelete);
         setDeleteDialogOpen(false);
         setReminderToDelete(null);
+      } catch (err) {
+        deleteFocus.cancel();
+        throw err;
       } finally {
         setLoading(null);
       }
@@ -83,7 +95,7 @@ export default function ReminderList({
 
   if (reminders.length === 0) {
     return (
-      <Box sx={{ p: 3, textAlign: 'center' }}>
+      <Box sx={{ p: 3, textAlign: 'center' }} ref={emptyRef} tabIndex={-1}>
         <NotificationsIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 1 }} />
         <Typography
           variant="body2"
@@ -210,6 +222,7 @@ export default function ReminderList({
                           disabled={loading === reminder.ID}
                           color="error"
                           aria-label={t('common.deleteNamed', { name: itemLabel(title) })}
+                          ref={deleteFocus.register(reminder.ID)}
                         >
                           <DeleteIcon />
                         </IconButton>

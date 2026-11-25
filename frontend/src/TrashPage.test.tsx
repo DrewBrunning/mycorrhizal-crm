@@ -367,3 +367,47 @@ test('row buttons name the trashed item they act on', async () => {
   expect(screen.getByRole('button', { name: 'Delete forever: Ada Test' })).toBeTruthy();
   expect(screen.queryByRole('button', { name: 'Restore' })).toBeNull();
 });
+
+// #2918 / #2920: an action that removes its own row must not drop focus on <body>.
+test('restoring a contact moves focus to the next row, then the heading', async () => {
+  renderPage();
+  const ada = (await screen.findByText('Ada Test')).closest('li') as HTMLElement;
+  fireEvent.click(within(ada).getByRole('button', { name: /^restore /i }));
+  await waitFor(() => expect(screen.queryByText('Ada Test')).toBeNull());
+  const bob = screen.getByText('Bob Test').closest('li') as HTMLElement;
+  await waitFor(() =>
+    expect(document.activeElement).toBe(within(bob).getByRole('button', { name: /^restore /i })),
+  );
+
+  fireEvent.click(within(bob).getByRole('button', { name: /^restore /i }));
+  await waitFor(() => expect(screen.queryByText('Bob Test')).toBeNull());
+  await waitFor(() =>
+    expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'Trash' })),
+  );
+});
+
+test('deleting a contact forever moves focus to the next row', async () => {
+  renderPage();
+  const ada = (await screen.findByText('Ada Test')).closest('li') as HTMLElement;
+  fireEvent.click(within(ada).getByRole('button', { name: /^delete forever: /i }));
+  const dialog = await screen.findByRole('dialog', { name: 'Delete forever?' });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Delete forever' }));
+  await waitFor(() => expect(screen.queryByText('Ada Test')).toBeNull());
+  const bob = screen.getByText('Bob Test').closest('li') as HTMLElement;
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      within(bob).getByRole('button', { name: /^delete forever: /i }),
+    ),
+  );
+});
+
+test('a failed restore does not move focus later', async () => {
+  restoreStatus = 409;
+  renderPage();
+  const ada = (await screen.findByText('Ada Test')).closest('li') as HTMLElement;
+  const restore = within(ada).getByRole('button', { name: /^restore /i });
+  restore.focus();
+  fireEvent.click(restore);
+  await screen.findByText(/already uses this contact/i);
+  expect(document.activeElement).toBe(restore);
+});
