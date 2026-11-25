@@ -357,5 +357,8 @@ private fun resultMessage(channel: String, ok: Boolean, error: String?): String 
         )
     )
 } else {
-    stringResource(R.string.settings_notifications_test_failed, error ?: "unknown")
+    stringResource(
+        R.string.settings_notifications_test_failed,
+        error ?: stringResource(R.string.error_client_unknown)
+    )
 }

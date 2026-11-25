@@ -2702,6 +2702,17 @@
     <string name="attach_error_not_local">Seul le profil sur l\'appareil peut être déplacé vers un serveur.</string>
     <string name="attach_error_credentials">Saisissez votre nom d\'utilisateur ou e-mail et votre mot de passe.</string>
     <string name="attach_error_bad_credentials">Nom d\'utilisateur ou mot de passe incorrect.</string>
+    <string name="attach_error_not_remote">Choisissez le serveur vers lequel déplacer ce profil.</string>
+    <string name="attach_error_already_archived">Ce profil est déjà archivé.</string>
+    <string name="attach_error_no_session">Le serveur n\'a pas ouvert de session. Reconnectez-vous.</string>
+    <string name="attach_error_not_signed_in">Connectez-vous d\'abord au serveur.</string>
+    <string name="attach_error_nothing_to_confirm">Rien n\'attend de confirmation. Relancez l\'envoi.</string>
+    <string name="attach_error_no_local_profile">Le profil sur l\'appareil n\'est plus disponible.</string>
+    <string name="attach_error_timed_out">Le serveur a mis trop de temps à répondre. Réessayez.</string>
+    <string name="attach_error_import_failed">Le serveur a interrompu l\'envoi. Réessayez.</string>
+    <string name="settings_webhooks_delivery_failed_status">Échec de la livraison (statut %1$d)</string>
+    <string name="settings_webhooks_delivery_failed">Échec de la livraison</string>
+    <string name="settings_webhooks_delivery_error_short">Erreur</string>
     <string name="attach_button">Déplacer ces données vers un serveur</string>
     <string name="attach_archived_badge">Archive en lecture seule</string>
     <string name="attach_archived_hint">Cette copie a été déplacée vers un serveur. Vous pouvez la consulter, mais pas la modifier.</string>

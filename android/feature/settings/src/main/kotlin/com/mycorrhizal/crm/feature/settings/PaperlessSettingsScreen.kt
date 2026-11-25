@@ -240,7 +240,8 @@ fun PaperlessSettingsContent(
                     } else {
                         stringResource(
                             R.string.paperless_settings_test_failed,
-                            result.error?.localizedMessage() ?: result.message ?: "unknown"
+                            result.error?.localizedMessage() ?: result.message
+                                ?: stringResource(R.string.error_client_unknown)
                         )
                     },
                     color = if (result.ok) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.error,

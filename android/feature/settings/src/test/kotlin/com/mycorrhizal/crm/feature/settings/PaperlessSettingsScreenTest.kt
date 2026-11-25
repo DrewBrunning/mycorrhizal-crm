@@ -189,4 +189,23 @@ class PaperlessSettingsScreenTest {
             .performScrollTo()
             .assertIsDisplayed()
     }
+
+    @Test
+    fun `a test failure with no reason shows a translated fallback, not unknown (#2920)`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                PaperlessSettingsContent(
+                    state = PaperlessSettingsUiState(
+                        isLoading = false,
+                        hasApiToken = true,
+                        testResult = PaperlessTestOutcome(ok = false, message = null)
+                    )
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText(
+            "Test failed: Something went wrong"
+        ).performScrollTo().assertIsDisplayed()
+    }
 }

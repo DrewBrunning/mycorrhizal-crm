@@ -184,4 +184,23 @@ class SeafileSettingsScreenTest {
             .performScrollTo()
             .assertIsDisplayed()
     }
+
+    @Test
+    fun `a test failure with no reason shows a translated fallback, not unknown (#2920)`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                SeafileSettingsContent(
+                    state = SeafileSettingsUiState(
+                        isLoading = false,
+                        hasApiToken = true,
+                        testResult = SeafileTestOutcome(ok = false, message = null)
+                    )
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText(
+            "Test failed: Something went wrong"
+        ).performScrollTo().assertIsDisplayed()
+    }
 }

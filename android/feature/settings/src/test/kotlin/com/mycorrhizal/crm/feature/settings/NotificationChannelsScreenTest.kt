@@ -110,6 +110,37 @@ class NotificationChannelsScreenTest {
     }
 
     @Test
+    fun `a test failure with no detail shows a translated fallback, not unknown (#2920)`() {
+        composeTestRule.setContent {
+            MycorrhizalTheme {
+                NotificationChannelsContent(
+                    state = NotificationChannelsUiState(
+                        isLoading = false,
+                        testResult = mapOf(
+                            "ntfy" to NotificationTestOutcome(
+                                ok = false,
+                                detail = null
+                            )
+                        )
+                    ),
+                    onNtfyUrlChange = {},
+                    onNtfyTopicChange = {},
+                    onNotifyNtfyChange = {},
+                    onGotifyUrlChange = {},
+                    onGotifyTokenChange = {},
+                    onNotifyGotifyChange = {},
+                    onTest = {},
+                    onSave = {}
+                )
+            }
+        }
+
+        composeTestRule.onNodeWithText(
+            "Test failed: Something went wrong"
+        ).performScrollTo().assertIsDisplayed()
+    }
+
+    @Test
     fun `ntfy enable switch is named by its label and toggles on tap`() {
         var value: Boolean? = null
         composeTestRule.setContent {

@@ -106,7 +106,7 @@ fun AttachToRemoteScreen(onBack: () -> Unit, viewModel: AttachToRemoteViewModel 
                 stringResource(
                     it
                 )
-            } ?: state.error?.localizedMessage() ?: state.errorText
+            } ?: state.error?.localizedMessage()
             if (errorText != null) {
                 Text(
                     text = errorText,

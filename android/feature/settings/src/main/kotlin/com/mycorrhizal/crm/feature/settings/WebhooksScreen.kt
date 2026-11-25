@@ -199,10 +199,12 @@ fun WebhooksScreen(onBack: () -> Unit, viewModel: WebhooksViewModel = hiltViewMo
                             )
                         }
                     }
-                    if (state.error != null || state.deliveryError != null) {
+                    if (state.error != null || state.deliveryFailure != null) {
                         item {
                             Text(
-                                text = (state.error?.localizedMessage() ?: state.deliveryError).orEmpty(),
+                                text =
+                                    state.error?.localizedMessage()
+                                        ?: state.deliveryFailure?.message().orEmpty(),
                                 color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier
@@ -395,7 +397,8 @@ internal fun WebhookRow(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = delivery.statusCode?.toString() ?: "err",
+                            text = delivery.statusCode?.toString()
+                                ?: stringResource(R.string.settings_webhooks_delivery_error_short),
                             style = MaterialTheme.typography.labelSmall,
                             color =
                                 delivery.statusCode?.let {
@@ -620,3 +623,12 @@ private fun SecretRevealDialog(secret: String, onDismiss: () -> Unit) {
         }
     )
 }
+
+/**
+ * Issue #2920: the server's own error text when it sent one, else a line in
+ * the UI language (never a hand-built English "status …").
+ */
+@Composable
+private fun DeliveryFailure.message(): String = serverText
+    ?: statusCode?.let { stringResource(R.string.settings_webhooks_delivery_failed_status, it) }
+    ?: stringResource(R.string.settings_webhooks_delivery_failed)
