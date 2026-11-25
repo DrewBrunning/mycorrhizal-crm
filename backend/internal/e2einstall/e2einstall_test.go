@@ -154,7 +154,10 @@ func TestInstallStepsBoundedRetriedAndKeyed(t *testing.T) {
 			}
 		}
 	}
-	if found != 6 {
-		t.Errorf("found %d install steps, want 6", found)
+	// 7: issue #2920 added the populated a11y sweep job, which installs
+	// Chromium and Firefox. Bump this with the workflow so a job cannot
+	// silently lose its hardened install step.
+	if found != 7 {
+		t.Errorf("found %d install steps, want 7", found)
 	}
 }
