@@ -838,12 +838,24 @@ hamburger name) and a contact timeline activity with participants (#2907's
 19.9px target size); `accessibility.spec.ts`'s curated route list and the
 per-test scan see neither state.
 
-It is nightly-only: 108 tests at `--workers=1` take about 2.7 minutes, too slow
-for PR CI. The spec self-skips unless `RUN_A11Y_SWEEP=1` (the same pattern as
-the `@perf-heavy` specs), and `e2e-tests.yml`'s schedule-only `e2e-a11y-sweep`
-job sets it. That job lives inside the already-registered `E2E Tests` nightly
-workflow, so a failure raises the usual `nightly-failure` issue through
-`nightly-failure-alert.yml`. Run it locally:
+It stays off the per-PR path: 108 tests at `--workers=1` take about 2.7 minutes.
+The spec self-skips unless `RUN_A11Y_SWEEP=1` (the same pattern as the
+`@perf-heavy` specs), and `e2e-tests.yml`'s `e2e-a11y-sweep` job sets it. The
+job runs on the nightly schedule, on `workflow_dispatch` (run it on demand from
+the Actions tab) and in release validation (a composed run, identified by its
+candidate `image_digest`). It lives inside the already-registered `E2E Tests`
+nightly workflow, so a failure raises the usual `nightly-failure` issue through
+`nightly-failure-alert.yml`.
+
+Playwright exits 0 when every test self-skips, so a lost `RUN_A11Y_SWEEP` would
+leave the job green having scanned nothing. The job's last step runs
+`scripts/check-playwright-ran.mjs` against the JSON reporter output and fails
+when fewer than 40 tests ran.
+
+Beyond axe, every route also runs the repeated-accessible-name check (#2911's
+class) on the shell chrome (`header, nav`), and the populated contact detail runs
+it over the whole page (`repeatedNameContextsFor` in `e2e/populatedRoutes.ts`).
+Run it locally:
 
 ```sh
 cd frontend

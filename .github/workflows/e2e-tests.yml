@@ -1095,7 +1095,7 @@ jobs:
   # route at 1280px and 375px, in light and dark, as a worker user with a
   # pending incoming share and a timeline activity with participants -- the
   # populated states that #2906 and #2907 only exhibit. Around three minutes
-  # with --workers=1, so it is schedule-only: PR CI keeps the curated
+  # with --workers=1, so it stays off the PR path: PR CI keeps the curated
   # accessibility.spec.ts scan and the automatic per-test scan unchanged. It
   # lives inside this already-registered nightly workflow, so a failure raises
   # the usual `nightly-failure` issue through nightly-failure-alert.yml.
@@ -1107,7 +1107,10 @@ jobs:
     runs-on: ${{ inputs.runner || 'ubuntu-latest' }}
     timeout-minutes: 35
     needs: changes
-    if: github.event_name == 'schedule'
+    # Nightly, on demand (workflow_dispatch) and in release validation: a
+    # composed run (release-validate.yml's `uses:`) always carries the
+    # candidate image digest, which the per-PR/push runs never do.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || inputs.image_digest != ''
 
     steps:
       - name: Checkout repository
@@ -1118,8 +1121,7 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      # Build-once parity (#1484): this job is schedule-only, so a candidate
-      # digest is never supplied, but releasegatecheck requires every job that
+      # Build-once parity (#1484): releasegatecheck requires every job that
       # runs `mycorrhizal-crm-test:latest` to keep the pull-or-build shape.
       - name: Log in to Container Registry (candidate image)
         if: ${{ inputs.image_digest != '' }}
@@ -1212,6 +1214,14 @@ jobs:
         env:
           CI: true
           RUN_A11Y_SWEEP: '1'
+
+      # Playwright exits 0 when every test self-skips, so a lost RUN_A11Y_SWEEP
+      # would leave this job green having scanned nothing. The JSON reporter
+      # (playwright.config.ts) wrote the result; require a real run. The floor
+      # is well under the ~108 tests (>20 routes x 2 widths x 2 themes).
+      - name: Assert the sweep ran tests
+        working-directory: frontend
+        run: node scripts/check-playwright-ran.mjs playwright-results/results.json --min 40
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

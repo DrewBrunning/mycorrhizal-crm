@@ -12,11 +12,14 @@
 // running `assertNoBlockingA11yViolations` over every App.tsx route at both
 // 1280px and 375px, in light and dark.
 //
-// It is deliberately nightly-only. Every route x two widths x two themes is
+// It is deliberately off the per-PR path. Every route x two widths x two themes is
 // 108 tests and ~2.7 minutes at `--workers=1`, too slow for the per-PR E2E
 // job, so the file self-skips unless RUN_A11Y_SWEEP=1 (the same pattern as the
-// @perf-heavy specs' RUN_PERF_HEAVY). `e2e-tests.yml`'s schedule-only
-// `e2e-a11y-sweep` job sets it; PR/push runs never do.
+// @perf-heavy specs' RUN_PERF_HEAVY). `e2e-tests.yml`'s `e2e-a11y-sweep` job
+// sets it on the nightly schedule, on workflow_dispatch and in release
+// validation (a composed run with a candidate image); PR/push runs never do.
+// Playwright exits 0 when every test self-skips, so that job also runs
+// scripts/check-playwright-ran.mjs to fail a run that executed nothing.
 //
 // Red on the pre-fix tree (main 3fd29a6c8), by the two defects this sweep
 // exists to catch:
@@ -35,12 +38,19 @@
 
 import type { Page } from '@playwright/test';
 import { loadRoutes } from '../scripts/check-e2e-routes.mjs';
-import { assertNoBlockingA11yViolations, expect, SKIP_A11Y_SCAN, waitForLoading } from './fixtures';
+import {
+  assertNoBlockingA11yViolations,
+  assertNoRepeatedAccessibleNames,
+  expect,
+  SKIP_A11Y_SCAN,
+  waitForLoading,
+} from './fixtures';
 import { awaitPinFonts, pinRenderingEnvironment } from './pinnedEnvironment';
 import {
   ADMIN_ROUTES,
   expectSeededRouteContent,
   ROUTE_EXEMPTIONS,
+  repeatedNameContextsFor,
   routeFor,
 } from './populatedRoutes';
 import { test } from './populatedSeed';
@@ -117,6 +127,11 @@ for (const { label, viewport } of VIEWPORTS) {
           // an empty/redirected page that would pass vacuously.
           await expectSeededRouteContent(page, route, populatedSeed);
           await assertNoBlockingA11yViolations(page);
+          // #2911's class has no axe rule: run the repeated-name walk on the
+          // shell chrome (every route) and the whole populated contact page.
+          for (const context of repeatedNameContextsFor(route)) {
+            await assertNoRepeatedAccessibleNames(page, context);
+          }
         });
       }
     }
@@ -136,6 +151,9 @@ for (const { label, viewport } of VIEWPORTS) {
         }) => {
           await openRoute(page, route, theme);
           await assertNoBlockingA11yViolations(page);
+          for (const context of repeatedNameContextsFor(route)) {
+            await assertNoRepeatedAccessibleNames(page, context);
+          }
         });
       }
     }

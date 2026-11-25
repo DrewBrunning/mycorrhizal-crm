@@ -53,6 +53,27 @@ export function routeFor(route: string, seed: PopulatedSeed): string {
 }
 
 /**
+ * The app bar and navigation drawer: shell chrome rendered on every route, so
+ * two same-named controls there (#2911's class) are as ambiguous as two in
+ * `main`. The chrome holds no user data, so the check cannot flake on
+ * legitimate duplicates.
+ */
+export const REPEATED_NAME_CHROME_SELECTOR = 'header, nav';
+
+/**
+ * Where the sweep runs the repeated-accessible-name check for a route: the
+ * shell chrome everywhere, plus the whole page on the populated contact detail
+ * (the richest seeded page: timeline participants, occasions, share chips).
+ * Whole-page checks stay off other routes because user data legitimately
+ * repeats an action name there.
+ */
+export function repeatedNameContextsFor(route: string): string[] {
+  return route === '/contacts/:id'
+    ? [REPEATED_NAME_CHROME_SELECTOR, 'body']
+    : [REPEATED_NAME_CHROME_SELECTOR];
+}
+
+/**
  * Proves the seeded round-2 state rendered on a route, so a seed that silently
  * stopped creating the pending share / occasion / participants fails loudly
  * instead of turning the sweep vacuously green.
