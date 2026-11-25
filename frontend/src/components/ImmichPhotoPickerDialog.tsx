@@ -19,6 +19,7 @@ import {
   immichThumbnailUrl,
 } from '../api/immich';
 import { getErrorMessage } from '../utils/errorHandler';
+import { UserFacingError } from '../utils/userFacingError';
 import AppDialog from './AppDialog';
 import AuthImg from './AuthImg';
 import ImmichPersonSearchDialog from './ImmichPersonSearchDialog';
@@ -91,7 +92,7 @@ export default function ImmichPhotoPickerDialog({
     setError('');
     try {
       const response = await apiFetch(url);
-      if (!response.ok) throw new Error(t('immich.photoPicker.loadFailed'));
+      if (!response.ok) throw new UserFacingError(t('immich.photoPicker.loadFailed'));
       const blob = await response.blob();
       const reader = new FileReader();
       reader.addEventListener('load', () => {

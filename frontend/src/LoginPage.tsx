@@ -20,7 +20,7 @@ import { useErrorAlertFocus } from './hooks/useErrorAlertFocus';
 import { useOIDCConfig } from './hooks/useOIDCConfig';
 import i18n from './i18n/config';
 import { initializeTimeFormatFromBackend } from './timeFormat';
-import { getErrorMessage, getErrorMessageOr } from './utils/errorHandler';
+import { getErrorMessageOr } from './utils/errorHandler';
 import { isCeremonyCancelled, isWebAuthnSupported } from './webauthnCeremony';
 
 type LoginPageProps = {
@@ -135,11 +135,9 @@ export default function LoginPage({ setToken }: LoginPageProps) {
     // A dismissed browser prompt is not a failure worth alarming about; the
     // fallback names the form still on screen (a code field or the password
     // form).
-    isCeremonyCancelled(err)
-      ? t(cancelledKey)
-      : err instanceof Error && err.message
-        ? getErrorMessage(err)
-        : t(failedKey);
+    // form). A browser DOMException's own text is English, so only a
+    // server/translated message replaces the fallback (#2920).
+    isCeremonyCancelled(err) ? t(cancelledKey) : getErrorMessageOr(err, t(failedKey));
 
   const handlePasskey = async () => {
     setLoading(true);

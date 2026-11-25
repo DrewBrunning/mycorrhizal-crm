@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { getSubsystemHealth, type SubsystemHealth } from '../api/subsystemHealth';
+import { UserFacingError } from '../utils/userFacingError';
 import SubsystemHealthPanel from './SubsystemHealthPanel';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -83,7 +84,7 @@ test('clicking a card selects that subsystem as the component filter', async () 
 });
 
 test('surfaces a load error', async () => {
-  vi.mocked(getSubsystemHealth).mockRejectedValue(new Error('the backend is down'));
+  vi.mocked(getSubsystemHealth).mockRejectedValue(new UserFacingError('the backend is down'));
 
   render(<SubsystemHealthPanel onSelectComponent={vi.fn()} />);
 

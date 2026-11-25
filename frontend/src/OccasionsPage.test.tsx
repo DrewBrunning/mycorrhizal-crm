@@ -13,6 +13,7 @@ import {
 } from './api/occasionObligations';
 import { useOccasionEventAttendees, useOccasionEvents } from './hooks/useOccasionEvents';
 import OccasionsPage from './OccasionsPage';
+import { UserFacingError } from './utils/userFacingError';
 
 afterEach(() => {
   cleanup();
@@ -179,7 +180,7 @@ test('re-fetches with days=90 when the 90-day toggle is clicked', async () => {
 });
 
 test('shows an error message when the gift shopping list fetch fails', async () => {
-  getGiftShoppingListMock.mockRejectedValue(new Error('boom'));
+  getGiftShoppingListMock.mockRejectedValue(new UserFacingError('boom'));
   renderPage();
 
   expect(await screen.findByText(/boom/i)).toBeInTheDocument();
@@ -195,7 +196,7 @@ test('downloads the card list CSV when the download button is clicked', async ()
 });
 
 test('shows an error message when the card list download fails', async () => {
-  downloadMock.mockRejectedValue(new Error('download boom'));
+  downloadMock.mockRejectedValue(new UserFacingError('download boom'));
   renderPage();
   await waitFor(() => expect(getGiftShoppingListMock).toHaveBeenCalled());
 
@@ -333,7 +334,7 @@ test('shows the localized reason when the summary is rejected and keeps the down
 });
 
 test('Retry refetches the summary in place', async () => {
-  summaryMock.mockRejectedValueOnce(new Error('network down'));
+  summaryMock.mockRejectedValueOnce(new UserFacingError('network down'));
   summaryMock.mockResolvedValue(summary(2));
   renderPage();
   await screen.findByRole('alert');

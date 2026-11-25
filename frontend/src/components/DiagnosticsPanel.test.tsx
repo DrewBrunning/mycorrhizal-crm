@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { runDiagnostics } from '../api/diagnostics';
+import { UserFacingError } from '../utils/userFacingError';
 import DiagnosticsPanel from './DiagnosticsPanel';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -66,7 +67,7 @@ test('renders the summary and per-check statuses when problems are found', async
 });
 
 test('surfaces a load error without dropping the run button', async () => {
-  vi.mocked(runDiagnostics).mockRejectedValue(new Error('backend unreachable'));
+  vi.mocked(runDiagnostics).mockRejectedValue(new UserFacingError('backend unreachable'));
 
   render(<DiagnosticsPanel />);
   fireEvent.click(screen.getByRole('button', { name: 'Run diagnostics' }));

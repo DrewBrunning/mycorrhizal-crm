@@ -83,8 +83,8 @@
     "src/EntityDetailPage.tsx": {
       "lines": 90.51,
       "linesTotal": 116,
-      "branches": 78.16,
-      "branchesTotal": 87
+      "branches": 81.92,
+      "branchesTotal": 83
     },
     "src/HouseholdsPage.tsx": {
       "lines": 100,
@@ -95,8 +95,8 @@
     "src/LoginPage.tsx": {
       "lines": 96.38,
       "linesTotal": 83,
-      "branches": 88.67,
-      "branchesTotal": 53
+      "branches": 87.75,
+      "branchesTotal": 49
     },
     "src/MapPage.tsx": {
       "lines": 100,
@@ -857,8 +857,8 @@
     "src/components/ContactEntityLinkDialog.tsx": {
       "lines": 98.63,
       "linesTotal": 73,
-      "branches": 95.23,
-      "branchesTotal": 42
+      "branches": 97.5,
+      "branchesTotal": 40
     },
     "src/components/ContactEntityLinksPanel.tsx": {
       "lines": 85.36,
@@ -1031,20 +1031,20 @@
     "src/components/EntityDeleteDialog.tsx": {
       "lines": 100,
       "linesTotal": 32,
-      "branches": 76.47,
-      "branchesTotal": 34
+      "branches": 78.12,
+      "branchesTotal": 32
     },
     "src/components/EntityFormDialog.tsx": {
       "lines": 86.07,
       "linesTotal": 79,
-      "branches": 94.87,
-      "branchesTotal": 39
+      "branches": 97.29,
+      "branchesTotal": 37
     },
     "src/components/EntityMergeDialog.tsx": {
       "lines": 98.66,
       "linesTotal": 75,
-      "branches": 84.12,
-      "branchesTotal": 63
+      "branches": 85.24,
+      "branchesTotal": 61
     },
     "src/components/EntityPicker.tsx": {
       "lines": 100,
@@ -1055,8 +1055,8 @@
     "src/components/EntitySuggestionsPanel.tsx": {
       "lines": 100,
       "linesTotal": 51,
-      "branches": 90.62,
-      "branchesTotal": 32
+      "branches": 90,
+      "branchesTotal": 30
     },
     "src/components/ErrorAggregationPanel.tsx": {
       "lines": 100,
@@ -1083,9 +1083,9 @@
       "branchesTotal": 16
     },
     "src/components/ExternalLinkPanel.tsx": {
-      "lines": 84.61,
+      "lines": 96.15,
       "linesTotal": 26,
-      "branches": 89.47,
+      "branches": 92.1,
       "branchesTotal": 38
     },
     "src/components/FeedCreateDialog.tsx": {
@@ -1197,7 +1197,7 @@
       "branchesTotal": 47
     },
     "src/components/ImmichPersonSearchDialog.tsx": {
-      "lines": 93.54,
+      "lines": 100,
       "linesTotal": 31,
       "branches": 88.23,
       "branchesTotal": 17
@@ -2548,9 +2548,9 @@
     },
     "src/utils/errorHandler.ts": {
       "lines": 100,
-      "linesTotal": 29,
+      "linesTotal": 32,
       "branches": 100,
-      "branchesTotal": 26
+      "branchesTotal": 34
     },
     "src/utils/graphBudget.ts": {
       "lines": 100,
@@ -2701,6 +2701,12 @@
       "linesTotal": 32,
       "branches": 89.79,
       "branchesTotal": 49
+    },
+    "src/utils/userFacingError.ts": {
+      "lines": 100,
+      "linesTotal": 2,
+      "branches": 100,
+      "branchesTotal": 0
     },
     "src/webauthnCeremony.ts": {
       "lines": 100,

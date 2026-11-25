@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'vitest';
+import { getErrorMessage } from '../utils/errorHandler';
+import { UserFacingError } from '../utils/userFacingError';
 import { extractDetailMessage, handleResponse } from './errorHandling';
 
 describe('extractDetailMessage', () => {
@@ -33,6 +35,16 @@ describe('extractDetailMessage', () => {
 describe('handleResponse', () => {
   const jsonResponse = (body: unknown, status = 200) =>
     new Response(JSON.stringify(body), { status });
+
+  test('a failure rejects with a UserFacingError so its server message is shown (#2920)', async () => {
+    const rejection = handleResponse(
+      jsonResponse({ error: { message: 'Name already taken' } }, 409),
+      'fallback',
+    );
+    await expect(rejection).rejects.toBeInstanceOf(UserFacingError);
+    const err = await rejection.catch((e: unknown) => e);
+    expect(getErrorMessage(err)).toBe('Name already taken');
+  });
 
   test('returns the parsed body for a successful JSON response', async () => {
     await expect(handleResponse(jsonResponse({ id: 1, name: 'Ada' }), 'fallback')).resolves.toEqual(

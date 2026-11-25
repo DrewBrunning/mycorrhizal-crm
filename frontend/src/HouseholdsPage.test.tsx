@@ -21,6 +21,7 @@ import {
 } from './api/households';
 import { SnackbarProvider } from './context/SnackbarContext';
 import HouseholdsPage from './HouseholdsPage';
+import { UserFacingError } from './utils/userFacingError';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(() => {
@@ -166,7 +167,7 @@ test('explains what households do and how they differ from circles', async () =>
 });
 
 test('a fetch failure surfaces an error alert', async () => {
-  listHouseholdsMock.mockRejectedValue(new Error('network down'));
+  listHouseholdsMock.mockRejectedValue(new UserFacingError('network down'));
 
   renderPage();
 
@@ -228,7 +229,7 @@ test('a successful create that finds address suggestions nudges the user to revi
 test('a failing best-effort address-suggestion nudge after create does not break the create flow', async () => {
   listHouseholdsMock.mockResolvedValue(listResponse({ households: [], members: [] }));
   createHouseholdMock.mockResolvedValue(household({ id: 'h2', name: 'New Household' }));
-  suggestContactAddressesMock.mockRejectedValue(new Error('scan boom'));
+  suggestContactAddressesMock.mockRejectedValue(new UserFacingError('scan boom'));
 
   renderPage();
   await screen.findByText(/No households yet/);
@@ -302,7 +303,7 @@ test('declining the delete confirmation never calls deleteHousehold', async () =
 test('a failed delete is swallowed by the page (error already surfaced by the hook)', async () => {
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
   listHouseholdsMock.mockResolvedValue(listResponse());
-  deleteHouseholdMock.mockRejectedValue(new Error('delete boom'));
+  deleteHouseholdMock.mockRejectedValue(new UserFacingError('delete boom'));
 
   renderPage();
   await screen.findByText('Smith Family');
@@ -367,7 +368,7 @@ test('a suggest-relationships failure is swallowed without crashing the page', a
   listHouseholdsMock.mockResolvedValue(
     listResponse({ members: [member(), member({ id: 2, member_vcard_uid: 'bob-uid' })] }),
   );
-  suggestHouseholdRelationshipsMock.mockRejectedValue(new Error('suggest boom'));
+  suggestHouseholdRelationshipsMock.mockRejectedValue(new UserFacingError('suggest boom'));
 
   renderPage();
   await screen.findByText('Smith Family');
@@ -395,7 +396,7 @@ test('changing a member role calls updateHouseholdMember with the new role', asy
 
 test('a failed role change triggers a refresh so the select reverts to the server state', async () => {
   listHouseholdsMock.mockResolvedValueOnce(listResponse());
-  updateHouseholdMemberMock.mockRejectedValue(new Error('role change boom'));
+  updateHouseholdMemberMock.mockRejectedValue(new UserFacingError('role change boom'));
   listHouseholdsMock.mockResolvedValueOnce(listResponse());
 
   renderPage();
@@ -423,7 +424,7 @@ test('removing a member calls removeHouseholdMember with the household id and me
 
 test('a failed member removal does not crash the page', async () => {
   listHouseholdsMock.mockResolvedValue(listResponse());
-  removeHouseholdMemberMock.mockRejectedValue(new Error('remove boom'));
+  removeHouseholdMemberMock.mockRejectedValue(new UserFacingError('remove boom'));
 
   renderPage();
   await screen.findByText('Smith Family');
@@ -511,7 +512,7 @@ test('a null suggestions payload from the backend normalizes to the empty state 
 
 test('a scan failure surfaces the scanFailed error message', async () => {
   listHouseholdsMock.mockResolvedValue(listResponse());
-  suggestAddressHouseholdsMock.mockRejectedValue(new Error('scan endpoint down'));
+  suggestAddressHouseholdsMock.mockRejectedValue(new UserFacingError('scan endpoint down'));
 
   renderPage();
   await screen.findByText('Smith Family');
@@ -564,7 +565,7 @@ test('a failed accept re-scans instead of leaving a stale suggestion displayed',
     ],
     total: 1,
   });
-  acceptAddressHouseholdSuggestionMock.mockRejectedValue(new Error('accept boom'));
+  acceptAddressHouseholdSuggestionMock.mockRejectedValue(new UserFacingError('accept boom'));
   suggestAddressHouseholdsMock.mockResolvedValueOnce({ suggestions: [], total: 0 });
 
   renderPage();
@@ -624,7 +625,7 @@ test('a failed dismiss surfaces the fetch error but leaves the page usable', asy
     ],
     total: 1,
   });
-  dismissAddressHouseholdSuggestionMock.mockRejectedValue(new Error('dismiss boom'));
+  dismissAddressHouseholdSuggestionMock.mockRejectedValue(new UserFacingError('dismiss boom'));
 
   renderPage();
   await screen.findByText('Smith Family');
@@ -640,7 +641,7 @@ test('a failed dismiss surfaces the fetch error but leaves the page usable', asy
 
 test('a member-resolution failure falls back to an empty contact map instead of crashing', async () => {
   listHouseholdsMock.mockResolvedValue(listResponse());
-  getContactsByUidMock.mockRejectedValue(new Error('resolve boom'));
+  getContactsByUidMock.mockRejectedValue(new UserFacingError('resolve boom'));
 
   renderPage();
 

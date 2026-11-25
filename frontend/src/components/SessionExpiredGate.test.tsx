@@ -5,6 +5,7 @@ import { AppThemeProvider } from '../AppThemeProvider';
 import { notifySessionExpired } from '../api/sessionExpiry';
 import { login2FA, loginUser, logoutAndRedirect } from '../auth';
 import { useOIDCConfig } from '../hooks/useOIDCConfig';
+import { UserFacingError } from '../utils/userFacingError';
 import SessionExpiredGate from './SessionExpiredGate';
 import SessionExpiredNotice from './SessionExpiredNotice';
 
@@ -127,7 +128,7 @@ describe('SessionExpiredGate', () => {
   });
 
   test('a failed sign-in shows the error and keeps the modal open', async () => {
-    loginUserMock.mockRejectedValue(new Error('Invalid username or password'));
+    loginUserMock.mockRejectedValue(new UserFacingError('Invalid username or password'));
     renderGate();
     notifySessionExpired('blocking');
     await waitFor(() => expect(screen.getByLabelText(/username or email/i)).toBeInTheDocument());
@@ -143,7 +144,7 @@ describe('SessionExpiredGate', () => {
 
   test('a rejected two-factor code shows the translated error and stays on the step', async () => {
     loginUserMock.mockResolvedValue({ two_factor_required: true });
-    login2FAMock.mockRejectedValue(new Error('Invalid code'));
+    login2FAMock.mockRejectedValue(new UserFacingError('Invalid code'));
     renderGate();
     notifySessionExpired('blocking');
     await waitFor(() => expect(screen.getByLabelText(/username or email/i)).toBeInTheDocument());

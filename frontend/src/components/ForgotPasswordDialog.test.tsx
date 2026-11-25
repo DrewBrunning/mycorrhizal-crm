@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import { AppThemeProvider } from '../AppThemeProvider';
 import { requestPasswordReset } from '../api/auth';
+import { UserFacingError } from '../utils/userFacingError';
 import ForgotPasswordDialog from './ForgotPasswordDialog';
 
 vi.mock('../api/auth', () => ({
@@ -30,7 +31,7 @@ function renderDialog() {
 // the field it concerns.
 describe('ForgotPasswordDialog failed-request focus and error association', () => {
   test('moves focus to the error and associates it with the email field on a rejected request', async () => {
-    requestPasswordResetMock.mockRejectedValue(new Error('No account with that email'));
+    requestPasswordResetMock.mockRejectedValue(new UserFacingError('No account with that email'));
     renderDialog();
 
     const emailInput = screen.getByLabelText(/email/i);

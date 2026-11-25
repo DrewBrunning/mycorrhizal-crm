@@ -2,6 +2,7 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { type Contact, getContactsByUid } from '../api/contacts';
 import { type Feed, listFeeds, revokeAllFeeds, revokeFeed, rotateFeed } from '../api/feeds';
+import { UserFacingError } from '../utils/userFacingError';
 import { feedContactName, useFeeds } from './useFeeds';
 
 afterEach(() => {
@@ -84,7 +85,7 @@ test('refresh skips the contact lookup when there are no contact feeds', async (
 });
 
 test('a failed refresh records an error and stops loading', async () => {
-  vi.mocked(listFeeds).mockRejectedValue(new Error('down'));
+  vi.mocked(listFeeds).mockRejectedValue(new UserFacingError('down'));
   const { result } = renderHook(() => useFeeds());
   await act(async () => {
     await result.current.refresh();
@@ -110,7 +111,7 @@ test('handleRotate returns the new URL and refreshes the list', async () => {
 
 test('handleRotate notifies and rethrows on failure', async () => {
   const showError = vi.fn();
-  vi.mocked(rotateFeed).mockRejectedValue(new Error('nope'));
+  vi.mocked(rotateFeed).mockRejectedValue(new UserFacingError('nope'));
   const { result } = renderHook(() => useFeeds({ showError }));
 
   await act(async () => {
@@ -132,7 +133,7 @@ test('handleRevoke revokes then refreshes; failure notifies and rethrows', async
   expect(revokeFeed).toHaveBeenCalledWith('f1');
   expect(listFeeds).toHaveBeenCalledTimes(1);
 
-  vi.mocked(revokeFeed).mockRejectedValueOnce(new Error('nope'));
+  vi.mocked(revokeFeed).mockRejectedValueOnce(new UserFacingError('nope'));
   await act(async () => {
     await expect(result.current.handleRevoke('f2')).rejects.toThrow('nope');
   });
@@ -152,7 +153,7 @@ test('handleRevokeAll returns the count and refreshes; failure notifies and reth
   expect(count).toBe(4);
   expect(listFeeds).toHaveBeenCalledTimes(1);
 
-  vi.mocked(revokeAllFeeds).mockRejectedValueOnce(new Error('nope'));
+  vi.mocked(revokeAllFeeds).mockRejectedValueOnce(new UserFacingError('nope'));
   await act(async () => {
     await expect(result.current.handleRevokeAll()).rejects.toThrow('nope');
   });
@@ -186,7 +187,7 @@ test('starts empty, reports loading while the list loads, and a failure is logge
   });
   await waitFor(() => expect(result.current.loading).toBe(false));
 
-  vi.mocked(listFeeds).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(listFeeds).mockRejectedValueOnce(new UserFacingError('offline'));
   await act(async () => {
     await result.current.refresh();
   });
@@ -221,9 +222,9 @@ test('a feed list with only contact feeds looks up exactly their uids', async ()
 
 test('rotate, revoke and revoke-all log their own operation', async () => {
   vi.mocked(listFeeds).mockResolvedValue([]);
-  vi.mocked(rotateFeed).mockRejectedValue(new Error('r'));
-  vi.mocked(revokeFeed).mockRejectedValue(new Error('v'));
-  vi.mocked(revokeAllFeeds).mockRejectedValue(new Error('a'));
+  vi.mocked(rotateFeed).mockRejectedValue(new UserFacingError('r'));
+  vi.mocked(revokeFeed).mockRejectedValue(new UserFacingError('v'));
+  vi.mocked(revokeAllFeeds).mockRejectedValue(new UserFacingError('a'));
   const { result } = renderHook(() => useFeeds());
   await act(async () => {
     await expect(result.current.handleRotate('x')).rejects.toThrow('r');

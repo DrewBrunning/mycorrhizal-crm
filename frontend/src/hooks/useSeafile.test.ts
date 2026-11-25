@@ -12,6 +12,7 @@ import {
   saveSeafileConfig,
   testSeafileConnection,
 } from '../api/seafile';
+import { UserFacingError } from '../utils/userFacingError';
 import { useSeafile } from './useSeafile';
 
 afterEach(() => {
@@ -76,7 +77,7 @@ test('refreshConfig loads the config and clears loading', async () => {
 });
 
 test('refreshConfig surfaces a fetch error and clears loading', async () => {
-  vi.mocked(getSeafileConfig).mockRejectedValue(new Error('boom'));
+  vi.mocked(getSeafileConfig).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useSeafile());
   await act(async () => {
@@ -102,7 +103,7 @@ test('saveConfig stores the returned config and returns it', async () => {
 });
 
 test('saveConfig notifies and rethrows on failure', async () => {
-  vi.mocked(saveSeafileConfig).mockRejectedValue(new Error('save failed'));
+  vi.mocked(saveSeafileConfig).mockRejectedValue(new UserFacingError('save failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useSeafile({ showError }));
@@ -144,7 +145,7 @@ test('browseLibraries loads, stores and returns the libraries', async () => {
 });
 
 test('browseLibraries notifies and rethrows on failure', async () => {
-  vi.mocked(getSeafileLibraries).mockRejectedValue(new Error('browse failed'));
+  vi.mocked(getSeafileLibraries).mockRejectedValue(new UserFacingError('browse failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useSeafile({ showError }));
@@ -169,7 +170,7 @@ test('browseDir loads a folder listing and stores the items', async () => {
 });
 
 test('browseDir notifies and rethrows on failure', async () => {
-  vi.mocked(getSeafileDir).mockRejectedValue(new Error('dir failed'));
+  vi.mocked(getSeafileDir).mockRejectedValue(new UserFacingError('dir failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useSeafile({ showError }));
@@ -195,7 +196,7 @@ test('testConnection stores the result and clears testing', async () => {
 
 test('testConnection resets a stale result and notifies on failure', async () => {
   const showError = vi.fn();
-  vi.mocked(testSeafileConnection).mockRejectedValue(new Error('conn failed'));
+  vi.mocked(testSeafileConnection).mockRejectedValue(new UserFacingError('conn failed'));
 
   const { result } = renderHook(() => useSeafile({ showError }));
   await expect(result.current.testConnection()).rejects.toThrow('conn failed');

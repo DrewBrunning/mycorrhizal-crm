@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { FieldDefinition } from '../api/fieldDefinitions';
+import { UserFacingError } from '../utils/userFacingError';
 import FieldDefinitionDialog from './FieldDefinitionDialog';
 
 afterEach(cleanup);
@@ -201,7 +202,7 @@ test('a string field builds maxLength/pattern constraints from the entered value
 });
 
 test('a rejected save surfaces the thrown Error message and re-enables the form', async () => {
-  const onSave = vi.fn().mockRejectedValue(new Error('field key already exists'));
+  const onSave = vi.fn().mockRejectedValue(new UserFacingError('field key already exists'));
   renderDialog({ onSave });
 
   fireEvent.change(screen.getByLabelText('Label *'), { target: { value: 'Size' } });
@@ -268,7 +269,9 @@ test('a group over 100 characters is rejected before save; exactly 100 is allowe
 });
 
 test('a server 400 on the group is surfaced', async () => {
-  const onSave = vi.fn().mockRejectedValue(new Error('group must be at most 100 characters'));
+  const onSave = vi
+    .fn()
+    .mockRejectedValue(new UserFacingError('group must be at most 100 characters'));
   renderDialog({ onSave, definition: existingDef({ group: 'Travel' }) });
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
   expect(await screen.findByText('group must be at most 100 characters')).toBeInTheDocument();

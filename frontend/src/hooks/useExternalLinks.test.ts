@@ -6,6 +6,7 @@ import {
   getExternalActivities,
   getExternalIdentities,
 } from '../api/externalLinks';
+import { UserFacingError } from '../utils/userFacingError';
 import { useExternalLinks } from './useExternalLinks';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -112,7 +113,7 @@ test('refresh accepts an override uid', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getExternalIdentities).mockRejectedValue(new Error('boom'));
+  vi.mocked(getExternalIdentities).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useExternalLinks('uid-1'));
   await act(async () => {
@@ -164,7 +165,7 @@ test('tolerates responses missing their lists, logs a failure by operation, and 
   expect(result.current.identities).toEqual([]);
   expect(result.current.activities).toEqual([]);
 
-  vi.mocked(getExternalIdentities).mockRejectedValueOnce(new Error('down'));
+  vi.mocked(getExternalIdentities).mockRejectedValueOnce(new UserFacingError('down'));
   vi.mocked(getExternalActivities).mockResolvedValueOnce({} as never);
   await act(async () => {
     await result.current.refresh();

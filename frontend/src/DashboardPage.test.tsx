@@ -9,6 +9,7 @@ import { completeReminder, getUpcomingReminders, skipReminder } from './api/remi
 import DashboardPage from './DashboardPage';
 import { DateFormatProvider } from './DateFormatProvider';
 import i18n from './i18n/config';
+import { UserFacingError } from './utils/userFacingError';
 
 // M3: the page
 // now fetches one GET /dashboard composite instead of fanning out to four
@@ -109,7 +110,7 @@ function renderPage() {
 
 test('a failed dashboard fetch shows the error with a Try again that reloads it (issue #1478)', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  getDashboardMock.mockRejectedValueOnce(new Error('Service unavailable'));
+  getDashboardMock.mockRejectedValueOnce(new UserFacingError('Service unavailable'));
   getDashboardMock.mockResolvedValueOnce(emptyDashboard());
 
   renderPage();

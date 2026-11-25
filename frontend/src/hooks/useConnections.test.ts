@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { getConnections } from '../api/graph';
+import { UserFacingError } from '../utils/userFacingError';
 import { useConnections } from './useConnections';
 
 vi.mock('../api/graph', () => ({ getConnections: vi.fn() }));
@@ -39,7 +40,7 @@ test('passes depth, a trimmed relation, and an override uid through', async () =
 });
 
 test('a failed fetch surfaces an error and clears loading', async () => {
-  vi.mocked(getConnections).mockRejectedValue(new Error('boom'));
+  vi.mocked(getConnections).mockRejectedValue(new UserFacingError('boom'));
   const { result } = renderHook(() => useConnections('alice-uid'));
   await act(() => result.current.refresh());
   expect(result.current.error).toBeTruthy();
@@ -54,7 +55,7 @@ test('starts with no connections and idle; reports loading and clears an old err
   expect(result.current.loading).toBe(false);
   expect(result.current.error).toBeNull();
 
-  vi.mocked(getConnections).mockRejectedValueOnce(new Error('boom'));
+  vi.mocked(getConnections).mockRejectedValueOnce(new UserFacingError('boom'));
   await act(() => result.current.refresh());
   expect(result.current.error).toBe('boom');
   expect(console.error).toHaveBeenCalledWith('[fetching connections] Error:', expect.anything());

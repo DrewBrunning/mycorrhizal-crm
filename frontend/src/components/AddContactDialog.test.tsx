@@ -10,6 +10,7 @@ import { addContactTag, createTag, type Tag } from '../api/tags';
 import { resolveEnabledFields } from '../contactFields';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import { DateFormatProvider } from '../DateFormatProvider';
+import { UserFacingError } from '../utils/userFacingError';
 import AddContactDialog from './AddContactDialog';
 
 vi.mock('../api/contacts', async (importOriginal) => {
@@ -395,7 +396,7 @@ test('a failed circle-membership call is swallowed -- the contact was already cr
     card: {},
     crm: {},
   });
-  vi.mocked(createCircle).mockRejectedValue(new Error('circle create failed'));
+  vi.mocked(createCircle).mockRejectedValue(new UserFacingError('circle create failed'));
   const onContactAdded = vi.fn();
 
   render(
@@ -425,7 +426,7 @@ test('a failed circle-membership call is swallowed -- the contact was already cr
 });
 
 test('shows an error and does not call onContactAdded when contact creation itself fails', async () => {
-  vi.mocked(createContactRecord).mockRejectedValue(new Error('server exploded'));
+  vi.mocked(createContactRecord).mockRejectedValue(new UserFacingError('server exploded'));
   const onContactAdded = vi.fn();
 
   render(

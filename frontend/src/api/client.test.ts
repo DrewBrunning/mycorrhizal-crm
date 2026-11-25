@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
 import i18n from '../i18n/config';
+import { UserFacingError } from '../utils/userFacingError';
 import { ApiError, apiFetch, parseErrorResponse } from './client';
 import { onSessionExpired } from './sessionExpiry';
 
@@ -262,7 +263,10 @@ describe('parseErrorResponse / apiFetch fallbacks', () => {
   test('an aborted request is reported as a timeout, not a raw AbortError', async () => {
     const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(abort));
-    await expect(apiFetch('/api/v1/anything')).rejects.toThrow(/Request timeout after \d+ seconds/);
+    const rejection = apiFetch('/api/v1/anything');
+    // A translated, user-facing message, so getErrorMessage shows it (#2920).
+    await expect(rejection).rejects.toBeInstanceOf(UserFacingError);
+    await expect(rejection).rejects.toThrow(/^The request timed out after \d+ seconds/);
   });
 });
 

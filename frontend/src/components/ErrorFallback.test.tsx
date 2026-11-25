@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, test, vi } from 'vitest';
+import i18n from '../i18n/config';
 import ErrorFallback, { SectionErrorFallback } from './ErrorFallback';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -62,7 +63,10 @@ test('SectionErrorFallback renders its title and message with a Retry action', (
   );
 
   expect(screen.getByText('Error loading section')).toBeInTheDocument();
-  expect(screen.getByText('fetch failed')).toBeInTheDocument();
+  // A plain Error's message is developer text; the section shows translated
+  // copy instead (#2920).
+  expect(screen.getByText(i18n.t('common.unexpectedError'))).toBeInTheDocument();
+  expect(screen.queryByText('fetch failed')).not.toBeInTheDocument();
 
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   expect(onReset).toHaveBeenCalledTimes(1);

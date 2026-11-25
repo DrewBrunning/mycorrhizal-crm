@@ -10,6 +10,7 @@ import {
   type LifeEventInputData,
   updateLifeEvent,
 } from '../api/lifeEvents';
+import { UserFacingError } from '../utils/userFacingError';
 import { useLifeEvents } from './useLifeEvents';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -193,7 +194,7 @@ test('handleUpdate answered 412 calls onConflict, rethrows and does not refresh'
 
 test('handleUpdate rethrows a non-412 error without calling onConflict', async () => {
   vi.mocked(getLifeEvents).mockResolvedValue({ life_events: [], next_cursor: '', limit: 50 });
-  vi.mocked(updateLifeEvent).mockRejectedValue(new Error('boom'));
+  vi.mocked(updateLifeEvent).mockRejectedValue(new UserFacingError('boom'));
   const onConflict = vi.fn();
 
   const { result } = renderHook(() => useLifeEvents('uid-1', onConflict));
@@ -228,7 +229,7 @@ test('handleDelete answered 412 calls onConflict and does not refresh or throw',
 
 test('handleDelete rethrows a non-412 error', async () => {
   vi.mocked(getLifeEvents).mockResolvedValue({ life_events: [], next_cursor: '', limit: 50 });
-  vi.mocked(deleteLifeEvent).mockRejectedValue(new Error('boom'));
+  vi.mocked(deleteLifeEvent).mockRejectedValue(new UserFacingError('boom'));
   const { result } = renderHook(() => useLifeEvents('uid-1', vi.fn()));
   await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -240,7 +241,7 @@ test('handleDelete rethrows a non-412 error', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getLifeEvents).mockRejectedValue(new Error('boom'));
+  vi.mocked(getLifeEvents).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useLifeEvents('uid-1'));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -274,7 +275,7 @@ test('starts empty, reports loading, logs a failure by operation, and a refresh 
   });
   await waitFor(() => expect(result.current.loading).toBe(false));
 
-  vi.mocked(getLifeEvents).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getLifeEvents).mockRejectedValueOnce(new UserFacingError('offline'));
   await act(async () => {
     await result.current.refresh();
   });

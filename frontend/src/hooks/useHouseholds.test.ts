@@ -14,6 +14,7 @@ import {
   updateHousehold,
   updateHouseholdMember,
 } from '../api/households';
+import { UserFacingError } from '../utils/userFacingError';
 import { useHouseholds } from './useHouseholds';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -210,7 +211,7 @@ test('handleSuggestRelationships returns the new edge count', async () => {
 
 test('mutation errors notify through the notifier and rethrow', async () => {
   vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
-  vi.mocked(updateHousehold).mockRejectedValue(new Error('boom'));
+  vi.mocked(updateHousehold).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useHouseholds({ showError }));
@@ -223,7 +224,7 @@ test('mutation errors notify through the notifier and rethrow', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(listHouseholds).mockRejectedValue(new Error('boom'));
+  vi.mocked(listHouseholds).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useHouseholds());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -234,7 +235,7 @@ test('sets error when the fetch fails', async () => {
 
 test('create errors notify through the notifier and rethrow', async () => {
   vi.mocked(listHouseholds).mockResolvedValue(listResponse([], []));
-  vi.mocked(createHousehold).mockRejectedValue(new Error('create failed'));
+  vi.mocked(createHousehold).mockRejectedValue(new UserFacingError('create failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useHouseholds({ showError }));
@@ -249,7 +250,7 @@ test('create errors notify through the notifier and rethrow', async () => {
 
 test('delete errors notify through the notifier and rethrow', async () => {
   vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
-  vi.mocked(deleteHousehold).mockRejectedValue(new Error('delete failed'));
+  vi.mocked(deleteHousehold).mockRejectedValue(new UserFacingError('delete failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useHouseholds({ showError }));
@@ -262,7 +263,7 @@ test('delete errors notify through the notifier and rethrow', async () => {
 
 test('add-member errors notify through the notifier and rethrow', async () => {
   vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
-  vi.mocked(addHouseholdMember).mockRejectedValue(new Error('add failed'));
+  vi.mocked(addHouseholdMember).mockRejectedValue(new UserFacingError('add failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useHouseholds({ showError }));
@@ -275,7 +276,7 @@ test('add-member errors notify through the notifier and rethrow', async () => {
 
 test('remove-member errors notify through the notifier and rethrow', async () => {
   vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
-  vi.mocked(removeHouseholdMember).mockRejectedValue(new Error('remove failed'));
+  vi.mocked(removeHouseholdMember).mockRejectedValue(new UserFacingError('remove failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useHouseholds({ showError }));
@@ -288,7 +289,7 @@ test('remove-member errors notify through the notifier and rethrow', async () =>
 
 test('update-member errors notify through the notifier and rethrow', async () => {
   vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
-  vi.mocked(updateHouseholdMember).mockRejectedValue(new Error('update member failed'));
+  vi.mocked(updateHouseholdMember).mockRejectedValue(new UserFacingError('update member failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useHouseholds({ showError }));
@@ -303,7 +304,7 @@ test('update-member errors notify through the notifier and rethrow', async () =>
 
 test('suggest-relationships errors notify through the notifier and rethrow', async () => {
   vi.mocked(listHouseholds).mockResolvedValue(listResponse([household], []));
-  vi.mocked(suggestHouseholdRelationships).mockRejectedValue(new Error('suggest failed'));
+  vi.mocked(suggestHouseholdRelationships).mockRejectedValue(new UserFacingError('suggest failed'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useHouseholds({ showError }));
@@ -341,7 +342,7 @@ test('starts empty, asks for up to 200 households with members, and reports load
 });
 
 test('a failed load logs its operation and the next refresh clears the error', async () => {
-  vi.mocked(listHouseholds).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(listHouseholds).mockRejectedValueOnce(new UserFacingError('offline'));
   const { result } = renderHook(() => useHouseholds());
   await waitFor(() => expect(result.current.error).toBe('offline'));
   expect(console.error).toHaveBeenCalledWith('[fetching households] Error:', expect.anything());

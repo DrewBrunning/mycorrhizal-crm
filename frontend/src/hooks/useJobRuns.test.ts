@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getJobRunHealth, type JobRun, type JobRunHealth, listJobRuns } from '../api/jobRuns';
+import { UserFacingError } from '../utils/userFacingError';
 import { useJobRunHealth, useJobRunHistory } from './useJobRuns';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -94,7 +95,7 @@ describe('useJobRunHealth', () => {
   });
 
   test('sets an error when the fetch fails', async () => {
-    vi.mocked(getJobRunHealth).mockRejectedValue(new Error('boom'));
+    vi.mocked(getJobRunHealth).mockRejectedValue(new UserFacingError('boom'));
 
     const { result } = renderHook(() => useJobRunHealth());
     await act(async () => {});
@@ -148,7 +149,7 @@ describe('useJobRunHealth', () => {
     expect(result.current.error).toBeNull();
 
     await act(async () => {
-      first.reject(new Error('stale failure'));
+      first.reject(new UserFacingError('stale failure'));
     });
     expect(result.current.error).toBeNull();
     expect(result.current.data).toEqual([health]);
@@ -189,7 +190,7 @@ describe('useJobRunHistory', () => {
   });
 
   test('sets an error when the load fails', async () => {
-    vi.mocked(listJobRuns).mockRejectedValue(new Error('boom'));
+    vi.mocked(listJobRuns).mockRejectedValue(new UserFacingError('boom'));
 
     const { result } = renderHook(() => useJobRunHistory());
     await act(async () => {
@@ -238,7 +239,7 @@ describe('useJobRunHistory', () => {
     expect(result.current.error).toBeNull();
 
     await act(async () => {
-      first.reject(new Error('stale failure'));
+      first.reject(new UserFacingError('stale failure'));
     });
     expect(result.current.error).toBeNull();
     expect(result.current.data).toEqual([run]);
@@ -254,7 +255,7 @@ describe('loading, error and stale-guard behavior', () => {
     const { result } = renderHook(() => useJobRunHealth());
     await waitFor(() => expect(result.current.loading).toBe(true));
     await act(async () => {
-      d.reject(new Error('bad'));
+      d.reject(new UserFacingError('bad'));
     });
     await waitFor(() => expect(result.current.error).toBe('bad'));
     expect(console.error).toHaveBeenCalledWith(
@@ -305,7 +306,7 @@ describe('loading, error and stale-guard behavior', () => {
     });
     await waitFor(() => expect(result.current.loading).toBe(true));
     await act(async () => {
-      d.reject(new Error('bad'));
+      d.reject(new UserFacingError('bad'));
     });
     await waitFor(() => expect(result.current.error).toBe('bad'));
     expect(console.error).toHaveBeenCalledWith(
@@ -342,7 +343,7 @@ describe('loading, error and stale-guard behavior', () => {
     expect(result.current.data).toEqual([]);
     expect(result.current.loading).toBe(true);
     await act(async () => {
-      second.reject(new Error('later'));
+      second.reject(new UserFacingError('later'));
     });
   });
 
@@ -368,14 +369,14 @@ describe('loading, error and stale-guard behavior', () => {
     });
     act(() => result.current.reset());
     await act(async () => {
-      bad.reject(new Error('late'));
+      bad.reject(new UserFacingError('late'));
     });
     expect(result.current.error).toBeNull();
     expect(result.current.loading).toBe(false);
   });
 
   test('history: reset clears a previous error and data', async () => {
-    vi.mocked(listJobRuns).mockRejectedValueOnce(new Error('bad'));
+    vi.mocked(listJobRuns).mockRejectedValueOnce(new UserFacingError('bad'));
     const { result } = renderHook(() => useJobRunHistory());
     await act(async () => {
       await result.current.load({ jobName: 'a' });

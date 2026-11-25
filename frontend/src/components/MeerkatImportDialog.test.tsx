@@ -8,6 +8,7 @@ import {
   uploadMeerkatDatabase,
 } from '../api/meerkatImport';
 import { cancelSourceImport, getSourceImportStatus } from '../api/sourceImport';
+import { UserFacingError } from '../utils/userFacingError';
 import MeerkatImportDialog from './MeerkatImportDialog';
 
 afterEach(cleanup);
@@ -110,7 +111,7 @@ test('a single-user database skips the picker', async () => {
 
 test('a rejected upload shows the error inline and stays on the connect step', async () => {
   uploadMock.mockImplementationOnce(() =>
-    Promise.reject(new Error('That file is not a Meerkat database')),
+    Promise.reject(new UserFacingError('That file is not a Meerkat database')),
   );
   renderFileMode();
   pickFile('notes.db');
@@ -262,7 +263,7 @@ test('connecting with a username and password sends them instead of a token', as
 });
 
 test('a failed connect shows the error and offers the file upload instead', async () => {
-  connectMock.mockRejectedValue(new Error('Those credentials were rejected'));
+  connectMock.mockRejectedValue(new UserFacingError('Those credentials were rejected'));
   renderOpen();
   fillUrl();
   fireEvent.change(screen.getByLabelText('API token'), {
@@ -476,7 +477,7 @@ test('both mode tabs are disabled while a connect is in flight', async () => {
 });
 
 test('a failed connect re-enables the mode tabs', async () => {
-  connectMock.mockRejectedValue(new Error('nope'));
+  connectMock.mockRejectedValue(new UserFacingError('nope'));
   renderOpen();
   fillUrl();
   fireEvent.change(screen.getByLabelText('API token'), {

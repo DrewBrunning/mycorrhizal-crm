@@ -9,6 +9,7 @@ import {
   getGifts,
   updateGift,
 } from '../api/gifts';
+import { UserFacingError } from '../utils/userFacingError';
 import { useGifts } from './useGifts';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -143,7 +144,7 @@ test('handleDelete deletes the gift and refreshes', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getGifts).mockRejectedValue(new Error('boom'));
+  vi.mocked(getGifts).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useGifts('uid-1'));
   await act(async () => {
@@ -200,7 +201,7 @@ test('a response without gifts yields none; a failure is logged then cleared by 
   });
   expect(result.current.items).toEqual([]);
 
-  vi.mocked(getGifts).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getGifts).mockRejectedValueOnce(new UserFacingError('offline'));
   await act(async () => {
     await result.current.refresh();
   });

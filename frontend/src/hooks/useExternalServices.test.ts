@@ -34,6 +34,7 @@ import {
   saveSeafileConfig,
   testSeafileConnection,
 } from '../api/seafile';
+import { UserFacingError } from '../utils/userFacingError';
 import { useImmich } from './useImmich';
 import { useNextcloud } from './useNextcloud';
 import { usePaperless } from './usePaperless';
@@ -192,7 +193,7 @@ test('refreshConfig loads the saved config', async () => {
 
 test('refreshConfig surfaces a fetch error', async () => {
   for (const s of services) {
-    vi.mocked(s.fetchConfig).mockRejectedValue(new Error('boom'));
+    vi.mocked(s.fetchConfig).mockRejectedValue(new UserFacingError('boom'));
 
     const { result } = renderHook(() => s.use());
     await act(async () => {
@@ -223,7 +224,7 @@ test('saveConfig persists, stores and returns the config', async () => {
 
 test('saveConfig notifies and rethrows on failure', async () => {
   for (const s of services) {
-    vi.mocked(s.saveConfigApi).mockRejectedValue(new Error('save failed'));
+    vi.mocked(s.saveConfigApi).mockRejectedValue(new UserFacingError('save failed'));
     const notifier = { showError: vi.fn() };
 
     const { result } = renderHook(() => s.use(notifier));
@@ -276,7 +277,7 @@ test('testConnection stores and returns the diagnostic result', async () => {
 
 test('testConnection notifies and rethrows when the check cannot run', async () => {
   for (const s of services) {
-    vi.mocked(s.testConnectionApi).mockRejectedValue(new Error('no connection saved'));
+    vi.mocked(s.testConnectionApi).mockRejectedValue(new UserFacingError('no connection saved'));
     const notifier = { showError: vi.fn() };
 
     const { result } = renderHook(() => s.use(notifier));
@@ -308,7 +309,7 @@ test('seafile browseLibraries loads libraries and toggles browsing', async () =>
 });
 
 test('seafile browseLibraries rethrows on failure', async () => {
-  vi.mocked(getSeafileLibraries).mockRejectedValue(new Error('browse failed'));
+  vi.mocked(getSeafileLibraries).mockRejectedValue(new UserFacingError('browse failed'));
 
   const { result } = renderHook(() => useSeafile());
   await expect(
@@ -426,7 +427,7 @@ test('immich loadSummary loads and stores the per-contact summary', async () => 
 });
 
 test('immich loadSummary returns null (not a throw) when no link exists', async () => {
-  vi.mocked(getImmichContactSummary).mockRejectedValue(new Error('not linked'));
+  vi.mocked(getImmichContactSummary).mockRejectedValue(new UserFacingError('not linked'));
 
   const { result } = renderHook(() => useImmich());
   let loaded: unknown;
@@ -502,7 +503,7 @@ test('immich runSync syncs and refreshes the config', async () => {
 });
 
 test('immich runSync rethrows on failure', async () => {
-  vi.mocked(syncImmich).mockRejectedValue(new Error('sync failed'));
+  vi.mocked(syncImmich).mockRejectedValue(new UserFacingError('sync failed'));
 
   const { result } = renderHook(() => useImmich());
   await expect(
@@ -544,7 +545,7 @@ test('every service starts unconfigured and idle', () => {
 test('refreshConfig reports loading, logs its operation, and a retry clears the error', async () => {
   for (const s of services) {
     vi.mocked(console.error).mockClear();
-    vi.mocked(s.fetchConfig).mockRejectedValueOnce(new Error('boom'));
+    vi.mocked(s.fetchConfig).mockRejectedValueOnce(new UserFacingError('boom'));
     const { result } = renderHook(() => s.use());
     await act(async () => {
       await result.current.refreshConfig();
@@ -572,8 +573,8 @@ test('refreshConfig reports loading, logs its operation, and a retry clears the 
 test('saveConfig and testConnection log their operations and honor the latest notifier', async () => {
   for (const s of services) {
     vi.mocked(console.error).mockClear();
-    vi.mocked(s.saveConfigApi).mockRejectedValue(new Error('save failed'));
-    vi.mocked(s.testConnectionApi).mockRejectedValue(new Error('test failed'));
+    vi.mocked(s.saveConfigApi).mockRejectedValue(new UserFacingError('save failed'));
+    vi.mocked(s.testConnectionApi).mockRejectedValue(new UserFacingError('test failed'));
     const first = { showError: vi.fn() };
     const second = { showError: vi.fn() };
     const { result, rerender } = renderHook(({ n }) => s.use(n), { initialProps: { n: first } });
@@ -705,7 +706,7 @@ test('browse actions report their busy flag, log their operation, and use the la
     expect(current()[c.stateKey]).toEqual(c.value);
 
     // Failure: notified through the latest notifier and logged by operation.
-    c.api.mockRejectedValueOnce(new Error('nope'));
+    c.api.mockRejectedValueOnce(new UserFacingError('nope'));
     await act(async () => {
       await expect(c.run(current())).rejects.toThrow('nope');
     });
@@ -742,7 +743,7 @@ test('immich runSync reports syncing, logs the operation, notifies, and skips th
 
   vi.mocked(getImmichConfig).mockClear();
   vi.mocked(console.error).mockClear();
-  vi.mocked(syncImmich).mockRejectedValueOnce(new Error('sync down'));
+  vi.mocked(syncImmich).mockRejectedValueOnce(new UserFacingError('sync down'));
   await act(async () => {
     await expect(result.current.runSync()).rejects.toThrow('sync down');
   });
@@ -779,7 +780,7 @@ test('browse state starts empty and idle for every service', () => {
 });
 
 test('immich runSync uses the latest notifier after a re-render', async () => {
-  vi.mocked(syncImmich).mockRejectedValue(new Error('sync failed'));
+  vi.mocked(syncImmich).mockRejectedValue(new UserFacingError('sync failed'));
   const first = { showError: vi.fn() };
   const second = { showError: vi.fn() };
   const { result, rerender } = renderHook(({ n }) => useImmich(n), { initialProps: { n: first } });

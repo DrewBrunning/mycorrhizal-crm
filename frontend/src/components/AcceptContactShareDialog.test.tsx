@@ -3,6 +3,7 @@ import { afterEach, expect, test, vi } from 'vitest';
 import '../i18n/config';
 import type { ContactShare } from '../api/contactShares';
 import type { ImportPreviewResponse } from '../api/import';
+import { UserFacingError } from '../utils/userFacingError';
 import AcceptContactShareDialog from './AcceptContactShareDialog';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -132,7 +133,7 @@ test('selecting a different action before confirming sends that action', async (
 
 test('a preview failure surfaces the error and disables confirming', async () => {
   renderDialog({
-    onAcceptPreview: vi.fn().mockRejectedValue(new Error('preview failed')),
+    onAcceptPreview: vi.fn().mockRejectedValue(new UserFacingError('preview failed')),
   });
 
   await waitFor(() => expect(screen.getByText('preview failed')).toBeInTheDocument());
@@ -141,7 +142,7 @@ test('a preview failure surfaces the error and disables confirming', async () =>
 
 test('a confirm failure surfaces the error and keeps the dialog open', async () => {
   const { onClose } = renderDialog({
-    onConfirm: vi.fn().mockRejectedValue(new Error('confirm failed')),
+    onConfirm: vi.fn().mockRejectedValue(new UserFacingError('confirm failed')),
   });
 
   await waitFor(() => expect(screen.getByLabelText('Action')).toBeInTheDocument());

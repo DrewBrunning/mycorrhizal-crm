@@ -39,7 +39,7 @@ import { fieldValueInputsWith } from './utils/contactDetailPayloads';
 import { coreToForm } from './utils/entityCore';
 import { ENTITY_KIND_KEYS, ENTITY_SENSITIVITY_KEYS, roleKey } from './utils/entityLabels';
 import { formatLinkPeriod } from './utils/entityPeriod';
-import { getErrorMessage } from './utils/errorHandler';
+import { getErrorMessage, getErrorMessageOr } from './utils/errorHandler';
 
 // An id that is no longer live is looked up in the entity Trash (the API the
 // Trash page uses), so a deleted or merged-away entity's page can offer Restore
@@ -127,7 +127,7 @@ export default function EntityDetailPage() {
         } else {
           setNotFound(true);
         }
-      } else setError(getErrorMessage(err) || t('entities.detail.loadFailed'));
+      } else setError(getErrorMessageOr(err, t('entities.detail.loadFailed')));
     } finally {
       setLoading(false);
     }
@@ -175,7 +175,7 @@ export default function EntityDetailPage() {
         void navigate(`/entities/${restoreId}`, { replace: true });
       }
     } catch (err) {
-      showError(getErrorMessage(err) || t('entities.deleted.restoreFailed'));
+      showError(getErrorMessageOr(err, t('entities.deleted.restoreFailed')));
     } finally {
       setRestoring(false);
     }

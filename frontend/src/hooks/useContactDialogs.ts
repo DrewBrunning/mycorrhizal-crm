@@ -3,6 +3,7 @@ import { createActivity } from '../api/activities';
 import { createNote } from '../api/notes';
 import { activityWireDates, endDateFieldError } from '../utils/activityRange';
 import { type ErrorNotifier, getErrorMessage, handleError } from '../utils/errorHandler';
+import { UserFacingError } from '../utils/userFacingError';
 
 export function useContactDialogs(
   contactId: string | undefined,
@@ -31,7 +32,7 @@ export function useContactDialogs(
       return created;
     } catch (err) {
       handleError(err, { operation: 'saving note' }, notifier);
-      throw new Error(getErrorMessage(err));
+      throw new UserFacingError(getErrorMessage(err));
     }
   };
 
@@ -57,7 +58,7 @@ export function useContactDialogs(
       // A refusal on the end_date field belongs on that field (the dialog reads it).
       if (endDateFieldError(err)) throw err;
       handleError(err, { operation: 'saving activity' }, notifier);
-      throw new Error(getErrorMessage(err));
+      throw new UserFacingError(getErrorMessage(err));
     }
   };
 

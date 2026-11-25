@@ -6,6 +6,7 @@ import {
   getAuditEvents,
   undoAuditEvent,
 } from '../api/audit';
+import { UserFacingError } from '../utils/userFacingError';
 import { useAudit } from './useAudit';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -74,7 +75,7 @@ test('defaults to an empty list when the response omits audit_events', async () 
 });
 
 test('surfaces the fetch error', async () => {
-  vi.mocked(getAuditEvents).mockRejectedValue(new Error('boom'));
+  vi.mocked(getAuditEvents).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useAudit());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -84,7 +85,7 @@ test('surfaces the fetch error', async () => {
 });
 
 test('clears a previous error on a successful refetch', async () => {
-  vi.mocked(getAuditEvents).mockRejectedValueOnce(new Error('boom'));
+  vi.mocked(getAuditEvents).mockRejectedValueOnce(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useAudit());
   await waitFor(() => expect(result.current.error).toBe('boom'));
@@ -283,7 +284,7 @@ test('handleUndo undoes the event and refreshes the list', async () => {
 
 test('handleUndo propagates an undo failure to the caller without refreshing', async () => {
   vi.mocked(getAuditEvents).mockResolvedValue(response([event(1)]));
-  vi.mocked(undoAuditEvent).mockRejectedValue(new Error('410 gone'));
+  vi.mocked(undoAuditEvent).mockRejectedValue(new UserFacingError('410 gone'));
 
   const { result } = renderHook(() => useAudit());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -341,7 +342,7 @@ test('clearFilters restarts the window at the default limit', async () => {
 });
 
 test('a refetch clears the error while loading, and failures are logged by operation', async () => {
-  vi.mocked(getAuditEvents).mockRejectedValueOnce(new Error('down'));
+  vi.mocked(getAuditEvents).mockRejectedValueOnce(new UserFacingError('down'));
   const { result } = renderHook(() => useAudit());
   await waitFor(() => expect(result.current.error).toBe('down'));
   expect(console.error).toHaveBeenCalledWith('[fetching audit events] Error:', expect.anything());

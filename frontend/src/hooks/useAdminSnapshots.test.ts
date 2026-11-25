@@ -9,6 +9,7 @@ import { getErrorAggregation } from '../api/errorAggregation';
 import { getNotificationChannelHealth } from '../api/notificationHealth';
 import { getSubsystemHealth } from '../api/subsystemHealth';
 import { getSystemStatus } from '../api/systemStatus';
+import { UserFacingError } from '../utils/userFacingError';
 import { useDiagnostics } from './useDiagnostics';
 import { useErrorAggregation } from './useErrorAggregation';
 import { useNotificationChannelHealth } from './useNotificationChannelHealth';
@@ -175,7 +176,7 @@ describe.each(cases)('$name', (c) => {
   });
 
   test('surfaces the failure message and clears loading', async () => {
-    c.api.mockRejectedValue(new Error('boom'));
+    c.api.mockRejectedValue(new UserFacingError('boom'));
     const { result } = renderHook(() => c.use());
     if (!c.autoLoads) {
       await act(async () => {
@@ -188,7 +189,7 @@ describe.each(cases)('$name', (c) => {
   });
 
   test('a refresh resets the previous error before the new response lands', async () => {
-    c.api.mockRejectedValueOnce(new Error('boom'));
+    c.api.mockRejectedValueOnce(new UserFacingError('boom'));
     const { result } = renderHook(() => c.use());
     if (!c.autoLoads) {
       await act(async () => {

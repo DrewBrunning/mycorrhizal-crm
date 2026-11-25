@@ -1279,7 +1279,9 @@
     "retry": "Riprova",
     "loadFailed": "Impossibile caricare questi dati",
     "offlineMessage": "Sei offline. Controlla la connessione e riprova.",
-    "networkError": "Impossibile raggiungere il server. Controlla la connessione e riprova."
+    "networkError": "Impossibile raggiungere il server. Controlla la connessione e riprova.",
+    "unexpectedError": "Si è verificato un problema. Riprova.",
+    "requestTimeout": "La richiesta è scaduta dopo {{seconds}} secondi. Controlla la connessione e riprova."
   },
   "dateFormat": {
     "placeholder": {

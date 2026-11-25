@@ -8,6 +8,7 @@ import {
   saveGeoPulseConfig,
   testGeoPulseConnection,
 } from '../api/geopulse';
+import { UserFacingError } from '../utils/userFacingError';
 import { useGeoPulse } from './useGeoPulse';
 
 vi.mock('../api/geopulse', async (importOriginal) => {
@@ -56,7 +57,7 @@ test('refreshConfig loads the config and clears loading', async () => {
 });
 
 test('refreshConfig surfaces a failure as configError', async () => {
-  vi.mocked(getGeoPulseConfig).mockRejectedValue(new Error('boom'));
+  vi.mocked(getGeoPulseConfig).mockRejectedValue(new UserFacingError('boom'));
   const { result } = renderHook(() => useGeoPulse());
 
   await act(async () => {
@@ -84,7 +85,7 @@ test('saveConfig stores the returned config', async () => {
 
 test('saveConfig notifies and rethrows on failure', async () => {
   const notifier = { showError: vi.fn() };
-  vi.mocked(saveGeoPulseConfig).mockRejectedValue(new Error('nope'));
+  vi.mocked(saveGeoPulseConfig).mockRejectedValue(new UserFacingError('nope'));
   const { result } = renderHook(() => useGeoPulse(notifier));
 
   await act(async () => {
@@ -134,7 +135,7 @@ test('testConnection stores the diagnosis and toggles testing', async () => {
 
 test('testConnection notifies and rethrows when the check cannot run', async () => {
   const notifier = { showError: vi.fn() };
-  vi.mocked(testGeoPulseConnection).mockRejectedValue(new Error('not configured'));
+  vi.mocked(testGeoPulseConnection).mockRejectedValue(new UserFacingError('not configured'));
   const { result } = renderHook(() => useGeoPulse(notifier));
 
   await act(async () => {
@@ -161,7 +162,9 @@ test('lookup stores the suggestions', async () => {
 });
 
 test('lookup surfaces a failure inline (not toasted) and returns null', async () => {
-  vi.mocked(getGeoPulseSuggestions).mockRejectedValue(new Error('GeoPulse is not configured'));
+  vi.mocked(getGeoPulseSuggestions).mockRejectedValue(
+    new UserFacingError('GeoPulse is not configured'),
+  );
   const notifier = { showError: vi.fn() };
   const { result } = renderHook(() => useGeoPulse(notifier));
 
@@ -275,7 +278,7 @@ test('starts unconfigured and idle', () => {
 });
 
 test('refreshConfig reports loading, logs a failure by operation, and a retry clears the error', async () => {
-  vi.mocked(getGeoPulseConfig).mockRejectedValueOnce(new Error('boom'));
+  vi.mocked(getGeoPulseConfig).mockRejectedValueOnce(new UserFacingError('boom'));
   const { result } = renderHook(() => useGeoPulse());
   await act(async () => {
     await result.current.refreshConfig();
@@ -300,8 +303,8 @@ test('refreshConfig reports loading, logs a failure by operation, and a retry cl
 });
 
 test('saveConfig and testConnection log their operations and use the latest notifier', async () => {
-  vi.mocked(saveGeoPulseConfig).mockRejectedValue(new Error('s'));
-  vi.mocked(testGeoPulseConnection).mockRejectedValue(new Error('t'));
+  vi.mocked(saveGeoPulseConfig).mockRejectedValue(new UserFacingError('s'));
+  vi.mocked(testGeoPulseConnection).mockRejectedValue(new UserFacingError('t'));
   const first = { showError: vi.fn() };
   const second = { showError: vi.fn() };
   const { result, rerender } = renderHook(({ n }) => useGeoPulse(n), {
@@ -374,7 +377,7 @@ test('lookup clears the previous suggestions and error, reports loading, and ret
 });
 
 test('a failed lookup logs its operation and a later lookup clears the inline error', async () => {
-  vi.mocked(getGeoPulseSuggestions).mockRejectedValueOnce(new Error('unreachable'));
+  vi.mocked(getGeoPulseSuggestions).mockRejectedValueOnce(new UserFacingError('unreachable'));
   const { result } = renderHook(() => useGeoPulse());
   await act(async () => {
     await result.current.lookup('2026-09-01');
@@ -460,7 +463,7 @@ test('a lookup started before clearSuggestions stays stale even when a new looku
 });
 
 test('clearSuggestions drops a lookup error shown inline', async () => {
-  vi.mocked(getGeoPulseSuggestions).mockRejectedValueOnce(new Error('unreachable'));
+  vi.mocked(getGeoPulseSuggestions).mockRejectedValueOnce(new UserFacingError('unreachable'));
   const { result } = renderHook(() => useGeoPulse());
   await act(async () => {
     await result.current.lookup('2026-09-01');

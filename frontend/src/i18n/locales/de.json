@@ -1250,7 +1250,9 @@
     "retry": "Erneut versuchen",
     "loadFailed": "Diese Daten konnten nicht geladen werden",
     "offlineMessage": "Sie sind offline. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
-    "networkError": "Der Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
+    "networkError": "Der Server ist nicht erreichbar. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "unexpectedError": "Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut.",
+    "requestTimeout": "Die Anfrage wurde nach {{seconds}} Sekunden abgebrochen. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut."
   },
   "dateFormat": {
     "placeholder": {

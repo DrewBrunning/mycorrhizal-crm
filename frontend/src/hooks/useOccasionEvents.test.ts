@@ -13,6 +13,7 @@ import {
   updateOccasionEvent,
   updateOccasionEventAttendee,
 } from '../api/occasionEvents';
+import { UserFacingError } from '../utils/userFacingError';
 import { useOccasionEventAttendees, useOccasionEvents } from './useOccasionEvents';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -124,7 +125,7 @@ test('useOccasionEvents handleDelete deletes and notifies on failure', async () 
     next_cursor: '',
     limit: 100,
   });
-  vi.mocked(deleteOccasionEvent).mockRejectedValue(new Error('boom'));
+  vi.mocked(deleteOccasionEvent).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useOccasionEvents({ showError }));
@@ -135,7 +136,7 @@ test('useOccasionEvents handleDelete deletes and notifies on failure', async () 
 });
 
 test('useOccasionEvents sets error when the fetch fails', async () => {
-  vi.mocked(getOccasionEvents).mockRejectedValue(new Error('boom'));
+  vi.mocked(getOccasionEvents).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useOccasionEvents());
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -237,7 +238,7 @@ test('loadSuggestions fetches and clearSuggestions empties them', async () => {
 
 test('loadSuggestions with no circles and a failed fetch both clear', async () => {
   vi.mocked(getOccasionEvent).mockResolvedValue({ occasion_event: event, attendees: [] });
-  vi.mocked(getInviteeSuggestions).mockRejectedValue(new Error('boom'));
+  vi.mocked(getInviteeSuggestions).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useOccasionEventAttendees('ev-1', { showError }));
@@ -290,7 +291,7 @@ test('useOccasionEvents tolerates a response without occasion_events', async () 
 });
 
 test('useOccasionEvents logs the failed operation and a later refresh clears the error', async () => {
-  vi.mocked(getOccasionEvents).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getOccasionEvents).mockRejectedValueOnce(new UserFacingError('offline'));
   const { result } = renderHook(() => useOccasionEvents());
   await waitFor(() => expect(result.current.error).toBe('offline'));
   expect(console.error).toHaveBeenCalledWith(
@@ -312,9 +313,9 @@ test('useOccasionEvents logs the failed operation and a later refresh clears the
 
 test('useOccasionEvents mutations notify, log their operation, rethrow, and skip the reload on failure', async () => {
   vi.mocked(getOccasionEvents).mockResolvedValue({ occasion_events: [] } as never);
-  vi.mocked(updateOccasionEvent).mockRejectedValue(new Error('u'));
-  vi.mocked(createOccasionEvent).mockRejectedValue(new Error('c'));
-  vi.mocked(deleteOccasionEvent).mockRejectedValue(new Error('d'));
+  vi.mocked(updateOccasionEvent).mockRejectedValue(new UserFacingError('u'));
+  vi.mocked(createOccasionEvent).mockRejectedValue(new UserFacingError('c'));
+  vi.mocked(deleteOccasionEvent).mockRejectedValue(new UserFacingError('d'));
   const showError = vi.fn();
   const { result } = renderHook(() => useOccasionEvents({ showError }));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -333,8 +334,8 @@ test('useOccasionEvents mutations notify, log their operation, rethrow, and skip
 
 test('useOccasionEvents mutations use the latest notifier', async () => {
   vi.mocked(getOccasionEvents).mockResolvedValue({ occasion_events: [] } as never);
-  vi.mocked(createOccasionEvent).mockRejectedValue(new Error('c'));
-  vi.mocked(deleteOccasionEvent).mockRejectedValue(new Error('d'));
+  vi.mocked(createOccasionEvent).mockRejectedValue(new UserFacingError('c'));
+  vi.mocked(deleteOccasionEvent).mockRejectedValue(new UserFacingError('d'));
   const first = vi.fn();
   const second = vi.fn();
   const { result, rerender } = renderHook(({ n }) => useOccasionEvents(n), {
@@ -388,7 +389,7 @@ test('attendees tolerate a detail without attendees and clear when the event id 
 });
 
 test('attendees report a failed load with its operation, and a refresh clears the error', async () => {
-  vi.mocked(getOccasionEvent).mockRejectedValueOnce(new Error('bad'));
+  vi.mocked(getOccasionEvent).mockRejectedValueOnce(new UserFacingError('bad'));
   const { result } = renderHook(() => useOccasionEventAttendees('ev-1'));
   await waitFor(() => expect(result.current.error).toBe('bad'));
   expect(console.error).toHaveBeenCalledWith(
@@ -433,9 +434,9 @@ test('attendee mutations pass their arguments, and are no-ops without an event i
 
 test('attendee mutations notify, log their operation, and rethrow; they use the latest event and notifier', async () => {
   vi.mocked(getOccasionEvent).mockResolvedValue({ attendees: [] } as never);
-  vi.mocked(addOccasionEventAttendee).mockRejectedValue(new Error('a'));
-  vi.mocked(updateOccasionEventAttendee).mockRejectedValue(new Error('r'));
-  vi.mocked(removeOccasionEventAttendee).mockRejectedValue(new Error('x'));
+  vi.mocked(addOccasionEventAttendee).mockRejectedValue(new UserFacingError('a'));
+  vi.mocked(updateOccasionEventAttendee).mockRejectedValue(new UserFacingError('r'));
+  vi.mocked(removeOccasionEventAttendee).mockRejectedValue(new UserFacingError('x'));
   const first = vi.fn();
   const second = vi.fn();
   const { result, rerender } = renderHook(({ id, n }) => useOccasionEventAttendees(id, n), {
@@ -495,7 +496,7 @@ test('a failed loadSuggestions notifies, logs, clears stale suggestions and stop
   vi.mocked(getOccasionEvent).mockResolvedValue({ attendees: [] } as never);
   vi.mocked(getInviteeSuggestions)
     .mockResolvedValueOnce([{ entity_id: 's1' }] as never)
-    .mockRejectedValueOnce(new Error('nope'));
+    .mockRejectedValueOnce(new UserFacingError('nope'));
   const showError = vi.fn();
   const { result } = renderHook(() => useOccasionEventAttendees('ev-1', { showError }));
   await waitFor(() => expect(result.current.loading).toBe(false));

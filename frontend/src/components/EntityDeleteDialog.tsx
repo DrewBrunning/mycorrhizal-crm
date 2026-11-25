@@ -18,7 +18,7 @@ import {
   type EntityDeleteResponse,
 } from '../api/entities';
 import { isLinkCurrent, localToday } from '../utils/entityPeriod';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessageOr } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
 interface EntityDeleteDialogProps {
@@ -89,7 +89,7 @@ export default function EntityDeleteDialog({
       }
       onDeleted(await deleteEntity(entity.id, entity.revision));
     } catch (err) {
-      setError(getErrorMessage(err) || t('entities.delete.failed'));
+      setError(getErrorMessageOr(err, t('entities.delete.failed')));
     } finally {
       setBusy(false);
     }

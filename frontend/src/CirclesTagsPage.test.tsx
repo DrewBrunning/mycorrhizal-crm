@@ -24,6 +24,7 @@ import {
 import CirclesTagsPage from './CirclesTagsPage';
 import { SnackbarProvider } from './context/SnackbarContext';
 import { DateFormatProvider } from './DateFormatProvider';
+import { UserFacingError } from './utils/userFacingError';
 
 vi.mock('./api/carddavSyncScope', () => ({ getCardDAVSyncScope: vi.fn() }));
 const getScopeMock = vi.mocked(getCardDAVSyncScope);
@@ -178,7 +179,7 @@ test('explains the difference between circles and tags on each tab', async () =>
 });
 
 test('a circles fetch failure surfaces an error alert and retries in place', async () => {
-  listCirclesMock.mockRejectedValue(new Error('circles down'));
+  listCirclesMock.mockRejectedValue(new UserFacingError('circles down'));
 
   renderPage();
 
@@ -201,7 +202,7 @@ test('the tags tab loads and renders tags with member counts, driven by the ?tab
 
 test('a tags fetch failure surfaces an error alert on the tags tab and retries in place', async () => {
   listCirclesMock.mockResolvedValue(circlesResponse({ circles: [], members: [] }));
-  listTagsMock.mockRejectedValue(new Error('tags down'));
+  listTagsMock.mockRejectedValue(new UserFacingError('tags down'));
 
   renderPage(['/circles-tags?tab=tags']);
 
@@ -494,7 +495,7 @@ test('deleting a circle not excluded from an exclude scope uses the plain confir
 test('a failed sync-scope read falls back to the plain confirmation', async () => {
   const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false);
   listCirclesMock.mockResolvedValue(circlesResponse());
-  getScopeMock.mockRejectedValue(new Error('carddav unavailable'));
+  getScopeMock.mockRejectedValue(new UserFacingError('carddav unavailable'));
 
   renderPage();
   await screen.findByText('Book Club');
@@ -670,7 +671,7 @@ test('circle detail surfaces a timeline load error and can load more', async () 
 
 test('circle detail shows an error when the timeline fails to load', async () => {
   listCirclesMock.mockResolvedValue(circlesResponse());
-  vi.mocked(getCircleTimeline).mockRejectedValue(new Error('timeline down'));
+  vi.mocked(getCircleTimeline).mockRejectedValue(new UserFacingError('timeline down'));
   vi.spyOn(console, 'error').mockImplementation(() => {});
 
   renderPage();

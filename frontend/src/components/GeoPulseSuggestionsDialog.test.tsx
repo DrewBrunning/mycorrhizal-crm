@@ -12,6 +12,7 @@ import {
 import { DateFormatProvider, setDateFormatPreference } from '../DateFormatProvider';
 import { openDatePicker, pickDate } from '../testSupport/dateField';
 import { setTimeFormat } from '../timeFormat';
+import { UserFacingError } from '../utils/userFacingError';
 import GeoPulseSuggestionsDialog from './GeoPulseSuggestionsDialog';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -264,7 +265,7 @@ test('a date with no stays says so', async () => {
 
 test('a failed lookup shows the reason and a way to the settings page', async () => {
   vi.mocked(getGeoPulseSuggestions).mockRejectedValue(
-    new Error('GeoPulse API token is invalid, expired, or not configured'),
+    new UserFacingError('GeoPulse API token is invalid, expired, or not configured'),
   );
   const { props } = renderDialog();
   await lookUp();
@@ -335,7 +336,7 @@ test('the contacts are only what the user picks', async () => {
 
 test('a failed save keeps the form open and does not mark the stay logged', async () => {
   vi.mocked(getGeoPulseSuggestions).mockResolvedValue(response(stay()));
-  vi.mocked(createActivity).mockRejectedValue(new Error('boom'));
+  vi.mocked(createActivity).mockRejectedValue(new UserFacingError('boom'));
   const { props } = renderDialog();
   await lookUp();
   fireEvent.click(await screen.findByRole('button', { name: /^Log activity at / }));
@@ -471,7 +472,7 @@ test('an empty lookup is announced as no places', async () => {
 });
 
 test('a failed lookup stays announced by the error alert', async () => {
-  vi.mocked(getGeoPulseSuggestions).mockRejectedValue(new Error('nope'));
+  vi.mocked(getGeoPulseSuggestions).mockRejectedValue(new UserFacingError('nope'));
   renderDialog();
   await lookUp();
   expect(await screen.findByRole('alert')).toHaveTextContent(/nope/);

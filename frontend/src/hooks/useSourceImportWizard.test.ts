@@ -7,6 +7,7 @@ import {
   getSourceImportStatus,
   type SourceImportPreviewResponse,
 } from '../api/sourceImport';
+import { UserFacingError } from '../utils/userFacingError';
 import { resolveRowAction, useSourceImportWizard } from './useSourceImportWizard';
 
 afterEach(() => {
@@ -265,7 +266,7 @@ test('reset clears every field back to the connect step', async () => {
 });
 
 test('a fetch failure during beginFetch surfaces the error', async () => {
-  const startFetch = vi.fn().mockRejectedValue(new Error('cannot start'));
+  const startFetch = vi.fn().mockRejectedValue(new UserFacingError('cannot start'));
   const { result } = renderHook(() => useSourceImportWizard({ basePath: '/x', startFetch }));
   await act(async () => {
     await result.current.beginFetch('s1');
@@ -276,7 +277,7 @@ test('a fetch failure during beginFetch surfaces the error', async () => {
 
 test('a failing status poll surfaces the error and stops polling', async () => {
   vi.useFakeTimers();
-  statusMock.mockRejectedValue(new Error('status unavailable'));
+  statusMock.mockRejectedValue(new UserFacingError('status unavailable'));
 
   const { result } = renderHook(() =>
     useSourceImportWizard({ basePath: '/x', startFetch: vi.fn().mockResolvedValue(undefined) }),
@@ -358,7 +359,7 @@ test('beginFetch clears an earlier error and holds busy only while the source st
   const gate: { release?: () => void } = {};
   const startFetch = vi
     .fn()
-    .mockRejectedValueOnce(new Error('first'))
+    .mockRejectedValueOnce(new UserFacingError('first'))
     .mockImplementationOnce(
       () =>
         new Promise<void>((res) => {
@@ -405,7 +406,7 @@ test('a second beginFetch replaces the poll loop rather than stacking intervals'
 test('reaching ready stops the poll loop; a failed preview fetch surfaces the error', async () => {
   vi.useFakeTimers();
   statusMock.mockResolvedValue(st('ready'));
-  previewMock.mockRejectedValue(new Error('preview broke'));
+  previewMock.mockRejectedValue(new UserFacingError('preview broke'));
   const { result } = mount();
   await act(async () => {
     await result.current.beginFetch('s1');
@@ -523,7 +524,7 @@ test('a cancelled phase stops polling and clears the error', async () => {
   vi.useFakeTimers();
   statusMock.mockResolvedValueOnce(st('ready')).mockResolvedValue(st('cancelled'));
   previewMock.mockResolvedValue(preview);
-  confirmMock.mockRejectedValueOnce(new Error('first try'));
+  confirmMock.mockRejectedValueOnce(new UserFacingError('first try'));
   confirmMock.mockResolvedValue(undefined);
   const { result } = mount();
   await toReview({ current: result.current });
@@ -616,7 +617,7 @@ test('a failed confirm reports the error, stays on review, and releases busy', a
   vi.useFakeTimers();
   statusMock.mockResolvedValue(st('ready'));
   previewMock.mockResolvedValue(preview);
-  confirmMock.mockRejectedValue(new Error('rejected'));
+  confirmMock.mockRejectedValue(new UserFacingError('rejected'));
   const { result } = mount();
   await toReview({ current: result.current });
   await act(async () => {
@@ -660,7 +661,7 @@ test('cancelImport needs a session, calls the cancel endpoint, and always releas
   });
   expect(result.current.busy).toBe(false);
 
-  cancelMock.mockRejectedValueOnce(new Error('cancel failed'));
+  cancelMock.mockRejectedValueOnce(new UserFacingError('cancel failed'));
   await act(async () => {
     await expect(result.current.cancelImport()).rejects.toThrow('cancel failed');
   });
@@ -740,7 +741,10 @@ test('reset also halts a live poll loop, and unmounting does too', async () => {
 });
 
 test('a failed reset-time error is cleared by the next beginFetch', async () => {
-  const startFetch = vi.fn().mockRejectedValueOnce(new Error('x')).mockResolvedValue(undefined);
+  const startFetch = vi
+    .fn()
+    .mockRejectedValueOnce(new UserFacingError('x'))
+    .mockResolvedValue(undefined);
   vi.useFakeTimers();
   statusMock.mockResolvedValue(st('fetching_contacts'));
   const { result } = mount(startFetch);
@@ -835,7 +839,7 @@ test('a late cancelled answer clears an error left by a concurrently failed poll
   );
   await tick(1500);
   await act(async () => {
-    slowFail.reject(new Error('transient'));
+    slowFail.reject(new UserFacingError('transient'));
   });
   expect(result.current.error).toBe('transient');
   await act(async () => {
@@ -862,7 +866,7 @@ test('confirm clears an earlier error as soon as it starts, and does nothing wit
   statusMock.mockReset();
   statusMock.mockResolvedValue(st('ready'));
   previewMock.mockResolvedValue(preview);
-  confirmMock.mockRejectedValueOnce(new Error('first'));
+  confirmMock.mockRejectedValueOnce(new UserFacingError('first'));
   const { result } = mount();
   await toReview({ current: result.current });
   await act(async () => {
@@ -886,7 +890,7 @@ test('confirm clears an earlier error as soon as it starts, and does nothing wit
 });
 
 test('reset clears an error left by a failed fetch', async () => {
-  const { result } = mount(vi.fn().mockRejectedValue(new Error('cannot start')));
+  const { result } = mount(vi.fn().mockRejectedValue(new UserFacingError('cannot start')));
   await act(async () => {
     await result.current.beginFetch('s1');
   });

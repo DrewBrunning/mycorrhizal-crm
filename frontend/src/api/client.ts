@@ -3,6 +3,7 @@
 import { API_BASE_URL } from '../auth';
 import i18n from '../i18n/config';
 import { localizeReason } from '../i18n/reason';
+import { UserFacingError } from '../utils/userFacingError';
 import { notifySessionExpired } from './sessionExpiry';
 
 export { API_BASE_URL };
@@ -244,9 +245,7 @@ export async function apiFetch(
 
     // Handle timeout error
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error(
-        `Request timeout after ${timeout / 1000} seconds. Please check your connection.`,
-      );
+      throw new UserFacingError(i18n.t('common.requestTimeout', { seconds: timeout / 1000 }));
     }
 
     throw error;

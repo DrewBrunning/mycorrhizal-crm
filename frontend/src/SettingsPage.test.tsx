@@ -26,6 +26,7 @@ import { DateFormatProvider } from './DateFormatProvider';
 import i18n from './i18n/config';
 import SettingsPage from './SettingsPage';
 import { getTimeFormat, setTimeFormat } from './timeFormat';
+import { UserFacingError } from './utils/userFacingError';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
 afterEach(cleanup);
@@ -222,7 +223,7 @@ test('the Time format control offers Automatic / 12-hour / 24-hour and persists 
 
 test('a failed backend sync keeps the local time-format choice', async () => {
   vi.mocked(updateTimeFormat).mockReset();
-  vi.mocked(updateTimeFormat).mockRejectedValue(new Error('offline'));
+  vi.mocked(updateTimeFormat).mockRejectedValue(new UserFacingError('offline'));
   const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
   setTimeFormat('auto');
   try {
@@ -290,7 +291,7 @@ test('a mismatched confirmation is rejected before calling the API', async () =>
 });
 
 test('a rejected password change surfaces the server error', async () => {
-  vi.mocked(changePassword).mockRejectedValue(new Error('current password is incorrect'));
+  vi.mocked(changePassword).mockRejectedValue(new UserFacingError('current password is incorrect'));
   renderPage();
 
   fireEvent.change(screen.getByLabelText('Current password *'), { target: { value: 'wrong' } });
@@ -540,7 +541,9 @@ test('a failed self-contact save surfaces the error and keeps the old selection 
     self_contact_vcard_uid: 'uid-me',
   });
   vi.mocked(getContactsByUid).mockResolvedValue(new Map([['uid-me', me]]));
-  vi.mocked(updateSelfContact).mockRejectedValue(new Error("Couldn't update your self contact."));
+  vi.mocked(updateSelfContact).mockRejectedValue(
+    new UserFacingError("Couldn't update your self contact."),
+  );
 
   renderPage();
   await waitFor(() => expect(screen.getByDisplayValue('Me Contact')).toBeInTheDocument());

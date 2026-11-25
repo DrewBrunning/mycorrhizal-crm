@@ -9,6 +9,7 @@ import {
   getCadencePolicies,
   updateCadencePolicy,
 } from '../api/cadencePolicies';
+import { UserFacingError } from '../utils/userFacingError';
 import { useCadencePolicy } from './useCadencePolicy';
 
 // This codebase's vitest setup does not auto-cleanup between tests.
@@ -152,7 +153,7 @@ test('handleDelete is a no-op when no policy is loaded', async () => {
 
 test('delete errors notify through the notifier and rethrow', async () => {
   vi.mocked(getCadencePolicies).mockResolvedValue(listResponse([policy]));
-  vi.mocked(deleteCadencePolicy).mockRejectedValue(new Error('boom'));
+  vi.mocked(deleteCadencePolicy).mockRejectedValue(new UserFacingError('boom'));
   const showError = vi.fn();
 
   const { result } = renderHook(() => useCadencePolicy('uid-1', { showError }));
@@ -163,7 +164,7 @@ test('delete errors notify through the notifier and rethrow', async () => {
 });
 
 test('sets error when the fetch fails', async () => {
-  vi.mocked(getCadencePolicies).mockRejectedValue(new Error('boom'));
+  vi.mocked(getCadencePolicies).mockRejectedValue(new UserFacingError('boom'));
 
   const { result } = renderHook(() => useCadencePolicy('uid-1'));
   await waitFor(() => expect(result.current.loading).toBe(false));
@@ -175,7 +176,7 @@ test('sets error when the fetch fails', async () => {
 // --- behavior pins (issue #1662) ---
 
 test('a failed load is logged by operation, and the next refresh clears the error', async () => {
-  vi.mocked(getCadencePolicies).mockRejectedValueOnce(new Error('offline'));
+  vi.mocked(getCadencePolicies).mockRejectedValueOnce(new UserFacingError('offline'));
   const { result } = renderHook(() => useCadencePolicy('uid-1'));
   await waitFor(() => expect(result.current.error).toBe('offline'));
   expect(console.error).toHaveBeenCalledWith('[loading cadence policy] Error:', expect.anything());
@@ -202,7 +203,7 @@ test('saving for a different entity than the loaded policy creates instead of up
 
 test('a failed delete is logged by operation, notified, rethrown, and keeps the policy', async () => {
   vi.mocked(getCadencePolicies).mockResolvedValue(listResponse([policy]));
-  vi.mocked(deleteCadencePolicy).mockRejectedValue(new Error('d'));
+  vi.mocked(deleteCadencePolicy).mockRejectedValue(new UserFacingError('d'));
   const showError = vi.fn();
   const { result } = renderHook(() => useCadencePolicy('uid-1', { showError }));
   await waitFor(() => expect(result.current.policy).toEqual(policy));

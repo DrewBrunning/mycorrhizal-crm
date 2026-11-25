@@ -29,7 +29,7 @@ import { useSnackbar } from '../context/SnackbarContext';
 import { useDateFormat } from '../DateFormatProvider';
 import { fillableMergeFields } from '../utils/entityCore';
 import { nameWithDetail, sameEntityName } from '../utils/entityDisambiguation';
-import { getErrorMessage } from '../utils/errorHandler';
+import { getErrorMessage, getErrorMessageOr } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 
 // Field key (as the backend names it in `resolutions`) -> label key.
@@ -178,7 +178,7 @@ export default function EntityMergeDialog({
       }
       onMerged(result, loser);
     } catch (err) {
-      setError(getErrorMessage(err) || t('entities.merge.failed'));
+      setError(getErrorMessageOr(err, t('entities.merge.failed')));
     } finally {
       setSaving(false);
     }

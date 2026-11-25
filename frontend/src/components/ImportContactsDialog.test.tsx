@@ -14,6 +14,7 @@ import {
 } from '../api/import';
 import { SnackbarProvider } from '../context/SnackbarContext';
 import i18n from '../i18n/config';
+import { UserFacingError } from '../utils/userFacingError';
 import ImportContactsDialog from './ImportContactsDialog';
 
 // This codebase's vitest setup has no auto-cleanup and no globals: true.
@@ -596,7 +597,7 @@ test('within-batch duplicates are flagged, default to Discard, and cannot merge'
 });
 
 test('an upload failure surfaces the error without advancing the step', async () => {
-  vi.mocked(uploadCSVForImport).mockRejectedValue(new Error('server exploded'));
+  vi.mocked(uploadCSVForImport).mockRejectedValue(new UserFacingError('server exploded'));
 
   renderDialog();
   selectFile(new File(['a,b'], 'contacts.csv', { type: 'text/csv' }));
@@ -641,7 +642,7 @@ test('a preview-generation failure surfaces the error and leaves the mapping ste
     row_count: 1,
     sample_data: [['Ada Lovelace']],
   });
-  vi.mocked(getImportPreview).mockRejectedValue(new Error('preview generation blew up'));
+  vi.mocked(getImportPreview).mockRejectedValue(new UserFacingError('preview generation blew up'));
 
   renderDialog();
   selectFile(new File(['Name\nAda Lovelace'], 'contacts.csv', { type: 'text/csv' }));
@@ -672,7 +673,7 @@ test('a confirm-import failure surfaces the error and stays on the preview step'
     duplicate_count: 0,
     error_count: 0,
   });
-  vi.mocked(confirmImport).mockRejectedValue(new Error('confirm blew up'));
+  vi.mocked(confirmImport).mockRejectedValue(new UserFacingError('confirm blew up'));
 
   renderDialog();
   selectFile(new File(['Name\nAda Lovelace'], 'contacts.csv', { type: 'text/csv' }));
@@ -1277,7 +1278,7 @@ test('a CSV over the size limit is refused before any upload', async () => {
 });
 
 test('a VCF between the CSV and VCF limits is accepted (the limits differ per type)', async () => {
-  vi.mocked(uploadVCFForImport).mockRejectedValue(new Error('stop here'));
+  vi.mocked(uploadVCFForImport).mockRejectedValue(new UserFacingError('stop here'));
   renderDialog();
   const file = new File(['BEGIN:VCARD'], 'big.vcf', { type: 'text/vcard' });
   Object.defineProperty(file, 'size', { value: 21 * 1024 * 1024 }); // over the CSV limit, under 50 MB
@@ -1346,7 +1347,7 @@ test.each([
 });
 
 test('a CSV just under 20MB but over 5MB is not rejected as too large', async () => {
-  vi.mocked(uploadCSVForImport).mockRejectedValue(new Error('server exploded'));
+  vi.mocked(uploadCSVForImport).mockRejectedValue(new UserFacingError('server exploded'));
   renderDialog();
   selectFile(oversizeFile('contacts.csv', 6 * 1024 * 1024));
   await waitFor(() => expect(uploadCSVForImport).toHaveBeenCalledTimes(1));
@@ -1446,7 +1447,7 @@ test('closing the upload step with no session makes no cancel call', () => {
 });
 
 test('a failed upload (no session id) makes no cancel call on close', async () => {
-  vi.mocked(uploadCSVForImport).mockRejectedValue(new Error('bad file'));
+  vi.mocked(uploadCSVForImport).mockRejectedValue(new UserFacingError('bad file'));
   renderDialog();
   selectFile(new File(['x'], 'bad.csv', { type: 'text/csv' }));
   await waitFor(() => expect(uploadCSVForImport).toHaveBeenCalled());
