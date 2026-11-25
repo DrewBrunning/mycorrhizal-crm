@@ -186,3 +186,89 @@ test('a failed hide-empty save shows an error', async () => {
 
   await waitFor(() => expect(screen.getByText('Could not save hide-empty')).toBeInTheDocument());
 });
+
+// Issue #2917: with the backend down, fetch rejects with a bare TypeError whose
+// message ("Failed to fetch") means nothing to the user. The shared
+// getErrorMessage() names the condition instead.
+const NETWORK_ERROR = "Couldn't reach the server. Check your connection and try again.";
+
+function expectNetworkError() {
+  return waitFor(() => expect(screen.getByText(NETWORK_ERROR)).toBeInTheDocument());
+}
+
+function expectNoRawFetchMessage() {
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+}
+
+test('a load network failure shows the localized network message', async () => {
+  vi.mocked(getEnabledContactFields).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<ContactFieldSettings />);
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+test('a toggle-save network failure shows the localized network message', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+  vi.mocked(updateEnabledContactFields).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<ContactFieldSettings />);
+  await waitFor(() => expect(screen.getByLabelText('Websites')).not.toBeChecked());
+
+  fireEvent.click(screen.getByLabelText('Websites'));
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+test('a hide-empty save network failure shows the localized network message', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+  vi.mocked(updateHideEmptyFields).mockRejectedValue(new TypeError('Failed to fetch'));
+
+  render(<ContactFieldSettings />);
+  await waitFor(() => expect(screen.getByLabelText('Hide empty fields')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByLabelText('Hide empty fields'));
+
+  await expectNetworkError();
+  expectNoRawFetchMessage();
+});
+
+test('a non-Error load rejection still shows the localized fallback message', async () => {
+  vi.mocked(getEnabledContactFields).mockRejectedValue('offline');
+
+  render(<ContactFieldSettings />);
+
+  await waitFor(() =>
+    expect(screen.getByText('Unable to load contact field settings.')).toBeInTheDocument(),
+  );
+});
+
+test('a non-Error toggle-save rejection still shows the localized fallback message', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+  vi.mocked(updateEnabledContactFields).mockRejectedValue('offline');
+
+  render(<ContactFieldSettings />);
+  await waitFor(() => expect(screen.getByLabelText('Websites')).not.toBeChecked());
+
+  fireEvent.click(screen.getByLabelText('Websites'));
+
+  await waitFor(() =>
+    expect(screen.getByText('Unable to save contact field settings.')).toBeInTheDocument(),
+  );
+});
+
+test('a non-Error hide-empty-save rejection still shows the localized fallback message', async () => {
+  vi.mocked(getEnabledContactFields).mockResolvedValue(['emails']);
+  vi.mocked(updateHideEmptyFields).mockRejectedValue('offline');
+
+  render(<ContactFieldSettings />);
+  await waitFor(() => expect(screen.getByLabelText('Hide empty fields')).toBeInTheDocument());
+
+  fireEvent.click(screen.getByLabelText('Hide empty fields'));
+
+  await waitFor(() =>
+    expect(screen.getByText('Unable to save contact field settings.')).toBeInTheDocument(),
+  );
+});
