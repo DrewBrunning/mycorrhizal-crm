@@ -120,7 +120,10 @@ test.describe('Duplicate scan', () => {
       ).not.toBeVisible({ timeout: 10000 });
       // #2920 item 7: dismissing removed the pair row (and the button that had
       // focus); focus must not fall to <body> (#2918).
-      await expectFocusNotLost(page, 'contacts: Not a duplicate');
+      // The dismiss refetches the whole scan (list cleared, then refilled), so
+      // the pair is "not visible" while focus is still on <body>; it moves to
+      // the neighbouring row only once the refetch settles (#3012).
+      await expectFocusNotLost(page, 'contacts: Not a duplicate', { settleMs: 5000 });
 
       // The dismissal is a server-side fact: the scan endpoint agrees. The
       // dismissal write and a follow-up scan can race through the WAL read

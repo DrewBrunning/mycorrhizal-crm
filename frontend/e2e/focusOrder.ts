@@ -258,8 +258,21 @@ export async function readActiveElement(page: Page): Promise<ActiveElementState>
  * importable by the jsdom unit tests (`focusOrder.vitest.ts`); the message
  * still lands in the Playwright failure output.
  */
-export async function expectFocusNotLost(page: Page, action: string): Promise<void> {
-  const violation = focusLossViolation(await readActiveElement(page));
+export async function expectFocusNotLost(
+  page: Page,
+  action: string,
+  options: { settleMs?: number } = {},
+): Promise<void> {
+  // `settleMs` is for a list that clears and refetches after the action: the
+  // row is invisible (and focus on <body>) until the refetch lands and
+  // `useFocusAfterRemoval` runs, so the first read can be mid-reload (#3012).
+  // Focus still lost when the budget runs out fails as before.
+  const deadline = Date.now() + (options.settleMs ?? 0);
+  let violation = focusLossViolation(await readActiveElement(page));
+  while (violation && Date.now() < deadline) {
+    await page.waitForTimeout(50);
+    violation = focusLossViolation(await readActiveElement(page));
+  }
   if (violation) throw new Error(`${action}: ${violation}`);
 }
 
