@@ -4610,7 +4610,7 @@
       "merge": "Unisci…",
       "mergeNamed": "Unisci {{a}} e {{b}}",
       "dismiss": "Non è un duplicato",
-      "dismissNamed": "{{a}} e {{b}} non sono duplicati",
+      "dismissNamed": "Non è un duplicato: {{a}} e {{b}}",
       "dismissed": "Nascosto definitivamente.",
       "pair": "{{a}} e {{b}}",
       "reason": {

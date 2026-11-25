@@ -1,0 +1,1 @@
+- **The "Not a duplicate" buttons on the organisation and place duplicates list now read correctly to screen readers**: each button's spoken name now starts with its visible text, followed by the pair it applies to.
