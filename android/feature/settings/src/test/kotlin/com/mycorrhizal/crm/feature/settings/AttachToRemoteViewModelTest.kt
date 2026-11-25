@@ -1,6 +1,7 @@
 package com.mycorrhizal.crm.feature.settings
 
 import com.mycorrhizal.crm.data.attach.AttachException
+import com.mycorrhizal.crm.data.attach.AttachFailure
 import com.mycorrhizal.crm.data.attach.AttachFinishResult
 import com.mycorrhizal.crm.data.attach.AttachPreview
 import com.mycorrhizal.crm.data.attach.AttachProgress
@@ -67,7 +68,7 @@ class AttachToRemoteViewModelTest {
 
     private fun viewModel(beginOk: Boolean = true): AttachToRemoteViewModel {
         coEvery { coordinator.begin() } returns
-            if (beginOk) Result.success(local) else Result.failure(AttachException("nope"))
+            if (beginOk) Result.success(local) else Result.failure(AttachException(AttachFailure.NotSignedIn))
         coEvery { session.profiles() } returns listOf(local, remoteProfile)
         return AttachToRemoteViewModel(coordinator, session, passkeyClient)
     }
@@ -205,19 +206,45 @@ class AttachToRemoteViewModelTest {
             assertTrue(vm.uiState.value.error is ApiError.Network)
         }
 
+    // Issue #2920: this used to assert the English exception text reached the
+    // screen ("Server returned no session"); each coordinator failure now maps to
+    // a translated string.
     @Test
-    fun `an unknown failure falls back to its own message`() = runTest(
+    fun `a coordinator failure shows its translated line, not the exception text`() = runTest(
         mainDispatcherRule.testDispatcher
     ) {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
-            Result.failure(AttachException("Server returned no session"))
+            Result.failure(AttachException(AttachFailure.NoSession))
         val vm = viewModel()
         advanceUntilIdle()
 
         vm.signIn("r1", "", "", "alice", "pw")
         advanceUntilIdle()
 
-        assertEquals("Server returned no session", vm.uiState.value.errorText)
+        assertEquals(R.string.attach_error_no_session, vm.uiState.value.errorRes)
+        assertNull(vm.uiState.value.error)
+    }
+
+    @Test
+    fun `an unexpected exception shows the generic error, never its English message`() = runTest(
+        mainDispatcherRule.testDispatcher
+    ) {
+        coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
+            Result.failure(IllegalStateException("Trust anchor for certification path not found."))
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        vm.signIn("r1", "", "", "alice", "pw")
+        advanceUntilIdle()
+
+        assertTrue(vm.uiState.value.error is ApiError.Unknown)
+        assertNull(vm.uiState.value.errorRes)
+    }
+
+    @Test
+    fun `every coordinator failure has its own translated line`() {
+        val lines = AttachFailure.entries.map { it.messageRes() }
+        assertEquals(lines.size, lines.toSet().size)
     }
 
     @Test
@@ -601,7 +628,7 @@ class AttachToRemoteViewModelTest {
                     any(),
                     any()
                 )
-            } returns Result.failure(AttachException("boom"))
+            } returns Result.failure(AttachException(AttachFailure.NothingToConfirm))
             val vm = viewModel()
             toReview(vm)
 
@@ -609,7 +636,7 @@ class AttachToRemoteViewModelTest {
             advanceUntilIdle()
 
             assertEquals(AttachStep.Review, vm.uiState.value.step)
-            assertEquals("boom", vm.uiState.value.errorText)
+            assertEquals(R.string.attach_error_nothing_to_confirm, vm.uiState.value.errorRes)
             coVerify(exactly = 0) { coordinator.finish(any()) }
         }
 
@@ -677,7 +704,7 @@ class AttachToRemoteViewModelTest {
                     any()
                 )
             } returns Result.success(SourceImportResult())
-            coEvery { coordinator.finish(any()) } throws AttachException("switch failed")
+            coEvery { coordinator.finish(any()) } throws AttachException(AttachFailure.NoLocalProfile)
             val vm = viewModel()
             toReview(vm)
 
@@ -685,7 +712,7 @@ class AttachToRemoteViewModelTest {
             advanceUntilIdle()
 
             assertEquals(AttachStep.Review, vm.uiState.value.step)
-            assertEquals("switch failed", vm.uiState.value.errorText)
+            assertEquals(R.string.attach_error_no_local_profile, vm.uiState.value.errorRes)
         }
 
     @Test

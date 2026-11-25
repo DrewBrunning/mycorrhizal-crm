@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import com.mycorrhizal.crm.data.attach.AttachException
+import com.mycorrhizal.crm.data.attach.AttachFailure
 import com.mycorrhizal.crm.data.attach.AttachFinishResult
 import com.mycorrhizal.crm.data.attach.AttachPreview
 import com.mycorrhizal.crm.data.attach.AttachProgress
@@ -68,7 +69,7 @@ class AttachToRemoteScreenTest {
 
     private fun show(beginOk: Boolean = true, remotes: List<ServerProfile> = listOf(home)) {
         coEvery { coordinator.begin() } returns
-            if (beginOk) Result.success(local) else Result.failure(AttachException("x"))
+            if (beginOk) Result.success(local) else Result.failure(AttachException(AttachFailure.NotSignedIn))
         coEvery { session.profiles() } returns listOf(local) + remotes
         val vm = AttachToRemoteViewModel(coordinator, session, FakePasskeyClient())
         composeTestRule.setContent {
@@ -80,7 +81,7 @@ class AttachToRemoteScreenTest {
     @Test
     fun `sign-in lists the configured servers and signs in to the chosen one`() {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
-            Result.failure(AttachException("stop here"))
+            Result.failure(AttachException(AttachFailure.NotSignedIn))
         show()
 
         composeTestRule.onNodeWithText("Home").assertIsDisplayed()
@@ -97,7 +98,7 @@ class AttachToRemoteScreenTest {
     @Test
     fun `choosing to add a new server reveals the url fields and sends them`() {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
-            Result.failure(AttachException("stop here"))
+            Result.failure(AttachException(AttachFailure.NotSignedIn))
         show()
 
         composeTestRule.onNodeWithTag("attach-server-new").performClick()
@@ -135,7 +136,7 @@ class AttachToRemoteScreenTest {
             coordinator.completeTwoFactor(
                 any()
             )
-        } returns Result.failure(AttachException("nope"))
+        } returns Result.failure(AttachException(AttachFailure.NotSignedIn))
         show()
 
         composeTestRule.onNodeWithTag("attach-identifier").performTextInput("alice")
@@ -257,7 +258,7 @@ class AttachToRemoteScreenTest {
         coEvery { coordinator.signIn(any(), any(), any(), any(), any()) } returns
             Result.success(AttachSignInResult.SignedIn)
         coEvery { coordinator.prepare(any()) } returnsMany
-            listOf(Result.failure(AttachException("net")), Result.success(preview))
+            listOf(Result.failure(AttachException(AttachFailure.NotSignedIn)), Result.success(preview))
         show()
 
         composeTestRule.onNodeWithTag("attach-identifier").performTextInput("alice")

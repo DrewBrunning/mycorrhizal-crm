@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.annotation.StringRes
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.mycorrhizal.crm.data.attach.AttachException
+import com.mycorrhizal.crm.data.attach.AttachFailure
 import com.mycorrhizal.crm.data.attach.AttachFinishResult
 import com.mycorrhizal.crm.data.attach.AttachPreview
 import com.mycorrhizal.crm.data.attach.AttachProgress
@@ -65,9 +67,7 @@ data class AttachUiState(
     val passkeyIssue: PasskeyIssue? = null,
     val twoFactorMethods: List<String>? = null,
     @StringRes val errorRes: Int? = null,
-    val error: ApiError? = null,
-    /** A client-worded failure that is not an [ApiError] (e.g. the attach coordinator's). */
-    val errorText: String? = null
+    val error: ApiError? = null
 )
 
 /**
@@ -125,7 +125,6 @@ class AttachToRemoteViewModel @Inject constructor(
                 it.copy(
                     errorRes = R.string.servers_add_invalid_url,
                     error = null,
-                    errorText = null
                 )
             }
             return
@@ -135,7 +134,6 @@ class AttachToRemoteViewModel @Inject constructor(
                 it.copy(
                     errorRes = R.string.attach_error_credentials,
                     error = null,
-                    errorText = null
                 )
             }
             return
@@ -146,7 +144,6 @@ class AttachToRemoteViewModel @Inject constructor(
                     step = AttachStep.Working,
                     errorRes = null,
                     error = null,
-                    errorText = null,
                     progress = null
                 )
             }
@@ -171,7 +168,6 @@ class AttachToRemoteViewModel @Inject constructor(
                     step = AttachStep.Working,
                     errorRes = null,
                     error = null,
-                    errorText = null
                 )
             }
             coordinator.completeTwoFactor(code.trim()).fold(
@@ -203,7 +199,6 @@ class AttachToRemoteViewModel @Inject constructor(
                     step = AttachStep.Working,
                     errorRes = null,
                     error = null,
-                    errorText = null
                 )
             }
             val options = coordinator.beginPasskey().getOrElse { failure ->
@@ -261,7 +256,6 @@ class AttachToRemoteViewModel @Inject constructor(
                     step = AttachStep.TwoFactor,
                     errorRes = R.string.login_error_passkey_failed,
                     error = null,
-                    errorText = null,
                     progress = null
                 )
             }
@@ -309,7 +303,6 @@ class AttachToRemoteViewModel @Inject constructor(
                     step = AttachStep.Working,
                     errorRes = null,
                     error = null,
-                    errorText = null
                 )
             }
             if (_uiState.value.importApplied) {
@@ -348,7 +341,7 @@ class AttachToRemoteViewModel @Inject constructor(
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(errorRes = null, error = null, errorText = null) }
+        _uiState.update { it.copy(errorRes = null, error = null) }
     }
 
     override fun onCleared() {
@@ -383,7 +376,6 @@ class AttachToRemoteViewModel @Inject constructor(
                 step = AttachStep.Working,
                 errorRes = null,
                 error = null,
-                errorText = null,
                 progress = null
             )
         }
@@ -443,19 +435,21 @@ class AttachToRemoteViewModel @Inject constructor(
                 it.copy(
                     step = step,
                     error = null,
-                    errorText = null,
                     errorRes = R.string.attach_error_bad_credentials,
                     progress = null
                 )
             }
             return
         }
+        // Issue #2920: a coordinator failure shows its translated line; any other
+        // exception goes through ApiError (an unknown one is "Something went
+        // wrong"). A Throwable's own message is English and never shown.
+        val attachRes = (failure as? AttachException)?.failure?.messageRes()
         _uiState.update {
             it.copy(
                 step = step,
-                error = apiError.takeUnless { it is ApiError.Unknown && failure.message != null },
-                errorText = (apiError as? ApiError.Unknown)?.let { failure.message },
-                errorRes = null,
+                error = apiError.takeIf { attachRes == null },
+                errorRes = attachRes,
                 progress = null
             )
         }
@@ -465,4 +459,19 @@ class AttachToRemoteViewModel @Inject constructor(
         const val HTTP_UNAUTHORIZED = 401
         const val HTTP_TOO_MANY_REQUESTS = 429
     }
+}
+
+/** The translated line for each coordinator failure (issue #2920). */
+@StringRes
+internal fun AttachFailure.messageRes(): Int = when (this) {
+    AttachFailure.NotLocalProfile -> R.string.attach_error_not_local
+    AttachFailure.NotRemoteProfile -> R.string.attach_error_not_remote
+    AttachFailure.AlreadyArchived -> R.string.attach_error_already_archived
+    AttachFailure.NoSession -> R.string.attach_error_no_session
+    AttachFailure.NoPendingTwoFactor -> R.string.error_client_no_pending_two_factor
+    AttachFailure.NotSignedIn -> R.string.attach_error_not_signed_in
+    AttachFailure.NothingToConfirm -> R.string.attach_error_nothing_to_confirm
+    AttachFailure.NoLocalProfile -> R.string.attach_error_no_local_profile
+    AttachFailure.TimedOut -> R.string.attach_error_timed_out
+    AttachFailure.ImportFailed -> R.string.attach_error_import_failed
 }

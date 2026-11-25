@@ -2702,6 +2702,17 @@
     <string name="attach_error_not_local">Solo el perfil del dispositivo se puede mover a un servidor.</string>
     <string name="attach_error_credentials">Introduce tu usuario o correo y la contraseña.</string>
     <string name="attach_error_bad_credentials">Usuario o contraseña incorrectos.</string>
+    <string name="attach_error_not_remote">Elige el servidor al que mover este perfil.</string>
+    <string name="attach_error_already_archived">Este perfil ya está archivado.</string>
+    <string name="attach_error_no_session">El servidor no inició una sesión. Vuelve a iniciar sesión.</string>
+    <string name="attach_error_not_signed_in">Primero inicia sesión en el servidor.</string>
+    <string name="attach_error_nothing_to_confirm">No hay nada pendiente de confirmar. Vuelve a iniciar la subida.</string>
+    <string name="attach_error_no_local_profile">El perfil del dispositivo ya no está disponible.</string>
+    <string name="attach_error_timed_out">El servidor tardó demasiado en responder. Inténtalo de nuevo.</string>
+    <string name="attach_error_import_failed">El servidor detuvo la subida. Inténtalo de nuevo.</string>
+    <string name="settings_webhooks_delivery_failed_status">Entrega fallida (estado %1$d)</string>
+    <string name="settings_webhooks_delivery_failed">Entrega fallida</string>
+    <string name="settings_webhooks_delivery_error_short">Error</string>
     <string name="attach_button">Mover estos datos a un servidor</string>
     <string name="attach_archived_badge">Archivo de solo lectura</string>
     <string name="attach_archived_hint">Esta copia se movió a un servidor. Puedes consultarla, pero no modificarla.</string>

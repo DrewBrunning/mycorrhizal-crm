@@ -650,7 +650,9 @@ class AttachToRemoteCoordinatorTest {
 
             val failure = c.prepare().exceptionOrNull()
             assertTrue(failure is AttachException)
-            assertEquals("boom", failure?.message)
+            assertEquals(AttachFailure.ImportFailed, (failure as AttachException).failure)
+            // The server's text is kept for logs only; the UI shows the translated line.
+            assertEquals("boom", failure.message)
             assertLocalStillActiveAndWritable()
 
             preparePhases.clear()
@@ -698,7 +700,7 @@ class AttachToRemoteCoordinatorTest {
         val failure = c.prepare().exceptionOrNull()
 
         assertTrue(failure is AttachException)
-        assertTrue(failure?.message.orEmpty().contains("Timed out"))
+        assertEquals(AttachFailure.TimedOut, (failure as AttachException).failure)
         assertLocalStillActiveAndWritable()
     }
 
