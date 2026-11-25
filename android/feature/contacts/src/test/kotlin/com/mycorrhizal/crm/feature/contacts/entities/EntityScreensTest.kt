@@ -10,6 +10,7 @@ import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.assertTextContains
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -248,7 +249,7 @@ class EntityScreensTest {
         assertEquals("p2", opened)
         composeTestRule.onNodeWithTag("suggestion-open-a-p1").performClick()
         assertEquals("p1", opened)
-        composeTestRule.onNodeWithText("Not a duplicate").performClick()
+        composeTestRule.onNodeWithText("Not a duplicate").performScrollTo().performClick()
         assertEquals(cabinPair, dismissed)
     }
 
@@ -277,7 +278,7 @@ class EntityScreensTest {
             ),
             onMerge = { merged = it }
         )
-        composeTestRule.onNodeWithTag("suggestion-merge-p1").performClick()
+        composeTestRule.onNodeWithTag("suggestion-merge-p1").performScrollTo().performClick()
         assertEquals(cabinPair, merged)
     }
 
@@ -312,6 +313,22 @@ class EntityScreensTest {
             .assertTextContains(
                 "Organisation \u00b7 Linked to 0 contacts \u00b7 Updated 05.01.2026"
             )
+    }
+
+    // #2935 (regression of #2645): both sides of a pair must be fully visible, each a full-width
+    // button of at least 48 dp, so side B is not squeezed to an empty box beside side A.
+    @Test
+    fun `both sides of a same-named pair are fully visible full-width 48dp buttons`() {
+        setList(EntitiesUiState(entities = listOf(acme), suggestions = listOf(twinPair)))
+        listOf("suggestion-open-a-t1", "suggestion-open-b-t2").forEach { tag ->
+            composeTestRule.onNodeWithTag(tag)
+                .performScrollTo()
+                .assertIsDisplayed()
+                .assertHeightIsAtLeast(48.dp)
+                .assertWidthIsAtLeast(240.dp)
+                .assertTextContains("Open Dupe Test Corp")
+                .assertTextContains("Organisation", substring = true)
+        }
     }
 
     @Test
