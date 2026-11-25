@@ -2626,6 +2626,17 @@
     <string name="attach_error_not_local">Only the on-device profile can be moved to a server.</string>
     <string name="attach_error_credentials">Enter your username or email and password.</string>
     <string name="attach_error_bad_credentials">Wrong username or password.</string>
+    <string name="attach_error_not_remote">Choose the server to move this profile to.</string>
+    <string name="attach_error_already_archived">This profile is already archived.</string>
+    <string name="attach_error_no_session">The server didn\'t start a session. Sign in again.</string>
+    <string name="attach_error_not_signed_in">Sign in to the server first.</string>
+    <string name="attach_error_nothing_to_confirm">Nothing is waiting to be confirmed. Start the upload again.</string>
+    <string name="attach_error_no_local_profile">The on-device profile is no longer available.</string>
+    <string name="attach_error_timed_out">The server took too long to respond. Try again.</string>
+    <string name="attach_error_import_failed">The server stopped the upload. Try again.</string>
+    <string name="settings_webhooks_delivery_failed_status">Delivery failed (status %1$d)</string>
+    <string name="settings_webhooks_delivery_failed">Delivery failed</string>
+    <string name="settings_webhooks_delivery_error_short">Error</string>
     <string name="attach_button">Move this data to a server</string>
     <string name="attach_archived_badge">Read-only archive</string>
     <string name="attach_archived_hint">This copy was moved to a server. You can browse it, but not change it.</string>

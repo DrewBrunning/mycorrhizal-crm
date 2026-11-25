@@ -76,8 +76,30 @@ sealed interface AttachFinishResult {
     data class NeedsConfirmation(val pendingCount: Int) : AttachFinishResult
 }
 
-/** A wizard step failed for a reason the user can act on (message is not localized). */
-class AttachException(message: String, cause: Throwable? = null) : Exception(message, cause)
+/**
+ * Why a wizard step failed. The UI shows a translated line per value (issue
+ * #2920): the exception's `message` is English diagnostic text for logs only and
+ * never reaches the screen.
+ */
+enum class AttachFailure {
+    NotLocalProfile,
+    NotRemoteProfile,
+    AlreadyArchived,
+    NoSession,
+    NoPendingTwoFactor,
+    NotSignedIn,
+    NothingToConfirm,
+    NoLocalProfile,
+    TimedOut,
+    ImportFailed
+}
+
+/** A wizard step failed for a reason the user can act on; [failure] says which. */
+class AttachException(
+    val failure: AttachFailure,
+    detail: String? = null,
+    cause: Throwable? = null
+) : Exception(detail ?: failure.name, cause)
 
 /**
  * ADR 0028 Decision 3 / issue #1265: the one-time "move this local data to a
@@ -134,7 +156,7 @@ class AttachToRemoteCoordinator @Inject constructor(
         password: String
     ): Result<AttachSignInResult> {
         val profile = resolveRemoteProfile(existingProfileId, label, url)
-            ?: return Result.failure(AttachException("Not a remote server profile"))
+            ?: return Result.failure(AttachException(AttachFailure.NotRemoteProfile))
         val baseUrl = profile.remoteUrl.orEmpty()
         val api = remoteApiFactory.create(baseUrl) { remoteToken }
         remoteApi = api
@@ -153,7 +175,7 @@ class AttachToRemoteCoordinator @Inject constructor(
             }
 
             login.token.isNullOrBlank() -> Result.failure(
-                AttachException("Server returned no session")
+                AttachException(AttachFailure.NoSession)
             )
 
             else -> {
@@ -166,9 +188,9 @@ class AttachToRemoteCoordinator @Inject constructor(
     /** Step 1b: finish a 2FA challenge started by [signIn]. */
     suspend fun completeTwoFactor(code: String): Result<AttachSignInResult> {
         val cookie = pendingTwoFactorCookie ?: return Result.failure(
-            AttachException("No pending 2FA challenge")
+            AttachException(AttachFailure.NoPendingTwoFactor)
         )
-        val api = remoteApi ?: return Result.failure(AttachException("Not signed in"))
+        val api = remoteApi ?: return Result.failure(AttachException(AttachFailure.NotSignedIn))
         return finishTwoFactor(api.complete2faLogin(code, cookie))
     }
 
@@ -179,28 +201,29 @@ class AttachToRemoteCoordinator @Inject constructor(
      */
     suspend fun beginPasskey(): Result<String> {
         val cookie = pendingTwoFactorCookie ?: return Result.failure(
-            AttachException("No pending 2FA challenge")
+            AttachException(AttachFailure.NoPendingTwoFactor)
         )
-        val api = remoteApi ?: return Result.failure(AttachException("Not signed in"))
+        val api = remoteApi ?: return Result.failure(AttachException(AttachFailure.NotSignedIn))
         return api.webauthnLoginBegin(cookie)
     }
 
     /** Step 1b, passkey route: exchange the authenticator's assertion for the remote session (same tail as [completeTwoFactor]). */
     suspend fun completePasskey(assertionJson: String): Result<AttachSignInResult> {
         val cookie = pendingTwoFactorCookie ?: return Result.failure(
-            AttachException("No pending 2FA challenge")
+            AttachException(AttachFailure.NoPendingTwoFactor)
         )
-        val api = remoteApi ?: return Result.failure(AttachException("Not signed in"))
+        val api = remoteApi ?: return Result.failure(AttachException(AttachFailure.NotSignedIn))
         return finishTwoFactor(api.webauthnLoginFinish(assertionJson, cookie))
     }
 
     private suspend fun finishTwoFactor(result: Result<LoginResult>): Result<AttachSignInResult> {
-        val profileId = remoteProfileId ?: return Result.failure(AttachException("Not signed in"))
+        val profileId = remoteProfileId
+            ?: return Result.failure(AttachException(AttachFailure.NotSignedIn))
         val login = result.getOrElse { return Result.failure(it) }
         val token = login.token
         if (token.isNullOrBlank()) {
             return Result.failure(
-                AttachException("Server returned no session")
+                AttachException(AttachFailure.NoSession)
             )
         }
         pendingTwoFactorCookie = null
@@ -217,7 +240,7 @@ class AttachToRemoteCoordinator @Inject constructor(
         onProgress: (AttachProgress) -> Unit = {
         }
     ): Result<AttachPreview> = attempt {
-        val api = remoteApi ?: throw AttachException("Not signed in")
+        val api = remoteApi ?: throw AttachException(AttachFailure.NotSignedIn)
 
         val bytes = bundle ?: run {
             onProgress(AttachProgress(AttachStage.Exporting))
@@ -252,8 +275,8 @@ class AttachToRemoteCoordinator @Inject constructor(
         actions: List<RowImportAction>,
         onProgress: (AttachProgress) -> Unit = {}
     ): Result<SourceImportResult> = attempt {
-        val api = remoteApi ?: throw AttachException("Not signed in")
-        val session = sessionId ?: throw AttachException("Nothing to confirm")
+        val api = remoteApi ?: throw AttachException(AttachFailure.NotSignedIn)
+        val session = sessionId ?: throw AttachException(AttachFailure.NothingToConfirm)
         onProgress(AttachProgress(AttachStage.Importing))
         api.confirmMycorrhizalImport(
             ImportConfirmRequest(sessionId = session, actions = actions)
@@ -273,8 +296,8 @@ class AttachToRemoteCoordinator @Inject constructor(
      * the process dies between the two, Local is still writable (the safe side).
      */
     suspend fun finish(discardPending: Boolean = false): AttachFinishResult {
-        val remoteId = remoteProfileId ?: throw AttachException("Not signed in")
-        val localId = localProfileId ?: throw AttachException("No local profile to archive")
+        val remoteId = remoteProfileId ?: throw AttachException(AttachFailure.NotSignedIn)
+        val localId = localProfileId ?: throw AttachException(AttachFailure.NoLocalProfile)
         return when (val switched = sessionManager.switchProfile(remoteId, discardPending)) {
             is SwitchProfileResult.NeedsConfirmation -> AttachFinishResult.NeedsConfirmation(
                 switched.pendingCount
@@ -313,9 +336,9 @@ class AttachToRemoteCoordinator @Inject constructor(
         val active = sessionManager.activeProfile()
         return when {
             active == null || active.kind !is ServerProfileKind.Local ->
-                Result.failure(AttachException("The attach wizard starts from the Local profile"))
+                Result.failure(AttachException(AttachFailure.NotLocalProfile))
 
-            active.archived -> Result.failure(AttachException("This profile is already archived"))
+            active.archived -> Result.failure(AttachException(AttachFailure.AlreadyArchived))
 
             else -> {
                 localProfileId = active.id
@@ -388,7 +411,7 @@ class AttachToRemoteCoordinator @Inject constructor(
             onProgress(AttachProgress(stage, status.phaseDone, status.phaseTotal))
             delay(pollIntervalMs)
         }
-        throw AttachException("Timed out waiting for the server")
+        throw AttachException(AttachFailure.TimedOut)
     }
 
     /**
@@ -405,7 +428,7 @@ class AttachToRemoteCoordinator @Inject constructor(
     } catch (e: AttachSessionDied) {
         // Drop the dead session on the server too: it still counts against the cap.
         dropRemoteSession()
-        Result.failure(AttachException(e.message.orEmpty(), e))
+        Result.failure(AttachException(AttachFailure.ImportFailed, e.message, e))
     } catch (e: Exception) {
         Result.failure(e)
     }

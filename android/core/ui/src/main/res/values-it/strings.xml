@@ -2702,6 +2702,17 @@
     <string name="attach_error_not_local">Solo il profilo sul dispositivo può essere spostato su un server.</string>
     <string name="attach_error_credentials">Inserisci nome utente o e-mail e password.</string>
     <string name="attach_error_bad_credentials">Nome utente o password errati.</string>
+    <string name="attach_error_not_remote">Scegli il server su cui spostare questo profilo.</string>
+    <string name="attach_error_already_archived">Questo profilo è già archiviato.</string>
+    <string name="attach_error_no_session">Il server non ha avviato una sessione. Accedi di nuovo.</string>
+    <string name="attach_error_not_signed_in">Accedi prima al server.</string>
+    <string name="attach_error_nothing_to_confirm">Non c\'è nulla in attesa di conferma. Riavvia il caricamento.</string>
+    <string name="attach_error_no_local_profile">Il profilo sul dispositivo non è più disponibile.</string>
+    <string name="attach_error_timed_out">Il server ha impiegato troppo tempo a rispondere. Riprova.</string>
+    <string name="attach_error_import_failed">Il server ha interrotto il caricamento. Riprova.</string>
+    <string name="settings_webhooks_delivery_failed_status">Consegna non riuscita (stato %1$d)</string>
+    <string name="settings_webhooks_delivery_failed">Consegna non riuscita</string>
+    <string name="settings_webhooks_delivery_error_short">Errore</string>
     <string name="attach_button">Sposta questi dati su un server</string>
     <string name="attach_archived_badge">Archivio di sola lettura</string>
     <string name="attach_archived_hint">Questa copia è stata spostata su un server. Puoi consultarla, ma non modificarla.</string>

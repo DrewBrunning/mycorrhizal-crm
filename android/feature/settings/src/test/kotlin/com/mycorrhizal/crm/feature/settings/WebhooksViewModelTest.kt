@@ -172,7 +172,10 @@ class WebhooksViewModelTest {
 
             val state = vm.uiState.value
             assertNull(state.message)
-            assertEquals("connection refused", state.deliveryError)
+            assertEquals(
+                DeliveryFailure(serverText = "connection refused", statusCode = 500),
+                state.deliveryFailure
+            )
             assertEquals(500, state.deliveries[1]?.first()?.statusCode)
         }
 

@@ -17,6 +17,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+/**
+ * A failed test delivery: the server's own [serverText] when it sent one, else
+ * the HTTP [statusCode] (null when no response came back). The screen words the
+ * fallback itself, in the UI language (issue #2920).
+ */
+data class DeliveryFailure(val serverText: String?, val statusCode: Int?)
+
 data class WebhooksUiState(
     val webhooks: List<Webhook> = emptyList(),
     val isLoading: Boolean = false,
@@ -33,8 +40,8 @@ data class WebhooksUiState(
     val error: ApiError? = null,
     /** Issue #2629: the last list load failed (cleared when a load starts); shown with Retry. */
     val loadError: ApiError? = null,
-    /** Server-reported delivery failure text (not a request error). */
-    val deliveryError: String? = null,
+    /** A test delivery the server reports as failed (not a request error). */
+    val deliveryFailure: DeliveryFailure? = null,
     /** A transient action success message (test). */
     val message: String? = null
 )
@@ -58,7 +65,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                     isLoading = true,
                     error = null,
                     loadError = null,
-                    deliveryError = null,
+                    deliveryFailure = null,
                     message = null
                 )
             }
@@ -80,7 +87,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                 it.copy(
                     isSaving = true,
                     error = null,
-                    deliveryError = null,
+                    deliveryFailure = null,
                     message = null
                 )
             }
@@ -125,7 +132,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
 
     fun delete(webhook: Webhook) {
         viewModelScope.launch {
-            _uiState.update { it.copy(error = null, deliveryError = null, message = null) }
+            _uiState.update { it.copy(error = null, deliveryFailure = null, message = null) }
             repository.delete(webhook.id)
                 .onSuccess {
                     _uiState.update {
@@ -148,7 +155,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                 it.copy(
                     testingIds = it.testingIds + webhook.id,
                     error = null,
-                    deliveryError = null,
+                    deliveryFailure = null,
                     message = null
                 )
             }
@@ -166,11 +173,10 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
                             expandedIds = it.expandedIds + webhook.id,
                             message = if (success) delivery.statusCode?.toString() else null,
                             error = null,
-                            deliveryError = if (success) {
+                            deliveryFailure = if (success) {
                                 null
                             } else {
-                                delivery.error
-                                    ?: "status ${delivery.statusCode ?: "unknown"}"
+                                DeliveryFailure(delivery.error, delivery.statusCode)
                             }
                         )
                     }
@@ -222,7 +228,7 @@ class WebhooksViewModel @Inject constructor(private val repository: WebhookRepos
     }
 
     fun onErrorShown() {
-        _uiState.update { it.copy(error = null, deliveryError = null, message = null) }
+        _uiState.update { it.copy(error = null, deliveryFailure = null, message = null) }
     }
 }
 

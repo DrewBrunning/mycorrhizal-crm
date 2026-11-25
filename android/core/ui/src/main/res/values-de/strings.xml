@@ -2608,6 +2608,17 @@
     <string name="attach_error_not_local">Nur das Profil auf dem Gerät kann auf einen Server verschoben werden.</string>
     <string name="attach_error_credentials">Geben Sie Benutzernamen oder E-Mail und Passwort ein.</string>
     <string name="attach_error_bad_credentials">Benutzername oder Passwort ist falsch.</string>
+    <string name="attach_error_not_remote">Wählen Sie den Server, auf den dieses Profil verschoben werden soll.</string>
+    <string name="attach_error_already_archived">Dieses Profil ist bereits archiviert.</string>
+    <string name="attach_error_no_session">Der Server hat keine Sitzung gestartet. Melden Sie sich erneut an.</string>
+    <string name="attach_error_not_signed_in">Melden Sie sich zuerst beim Server an.</string>
+    <string name="attach_error_nothing_to_confirm">Es wartet nichts auf Bestätigung. Starten Sie den Upload erneut.</string>
+    <string name="attach_error_no_local_profile">Das Profil auf dem Gerät ist nicht mehr verfügbar.</string>
+    <string name="attach_error_timed_out">Der Server hat zu lange nicht geantwortet. Versuchen Sie es erneut.</string>
+    <string name="attach_error_import_failed">Der Server hat den Upload abgebrochen. Versuchen Sie es erneut.</string>
+    <string name="settings_webhooks_delivery_failed_status">Zustellung fehlgeschlagen (Status %1$d)</string>
+    <string name="settings_webhooks_delivery_failed">Zustellung fehlgeschlagen</string>
+    <string name="settings_webhooks_delivery_error_short">Fehler</string>
     <string name="attach_button">Diese Daten auf einen Server verschieben</string>
     <string name="attach_archived_badge">Schreibgeschütztes Archiv</string>
     <string name="attach_archived_hint">Diese Kopie wurde auf einen Server verschoben. Sie können sie ansehen, aber nicht ändern.</string>

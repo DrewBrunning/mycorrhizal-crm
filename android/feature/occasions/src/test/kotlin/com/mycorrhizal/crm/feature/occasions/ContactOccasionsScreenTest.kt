@@ -121,6 +121,23 @@ class ContactOccasionsScreenTest {
         composeTestRule.onNodeWithText("Send to the new address").assertIsDisplayed()
     }
 
+    // #2920 parity with the web's #2914 fix: the language orders and punctuates
+    // the anchor date; it used to be the English "<month> <day>" in every
+    // language ("diciembre 25" in Spanish).
+    @Test
+    @Config(qualifiers = "es")
+    fun `the anchor date follows the language's day-month order`() {
+        render(listOf(ob()))
+        composeTestRule.onNodeWithText("25 de diciembre").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "fr")
+    fun `the anchor date in French puts the day first`() {
+        render(listOf(ob()))
+        composeTestRule.onNodeWithText("25 décembre").assertIsDisplayed()
+    }
+
     @Test
     fun `a legacy dateless row says it has no date instead of leaving a blank`() {
         render(listOf(ob(anchorMonth = null, anchorDay = null)))
