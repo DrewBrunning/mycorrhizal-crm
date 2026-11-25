@@ -110,12 +110,12 @@ test('a failed dismiss shows the error and keeps the pair; a successful one remo
   await screen.findByText('Acme and Acme Ltd');
 
   dismissMock.mockRejectedValueOnce(new Error('dismiss broke'));
-  fireEvent.click(screen.getByRole('button', { name: 'Acme and Acme Ltd are not duplicates' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate: Acme and Acme Ltd' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('dismiss broke');
   expect(screen.getByText('Acme and Acme Ltd')).toBeInTheDocument();
 
   dismissMock.mockResolvedValueOnce(undefined as never);
-  fireEvent.click(screen.getByRole('button', { name: 'Acme and Acme Ltd are not duplicates' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate: Acme and Acme Ltd' }));
   await waitFor(() => expect(screen.queryByText('Acme and Acme Ltd')).not.toBeInTheDocument());
   expect(dismissMock).toHaveBeenLastCalledWith('a1', 'b1');
 });
@@ -200,12 +200,12 @@ test('each pair action names the two entities it acts on (#2911)', async () => {
   const names = screen
     .getAllByRole('button')
     .map((b) => b.getAttribute('aria-label'))
-    .filter((name): name is string => !!name && /^(Merge |.* are not duplicates$)/.test(name));
+    .filter((name): name is string => !!name && /^(Merge |Not a duplicate: )/.test(name));
   expect(names).toEqual([
     'Merge Acme and Acme Ltd',
-    'Acme and Acme Ltd are not duplicates',
+    'Not a duplicate: Acme and Acme Ltd',
     'Merge Beta and Beta Ltd',
-    'Beta and Beta Ltd are not duplicates',
+    'Not a duplicate: Beta and Beta Ltd',
   ]);
   expect(new Set(names).size).toBe(names.length);
 });
@@ -218,15 +218,15 @@ test('dismissing a pair focuses the next duplicate row, then the heading (#2918)
   fireEvent.click(screen.getByRole('button', { name: 'Find duplicates' }));
   await screen.findByText('Acme and Acme Ltd');
 
-  fireEvent.click(screen.getByRole('button', { name: 'Acme and Acme Ltd are not duplicates' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate: Acme and Acme Ltd' }));
   await waitFor(() => expect(screen.queryByText('Acme and Acme Ltd')).not.toBeInTheDocument());
   await waitFor(() =>
     expect(document.activeElement).toBe(
-      screen.getByRole('button', { name: 'Beta and Beta Ltd are not duplicates' }),
+      screen.getByRole('button', { name: 'Not a duplicate: Beta and Beta Ltd' }),
     ),
   );
 
-  fireEvent.click(screen.getByRole('button', { name: 'Beta and Beta Ltd are not duplicates' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Not a duplicate: Beta and Beta Ltd' }));
   const heading = screen.getByRole('heading', { name: 'Possible duplicates' });
   await waitFor(() => expect(document.activeElement).toBe(heading));
   expect(heading).toHaveAttribute('tabindex', '-1');

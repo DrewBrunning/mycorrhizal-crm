@@ -1,4 +1,5 @@
 import { createTestContact, expect, test, waitForLoading } from './fixtures';
+import { expectFocusNotLost } from './focusOrder';
 import { API_BASE_URL } from './global-setup';
 
 // Issue #2002: the contact Trash is the restore/purge UI for soft-deleted
@@ -53,6 +54,9 @@ test.describe('Contact trash', () => {
 
       await row.getByRole('button', { name: /^Restore / }).click();
       await expect(row).toHaveCount(0);
+      // #2920 item 7: the restored row (and the button that had focus) is gone;
+      // focus must not fall to <body> (#2918).
+      await expectFocusNotLost(page, 'Trash: Restore');
 
       // Restored to the live set, not just removed from the list.
       const live = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
@@ -79,7 +83,9 @@ test.describe('Contact trash', () => {
       await row.getByRole('button', { name: /^Delete forever/ }).click();
       // #2717: the confirmation is an in-app dialog, not window.confirm.
       await page.getByRole('dialog').getByRole('button', { name: 'Delete forever' }).click();
+      await expect(page.getByRole('dialog')).toBeHidden();
       await expect(row).toHaveCount(0);
+      await expectFocusNotLost(page, 'Trash: Delete forever');
 
       const gone = await page.request.get(`${API_BASE_URL}/contacts/${contact.ID}`);
       expect(gone.status()).toBe(404);

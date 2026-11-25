@@ -6,6 +6,7 @@ import {
   test,
   waitForLoading,
 } from './fixtures';
+import { expectFocusNotLost } from './focusOrder';
 
 // Authenticated via the shared storageState (see playwright.config.ts).
 // Each test runs against its own throwaway contact.
@@ -70,6 +71,40 @@ test.describe('Reminders', () => {
 
       await page.keyboard.press('Escape');
       await expect(page.getByRole('dialog')).toBeHidden();
+    } finally {
+      await deleteTestContact(page.request, contact.ID);
+    }
+  });
+
+  test('deleting a reminder keeps focus on the page', async ({ page, browserName }) => {
+    // Same Firefox target-size layout difference as the tests above.
+    test.fixme(
+      browserName === 'firefox',
+      'Firefox: sticky ContactJumpNav obscures the timeline View all button (axe target-size)',
+    );
+    const contact = await createTestContact(page.request);
+
+    try {
+      await page.goto(`/contacts/${contact.ID}`);
+      await waitForLoading(page);
+
+      await stableClick(page.getByRole('button', { name: /add.*reminder/i }));
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await page.getByRole('textbox', { name: /message/i }).fill('E2E Delete Reminder');
+      await page.getByRole('button', { name: /save|create/i }).click();
+      await expect(page.getByRole('dialog')).toBeHidden();
+      await expect(page.getByText('E2E Delete Reminder')).toBeVisible();
+
+      await page.getByRole('button', { name: 'Delete E2E Delete Reminder' }).click();
+      const confirm = page.getByRole('dialog');
+      await expect(confirm).toBeVisible();
+      await confirm.getByRole('button', { name: /^Delete$/ }).click();
+      await expect(confirm).toBeHidden();
+      await expect(page.getByText('E2E Delete Reminder')).toHaveCount(0);
+
+      // #2920 item 7: the reminder card and its Delete button are gone; focus
+      // must not fall to <body> (#2918).
+      await expectFocusNotLost(page, 'reminder delete');
     } finally {
       await deleteTestContact(page.request, contact.ID);
     }
