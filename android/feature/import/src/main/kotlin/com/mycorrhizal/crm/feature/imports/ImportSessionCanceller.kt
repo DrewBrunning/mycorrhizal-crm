@@ -2,8 +2,11 @@ package com.mycorrhizal.crm.feature.imports
 
 import com.mycorrhizal.crm.network.ApiClient
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Issue #2664 / #2734: discards an unconfirmed CSV / VCF / records import session on the server
@@ -33,11 +36,16 @@ internal class ImportSessionCanceller(private val apiClient: ApiClient) {
     }
 
     /** Sends the cancel at most once per settled session; no-op for a null or blank id. */
+    // ATOMIC (a delicate API) so the cancel still starts when the scope is already
+    // cancelled, e.g. from onCleared(); the call itself then runs NonCancellable.
+    @OptIn(DelicateCoroutinesApi::class)
     fun cancel(scope: CoroutineScope, sessionId: String?) {
         if (settled || sessionId.isNullOrBlank()) return
         settled = true
-        scope.launch(NonCancellable) {
-            runCatching { apiClient.cancelImportSession(sessionId) }
+        scope.launch(start = CoroutineStart.ATOMIC) {
+            withContext(NonCancellable) {
+                runCatching { apiClient.cancelImportSession(sessionId) }
+            }
         }
     }
 }
