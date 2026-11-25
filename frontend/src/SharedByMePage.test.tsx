@@ -640,6 +640,77 @@ describe('SharedByMePage', () => {
       expect(heading).toHaveAttribute('tabindex', '-1');
     });
 
+    // #2918 follow-up: Revoke moves the row from the live list to the ended
+    // one, so its Revoke button unmounts too. Same rule as Remove: the next
+    // live row's Revoke, else the previous one's, else the ended heading
+    // (where the revoked share now is).
+    const revoke = async (label: string) => {
+      fireEvent.click(await screen.findByRole('button', { name: `Revoke ${label} for bob` }));
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', {
+          name: 'Revoke',
+        }),
+      );
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() =>
+        expect(screen.queryByRole('button', { name: `Revoke ${label} for bob` })).toBeNull(),
+      );
+    };
+
+    test('revoking a live share focuses the next row Revoke (#2918)', async () => {
+      serveOutgoing([grant({ id: 'g1', label: 'One' }), grant({ id: 'g2', label: 'Two' })]);
+      mockApi('post', '/share-grants/g1/revoke', {
+        share_grant: grant({ id: 'g1', label: 'One', status: 'revoked' }),
+      });
+      renderPage();
+      await revoke('One');
+      const next = screen.getByRole('button', { name: 'Revoke Two for bob' });
+      await waitFor(() => expect(document.activeElement).toBe(next));
+    });
+
+    test('revoking the last live row focuses the previous row Revoke (#2918)', async () => {
+      serveOutgoing([grant({ id: 'g1', label: 'One' }), grant({ id: 'g2', label: 'Two' })]);
+      mockApi('post', '/share-grants/g2/revoke', {
+        share_grant: grant({ id: 'g2', label: 'Two', status: 'revoked' }),
+      });
+      renderPage();
+      await revoke('Two');
+      const previous = screen.getByRole('button', {
+        name: 'Revoke One for bob',
+      });
+      await waitFor(() => expect(document.activeElement).toBe(previous));
+    });
+
+    test('revoking the only live share focuses the ended heading, not <body> (#2918)', async () => {
+      serveOutgoing([grant({ id: 'g1', label: 'One' })]);
+      mockApi('post', '/share-grants/g1/revoke', {
+        share_grant: grant({ id: 'g1', label: 'One', status: 'revoked' }),
+      });
+      renderPage();
+      await revoke('One');
+      const heading = screen.getByRole('heading', { name: /^Ended shares/ });
+      await waitFor(() => expect(document.activeElement).toBe(heading));
+      expect(heading).toHaveAttribute('tabindex', '-1');
+    });
+
+    test('a revoke the server answers with a still-live grant falls back to the page (#2918)', async () => {
+      // Defensive: if the response does not end the grant (a concurrent
+      // re-activation), no ended heading exists, so focus goes to the page.
+      serveOutgoing([grant({ id: 'g1', label: 'One' })]);
+      mockApi('post', '/share-grants/g1/revoke', {
+        share_grant: grant({ id: 'g1', label: 'One', status: 'active', revision: 4 }),
+      });
+      renderPage();
+      fireEvent.click(await screen.findByRole('button', { name: 'Revoke One for bob' }));
+      fireEvent.click(
+        within(await screen.findByRole('dialog')).getByRole('button', { name: 'Revoke' }),
+      );
+      await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+      await waitFor(() => expect(document.activeElement).not.toBe(document.body));
+      expect(document.activeElement).toHaveAttribute('tabindex', '-1');
+      expect(document.activeElement).toHaveTextContent('Shared by me');
+    });
+
     test('re-confirming a live share focuses that grant Edit button (#2918)', async () => {
       mockApi(
         'get',

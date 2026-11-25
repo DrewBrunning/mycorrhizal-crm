@@ -4682,6 +4682,12 @@
       "createdPlace_one": "{{count}} lieu créé.",
       "createdPlace_many": "{{count}} lieux créés.",
       "createdPlace_other": "{{count}} lieux créés.",
+      "linkedOrganisation_one": "{{count}} groupe lié à une organisation existante.",
+      "linkedOrganisation_many": "{{count}} groupes liés à des organisations existantes.",
+      "linkedOrganisation_other": "{{count}} groupes liés à des organisations existantes.",
+      "linkedPlace_one": "{{count}} groupe lié à un lieu existant.",
+      "linkedPlace_many": "{{count}} groupes liés à des lieux existants.",
+      "linkedPlace_other": "{{count}} groupes liés à des lieux existants.",
       "skip": {
         "group_not_found": "{{name}} : ignoré. Il existe peut-être déjà ou ne correspond plus à vos contacts.",
         "contact_not_in_group": "{{name}} : un contact n'en fait plus partie.",

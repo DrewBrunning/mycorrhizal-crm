@@ -15,10 +15,6 @@
     "count": 1,
     "reason": "Account deletion failure shows the raw thrown message; fixed by #2917."
   },
-  "src/components/ExportFieldPickerDialog.tsx": {
-    "count": 1,
-    "reason": "Export field picker failure shows the raw thrown message; fixed by #2917."
-  },
   "src/components/ExternalLinkPanel.tsx": {
     "count": 2,
     "reason": "External link/unlink failures show the raw thrown message; fixed by #2917."
@@ -74,10 +70,6 @@
   "src/components/WebhooksSettings.tsx": {
     "count": 4,
     "reason": "Webhook load/save/delete/test failures show the raw thrown message; fixed by #2917."
-  },
-  "src/DataSettingsPage.tsx": {
-    "count": 5,
-    "reason": "Import/export failures show the raw thrown message; fixed by #2917."
   },
   "src/LoginPage.tsx": {
     "count": 2,

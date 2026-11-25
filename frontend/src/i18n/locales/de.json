@@ -4548,6 +4548,10 @@
       "createdOrganisation_other": "{{count}} Organisationen erstellt.",
       "createdPlace_one": "{{count}} Ort erstellt.",
       "createdPlace_other": "{{count}} Orte erstellt.",
+      "linkedOrganisation_one": "{{count}} Gruppe mit einer vorhandenen Organisation verknüpft.",
+      "linkedOrganisation_other": "{{count}} Gruppen mit vorhandenen Organisationen verknüpft.",
+      "linkedPlace_one": "{{count}} Gruppe mit einem vorhandenen Ort verknüpft.",
+      "linkedPlace_other": "{{count}} Gruppen mit vorhandenen Orten verknüpft.",
       "skip": {
         "group_not_found": "{{name}}: übersprungen. Es existiert möglicherweise schon oder passt nicht mehr zu Ihren Kontakten.",
         "contact_not_in_group": "{{name}}: ein Kontakt gehört nicht mehr dazu.",

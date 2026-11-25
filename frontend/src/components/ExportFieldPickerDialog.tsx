@@ -15,6 +15,7 @@ import {
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EXPORT_FIELD_SECTIONS, type ExportFormat, type ExportSelection } from '../api/export';
+import { getErrorMessage } from '../utils/errorHandler';
 import AppDialog from './AppDialog';
 import FieldSectionPicker from './FieldSectionPicker';
 
@@ -81,7 +82,9 @@ export default function ExportFieldPickerDialog({
       });
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('settings.exportFieldPicker.exportError'));
+      setError(
+        err instanceof Error ? getErrorMessage(err) : t('settings.exportFieldPicker.exportError'),
+      );
     } finally {
       setExporting(false);
     }

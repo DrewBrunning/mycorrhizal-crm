@@ -91,7 +91,9 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState('');
   const [creating, setCreating] = useState(false);
   const [skipped, setSkipped] = useState<EntityFromContactsSkip[]>([]);
-  const [createdCount, setCreatedCount] = useState<number | null>(null);
+  // What the last run did: the server returns linked groups under `created`
+  // too, so the message must tell the two apart (#2919 follow-up).
+  const [result, setResult] = useState('');
   const requestRef = useRef(0);
 
   const load = useCallback(async (k: HelperKind, cursor?: string) => {
@@ -120,7 +122,7 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
     setLoaded(false);
     setGroups([]);
     setSkipped([]);
-    setCreatedCount(null);
+    setResult('');
     void load(kind);
   }, [kind, load]);
 
@@ -144,15 +146,32 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
           existing_entity_id: g.existing_entity_id || undefined,
         })),
       });
-      setCreatedCount(res.created.length);
+      const linkedTo = new Map(
+        chosen.filter((g) => g.existing_entity_id).map((g) => [g.key, g.existing_entity_id]),
+      );
+      const linked = res.created.filter((c) => linkedTo.get(c.key) === c.entity.id).length;
+      const created = res.created.length - linked;
+      const summary = [
+        created > 0 &&
+          t(
+            kind === 'place'
+              ? 'entities.fromContacts.createdPlace'
+              : 'entities.fromContacts.createdOrganisation',
+            { count: created },
+          ),
+        linked > 0 &&
+          t(
+            kind === 'place'
+              ? 'entities.fromContacts.linkedPlace'
+              : 'entities.fromContacts.linkedOrganisation',
+            { count: linked },
+          ),
+      ]
+        .filter(Boolean)
+        .join(' ');
+      setResult(summary);
       setSkipped(res.skipped);
-      if (res.created.length > 0) {
-        showSuccess(
-          kind === 'place'
-            ? t('entities.fromContacts.createdPlace', { count: res.created.length })
-            : t('entities.fromContacts.createdOrganisation', { count: res.created.length }),
-        );
-      }
+      if (summary) showSuccess(summary);
       // Resumable: re-scan so only the still-unmatched values remain.
       await load(kind);
     } catch (err) {
@@ -219,11 +238,9 @@ function FromContactsDialog({ onClose }: { onClose: () => void }) {
             {error}
           </Alert>
         )}
-        {createdCount !== null && createdCount > 0 && (
+        {result && (
           <Alert severity="success" sx={{ mb: 1 }}>
-            {kind === 'place'
-              ? t('entities.fromContacts.createdPlace', { count: createdCount })
-              : t('entities.fromContacts.createdOrganisation', { count: createdCount })}
+            {result}
           </Alert>
         )}
         {skipped.length > 0 && (

@@ -290,6 +290,59 @@ test('surfaces a load error', async () => {
   await waitFor(() => expect(screen.getByText('boom')).toBeInTheDocument());
 });
 
+// Issue #2917 follow-up: with the server unreachable every request rejects
+// with the browser's TypeError. No alert on the Data page may show that raw
+// "Failed to fetch"; each names the condition like every other page does.
+const NETWORK = "Couldn't reach the server. Check your connection and try again.";
+const offline = () => new TypeError('Failed to fetch');
+
+test.each([
+  {
+    path: 'import history',
+    arrange: () => historyMock.mockRejectedValue(offline()),
+    act: async () => {},
+  },
+  {
+    path: 'import report',
+    arrange: () => {
+      historyMock.mockResolvedValue([runWithIssues]);
+      runMock.mockRejectedValue(offline());
+    },
+    act: async () => {
+      fireEvent.click(await screen.findByRole('button', { name: 'View report' }));
+    },
+  },
+  {
+    path: 'CSV export',
+    arrange: () => exportCsvMock.mockRejectedValue(offline()),
+    act: async () => {
+      fireEvent.click(await screen.findByRole('button', { name: 'Download CSV' }));
+    },
+  },
+  {
+    path: 'VCF export',
+    arrange: () => exportVcfMock.mockRejectedValue(offline()),
+    act: async () => {
+      fireEvent.click(await screen.findByRole('button', { name: 'Download VCF' }));
+    },
+  },
+  {
+    path: 'custom export',
+    arrange: () => exportCustomMock.mockRejectedValue(offline()),
+    act: async () => {
+      fireEvent.click(await screen.findByRole('button', { name: 'Custom export...' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'picker-export' }));
+    },
+  },
+])('an unreachable server on $path shows the localized network message', async (c) => {
+  c.arrange();
+  renderPage();
+  await c.act();
+
+  expect(await screen.findByText(NETWORK)).toBeInTheDocument();
+  expect(screen.queryByText('Failed to fetch')).not.toBeInTheDocument();
+});
+
 test('offers the Monica import assistant alongside the file import (issue #549)', async () => {
   historyMock.mockResolvedValue([]);
   renderPage();
