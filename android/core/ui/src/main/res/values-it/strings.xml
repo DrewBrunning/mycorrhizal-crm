@@ -2183,6 +2183,7 @@
     <string name="import_row_fix_save">Salva correzione</string>
     <string name="import_report_title">Righe non importate</string>
     <string name="import_report_row">Riga %1$d · %2$s</string>
+    <string name="import_report_no_name">Nome non conservato</string>
     <string name="import_report_skipped">Saltata: %1$s</string>
     <string name="import_report_skipped_by_choice">Saltata: hai scelto «Scarta nuovo»</string>
     <string name="import_report_failed">Non riuscita: %1$s</string>

@@ -535,6 +535,7 @@
         "downloadCsv": "Download as CSV",
         "colRow": "Row",
         "colName": "Contact",
+        "nameNotKept": "Name not kept",
         "colStatus": "Result",
         "colReason": "Reason",
         "statusFailed": "Failed",

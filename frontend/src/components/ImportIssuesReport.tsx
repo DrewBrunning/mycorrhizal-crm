@@ -127,7 +127,10 @@ export default function ImportIssuesReport({ issues }: { issues: ImportRowIssue[
             {shown.map((issue) => (
               <TableRow key={`${issue.row}-${issue.status}-${issue.concept ?? ''}-${issue.reason}`}>
                 <TableCell>{issue.row}</TableCell>
-                <TableCell>{issue.name || '—'}</TableCell>
+                {/* #2950: history never stores an email or phone (#2563), so say why there is no name. */}
+                <TableCell>
+                  {issue.name || t('contacts.import.result.nameNotKept', 'Name not kept')}
+                </TableCell>
                 <TableCell>{statusLabel(issue)}</TableCell>
                 <TableCell>{reasonLabel(issue)}</TableCell>
               </TableRow>

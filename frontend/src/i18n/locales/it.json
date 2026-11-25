@@ -556,6 +556,7 @@
         "downloadCsv": "Scarica come CSV",
         "colRow": "Riga",
         "colName": "Contatto",
+        "nameNotKept": "Nome non conservato",
         "colStatus": "Esito",
         "colReason": "Motivo",
         "statusFailed": "Non riuscita",
