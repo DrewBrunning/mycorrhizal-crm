@@ -167,10 +167,11 @@ FROM alpine:3.24@sha256:f59abe656b692d901e184be3445e084786602108599d2a51d229c0f5
 # 2026-11-18 (alpine-pin-bump, automated): nginx 1.30.6-r0 -> 1.30.7-r0. Alpine pruned the old version from the index.
 # 2026-11-19 (alpine-pin-bump, automated): libssl3 3.5.9-r0 -> 3.5.9-r1, libcrypto3 3.5.9-r0 -> 3.5.9-r1. Alpine pruned the old version from the index.
 # 2026-11-23 (alpine-pin-bump, automated): shadow 4.18.0-r1 -> 4.20.4-r0. Alpine pruned the old version from the index.
+# 2026-11-25: nginx 1.30.7-r0 -> 1.30.8-r0. Alpine pruned the old version from the index ("nginx-1.30.8-r0: breaks: world[nginx=1.30.7-r0]").
 RUN apk add --no-cache \
     ca-certificates=20261020-r0 \
     tzdata=2026f-r0 \
-    nginx=1.30.7-r0 \
+    nginx=1.30.8-r0 \
     supervisor=4.3.0-r1 \
     shadow=4.20.4-r0 \
     libc6-compat=1.1.0-r4 \
