@@ -20,6 +20,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import java.net.URI
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -324,6 +325,9 @@ class MonicaImportViewModel @Inject constructor(
      * runs `viewModelScope` is already cancelled, which would abort the in-flight
      * HTTP call, so [NonCancellable] keeps it alive.
      */
+    // ATOMIC (a delicate API) so the cancel still starts when the scope is already
+    // cancelled, e.g. from onCleared(); the call itself then runs NonCancellable.
+    @OptIn(DelicateCoroutinesApi::class)
     private fun cancelSession(sessionId: String) {
         viewModelScope.launch(start = CoroutineStart.ATOMIC) {
             withContext(NonCancellable) { apiClient.cancelMonicaImport(sessionId) }

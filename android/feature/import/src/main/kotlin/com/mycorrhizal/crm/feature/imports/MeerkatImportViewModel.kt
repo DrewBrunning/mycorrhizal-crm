@@ -18,6 +18,7 @@ import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -292,6 +293,9 @@ class MeerkatImportViewModel @Inject constructor(
      * the in-flight HTTP call; [NonCancellable] keeps it alive. (The codebase
      * has no application-scoped `CoroutineScope` to inject.)
      */
+    // ATOMIC (a delicate API) so the cancel still starts when the scope is already
+    // cancelled, e.g. from onCleared(); the call itself then runs NonCancellable.
+    @OptIn(DelicateCoroutinesApi::class)
     private fun cancelSession(sessionId: String) {
         viewModelScope.launch(start = CoroutineStart.ATOMIC) {
             withContext(NonCancellable) { apiClient.cancelMeerkatImport(sessionId) }
