@@ -192,7 +192,7 @@ jobs:
       # 'none' mode — the compiler has to actually run so the build tracer can see it.
       # Mirrors the JDK/Gradle setup in android-tests.yml.
       - name: Set up JDK 25
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           # JDK 25: the same JVM android-tests.yml builds and tests on (#1858), so

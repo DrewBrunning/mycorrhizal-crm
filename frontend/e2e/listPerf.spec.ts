@@ -5,12 +5,12 @@ import { API_BASE_URL, E2E_CONTACT_PREFIX } from './global-setup';
 /**
  * Contact list at scale (issue #556, recommended action 4).
  *
- * T17 cursor pagination bounds the *API* — a page at a time, opaque resume
- * token, no total. What this pins is that the *UI* honours it: the "Load
- * More" button resumes from the cursor rather than re-requesting page one or
- * asking for an unbounded page, and a long session of loading pages grows the
- * DOM linearly (no virtualization today — a deliberately pinned property) but
- * does not blow the heap.
+ * Offset pagination with a total (#2188) bounds the *API* — a page at a
+ * time. What this pins is that the *UI* honours it: the next-page control
+ * advances the offset rather than re-requesting an earlier page or asking
+ * for an unbounded page, and a long session of paging keeps the DOM to one
+ * page (no virtualization today — a deliberately pinned property) without
+ * blowing the heap.
  *
  * @perf-heavy: seeds ~150 contacts, so it runs in the nightly e2e schedule
  * only (RUN_PERF_HEAVY=1), consistent with #447's two-tier split and the

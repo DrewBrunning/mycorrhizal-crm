@@ -110,15 +110,15 @@ to paint, but not a frozen tab.
 
 ## 3. Contact list and detail
 
-T17 cursor pagination (`api/contacts.ts`) bounds the API — a page at a time
-(`pageSize` 10), opaque resume token, no total. `listPerf.spec.ts`
-(`@perf-heavy`) seeds ~150 contacts and pins that the **UI honours it**:
+The contacts list pages by offset with page controls and an exact total
+(`api/contacts.ts`, `offset` + `includeTotal`, issue #2188); the opaque `cursor`
+still exists for other callers. `listPerf.spec.ts` (`@perf-heavy`) seeds ~150
+contacts and pins that the **UI honours it**:
 
-- every `GET /contacts` request asks for a bounded page (`limit` ≤ 100) and only
-  the first is cursor-less — *Load More* resumes from the cursor, never refetches
-  page one;
-- the rendered `contact-card` count grows linearly with pages loaded and every
-  row is unique. **There is no list virtualization today** — this is a pinned
+- every `GET /contacts` request asks for a bounded page (`limit` ≤ 100) and the
+  next-page control advances `offset`, never refetching an earlier page;
+- the rendered `contact-card` count stays within one page, never accumulates
+  across pages, and every row is unique. **There is no list virtualization today** — this is a pinned
   property, not an oversight; a regression to "hold everything and re-render" or
   duplicate-append fails the spec;
 - JS heap growth over the loaded rows is logged and sanity-checked (`< 60 MB`) —

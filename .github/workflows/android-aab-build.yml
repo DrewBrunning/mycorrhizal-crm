@@ -80,7 +80,7 @@ jobs:
         uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       - name: Set up JDK
-        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
+        uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
         with:
           distribution: temurin
           # JDK 25: the same JVM android-tests.yml builds and tests on (#1858), so
@@ -93,7 +93,7 @@ jobs:
       # pins; with -PMYCORRHIZAL_BUILD_EMBEDDED_SERVER=true a missing Go fails the
       # build, and the assertion step below re-checks the finished artifact.
       - name: Set up Go (embedded server)
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: backend/go.mod
           cache: false

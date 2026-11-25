@@ -33,6 +33,11 @@ add a second key list.
    (`frontend/src/i18n/keyUsage.test.ts`) fails on an unused key.
 5. If the change affects date/number formatting, update
    `frontend/src/i18n/muiLocale.ts` and its test rather than hardcoding a locale.
+   Never assemble a month and day by hand: use `formatMonthDay`
+   (`DateFormatProvider.tsx`); `yarn month-day:check` and an ESLint selector fail otherwise.
+   UI error text goes through `getErrorMessage`/`getErrorMessageOr`; `local/no-raw-error-message`
+   fails a raw `err.message`. The pseudo-locale pass (`e2e/pseudoLocale.spec.ts`) catches
+   hardcoded literals the key-parity tests cannot.
 6. Android strings live in `android/core/ui/src/main/res/values*/strings.xml`
    with the same five locales; a new Android string gets all five in the same
    change. `LocalesConsistencyTest` (`android/core/ui/src/test/`) enforces the
