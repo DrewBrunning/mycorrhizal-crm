@@ -17,6 +17,7 @@ import com.mycorrhizal.crm.network.toApiError
 import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class MeerkatImportStep { CONNECT, WORKING, REVIEW, RESULT }
 
@@ -291,7 +293,9 @@ class MeerkatImportViewModel @Inject constructor(
      * has no application-scoped `CoroutineScope` to inject.)
      */
     private fun cancelSession(sessionId: String) {
-        viewModelScope.launch(NonCancellable) { apiClient.cancelMeerkatImport(sessionId) }
+        viewModelScope.launch(start = CoroutineStart.ATOMIC) {
+            withContext(NonCancellable) { apiClient.cancelMeerkatImport(sessionId) }
+        }
     }
 
     override fun onCleared() {

@@ -19,6 +19,7 @@ import com.mycorrhizal.crm.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.net.URI
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -324,7 +325,9 @@ class MonicaImportViewModel @Inject constructor(
      * HTTP call, so [NonCancellable] keeps it alive.
      */
     private fun cancelSession(sessionId: String) {
-        viewModelScope.launch(NonCancellable) { apiClient.cancelMonicaImport(sessionId) }
+        viewModelScope.launch(start = CoroutineStart.ATOMIC) {
+            withContext(NonCancellable) { apiClient.cancelMonicaImport(sessionId) }
+        }
     }
 
     override fun onCleared() {
