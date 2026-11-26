@@ -112,7 +112,7 @@ describe('LoginPage two-factor step', () => {
 
   test('shows an error and stays on the 2FA step for a rejected code', async () => {
     loginUserMock.mockResolvedValue({ two_factor_required: true });
-    login2FAMock.mockRejectedValue(new UserFacingError('Invalid code'));
+    login2FAMock.mockRejectedValue(new UserFacingError('Invalid code. Please try again.'));
     renderLogin();
 
     fireEvent.change(screen.getByLabelText(/username or email/i), { target: { value: 'alice' } });
@@ -172,7 +172,7 @@ describe('LoginPage failed-login focus and error association', () => {
 
   test('moves focus to the error on a rejected 2FA code', async () => {
     loginUserMock.mockResolvedValue({ two_factor_required: true });
-    login2FAMock.mockRejectedValue(new UserFacingError('Invalid code'));
+    login2FAMock.mockRejectedValue(new UserFacingError('Invalid code. Please try again.'));
     renderLogin();
 
     fireEvent.change(screen.getByLabelText(/username or email/i), { target: { value: 'alice' } });

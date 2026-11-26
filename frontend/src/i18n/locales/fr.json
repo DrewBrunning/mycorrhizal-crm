@@ -266,7 +266,10 @@
     "passkeyFailed": "La connexion par clé d'accès a échoué. Réessayez ou saisissez un code.",
     "passkeyLogin": "Se connecter avec une clé d'accès",
     "passkeyLoginCancelled": "La connexion par clé d'accès a été annulée. Vous pouvez réessayer ou utiliser votre mot de passe.",
-    "passkeyLoginFailed": "La connexion par clé d'accès a échoué. Réessayez ou utilisez votre mot de passe."
+    "passkeyLoginFailed": "La connexion par clé d'accès a échoué. Réessayez ou utilisez votre mot de passe.",
+    "tooManyAttempts": "Trop de tentatives échouées. Veuillez réessayer plus tard.",
+    "passkeyStartFailed": "Impossible de démarrer la connexion par clé d'accès.",
+    "passkeyVerifyFailed": "La clé d'accès n'a pas pu être vérifiée."
   },
   "sessionExpired": {
     "bannerMessage": "Votre session a expiré.",
