@@ -57,3 +57,37 @@ and is not part of this decision.
 - Ownership: the circle is resolved by `id AND user_id`, and the composer scopes
   membership rows by `user_id` as well.
 - Android parity (edit UI and timeline screen) is not part of this change.
+
+## Amendment: duplicate circle names are refused in v1.7.0, an accepted MAINT-02 break (issue #2441)
+
+**Status:** accepted. The decision to reject duplicates was made on #2380 (2026-11-06) and
+confirmed on 2026-11-10; the maintainer accepted it as the v1.7.0 break on 2026-11-25 (v1.7.0
+gate, issue #2335). Implemented by issues #2362 and #2444.
+
+`POST /circles` and `PUT /circles/{id}` now answer `409 Conflict` with
+`reason_code: circle_already_exists` (and `details.name`) when another circle of the same
+user already has the name, compared case-insensitively with surrounding whitespace ignored.
+Before v1.7.0 any name was accepted, so this **narrows accepted input** on a covered
+`/api/v1` surface, which the [breaking-change policy](../breaking-change-policy.md) classifies
+as breaking. It ships in v1.7.0 instead of v2.0.0, and **without the MAINT-01 deprecation
+window**. The policy has no exception mechanism; this amendment is the written record of the
+explicit approval its process requires, not a deprecation row (nothing is being deprecated
+and there is no replacement to migrate to).
+
+- **Why:** circle names are meant to identify a circle; the maintainer chose to reject
+  duplicates rather than tolerate them (#2380).
+- **Data:** nothing is changed or merged, and no unique index or backfill was added, so
+  circles that already share a name stay as they are and remain editable and deletable. A
+  rename that keeps the circle's own name, or only changes its letter case, succeeds. Another
+  user's circle with the same name never conflicts.
+- **Not guarded:** the rule is an application check on those two routes only. Source,
+  Meerkat and Monica import, the grouping import, account-bundle restore and CardDAV sync
+  still create circles directly and can produce a duplicate name.
+- **What API clients must do:** treat `409` with `circle_already_exists` as "choose another
+  name", and look an existing circle up by name instead of creating it blindly (scripts that
+  re-create circles on every run). Clients that never create or rename circles are unaffected.
+  The web app shows the message under the name field; the Android error-reason mirror carries
+  the same code.
+- **Where it is recorded:** the 409 response in `backend/openapi.yaml`, the
+  `circle_already_exists` reason in `backend/errors/reasons.go`, and the "No more duplicate
+  circle names" entry and `> **Upgrade**` note in the v1.7.0 release notes.

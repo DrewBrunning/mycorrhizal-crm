@@ -23,7 +23,9 @@ adheres to [Semantic Versioning](https://semver.org/).
 > webhook; that default and the API-token `scope` field are deprecated and change in v2.0.0
 > ([deprecation register](docs/deprecations.md)). The Android app hides v1.7.0 features when
 > connected to an older server and shows them once it is updated. Building from source now needs
-> Go 1.26.10.
+> Go 1.26.10. Breaking for API clients: creating or renaming a circle to a name another circle
+> already has now returns 409 `circle_already_exists`, with no deprecation window
+> ([ADR 0039](docs/adrs/0039-circle-metadata-and-aggregate-timeline.md#amendment-duplicate-circle-names-are-refused-in-v170-an-accepted-maint-02-break-issue-2441)).
 
 ### Added
 
@@ -54,7 +56,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 - **Blocking someone also stops one-time shares** ([#2294](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2294)): blocking a person now also ends any one-time contact share you had already sent them, not only standing shares, so they lose access at once.
 - **What organisations and places add to your contacts** ([#2298](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2298)): a contact's primary organisation or place shows as an extra organisation or address in vCard, CardDAV and shares, after your own entries, and synced apps pick up changes to it. Pets never do. Nothing is written into the contact.
-- **No more duplicate circle names** ([#2362](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2362), [#2444](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2444)): creating or renaming a circle to a name you already use (any letter case) is refused, with a message under the name field. Circles are listed in name order. Circles that already share a name stay as they are.
+- **No more duplicate circle names (breaking for API clients)** ([#2362](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2362), [#2444](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2444), [#2441](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2441)): creating or renaming a circle to a name you already use (any letter case) is refused. The API answers 409 `circle_already_exists`; scripts must pick another name. Existing duplicates stay as they are.
 - **Tidier web menu** ([#2175](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2175)): Shares, Audit log, Data and, for admins, Users and System pages now sit under Settings in the left menu. Open them with the arrow beside Settings; every page keeps its address.
 - **German texts now consistently use the formal Sie** ([#2686](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2686), [#2823](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2823)): the web and Android apps no longer mix du and Sie.
 
