@@ -258,7 +258,26 @@ func normalize(s Snapshot) (Snapshot, error) {
 	if err := json.Unmarshal(b, &out); err != nil { // # pragma: no cover — just marshalled
 		return nil, err
 	}
+	sortContactReminders(out)
 	return out, nil
+}
+
+// sortContactReminders orders each contact record's reminders by ID. A release
+// that predates the total-order preload returns them in an unspecified order,
+// and Compare is positional, so a reordering would read as data loss (#3025).
+func sortContactReminders(s Snapshot) {
+	recs, _ := s["contact_records"].(map[string]any)
+	for _, r := range recs {
+		rec, _ := r.(map[string]any)
+		rs, _ := rec["reminders"].([]any)
+		sort.SliceStable(rs, func(i, j int) bool {
+			a, _ := rs[i].(map[string]any)
+			b, _ := rs[j].(map[string]any)
+			ai, _ := a["ID"].(float64)
+			bi, _ := b["ID"].(float64)
+			return ai < bi
+		})
+	}
 }
 
 // volatileKeys are the response keys whose value legitimately differs between

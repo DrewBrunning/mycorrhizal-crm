@@ -285,3 +285,24 @@ func TestTruncateAndEnv(t *testing.T) {
 	assert.Equal(t, "orig", os.Getenv("REALRELEASE_TEST_KEEP"))
 	assert.Equal(t, "", os.Getenv("REALRELEASE_TEST_NEW"))
 }
+
+// Issue #3025: the pre-upgrade release returns a contact's reminders in an
+// unspecified order, so the positional comparison flagged a reordering as data
+// loss. normalize must put them in a total order (by id) on both sides.
+func TestNormalizeOrdersContactReminders(t *testing.T) {
+	snap := Snapshot{"contact_records": map[string]any{
+		"2": map[string]any{"reminders": []any{
+			map[string]any{"ID": 2.0, "message": "b"},
+			map[string]any{"ID": 1.0, "message": "a"},
+		}},
+		"3": map[string]any{"name": "no reminders"},
+	}}
+	out, err := normalize(snap)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rs := out["contact_records"].(map[string]any)["2"].(map[string]any)["reminders"].([]any)
+	if rs[0].(map[string]any)["ID"] != 1.0 || rs[1].(map[string]any)["ID"] != 2.0 {
+		t.Fatalf("reminders not ordered by id: %v", rs)
+	}
+}
