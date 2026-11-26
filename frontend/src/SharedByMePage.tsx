@@ -13,7 +13,7 @@ import {
   Typography,
 } from '@mui/material';
 import type { TFunction } from 'i18next';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from './api/client';
 import {
@@ -267,8 +267,12 @@ export default function SharedByMePage() {
   const reconfirm = confirm?.kind === 'reconfirm';
   const removing = confirm?.kind === 'remove';
 
-  // Restore focus after an action unmounts its own row (#2918).
-  useEffect(() => {
+  // Restore focus after an action unmounts its own row (#2918). A layout effect,
+  // not a passive one (#3031): a passive effect runs after the commit that
+  // removed the row, and Playwright (polling the DOM) could read activeElement
+  // in that gap, with focus on <body>, and flake. This moves focus in the same
+  // commit that unmounts the row.
+  useLayoutEffect(() => {
     const request = focusRequest.current;
     if (!request) return;
     focusRequest.current = null;
