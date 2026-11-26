@@ -10,6 +10,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-11-27
+
 > **Upgrade**: database migrations (000090 to 000096) run automatically on first start. They add
 > tables and columns for standing shares, organisations/places/pets, import reports, entity search
 > and the per-webhook setting; one rebuilds the audit-log table with every row kept, and one
