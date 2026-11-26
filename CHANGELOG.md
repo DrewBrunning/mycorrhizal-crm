@@ -63,8 +63,8 @@ adheres to [Semantic Versioning](https://semver.org/).
 
 ### Deprecated
 
-- **Legacy app-password scope field** ([#2887](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2887)): the old `full`/`carddav` field on the API-token endpoints is deprecated and removed in v2.0.0; create tokens with explicit access scopes instead. Existing tokens and clients keep working.
-- **Webhooks send private and secret addresses by default** ([#2888](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2888), [#2071](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2071)): contact webhooks still include them unless you turn that off per webhook. Leaving them out becomes the default in v2.0.0, so choose now if you rely on the data.
+- **Legacy app-password scope field** ([#2887](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2887)): the old `full`/`carddav` field on the API-token endpoints is deprecated and removed in v2.0.0, not before 2027-02-25; create tokens with explicit access scopes instead. Existing tokens and clients keep working.
+- **Webhooks send private and secret addresses by default** ([#2888](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2888), [#2071](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2071)): contact webhooks still include them unless you turn that off per webhook. Leaving them out becomes the default in v2.0.0, not before 2027-02-25, so choose now if you rely on the data.
 
 ### Fixed
 
