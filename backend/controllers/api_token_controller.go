@@ -24,7 +24,7 @@ import (
 // api-token-legacy-scope; issues #2887 and #2023). The field and the
 // full/carddav aliases keep working unchanged for the whole window; v2.0.0
 // removes them and explicit `scopes` is the only token-access surface.
-const legacyScopeDeprecationSunset = "Wed, 10 Mar 2027 00:00:00 GMT"
+const legacyScopeDeprecationSunset = "Thu, 25 Feb 2027 00:00:00 GMT"
 
 // signalApiTokenScopeDeprecation announces the deprecated field on a response
 // that carries it. The route-based registry cannot key on a response field, so

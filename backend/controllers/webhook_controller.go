@@ -19,7 +19,7 @@ import (
 // the full-fidelity webhook default (docs/deprecations.md, id
 // webhook-payload-full-fidelity; issues #2888 and #2071). v2.0.0 flips the
 // default for a webhook whose include_sensitive is unset (NULL).
-const webhookIncludeSensitiveDeprecationSunset = "Wed, 10 Mar 2027 00:00:00 GMT"
+const webhookIncludeSensitiveDeprecationSunset = "Thu, 25 Feb 2027 00:00:00 GMT"
 
 // signalWebhookDefaultDeprecation announces the deprecated full-fidelity
 // default when a returned webhook still relies on it (IncludeSensitive nil).

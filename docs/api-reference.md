@@ -283,7 +283,7 @@ still carries a derived `scope` view — both are **deprecated since v1.7.0** an
 ([#2887](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2887),
 [#2023](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2023)). Create tokens with `scopes`,
 read `scopes`, and ignore `scope`. The field keeps working unchanged for the whole window (at least
-one later minor release and 90 days, not before 2027-03-10); list, create and rotate responses carry
+one later minor release and 90 days, not before 2027-02-25); list, create and rotate responses carry
 the RFC 8594 `Deprecation` and `Sunset` headers while it does. The register row is
 `api-token-legacy-scope` in [the deprecation register](deprecations.md). A DAV-only scope set may
 send `never_expires: true` instead of `expires_in_days`; API/MCP tokens must expire. Response includes
