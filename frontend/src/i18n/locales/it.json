@@ -4703,6 +4703,28 @@
     }
   },
   "standingShares": {
+    "relatedToRelations": {
+      "acquaintance": "Conoscente",
+      "agent": "Agente",
+      "child": "Figlio/a",
+      "co-resident": "Coinquilino/a",
+      "co-worker": "Collega di lavoro",
+      "colleague": "Collega",
+      "contact": "Contatto",
+      "crush": "Cotta",
+      "date": "Appuntamento",
+      "emergency": "Contatto di emergenza",
+      "friend": "Amico/a",
+      "kin": "Parente",
+      "me": "Io",
+      "met": "Incontrato/a di persona",
+      "muse": "Musa",
+      "neighbor": "Vicino/a",
+      "parent": "Genitore",
+      "sibling": "Fratello/Sorella",
+      "spouse": "Coniuge",
+      "sweetheart": "Innamorato/a"
+    },
     "entityTypes": {
       "contact": "Contatto",
       "note": "Nota",

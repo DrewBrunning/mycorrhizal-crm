@@ -33,6 +33,11 @@ interface DynamicKeySource {
 const DYNAMIC_KEY_SOURCES: readonly DynamicKeySource[] = [
   // Standing shares (ADR 0042, issue #2292): closed sets mirrored from the backend.
   {
+    prefix: 'standingShares.relatedToRelations.',
+    file: 'utils/jscontactDisplay.ts',
+    reason: 'JSContact relatedTo relation keys are the open RFC 6350 RELATED TYPE registry',
+  },
+  {
     prefix: 'standingShares.entityTypes.',
     file: 'SharedWithMePage.tsx',
     values: ['contact', 'note', 'activity', 'circle'],

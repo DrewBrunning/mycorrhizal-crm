@@ -10,6 +10,7 @@
 import type { TFunction } from 'i18next';
 import type { JSContactCard } from '../api/shareGrants';
 import { type DateFormat, formatDateWithFormat } from '../DateFormatProvider';
+import { humanizeToken } from './humanizeToken';
 
 export interface JSContactSection {
   token: string;
@@ -88,8 +89,17 @@ function anniversaryOf(o: Obj, t: TFunction, dateFormat: DateFormat): string {
   return label && formatted ? `${label}: ${formatted}` : formatted;
 }
 
-function relatedOf(o: Obj): string {
-  return isObj(o.relation) ? Object.keys(o.relation).join(', ') : '';
+// relatedTo.relation keys are the RFC 6350 section 6.6.6 RELATED TYPE registry
+// (issue #3014), which the backend passes through unvalidated: a registry key
+// gets a translation, any other (vendor) key reads as humanised words.
+function relatedOf(o: Obj, t: TFunction): string {
+  if (!isObj(o.relation)) return '';
+  return Object.keys(o.relation)
+    .map((key) => {
+      const token = key.toLowerCase();
+      return t(`standingShares.relatedToRelations.${token}`, humanizeToken(key));
+    })
+    .join(', ');
 }
 
 function pronounsOf(o: Obj): string {

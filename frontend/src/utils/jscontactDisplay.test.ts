@@ -181,4 +181,67 @@ describe('describeJSContact', () => {
       anniversaryItems({ anniversaries: { a1: { kind: 'birth', date: { year: 1985 } } } }),
     ).toEqual([`Birthday: ${formatDateWithFormat('1985', 'eu')}`]);
   });
+
+  // Issue #3014: relatedTo relation keys are the RFC 6350 section 6.6.6
+  // RELATED TYPE registry; they must read as labels, not raw tokens.
+  describe('relatedTo relation labels (#3014)', () => {
+    const REGISTRY = [
+      'acquaintance',
+      'agent',
+      'child',
+      'co-resident',
+      'co-worker',
+      'colleague',
+      'contact',
+      'crush',
+      'date',
+      'emergency',
+      'friend',
+      'kin',
+      'me',
+      'met',
+      'muse',
+      'neighbor',
+      'parent',
+      'sibling',
+      'spouse',
+      'sweetheart',
+    ];
+    const relatedItems = (relation: Record<string, boolean>) =>
+      describeJSContact({ relatedTo: { 'urn:uuid:x': { relation } } }, t, 'eu').sections.find(
+        (s) => s.token === 'related_to',
+      )?.items ?? [];
+
+    test('labels every registry key, none left as the raw token', () => {
+      const labels = REGISTRY.map((k) => relatedItems({ [k]: true })[0]);
+      for (const [i, label] of labels.entries()) {
+        expect(label, REGISTRY[i]).not.toBe(REGISTRY[i]);
+        expect(label, REGISTRY[i]).not.toMatch(/^standingShares\./);
+      }
+      expect(new Set(labels).size).toBe(REGISTRY.length);
+      expect(relatedItems({ friend: true, 'co-worker': true })).toEqual(['Friend, Coworker']);
+    });
+
+    test('matches keys case-insensitively', () => {
+      expect(relatedItems({ 'CO-Worker': true })).toEqual(['Coworker']);
+    });
+
+    test('humanizes an unknown or vendor key instead of showing it raw', () => {
+      expect(relatedItems({ 'x-mentor': true })).toEqual(['X mentor']);
+    });
+
+    test('yields no label for an entry without a relation map', () => {
+      const sections = describeJSContact(
+        { relatedTo: { 'urn:uuid:x': {}, 'urn:uuid:y': { relation: 'friend' } } },
+        t,
+        'eu',
+      ).sections;
+      expect(sections.find((s) => s.token === 'related_to')?.items ?? []).toEqual([]);
+    });
+
+    test('renders German labels', async () => {
+      await i18n.changeLanguage('de');
+      expect(relatedItems({ friend: true, 'co-worker': true })).toEqual(['Freund, Arbeitskollege']);
+    });
+  });
 });
