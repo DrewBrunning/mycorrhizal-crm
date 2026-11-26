@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<testsuites tests="2" failures="0" errors="0" skipped="0" time="0.000" timestamp="2026-11-26T01:35:58" hostname="localhost">
+  <testsuite name="com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest" tests="2" failures="0" errors="0" skipped="0" time="9.742" timestamp="2026-11-26T01:35:58" hostname="localhost">
+    <properties>
+      <property name="device" value="44171JEKB18338" />
+    </properties>
+    <testcase name="contactTrashRoundTripsOverTheSocket" classname="com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest" time="6.911" />
+    <testcase name="embeddedServerStartsServesHealthAndDeletesOverTheSocket" classname="com.mycorrhizal.crm.e2e.LocalOnlyModeE2eTest" time="2.831" />
+  </testsuite>
+</testsuites>
