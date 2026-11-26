@@ -91,6 +91,7 @@ adheres to [Semantic Versioning](https://semver.org/).
 - **Custom fields show on the web contact page** ([#2447](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2447)): custom fields defined for contacts now load and display on a contact page; they were not being fetched, so the page showed none.
 - **Web Trash, Notes and Today** ([#2707](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2707), [#2717](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2717), [#2744](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2744), [#2797](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2797), [#2679](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2679), [#2762](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2762)): Trash dialogs are translated, notes are listed by their date, newest first, and "today" follows your time zone, so an evening birthday no longer disappears.
 - **Small web polish** ([#2363](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2363), [#2901](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2901)): dark mode no longer shows a bright white scrollbar track, and a missing contact keeps its "Contact not found" tab title.
+- **Sign-in errors follow your language** ([#2920](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2920)): when the server gives no message, the sign-in, two-factor and passkey error text now appears in German, Spanish, French or Italian instead of English.
 
 ### Security
 
