@@ -72,6 +72,18 @@
           "skipped": 0,
           "failures": 0,
           "junit_sha256": "74fe9d13475b269f051a6b29c266132ef349ac3fa68404dcdf197c0c4a6256a5"
+        },
+        {
+          "date": "2026-11-26",
+          "commit": "550182e4a77fa9e1c0615ac0713d82428f7e7635",
+          "attester": "Drew Brunning",
+          "evidence": ".github/manual-gates-evidence/android-local-mode-device/2026-11-26-550182e.xml",
+          "device": "Pixel 8a",
+          "abi": "arm64-v8a",
+          "tests": 2,
+          "skipped": 0,
+          "failures": 0,
+          "junit_sha256": "7d72c269e11f68599853bc66c7974f6c6c534de2fd5b039a24968c5ba4757919"
         }
       ]
     }
