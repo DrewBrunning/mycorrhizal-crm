@@ -44,11 +44,13 @@ There are two records, with different audiences:
    fragments and rename `[Unreleased]` before the last RC.
 
 The same `CHANGELOG.md` is also published as the **Changelog** page of the
-documentation site. `docs.yml` runs `cd backend && go run ./cmd/gensitechangelog`
-at build time, which writes the gitignored `changelog.md` page into the docs folder (relative links
-are rewritten for the site), and it redeploys whenever a merge to `main` changes
-`CHANGELOG.md`, so the `[Unreleased]` section is public as soon as it is written.
-Never edit the generated page.
+documentation site. `scripts/build-docs-versions.sh` runs
+`cd backend && go run ./cmd/gensitechangelog` for every published docs version,
+which writes the gitignored `changelog.md` page into the docs folder (relative
+links are rewritten for the site). A merge to `main` that changes `CHANGELOG.md`
+redeploys the site, so the `[Unreleased]` section is public under `/next/` as
+soon as it is written. Never edit the generated page.
+See [the documentation site](development/documentation-site.md).
 
 GitHub's generated "What's Changed" list and the harvest of `## Upgrade notes`
 blocks from PR bodies ([#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242))
