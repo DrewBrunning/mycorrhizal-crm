@@ -69,8 +69,8 @@ YAML
     --config "$src/docs/_config.yml,$src/docs/_config_version.yml"
 done < <(jq -c '.[]' "$versions")
 
-rm -rf "$out"
 mkdir -p "$out"
+find "$out" -mindepth 1 -delete
 cp -a "$work/site/_root/." "$out/"
 for d in "$work"/site/*/; do
   name="$(basename "$d")"
