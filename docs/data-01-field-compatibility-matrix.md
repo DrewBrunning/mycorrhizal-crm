@@ -1,6 +1,7 @@
 ---
 title: Field Compatibility Matrix
-nav_order: 16
+parent: Reference
+nav_order: 4
 ---
 
 # DATA-01 — Field compatibility matrix

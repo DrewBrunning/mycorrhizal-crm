@@ -1,6 +1,7 @@
 ---
 title: Deprecation Register
-nav_order: 23
+parent: Releases
+nav_order: 2
 ---
 
 # Deprecation register

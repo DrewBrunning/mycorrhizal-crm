@@ -1,0 +1,1 @@
+- **Easier-to-navigate documentation site** ([#2244](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2244)): the docs are now grouped into Getting started, Using Mycorrhizal, Self-hosting, Integrations, Releases and Reference, and the full changelog, including upcoming changes, is published on the site.

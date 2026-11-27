@@ -1,6 +1,7 @@
 ---
 title: Integration Classification Matrix
-nav_order: 17
+parent: Reference
+nav_order: 5
 ---
 
 # INT-01 — Integration classification matrix

@@ -17,7 +17,8 @@ func Render() string {
 
 	b.WriteString("---\n")
 	b.WriteString("title: Integration Classification Matrix\n")
-	b.WriteString("nav_order: 17\n")
+	b.WriteString("parent: Reference\n")
+	b.WriteString("nav_order: 5\n")
 	b.WriteString("---\n\n")
 
 	b.WriteString("# INT-01 — Integration classification matrix\n\n")

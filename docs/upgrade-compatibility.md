@@ -1,6 +1,7 @@
 ---
 title: Upgrade Compatibility
-nav_order: 14
+parent: Self-hosting
+nav_order: 2
 ---
 
 # Upgrade compatibility

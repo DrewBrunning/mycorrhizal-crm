@@ -1,6 +1,7 @@
 ---
 title: Privacy
-nav_order: 7
+parent: Reference
+nav_order: 2
 ---
 
 # Privacy & data minimization

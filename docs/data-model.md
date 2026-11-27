@@ -1,7 +1,7 @@
 ---
 title: Data Model
+parent: Reference
 nav_order: 3
-has_children: false
 ---
 
 # Data Model

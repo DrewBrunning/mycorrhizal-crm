@@ -1,6 +1,7 @@
 ---
 title: Supported versions
-nav_order: 20
+parent: Self-hosting
+nav_order: 3
 ---
 
 # Supported versions

@@ -1,6 +1,7 @@
 ---
 title: Deprecation Policy
-nav_order: 22
+parent: Releases
+nav_order: 5
 ---
 
 # Deprecation policy

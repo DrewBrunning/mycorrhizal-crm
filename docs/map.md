@@ -1,7 +1,7 @@
 ---
 title: Contact map
-nav_order: 25
-has_children: false
+parent: Using Mycorrhizal
+nav_order: 3
 ---
 
 # Contact map
