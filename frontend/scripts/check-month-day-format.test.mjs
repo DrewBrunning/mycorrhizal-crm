@@ -160,7 +160,9 @@ describe('the real repository', () => {
     const offenders = findOffenders(loadSourceFiles());
     const result = compareAllowlist(offenders, loadAllowlist());
     expect(result).toMatchObject({ ok: true, added: [], stale: [], badReasons: [] });
-  });
+    // Parses every source file with the TypeScript compiler (~10 s on a loaded
+    // nightly runner), so it needs more than the 10 s global testTimeout.
+  }, 60_000);
 });
 
 describe('the ESLint selector and this script agree', () => {
