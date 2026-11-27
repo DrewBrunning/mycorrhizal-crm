@@ -163,3 +163,4 @@ backend/differential/reference/vobject/__pycache__/
 # Issue #1959: local agent-evaluation artifacts (the dispatch workflow uploads
 # them; they are evidence, never source).
 agent-eval-results/
+docs-site/

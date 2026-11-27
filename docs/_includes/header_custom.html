@@ -1,0 +1,50 @@
+{% comment %}
+  Version switcher and banner (issue #2244). Only rendered by the versioned
+  build (scripts/build-docs-versions.sh), which sets docs_version_label and
+  friends in _config_version.yml; a plain `jekyll serve` shows neither.
+{% endcomment %}
+{% if site.docs_version_label %}
+<div class="docs-version" style="display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;width:100%">
+  <label for="docs-version-select">Version
+    <select id="docs-version-select" aria-label="Documentation version">
+      <option>{{ site.docs_version_label }}</option>
+    </select>
+  </label>
+  {% if site.docs_unreleased %}
+  <span role="note"><strong>Unreleased.</strong> These docs describe the next version, which is not released yet.
+    {% if site.docs_latest_label %}<a href="{{ site.docs_root }}/">Read the docs for the latest release ({{ site.docs_latest_label }}).</a>{% endif %}</span>
+  {% elsif site.docs_version_label != site.docs_latest_label %}
+  <span role="note"><strong>Older release.</strong> These docs describe version {{ site.docs_version_label }}.
+    <a href="{{ site.docs_root }}/">Read the docs for the latest release ({{ site.docs_latest_label }}).</a></span>
+  {% endif %}
+</div>
+<script>
+(function () {
+  var select = document.getElementById('docs-version-select');
+  if (!select || !window.fetch) { return; }
+  var root = {{ site.docs_root | jsonify }};
+  var own = {{ site.docs_version_path | jsonify }};
+  var page = {{ page.url | jsonify }};
+  var here = {{ site.baseurl | jsonify }};
+  var rel = here && page.indexOf(here) === 0 ? page.slice(here.length) : page;
+  fetch(root + '/versions.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
+    if (!list.length) { return; }
+    select.textContent = '';
+    list.forEach(function (v) {
+      var o = document.createElement('option');
+      o.value = v.path;
+      o.textContent = v.unreleased ? 'next (unreleased)' : v.label + (v.latest ? ' (latest)' : '');
+      o.selected = v.path === own;
+      select.appendChild(o);
+    });
+    select.addEventListener('change', function () {
+      var base = root + '/' + select.value;
+      var target = base + rel.replace(/^\//, '');
+      fetch(target, { method: 'HEAD' }).then(function (r) {
+        window.location.href = r.ok ? target : base;
+      }, function () { window.location.href = base; });
+    });
+  }).catch(function () {});
+})();
+</script>
+{% endif %}
