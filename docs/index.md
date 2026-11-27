@@ -24,7 +24,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 
 - **[Getting started](getting-started.html)** - install it, sign in, and add your first contacts, including the [Android app](android-app.html)
 - **[Using Mycorrhizal](using.html)** - [settings](settings.html), [reminders and notifications](notifications.html), the [contact map](map.html)
-- **[Self-hosting](self-hosting.html)** - [deploy](deployment.html), [upgrade](upgrade-compatibility.html) and check [supported versions](supported-versions.html)
+- **[Self-hosting](self-hosting.html)** - [deploy](deployment.html), [upgrade](upgrade-compatibility.html) and check [supported versions](supported-versions.html), plus [disaster recovery boundaries](operations/disaster-recovery.md) for what a restore does and does not guarantee
 - **[Integrations](integrations.html)** - [CardDAV](carddav.html), the [API](api-reference.html), the [MCP server](mcp.html)
 - **[Releases](releases.html)** - the changelog (including what is coming in the next version) and the [deprecation register](deprecations.html)
 - **[Reference](reference.html)** - the [FAQ](faq.html), [privacy](privacy.html) and compatibility pages
