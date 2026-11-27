@@ -1,3 +1,10 @@
+---
+title: Service-worker updates
+parent: Self-hosting
+nav_order: 10
+description: How the web app updates and the recovery page.
+---
+
 # Service-worker updates and the recovery page
 
 The web app is a PWA: after the first visit a service worker (`frontend/src/service-worker.ts`)

@@ -37,18 +37,41 @@ func fixtureTree(t *testing.T) string {
 	matrix += "| **Docker Engine** | `>=23.0` | why |\n"
 	page += "| **Docker Engine** | `>= 23.0` | why |\n"
 	write(t, root, "docs/development/supported-runtime-matrix.md", matrix)
-	write(t, root, "docs/supported-versions.md", page)
+	write(t, root, "docs/supported-versions.md", "---\ntitle: x\n---\n\n"+page)
 
 	ownership := "# Integration ownership\n\n"
 	for _, e := range integrations.Registry() {
 		ownership += fmt.Sprintf("### %s\n\n<a id=\"%s\"></a>\n\n", e.Name, e.ID)
 	}
-	write(t, root, "docs/integration-ownership.md", ownership)
+	write(t, root, "docs/integration-ownership.md", "---\ntitle: x\n---\n\n"+ownership)
 
-	write(t, root, "docs/getting-started.md", "# Getting Started\n\nTo build from source:\n\n```sh\ndocker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build\n```\n")
-	write(t, root, "docs/deployment.md", "# Deployment\n\n## Upgrades\n\n```sh\ndocker compose pull\ndocker compose up -d\n```\n")
+	write(t, root, "docs/getting-started.md", "---\ntitle: x\n---\n\n"+"# Getting Started\n\nTo build from source:\n\n```sh\ndocker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build\n```\n")
+	write(t, root, "docs/deployment.md", "---\ntitle: x\n---\n\n"+"# Deployment\n\n## Upgrades\n\n```sh\ndocker compose pull\ndocker compose up -d\n```\n")
 	write(t, root, ".github/workflows/deploy-smoke.yml", "name: smoke\njobs:\n  smoke:\n    runs-on: ubuntu-latest\n    env:\n      COMPOSE_FILE: docker-compose.yml:docker-compose.build.yml\n    steps:\n      - run: docker compose up -d --build\n")
 	return root
+}
+
+// TestPublishedPagesNeedFrontMatter pins the scope of the rule: the user-facing
+// directories must render, while pages that are deliberately repository-only
+// (agent context files, ADRs, security records) are not required to.
+func TestPublishedPagesNeedFrontMatter(t *testing.T) {
+	root := fixtureTree(t)
+	write(t, root, "docs/operations/runbook.md", "---\ntitle: Runbook\n---\n\n# Runbook\n")
+	write(t, root, "docs/import/README.md", "---\ntitle: Imports\n---\n")
+	write(t, root, "docs/AGENTS.md", "# Agents\n")
+	write(t, root, "docs/adrs/0001-x.md", "# ADR\n")
+	write(t, root, "docs/security/x.md", "# Security\n")
+	if got := checkPublishedFrontMatter(root); len(got) != 0 {
+		t.Fatalf("expected no findings, got %q", got)
+	}
+	write(t, root, "docs/relationship-dates.md", "# No front matter\n")
+	write(t, root, "docs/import/monica.md", "# No front matter\n")
+	got := strings.Join(checkPublishedFrontMatter(root), "\n")
+	for _, want := range []string{"relationship-dates.md", "import/monica.md"} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("findings %q do not mention %q", got, want)
+		}
+	}
 }
 
 func TestRunAtPassesOnFixtureTree(t *testing.T) {
@@ -97,6 +120,13 @@ func TestRunAtDetectsFindings(t *testing.T) {
 				os.WriteFile(p, []byte(strings.ReplaceAll(string(b), `<a id="`+last.ID+`"></a>`, "")), 0o644)
 			},
 			"has no operator section",
+		},
+		{
+			"published page without front matter",
+			func(t *testing.T, root string) {
+				write(t, root, "docs/operations/runbook.md", "# Runbook\n")
+			},
+			"is not published",
 		},
 		{
 			"broken internal link",
@@ -410,7 +440,7 @@ func TestIsShellAndFirstToolchainCommand(t *testing.T) {
 
 func TestCheckFileReferencesMissingDirNotFlagged(t *testing.T) {
 	root := fixtureTree(t)
-	write(t, root, "docs/plain.md", "the backend/frontend and docs/x boundaries are prose\n")
+	write(t, root, "docs/plain.md", "---\ntitle: x\n---\nthe backend/frontend and docs/x boundaries are prose\n")
 	got := strings.Join(collectFindings(root), "\n")
 	for _, not := range []string{"plain.md", "backend/frontend"} {
 		if strings.Contains(got, not) {
@@ -451,7 +481,7 @@ func TestSupportedVersionsDriftMatrixMissing(t *testing.T) {
 
 func TestCheckFileLinksNonLocalDestinations(t *testing.T) {
 	root := fixtureTree(t)
-	write(t, root, "docs/extra.md", "[mail](mailto:someone@example.com) [ext](https://example.com/x) [hash](#) [self](#existing)\n# existing\n")
+	write(t, root, "docs/extra.md", "---\ntitle: x\n---\n[mail](mailto:someone@example.com) [ext](https://example.com/x) [hash](#) [self](#existing)\n# existing\n")
 	findings := collectFindings(root)
 	for _, f := range findings {
 		if strings.Contains(f, "extra.md") {
@@ -505,7 +535,7 @@ func TestCommandBlockAnnotationWindowClipped(t *testing.T) {
 
 func TestFileReferencesDuplicateAndTestdataSkip(t *testing.T) {
 	root := fixtureTree(t)
-	write(t, root, "docs/plain.md", "missing `backend/services/nope_missing.go` twice `backend/services/nope_missing.go`, plus `testdata/budgets.json`.\n")
+	write(t, root, "docs/plain.md", "---\ntitle: x\n---\nmissing `backend/services/nope_missing.go` twice `backend/services/nope_missing.go`, plus `testdata/budgets.json`.\n")
 	got := strings.Join(collectFindings(root), "\n")
 	if !strings.Contains(got, "nope_missing.go") {
 		t.Errorf("missing reference should be reported once: %s", got)
@@ -545,7 +575,7 @@ func TestDockerEngineFloorMissingPageRow(t *testing.T) {
 
 func TestRunAtPrintsFindingsAndReturnsError(t *testing.T) {
 	root := fixtureTree(t)
-	write(t, root, "docs/bad.md", "[bad](missing.md)\n")
+	write(t, root, "docs/bad.md", "---\ntitle: x\n---\n[bad](missing.md)\n")
 	if err := runAt(root); err == nil {
 		t.Fatal("expected runAt to return an error when there are findings")
 	}

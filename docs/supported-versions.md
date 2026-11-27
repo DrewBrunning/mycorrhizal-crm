@@ -106,7 +106,7 @@ a single all-in-one Docker container: nginx serving the web app and proxying
 `/api/`, `/carddav/`, and the calendar/DAV endpoints to the backend on
 `127.0.0.1` inside the same container. There is no replica, no clustering, and
 no failover; recovery means restore (see [Disaster recovery
-boundaries](operations/disaster-recovery.md)). If you point more than one
+boundaries](operations/disaster-recovery.html)). If you point more than one
 instance at the same database, the in-memory rate limiters and job locks are
 per-process — that is a supported configuration only in the sense that each
 process is safe; it is not the documented deployment shape.
@@ -164,7 +164,7 @@ an account on someone else's instance:
   `backend/controllers/user_quota_enforcement_test.go`, and the CardDAV/REST
   parity by `backend/controllers/carddav_rest_parity_test.go` and
   `backend/carddav/put_quota_test.go`; the config surface is in
-  [`docs/configuration-reference.md`](configuration-reference.md).
+  [`docs/configuration-reference.md`](configuration-reference.html).
 
 ### What is per-user versus per-instance
 

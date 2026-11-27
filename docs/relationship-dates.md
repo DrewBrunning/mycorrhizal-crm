@@ -1,3 +1,10 @@
+---
+title: Relationship start and end dates
+parent: Using Mycorrhizal
+nav_order: 9
+description: Record when a relationship began and ended.
+---
+
 # Relationship start and end dates
 
 Issue #2001. A `RelationshipEdge` carries an optional `start_date` and `end_date`, so "married

@@ -96,6 +96,7 @@ func collectFindings(root string) []string {
 	findings = append(findings, checkIntegrationOwnership(root)...)
 	findings = append(findings, checkCICommandBinding(root)...)
 	findings = append(findings, checkPIIInventory(root)...)
+	findings = append(findings, checkPublishedFrontMatter(root)...)
 	return findings
 }
 
@@ -453,6 +454,47 @@ func checkCICommandBinding(root string) []string {
 		wf := string(workflow)
 		if !strings.Contains(wf, sourceBuildOverride) || !strings.Contains(wf, sourceBuildBringUp) {
 			findings = append(findings, "deploy-smoke.yml no longer runs the source-build bring-up command (`"+sourceBuildOverride+"` + `"+sourceBuildBringUp+"`) documented in docs/getting-started.md (issue #489)")
+		}
+	}
+	return findings
+}
+
+// ---------------------------------------------------------------------------
+// Published pages must render on the docs site
+// ---------------------------------------------------------------------------
+
+// publishedDirs are the docs/ directories whose pages are written for end users
+// and self-hosters, so they must be published by the Jekyll site. The other
+// directories (adrs, security, development, ...) are repository records that
+// are intentionally read on GitHub.
+var publishedDirs = []string{".", "operations", "import"}
+
+// contextFiles are agent context aliases, not pages.
+var contextFiles = map[string]bool{"AGENTS.md": true, "CLAUDE.md": true}
+
+// checkPublishedFrontMatter flags a page in a published directory that has no
+// YAML front matter. Jekyll copies such a file verbatim instead of rendering
+// it, so every link to its .html address returns 404.
+func checkPublishedFrontMatter(root string) []string {
+	var findings []string
+	docsDir := filepath.Join(root, "docs")
+	for _, dir := range publishedDirs {
+		entries, err := os.ReadDir(filepath.Join(docsDir, dir))
+		if err != nil {
+			continue
+		}
+		for _, e := range entries {
+			if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") || contextFiles[e.Name()] {
+				continue
+			}
+			rel := filepath.ToSlash(filepath.Join(dir, e.Name()))
+			body, err := os.ReadFile(filepath.Join(docsDir, rel)) // #nosec G304 -- rel comes from ReadDir over docs/, never request input
+			if err != nil {
+				continue // # pragma: no cover — the entry was listed a moment ago; a racing deletion is not a normal state
+			}
+			if !strings.HasPrefix(string(body), "---\n") {
+				findings = append(findings, fmt.Sprintf("%s: is not published: add YAML front matter (title, parent, nav_order) so the docs site renders it", rel))
+			}
 		}
 	}
 	return findings

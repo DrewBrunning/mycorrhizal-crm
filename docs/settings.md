@@ -195,7 +195,7 @@ Two consequences:
 
 - **Changing the hostname of `FRONTEND_URL` invalidates every enrolled passkey** for every user.
   Authenticator apps and recovery codes are unaffected, so keep those set up before a move. Operators:
-  see [`FRONTEND_URL`](configuration-reference.md) and [Deployment](deployment.md).
+  see [`FRONTEND_URL`](configuration-reference.html) and [Deployment](deployment.md).
 - **Passkeys are unavailable** when `FRONTEND_URL` is `*` (the development default), because that
   names no concrete origin. Adding one then fails with "passkeys require FRONTEND_URL to be set to the
   concrete origin users load the app from". A browser without WebAuthn support shows "This browser

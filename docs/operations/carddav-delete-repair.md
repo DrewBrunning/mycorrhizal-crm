@@ -1,3 +1,10 @@
+---
+title: Repairing CardDAV deletions
+parent: Self-hosting
+nav_order: 8
+description: Restore contacts deleted over CardDAV before the fix.
+---
+
 # Repairing contacts deleted over CardDAV before #2249
 
 Before issue [#2249](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2249)

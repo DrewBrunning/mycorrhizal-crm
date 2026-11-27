@@ -1,0 +1,1 @@
+- **Self-hosting guides now open on the documentation site** ([#2244](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2244)): the configuration reference, disaster-recovery and migration-recovery runbooks, search-index rebuild, observability guide and source-import mappings were only readable on GitHub; they now appear in the site navigation and their links work.

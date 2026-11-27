@@ -1,3 +1,11 @@
+---
+title: Monica import mapping
+parent: Source imports
+grand_parent: Reference
+nav_order: 1
+description: How Monica data maps onto Mycorrhizal.
+---
+
 # Monica import mapping (issue #351)
 
 The import maps a `monica.Snapshot` — the complete in-memory copy of a Monica account in the

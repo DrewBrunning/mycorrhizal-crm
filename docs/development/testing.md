@@ -887,7 +887,7 @@ and "old cached assets cannot permanently strand users":
   rapid updates do not grow the cache);
 - a user **offline through a deploy** converges on the new build on reconnect;
 - the **escape hatch** (`/_recovery.html`, see
-  [`service-worker-updates.md`](../service-worker-updates.md)) recovers a user
+  [`service-worker-updates.md`](../service-worker-updates.html)) recovers a user
   stuck on a deliberately broken worker;
 - a client that converged on a rolled-forward deploy converges **back** when the
   operator rolls back (issue #477);

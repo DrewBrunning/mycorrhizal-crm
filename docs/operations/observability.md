@@ -1,3 +1,10 @@
+---
+title: Observability
+parent: Self-hosting
+nav_order: 9
+description: Logs, correlation IDs and the system-event timeline.
+---
+
 # Observability: logs, correlation IDs, and the system-event timeline
 
 Where to look when something is failing in production, and how the pieces connect. Companion to

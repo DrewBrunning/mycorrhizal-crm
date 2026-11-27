@@ -1,3 +1,11 @@
+---
+title: Meerkat import mapping
+parent: Source imports
+grand_parent: Reference
+nav_order: 2
+description: How Meerkat data maps onto Mycorrhizal.
+---
+
 # Meerkat import mapping (issue #353)
 
 The import reads a Meerkat CRM SQLite database file directly (ADR 0007 — the only carrier of

@@ -630,7 +630,7 @@ reference for what "handled correctly" means.
 - [Notifications](notifications.md) — setting up each notification channel,
   including the private-address knobs explained operator-side.
 - [Settings](settings.md) — where users configure their per-user connections.
-- [Observability](operations/observability.md) — the diagnostics sweep, the
+- [Observability](operations/observability.html) — the diagnostics sweep, the
   system-event timeline, channel health, and alerting on integration state.
 - [Integration classification matrix](int-01-integration-classification-matrix.md)
   — the engineering half: retry budgets, timeouts, and the per-error
