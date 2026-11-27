@@ -17,7 +17,7 @@ export default defineConfig({
   // what keeps `npx playwright test` from accidentally trying to run those
   // specs against the wrong server. The project-level testIgnore below
   // repeats the pattern for the authenticated project.
-  testIgnore: [/sw-upgrade/],
+  testIgnore: [/sw-upgrade/, /docs-screenshots/],
 
   fullyParallel: true,
 
@@ -85,7 +85,13 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
       },
       dependencies: ['setup'],
-      testIgnore: [/.*\.setup\.ts/, /sw-upgrade/, /webkitSmoke/, /firefoxSmoke/],
+      testIgnore: [
+        /.*\.setup\.ts/,
+        /sw-upgrade/,
+        /docs-screenshots/,
+        /webkitSmoke/,
+        /firefoxSmoke/,
+      ],
     },
     // Issue #992: the only WebKit coverage in this repo. Deliberately its own
     // project rather than folded into 'chromium' -- webkitSmoke.spec.ts logs
@@ -116,7 +122,7 @@ export default defineConfig({
       },
       dependencies: ['setup'],
       testMatch: process.env.E2E_ALL_BROWSERS ? /.*\.spec\.ts/ : /firefoxSmoke\.spec\.ts/,
-      testIgnore: [/.*\.setup\.ts/, /sw-upgrade/, /webkitSmoke/],
+      testIgnore: [/.*\.setup\.ts/, /sw-upgrade/, /docs-screenshots/, /webkitSmoke/],
     },
   ],
 

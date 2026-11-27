@@ -7,4 +7,4 @@ description: Day-to-day use of Mycorrhizal CRM.
 
 # Using Mycorrhizal
 
-Day-to-day use: your settings, how reminders reach you, and the contact map.
+Day-to-day use: your contacts, how to import them, relationships, activities and notes, occasions and reminders, settings, and the contact map.
