@@ -1,0 +1,59 @@
+{% comment %}
+  Version switcher and banner (issue #2244). Only rendered by the versioned
+  build (scripts/build-docs-versions.sh), which sets docs_version_label and
+  friends in _config_version.yml; a plain `jekyll serve` shows neither.
+{% endcomment %}
+{% if site.docs_version_label %}
+<div class="docs-version" style="display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;width:100%">
+  <label for="docs-version-select">Version
+    <select id="docs-version-select" aria-label="Documentation version">
+      <option>{{ site.docs_version_label }}</option>
+    </select>
+  </label>
+  {% if site.docs_unreleased %}
+  <span role="note"><strong>Unreleased.</strong> These docs describe the next version, which is not released yet.
+    {% if site.docs_latest_label %}<a href="{{ site.docs_root }}/">Read the docs for the latest release ({{ site.docs_latest_label }}).</a>{% endif %}</span>
+  {% elsif site.docs_version_label != site.docs_latest_label %}
+  <span role="note"><strong>Older release.</strong> These docs describe version {{ site.docs_version_label }}.
+    <a href="{{ site.docs_root }}/">Read the docs for the latest release ({{ site.docs_latest_label }}).</a></span>
+  {% endif %}
+</div>
+<script>
+(function () {
+  var select = document.getElementById('docs-version-select');
+  if (!select || !window.fetch) { return; }
+  var root = {{ site.docs_root | jsonify }};
+  var own = {{ site.docs_version_path | jsonify }};
+  /* Only block comments in this script: the just-the-docs layout compresses
+     the page onto one line, so a line comment would swallow the rest. */
+  /* page.url is site-relative ("/settings.html"); baseurl is not part of it. */
+  var rel = {{ page.url | jsonify }}.replace(/^\/+/, '');
+  /* A version path is "", "X.Y/" or "next/" (cmd/docsversions). Anything else
+     in versions.json is ignored, so the switcher only ever navigates to a
+     same-origin path under the docs root, never "//host" or "javascript:". */
+  var validPath = /^(?:\d+\.\d+\/|next\/)?$/;
+  fetch(root + '/versions.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
+    var versions = (Array.isArray(list) ? list : []).filter(function (v) {
+      return v && typeof v.path === 'string' && validPath.test(v.path);
+    });
+    if (!versions.length) { return; }
+    select.textContent = '';
+    versions.forEach(function (v) {
+      var o = document.createElement('option');
+      o.textContent = v.unreleased ? 'next (unreleased)' : String(v.label) + (v.latest ? ' (latest)' : '');
+      o.selected = v.path === own;
+      select.appendChild(o);
+    });
+    select.addEventListener('change', function () {
+      /* Navigate by the chosen entry of the validated list, not by DOM text. */
+      var v = versions[select.selectedIndex];
+      if (!v) { return; }
+      var base = root + '/' + v.path;
+      var target = base + rel;
+      var go = function (url) { window.location.assign(url); };
+      fetch(target, { method: 'HEAD' }).then(function (r) { go(r.ok ? target : base); }, function () { go(base); });
+    });
+  }).catch(function () {});
+})();
+</script>
+{% endif %}

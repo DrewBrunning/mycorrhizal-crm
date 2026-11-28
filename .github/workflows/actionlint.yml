@@ -268,3 +268,8 @@ jobs:
       # and a real .claude/skills directory is refused rather than deleted.
       - name: Test install-agent-links script
         run: bash scripts/tests/install-agent-links.test.sh
+
+      # Issue #2244: only release tags on main or a release/* branch are
+      # published as docs; a tag pushed on an unmerged commit is left out.
+      - name: Test docs-release-tags script
+        run: bash scripts/tests/docs-release-tags.test.sh

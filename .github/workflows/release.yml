@@ -797,3 +797,21 @@ jobs:
             echo "\`docker-publish.yml\` is now building + signing the images and APK, minting SBOMs + SLSA provenance + SHA256SUMS, and creating the GitHub Release:"
             echo "<https://github.com/${GITHUB_REPOSITORY}/actions/workflows/docker-publish.yml>"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Issue #2244: publish this release's docs as the docs-site root. docs.yml
+  # runs on main (the github-pages environment deploys only from main) and
+  # picks the new tag up from the tag list, so dispatch it there once the tag
+  # is pushed. A dispatch by GITHUB_TOKEN does start a run; an RC publishes no
+  # docs, and a dry run pushes no tag.
+  publish-docs:
+    needs: [preflight, release]
+    if: ${{ !inputs.dry_run && needs.preflight.outputs.is_rc != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch docs.yml on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run docs.yml --ref main --repo "$GITHUB_REPOSITORY"
