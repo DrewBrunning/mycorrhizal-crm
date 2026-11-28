@@ -79,3 +79,24 @@ func TestRealChangelogLinksResolve(t *testing.T) {
 		assert.NoError(t, err, "link %q does not resolve under docs/", target)
 	}
 }
+
+func TestRunFailurePaths(t *testing.T) {
+	dir := t.TempDir()
+	good := filepath.Join(dir, "CHANGELOG.md")
+	require.NoError(t, os.WriteFile(good, []byte(sample), 0o644))
+	bad := filepath.Join(dir, "BAD.md")
+	require.NoError(t, os.WriteFile(bad, []byte("{% endraw %}\n"), 0o644))
+	out := filepath.Join(dir, "changelog.md")
+
+	var stderr bytes.Buffer
+	assert.Equal(t, 2, run([]string{"-nope"}, &stderr), "unknown flag is a usage error")
+
+	stderr.Reset()
+	assert.Equal(t, 2, run([]string{"-in", bad, "-out", out}, &stderr))
+	assert.Contains(t, stderr.String(), "endraw")
+	assert.NoFileExists(t, out, "no page is written when rendering fails")
+
+	stderr.Reset()
+	assert.Equal(t, 2, run([]string{"-in", good, "-out", filepath.Join(dir, "no-such-dir", "changelog.md")}, &stderr))
+	assert.Contains(t, stderr.String(), "gensitechangelog:")
+}
