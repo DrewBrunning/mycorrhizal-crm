@@ -18,7 +18,7 @@ change here is a change to those, and vice versa (see
 This page is contributor- and maintainer-facing. Operators do not choose
 version numbers; what an operator needs — whether an upgrade requires anything
 of them — is the [changelog](https://github.com/DrewBrunning/mycorrhizal-crm/releases)
-and the [upgrade-compatibility policy](upgrade-compatibility.md).
+and the [upgrade-compatibility policy](upgrade-compatibility.html).
 
 ## Semantic versioning
 
@@ -32,11 +32,11 @@ tagged with a leading `v`. What the three components mean **here**:
 | **PATCH** | Backward-compatible bug fixes only; no new surface. | `1.2.3` → `1.2.4` |
 
 **What counts as breaking is not decided here.** It is decided once, in
-writing, by the [breaking-change policy](breaking-change-policy.md) (MAINT-02,
+writing, by the [breaking-change policy](breaking-change-policy.html) (MAINT-02,
 issue #491) — covered surfaces, the breaking/additive line, and the fact that a
 breaking change is `2.0.0`, never a parallel `/api/v2`. The *removal window* for
 anything that policy classifies as breaking is the
-[deprecation policy](deprecation-policy.md) (MAINT-01, issue #490). This page
+[deprecation policy](deprecation-policy.html) (MAINT-01, issue #490). This page
 points at both rather than restating them.
 
 ## The 1.x compatibility rule
@@ -54,7 +54,7 @@ Two rules were never waived and still apply:
   of the SemVer component being bumped.
 - **The supported-upgrade floor.** In-place upgrade is supported from `v1.0.0`
   and later, version-skipping included — see
-  [upgrade compatibility](upgrade-compatibility.md) (issue #529; the floor moved
+  [upgrade compatibility](upgrade-compatibility.html) (issue #529; the floor moved
   from `v0.6.0` at the 1.0 major, issue #1170).
 
 The `/api/v1` compatibility promise — no removals, renames, or narrowing within
@@ -115,7 +115,7 @@ RC **publication mechanics** — the pre-release flag, keeping RCs off the
 auto-update channels, the `release/vX.Y.0` branch policy, the RC-fix merge
 criterion and iteration loop, and the digest-verified promotion path from an RC
 to the final tag — are RC-02 ([issue #446](https://github.com/DrewBrunning/mycorrhizal-crm/issues/446)),
-written up in [`release-candidate-process.md`](release-candidate-process.md).
+written up in [`release-candidate-process.md`](release-candidate-process.html).
 `release.yml` cuts an RC when `version` carries an `-rc.N` suffix (with
 `ref: release/vX.Y.0`); `promote-rc.yml` promotes it.
 
@@ -176,7 +176,7 @@ Two floors are expressed as versions and therefore depend on this policy:
 
 - **Supported-upgrade floor — `v1.0.0`.** In-place upgrade is supported from
   here; below it the server refuses to migrate. Canonical statement:
-  [upgrade compatibility](upgrade-compatibility.md) (issue #529). The floor
+  [upgrade compatibility](upgrade-compatibility.html) (issue #529). The floor
   moves only at a MAJOR bump, which is itself a breaking change — it moved from
   `v0.6.0` to `v1.0.0` at the 1.0 major (issue #1170).
 - **Client/server compatibility floor.** The Android app declares the oldest
@@ -186,7 +186,7 @@ Two floors are expressed as versions and therefore depend on this policy:
   `MIN_CLIENT_VERSION`; no such *client* floor has ever been raised, so against
   every released server at or above `v1.0.0` every released client still works.
   Canonical statement: [client/server compatibility
-  policy](client-compatibility-policy.md) (ANDROID-01, issue #478).
+  policy](client-compatibility-policy.html) (ANDROID-01, issue #478).
 
 **The floors are not a support window.** They say which old versions can still
 upgrade or still connect; they do not say how long a released version receives
@@ -197,7 +197,7 @@ not change the set. When a new major ships, the previous major's final minor
 gets a 12-month security-only tail. Only security fixes are backported; a
 release outside that window is end-of-life with no backports. The policy and
 the annual EOL review live in [the security stewardship
-cadence](security/security-cadence.md); the canonical statement of the window
+cadence](security/security-cadence.html); the canonical statement of the window
 is in
 [`SECURITY.md`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/SECURITY.md).
 

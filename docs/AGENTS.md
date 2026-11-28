@@ -20,7 +20,9 @@ with runtime behaviour is not documentation-only.
   `backend/integrations.Registry()` has an ownership section in `docs/integration-ownership.md`,
   that every migrated table appears in `docs/security/pii-inventory.md` (or the reasoned
   exclusion list), and that every page in `docs/`, `docs/operations/` and `docs/import/` has YAML
-  front matter (without it Jekyll copies the page raw and its `.html` link 404s). Moving or
+  front matter (without it Jekyll copies the page raw and its `.html` link 404s), and that a page
+  with front matter links to another such page by its `.html` name (the site has no
+  `jekyll-relative-links`, so a `.md` link between rendered pages 404s there). Moving or
   renaming a file/heading any doc links to means updating the link in the same PR — docscheck is
   the tripwire.
 - `cd backend && go run ./cmd/citecheck` proves every `path#anchor` and test-name citation in

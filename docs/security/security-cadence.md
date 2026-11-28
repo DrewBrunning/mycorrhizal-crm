@@ -25,7 +25,7 @@ that are **not** already owned by another gate:
 The ASVS/MASVS re-verification calendar backstop is **not** here — it already
 has its own weekly staleness job (issue #949), and the pentest engagement
 cadence lives in
-[the pen-test environment](../development/pentest-environment.md) (issue #946).
+[the pen-test environment](../development/pentest-environment.html) (issue #946).
 This page states one source per obligation rather than a second copy.
 
 `.github/workflows/security-cadence.yml` runs `backend/cmd/securitycadence`
@@ -74,7 +74,7 @@ loudly on a malformed row rather than skipping it.
 | `release_app_key` | Rotate the release GitHub App private key | 365 | 2026-09-18 | Add the new key in the App settings, update the Actions secret, revoke the old key. |
 | `android_signing_key` | Confirm the Android signing keystore is still recoverable | 365 | 2026-09-18 | Restore the keystore from its offline backup into a scratch dir and confirm the release APK still builds; see [custody & backup](#android-signing-keystore-custody-and-backup). |
 | `access_list_review` | Review the sensitive-resource access list in `GOVERNANCE.md` | 365 | 2026-09-18 | Confirm who holds repo admin, ruleset bypass, Actions secrets, and the deployment host; update the table in place ([GOVERNANCE.md](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/GOVERNANCE.md)). |
-| `support_window_review` | Review the support window / EOL policy | 365 | 2026-10-26 | Confirm `SECURITY.md` "Supported Versions" and the [supported-versions lifecycle](../supported-versions.md#version-support-lifecycle) still describe what is backported, and that every supported minor has a `release/vX.Y.0` branch. |
+| `support_window_review` | Review the support window / EOL policy | 365 | 2026-10-26 | Confirm `SECURITY.md` "Supported Versions" and the [supported-versions lifecycle](../supported-versions.html#version-support-lifecycle) still describe what is backported, and that every supported minor has a `release/vX.Y.0` branch. |
 | `governance_read_token` | Rotate the `GOVERNANCE_READ_TOKEN` fine-grained PAT (Administration: read) | 90 | 2026-11-11 | Create a new fine-grained PAT (90-day expiry, this repo only, Administration: read); set it as `GOVERNANCE_READ_TOKEN` in **both** the Actions and the Dependabot secret stores (Dependabot-triggered runs cannot read Actions secrets); re-run `governance-drift.yml`. |
 | `scorecard_token` | Rotate the `SCORECARD_TOKEN` fine-grained PAT | 90 | 2026-11-11 | Create a new fine-grained PAT (90-day expiry) per [ossf/scorecard-action](https://github.com/ossf/scorecard-action#authentication-with-fine-grained-pat-optional); set it as `SCORECARD_TOKEN` in the Actions secret store; re-run `scorecard.yml`. |
 <!-- security-cadence:end -->
@@ -149,11 +149,11 @@ This page owns the operational half:
 - **Backport path.** A security fix is authored on `main`, then cherry-picked
   onto the `release/vX.Y.0` branch of each still-supported minor and cut from
   there (the same branches and promotion flow as
-  [`release-candidate-process.md`](../release-candidate-process.md)). A fix that
+  [`release-candidate-process.md`](../release-candidate-process.html)). A fix that
   cannot be cherry-picked cleanly is re-implemented on the older branch and
   called out in the advisory.
 - **EOL review.** The annual `support_window_review` entry above confirms
-  `SECURITY.md` and [`supported-versions.md`](../supported-versions.md) still
+  `SECURITY.md` and [`supported-versions.md`](../supported-versions.html) still
   state the window accurately, and that every supported minor has a
   `release/vX.Y.0` branch. EOL branches may remain for history; they receive no
   new commits. Mechanical EOL flagging in the release workflow remains a

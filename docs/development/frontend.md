@@ -66,7 +66,7 @@ All user-facing strings must be translated. Add keys to every locale file under 
 The frontend has two test layers: vitest unit/component tests co-located in
 `src/` (mocked network, no browser) and Playwright E2E tests against a running
 application in `e2e/`. Which layer a test belongs to is decided in
-[Testing](testing.md) — the explicit test pyramid.
+[Testing](testing.html) — the explicit test pyramid.
 
 ### Performance budgets
 

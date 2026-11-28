@@ -35,7 +35,7 @@ Before the first release at or above the floor, `main` is the whole site at `/`.
   the current version switcher (`docs/_includes/header_custom.html`) and the generated Changelog page,
   and runs one Jekyll build per version. Everything is deployed as one Pages artifact.
 - **The Changelog page** is generated from the root `CHANGELOG.md` and never committed
-  ([Changelog policy](../changelog-policy.md)).
+  ([Changelog policy](../changelog-policy.html)).
 
 ## Writing docs
 

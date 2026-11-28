@@ -38,7 +38,7 @@ orthogonal mechanism; this page is about *which layer a test belongs to*, not
 | Android unit/Robolectric | View models, editors, screens, network parsing, offline/local-DB logic | Emulator/device flows, real backend | `android/**/src/test/` | `./gradlew testDebugUnitTest :app:testObtainiumDebugUnitTest :app:testFossDebugUnitTest` | `test` job / `android` |
 | E2E web | Complete user flows through the **shipped** artifact (image + compose + nginx + backend) | Anything reachable in a lower layer | `frontend/e2e/` | `npx playwright test` | `e2e` job / `frontend`+`openapi`+`infra` |
 | E2E Android | Real app on emulator against the real backend; the Playwright analog | JVM-testable logic | `android/app/src/androidTest/` | `:app:connectedObtainiumDebugAndroidTest` (see README-developer.md) | `android-e2e` job / `android`+`openapi`+`infra` |
-| Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | `backend/cmd/deploysmoke/`, `backend/config/startup_smoke_test.go`, `.github/workflows/deploy-smoke.yml` | `go test ./cmd/deploysmoke/... ./config/...`; `go run ./cmd/deploysmoke` against a fresh `docker compose up` | `deploy-smoke` job / `infra`; also a release-tier gate run against the build-once candidate image ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484), [release-gates.md](release-gates.md#build-once-the-tested-image-is-the-shipped-image-issue-1484)) |
+| Release/install smoke | Clean install from nothing; misconfiguration diagnostics; startup ordering | Anything presupposing a working install | `backend/cmd/deploysmoke/`, `backend/config/startup_smoke_test.go`, `.github/workflows/deploy-smoke.yml` | `go test ./cmd/deploysmoke/... ./config/...`; `go run ./cmd/deploysmoke` against a fresh `docker compose up` | `deploy-smoke` job / `infra`; also a release-tier gate run against the build-once candidate image ([#1484](https://github.com/DrewBrunning/mycorrhizal-crm/issues/1484), [release-gates.md](release-gates.html#build-once-the-tested-image-is-the-shipped-image-issue-1484)) |
 | Post-publish smoke | The published GHCR image (by digest) boots and serves the same real workflow | A from-source build (that's the row above); pre-publish gating (nothing here can block a tag already pushed; the pre-publish gates are the release battery, which tests the same digest that publishes -- #1484) | `docker-compose.published-smoke.yml`, `.github/workflows/docker-publish.yml` (`post-publish-smoke` job) | `MYCORRHIZAL_IMAGE=<ref>@<digest> docker compose -f docker-compose.published-smoke.yml up -d --wait`; `go run ./cmd/deploysmoke` | `post-publish-smoke` job, every tag push (amd64 **and** arm64 matrix legs, issue #1485) |
 | ARM64 Go suite | `vet` + `go test` (no `-race`, no coverage) of the `rest` and `controllers` legs natively on `ubuntu-24.04-arm`: architecture-sensitive code (build tags, atomics alignment, `unsafe`, seccomp) and `main_test.go`'s host-arch embedded handshake | Race detection and coverage (amd64 owns both); Android's `GOOS=android` cross-compile (`android-tests.yml`'s embedded-server step) | `.github/workflows/arm64-tests.yml` | `cd backend && go test $(go list ./... \| grep -vE 'mycorrhizal/(controllers\|services\|database\|internal/(schemafixture\|propertytest\|largedata\|contactgen))$')` on an arm64 host | `arm64-tests.yml` (release-tier; `rest` leg per backend PR, `controllers` on main/nightly) |
 | Performance/load | N+1/query-count regressions, benchmark bodies, concurrent-write smoke vs the deployed artifact, scale (planned) | Correctness (that's the pyramid) | `backend/**/benchmark` tests, `backend/cmd/loadsmoke` | `go test -bench . -benchtime=1x`, `go run ./cmd/loadsmoke` | `backend-checks` + e2e `loadsmoke` step |
@@ -213,7 +213,7 @@ time-based rule.
     issue #369) and the deterministic cross-account BOLA sweep (`cmd/bolacheck`);
   - design consistency of the spec itself — operation tags, unique operationIds, the error
     envelope, unused components — via `backend/vacuum.yaml` in the `Backend checks` job
-    ([OpenAPI linting](openapi-linting.md), issue #1909).
+    ([OpenAPI linting](openapi-linting.html), issue #1909).
 - **Must not be used for** business logic, persistence, or UI behavior.
 - **Runs via** `go test ./...` (drift tests), `npx vitest run` + `./gradlew
   testDebugUnitTest` plus :app’s flavor-qualified tests (fixture consumers), and the `schemathesis.yml` workflow
@@ -475,7 +475,7 @@ time-based rule.
   `lib/arm64-v8a/libmycorrhizal.so` and that `mapping.txt` is non-empty, so the
   #1390 "shipped without local mode" failure is caught on the PR that causes it
   (issue #2875). What remains accepted is the two-APK upgrade: see
-  [`release-gates.md`](release-gates.md#the-android-decision-issue-527) — issue
+  [`release-gates.md`](release-gates.html#the-android-decision-issue-527) — issue
   #994.
 
 ### On-demand accessibility scan (ATF probe)
@@ -1492,7 +1492,7 @@ anything themselves; none is a merge gate.
   Advisory by design (it cannot block a merge that already happened), so it is
   absent from the ruleset and `release-gates.json`; semantics, the 40-minute
   settle window for checks still running at merge, and the `issues: write`
-  scope are in [`repo-governance.md`](repo-governance.md).
+  scope are in [`repo-governance.md`](repo-governance.html).
 
 ## Layers vs CI path gating
 

@@ -30,7 +30,7 @@ Android app (**Map** in the drawer or rail). The design is
 On a contact's edit form each address has a **Coordinates (latitude, longitude)** field, for example
 `51.5007, -0.1246`. Latitude must be -90 to 90 and longitude -180 to 180, separated by a comma; anything else is
 flagged as invalid. Coordinates are stored on the address as an RFC 5870 `geo:` URI, so they travel with the
-address through vCard, JSContact and CardDAV (see [CardDAV](carddav.md) for how CardDAV carries them).
+address through vCard, JSContact and CardDAV (see [CardDAV](carddav.html) for how CardDAV carries them).
 A contact imported with a `GEO` value is plottable straight away.
 
 ### Find coordinates (geocoding)
@@ -65,7 +65,7 @@ treated as data you do not want to leave your instance:
 | vCard 3.0 / 4.0 and JSContact exports | Withheld unless you opt in (`include_sensitive=true`; in the export field picker, "Enable sensitive fields") |
 | Contact shares to another user | Withheld unless you opt in |
 | CardDAV sync | Not served to clients, and preserved on the server when a client writes the card back |
-| MCP server | Withheld unless the call passes `include_sensitive: true` (see [MCP](mcp.md#sensitivity)) |
+| MCP server | Withheld unless the call passes `include_sensitive: true` (see [MCP](mcp.html#sensitivity)) |
 | Find coordinates | Refused through the apps: a private or secret address is never sent to the geocoder. Enter coordinates by hand |
 | **Your own map** | **Shown.** The map is your own view of your own data, not an export or a copy |
 | Flat CSV export and account bundle backups | **Included**, each labelled. These are your own full backups |
@@ -79,7 +79,7 @@ private or secret address disables the button and shows why. On the contact page
 shows a small lock icon (hover or screen-reader label: withheld from sync, exports, shares and MCP).
 
 The Android editor does not yet have this control; there the value is set through the web editor or the REST
-API (`sensitivity` on an entry in the contact record's `addresses`; see the [API reference](api-reference.md)),
+API (`sensitivity` on an entry in the contact record's `addresses`; see the [API reference](api-reference.html)),
 and the Android editor keeps an existing value when you save.
 
 ## Operator setup
@@ -102,10 +102,10 @@ restart.
 - **The map needs the tile host to be reachable from the user's browser.** v1.4.1 and later derive the allowed
   tile origin from `MAP_TILE_STYLE_URL` automatically. On v1.4.0 the bundled nginx Content-Security-Policy is
   not derived from it, so if the web map is blank or says "The map could not be displayed", check the CSP
-  first. See [Deployment](deployment.md#contact-map-and-geocoding).
+  first. See [Deployment](deployment.html#contact-map-and-geocoding).
 - **Nominatim** is the public OpenStreetMap instance (`nominatim.openstreetmap.org`). It needs no key, but its
   usage policy allows at most one request per second, and the server throttles itself to that. That suits
   occasional per-address lookups, which is all this feature does. Choose `maptiler` (your own key) for more
   headroom.
 - **Outbound traffic.** Geocoder calls use the same SSRF-guarded client as the other integrations. See
-  [Integrations](integration-ownership.md#geocoder) for ownership and failure behaviour.
+  [Integrations](integration-ownership.html#geocoder) for ownership and failure behaviour.

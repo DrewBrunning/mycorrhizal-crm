@@ -589,3 +589,51 @@ func TestDockerEngineFloorMultipleMatrixRows(t *testing.T) {
 		t.Errorf("expected multiple-matrix-floor finding, got: %s", got)
 	}
 }
+
+// TestCheckPublishedMdLinks pins the rule that a published page (one with YAML
+// front matter) links to another published page by its rendered .html address.
+// The docs site builds with plain Jekyll and no jekyll-relative-links plugin,
+// so a .md link between two rendered pages is a 404 on the site even though
+// GitHub follows it.
+func TestCheckPublishedMdLinks(t *testing.T) {
+	root := t.TempDir()
+	fm := "---\ntitle: Page\n---\n\n"
+	write(t, root, "docs/target.md", fm+"# Target\n\n## Section\n")
+	write(t, root, "docs/operations/ops.md", fm+"# Ops\n")
+	write(t, root, "docs/unpublished.md", "# Record\n")
+	write(t, root, "docs/adrs/0001-x.md", "# ADR\n")
+	write(t, root, "docs/source.md", fm+strings.Join([]string{
+		"# Source",
+		"",
+		"Bad: [t](target.md) and [s](target.md#section) and [o](operations/ops.md).",
+		"Good: [t](target.html) and [s](target.html#section).",
+		"Records stay on GitHub: [u](unpublished.md) and [a](adrs/0001-x.md).",
+		"External: [e](https://example.com/x.md). Repo: [r](../README.md).",
+		"```",
+		"[code](target.md)",
+		"```",
+	}, "\n")+"\n")
+	write(t, root, "docs/operations/ops2.md", fm+"Up: [t](../target.md).\n")
+	// A page without front matter is not rendered, so its .md links are fine.
+	write(t, root, "docs/unpublished2.md", "# Record\n\nSee [t](target.md).\n")
+
+	got := checkPublishedMdLinks(root)
+	want := []string{
+		"source.md:7: links to published page target.md by its .md name; use target.html (the docs site does not rewrite .md links)",
+		"source.md:7: links to published page target.md#section by its .md name; use target.html#section (the docs site does not rewrite .md links)",
+		"source.md:7: links to published page operations/ops.md by its .md name; use operations/ops.html (the docs site does not rewrite .md links)",
+		"operations/ops2.md:5: links to published page ../target.md by its .md name; use ../target.html (the docs site does not rewrite .md links)",
+	}
+	joined := strings.Join(got, "\n")
+	for _, w := range want {
+		if !strings.Contains(joined, w) {
+			t.Errorf("missing finding %q in:\n%s", w, joined)
+		}
+	}
+	if len(got) != len(want) {
+		t.Errorf("got %d findings, want %d:\n%s", len(got), len(want), joined)
+	}
+	if !strings.Contains(collectMatches(t, root), "by its .md name") {
+		t.Error("collectFindings does not run checkPublishedMdLinks")
+	}
+}

@@ -13,7 +13,7 @@ and what happens if your environment is outside that set. It states the
 requirements an operator actually hits — host, Docker, browser, Android — and
 deliberately leaves the contributor-facing toolchain floors (Go, Node, Yarn)
 to the matrix, which is the engineering source of truth. A change to any floor
-below is a breaking change under [the breaking-change policy](breaking-change-policy.md)
+below is a breaking change under [the breaking-change policy](breaking-change-policy.html)
 (MAINT-02, issue #491); this page and the matrix are kept in agreement by a
 structural check that runs on every pull request (DOC-01, issue #486 / DOC-04,
 issue #489).
@@ -58,7 +58,7 @@ requirements](deployment.html#storage-requirements).
 | **Docker Engine** | `>= 23.0` | Tested in CI (weekly; the compose-file syntax floor is validated against the earliest V2 client) | 23.0 is when **Compose V2** became the Engine-bundled default, and **Compose V2** is what every doc and script here invokes (`docker compose`, never the deprecated hyphenated v1 binary). |
 | **Docker Compose** | V2 (whatever ships with Engine ≥ 23.0) | Tested in CI (weekly) | No independent Compose-only floor beyond the Engine minimum. |
 | **Web browser** | Chrome, Edge, Firefox ≥ 111; Safari / iOS ≥ 16.4 | Chrome: tested in CI. Firefox: advisory only (a real Firefox 111 run exists in CI but crashes on hosted runners, issue #1002; the floor is still enforced at build time). Edge: expected to work (shares Chrome's engine and floor, not independently tested). Safari/iOS: partially tested — a WebKit `e2e-webkit-smoke` job (issue #992) app-loads, logs into the real app, and confirms the Push API surface (`PushManager`) is present on whatever *current* WebKit build Playwright ships (there is no downloadable old-WebKit release to pin the exact 16.4 floor against, unlike Firefox/Chrome, and no engine's CI job performs a real Push `subscribe()` round trip) — see [the WebKit engine caveat](development/supported-runtime-matrix.md#webkit-engine-caveat-issue-992) | The floor is set by Web Push support (Safari shipped it in 16.4). The bundle is built against this floor, so a browser at or above it gets a parse-correct build. Supported browsers below the floor but above ~2017/18 ES-module support fail loudly if at all — never silently wrong. See [what happens on an unsupported version](#what-happens-on-an-unsupported-version). |
-| **Android app** | Android **8.0 (API 26)** and later | Tested in CI (real instrumented suite on an API-26 emulator, on every main merge, nightly, and dispatch — a named release gate, issue #927) | `minSdk 26` is the app's floor; below it the OS refuses to install (`INSTALL_FAILED_OLDER_SDK`). The app also declares a server floor it talks to — see [the client compatibility policy](client-compatibility-policy.md). |
+| **Android app** | Android **8.0 (API 26)** and later | Tested in CI (real instrumented suite on an API-26 emulator, on every main merge, nightly, and dispatch — a named release gate, issue #927) | `minSdk 26` is the app's floor; below it the OS refuses to install (`INSTALL_FAILED_OLDER_SDK`). The app also declares a server floor it talks to — see [the client compatibility policy](client-compatibility-policy.html). |
 | **Database** | No version to install | — | SQLite ships inside the binary via the pure-Go driver; there is no separate host SQLite. The constraint is **where** it lives, not which version: [local filesystem only](#storage-constraint--read-this-first). |
 Rows **not** on this page because they are contributor-facing, not operator-
 facing: the minimum **Go** toolchain (`backend/go.mod`), **Node.js** and
@@ -94,7 +94,7 @@ Each row fails differently; none is silent-wrong where this project can help it:
   filesystem; see the storage constraint above.
 - **A database below the migration floor (`v1.0.0`).** The server refuses to
   migrate on startup with a two-step instruction — never a best-effort single
-  hop. See [Upgrade compatibility](upgrade-compatibility.md).
+  hop. See [Upgrade compatibility](upgrade-compatibility.html).
 - **Building from source on an unsupported toolchain.** `go` refuses per
   `go.mod`'s toolchain directive; `yarn install` refuses per `engines` +
   `engine-strict`. Both are exact, named failures.
@@ -207,7 +207,7 @@ and describe the budget to your users before they hit it. Running an instance
 open to arbitrary strangers is possible — the guarantee still holds and is
 still tested — but it puts the operator in the position of data controller for
 people they have never met (see
-[Privacy](privacy.md)). **For any instance with more than one user, run with
+[Privacy](privacy.html)). **For any instance with more than one user, run with
 `DISABLE_REGISTRATION=true`** and create each account deliberately from the
 admin panel. Such an instance should also enable the app-layer SSRF guard (the
 `*_BLOCK_PRIVATE_URLS` set, off by default for trusted-LAN self-hosting) — see
@@ -230,9 +230,9 @@ How long a given runtime version stays supported after a newer one appears:
   previous major's final minor. Only security fixes are backported, and a fix
   is cherry-picked onto each still-supported `release/vX.Y.0` branch. The
   window and the annual EOL review are in
-  [the security stewardship cadence](security/security-cadence.md).
+  [the security stewardship cadence](security/security-cadence.html).
 - **Raising any floor above is a breaking change** under
-  [the breaking-change policy](breaking-change-policy.md) (MAINT-02, issue
+  [the breaking-change policy](breaking-change-policy.html) (MAINT-02, issue
   #491), and the **removal window** — the deprecation notice, the minimum time
   between announcement and removal — is governed by the deprecation policy
   (MAINT-01, issue #490). A runtime minimum is never raised in the same release
@@ -241,11 +241,11 @@ How long a given runtime version stays supported after a newer one appears:
   `1.x` upgrades from any earlier `1.x`; a floor above that needs the next
   major. The floor moved from `v0.6.0` to `v1.0.0` at the 1.0 major (issue
   #1170), so `0.9.x` is no longer a supported in-place-upgrade source. See
-  [Upgrade compatibility](upgrade-compatibility.md).
+  [Upgrade compatibility](upgrade-compatibility.html).
 - **Client floors are a separate policy.** Whether a given server version still
   accepts your (older) web client or Android app is the client/server
   compatibility policy's question, not this page's — see [Client/server
-  compatibility policy](client-compatibility-policy.md). In short: an old
+  compatibility policy](client-compatibility-policy.html). In short: an old
   client keeps working against a new server until the server explicitly
   declares a floor; that happens only as a deliberate, documented event.
 
@@ -255,10 +255,10 @@ How long a given runtime version stays supported after a newer one appears:
   engineering source of truth (issue #472), including the contributor-facing
   toolchain rows, the fail-clearly mechanics, and the CI jobs that exercise
   each floor.
-- [Getting Started](getting-started.md) — installing the supported shape.
+- [Getting Started](getting-started.html) — installing the supported shape.
 - [Deployment](deployment.html) — the production hardening, storage, and backup
   companion to this page.
-- [Client/server compatibility policy](client-compatibility-policy.md) — which
+- [Client/server compatibility policy](client-compatibility-policy.html) — which
   client versions a server accepts (ANDROID-01, issue #478).
-- [Upgrade compatibility](upgrade-compatibility.md) — which server versions an
+- [Upgrade compatibility](upgrade-compatibility.html) — which server versions an
   instance can be upgraded from (issue #529).

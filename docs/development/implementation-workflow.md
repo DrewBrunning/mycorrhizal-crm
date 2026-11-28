@@ -55,7 +55,7 @@ Before you implement, review the tests you just wrote against these questions:
   off-by-one, wrong branch, missing scoping, skipped filter — still passes, the assertion is too
   weak. Assert the behaviour and the boundary, not the implementation detail.
 - **Is it at the lowest layer that can catch the failure class?** See
-  [`testing.md`](testing.md). A unit test that cannot see persistence drift is the wrong layer for a
+  [`testing.md`](testing.html). A unit test that cannot see persistence drift is the wrong layer for a
   schema bug; a `dbtest`-backed service test is the right one.
 - **Is it deterministic?** No sleeps, no real wall-clock reads (read the injected clock), no
   network, no dependence on test execution order, no shared mutable fixture. Data goes through
@@ -111,7 +111,7 @@ Run this before you commit. It is the same list a reviewer will use.
 - The test is at the lowest layer that catches the class.
 - No weakened, skipped, or flaky test; no unexplained `# pragma: no cover`; the patch and ratchet
   targets still hold; the baseline is raised in the same PR when tests are added. See
-  [`coverage.md`](coverage.md).
+  [`coverage.md`](coverage.html).
 
 ### Safety
 

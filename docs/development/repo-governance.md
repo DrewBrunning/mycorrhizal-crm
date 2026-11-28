@@ -168,7 +168,7 @@ actor so an emergency retag is possible through the one-dispatch release path an
 a **new** ruleset, `target: branch`, `refs/heads/release/*`, `enforcement: active`. A
 release-candidate series (`v1.0.0-rc.N`) is cut from `release/vX.Y.0` and iterated there while
 `main` keeps moving (RC-02, [issue #446](https://github.com/DrewBrunning/mycorrhizal-crm/issues/446);
-full policy in [`docs/release-candidate-process.md`](../release-candidate-process.md)). The ruleset
+full policy in [`docs/release-candidate-process.md`](../release-candidate-process.html)). The ruleset
 carries **every required status check `main-protection` has, plus the RC-only checks in
 `backend/internal/governance.ReleaseOnlyRequiredChecks`** — currently just `RC fix is traceable
 to a finding` (`rc-fix.yml`, RC-02 action 4, [issue #925](https://github.com/DrewBrunning/mycorrhizal-crm/issues/925)),

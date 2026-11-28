@@ -55,7 +55,7 @@ func TestDocsStateTheDeprecationPolicy(t *testing.T) {
 		"prints a one-line notice to **stderr**",
 
 		// The register and its enforcement.
-		"[`deprecations.md`](deprecations.md) is the machine-readable list",
+		"[`deprecations.md`](deprecations.html) is the machine-readable list",
 		"go run ./cmd/deprecations",
 		"something removed before its window expired",
 		"unit-tests.yml",

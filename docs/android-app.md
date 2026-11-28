@@ -8,7 +8,7 @@ nav_order: 1
 
 The Android client talks to **your own** Mycorrhizal server — it is not a standalone app and ships no
 default or hosted backend. Before installing it, have a server running; the client refuses to talk to
-a server below the client/server compatibility floor (see [client/server compatibility](client-compatibility-policy.md)),
+a server below the client/server compatibility floor (see [client/server compatibility](client-compatibility-policy.html)),
 which moved to **`v1.0.0`** at the 1.0 major (issue #1170). The app requires Android **8.0 (API 26)**
 or later.
 
@@ -218,7 +218,7 @@ tag opens `/circles?tab=tags`, a circle opens `/circles`).
 
 ## Log activities from location history (GeoPulse)
 
-With a [GeoPulse connection](settings.md#geopulse) configured (**Settings → Integrations → GeoPulse**: server URL and a
+With a [GeoPulse connection](settings.html#geopulse) configured (**Settings → Integrations → GeoPulse**: server URL and a
 write-only API token, **Test connection**, **Disconnect**; the token must be re-entered on first connect and
 whenever the server's origin changes), the **Activities** screen's top bar has **Log from location history**.
 Pick a date and **Look up**: each recorded stay shows its place, local start time, duration, city/country, the
@@ -251,7 +251,7 @@ activities) only ever *creates* records, so it never sends `If-Match` and cannot
 
 These features need a server at `v1.7.0` or later; against an older server the app hides their entry
 points rather than offering actions that would fail (see
-[client compatibility](client-compatibility-policy.md)).
+[client compatibility](client-compatibility-policy.html)).
 
 - **Standing shares.** **Contact shares** lists what is shared with you and by you. A recipient
   accepts, declines, leaves or blocks a share; an owner revokes it, and an ended share can be removed
@@ -288,7 +288,7 @@ private and secret addresses are withheld from sync, exports and shares and are 
 coordinates is disabled with a reason, and updates as soon as you change the picker). The lookup is not available in a
 [local (on-device) profile](#local-on-device-profiles), where it is disabled and you enter coordinates by hand. Private
 and secret addresses still appear on your own map. How sensitivity, geocoding and the operator settings work is in
-[Contact map](map.md).
+[Contact map](map.html).
 
 ## About and build details
 
@@ -427,7 +427,7 @@ can answer on this device, **Verify with a passkey instead** — so a passkey-on
 The app trusts only system certificate authorities — there is no "import a self-signed certificate"
 path. A self-hosted server must present a certificate that chains to an OS-trusted CA (for example a
 Let's Encrypt certificate), or the app will refuse the connection. See
-[client/server compatibility](client-compatibility-policy.md) and the Android network-security
+[client/server compatibility](client-compatibility-policy.html) and the Android network-security
 posture in [MASVS-L1](security/masvs-l1.md).
 
 ## Verifying a build

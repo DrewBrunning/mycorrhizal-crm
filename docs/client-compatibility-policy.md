@@ -40,7 +40,7 @@ Concretely: shipping a new server version never, by itself, breaks an
 existing client. A client only stops working when the server has been
 deliberately configured to declare that client's version unsupported (see
 "Moving the floor" below) — and that declaration is itself a breaking change
-under [breaking-change-policy.md](breaking-change-policy.md) (MAINT-02, issue
+under [breaking-change-policy.md](breaking-change-policy.html) (MAINT-02, issue
 #491), not a side effect of a routine release.
 
 This is what makes additive API change free: a new endpoint, a new response
@@ -56,7 +56,7 @@ every client below it.
 ## Moving the floor
 
 Raising the minimum supported client version is already listed in
-[breaking-change-policy.md](breaking-change-policy.md) as one of the ways a
+[breaking-change-policy.md](breaking-change-policy.html) as one of the ways a
 change counts as breaking ("raises a supported-version minimum"). Concretely,
 moving the floor requires **all** of:
 
@@ -70,7 +70,7 @@ moving the floor requires **all** of:
    was not feasible — the same bar as any other MAINT-02 breaking change, not
    a weaker one because "it's just Android."
 3. **Treatment as a MAINT-02 event**, including the process
-   [breaking-change-policy.md](breaking-change-policy.md#process) already
+   [breaking-change-policy.md](breaking-change-policy.html#process) already
    requires: a deprecation window per
    [MAINT-01](https://github.com/DrewBrunning/mycorrhizal-crm/issues/490)
    (announced, with a replacement, for at least one minor release and never
@@ -99,7 +99,7 @@ surprise, it's the expected state of a normal self-hosted deployment. The
 client is responsible for checking what the server actually supports before
 depending on it, the same way the server is responsible for tolerating
 unknown fields from a client per
-[breaking-change-policy.md](breaking-change-policy.md#what-is-explicitly-not-breaking).
+[breaking-change-policy.md](breaking-change-policy.html#what-is-explicitly-not-breaking).
 A non-blocking notice that the server could be upgraded to unlock a feature
 is appropriate; a fatal error or a permanently broken screen is not.
 
@@ -206,7 +206,7 @@ against `min_client_version`.
 
 Everything above assumes clients and servers can agree on what a given API
 version guarantees. That promise is stated once, in
-[breaking-change-policy.md](breaking-change-policy.md#the-apiv1-promise) (MAINT-02,
+[breaking-change-policy.md](breaking-change-policy.html#the-apiv1-promise) (MAINT-02,
 issue #491): after `1.0.0`, within the `1.x` line, `/api/v1` does not remove,
 rename, narrow, or change the meaning of anything that shipped in `1.0.0` or a
 later `1.x` release, and a genuinely necessary break means `2.0.0`, not a
@@ -234,7 +234,7 @@ The matrix's lower bound is `v1.0.0`. Below it the range is not "an old server
 that still works" — the Android app refuses any server under its `v1.0.0`
 baseline with the blocking "server needs an upgrade" screen (see "Newer client,
 older server" above), and the server itself refuses to migrate a pre-`v1.0.0`
-database (the same `v1.0.0` floor; [upgrade compatibility](upgrade-compatibility.md),
+database (the same `v1.0.0` floor; [upgrade compatibility](upgrade-compatibility.html),
 issue #529; the floor moved from `v0.6.0` at the 1.0 major, issue #1170). So the
 compatibility promise is a promise for servers **at or above `v1.0.0`**, not for
 every server tag that was ever pushed.
@@ -292,7 +292,7 @@ stated above.
 
 ## Related
 
-- [Breaking-change policy](breaking-change-policy.md) (MAINT-02, issue #491) —
+- [Breaking-change policy](breaking-change-policy.html) (MAINT-02, issue #491) —
   defines what counts as breaking, including "raises a supported-version
   minimum"; this page is the client-facing elaboration of that one bullet.
 - [Supported runtime matrix](development/supported-runtime-matrix.md)
