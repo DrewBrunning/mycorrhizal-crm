@@ -1,6 +1,7 @@
 ---
 title: Per-release adversarial deltas
-nav_order: 9
+parent: Development
+nav_order: 19
 ---
 
 # Per-release adversarial deltas

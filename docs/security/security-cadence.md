@@ -1,6 +1,7 @@
 ---
 title: Security stewardship cadence
-nav_order: 21
+parent: Development
+nav_order: 18
 ---
 
 # Security stewardship cadence

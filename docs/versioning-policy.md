@@ -1,6 +1,7 @@
 ---
 title: Versioning policy
-nav_order: 12
+parent: Releases
+nav_order: 3
 ---
 
 # Versioning policy

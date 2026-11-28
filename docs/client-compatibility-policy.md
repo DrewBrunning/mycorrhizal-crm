@@ -1,6 +1,7 @@
 ---
 title: Client/Server Compatibility Policy
-nav_order: 19
+parent: Reference
+nav_order: 6
 ---
 
 # Client/server compatibility policy

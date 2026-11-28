@@ -1,7 +1,7 @@
 ---
 title: CardDAV Sync
-nav_order: 4
-has_children: false
+parent: Integrations
+nav_order: 1
 ---
 
 # Contact Sync (CardDAV)

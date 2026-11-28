@@ -1,6 +1,7 @@
 ---
 title: Android app
-nav_order: 3
+parent: Getting Started
+nav_order: 1
 ---
 
 # Android app

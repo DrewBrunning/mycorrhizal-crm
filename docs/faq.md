@@ -1,7 +1,7 @@
 ---
 title: FAQ & Troubleshooting
-nav_order: 11
-has_children: false
+parent: Reference
+nav_order: 1
 ---
 
 # FAQ & Troubleshooting

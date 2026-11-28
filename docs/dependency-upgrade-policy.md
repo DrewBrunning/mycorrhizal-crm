@@ -1,6 +1,7 @@
 ---
 title: Dependency Upgrade Policy
-nav_order: 18
+parent: Development
+nav_order: 16
 ---
 
 # Dependency upgrade policy

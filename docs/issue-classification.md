@@ -1,6 +1,7 @@
 ---
 title: Issue Classification
-nav_order: 24
+parent: Development
+nav_order: 17
 ---
 
 # Issue classification

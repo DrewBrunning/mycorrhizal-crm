@@ -1,6 +1,7 @@
 ---
 title: Integrations (ownership & diagnostics)
-nav_order: 21
+parent: Integrations
+nav_order: 4
 ---
 
 # Integrations: ownership, diagnostics, and what breaks

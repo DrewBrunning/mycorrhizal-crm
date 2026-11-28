@@ -1,6 +1,7 @@
 ---
 title: Changelog policy
-nav_order: 13
+parent: Development
+nav_order: 14
 ---
 
 # Changelog policy
@@ -41,6 +42,13 @@ There are two records, with different audiences:
    exists, else `[Unreleased]`. `promote-rc.yml` publishes the RC commit's
    `[X.Y.Z]` section and refuses to promote without one, so assemble the
    fragments and rename `[Unreleased]` before the last RC.
+
+The same `CHANGELOG.md` is also published as the **Changelog** page of the
+documentation site. `docs.yml` runs `cd backend && go run ./cmd/gensitechangelog`
+at build time, which writes the gitignored `changelog.md` page into the docs folder (relative links
+are rewritten for the site), and it redeploys whenever a merge to `main` changes
+`CHANGELOG.md`, so the `[Unreleased]` section is public as soon as it is written.
+Never edit the generated page.
 
 GitHub's generated "What's Changed" list and the harvest of `## Upgrade notes`
 blocks from PR bodies ([#2242](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2242))

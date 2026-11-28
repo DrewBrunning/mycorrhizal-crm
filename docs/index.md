@@ -15,46 +15,21 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - **Relationship Tracking** - Map connections between contacts
 - **Activities & Notes** - Log meetings, calls, and personal notes
 - **Reminders** - Set recurring reminders, delivered by email, ntfy, Gotify or browser push
-- **[Contact Map](map.md)** - See where your contacts live on a map (web and Android); optional per-address geocoding, with private and secret addresses kept out of exports, sync and shares
+- **[Contact Map](map.html)** - See where your contacts live on a map (web and Android); optional per-address geocoding, with private and secret addresses kept out of exports, sync and shares
 - **[GeoPulse integration](settings.md#geopulse-connection)** - Turn a day of your own location history into activity suggestions you confirm one by one
-- **[MCP server](mcp.md)** - Let an AI assistant read your CRM data through a read-only Model Context Protocol endpoint
+- **[MCP server](mcp.html)** - Let an AI assistant read your CRM data through a read-only Model Context Protocol endpoint
 - **Privacy-Focused** - Self-hosted, your data stays with you
 
-## Quick Links
+## Where to start
 
-- [GitHub Repository](https://github.com/DrewBrunning/mycorrhizal-crm)
-- [Privacy & data minimization](privacy.md)
-- [Supported versions — what this runs on, "supported" tiers, and the multi-user deployment shape](supported-versions.md)
-- [Android app — install channels, signing keys, and channel switching](android-app.md)
-- [Integrations — ownership, diagnostics, and what breaks if one is down](integration-ownership.md)
-- [Contact map — usage, address sensitivity, and the tile/geocoder operator settings](map.md)
-- [MCP server — endpoint, token, and read-only tools](mcp.md)
-- [Upgrade compatibility & supported-upgrade floor](upgrade-compatibility.md)
-- [Service-worker updates & the recovery page](service-worker-updates.md)
-- [Field compatibility matrix (DATA-01)](data-01-field-compatibility-matrix.md)
-- [Versioning policy (REL-01)](versioning-policy.md)
-- [Changelog policy (REL-05)](changelog-policy.md)
-- [Release-candidate process (REL-02)](release-candidate-process.md)
-- [Breaking-change policy (MAINT-02)](breaking-change-policy.md)
-- [Deprecation policy (MAINT-01)](deprecation-policy.md) · [deprecation register](deprecations.md)
-- [Dependency upgrade policy (COMPAT-03)](dependency-upgrade-policy.md)
-- [Client/server compatibility policy (ANDROID-01)](client-compatibility-policy.md)
-- [Issue classification — labels, priority, severity, readiness bar (MAINT-03)](issue-classification.md)
-- [PII inventory (store-by-store)](security/pii-inventory.md)
-- [Observability: logs, correlation IDs, and the system-event timeline](operations/observability.md)
-- [FAQ & troubleshooting](faq.md)
-- [Security checklist (OWASP ASVS L2 + API Security Top 10)](security/asvs-l2.md)
-- [Standing shares security review (ADR 0042, #1998)](security/standing-shares-review.md)
-- [Deployment security baseline (operator security boundary)](security/deployment-baseline.md)
-- [Incident response & credential rotation runbook](security/incident-response.md)
-- [Security stewardship cadence — rotation intervals, key custody, and periodic reviews (#955, #956)](security/security-cadence.md)
-- [Disaster recovery boundaries (what recovery guarantees exist, and where they stop)](operations/disaster-recovery.md)
-- [Migration recovery runbook](operations/migration-recovery.md)
-- [Rebuilding the full-text search index](operations/search-index.md)
-- [Repairing contacts deleted over CardDAV before #2249](operations/carddav-delete-repair.md)
-- [Derived-data inventory (what is denormalized, how it rebuilds)](derived-data-inventory.md)
-- [Verifying release artifacts](security/release-verification.md)
-- [Reproducible builds (REL-04)](security/reproducible-builds.md)
-- [Release gates — what must pass before a tag publishes (REL-03)](development/release-gates.md)
-- [Repository governance — branch/tag rulesets, required checks, commit signing (#508)](development/repo-governance.md)
+- **[Getting started](getting-started.html)** - install it, sign in, and add your first contacts, including the [Android app](android-app.html)
+- **[Using Mycorrhizal](using.html)** - [settings](settings.html), [reminders and notifications](notifications.html), the [contact map](map.html)
+- **[Self-hosting](self-hosting.html)** - [deploy](deployment.html), [upgrade](upgrade-compatibility.html) and check [supported versions](supported-versions.html), plus [disaster recovery boundaries](operations/disaster-recovery.md) for what a restore does and does not guarantee
+- **[Integrations](integrations.html)** - [CardDAV](carddav.html), the [API](api-reference.html), the [MCP server](mcp.html)
+- **[Releases](releases.html)** - the changelog (including what is coming in the next version) and the [deprecation register](deprecations.html)
+- **[Reference](reference.html)** - the [FAQ](faq.html), [privacy](privacy.html) and compatibility pages
 
+Contributors: see [Development](development.html) and the
+[GitHub repository](https://github.com/DrewBrunning/mycorrhizal-crm). Security checklists, ADRs,
+runbooks and the other engineering records live in the repository's
+[`docs/`](https://github.com/DrewBrunning/mycorrhizal-crm/tree/main/docs) folder.

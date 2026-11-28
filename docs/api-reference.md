@@ -1,7 +1,7 @@
 ---
 title: API Reference
-nav_order: 10
-has_children: false
+parent: Integrations
+nav_order: 3
 ---
 
 # API Reference

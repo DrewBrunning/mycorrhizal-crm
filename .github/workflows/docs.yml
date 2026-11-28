@@ -25,6 +25,11 @@ jobs:
           ruby-version: '3.3'
           bundler-cache: true
           working-directory: docs
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: backend/go.mod
+      - name: Generate the Changelog page from CHANGELOG.md
+        run: cd backend && go run ./cmd/gensitechangelog
       - id: pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
       - name: Build

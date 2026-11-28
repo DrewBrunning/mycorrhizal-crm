@@ -1,7 +1,7 @@
 ---
 title: MCP Server
-nav_order: 22
-has_children: false
+parent: Integrations
+nav_order: 2
 ---
 
 # MCP Server

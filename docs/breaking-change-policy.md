@@ -1,6 +1,7 @@
 ---
 title: Breaking-Change Policy
-nav_order: 15
+parent: Releases
+nav_order: 4
 ---
 
 # Breaking-change policy

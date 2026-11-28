@@ -1,7 +1,7 @@
 ---
 title: Notifications
-nav_order: 5
-has_children: false
+parent: Using Mycorrhizal
+nav_order: 2
 ---
 
 # Notifications

@@ -1,6 +1,7 @@
 ---
 title: Release-candidate process
-nav_order: 14
+parent: Development
+nav_order: 15
 ---
 
 # Release-candidate process
