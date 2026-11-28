@@ -23,7 +23,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 ## Where to start
 
 - **[Getting started](getting-started.html)** - install it, sign in, and add your first contacts, including the [Android app](android-app.html)
-- **[Using Mycorrhizal](using.html)** - [settings](settings.html), [reminders and notifications](notifications.html), the [contact map](map.html)
+- **[Using Mycorrhizal](using.html)** - [contacts](contacts.html), [importing](importing.html), [relationships](relationships.html), [activities and notes](activities-and-notes.html), [occasions and reminders](occasions.html), [notifications](notifications.html), [settings](settings.html), the [contact map](map.html)
 - **[Self-hosting](self-hosting.html)** - [deploy](deployment.html), [upgrade](upgrade-compatibility.html) and check [supported versions](supported-versions.html), plus [disaster recovery boundaries](operations/disaster-recovery.md) for what a restore does and does not guarantee
 - **[Integrations](integrations.html)** - [CardDAV](carddav.html), the [API](api-reference.html), the [MCP server](mcp.html)
 - **[Releases](releases.html)** - the changelog (including what is coming in the next version) and the [deprecation register](deprecations.html)
