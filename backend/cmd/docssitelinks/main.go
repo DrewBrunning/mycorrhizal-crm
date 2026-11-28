@@ -70,22 +70,15 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	defer func() { _ = root.Close() }()
 	pages, changed := 0, 0
-	err = filepath.WalkDir(*site, func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
+	err = fs.WalkDir(root.FS(), ".", func(rel string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(rel, ".html") {
 			return err
-		}
-		if d.IsDir() || !strings.HasSuffix(p, ".html") {
-			return nil
-		}
-		rel, err := filepath.Rel(*site, p)
-		if err != nil {
-			return err // # pragma: no cover — p comes from walking site, so it is always under it
 		}
 		body, err := root.ReadFile(rel)
 		if err != nil {
-			return err // # pragma: no cover — the file was listed a moment ago; a racing deletion is not a normal state
+			return err
 		}
-		out, n := r.rewrite(string(body), filepath.ToSlash(rel))
+		out, n := r.rewrite(string(body), rel)
 		pages++
 		if n == 0 {
 			return nil

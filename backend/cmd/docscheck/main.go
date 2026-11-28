@@ -521,22 +521,22 @@ func hasFrontMatter(body []byte) bool {
 func checkPublishedMdLinks(root string) []string {
 	var findings []string
 	docsDir := filepath.Join(root, "docs")
-	published := map[string]bool{}
+	// published maps each page with front matter to its body, so the second
+	// pass reads nothing again.
+	published := map[string][]byte{}
 	files := listMarkdown(docsDir)
 	for _, rel := range files {
-		body, err := os.ReadFile(filepath.Join(docsDir, rel)) // #nosec G304 -- rel comes from the filepath.Walk over docs/, never request input
+		abs := filepath.Clean(filepath.Join(docsDir, rel))
+		body, err := os.ReadFile(abs) // #nosec G304 -- abs comes from the filepath.Walk over docs/, never request input
 		if err == nil && hasFrontMatter(body) {
-			published[filepath.Clean(filepath.Join(docsDir, rel))] = true
+			published[abs] = body
 		}
 	}
 	for _, rel := range files {
 		abs := filepath.Clean(filepath.Join(docsDir, rel))
-		if !published[abs] {
+		body, ok := published[abs]
+		if !ok {
 			continue
-		}
-		body, err := os.ReadFile(abs) // #nosec G304 -- abs comes from the filepath.Walk over docs/, never request input
-		if err != nil {
-			continue // # pragma: no cover — the file was read a moment ago; a racing deletion is not a normal state
 		}
 		for _, link := range mdref.ExtractLinks(string(body)) {
 			pathPart, frag := mdref.SplitFragment(link.Dest)
@@ -544,7 +544,7 @@ func checkPublishedMdLinks(root string) []string {
 				continue
 			}
 			target := filepath.Clean(filepath.Join(filepath.Dir(abs), filepath.FromSlash(pathPart)))
-			if !published[target] {
+			if _, ok := published[target]; !ok {
 				continue
 			}
 			fix := strings.TrimSuffix(pathPart, ".md") + ".html"

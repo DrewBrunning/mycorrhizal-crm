@@ -65,6 +65,7 @@ func TestRewriteLinks(t *testing.T) {
 		{"settings.html", "#two-factor-authentication", "#two-factor-authentication"},
 		{"settings.html", "https://example.com/a.md", "https://example.com/a.md"},
 		{"settings.html", "mailto:a@example.com", "mailto:a@example.com"},
+		{"settings.html", "?q=1", "?q=1"},
 		{"settings.html", "/mycorrhizal-crm/next/settings.html", "/mycorrhizal-crm/next/settings.html"},
 	}
 	for _, tc := range cases {
@@ -111,6 +112,43 @@ func TestRunRewritesEveryPageInPlace(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "3 link(s)") {
 		t.Fatalf("summary missing the count: %q", stdout.String())
+	}
+}
+
+func TestRunLeavesCleanPagesUntouched(t *testing.T) {
+	site, src := fixture(t)
+	clean := `<a href="deployment.html">d</a>`
+	put(t, site, "settings.html", clean)
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"-site", site, "-src", src, "-ref", "main"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	if got, _ := os.ReadFile(filepath.Join(site, "settings.html")); string(got) != clean {
+		t.Fatalf("clean page changed: %s", got)
+	}
+	if !strings.Contains(stdout.String(), "rewrote 0 link(s)") {
+		t.Fatalf("summary: %q", stdout.String())
+	}
+}
+
+// A page that cannot be read fails the build rather than shipping its dead
+// links unnoticed.
+func TestRunFailsOnAnUnreadablePage(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root reads a mode-000 file") // # pragma: no cover — CI and local runs are unprivileged
+	}
+	site, src := fixture(t)
+	p := filepath.Join(site, "settings.html")
+	if err := os.Chmod(p, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(p, 0o600) })
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"-site", site, "-src", src, "-ref", "main"}, &stdout, &stderr); code != 2 {
+		t.Fatalf("exit %d, want 2", code)
+	}
+	if !strings.Contains(stderr.String(), "settings.html") {
+		t.Fatalf("stderr does not name the page: %q", stderr.String())
 	}
 }
 
