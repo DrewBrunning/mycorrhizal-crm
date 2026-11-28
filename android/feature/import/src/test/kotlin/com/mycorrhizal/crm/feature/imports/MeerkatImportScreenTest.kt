@@ -230,7 +230,7 @@ class MeerkatImportScreenTest {
             )
         )
         composeTestRule.onNodeWithTag("meerkat-import-untested")
-            .assertTextContains("looks older than v1.5", substring = true)
+            .assertTextContains("looks older than v1.0", substring = true)
     }
 
     @Test

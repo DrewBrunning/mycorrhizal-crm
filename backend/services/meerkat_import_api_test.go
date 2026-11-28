@@ -104,6 +104,54 @@ func TestMeerkatAPI_FullFlow_TokenWithPhotos(t *testing.T) {
 	assert.Zero(t, srv.Logouts(), "an API token belongs to the user; it is never logged out")
 }
 
+// TestMeerkatAPI_FullFlow_PreV15Shape is issue #2084's done-when: a Meerkat
+// serving the v1.0-v1.4 contact shape is supported (no "Try anyway") and a
+// full import round-trips, the scalar email/phone/address included.
+func TestMeerkatAPI_FullFlow_PreV15Shape(t *testing.T) {
+	db := setupSourceImportTestDB(t)
+	user := createSourceImportUser(t, db)
+	srv := meerkatapifake.New(t)
+	srv.Contacts = []map[string]any{meerkatapifake.LegacyContact(1, "Olga"), meerkatapifake.LegacyContact(2, "Pavel")}
+	srv.Contacts[0]["relationships"] = []map[string]any{{"ID": 5, "name": "Pavel", "type": "Friend", "contact_id": 1, "related_contact_id": 2}}
+	srv.Contacts[0]["notes"] = []map[string]any{{"ID": 9, "content": "met in 2019", "date": "2019-05-06T07:08:09Z", "contact_id": 1}}
+	for _, c := range srv.Contacts {
+		for _, k := range []string{"emails", "phones", "addresses", "urls", "impps", "organization", "anniversary"} {
+			require.NotContains(t, c, k, "LegacyContact serves the pre-v1.5 shape")
+		}
+	}
+	mgr := NewMeerkatImportManager()
+
+	resp, appErr := mgr.Connect(context.Background(), user.ID, tokenReq(srv), apiCfg(t))
+	require.Nil(t, appErr)
+	assert.True(t, resp.Version.Supported)
+	assert.Equal(t, meerkatapi.GenerationV10toV14, resp.Version.Generation)
+	assert.Empty(t, resp.Version.ReasonCode)
+	assert.Equal(t, 2, resp.Totals.Contacts)
+
+	// Supported: the fetch starts without accept_untested.
+	require.Nil(t, mgr.StartFetch(db, user.ID, models.MeerkatFetchRequest{SessionID: resp.SessionID}, meerkatTestLogger()))
+	waitMeerkatPhase(t, mgr, user.ID, resp.SessionID, models.SourceImportPhaseReady)
+	preview, appErr := mgr.Preview(user.ID, resp.SessionID)
+	require.Nil(t, appErr)
+	require.Len(t, preview.Rows, 2)
+
+	actions := make([]models.RowImportAction, len(preview.Rows))
+	for i, row := range preview.Rows {
+		actions[i] = models.RowImportAction{RowIndex: row.RowIndex, Action: "add"}
+	}
+	st := confirmMeerkatAndWait(t, mgr, db, user.ID, resp.SessionID, actions, models.SourceImportPhaseDone)
+	require.NotNil(t, st.Result)
+	assert.Equal(t, 2, st.Result.Created)
+	assert.Equal(t, 1, st.Result.RelationshipsCreated)
+	assert.Equal(t, 1, st.Result.NotesCreated)
+
+	var olga models.Contact
+	require.NoError(t, db.Where("user_id = ? AND firstname = ?", user.ID, "Olga").First(&olga).Error)
+	assert.Equal(t, "olga@example.com", olga.Email, "the scalar email lands (mapper fallback)")
+	assert.NotEmpty(t, olga.Phone, "the scalar phone lands (mapper fallback)")
+	assert.Equal(t, meerkatapifake.LegacyAddress, olga.Address, "the scalar address lands (mapper fallback)")
+}
+
 func TestMeerkatAPI_PasswordLoginIsLoggedOutWhenDone(t *testing.T) {
 	db := setupSourceImportTestDB(t)
 	user := createSourceImportUser(t, db)
