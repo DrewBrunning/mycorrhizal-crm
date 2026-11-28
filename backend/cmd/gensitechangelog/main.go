@@ -3,10 +3,14 @@
 //
 // CHANGELOG.md stays the single source of truth: the changelog gates, the
 // release assembly and the GitHub Release body all read the root file. The
-// site page is derived from it at build time (docs.yml) and is gitignored, so
+// site page is derived from it at build time (scripts/build-docs-versions.sh,
+// once per published version) and is gitignored, so
 // it can never drift and no release step has to regenerate it.
 //
-// Usage (from backend/): go run ./cmd/gensitechangelog [-in ../CHANGELOG.md] [-out ../docs/changelog.md]
+// Usage (from backend/): go run ./cmd/gensitechangelog [-in ../CHANGELOG.md] [-out ../docs/changelog.md] [-ref main]
+//
+// -ref is the git ref repository links point at: a release's docs are built
+// from its tag (scripts/build-docs-versions.sh), so its links name that tag.
 //
 // Exit status 0: page written. 2: bad usage, unreadable input or write failure.
 package main
@@ -20,7 +24,7 @@ import (
 	"strings"
 )
 
-const repoBlobBase = "https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/"
+const repoBlobPrefix = "https://github.com/DrewBrunning/mycorrhizal-crm/blob/"
 
 func main() {
 	os.Exit(run(os.Args[1:], os.Stderr)) // # pragma: no cover — os.Exit ends the process; tests drive run()
@@ -31,7 +35,12 @@ func run(args []string, stderr io.Writer) int {
 	fs.SetOutput(stderr)
 	in := fs.String("in", "../CHANGELOG.md", "path to CHANGELOG.md")
 	out := fs.String("out", "../docs/changelog.md", "path of the generated site page")
+	ref := fs.String("ref", "main", "git ref (branch or tag) repository links point at")
 	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if !refRe.MatchString(*ref) || strings.Contains(*ref, "..") {
+		fmt.Fprintf(stderr, "gensitechangelog: -ref %q is not a branch or tag name\n", *ref)
 		return 2
 	}
 	data, err := os.ReadFile(*in)
@@ -39,7 +48,7 @@ func run(args []string, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "gensitechangelog:", err)
 		return 2
 	}
-	body, err := page(string(data))
+	body, err := pageAt(string(data), *ref)
 	if err != nil {
 		fmt.Fprintln(stderr, "gensitechangelog:", err)
 		return 2
@@ -63,35 +72,50 @@ description: What changed in each release of Mycorrhizal CRM, including upgrade 
 
 `
 
-// page renders changelog (the root CHANGELOG.md) as a just-the-docs page.
-func page(changelog string) (string, error) {
-	if strings.Contains(changelog, "{% endraw %}") {
-		return "", fmt.Errorf("CHANGELOG.md contains {%% endraw %%}, which would end the Liquid escape early")
+// page renders changelog (the root CHANGELOG.md) as a just-the-docs page whose
+// repository links point at main.
+func page(changelog string) (string, error) { return pageAt(changelog, "main") }
+
+// pageAt is page with repository links pointing at ref.
+func pageAt(changelog, ref string) (string, error) {
+	if endrawRe.MatchString(changelog) {
+		return "", fmt.Errorf("CHANGELOG.md contains an endraw tag, which would end the Liquid escape early")
 	}
-	body := siteLinks(strings.TrimSpace(changelog))
+	body := siteLinks(strings.TrimSpace(changelog), repoBlobPrefix+ref+"/")
 	return frontMatter + "{% raw %}\n" + body + "\n{% endraw %}\n", nil
 }
 
 var (
 	linkRe   = regexp.MustCompile(`\]\(([^)\s]+)\)`)
 	schemeRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*:`)
+	// Liquid allows whitespace control ({%-, -%}) and any spacing in a tag.
+	endrawRe = regexp.MustCompile(`\{%-?\s*endraw\s*-?%\}`)
+	refRe    = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._/-]*$`)
 )
 
 // siteLinks rewrites CHANGELOG.md's repository-relative links for a page that
 // lives in docs/: docs/X.md becomes X.html (a plain Jekyll build leaves .md
-// links as they are, which 404 on the site), any other repository path points at GitHub
-// (it is not on the site), and absolute links and "#anchor" links are kept.
-func siteLinks(md string) string {
+// links as they are, which 404 on the site), any other repository path (a
+// directory or a non-page file under docs/ included) points at blobBase on
+// GitHub, and absolute links and "#anchor" links are kept.
+func siteLinks(md, blobBase string) string {
 	return linkRe.ReplaceAllStringFunc(md, func(m string) string {
 		target := linkRe.FindStringSubmatch(m)[1]
 		switch {
 		case schemeRe.MatchString(target), strings.HasPrefix(target, "#"):
 			return m
-		case strings.HasPrefix(target, "docs/"):
+		case strings.HasPrefix(target, "docs/") && isPage(target):
 			return "](" + htmlPage(strings.TrimPrefix(target, "docs/")) + ")"
 		}
-		return "](" + repoBlobBase + strings.TrimPrefix(target, "/") + ")"
+		return "](" + blobBase + strings.TrimPrefix(target, "/") + ")"
 	})
+}
+
+// isPage reports whether a link target (with an optional #anchor) is a
+// Markdown page, which the site renders as .html.
+func isPage(target string) bool {
+	path, _, _ := strings.Cut(target, "#")
+	return strings.HasSuffix(path, ".md")
 }
 
 // htmlPage turns "dir/page.md#anchor" into "dir/page.html#anchor".

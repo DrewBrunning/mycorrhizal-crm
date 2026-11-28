@@ -100,3 +100,44 @@ func TestRunFailurePaths(t *testing.T) {
 	assert.Equal(t, 2, run([]string{"-in", good, "-out", filepath.Join(dir, "no-such-dir", "changelog.md")}, &stderr))
 	assert.Contains(t, stderr.String(), "gensitechangelog:")
 }
+
+// Liquid accepts whitespace control and no spaces inside a tag, so every
+// spelling of endraw would end the escape early and run the rest of the
+// changelog as Liquid at build time.
+func TestPageRefusesEveryEndrawSpelling(t *testing.T) {
+	for _, tag := range []string{"{%endraw%}", "{%- endraw -%}", "{% endraw -%}", "{%-endraw%}", "{%  endraw  %}"} {
+		_, err := page("# Changelog\n\n" + tag + "\n")
+		assert.Error(t, err, "%q would end the Liquid escape early", tag)
+	}
+	_, err := page("# Changelog\n\nThe `endraw` tag and {% raw %} are fine as text.\n")
+	assert.NoError(t, err)
+}
+
+// Only Markdown pages become .html site pages. A directory or a non-page file
+// under docs/ has no such page, so it points at the repository instead of a
+// made-up "dir/.html" or "file.vcf.html" that 404s.
+func TestPageLinksNonPageDocsPathsToTheRepository(t *testing.T) {
+	out, err := page("- [specs](docs/specs/) and a [card](docs/golden-fixtures/a.vcf#top).\n")
+	require.NoError(t, err)
+	assert.Contains(t, out, "](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/docs/specs/)")
+	assert.Contains(t, out, "](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/docs/golden-fixtures/a.vcf#top)")
+	assert.NotContains(t, out, ".html")
+}
+
+// A release's docs are built from its tag, so its changelog's repository links
+// point at that tag: a file moved or deleted on main since then still opens.
+func TestRunRefPointsRepositoryLinksAtTheRelease(t *testing.T) {
+	dir := t.TempDir()
+	in := filepath.Join(dir, "CHANGELOG.md")
+	outPath := filepath.Join(dir, "changelog.md")
+	require.NoError(t, os.WriteFile(in, []byte(sample), 0o644))
+	var stderr bytes.Buffer
+	require.Equal(t, 0, run([]string{"-in", in, "-out", outPath, "-ref", "v1.7.0"}, &stderr), stderr.String())
+	got, err := os.ReadFile(outPath)
+	require.NoError(t, err)
+	assert.Contains(t, string(got), "](https://github.com/DrewBrunning/mycorrhizal-crm/blob/v1.7.0/backend/main.go)")
+	assert.NotContains(t, string(got), "/blob/main/")
+
+	stderr.Reset()
+	assert.Equal(t, 2, run([]string{"-in", in, "-out", outPath, "-ref", "../evil"}, &stderr), "a ref is a tag or branch name, not a path")
+}
