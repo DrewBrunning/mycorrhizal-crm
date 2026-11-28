@@ -1,0 +1,1 @@
+- **Documentation for each release** ([#2244](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2244)): the docs site now has a version switcher, so you can read the docs for the release you run, and a "next" version showing what is coming, including the unreleased changelog.

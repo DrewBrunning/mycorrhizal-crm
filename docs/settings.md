@@ -1,7 +1,7 @@
 ---
 title: User Settings
 parent: Using Mycorrhizal
-nav_order: 1
+nav_order: 6
 ---
 
 # User Settings

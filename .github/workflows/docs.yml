@@ -1,11 +1,25 @@
-name: Deploy docs to GitHub Pages                                                                                                                                   
-                                                                                                                                                                    
-on:                                                                                                                                                                 
-  push:                                                                                                                                                             
-    branches: ["main"]                                                                                                                                              
-    paths: ["docs/**"]                                                                                                                                              
+name: Deploy docs to GitHub Pages
+
+# Versioned documentation site (issue #2244). Each run rebuilds every published
+# version and deploys them as one Pages artifact:
+#   /          the newest release, built from its tag
+#   /X.Y/      older releases (newest patch of each minor), built from their tags
+#   /next/     the unreleased docs on main
+# scripts/build-docs-versions.sh does the work; cmd/docsversions picks the tags.
+on:
+  push:
+    branches: ["main"]
+    # CHANGELOG.md is published as the site Changelog page, so a merge that
+    # changes it redeploys the site and unreleased entries are visible at once.
+    paths: ["docs/**", "CHANGELOG.md", "scripts/build-docs-versions.sh", "scripts/docs-release-tags.sh"]
+  # A final release publishes its docs as the new root: release.yml and
+  # promote-rc.yml dispatch this workflow on main once the tag exists. There is
+  # deliberately no `push: tags` trigger: the github-pages environment only
+  # deploys from main (a tag run would be refused), and promote-rc.yml pushes
+  # the final tag with GITHUB_TOKEN, which starts no workflow at all
+  # (internal/releaseworkflow CheckDocsPublish pins this).
   workflow_dispatch:
-                                                                                                                                                                    
+
 permissions:
   contents: read
 
@@ -17,8 +31,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # Always main: it holds the build script, the switcher and the /next/
+      # docs. fetch-depth 0 brings every tag and the release/* branches, which
+      # scripts/docs-release-tags.sh needs to tell reviewed tags from others.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: main
+          fetch-depth: 0
           persist-credentials: false
       - uses: ruby/setup-ruby@20eb24b0d509e2b9ed9b6d42ddfeb992915e0564 # v1.341.0
         with:
@@ -28,20 +47,17 @@ jobs:
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: backend/go.mod
-      - name: Generate the Changelog page from CHANGELOG.md
-        run: cd backend && go run ./cmd/gensitechangelog
       - id: pages
         uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
-      - name: Build
+      - name: Build every docs version
         # base_path via env rather than inline ${{ }} (zizmor template-injection).
-        run: bundle exec jekyll build --baseurl "$PAGES_BASE_PATH"
-        working-directory: docs
+        run: scripts/build-docs-versions.sh docs-site
         env:
           PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
-          JEKYLL_ENV: production
+          DOCS_NEXT_REF: main
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          path: docs/_site/
+          path: docs-site/
 
   deploy:
     needs: build

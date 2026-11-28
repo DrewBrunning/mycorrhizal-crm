@@ -444,3 +444,19 @@ jobs:
             echo
             echo "Confirm Obtainium now offers \`${FINAL_TAG}\`, not the RC."
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Issue #2244: publish the promoted release's docs as the docs-site root.
+  # The final tag is pushed with GITHUB_TOKEN, which starts no workflow, and
+  # the github-pages environment deploys only from main, so dispatch docs.yml
+  # on main (a GITHUB_TOKEN dispatch does start a run); it reads the new tag.
+  publish-docs:
+    needs: promote
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Dispatch docs.yml on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run docs.yml --ref main --repo "$GITHUB_REPOSITORY"
