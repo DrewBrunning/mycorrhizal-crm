@@ -1,3 +1,11 @@
+---
+title: Account bundle and CSV backup entities
+parent: Source imports
+grand_parent: Reference
+nav_order: 3
+description: Which entities the account bundle and CSV backup carry.
+---
+
 # Entities in the account bundle and CSV backup (issue #2300)
 
 Reusable organisations, places and pets ([ADR 0043](../adrs/0043-reusable-entities.md)) travel in the

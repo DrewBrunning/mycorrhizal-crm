@@ -1,3 +1,10 @@
+---
+title: Rebuilding the search index
+parent: Self-hosting
+nav_order: 7
+description: Rebuild the full-text search index.
+---
+
 # Rebuilding the full-text search index
 
 Full-text search (`GET /api/v1/search`, and `GET /contacts?search=`) is served

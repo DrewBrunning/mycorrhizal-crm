@@ -1,3 +1,10 @@
+---
+title: Derived-data inventory
+parent: Self-hosting
+nav_order: 11
+description: What is denormalized and how it rebuilds.
+---
+
 # Derived-data inventory
 
 Every piece of derived, denormalized, cached, or otherwise non-canonical state this backend keeps,
@@ -7,13 +14,13 @@ rebuild path and no consistency check" ([issue #497](https://github.com/DrewBrun
 FTS gets its own three-ticket treatment ([#461](https://github.com/DrewBrunning/mycorrhizal-crm/issues/461)
 rebuild, [#462](https://github.com/DrewBrunning/mycorrhizal-crm/issues/462) consistency,
 [#463](https://github.com/DrewBrunning/mycorrhizal-crm/issues/463) mutation-path tests) and a dedicated
-runbook ([`operations/search-index.md`](operations/search-index.md)); this doc generalizes that shape to
+runbook ([`operations/search-index.md`](operations/search-index.html)); this doc generalizes that shape to
 everything else.
 
 | | |
 |---|---|
 | **Last updated** | 2026-09-02 ([#497](https://github.com/DrewBrunning/mycorrhizal-crm/issues/497)) |
-| **Companion docs** | [`adrs/0012-canonical-database-invariants.md`](adrs/0012-canonical-database-invariants.md) (INV-A5 / INV-D8 / INV-D9 — the invariants this state must satisfy), [`operations/search-index.md`](operations/search-index.md), [`operations/disaster-recovery.md`](operations/disaster-recovery.md) (post-restore rebuild steps), [`security/data-retention-lifecycle.md`](security/data-retention-lifecycle.md) (where each copy lives) |
+| **Companion docs** | [`adrs/0012-canonical-database-invariants.md`](adrs/0012-canonical-database-invariants.md) (INV-A5 / INV-D8 / INV-D9 — the invariants this state must satisfy), [`operations/search-index.md`](operations/search-index.html), [`operations/disaster-recovery.md`](operations/disaster-recovery.html) (post-restore rebuild steps), [`security/data-retention-lifecycle.md`](security/data-retention-lifecycle.md) (where each copy lives) |
 | **Rule** | Adding a persisted derived artifact, a new client-side cache, or a new external sync target means adding a row here — and a rebuild path plus a consistency probe, or a written reason it needs neither — in the same PR. Same discipline as ADR 0004's delete cascade and the retention-lifecycle doc. |
 
 The four questions each row answers (from the issue): **derived from what**, **what maintains it**,
@@ -119,7 +126,7 @@ The trigger-bypassing situations that leave section 1 state stale, and the follo
 
 | Situation | Follow-up |
 |---|---|
-| **Restore from backup** ([#453](https://github.com/DrewBrunning/mycorrhizal-crm/issues/453)) | Run **both** rebuilds — `POST /admin/search/rebuild` **and** `POST /admin/contacts/rebuild-derived` (or `cmd/backfill-search-index` + `cmd/backfill-derived-columns`), then `mycorrhizal doctor`. Documented as a step in [`operations/disaster-recovery.md`](operations/disaster-recovery.md). A `VACUUM INTO` snapshot is transactionally consistent, so in practice these are no-ops — but a snapshot taken from a database that was itself mid-repair might not be, and `doctor` proves it either way. |
+| **Restore from backup** ([#453](https://github.com/DrewBrunning/mycorrhizal-crm/issues/453)) | Run **both** rebuilds — `POST /admin/search/rebuild` **and** `POST /admin/contacts/rebuild-derived` (or `cmd/backfill-search-index` + `cmd/backfill-derived-columns`), then `mycorrhizal doctor`. Documented as a step in [`operations/disaster-recovery.md`](operations/disaster-recovery.html). A `VACUUM INTO` snapshot is transactionally consistent, so in practice these are no-ops — but a snapshot taken from a database that was itself mid-repair might not be, and `doctor` proves it either way. |
 | **Raw-SQL migration touching a base column** | The migration re-derives inline (as `000010` / `000020` / `000021` / `000022` do) **or** the release notes name the rebuild command to run on upgrade. The migration author owns this; `checkDerivedContactColumns` / `checkDerivedIndexes` catch an omission on the next integrity sweep. |
 | **Bulk import** | The source-import framework creates contacts through the ordinary GORM path, so `BeforeSave` and the FTS triggers both fire — no rebuild needed. A future import that INSERTs rows directly must call both rebuilds and say so. |
 

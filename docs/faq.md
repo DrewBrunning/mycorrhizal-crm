@@ -13,22 +13,22 @@ page that names the symptom and the fix.
 
 - **You are not sure where to look** — run the one-pass diagnostics sweep,
   `GET /admin/diagnostics` (admin-only), described in
-  [Observability](operations/observability.md).
+  [Observability](operations/observability.html).
 - **The server will not start, or refuses to migrate a database** —
-  [Migration recovery runbook](operations/migration-recovery.md) and
+  [Migration recovery runbook](operations/migration-recovery.html) and
   [Upgrade compatibility](upgrade-compatibility.md) (the below-floor and
   dirty-schema refusals).
 - **You need to restore from a backup, or recover after disk failure or
-  corruption** — [Disaster recovery boundaries](operations/disaster-recovery.md).
+  corruption** — [Disaster recovery boundaries](operations/disaster-recovery.html).
 - **An integration is failing** (CardDAV/CalDAV sync, Immich, Paperless,
   Seafile, WebDAV, email, notifications, OIDC) — the per-integration symptoms
   and diagnostic path are in
   [Integrations: ownership and diagnostics](integration-ownership.md).
 - **Search results are wrong or missing after a restore or import** —
-  [Rebuilding the full-text search index](operations/search-index.md).
+  [Rebuilding the full-text search index](operations/search-index.html).
 - **A client shows a stale app or a version error** —
   [Client/server compatibility policy](client-compatibility-policy.md) and
-  [Service-worker updates](service-worker-updates.md).
+  [Service-worker updates](service-worker-updates.html).
 
 ## Common configuration problems
 

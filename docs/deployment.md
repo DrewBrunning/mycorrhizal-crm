@@ -162,7 +162,7 @@ first. The server does not call Google, so it cannot tell you whether Google can
 
 The [contact map](map.md) works out of the box: it loads tiles from the free hosted OpenFreeMap service, and geocoding
 ("Find coordinates") is off. Three instance-wide settings change that; each needs a restart, and the defaults and
-validation rules are in the [configuration reference](configuration-reference.md).
+validation rules are in the [configuration reference](configuration-reference.html).
 
 | Variable | Default | Effect |
 |---|---|---|
@@ -323,7 +323,7 @@ whoever wires up probes (DEPLOY-03, issue #452):
 - **A probe grace period shorter than the longest migration is an outage.** If a
   `livenessProbe` (or Docker `HEALTHCHECK` feeding a restart policy) starts failing during a long
   startup migration, the orchestrator kills the container mid-migration — which then recovers via
-  the [dirty-schema path](operations/migration-recovery.md#dirty-schema), or crash-loops if the
+  the [dirty-schema path](operations/migration-recovery.html#dirty-schema), or crash-loops if the
   probe keeps firing. Size the grace period from the measured migration durations in
   [Scale testing → Recorded resource requirements](development/scale-testing.md#recorded-resource-requirements):
   Kubernetes `startupProbe` (`failureThreshold × periodSeconds` ≥ the longest supported upgrade on
@@ -556,7 +556,7 @@ backup is caught before it replaces the live instance (a legacy unsigned set mus
      -H "Authorization: Bearer <admin token>"
    # → {"message":"Search index rebuilt","indexed":{"contacts":…,"notes":…,"activities":…}}
    ```
-   See [Rebuilding the full-text search index](operations/search-index.md) for the no-HTTP path and
+   See [Rebuilding the full-text search index](operations/search-index.html) for the no-HTTP path and
    the guarantees.
 4b. **Rebuild the denormalized contact columns.** Same reasoning for the flat `contacts.*` projection,
    `sort_name`, `addresses_flat` and `phones_normalized` — a cross-version restore's startup
@@ -567,7 +567,7 @@ backup is caught before it replaces the live instance (a legacy unsigned set mus
    # → {"message":"Derived contact columns rebuilt","contacts_scanned":…,"contacts_updated":0,…}
    ```
    No-HTTP path: `go run ./cmd/backfill-derived-columns`. Full catalogue of derived state:
-   [Derived-data inventory](derived-data-inventory.md).
+   [Derived-data inventory](derived-data-inventory.html).
 5. **Verify** — a restore that has never been tested is a hypothesis. Log in and check that a known
    contact, a recent note, and a reminder are present; run a search for a contact you know exists;
    for the file directories, open a contact's photo, a gallery or note photo, and download an attachment. The

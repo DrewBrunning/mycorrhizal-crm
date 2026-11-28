@@ -405,7 +405,7 @@ Passkeys appear in the app only when **all** of these hold:
 - you are signed in to a **remote server** (the on-device local profile has no domain, so never);
 - that server's operator has turned on native Android passkeys — the server then reports the
   `webauthn_android` capability on `/health` (see `WEBAUTHN_ANDROID_ENABLED` in the
-  [configuration reference](configuration-reference.md)); this only works on a publicly reachable
+  [configuration reference](configuration-reference.html)); this only works on a publicly reachable
   HTTPS instance whose domain Google can fetch `/.well-known/assetlinks.json` from;
 - the device can run Credential Manager: Android 14 or newer, or — on Android 8–13 — the
   Play Store and GitHub (Obtainium) builds, which bundle the Google Password Manager provider. The

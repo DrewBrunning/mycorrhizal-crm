@@ -115,6 +115,6 @@ func TestDisasterRecoveryDocStatesTheBoundaries(t *testing.T) {
 
 	index, err := os.ReadFile(filepath.Join(root, "docs", "index.md"))
 	require.NoError(t, err)
-	assert.Contains(t, string(index), "operations/disaster-recovery.md",
+	assert.Contains(t, string(index), "operations/disaster-recovery.html",
 		"docs/index.md must link the disaster-recovery boundaries document")
 }

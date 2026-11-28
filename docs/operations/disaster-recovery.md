@@ -1,3 +1,10 @@
+---
+title: Disaster recovery boundaries
+parent: Self-hosting
+nav_order: 5
+description: What recovery guarantees exist and where they stop.
+---
+
 # Disaster recovery boundaries
 
 This document states **what recovery guarantees Mycorrhizal gives, and where they
@@ -209,7 +216,7 @@ migration began and did not finish — the process was killed, the container
 OOM-killed, the host lost power).
 
 This scenario is owned in full by **`docs/operations/migration-recovery.md` →
-[Dirty schema](migration-recovery.md#dirty-schema)**. In summary:
+[Dirty schema](migration-recovery.html#dirty-schema)**. In summary:
 
 **Recoverable:** everything, from the automatic pre-migration snapshot taken
 before this upgrade began. **Lost:** nothing beyond that snapshot's point (RPO 0
@@ -224,7 +231,7 @@ where you have verified the schema actually matches a known version.
 Release N+1 booted, migrations ran, and now N+1 is misbehaving. You want N back.
 
 This scenario is owned in full by **`docs/operations/migration-recovery.md` →
-[Rolling back a bad release](migration-recovery.md#rolling-back-a-bad-release-n1--n)**.
+[Rolling back a bad release](migration-recovery.html#rolling-back-a-bad-release-n1--n)**.
 In summary:
 
 **Recoverable:** the instance as of the instant before the N→N+1 upgrade, from
@@ -369,7 +376,7 @@ the scenario that decides whether your backup strategy was real.
    enrolled passkey stops working — passkeys are bound to that hostname. Users fall back to
    TOTP or a recovery code; a passkey-only user with no codes left needs an admin
    `POST /api/v1/admin/users/:id/reset-2fa`. See
-   [Deployment → Moving to a new hostname](../deployment.md#moving-to-a-new-hostname-passkeys).
+   [Deployment → Moving to a new hostname](../deployment.html#moving-to-a-new-hostname-passkeys).
 
 ### Scenario: loss of an attachment or photo directory while the database survives
 
@@ -508,7 +515,7 @@ A `VACUUM INTO` snapshot is transactionally consistent, so on a healthy backup
 these are no-ops — but a snapshot taken from a database that was itself mid-repair
 might not be, and the checker (verification step 2 below) proves it either way.
 The full catalogue of derived / cached state is
-[`derived-data-inventory.md`](../derived-data-inventory.md). **In-flight sessions /
+[`derived-data-inventory.md`](../derived-data-inventory.html). **In-flight sessions /
 2FA challenges** dropped by a key change are expected, not data loss.
 
 ## Verifying a recovered instance
@@ -574,8 +581,8 @@ from this document is a bug in this document; fix it here.
 | Scenario | Induce it by… | Recover by… | Passes when… |
 |---|---|---|---|
 | Database corruption | `printf '\0\0\0\0' \| dd of="$SQLITE_DB_PATH" bs=1 seek=1024 count=4 conv=notrunc` on a stopped instance (or restore a deliberately truncated file) | [Database corruption](#scenario-database-corruption) | `dbinspect` → `integrity_check=ok version=<N> dirty=false`; `/health/ready` → `ready`; the workflow in [Verifying a recovered instance](#verifying-a-recovered-instance) completes |
-| Migration interrupted | SIGKILL the process mid-migration, or `UPDATE schema_migrations SET dirty = 1` | `docs/operations/migration-recovery.md` → [Dirty schema](migration-recovery.md#dirty-schema), reached via [this doc's summary](#scenario-a-migration-interrupted-partway) | Restored DB reports `integrity_check=ok`, the expected version, `dirty=false` |
-| Bad release rollback | Deploy a newer image against a populated database (let it migrate), then decide to roll back | `docs/operations/migration-recovery.md` → [Rolling back a bad release](migration-recovery.md#rolling-back-a-bad-release-n1--n) | The instance serves the previous version's schema; row counts match the pre-migration snapshot's point |
+| Migration interrupted | SIGKILL the process mid-migration, or `UPDATE schema_migrations SET dirty = 1` | `docs/operations/migration-recovery.md` → [Dirty schema](migration-recovery.html#dirty-schema), reached via [this doc's summary](#scenario-a-migration-interrupted-partway) | Restored DB reports `integrity_check=ok`, the expected version, `dirty=false` |
+| Bad release rollback | Deploy a newer image against a populated database (let it migrate), then decide to roll back | `docs/operations/migration-recovery.md` → [Rolling back a bad release](migration-recovery.html#rolling-back-a-bad-release-n1--n) | The instance serves the previous version's schema; row counts match the pre-migration snapshot's point |
 | Accidental edit (undoable) | Update a contact through the API; note the update event's ID from `GET /api/v1/audit` | [Accidental deletion](#scenario-accidental-deletion-by-the-user) → the edit-undo call | `POST /api/v1/audit/<id>/undo` returns 200 and the contact's previous field values are restored |
 | Accidental deletion | Delete a contact through the API, then a standalone note; note the note delete event's `created_at` | [Accidental deletion](#scenario-accidental-deletion-by-the-user) → restore the contact from Trash; point-in-time restore from a backup predating the note delete | The contact, its relationships, its notes and its attachments are back from Trash, and the restore response lists anything it skipped. The standalone note is back after the backup restore, and you can state exactly what else that rollback cost. Confirm `POST /api/v1/audit/<delete-id>/undo` is refused ("undo supports update events only") |
 | Host loss | Provision a fresh machine with none of the original config or volumes; restore from an off-host backup only | [Loss of the host entirely](#scenario-loss-of-the-host-entirely) | New instance passes all four checks in [Verifying a recovered instance](#verifying-a-recovered-instance); pre-existing account logs in |

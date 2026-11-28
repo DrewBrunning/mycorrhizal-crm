@@ -1,3 +1,10 @@
+---
+title: Migration recovery
+parent: Self-hosting
+nav_order: 6
+description: Recover from a failed or interrupted database migration.
+---
+
 # Migration recovery runbook
 
 This is the migration-specific chapter of the incident-response runbook

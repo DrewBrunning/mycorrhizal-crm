@@ -75,7 +75,7 @@ is the operator-facing summary:
 - **Web client.** Nothing to do. Every user's next page load fetches the
   current build through the service worker; the app handles asset-skew and a
   stale-`/health`-contract window itself (prompting or force-reloading the tab
-  as needed). See [Service-worker updates](service-worker-updates.md) for the
+  as needed). See [Service-worker updates](service-worker-updates.html) for the
   mechanics and the `/_recovery.html` escape hatch.
 - **Android app.** A newer server keeps working with older app releases until
   the server declares a floor. If a future server release does raise
@@ -125,7 +125,7 @@ the new version and not dirty — this is a startup-job failure, not a
 migration-state refusal, so none of the four refusal states below describe it.
 
 **Recovery.** [migration-recovery.md → At-rest backfill vs. the audit-events
-trigger](operations/migration-recovery.md#at-rest-backfill-vs-the-audit-events-trigger):
+trigger](operations/migration-recovery.html#at-rest-backfill-vs-the-audit-events-trigger):
 roll back to the pre-migration snapshot and wait for v0.6.9, or — to stay on the
 upgraded release — drop the `audit_events_no_update` trigger for one successful
 boot and let startup recreate it.
@@ -208,10 +208,10 @@ that snapshot is the only rollback point.
 
 | State | Behavior | Operator action |
 |---|---|---|
-| Sub-floor schema (below `000057`) | **Refuse**, print the two-step message above, exit | Two-step through `v1.0.0`, or the documented bridge — see the [below-the-floor section](operations/migration-recovery.md#below-the-floor) |
-| Dirty schema | **Refuse** (`ErrDirtyMigration`): a migration started and did not finish, so the schema state is unknown | Restore the pre-migration backup and start again — see the [dirty-schema section](operations/migration-recovery.md#dirty-schema). Only after verifying the schema actually matches the named version, `make migrate-force` (prompted, operator-only) — never automatic |
-| Schema ahead of the binary | **Refuse** (`ErrSchemaAheadOfBinary`): the database knows migrations this binary does not, meaning a rollback is in progress | Deploy a binary that knows the newer migration, or restore the backup taken before the newer release ran — see the [ahead-of-the-binary section](operations/migration-recovery.md#schema-ahead-of-the-binary) |
-| Pre-migration backup target unwritable | **Refuse** (`ErrPreMigrationBackupFailed`): pending migrations exist but the mandatory snapshot could not be written; the database is untouched | Make the backup directory writable, or set `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` to a writable path, then start again — see [The pre-migration backup](operations/migration-recovery.md#the-pre-migration-backup) |
+| Sub-floor schema (below `000057`) | **Refuse**, print the two-step message above, exit | Two-step through `v1.0.0`, or the documented bridge — see the [below-the-floor section](operations/migration-recovery.html#below-the-floor) |
+| Dirty schema | **Refuse** (`ErrDirtyMigration`): a migration started and did not finish, so the schema state is unknown | Restore the pre-migration backup and start again — see the [dirty-schema section](operations/migration-recovery.html#dirty-schema). Only after verifying the schema actually matches the named version, `make migrate-force` (prompted, operator-only) — never automatic |
+| Schema ahead of the binary | **Refuse** (`ErrSchemaAheadOfBinary`): the database knows migrations this binary does not, meaning a rollback is in progress | Deploy a binary that knows the newer migration, or restore the backup taken before the newer release ran — see the [ahead-of-the-binary section](operations/migration-recovery.html#schema-ahead-of-the-binary) |
+| Pre-migration backup target unwritable | **Refuse** (`ErrPreMigrationBackupFailed`): pending migrations exist but the mandatory snapshot could not be written; the database is untouched | Make the backup directory writable, or set `MYCORRHIZAL_PRE_MIGRATION_BACKUP_DIR` to a writable path, then start again — see [The pre-migration backup](operations/migration-recovery.html#the-pre-migration-backup) |
 
 ### Dirty schema — interrupted migration
 

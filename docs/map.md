@@ -86,7 +86,7 @@ and the Android editor keeps an existing value when you save.
 
 Everything works with no configuration: the map loads tiles from the free hosted
 [OpenFreeMap](https://openfreemap.org/) service and geocoding is off. The settings below are instance-wide, are
-listed with their exact defaults in the [configuration reference](configuration-reference.md), and need a
+listed with their exact defaults in the [configuration reference](configuration-reference.html), and need a
 restart.
 
 | Variable | Default | Meaning |
