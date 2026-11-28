@@ -11,11 +11,13 @@ on:
     branches: ["main"]
     # CHANGELOG.md is published as the site Changelog page, so a merge that
     # changes it redeploys the site and unreleased entries are visible at once.
-    paths: ["docs/**", "CHANGELOG.md", "scripts/build-docs-versions.sh"]
-    # A release tag publishes that release's docs as the new root. Release
-    # candidates (vX.Y.Z-rc.N) are skipped by cmd/docsversions, so they only
-    # rebuild the same site.
-    tags: ["v*"]
+    paths: ["docs/**", "CHANGELOG.md", "scripts/build-docs-versions.sh", "scripts/docs-release-tags.sh"]
+  # A final release publishes its docs as the new root: release.yml and
+  # promote-rc.yml dispatch this workflow on main once the tag exists. There is
+  # deliberately no `push: tags` trigger: the github-pages environment only
+  # deploys from main (a tag run would be refused), and promote-rc.yml pushes
+  # the final tag with GITHUB_TOKEN, which starts no workflow at all
+  # (internal/releaseworkflow CheckDocsPublish pins this).
   workflow_dispatch:
 
 permissions:
@@ -29,8 +31,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      # Always main (even on a tag push): it holds the build script, the switcher
-      # and the /next/ docs. fetch-depth 0 brings every tag.
+      # Always main: it holds the build script, the switcher and the /next/
+      # docs. fetch-depth 0 brings every tag and the release/* branches, which
+      # scripts/docs-release-tags.sh needs to tell reviewed tags from others.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main

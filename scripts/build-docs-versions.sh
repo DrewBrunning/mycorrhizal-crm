@@ -12,8 +12,12 @@
 # Usage (from the repo root, with the docs bundle installed and full tag history):
 #   PAGES_BASE_PATH=/mycorrhizal-crm scripts/build-docs-versions.sh [out-dir]
 # out-dir defaults to docs-site/. DOCS_NEXT_REF (default HEAD) is the ref published
-# as /next/; the workflow checks out main, so a tag push still publishes main's. PAGES_BASE_PATH is the Pages base path with no
-# trailing slash (empty for a custom domain).
+# as /next/ (the workflow passes main). PAGES_BASE_PATH is the Pages base path
+# with no trailing slash (empty for a custom domain).
+#
+# Only tags on main or a release/* branch are candidates
+# (scripts/docs-release-tags.sh): a tag pushed on an unreviewed commit is never
+# built or published.
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -25,8 +29,13 @@ trap 'rm -rf "$work"' EXIT
 
 cd "$repo_root"
 versions="$work/versions.json"
-git tag -l 'v*' | (cd backend && go run ./cmd/docsversions) > "$versions"
-latest_label="$(jq -r '[.[] | select(.latest)][0].label' "$versions")"
+next_ref="${DOCS_NEXT_REF:-HEAD}"
+scripts/docs-release-tags.sh "$next_ref" | (cd backend && go run ./cmd/docsversions) > "$versions"
+# The newest *release*: before the first one, main is the whole site and the
+# banner must not link "the latest release" back to itself (YAML ~ is nil,
+# which Liquid treats as false; an empty string would be true).
+latest_label="$(jq -r '[.[] | select(.latest and (.unreleased | not))][0].label // "~"' "$versions")"
+[ "$latest_label" = "~" ] || latest_label="\"$latest_label\""
 
 mkdir -p "$work/site"
 export BUNDLE_GEMFILE="$repo_root/docs/Gemfile"
@@ -41,7 +50,7 @@ while IFS= read -r entry; do
   mkdir -p "$src"
   if [ "$tag" = main ]; then
     # The unreleased docs are the checked-out tree (a merge to main).
-    git archive "${DOCS_NEXT_REF:-HEAD}" docs CHANGELOG.md | tar -x -C "$src"
+    git archive "$next_ref" docs CHANGELOG.md | tar -x -C "$src"
   else
     git archive "$tag" docs CHANGELOG.md 2>/dev/null | tar -x -C "$src" \
       || git archive "$tag" docs | tar -x -C "$src"
@@ -51,7 +60,8 @@ while IFS= read -r entry; do
   mkdir -p "$src/docs/_includes"
   cp "$repo_root/docs/_includes/header_custom.html" "$src/docs/_includes/header_custom.html"
   if [ -f "$src/CHANGELOG.md" ]; then
-    (cd backend && go run ./cmd/gensitechangelog -in "$src/CHANGELOG.md" -out "$src/docs/changelog.md")
+    # Repository links name the tag the page was built from (main for next).
+    (cd backend && go run ./cmd/gensitechangelog -in "$src/CHANGELOG.md" -out "$src/docs/changelog.md" -ref "$tag")
   fi
   vbase="$base"
   [ -n "$vpath" ] && vbase="$base/${vpath%/}"
@@ -60,7 +70,7 @@ baseurl: "$vbase"
 docs_root: "$base"
 docs_version_label: "$label"
 docs_version_path: "$vpath"
-docs_latest_label: "$latest_label"
+docs_latest_label: $latest_label
 docs_unreleased: $unreleased
 YAML
   bundle exec jekyll build \

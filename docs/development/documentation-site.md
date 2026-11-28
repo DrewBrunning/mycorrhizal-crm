@@ -20,12 +20,17 @@ Before the first release at or above the floor, `main` is the whole site at `/`.
 
 ## How it is built
 
-- **What triggers a deploy:** a push to `main` that changes `docs/**`, `CHANGELOG.md` or the build script; a
-  `v*` tag push (a new release; a release candidate changes nothing because release candidates are not
-  published); or a manual `workflow_dispatch`.
-- **Which tags:** `cd backend && go run ./cmd/docsversions` reads `git tag -l 'v*'` and picks the newest
-  `vX.Y.Z` of each minor at or above its `-floor` (default `v1.7.0`, the first release with the
-  restructured site). Raise the floor when a very old release stops being supported.
+- **What triggers a deploy:** a push to `main` that changes `docs/**`, `CHANGELOG.md` or the build
+  scripts; a final release (`release.yml` and `promote-rc.yml` dispatch `docs.yml` on `main` once the
+  tag is pushed); or a manual `workflow_dispatch`. There is no tag-push trigger: the `github-pages`
+  environment deploys only from `main`, and the promoted tag is pushed with `GITHUB_TOKEN`, which starts
+  no workflow. `internal/releaseworkflow` (`CheckDocsPublish`) pins this wiring.
+- **Which tags:** `scripts/docs-release-tags.sh` lists the `v*` tags reachable from `main` or a
+  `release/*` branch, the two lines of history that need a reviewed pull request. Anyone with write
+  access can create a tag, so a tag on any other commit is never built or published.
+  `cd backend && go run ./cmd/docsversions` then picks the newest `vX.Y.Z` of each minor at or above its
+  `-floor` (default `v1.7.0`, the first release with the restructured site). Release candidates are
+  skipped. Raise the floor when a very old release stops being supported.
 - **Build:** `scripts/build-docs-versions.sh` archives `docs/` (and `CHANGELOG.md`) at each tag, adds
   the current version switcher (`docs/_includes/header_custom.html`) and the generated Changelog page,
   and runs one Jekyll build per version. Everything is deployed as one Pages artifact.
@@ -35,8 +40,9 @@ Before the first release at or above the floor, `main` is the whole site at `/`.
 ## Writing docs
 
 `docs/` on `main` is the documentation for the **next** release: edit it in the same PR as the code
-change. A published release's docs are rebuilt from its tag, so correcting them needs a patch release;
-the site does not read maintenance branches.
+change. A published release's docs are rebuilt from its tag on every deploy, so correcting them needs a
+patch release, and anything removed from `main` stays public in each published release that has it.
+Raising the `-floor` is the only way to take an old release's docs down.
 
 Link between pages with `page.html` (not `page.md`): a plain Jekyll build does not rewrite `.md` links,
 so they would 404 on the site.

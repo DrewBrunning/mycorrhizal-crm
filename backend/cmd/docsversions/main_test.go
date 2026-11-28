@@ -61,3 +61,9 @@ func TestRunRejectsBadFloor(t *testing.T) {
 	var out, errb bytes.Buffer
 	assert.Equal(t, 2, run([]string{"-floor", "banana"}, strings.NewReader(""), &out, &errb))
 }
+
+func TestRunRejectsUnknownFlag(t *testing.T) {
+	var out, errb bytes.Buffer
+	assert.Equal(t, 2, run([]string{"-nope"}, strings.NewReader(""), &out, &errb))
+	assert.Empty(t, out.String(), "no version list on a usage error")
+}
