@@ -14,7 +14,7 @@ on:
     # merge that adds a fragment redeploys the site and the upcoming entry is
     # visible at once (internal/releaseworkflow CheckDocsPublish pins this).
     # The build's own tools are listed too: a change to them changes the pages.
-    paths: ["docs/**", "CHANGELOG.md", "changelog.d/**", "scripts/build-docs-versions.sh", "scripts/docs-release-tags.sh", "backend/cmd/docsversions/**", "backend/cmd/gensitechangelog/**", "backend/cmd/docssitelinks/**"]
+    paths: ["docs/**", "CHANGELOG.md", "changelog.d/**", "scripts/build-docs-versions.sh", "scripts/docs-release-tags.sh", "backend/cmd/docsversions/**", "backend/cmd/gensitechangelog/**", "backend/cmd/docssitelinks/**", "backend/cmd/docsfrontmatter/**"]
   # A final release publishes its docs as the new root: release.yml and
   # promote-rc.yml dispatch this workflow on main once the tag exists. There is
   # deliberately no `push: tags` trigger: the github-pages environment only

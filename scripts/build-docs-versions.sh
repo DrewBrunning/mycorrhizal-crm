@@ -7,7 +7,8 @@
 # the unreleased docs under /next/, and versions.json for the switcher in
 # docs/_includes/header_custom.html. Each release is built from its own tag, so
 # a release's pages are the ones that shipped with it; only the switcher and head
-# includes and the Changelog page are taken from the current tree so every version has them,
+# includes, the Changelog page, and front matter for a page a release shipped
+# without any (cmd/docsfrontmatter) are taken from the current tree,
 # and cmd/docssitelinks fixes each version's dead relative links after its build.
 #
 # Usage (from the repo root, with the docs bundle installed and full tag history):
@@ -69,6 +70,13 @@ while IFS= read -r entry; do
   if [ -f "$src/CHANGELOG.md" ]; then
     # Repository links name the tag the page was built from (main for next).
     (cd backend && go run ./cmd/gensitechangelog -in "$src/CHANGELOG.md" -out "$src/docs/changelog.md" -ref "$tag")
+  fi
+  if [ "$tag" != main ]; then
+    # A release that shipped a page without front matter (v1.7.0's operator
+    # and import pages) would serve it as raw Markdown and 404 its .html
+    # address. Give it main's front matter so the release's own text renders
+    # (cmd/docsfrontmatter; the page text itself is never changed).
+    (cd backend && go run ./cmd/docsfrontmatter -src "$src/docs" -current "$repo_root/docs")
   fi
   vbase="$base"
   [ -n "$vpath" ] && vbase="$base/${vpath%/}"
