@@ -45,8 +45,12 @@ Before the first release at or above the floor, `main` is the whole site at `/`.
 ## Writing docs
 
 `docs/` on `main` is the documentation for the **next** release: edit it in the same PR as the code
-change. A published release's docs are rebuilt from its tag on every deploy, so correcting them needs a
-patch release, and anything removed from `main` stays public in each published release that has it.
+change. A published release's docs are rebuilt from its tag on every deploy, so correcting their text
+needs a patch release, and anything removed from `main` stays public in each published release that
+has it. The one exception is front matter: when a release shipped a page without any, and the same page
+on `main` has some, `cd backend && go run ./cmd/docsfrontmatter` gives the release's copy `main`'s front
+matter at build time so the release's own text renders. Its `parent` is kept only if that group exists
+in the release; otherwise the page joins the release's top-level nav after its own entries.
 Raising the `-floor` is the only way to take an old release's docs down.
 
 Link between pages with `page.html` (not `page.md`): a plain Jekyll build does not rewrite `.md` links.
