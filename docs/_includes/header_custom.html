@@ -24,25 +24,34 @@
   if (!select || !window.fetch) { return; }
   var root = {{ site.docs_root | jsonify }};
   var own = {{ site.docs_version_path | jsonify }};
-  var page = {{ page.url | jsonify }};
-  var here = {{ site.baseurl | jsonify }};
-  var rel = here && page.indexOf(here) === 0 ? page.slice(here.length) : page;
+  /* Only block comments in this script: the just-the-docs layout compresses
+     the page onto one line, so a line comment would swallow the rest. */
+  /* page.url is site-relative ("/settings.html"); baseurl is not part of it. */
+  var rel = {{ page.url | jsonify }}.replace(/^\/+/, '');
+  /* A version path is "", "X.Y/" or "next/" (cmd/docsversions). Anything else
+     in versions.json is ignored, so the switcher only ever navigates to a
+     same-origin path under the docs root, never "//host" or "javascript:". */
+  var validPath = /^(?:\d+\.\d+\/|next\/)?$/;
   fetch(root + '/versions.json').then(function (r) { return r.ok ? r.json() : []; }).then(function (list) {
-    if (!list.length) { return; }
+    var versions = (Array.isArray(list) ? list : []).filter(function (v) {
+      return v && typeof v.path === 'string' && validPath.test(v.path);
+    });
+    if (!versions.length) { return; }
     select.textContent = '';
-    list.forEach(function (v) {
+    versions.forEach(function (v) {
       var o = document.createElement('option');
-      o.value = v.path;
-      o.textContent = v.unreleased ? 'next (unreleased)' : v.label + (v.latest ? ' (latest)' : '');
+      o.textContent = v.unreleased ? 'next (unreleased)' : String(v.label) + (v.latest ? ' (latest)' : '');
       o.selected = v.path === own;
       select.appendChild(o);
     });
     select.addEventListener('change', function () {
-      var base = root + '/' + select.value;
-      var target = base + rel.replace(/^\//, '');
-      fetch(target, { method: 'HEAD' }).then(function (r) {
-        window.location.href = r.ok ? target : base;
-      }, function () { window.location.href = base; });
+      /* Navigate by the chosen entry of the validated list, not by DOM text. */
+      var v = versions[select.selectedIndex];
+      if (!v) { return; }
+      var base = root + '/' + v.path;
+      var target = base + rel;
+      var go = function (url) { window.location.assign(url); };
+      fetch(target, { method: 'HEAD' }).then(function (r) { go(r.ok ? target : base); }, function () { go(base); });
     });
   }).catch(function () {});
 })();
