@@ -35,4 +35,4 @@ Both activities and notes have **Add photos** for pictures from the occasion.
 
 ## Notes, activities and what leaves your server
 
-Notes and activities follow your contact's sensitivity setting when you share or export. See [Privacy](privacy.html).
+A note or an activity can be shared on its own with another user on the same server, with the share button on its card. It is a standing share: read-only, live access that they have to accept and that you can revoke at any time. Private and secret items are never shared. See [Privacy](privacy.html) for what leaves your server and what stays on it.

@@ -12,7 +12,7 @@ The screenshots in the user guide (`docs/assets/screenshots/*.png`) are generate
 scripts/docs-screenshots.sh
 ```
 
-The script starts the pen-test/demo stack (`docker-compose.pentest.yml`, `demo` profile: one user with 35 contacts and clean names; see [Pen-test and demo environment](pentest-environment.md)), reads its seeded login, and runs the Playwright generator in `frontend/e2e/docs-screenshots/` with `frontend/playwright.docs.config.ts`. It needs Docker, Node 24.15 or newer and `yarn install` in `frontend/`. Set `DOCS_KEEP_STACK=1` to leave the stack running.
+The script starts the pen-test/demo stack (`docker-compose.pentest.yml`, `demo` profile: one user with 35 contacts and clean names; see [Pen-test and demo environment](pentest-environment.md)), reads its seeded login, and runs the Playwright generator in `frontend/e2e/docs-screenshots/` with `frontend/playwright.docs.config.ts`. It needs Docker, `jq`, Node 24.15 or newer and `yarn install` in `frontend/`. Set `DOCS_KEEP_STACK=1` to leave the stack running. The compose file pins the app's container name, so stop a pen-test stack you already have running first; the script refuses to start while one exists.
 
 - The PNGs are committed. Regenerate them in the same PR as a visible UI change, and review the diff like any other.
 - The generator is deliberately outside the CI test suites (its own config, and the main config ignores its directory), so a UI change never fails a build because of a screenshot.

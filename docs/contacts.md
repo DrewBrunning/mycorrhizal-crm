@@ -21,7 +21,7 @@ Open **Contacts** in the sidebar. Type in **Search contacts** to narrow the list
 - turn on **Only with contact info** to hide contacts with no email, phone or address,
 - turn on **Show archived** to see contacts you have archived.
 
-The search box at the top of every page looks through contacts, notes and activities together.
+The search box at the top of every page looks through contacts, notes, activities and places together.
 
 ## Add a contact
 
@@ -51,7 +51,7 @@ Choose a contact in the list to open it.
 
 ## Share a contact
 
-**Share contact** on a contact's page lets another user on the same server see it, as a read-only view they have to accept. You can end the share at any time; ending it stops future access but cannot take back what was already seen. Shares are managed under **Settings**, in **Shared with me** and **Shared by me**.
+**Share contact** on a contact's page shares it with another user on the same server, who chooses whether to accept. Pick the **Kind of share**: a **One-time copy** sends a snapshot of the contact as it is now, and a **Standing share** gives read-only, live access you can revoke at any time. Revoking stops future access but cannot take back what was already seen. Private and secret items are never shared. Shares are managed under **Settings**: **Shares** for one-time copies, and **Shared with me** and **Shared by me** for standing shares.
 
 ## Delete and restore
 

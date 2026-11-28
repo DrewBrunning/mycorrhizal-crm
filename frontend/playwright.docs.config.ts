@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  * service-worker suite: this is a generator, not a test suite. It runs against
  * the pen-test/demo stack (docker-compose.pentest.yml, `demo` profile: one user
  * with 35 contacts, clean names) and rewrites docs/assets/screenshots/*.png.
- * It is never part of CI. See docs/development/documentation-site.md.
+ * It is never part of CI. See docs/development/documentation-screenshots.md.
  *
  * Run:  scripts/docs-screenshots.sh
  */
