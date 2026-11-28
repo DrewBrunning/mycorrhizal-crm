@@ -140,8 +140,8 @@ Format: `- **Bold lead phrase** ([#123](https://github.com/DrewBrunning/mycorrhi
 ## Related policies
 
 `Deprecated` entries are also recorded in
-[`deprecations.md`](deprecations.md) (MAINT-01, issue #490); `Breaking Changes`
-are classified by [`breaking-change-policy.md`](breaking-change-policy.md)
+[`deprecations.md`](deprecations.html) (MAINT-01, issue #490); `Breaking Changes`
+are classified by [`breaking-change-policy.md`](breaking-change-policy.html)
 (MAINT-02, issue #491). This page does not restate those.
 
 ## When a pull request must carry a changelog entry
@@ -153,8 +153,8 @@ request. Operator-visible changes need one without exception:
 - a **configuration variable** (add, rename, or change of default or meaning);
 - **observable behavior** an operator or client could rely on;
 - a **deprecation** on a covered surface
-  ([`deprecations.md`](deprecations.md); breaking changes follow
-  [`breaking-change-policy.md`](breaking-change-policy.md));
+  ([`deprecations.md`](deprecations.html); breaking changes follow
+  [`breaking-change-policy.md`](breaking-change-policy.html));
 - anything that requires **action before or after upgrading**. Put it in the
   release's `> **Upgrade**` blockquote.
 
@@ -162,7 +162,7 @@ A change to the security posture an operator should notice (a new guard or
 changed default, a raised version floor, a new required configuration value, a
 new authentication path or trust boundary) gets a `Security` bullet. A new
 security-relevant surface also needs a per-release delta row
-([`adversarial-deltas.md`](security/adversarial-deltas.md), issue #953).
+([`adversarial-deltas.md`](security/adversarial-deltas.html), issue #953).
 
 If a PR touches one of the tracked paths (`backend/database/migrations/**`,
 `backend/config/config.go`, `.env.example`) but genuinely needs no entry, put
@@ -176,26 +176,26 @@ effect need no entry.
 ## Skip-version upgrades
 
 Self-hosted operators skip versions — `v1.0.0 → current` directly is supported
-([`upgrade-compatibility.md`](upgrade-compatibility.md), issue #529). The
+([`upgrade-compatibility.md`](upgrade-compatibility.html), issue #529). The
 accumulated operator actions across a range are read section by section, newest
 first, in [`CHANGELOG.md`](../CHANGELOG.md): each release's `> **Upgrade**`
 blockquote states what an operator must do. The
 one known cross-version upgrade defect (a crash upgrading into `v0.6.1`–`v0.6.8`
 from `≤ v0.6.0` with audit history, fixed in `v0.6.9`) is documented in
-[`upgrade-compatibility.md`](upgrade-compatibility.md) and repeated in the
+[`upgrade-compatibility.md`](upgrade-compatibility.html) and repeated in the
 affected releases' notes.
 
 ## Versions and issue links
 
 The version a set of notes belongs to is the **git tag**
-([`versioning-policy.md`](versioning-policy.md), REL-01). A release cannot be
+([`versioning-policy.md`](versioning-policy.html), REL-01). A release cannot be
 tagged or published without its changelog section, and the Release body links
 the compare view, so every change stays traceable to a pull request.
 
 ## Where the record begins
 
 `CHANGELOG.md` begins at `v0.6.0`, the first release with a supported-upgrade
-floor ([`upgrade-compatibility.md`](upgrade-compatibility.md)). The `v0.6.x` to
+floor ([`upgrade-compatibility.md`](upgrade-compatibility.html)). The `v0.6.x` to
 `v0.9.0` sections were backfilled from the GitHub Release notes and are
 shorter and more technical than later ones; the word limits apply to
 `[Unreleased]` only. Earlier releases are not backfilled, and nothing supported

@@ -319,7 +319,7 @@ reverses the earlier "a signing problem here shouldn't block the Docker images" 
   certificate SHA-256 matches; otherwise it warns that the cert is not pinned. Set that variable
   to the release keystore's cert fingerprint to enforce.
 - asserts the built APK's **`versionCode`** equals the value the workflow computed
-  (`1000 + GITHUB_RUN_NUMBER`, strictly increasing per [the versioning policy](../versioning-policy.md))
+  (`1000 + GITHUB_RUN_NUMBER`, strictly increasing per [the versioning policy](../versioning-policy.html))
   and is `> 1` — a light pin on the plugin's override wiring so an in-place upgrade keeps
   working. It does not install anything.
 - asserts `app-obtainium-release.apk` and `mycorrhizal-apk.sigstore.json` are present on the Release.
@@ -342,7 +342,7 @@ deliberately did not build the literal install-N-then-install-N+1 harness: `vers
 (asserted above) is what makes Android accept the install, which is orthogonal to whether the
 database migrates correctly once the new code runs — the thing the JVM/instrumented migration
 suite already proves directly. Disposition: accept the two-APK upgrade, not built — see the "E2E
-Android (instrumented)" section of [`testing.md`](testing.md#e2e-android-instrumented) for where
+Android (instrumented)" section of [`testing.md`](testing.html#e2e-android-instrumented) for where
 this is tracked.
 
 **Known gap, accepted, with a manual gate (issue #1339): Android local-only mode.** The embedded
@@ -351,7 +351,7 @@ process exec, Keystore-wrapped secrets, readiness handshake, `/health` over the 
 `assumeTrue` **skip** on the x86_64 `Android E2E (emulator)` gate. A skip is not evidence, so that
 green check says nothing about local mode. The skip is now *accounted for* (issue #1483): the job
 fails unless the skipped tests are exactly those in `android/e2e-expected-skips.txt`
-(`backend/cmd/androidskipcheck`; see [`testing.md`](testing.md#e2e-android-instrumented)), so a
+(`backend/cmd/androidskipcheck`; see [`testing.md`](testing.html#e2e-android-instrumented)), so a
 new silent skip cannot hide behind this accepted one. Things that cover local mode instead:
 
 - **Automated, per-PR:** `backend/main_test.go` builds the real backend binary for the CI host,
@@ -491,7 +491,7 @@ beyond read scopes: `main-failure-alert.yml` (a red `push` run on `main`), `nigh
 (a red scheduled run; `nightlyalertcheck` keeps its workflow list equal to the scheduled set) and
 `bypassed-check-alert.yml` (issue #1661: a PR merged with a context from `main-protection.json` not
 green, re-evaluated for up to 40 minutes when the only non-green contexts were still running at merge).
-Their semantics live in [`repo-governance.md`](repo-governance.md); the release-success-rate criterion
+Their semantics live in [`repo-governance.md`](repo-governance.html); the release-success-rate criterion
 reads the same signal from the `release.yml` run list.
 
 ## The gates

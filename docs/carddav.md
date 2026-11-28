@@ -6,7 +6,7 @@ nav_order: 1
 
 # Contact Sync (CardDAV)
 
-The built-in CardDAV server allows you to synchronize your contacts with your mobile device or computer (e.g. Apple Contacts in iPhone macOS Contacts or on Android with a third-party CardDAV client like DAVx⁵). This page is the *served* direction — your instance's contacts going *out* to your devices. The *subscription* direction — pulling contacts **in** from someone else's CardDAV server — is the "CardDAV contact sync" integration; who owns it when it breaks and how to diagnose it is in [Integrations: ownership, diagnostics, and what breaks](integration-ownership.md#carddav).
+The built-in CardDAV server allows you to synchronize your contacts with your mobile device or computer (e.g. Apple Contacts in iPhone macOS Contacts or on Android with a third-party CardDAV client like DAVx⁵). This page is the *served* direction — your instance's contacts going *out* to your devices. The *subscription* direction — pulling contacts **in** from someone else's CardDAV server — is the "CardDAV contact sync" integration; who owns it when it breaks and how to diagnose it is in [Integrations: ownership, diagnostics, and what breaks](integration-ownership.html#carddav).
 
 Enable CardDAV by setting the `CARDDAV_ENABLED` environment variable to `true`.  Once enabled, the CardDAV server runs alongside the web interface. A standard discovery endpoint is available at `/.well-known/carddav` for automatic configuration.
 
@@ -68,7 +68,7 @@ claim does and does not cover. The engineering evidence — the per-client manua
 matrix, the divergence registers for each reference server, and the reference
 implementations the automated legs run against — lives in the development docs
 ([reference-client-matrix.md](development/reference-client-matrix.md) and
-[testing.md](development/testing.md)).
+[testing.md](development/testing.html)).
 
 - **One address book by design.** The server exposes a single address book per
   user. A client that tries to create a second one (`MKCOL`) is refused with
@@ -97,7 +97,7 @@ implementations the automated legs run against — lives in the development docs
   cannot request a vCard version, so against SabreDAV-based servers (Baikal,
   Nextcloud) a full refetch receives vCard 3.0 re-serializations. The
   per-server divergence registers in
-  [testing.md](development/testing.md) pin exactly what each server does.
+  [testing.md](development/testing.html) pin exactly what each server does.
 - **Address coordinates are served as a standalone `GEO` property, not RFC 9554's
   `ADR;GEO=`.** The file exports (vCard 3.0/4.0, JSContact) attach a coordinate
   to its address the RFC 9554 way, but over CardDAV the coordinate is instead
@@ -118,5 +118,5 @@ implementations the automated legs run against — lives in the development docs
 - **Field-level fidelity is governed by the DATA-01 matrix.** Which canonical
   fields survive a round trip through each format — and which are unsupported
   or lossy — is stated per field in the
-  [field compatibility matrix](data-01-field-compatibility-matrix.md) and
+  [field compatibility matrix](data-01-field-compatibility-matrix.html) and
   surfaced to the user as export-loss reports (DATA-02).

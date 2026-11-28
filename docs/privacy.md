@@ -110,7 +110,7 @@ contact, deleting them means editing that note — search will find every mentio
 
 Before hosting this for other people, read
 [`security/deployment-baseline.md`](security/deployment-baseline.md) (what the application does
-*not* secure) and the ["Backup confidentiality & retention"](deployment.md) section of the
+*not* secure) and the ["Backup confidentiality & retention"](deployment.html) section of the
 deployment guide. You are the data controller for every user on the instance, including their
 notes about people they have never met. The software gives you per-user scoping, per-user
 deletion, export, and a private/secret filter; the legal and organisational duties of a

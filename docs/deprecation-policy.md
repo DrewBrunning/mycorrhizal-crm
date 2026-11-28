@@ -14,11 +14,11 @@ happen instead of accumulating forever.
 
 It sits next to two neighbors and does not duplicate them:
 
-- [`breaking-change-policy.md`](breaking-change-policy.md) (MAINT-02, issue
+- [`breaking-change-policy.md`](breaking-change-policy.html) (MAINT-02, issue
   #491) **classifies** what counts as a breaking change. This page governs the
   **removal window** for anything that page classifies as breaking. Removal is
   a breaking change *and* follows this policy — both, not either.
-- [`issue-classification.md`](issue-classification.md) (MAINT-03, issue #492) is
+- [`issue-classification.md`](issue-classification.html) (MAINT-03, issue #492) is
   where a deprecation-tracking issue gets its labels, milestone, and severity.
 
 A deprecation is a promise with three parts — **an announcement, a
@@ -30,7 +30,7 @@ removal.
 ## What is covered
 
 The same surfaces a third party can depend on that
-[`breaking-change-policy.md`](breaking-change-policy.md) lists — stated here so
+[`breaking-change-policy.md`](breaking-change-policy.html) lists — stated here so
 this page stands alone, not re-derived:
 
 1. **The `/api/v1` REST contract** — endpoints, methods, parameters, request
@@ -65,7 +65,7 @@ Both halves are load-bearing:
 90 days is the review period this repo already uses in one place and reuses
 here rather than inventing a second number — it is `cmd/depexceptions`'
 `maxWindowDays` for the dependency-advisory exception ledger, and the default
-cited by [`dependency-upgrade-policy.md`](dependency-upgrade-policy.md).
+cited by [`dependency-upgrade-policy.md`](dependency-upgrade-policy.html).
 
 **Deprecated things keep working, unchanged, for the whole window.** A
 deprecated API field that starts returning different data, a deprecated config
@@ -120,7 +120,7 @@ naming the replacement, and still does what it did.
 
 ## The register
 
-**[`deprecations.md`](deprecations.md) is the machine-readable list.** Every
+**[`deprecations.md`](deprecations.html) is the machine-readable list.** Every
 deprecation in a covered surface has a row there *before it ships* — the row is
 part of the same change that adds the runtime signal, not a follow-up. The row
 format is documented in that file's header.
@@ -155,7 +155,7 @@ activity to trip over it.
 ## Removal is a MAINT-02 breaking change
 
 When the window has fully elapsed, removal follows
-[`breaking-change-policy.md`](breaking-change-policy.md)'s process **in addition
+[`breaking-change-policy.md`](breaking-change-policy.html)'s process **in addition
 to** this one:
 
 1. the deprecation window here is complete (announced, replacement shipped, at

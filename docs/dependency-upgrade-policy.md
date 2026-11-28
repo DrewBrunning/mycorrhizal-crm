@@ -239,7 +239,7 @@ answer is a **recorded, time-bounded exception**, never silence:
 records one entry per unresolved advisory — the advisory ID, ecosystem,
 package, when it was first opened, when the current window opened, when it
 expires (at most 90 days out — the same default review period
-[MAINT-01 (issue #490)](breaking-change-policy.md) uses for a deprecation
+[MAINT-01 (issue #490)](breaking-change-policy.html) uses for a deprecation
 window, reused here rather than inventing a second number), how many times
 it has been renewed, the owner, and why it cannot be fixed yet. `cd backend
 && go run ./cmd/depexceptions` parses and validates that ledger — malformed
@@ -278,7 +278,7 @@ said so.
 A dependency bump that raises this project's own supported-runtime minimum —
 [`docs/development/supported-runtime-matrix.md`](development/supported-runtime-matrix.md),
 **issue #472** — is a breaking change under
-[`breaking-change-policy.md`](breaking-change-policy.md) (**MAINT-02, issue #491**),
+[`breaking-change-policy.md`](breaking-change-policy.html) (**MAINT-02, issue #491**),
 which lists "raises a supported-version minimum" as one of its
 breaking-change categories. It is not an incidental side effect of a routine
 bump. Concretely: before merging a bump that changes an `engines` field, a

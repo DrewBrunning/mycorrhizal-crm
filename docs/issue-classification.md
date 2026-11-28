@@ -17,8 +17,8 @@ work, and what "closed" means.
 The program index [#544](https://github.com/DrewBrunning/mycorrhizal-crm/issues/544)
 records the *decisions* behind several of the rules here (pinned, with dates);
 this page is where a contributor finds the rules themselves. A
-breaking-change issue ([`breaking-change-policy.md`](breaking-change-policy.md),
-MAINT-02) or a deprecation issue ([`deprecation-policy.md`](deprecation-policy.md),
+breaking-change issue ([`breaking-change-policy.md`](breaking-change-policy.html),
+MAINT-02) or a deprecation issue ([`deprecation-policy.md`](deprecation-policy.html),
 MAINT-01) is labelled, milestoned, and — if it is a bug — severity-rated by
 this page's rules, and the incident severity routing in
 `docs/security/incident-response.md` (issue #509) keys off the severity ladder

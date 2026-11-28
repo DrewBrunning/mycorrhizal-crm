@@ -16,7 +16,7 @@ The name comes from mycorrhiza, the symbiotic network fungi form with plant root
 - **Activities & Notes** - Log meetings, calls, and personal notes
 - **Reminders** - Set recurring reminders, delivered by email, ntfy, Gotify or browser push
 - **[Contact Map](map.html)** - See where your contacts live on a map (web and Android); optional per-address geocoding, with private and secret addresses kept out of exports, sync and shares
-- **[GeoPulse integration](settings.md#geopulse-connection)** - Turn a day of your own location history into activity suggestions you confirm one by one
+- **[GeoPulse integration](settings.html#geopulse-connection)** - Turn a day of your own location history into activity suggestions you confirm one by one
 - **[MCP server](mcp.html)** - Let an AI assistant read your CRM data through a read-only Model Context Protocol endpoint
 - **Privacy-Focused** - Self-hosted, your data stays with you
 

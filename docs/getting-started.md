@@ -13,7 +13,7 @@ has_children: true
 Mycorrhizal CRM runs on Linux (`x86_64` or `arm64`) under Docker (Engine
 `>= 23.0` with Compose V2). Browsers: a current Chrome/Edge/Firefox, or
 Safari/iOS `16.4+`. The Android app requires Android 8.0+ (`minSdk 26`) and a
-server at or above the client-compatibility floor ([the Android app](android-app.md)
+server at or above the client-compatibility floor ([the Android app](android-app.html)
 covers the install channels). The
 database directory **must be on local disk** — never a network filesystem.
 See [Supported versions](supported-versions.html) for the full statement,
@@ -91,7 +91,7 @@ If you plan to host other people on this instance, read [Supported versions → 
 ### Android app
 
 The Android client ships through GitHub Releases (updated by Obtainium), F-Droid, and — in progress —
-Google Play. See [the Android app page](android-app.md) for the channels, which key signs each one,
+Google Play. See [the Android app page](android-app.html) for the channels, which key signs each one,
 and the uninstall/reinstall constraint when switching between them.
 
 ## Backup

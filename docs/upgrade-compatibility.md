@@ -30,7 +30,7 @@ re-derive it.
   skip versions routinely.
 - **Post-`1.0`:** any `1.x` upgrade from any earlier `1.x`.
   The floor moves only at a major version — which is itself a breaking change
-  under [MAINT-02](breaking-change-policy.md): raising a supported-version
+  under [MAINT-02](breaking-change-policy.html): raising a supported-version
   minimum requires the major version and process that page describes. The
   upgrade floor is a covered surface of that policy.
 - **Downgrade is unsupported.** Rolling back means installing the previous
@@ -55,7 +55,7 @@ still restores those from the routine four-piece backup
 
 An upgrade does not change `FRONTEND_URL`, but if you change it in the same maintenance window
 (a domain move), every enrolled passkey stops working — the WebAuthn relying party is derived from
-its hostname. See [Deployment → Moving to a new hostname](deployment.md#moving-to-a-new-hostname-passkeys)
+its hostname. See [Deployment → Moving to a new hostname](deployment.html#moving-to-a-new-hostname-passkeys)
 before you do.
 
 Upgrading is unattended; that is exactly why the supported range is bounded and
@@ -69,7 +69,7 @@ breaks an existing client until the server explicitly declares a floor**, and
 shipping a floor is a deliberate, documented, breaking event — not a side
 effect of a routine upgrade. The full statement, including the supported
 server×client combinations, is the [client/server compatibility
-policy](client-compatibility-policy.md) (ANDROID-01, issue #478); this section
+policy](client-compatibility-policy.html) (ANDROID-01, issue #478); this section
 is the operator-facing summary:
 
 - **Web client.** Nothing to do. Every user's next page load fetches the

@@ -7,7 +7,7 @@ nav_order: 2
 # Deprecation register
 
 **The machine-readable list of every deprecation on a covered surface**, per
-the [deprecation policy](deprecation-policy.md) (MAINT-01, issue #490). A row
+the [deprecation policy](deprecation-policy.html) (MAINT-01, issue #490). A row
 is added in the **same change** that deprecates the thing and adds its runtime
 signal — never as a follow-up. A row moves to `status: removed` in the change
 that removes the thing.
@@ -55,6 +55,6 @@ per the policy.
 <!-- deprecations:end -->
 
 The 2026-09-08 retroactive audit
-([policy §Retroactive audit](deprecation-policy.md#retroactive-audit)) found
+([policy §Retroactive audit](deprecation-policy.html#retroactive-audit)) found
 no other deprecation on a covered surface that was deprecated in fact but not
 in writing.
