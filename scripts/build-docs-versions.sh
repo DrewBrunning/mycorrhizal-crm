@@ -7,7 +7,8 @@
 # the unreleased docs under /next/, and versions.json for the switcher in
 # docs/_includes/header_custom.html. Each release is built from its own tag, so
 # a release's pages are the ones that shipped with it; only the switcher include
-# and the Changelog page are taken from the current tree so every version has them.
+# and the Changelog page are taken from the current tree so every version has them,
+# and cmd/docssitelinks fixes each version's dead relative links after its build.
 #
 # Usage (from the repo root, with the docs bundle installed and full tag history):
 #   PAGES_BASE_PATH=/mycorrhizal-crm scripts/build-docs-versions.sh [out-dir]
@@ -81,6 +82,11 @@ YAML
     --source "$src/docs" \
     --destination "$work/site/${vpath:-_root}" \
     --config "$src/docs/_config.yml,$src/docs/_config_version.yml"
+  # No dead links in any version: a .md link to a rendered page gets its .html
+  # address, and a repository file or unpublished record points at GitHub at
+  # the ref this version was built from (cmd/docssitelinks). Older tags shipped
+  # before the docs used .html links, so this runs on every version.
+  (cd backend && go run ./cmd/docssitelinks -site "$work/site/${vpath:-_root}" -src "$src/docs" -ref "$tag")
 done < <(jq -c '.[]' "$versions")
 
 mkdir -p "$out"

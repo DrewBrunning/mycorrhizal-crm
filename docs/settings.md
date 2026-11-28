@@ -95,8 +95,6 @@ new-activity dialog pre-filled with the place and date, you choose who you were 
 
 ## Two-factor authentication
 
-<a id="two-factor-authentication"></a>
-
 **Settings → Two-factor authentication** adds a second step to signing in with your password. The
 second step is either a 6-digit code from an authenticator app (TOTP) or a [passkey](#passkeys) —
 whichever you have enrolled, and either one is enough. CardDAV sync and API tokens are not affected.
@@ -151,8 +149,6 @@ an identity provider". Second-factor policy for those accounts belongs to the id
 
 
 ## Passkeys
-
-<a id="passkeys"></a>
 
 **Settings → Passkeys** lets you use your device's fingerprint, face or screen lock (or a hardware
 security key) to sign in. On the web, a passkey can be your **only** sign-in method: choose
@@ -211,8 +207,6 @@ Android passkeys are an operator opt-in and only work on publicly reachable HTTP
 
 ## Feeds
 
-<a id="feeds"></a>
-
 **Settings → Feeds** (below API tokens) creates private [Atom](https://www.rfc-editor.org/rfc/rfc4287)
 feeds so a feed reader can follow the timelines of your contacts. Design details are in
 [ADR 0030](adrs/0030-feeds-atom-emission.md).
@@ -251,8 +245,6 @@ Feeds are managed in the web app only; the Android app has no feed management sc
 
 
 ## Account bundle export
-
-<a id="account-bundle-export"></a>
 
 The **account bundle** is a single JSON file holding a complete, re-importable copy of your data. It
 is served by `GET /api/v1/export/account` (see the [API reference](api-reference.html)) and is what the
