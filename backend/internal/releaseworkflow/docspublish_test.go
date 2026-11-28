@@ -23,6 +23,7 @@ const docsOK = `
 on:
   push:
     branches: ["main"]
+    paths: ["docs/**", "CHANGELOG.md", "changelog.d/**", "scripts/build-docs-versions.sh"]
   workflow_dispatch:
 jobs:
   build:
@@ -78,6 +79,12 @@ func TestCheckDocsPublishCatchesEachRegression(t *testing.T) {
 		{"docs.yml cannot be dispatched", func() DocsPublishFiles {
 			return DocsPublishFiles{Docs: replaceOnce(t, docsOK, "  workflow_dispatch:\n", ""), Release: releaseOK, Promote: promoteOK}
 		}, "workflow_dispatch"},
+		{"a fragment-only merge never redeploys /next/", func() DocsPublishFiles {
+			return DocsPublishFiles{Docs: replaceOnce(t, docsOK, `, "changelog.d/**"`, ""), Release: releaseOK, Promote: promoteOK}
+		}, "changelog.d/**"},
+		{"a docs-only merge never redeploys", func() DocsPublishFiles {
+			return DocsPublishFiles{Docs: replaceOnce(t, docsOK, `"docs/**", `, ""), Release: releaseOK, Promote: promoteOK}
+		}, "docs/**"},
 		{"release.yml never dispatches the docs", func() DocsPublishFiles {
 			return DocsPublishFiles{Docs: docsOK, Release: replaceOnce(t, releaseOK, "gh workflow run docs.yml", "echo"), Promote: promoteOK}
 		}, "release.yml"},
@@ -105,6 +112,13 @@ func TestCheckDocsPublishCatchesEachRegression(t *testing.T) {
 			}
 		})
 	}
+}
+
+// No paths filter means every push to main redeploys, which is never stale.
+func TestCheckDocsPublishAcceptsNoPathsFilter(t *testing.T) {
+	docs := replaceOnce(t, docsOK, `    paths: ["docs/**", "CHANGELOG.md", "changelog.d/**", "scripts/build-docs-versions.sh"]
+`, "")
+	assert.Empty(t, CheckDocsPublish(DocsPublishFiles{Docs: docs, Release: releaseOK, Promote: promoteOK}))
 }
 
 func TestCheckDocsPublishParseErrors(t *testing.T) {

@@ -50,7 +50,11 @@ while IFS= read -r entry; do
   mkdir -p "$src"
   if [ "$tag" = main ]; then
     # The unreleased docs are the checked-out tree (a merge to main).
-    git archive "$next_ref" docs CHANGELOG.md | tar -x -C "$src"
+    git archive "$next_ref" docs CHANGELOG.md changelog.d | tar -x -C "$src"
+    # Unreleased entries wait in changelog.d/ until a release assembles them,
+    # so CHANGELOG.md's [Unreleased] is empty between releases. Fold them into
+    # this temporary copy so /next/ shows what is coming.
+    (cd backend && go run ./cmd/changelogassemble -write -file "$src/CHANGELOG.md" -dir "$src/changelog.d" >/dev/null)
   else
     git archive "$tag" docs CHANGELOG.md 2>/dev/null | tar -x -C "$src" \
       || git archive "$tag" docs | tar -x -C "$src"

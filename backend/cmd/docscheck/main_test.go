@@ -57,7 +57,7 @@ func fixtureTree(t *testing.T) string {
 func TestPublishedPagesNeedFrontMatter(t *testing.T) {
 	root := fixtureTree(t)
 	write(t, root, "docs/operations/runbook.md", "---\ntitle: Runbook\n---\n\n# Runbook\n")
-	write(t, root, "docs/import/README.md", "---\ntitle: Imports\n---\n")
+	write(t, root, "docs/import/README.md", "---\r\ntitle: Imports\r\n---\r\n")
 	write(t, root, "docs/AGENTS.md", "# Agents\n")
 	write(t, root, "docs/adrs/0001-x.md", "# ADR\n")
 	write(t, root, "docs/security/x.md", "# Security\n")

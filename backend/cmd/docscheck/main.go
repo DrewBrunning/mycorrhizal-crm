@@ -500,7 +500,7 @@ func checkPublishedFrontMatter(root string) []string {
 			if err != nil {
 				continue // # pragma: no cover — the entry was listed a moment ago; a racing deletion is not a normal state
 			}
-			if !strings.HasPrefix(string(body), "---\n") {
+			if !hasFrontMatter(body) {
 				findings = append(findings, fmt.Sprintf("%s: is not published: add YAML front matter (title, parent, nav_order) so the docs site renders it", rel))
 			}
 		}
