@@ -1,0 +1,1 @@
+- **Meerkat import keeps single-line addresses** ([#2084](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2084)): a contact address from an older Meerkat now appears on the imported contact. Before, the import kept it only as a hidden label.

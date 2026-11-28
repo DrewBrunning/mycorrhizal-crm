@@ -63,7 +63,7 @@ var realServerCoverage = map[string]realServerEntry{
 		"the call is opt-in and fail-open, and hitting it from CI nightly adds rate-limit risk for no new signal."},
 	"meerkat-api": {Exclusion: "Meerkat is a self-hosted CRM with no published image wired into CI that boots with a seeded account and API token, so a " +
 		"real-server leg would need a bespoke harness for a one-off import assistant. The client is exercised against internal/meerkatapifake, an " +
-		"httptest stand-in for the v1.5-v1.7 API slice the importer reads, in meerkatapi/client_test.go."},
+		"httptest stand-in for the v1.0-v1.4 and v1.5-v1.7 API slices the importer reads, in meerkatapi/client_test.go."},
 	"monica": {Exclusion: "Monica's official image needs a database, an app key and a seeded account with an API token before it answers /api, which is a " +
 		"bespoke harness for a one-off, read-only migration aid. The client is exercised against httptest servers shaped like Monica's paged " +
 		"responses in monica/client_test.go."},

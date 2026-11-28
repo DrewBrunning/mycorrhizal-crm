@@ -22465,7 +22465,7 @@ components:
         Feature-detection result. Meerkat's /health reports a hard-coded
         version, so the generation is inferred from the API's shape.
       properties:
-        generation: { type: string, description: "Matched adapter label (e.g. v1.5-v1.7) or unknown." }
+        generation: { type: string, description: "Matched adapter label (v1.0-v1.4 or v1.5-v1.7; more may be added) or unknown." }
         supported: { type: boolean, description: "False means untested; the client must send accept_untested on fetch." }
         reason: { type: string, description: "One user-facing sentence explaining an unsupported result; empty when supported." }
         reason_code: { type: string, description: "Stable code for reason, for clients to translate: meerkat_version_older_than_supported or meerkat_version_newer_than_tested; empty when supported. Clients fall back to reason for a code they do not know (more may be added)." }

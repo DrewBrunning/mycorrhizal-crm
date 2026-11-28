@@ -40,9 +40,20 @@ URL + token|password → meerkatapi.Client (SSRF-guarded, no redirects, size/tim
 ```
 
 - **Version detection.** Meerkat's `/health` returns a hard-coded `"version": "0.1.0"`, so the
-  generation is inferred from the shape of a contacts page (`meerkatapi.Detect`). One adapter,
-  `v1.5-v1.7`, is supported: the data API is identical across v1.5.0–v1.7.0 (checked by diffing the
-  tags). A server missing the v1.5 fields, or returning fields the adapter does not know, is
+  generation is inferred from the shape of a contacts page (`meerkatapi.Detect`). Two adapters are
+  supported, each checked by diffing the upstream tags:
+  - `v1.5-v1.7`: the multi-valued and structured contact fields (`emails`, `phones`, `addresses`,
+    `urls`, `impps`, name parts, organization, `anniversary`). The data API is identical across
+    v1.5.0–v1.7.0.
+  - `v1.0-v1.4` (issue #2084): the older shape, with only the scalar `email`, `phone` and `address`.
+    The contact model and the routes the importer reads are identical from v1.0.0 to v1.4.1 (the
+    last upstream v1.4 tag), so detection cannot tell those versions apart and the label names the
+    whole range. The mapper's scalar fallback carries the email, phone and address. Meerkat added
+    API tokens in v1.2.0 (admin-only before v1.3.4), so on older servers, or for non-admin users,
+    sign in with a username and password.
+
+  A server that matches neither shape (a base field missing, or only some of the v1.5 fields), or
+  that returns fields its adapter does not know, is
   `supported: false`; `connect` still opens the session and reports why (`reason_code`
   `meerkat_version_older_than_supported` | `meerkat_version_newer_than_tested` for clients to
   translate, `reason` as the English fallback), and `fetch` then requires

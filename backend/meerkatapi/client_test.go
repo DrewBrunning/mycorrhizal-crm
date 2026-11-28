@@ -99,7 +99,7 @@ func (f *fakeMeerkat) handler() http.Handler {
 
 func contactObj(id int, first string) map[string]any {
 	c := map[string]any{"ID": id, "firstname": first, "archived": false}
-	for _, k := range requiredContactKeys {
+	for _, k := range append(append([]string{}, baseContactKeys...), v15ContactKeys...) {
 		if _, ok := c[k]; !ok {
 			c[k] = ""
 		}
@@ -109,6 +109,21 @@ func contactObj(id int, first string) map[string]any {
 	c["custom_fields"] = map[string]string{"Pet": "Cat"}
 	c["photo"] = ""
 	return c
+}
+
+// legacyContactObj is a contact exactly as Meerkat v1.0.0–v1.4.1 serves it
+// from GET /contacts (models.ContactResponse at those tags): scalar email,
+// phone and address, none of the v1.5 multi-valued or structured fields.
+func legacyContactObj(id int, first string) map[string]any {
+	return map[string]any{
+		"ID": id, "CreatedAt": "2024-01-01T00:00:00Z", "UpdatedAt": "2024-01-02T00:00:00Z", "DeletedAt": nil,
+		"firstname": first, "lastname": "Old", "nickname": "", "gender": "",
+		"email": first + "@example.com", "phone": "+1 555 0100", "birthday": "",
+		"photo": "", "photo_thumbnail": "", "relationships": []any{},
+		"address": "1 Main St, Springfield", "how_we_met": "", "food_preference": "",
+		"work_information": "", "contact_information": "",
+		"circles": []string{"Family"}, "custom_fields": map[string]string{}, "archived": false,
+	}
 }
 
 func newTestClient(t *testing.T, f *fakeMeerkat) (*Client, *httptest.Server) {
@@ -237,6 +252,50 @@ func TestDetect(t *testing.T) {
 		// Wire value: area-prefixed per ADR 0037 / #2095, so #2100 can register it unchanged.
 		assert.Equal(t, "meerkat_version_older_than_supported", v.ReasonCode)
 	})
+	t.Run("pre-v1.5 shape matches the v1.0-v1.4 adapter", func(t *testing.T) {
+		c, _ := newTestClient(t, &fakeMeerkat{contacts: []map[string]any{legacyContactObj(1, "Ada")}})
+		c.SetToken(goodToken)
+		v, err := c.Detect(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, VersionInfo{Generation: GenerationV10toV14, Supported: true}, v)
+		// Wire value: clients and logs see it; renaming a shipped label is a MAINT-02 break.
+		assert.Equal(t, "v1.0-v1.4", GenerationV10toV14)
+	})
+	t.Run("pre-v1.5 shape missing a base key matches neither adapter", func(t *testing.T) {
+		old := legacyContactObj(1, "Ada")
+		delete(old, "email")
+		c, _ := newTestClient(t, &fakeMeerkat{contacts: []map[string]any{old}})
+		c.SetToken(goodToken)
+		v, err := c.Detect(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, GenerationUnknown, v.Generation)
+		assert.False(t, v.Supported)
+		assert.Equal(t, ReasonOlderThanSupported, v.ReasonCode)
+		assert.Contains(t, v.Reason, "older than v1.0")
+	})
+	t.Run("pre-v1.5 shape with one v1.5 field matches neither adapter", func(t *testing.T) {
+		mixed := legacyContactObj(1, "Ada")
+		mixed["organization"] = "" // half-migrated or forked: not v1.0-v1.4, not v1.5-v1.7
+		c, _ := newTestClient(t, &fakeMeerkat{contacts: []map[string]any{mixed}})
+		c.SetToken(goodToken)
+		v, err := c.Detect(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, GenerationUnknown, v.Generation)
+		assert.False(t, v.Supported)
+		assert.Equal(t, ReasonOlderThanSupported, v.ReasonCode)
+	})
+	t.Run("pre-v1.5 shape with an unknown field is untested", func(t *testing.T) {
+		odd := legacyContactObj(1, "Ada")
+		odd["pronouns"] = "she/her"
+		c, _ := newTestClient(t, &fakeMeerkat{contacts: []map[string]any{odd}})
+		c.SetToken(goodToken)
+		v, err := c.Detect(context.Background())
+		require.NoError(t, err)
+		assert.Equal(t, GenerationV10toV14, v.Generation, "the base adapter matched; the extra field is what is untested")
+		assert.False(t, v.Supported)
+		assert.Equal(t, ReasonNewerThanTested, v.ReasonCode)
+		assert.Contains(t, v.Reason, "v1.0–v1.4")
+	})
 	t.Run("unknown extra field means newer, untested", func(t *testing.T) {
 		newer := contactObj(1, "Ada")
 		newer["pronouns"] = "she/her"
@@ -311,6 +370,58 @@ func TestFetchSnapshot_PagesAndAdaptsEverything(t *testing.T) {
 	assert.JSONEq(t, `[{"type":"work","value":"C1@example.com"}]`, *c0.EmailsJSON)
 	assert.JSONEq(t, `["Family"]`, *c0.CirclesJSON)
 	assert.JSONEq(t, `{"Pet":"Cat"}`, *c0.CustomFields)
+}
+
+// TestDetectKeySets pins the signature split (issue #2084): the base set every
+// Meerkat from v1.0 carries, and the v1.5 extension set whose presence (all of
+// it) selects the v1.5-v1.7 adapter and whose absence (all of it) selects
+// v1.0-v1.4.
+func TestDetectKeySets(t *testing.T) {
+	assert.ElementsMatch(t, []string{"firstname", "lastname", "circles", "custom_fields", "archived", "email", "phone"}, baseContactKeys)
+	assert.ElementsMatch(t, []string{
+		"emails", "phones", "addresses", "urls", "impps", "prefix", "middle_name", "suffix",
+		"organization", "department", "job_title", "role", "anniversary",
+	}, v15ContactKeys)
+	for _, k := range baseContactKeys {
+		assert.NotContains(t, v15ContactKeys, k, "the two sets are disjoint")
+	}
+	// The legacy fixture is exactly the v1.0-v1.4 shape: every key known to that adapter.
+	for k := range legacyContactObj(1, "x") {
+		assert.Truef(t, knownLegacyContactKeys[k], "legacy key %q must be known to the v1.0-v1.4 adapter", k)
+	}
+	for _, k := range v15ContactKeys {
+		assert.Falsef(t, knownLegacyContactKeys[k], "v1.5 key %q must not be known to the v1.0-v1.4 adapter", k)
+	}
+}
+
+// TestFetchSnapshot_PreV15ShapeCarriesScalars proves FetchSnapshot needs no
+// v1.0-v1.4 branch: the absent v1.5 keys decode to nil and the scalar email,
+// phone and address land in the snapshot for the mapper's fallback.
+func TestFetchSnapshot_PreV15ShapeCarriesScalars(t *testing.T) {
+	old := legacyContactObj(1, "Ada")
+	old["notes"] = []map[string]any{{"ID": 3, "content": "from v1.4", "date": "2024-01-02T03:04:05Z", "contact_id": 1}}
+	c, _ := newTestClient(t, &fakeMeerkat{contacts: []map[string]any{old}})
+	c.SetToken(goodToken)
+	snap, err := c.FetchSnapshot(context.Background(), Me{ID: 7, Username: "ada"}, Limits{}, nil)
+	require.NoError(t, err)
+	require.Len(t, snap.Contacts, 1)
+	got := snap.Contacts[0]
+	require.NotNil(t, got.Email)
+	assert.Equal(t, "Ada@example.com", *got.Email)
+	require.NotNil(t, got.Phone)
+	assert.Equal(t, "+1 555 0100", *got.Phone)
+	require.NotNil(t, got.Address)
+	assert.Equal(t, "1 Main St, Springfield", *got.Address)
+	for name, v := range map[string]*string{
+		"emails": got.EmailsJSON, "phones": got.PhonesJSON, "addresses": got.AddressesJSON,
+		"urls": got.URLsJSON, "impps": got.IMPPsJSON, "prefix": got.Prefix, "organization": got.Organization,
+		"anniversary": got.Anniversary,
+	} {
+		assert.Nilf(t, v, "%s is absent before v1.5 and must stay nil so the mapper falls back", name)
+	}
+	assert.JSONEq(t, `["Family"]`, *got.CirclesJSON)
+	require.Len(t, snap.Notes, 1)
+	assert.Equal(t, "from v1.4", *snap.Notes[0].Content)
 }
 
 func TestFetchSnapshot_Caps(t *testing.T) {

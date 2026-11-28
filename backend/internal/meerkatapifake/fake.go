@@ -1,6 +1,7 @@
 // Package meerkatapifake is an httptest stand-in for the slice of the Meerkat
-// v1.5–v1.7 REST API the live importer reads (issue #2013). Test-only: it is
-// never linked into the server binary.
+// REST API the live importer reads (issue #2013). It serves the v1.5–v1.7
+// contact shape by default (Contact) and the v1.0–v1.4 shape via LegacyContact
+// (issue #2084). Test-only: it is never linked into the server binary.
 package meerkatapifake
 
 import (
@@ -57,7 +58,26 @@ func New(t testing.TB) *Server {
 // Logouts reports how many times /logout was called.
 func (s *Server) Logouts() int { s.mu.Lock(); defer s.mu.Unlock(); return s.logouts }
 
-// Contact builds a contact object carrying every v1.5–v1.7 key.
+// LegacyAddress is the scalar address LegacyContact serves.
+const LegacyAddress = "1 Main St, Springfield"
+
+// LegacyContact builds a contact exactly as Meerkat v1.0.0–v1.4.1 serves it
+// from GET /contacts (models.ContactResponse at those tags): scalar
+// email/phone/address, none of the v1.5 multi-valued or structured fields
+// (issue #2084).
+func LegacyContact(id int, first string) map[string]any {
+	return map[string]any{
+		"ID": id, "CreatedAt": "2024-01-01T00:00:00Z", "UpdatedAt": "2024-01-02T00:00:00Z", "DeletedAt": nil,
+		"firstname": first, "lastname": "Test", "nickname": "", "gender": "",
+		"email": strings.ToLower(first) + "@example.com", "phone": "+1 555 0100",
+		"birthday": "", "photo": "", "photo_thumbnail": "", "relationships": []any{},
+		"address": LegacyAddress, "how_we_met": "", "food_preference": "", "work_information": "",
+		"contact_information": "", "circles": []string{}, "custom_fields": map[string]string{}, "archived": false,
+	}
+}
+
+// Contact builds a contact object carrying every v1.5–v1.7 key (the default
+// shape the fake serves; see LegacyContact for v1.0–v1.4).
 func Contact(id int, first string) map[string]any {
 	return map[string]any{
 		"ID": id, "firstname": first, "lastname": "Test", "nickname": "", "gender": "", "email": "", "phone": "",

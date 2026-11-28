@@ -16,6 +16,11 @@ const (
 	// organization fields, anniversary, and ?includes= preloading. The data
 	// API did not change across that range (verified by diffing the tags).
 	GenerationV15toV17 = "v1.5-v1.7"
+	// GenerationV10toV14 covers Meerkat v1.0.0–v1.4.1: scalar email, phone and
+	// address only, none of the v1.5 multi-valued or structured fields. The
+	// contact shape is identical across that range (verified by diffing the
+	// tags), so detection cannot tell those versions apart (issue #2084).
+	GenerationV10toV14 = "v1.0-v1.4"
 	// GenerationUnknown means the signature did not match any adapter.
 	GenerationUnknown = "unknown"
 )
@@ -45,24 +50,46 @@ type VersionInfo struct {
 	ReasonCode string `json:"reason_code,omitempty"`
 }
 
-// requiredContactKeys are the contact fields the v1.5–v1.7 adapter reads;
-// their absence means an older (or very different) Meerkat.
-var requiredContactKeys = []string{
-	"firstname", "lastname", "emails", "phones", "addresses", "urls", "impps",
-	"prefix", "middle_name", "suffix", "organization", "department", "job_title",
-	"role", "anniversary", "circles", "custom_fields", "archived",
+// baseContactKeys are the contact fields present in every supported Meerkat
+// generation (v1.0 onward). Their absence means an older (or very different)
+// Meerkat.
+var baseContactKeys = []string{
+	"firstname", "lastname", "circles", "custom_fields", "archived", "email", "phone",
 }
 
-// knownContactKeys is every key the v1.5–v1.7 contact object carries. A key
+// v15ContactKeys are the fields Meerkat v1.5 added: the multi-valued and
+// structured contact fields. All present selects the v1.5-v1.7 adapter; none
+// present selects v1.0-v1.4; a partial set matches neither.
+var v15ContactKeys = []string{
+	"emails", "phones", "addresses", "urls", "impps", "prefix", "middle_name",
+	"suffix", "organization", "department", "job_title", "role", "anniversary",
+}
+
+// knownLegacyContactKeys is every key the v1.0-v1.4 contact object carries. A
+// key outside it means a newer server than the importer was tested against.
+var knownLegacyContactKeys = map[string]bool{
+	"ID": true, "CreatedAt": true, "UpdatedAt": true, "DeletedAt": true,
+	"firstname": true, "lastname": true, "nickname": true, "gender": true,
+	"email": true, "phone": true, "birthday": true, "photo": true,
+	"photo_thumbnail": true, "relationships": true, "address": true,
+	"how_we_met": true, "food_preference": true, "work_information": true,
+	"contact_information": true, "circles": true, "custom_fields": true,
+	"archived": true, "activities": true, "notes": true, "reminders": true,
+}
+
+// knownContactKeys is every key the v1.5-v1.7 contact object carries. A key
 // outside it means a newer server than the importer was tested against.
 var knownContactKeys = func() map[string]bool {
 	m := map[string]bool{}
-	for _, k := range requiredContactKeys {
+	for _, k := range baseContactKeys {
+		m[k] = true
+	}
+	for _, k := range v15ContactKeys {
 		m[k] = true
 	}
 	for _, k := range []string{
-		"ID", "CreatedAt", "UpdatedAt", "DeletedAt", "nickname", "gender", "email",
-		"phone", "birthday", "photo", "photo_thumbnail", "address", "how_we_met",
+		"ID", "CreatedAt", "UpdatedAt", "DeletedAt", "nickname", "gender",
+		"birthday", "photo", "photo_thumbnail", "address", "how_we_met",
 		"food_preference", "work_information", "contact_information",
 		"relationships", "activities", "notes", "reminders",
 	} {
@@ -70,6 +97,27 @@ var knownContactKeys = func() map[string]bool {
 	}
 	return m
 }()
+
+// countPresent reports how many of keys are present in obj.
+func countPresent(obj map[string]json.RawMessage, keys []string) int {
+	n := 0
+	for _, k := range keys {
+		if _, ok := obj[k]; ok {
+			n++
+		}
+	}
+	return n
+}
+
+// hasUnknownKey reports whether obj carries a key outside known.
+func hasUnknownKey(obj map[string]json.RawMessage, known map[string]bool) bool {
+	for k := range obj {
+		if !known[k] {
+			return true
+		}
+	}
+	return false
+}
 
 // Detect identifies the server. It first checks the unauthenticated /health
 // signature (so a non-Meerkat host fails fast, before any credential is
@@ -94,25 +142,32 @@ func (c *Client) Detect(ctx context.Context) (VersionInfo, error) {
 		return VersionInfo{Generation: GenerationV15toV17, Supported: true}, nil
 	}
 	first := page.Contacts[0]
-	for _, k := range requiredContactKeys {
-		if _, ok := first[k]; !ok {
-			return VersionInfo{
-				Generation: GenerationUnknown,
-				Reason:     "This Meerkat looks older than v1.5 (its contacts lack fields the importer reads).",
-				ReasonCode: ReasonOlderThanSupported,
-			}, nil
-		}
-	}
-	for k := range first {
-		if !knownContactKeys[k] {
+	basePresent := countPresent(first, baseContactKeys) == len(baseContactKeys)
+	switch v15 := countPresent(first, v15ContactKeys); {
+	case basePresent && v15 == len(v15ContactKeys):
+		if hasUnknownKey(first, knownContactKeys) {
 			return VersionInfo{
 				Generation: GenerationV15toV17,
 				Reason:     "This Meerkat looks newer than the versions the importer was tested with (v1.5–v1.7).",
 				ReasonCode: ReasonNewerThanTested,
 			}, nil
 		}
+		return VersionInfo{Generation: GenerationV15toV17, Supported: true}, nil
+	case basePresent && v15 == 0:
+		if hasUnknownKey(first, knownLegacyContactKeys) {
+			return VersionInfo{
+				Generation: GenerationV10toV14,
+				Reason:     "This Meerkat looks newer than the versions the importer was tested with (v1.0–v1.4).",
+				ReasonCode: ReasonNewerThanTested,
+			}, nil
+		}
+		return VersionInfo{Generation: GenerationV10toV14, Supported: true}, nil
 	}
-	return VersionInfo{Generation: GenerationV15toV17, Supported: true}, nil
+	return VersionInfo{
+		Generation: GenerationUnknown,
+		Reason:     "This Meerkat looks older than v1.0 (its contacts lack fields the importer reads).",
+		ReasonCode: ReasonOlderThanSupported,
+	}, nil
 }
 
 // CheckHealth confirms the host answers like Meerkat's /health before any

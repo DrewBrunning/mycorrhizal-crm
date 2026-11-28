@@ -1,0 +1,1 @@
+- **Import from older Meerkat versions** ([#2084](https://github.com/DrewBrunning/mycorrhizal-crm/issues/2084)): connecting to a Meerkat from v1.0 to v1.4 now imports normally. You no longer have to click "Try anyway".

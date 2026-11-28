@@ -370,7 +370,14 @@ func mapMeerkatContact(c meerkat.Contact, ref SourceRef, plan *ImportSourcePlan,
 	card.ImppAddresses = parseMeerkatIMPPs(c.IMPPsJSON)
 	card.Addresses = parseMeerkatAddresses(c.AddressesJSON)
 	if len(card.Addresses) == 0 && c.Address != nil && *c.Address != "" {
-		card.Addresses = []contactmodel.Address{{Full: *c.Address}}
+		// Meerkat's scalar address is one free-text line. Full keeps it as the
+		// label; the "name" (street) component is what the flat projection
+		// reads, without which the address lands with no visible field
+		// (contactAddressFromNeutral ignores Full; issue #2084).
+		card.Addresses = []contactmodel.Address{{
+			Full:       *c.Address,
+			Components: []contactmodel.AddressComponent{{Kind: "name", Value: *c.Address}},
+		}}
 	}
 	card.Links = parseMeerkatLinks(c.URLsJSON)
 

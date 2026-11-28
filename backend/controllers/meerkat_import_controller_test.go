@@ -230,6 +230,22 @@ func TestConnectMeerkatImport_FullFlowWithPhoto(t *testing.T) {
 	require.NotEmpty(t, c.Photo)
 }
 
+func TestConnectMeerkatImport_PreV15ShapeIsSupported(t *testing.T) {
+	_, router, _ := meerkatRouterDB(t)
+	srv := meerkatapifake.New(t)
+	srv.Contacts = []map[string]any{meerkatapifake.LegacyContact(1, "Olga")}
+
+	w := postConnect(t, router, models.MeerkatConnectRequest{BaseURL: srv.URL, APIToken: meerkatapifake.Token})
+	require.Equal(t, http.StatusOK, w.Code, w.Body.String())
+	var raw struct {
+		Version map[string]any `json:"version"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &raw))
+	assert.Equal(t, "v1.0-v1.4", raw.Version["generation"], "wire value of the pre-v1.5 adapter")
+	assert.Equal(t, true, raw.Version["supported"])
+	assert.Equal(t, "", raw.Version["reason_code"])
+}
+
 func TestConnectMeerkatImport_SessionCap(t *testing.T) {
 	_, router, _ := meerkatRouterDB(t)
 	srv := apiFake(t)

@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"mycorrhizal/contactmodel"
 	"mycorrhizal/internal/dbtest"
 	"mycorrhizal/internal/meerkatfixture"
 	"mycorrhizal/meerkat"
@@ -466,6 +467,9 @@ func TestMapMeerkatSnapshot_EdgeCases(t *testing.T) {
 	// are filtered; the NULL-lastname contact still maps).
 	require.Len(t, plan.Contacts, 3)
 	assert.Equal(t, "1 Main St", plan.Contacts[1].Record.Card.Addresses[0].Full)
+	assert.Equal(t, []contactmodel.AddressComponent{{Kind: "name", Value: "1 Main St"}},
+		plan.Contacts[1].Record.Card.Addresses[0].Components,
+		"the scalar address needs a component, or the flat projection drops it (#2084)")
 	// The malformed JSON blobs degraded to nothing; the scalar-address
 	// fallback did not fire for Ada (she has a structured-address array with
 	// only blank entries, which is dropped, and no scalar address).

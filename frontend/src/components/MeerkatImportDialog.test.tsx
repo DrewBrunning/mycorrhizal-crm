@@ -338,7 +338,7 @@ test('a known reason code shows the translated sentence, not the server English'
 
 test('the older reason code has its own translated sentence', async () => {
   await connectUntested('SERVER ENGLISH', 'meerkat_version_older_than_supported');
-  expect(screen.getByText(/looks older than v1\.5/)).toBeInTheDocument();
+  expect(screen.getByText(/looks older than v1\.0/)).toBeInTheDocument();
   expect(screen.queryByText(/SERVER ENGLISH/)).not.toBeInTheDocument();
 });
 
