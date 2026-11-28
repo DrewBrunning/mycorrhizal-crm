@@ -12,9 +12,9 @@ scope, no unnecessary architectural change, each revision "progressively smaller
 boring." This page turns that from prose into mechanics: how an RC is identified and published,
 where it is worked on, what may merge into it, how the iteration loop runs, and what ends it.
 
-The tag *identifier* is decided in [`versioning-policy.md`](versioning-policy.md) (RC-01); the
+The tag *identifier* is decided in [`versioning-policy.md`](versioning-policy.html) (RC-01); the
 release *workflow* is [`.github/workflows/release.yml`](https://github.com/DrewBrunning/mycorrhizal-crm/blob/main/.github/workflows/release.yml)
-(REL-06, issue #499); the gate list is [`development/release-gates.md`](development/release-gates.md)
+(REL-06, issue #499); the gate list is [`development/release-gates.md`](development/release-gates.html)
 (REL-03). This page is only the RC-specific layer on top.
 
 ## RC identity and channels
@@ -48,7 +48,7 @@ At **rc.1**, cut a branch **`release/vX.Y.0`** from `main`. From then on:
   reaches `main` and the two histories reconverge.
 
 This is enforced, not just documented: **`.github/rulesets/release-branches.json`** (the
-`release-branch-protection` ruleset — see [`development/repo-governance.md`](development/repo-governance.md))
+`release-branch-protection` ruleset — see [`development/repo-governance.md`](development/repo-governance.html))
 requires **every status check `main` requires, plus the RC-only checks declared in
 `backend/internal/governance.ReleaseOnlyRequiredChecks`** (currently just the RC fix criterion,
 next section), plus linear history, no deletion, and no force-push.
@@ -84,7 +84,7 @@ trail, not the taste.
 ## The iteration loop
 
 1. **A finding** — anything wrong with the RC — is filed as an issue, labelled **`rc-finding`**,
-   given a **`Severity:`** line ([`issue-classification.md`](issue-classification.md)) and the
+   given a **`Severity:`** line ([`issue-classification.md`](issue-classification.html)) and the
    `vX.Y.0` milestone.
 2. **The fix** is a PR into `release/vX.Y.0` closing that issue (criterion above).
 3. **The next RC** is cut with `release.yml` (`version: vX.Y.Z-rc.(N+1)`, `ref: release/vX.Y.0`).
@@ -105,7 +105,7 @@ Promote `vX.Y.Z-rc.N` to `vX.Y.Z` when **all** of:
 
 - **No open `rc-finding` issue at `sev1` or `sev2`** against the series. "Release-blocking" is
   defined as `sev1` (data loss / security / auth bypass) or `sev2` (wrong data or silent failure
-  with no workaround) per [`issue-classification.md`](issue-classification.md) — not a fresh
+  with no workaround) per [`issue-classification.md`](issue-classification.html) — not a fresh
   definition invented here.
 - The **latest RC introduced only `sev3`/`sev4`/documentation changes** — "increasingly boring".
 - **Every mandatory gate is green** on the RC commit (the same battery `release.yml` and
@@ -170,7 +170,7 @@ not the mechanism.
 ## One-time setup for a series
 
 - `gh label create rc-finding --description "A defect found while testing a release candidate" --color BFD4F2`
-- Apply `.github/rulesets/release-branches.json` (see [`development/repo-governance.md`](development/repo-governance.md), "Applying and verifying").
+- Apply `.github/rulesets/release-branches.json` (see [`development/repo-governance.md`](development/repo-governance.html), "Applying and verifying").
 - Before `0.9.0`, run the loop end to end once on a throwaway version — cut a practice RC, file a
   finding, cut rc2, promote — so the process is exercised before it is load-bearing (issue #446
   "How to verify").

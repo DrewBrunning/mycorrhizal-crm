@@ -88,14 +88,12 @@ new-activity dialog pre-filled with the place and date, you choose who you were 
   can still log the activity by hand. If only the photo check fails, the stays are still listed, marked
   "Photos could not be checked."
 - **Operators:** set `GEOPULSE_BLOCK_PRIVATE_URLS=true` on any instance reachable from the internet, so a user cannot
-  point the connection at a loopback or LAN address (see [Deployment](deployment.md#production-environment)).
-  Ownership and failure behaviour are in [Integrations](integration-ownership.md#geopulse).
-- The Android app has the same flow (Settings → GeoPulse, and **Log from location history** on the Activities screen); see [Android app](android-app.md#log-activities-from-location-history-geopulse). Both are hidden on a local (embedded) profile.
+  point the connection at a loopback or LAN address (see [Deployment](deployment.html#production-environment)).
+  Ownership and failure behaviour are in [Integrations](integration-ownership.html#geopulse).
+- The Android app has the same flow (Settings → GeoPulse, and **Log from location history** on the Activities screen); see [Android app](android-app.html#log-activities-from-location-history-geopulse). Both are hidden on a local (embedded) profile.
 
 
 ## Two-factor authentication
-
-<a id="two-factor-authentication"></a>
 
 **Settings → Two-factor authentication** adds a second step to signing in with your password. The
 second step is either a 6-digit code from an authenticator app (TOTP) or a [passkey](#passkeys) —
@@ -152,8 +150,6 @@ an identity provider". Second-factor policy for those accounts belongs to the id
 
 ## Passkeys
 
-<a id="passkeys"></a>
-
 **Settings → Passkeys** lets you use your device's fingerprint, face or screen lock (or a hardware
 security key) to sign in. On the web, a passkey can be your **only** sign-in method: choose
 **Sign in with a passkey** on the sign-in page and confirm with your device, with no username or
@@ -195,7 +191,7 @@ Two consequences:
 
 - **Changing the hostname of `FRONTEND_URL` invalidates every enrolled passkey** for every user.
   Authenticator apps and recovery codes are unaffected, so keep those set up before a move. Operators:
-  see [`FRONTEND_URL`](configuration-reference.html) and [Deployment](deployment.md).
+  see [`FRONTEND_URL`](configuration-reference.html) and [Deployment](deployment.html).
 - **Passkeys are unavailable** when `FRONTEND_URL` is `*` (the development default), because that
   names no concrete origin. Adding one then fails with "passkeys require FRONTEND_URL to be set to the
   concrete origin users load the app from". A browser without WebAuthn support shows "This browser
@@ -206,12 +202,10 @@ Two consequences:
 Passkeys you create in the Android app are the **same credentials** as the ones you create on the
 web, because both are bound to the same instance host: the same list, the same removal rules. Native
 Android passkeys are an operator opt-in and only work on publicly reachable HTTPS instances. See
-[Android app → Passkeys](android-app.md#passkeys) and [ADR 0034](adrs/0034-android-passkeys.md).
+[Android app → Passkeys](android-app.html#passkeys) and [ADR 0034](adrs/0034-android-passkeys.md).
 
 
 ## Feeds
-
-<a id="feeds"></a>
 
 **Settings → Feeds** (below API tokens) creates private [Atom](https://www.rfc-editor.org/rfc/rfc4287)
 feeds so a feed reader can follow the timelines of your contacts. Design details are in
@@ -252,11 +246,9 @@ Feeds are managed in the web app only; the Android app has no feed management sc
 
 ## Account bundle export
 
-<a id="account-bundle-export"></a>
-
 The **account bundle** is a single JSON file holding a complete, re-importable copy of your data. It
-is served by `GET /api/v1/export/account` (see the [API reference](api-reference.md)) and is what the
-[Android app](android-app.md) writes with **Export account bundle to file** and uses to move a
+is served by `GET /api/v1/export/account` (see the [API reference](api-reference.html)) and is what the
+[Android app](android-app.html) writes with **Export account bundle to file** and uses to move a
 local-only profile to a server. In the web app, **Settings → Data → Export account bundle** (in the
 **Export Data** card) downloads one after a confirmation that it includes everything you marked
 private or secret; **Settings → Data → Import account bundle** takes a bundle exported from another
@@ -292,7 +284,7 @@ Export the bundle from the source, then import it on the destination with **Sett
 account bundle**. You get the same review step as other imports, with per-contact add, merge or skip.
 The import is a one-time move, never a live sync, and re-running it does not duplicate contacts that
 already arrived. For moving an Android local-only profile to a server, see
-[Android app](android-app.md).
+[Android app](android-app.html).
 
 Your own "Me" contact is not duplicated: the bundle records which contact is you, and the import merges
 it into the "Me" contact the destination account already has (it appears in the review step as a merge

@@ -55,6 +55,21 @@ func checkDocsTriggers(doc anyMap) []string {
 	if push := asMap(on["push"]); push != nil && (push["tags"] != nil || push["tags-ignore"] != nil) {
 		out = append(out, "docs.yml: remove the push tag trigger -- the github-pages environment deploys only from main, so a tag run is refused; the release workflows dispatch docs.yml on main instead")
 	}
+	// A paths filter that misses a source of the site leaves it stale until an
+	// unrelated docs merge: the pages (docs/**), the released changelog
+	// (CHANGELOG.md), and the unreleased entries /next/ folds in from
+	// changelog.d/ (scripts/build-docs-versions.sh).
+	if push := asMap(on["push"]); push != nil && push["paths"] != nil {
+		paths := map[string]bool{}
+		for _, p := range asList(push["paths"]) {
+			paths[asStr(p)] = true
+		}
+		for _, want := range []string{"docs/**", "CHANGELOG.md", "changelog.d/**"} {
+			if !paths[want] {
+				out = append(out, fmt.Sprintf("docs.yml: push paths must include %q, or a merge that changes it never redeploys the site", want))
+			}
+		}
+	}
 	if _, ok := on["workflow_dispatch"]; !ok {
 		out = append(out, "docs.yml: needs a workflow_dispatch trigger so the release workflows can publish a new release's docs")
 	}

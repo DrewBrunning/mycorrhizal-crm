@@ -9,7 +9,7 @@ nav_order: 6
 ## Getting Started
 
 1. Fork the repository and clone your fork locally.
-2. Follow the setup steps in [Backend](backend.md) and [Frontend](frontend.md).
+2. Follow the setup steps in [Backend](backend.html) and [Frontend](frontend.html).
 3. Run `bash scripts/install-git-hooks.sh` once — it wires up local git hooks
    that mirror CI's linters and a few governance/drift checks, so a commit
    that would fail CI fails locally first. See [`.github/AGENTS.md`](../../.github/AGENTS.md)
@@ -19,7 +19,7 @@ nav_order: 6
 ## Development Workflow
 
 The full, non-negotiable sequence is in
-[Implementation Workflow](implementation-workflow.md): write failing tests first, review the tests,
+[Implementation Workflow](implementation-workflow.html): write failing tests first, review the tests,
 implement in small TDD loops, self-review, run the local per-PR suite, then open the PR.
 
 1. Make your changes with tests.
@@ -45,7 +45,7 @@ implement in small TDD loops, self-review, run the local per-PR suite, then open
   must act. Do not edit `CHANGELOG.md` directly: the release assembles the
   fragments into the notes. If a migration/config change genuinely needs no
   entry, write `no-changelog: <reason>` in the PR description instead. See the
-  [changelog policy](../changelog-policy.md).
+  [changelog policy](../changelog-policy.html).
 - Sign off every commit — see below.
 
 ## Sign your commits (DCO)

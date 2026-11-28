@@ -16,18 +16,18 @@ page that names the symptom and the fix.
   [Observability](operations/observability.html).
 - **The server will not start, or refuses to migrate a database** —
   [Migration recovery runbook](operations/migration-recovery.html) and
-  [Upgrade compatibility](upgrade-compatibility.md) (the below-floor and
+  [Upgrade compatibility](upgrade-compatibility.html) (the below-floor and
   dirty-schema refusals).
 - **You need to restore from a backup, or recover after disk failure or
   corruption** — [Disaster recovery boundaries](operations/disaster-recovery.html).
 - **An integration is failing** (CardDAV/CalDAV sync, Immich, Paperless,
   Seafile, WebDAV, email, notifications, OIDC) — the per-integration symptoms
   and diagnostic path are in
-  [Integrations: ownership and diagnostics](integration-ownership.md).
+  [Integrations: ownership and diagnostics](integration-ownership.html).
 - **Search results are wrong or missing after a restore or import** —
   [Rebuilding the full-text search index](operations/search-index.html).
 - **A client shows a stale app or a version error** —
-  [Client/server compatibility policy](client-compatibility-policy.md) and
+  [Client/server compatibility policy](client-compatibility-policy.html) and
   [Service-worker updates](service-worker-updates.html).
 
 ## Common configuration problems

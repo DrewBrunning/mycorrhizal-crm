@@ -6,8 +6,9 @@
 # Pages artifact: the newest release at the site root, older ones under /X.Y/,
 # the unreleased docs under /next/, and versions.json for the switcher in
 # docs/_includes/header_custom.html. Each release is built from its own tag, so
-# a release's pages are the ones that shipped with it; only the switcher include
-# and the Changelog page are taken from the current tree so every version has them.
+# a release's pages are the ones that shipped with it; only the switcher and head
+# includes and the Changelog page are taken from the current tree so every version has them,
+# and cmd/docssitelinks fixes each version's dead relative links after its build.
 #
 # Usage (from the repo root, with the docs bundle installed and full tag history):
 #   PAGES_BASE_PATH=/mycorrhizal-crm scripts/build-docs-versions.sh [out-dir]
@@ -50,7 +51,11 @@ while IFS= read -r entry; do
   mkdir -p "$src"
   if [ "$tag" = main ]; then
     # The unreleased docs are the checked-out tree (a merge to main).
-    git archive "$next_ref" docs CHANGELOG.md | tar -x -C "$src"
+    git archive "$next_ref" docs CHANGELOG.md changelog.d | tar -x -C "$src"
+    # Unreleased entries wait in changelog.d/ until a release assembles them,
+    # so CHANGELOG.md's [Unreleased] is empty between releases. Fold them into
+    # this temporary copy so /next/ shows what is coming.
+    (cd backend && go run ./cmd/changelogassemble -write -file "$src/CHANGELOG.md" -dir "$src/changelog.d" >/dev/null)
   else
     git archive "$tag" docs CHANGELOG.md 2>/dev/null | tar -x -C "$src" \
       || git archive "$tag" docs | tar -x -C "$src"
@@ -59,6 +64,8 @@ while IFS= read -r entry; do
   # tag has a CHANGELOG.md (the page itself is generated, never committed).
   mkdir -p "$src/docs/_includes"
   cp "$repo_root/docs/_includes/header_custom.html" "$src/docs/_includes/header_custom.html"
+  # ...and the current head include (keyboard access to wide tables).
+  cp "$repo_root/docs/_includes/head_custom.html" "$src/docs/_includes/head_custom.html"
   if [ -f "$src/CHANGELOG.md" ]; then
     # Repository links name the tag the page was built from (main for next).
     (cd backend && go run ./cmd/gensitechangelog -in "$src/CHANGELOG.md" -out "$src/docs/changelog.md" -ref "$tag")
@@ -77,6 +84,11 @@ YAML
     --source "$src/docs" \
     --destination "$work/site/${vpath:-_root}" \
     --config "$src/docs/_config.yml,$src/docs/_config_version.yml"
+  # No dead links in any version: a .md link to a rendered page gets its .html
+  # address, and a repository file or unpublished record points at GitHub at
+  # the ref this version was built from (cmd/docssitelinks). Older tags shipped
+  # before the docs used .html links, so this runs on every version.
+  (cd backend && go run ./cmd/docssitelinks -site "$work/site/${vpath:-_root}" -src "$src/docs" -ref "$tag")
 done < <(jq -c '.[]' "$versions")
 
 mkdir -p "$out"

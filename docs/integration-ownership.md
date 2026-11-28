@@ -11,7 +11,7 @@ and CalDAV servers, Immich, Paperless, Seafile, generic WebDAV, webhook
 receivers, ntfy/Gotify/Web Push, transactional email (Resend or SMTP), an OIDC
 provider, and the HIBP/update checks. Each of those can break for reasons that
 have nothing to do with Mycorrhizal. This page is the operator-facing half of
-the [integration classification matrix](int-01-integration-classification-matrix.md)
+the [integration classification matrix](int-01-integration-classification-matrix.html)
 (INT-01, issue #464): who owns what, what a failure looks like, where to look
 first, and what happens to your data if you remove an integration. The matrix
 is the engineering half — retry budgets, timeouts, and the per-error
@@ -625,13 +625,13 @@ reference for what "handled correctly" means.
 
 ## See also
 
-- [CardDAV & contact sync](carddav.md) — serving your contacts to phones, and
+- [CardDAV & contact sync](carddav.html) — serving your contacts to phones, and
   the sync behavior of subscriptions.
-- [Notifications](notifications.md) — setting up each notification channel,
+- [Notifications](notifications.html) — setting up each notification channel,
   including the private-address knobs explained operator-side.
-- [Settings](settings.md) — where users configure their per-user connections.
+- [Settings](settings.html) — where users configure their per-user connections.
 - [Observability](operations/observability.html) — the diagnostics sweep, the
   system-event timeline, channel health, and alerting on integration state.
-- [Integration classification matrix](int-01-integration-classification-matrix.md)
+- [Integration classification matrix](int-01-integration-classification-matrix.html)
   — the engineering half: retry budgets, timeouts, and the per-error
   transient/permanent classification (INT-01, issue #464).

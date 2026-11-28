@@ -9,9 +9,12 @@ name: Deploy docs to GitHub Pages
 on:
   push:
     branches: ["main"]
-    # CHANGELOG.md is published as the site Changelog page, so a merge that
-    # changes it redeploys the site and unreleased entries are visible at once.
-    paths: ["docs/**", "CHANGELOG.md", "scripts/build-docs-versions.sh", "scripts/docs-release-tags.sh"]
+    # CHANGELOG.md is published as the site Changelog page, and /next/ folds
+    # the unassembled changelog.d/ fragments into its Unreleased section, so a
+    # merge that adds a fragment redeploys the site and the upcoming entry is
+    # visible at once (internal/releaseworkflow CheckDocsPublish pins this).
+    # The build's own tools are listed too: a change to them changes the pages.
+    paths: ["docs/**", "CHANGELOG.md", "changelog.d/**", "scripts/build-docs-versions.sh", "scripts/docs-release-tags.sh", "backend/cmd/docsversions/**", "backend/cmd/gensitechangelog/**", "backend/cmd/docssitelinks/**"]
   # A final release publishes its docs as the new root: release.yml and
   # promote-rc.yml dispatch this workflow on main once the tag exists. There is
   # deliberately no `push: tags` trigger: the github-pages environment only

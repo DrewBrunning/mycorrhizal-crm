@@ -285,7 +285,7 @@ still carries a derived `scope` view — both are **deprecated since v1.7.0** an
 read `scopes`, and ignore `scope`. The field keeps working unchanged for the whole window (at least
 one later minor release and 90 days, not before 2027-02-25); list, create and rotate responses carry
 the RFC 8594 `Deprecation` and `Sunset` headers while it does. The register row is
-`api-token-legacy-scope` in [the deprecation register](deprecations.md). A DAV-only scope set may
+`api-token-legacy-scope` in [the deprecation register](deprecations.html). A DAV-only scope set may
 send `never_expires: true` instead of `expires_in_days`; API/MCP tokens must expire. Response includes
 `token` (the `mycorrhizal_…` plaintext value) only on creation. Subsequent list responses omit it.
 
@@ -320,7 +320,7 @@ carry sensitivity-classified data (the address list).
   responses for a webhook that still uses it carry the RFC 8594
   `Deprecation` and `Sunset` headers. Set the field explicitly to pin the
   behaviour. The register row is `webhook-payload-full-fidelity` in
-  [the deprecation register](deprecations.md).
+  [the deprecation register](deprecations.html).
 
 ### CardDAV/CalDAV account password
 
@@ -340,7 +340,7 @@ TOTP or a passkey is enrolled; use an app password with the `carddav` and/or `ca
 ### Health
 
 All three are unauth, unversioned, and accessible directly (without prepending the base URL). See
-[deployment.md](deployment.md#health-liveness--readiness-endpoints) for which probe each consumer
+[deployment.md](deployment.html#health-liveness--readiness-endpoints) for which probe each consumer
 should use.
 
 | Method | Path | Description |

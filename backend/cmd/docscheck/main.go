@@ -46,6 +46,13 @@
 //     migrated database appears in docs/security/pii-inventory.md (a code span
 //     in a table row or heading) or in the reasoned exclusion list in
 //     pii_inventory.go.
+//
+//  8. Published pages render on the site and link to each other by their
+//     rendered address. A page in a published directory must carry YAML front
+//     matter, and a page with front matter must link to another page with front
+//     matter by its .html name: the site builds with plain Jekyll and no
+//     jekyll-relative-links plugin, so a .md link between two rendered pages is
+//     a 404 there even though GitHub follows it.
 package main
 
 import (
@@ -97,6 +104,7 @@ func collectFindings(root string) []string {
 	findings = append(findings, checkCICommandBinding(root)...)
 	findings = append(findings, checkPIIInventory(root)...)
 	findings = append(findings, checkPublishedFrontMatter(root)...)
+	findings = append(findings, checkPublishedMdLinks(root)...)
 	return findings
 }
 
@@ -492,9 +500,58 @@ func checkPublishedFrontMatter(root string) []string {
 			if err != nil {
 				continue // # pragma: no cover — the entry was listed a moment ago; a racing deletion is not a normal state
 			}
-			if !strings.HasPrefix(string(body), "---\n") {
+			if !hasFrontMatter(body) {
 				findings = append(findings, fmt.Sprintf("%s: is not published: add YAML front matter (title, parent, nav_order) so the docs site renders it", rel))
 			}
+		}
+	}
+	return findings
+}
+
+// hasFrontMatter reports whether a docs page opens with YAML front matter,
+// which is what makes Jekyll render it to .html instead of copying it as-is.
+func hasFrontMatter(body []byte) bool {
+	return strings.HasPrefix(string(body), "---\n") || strings.HasPrefix(string(body), "---\r\n")
+}
+
+// checkPublishedMdLinks flags a relative .md link from a page with front matter
+// to another page with front matter. Links to pages without front matter
+// (ADRs, security records, specs, repo-root files) are left alone: those are
+// read on GitHub, and whether the site should carry them is a separate call.
+func checkPublishedMdLinks(root string) []string {
+	var findings []string
+	docsDir := filepath.Join(root, "docs")
+	// published maps each page with front matter to its body, so the second
+	// pass reads nothing again.
+	published := map[string][]byte{}
+	files := listMarkdown(docsDir)
+	for _, rel := range files {
+		abs := filepath.Clean(filepath.Join(docsDir, rel))
+		body, err := os.ReadFile(abs) // #nosec G304 -- abs comes from the filepath.Walk over docs/, never request input
+		if err == nil && hasFrontMatter(body) {
+			published[abs] = body
+		}
+	}
+	for _, rel := range files {
+		abs := filepath.Clean(filepath.Join(docsDir, rel))
+		body, ok := published[abs]
+		if !ok {
+			continue
+		}
+		for _, link := range mdref.ExtractLinks(string(body)) {
+			pathPart, frag := mdref.SplitFragment(link.Dest)
+			if !strings.HasSuffix(pathPart, ".md") || strings.Contains(pathPart, "://") || strings.HasPrefix(pathPart, "/") {
+				continue
+			}
+			target := filepath.Clean(filepath.Join(filepath.Dir(abs), filepath.FromSlash(pathPart)))
+			if _, ok := published[target]; !ok {
+				continue
+			}
+			fix := strings.TrimSuffix(pathPart, ".md") + ".html"
+			if frag != "" {
+				fix += "#" + frag
+			}
+			findings = append(findings, fmt.Sprintf("%s:%d: links to published page %s by its .md name; use %s (the docs site does not rewrite .md links)", filepath.ToSlash(rel), link.Line, link.Dest, fix))
 		}
 	}
 	return findings

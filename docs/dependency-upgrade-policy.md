@@ -146,10 +146,11 @@ just by habit:
   `go install` in `actionlint.yml` and is bumped by hand.
 - **GitHub Actions are pinned by commit SHA**, not a floating tag — every
   `uses:` line across `.github/workflows/*.yml` names a 40-character SHA with
-  the human-readable version as a trailing comment (`actions/checkout@3d3c42e…
-  # v7.0.1`). This is not just convention: `zizmor` (`.github/workflows/zizmor.yml`)
-  audits every `.github/**` change (plus a weekly re-scan) for, among other
-  things, an unpinned or impostor action reference, and hard-fails the check.
+  the human-readable version as a trailing comment
+  (`actions/checkout@3d3c42e… # v7.0.1`). This is not just convention:
+  `zizmor` (`.github/workflows/zizmor.yml`) audits every `.github/**` change
+  (plus a weekly re-scan) for, among other things, an unpinned or impostor
+  action reference, and hard-fails the check.
   A PR that adds a floating-tag `uses:` line does not merge.
 - **Docker base images are pinned by digest**, not just a version tag — every
   `FROM` line in the three Dockerfiles names a `@sha256:…` digest alongside
@@ -239,7 +240,7 @@ answer is a **recorded, time-bounded exception**, never silence:
 records one entry per unresolved advisory — the advisory ID, ecosystem,
 package, when it was first opened, when the current window opened, when it
 expires (at most 90 days out — the same default review period
-[MAINT-01 (issue #490)](breaking-change-policy.md) uses for a deprecation
+[MAINT-01 (issue #490)](breaking-change-policy.html) uses for a deprecation
 window, reused here rather than inventing a second number), how many times
 it has been renewed, the owner, and why it cannot be fixed yet. `cd backend
 && go run ./cmd/depexceptions` parses and validates that ledger — malformed
@@ -278,7 +279,7 @@ said so.
 A dependency bump that raises this project's own supported-runtime minimum —
 [`docs/development/supported-runtime-matrix.md`](development/supported-runtime-matrix.md),
 **issue #472** — is a breaking change under
-[`breaking-change-policy.md`](breaking-change-policy.md) (**MAINT-02, issue #491**),
+[`breaking-change-policy.md`](breaking-change-policy.html) (**MAINT-02, issue #491**),
 which lists "raises a supported-version minimum" as one of its
 breaking-change categories. It is not an incidental side effect of a routine
 bump. Concretely: before merging a bump that changes an `engines` field, a

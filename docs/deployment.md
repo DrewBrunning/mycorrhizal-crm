@@ -160,7 +160,7 @@ first. The server does not call Google, so it cannot tell you whether Google can
 
 ## Contact map and geocoding
 
-The [contact map](map.md) works out of the box: it loads tiles from the free hosted OpenFreeMap service, and geocoding
+The [contact map](map.html) works out of the box: it loads tiles from the free hosted OpenFreeMap service, and geocoding
 ("Find coordinates") is off. Three instance-wide settings change that; each needs a restart, and the defaults and
 validation rules are in the [configuration reference](configuration-reference.html).
 
@@ -176,9 +176,9 @@ validation rules are in the [configuration reference](configuration-reference.ht
 - `GET /api/v1/config/map` is public and returns only the tile style URL.
 - The public Nominatim instance allows one request per second; the server throttles itself to that.
 - Geocoding is an outbound integration: it is absent in an Android local (on-device) profile, and
-  [`integration-ownership.md`](integration-ownership.md#geocoder) describes its failure behaviour.
+  [`integration-ownership.md`](integration-ownership.html#geocoder) describes its failure behaviour.
 - Set `GEOPULSE_BLOCK_PRIVATE_URLS=true` alongside the other `*_BLOCK_PRIVATE_URLS` flags above if you expose the
-  instance to the internet and users can configure the optional [GeoPulse connection](settings.md#geopulse).
+  instance to the internet and users can configure the optional [GeoPulse connection](settings.html#geopulse).
 
 ## Multi-user instances
 

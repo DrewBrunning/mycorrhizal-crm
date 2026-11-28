@@ -76,5 +76,5 @@ deployment; ADR 0028). It is present whenever the server runs normally.
 
 ## Related
 
-- [API reference](api-reference.md)
+- [API reference](api-reference.html)
 - [Architecture decision 0032 — MCP server](adrs/0032-mcp-server.md)
