@@ -1,0 +1,38 @@
+{% comment %}
+  Keyboard access to wide tables (issue #2244, WCAG 2.1.1). just-the-docs wraps
+  every table in a horizontally scrolling .table-wrapper; one that overflows is
+  a scrollable region a keyboard user cannot reach (axe scrollable-region-
+  focusable). Make each overflowing wrapper a focusable, named region so arrow
+  keys scroll it. scripts/build-docs-versions.sh copies this include into every
+  version, so older releases get it too.
+{% endcomment %}
+<style>
+  .table-wrapper:focus-visible { outline: 2px solid #7253ed; outline-offset: 2px; }
+</style>
+<script>
+  (function () {
+    function label(wrapper) {
+      var cap = wrapper.querySelector('caption');
+      if (cap && cap.textContent.trim()) return cap.textContent.trim();
+      for (var el = wrapper.previousElementSibling; el; el = el.previousElementSibling) {
+        if (/^H[1-6]$/.test(el.tagName)) return 'Table: ' + el.textContent.trim();
+      }
+      return 'Table';
+    }
+    function update() {
+      document.querySelectorAll('.table-wrapper').forEach(function (w) {
+        if (w.scrollWidth > w.clientWidth) {
+          w.setAttribute('tabindex', '0');
+          w.setAttribute('role', 'region');
+          if (!w.hasAttribute('aria-label')) w.setAttribute('aria-label', label(w));
+        } else if (w.getAttribute('tabindex') === '0') {
+          w.removeAttribute('tabindex');
+          w.removeAttribute('role');
+          w.removeAttribute('aria-label');
+        }
+      });
+    }
+    document.addEventListener('DOMContentLoaded', update);
+    window.addEventListener('resize', update);
+  })();
+</script>

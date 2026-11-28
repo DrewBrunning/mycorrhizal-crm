@@ -6,8 +6,8 @@
 # Pages artifact: the newest release at the site root, older ones under /X.Y/,
 # the unreleased docs under /next/, and versions.json for the switcher in
 # docs/_includes/header_custom.html. Each release is built from its own tag, so
-# a release's pages are the ones that shipped with it; only the switcher include
-# and the Changelog page are taken from the current tree so every version has them,
+# a release's pages are the ones that shipped with it; only the switcher and head
+# includes and the Changelog page are taken from the current tree so every version has them,
 # and cmd/docssitelinks fixes each version's dead relative links after its build.
 #
 # Usage (from the repo root, with the docs bundle installed and full tag history):
@@ -64,6 +64,8 @@ while IFS= read -r entry; do
   # tag has a CHANGELOG.md (the page itself is generated, never committed).
   mkdir -p "$src/docs/_includes"
   cp "$repo_root/docs/_includes/header_custom.html" "$src/docs/_includes/header_custom.html"
+  # ...and the current head include (keyboard access to wide tables).
+  cp "$repo_root/docs/_includes/head_custom.html" "$src/docs/_includes/head_custom.html"
   if [ -f "$src/CHANGELOG.md" ]; then
     # Repository links name the tag the page was built from (main for next).
     (cd backend && go run ./cmd/gensitechangelog -in "$src/CHANGELOG.md" -out "$src/docs/changelog.md" -ref "$tag")
