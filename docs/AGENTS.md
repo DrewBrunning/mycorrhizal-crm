@@ -18,9 +18,11 @@ with runtime behaviour is not documentation-only.
   assume a toolchain their audience lacks, that the operator versions page and
   `docs/development/supported-runtime-matrix.md` state the same floors, that every integration in
   `backend/integrations.Registry()` has an ownership section in `docs/integration-ownership.md`,
-  and that every migrated table appears in `docs/security/pii-inventory.md` (or the reasoned
-  exclusion list). Moving or renaming a file/heading any doc links to means updating the link in the
-  same PR — docscheck is the tripwire.
+  that every migrated table appears in `docs/security/pii-inventory.md` (or the reasoned
+  exclusion list), and that every page in `docs/`, `docs/operations/` and `docs/import/` has YAML
+  front matter (without it Jekyll copies the page raw and its `.html` link 404s). Moving or
+  renaming a file/heading any doc links to means updating the link in the same PR — docscheck is
+  the tripwire.
 - `cd backend && go run ./cmd/citecheck` proves every `path#anchor` and test-name citation in
   `docs/security/asvs-l2.md`, `masvs-l1.md` and `threat-model.md` still resolves, and that no
   `satisfied` row cites nothing. **Cite a thing, never a line:** `path#AuthMiddleware`,

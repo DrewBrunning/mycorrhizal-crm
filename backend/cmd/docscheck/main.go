@@ -465,8 +465,8 @@ func checkCICommandBinding(root string) []string {
 
 // publishedDirs are the docs/ directories whose pages are written for end users
 // and self-hosters, so they must be published by the Jekyll site. The other
-// directories (adrs, security, development, ...) are repository records that
-// are intentionally read on GitHub.
+// directories (adrs, security, development, ...) hold repository records read
+// on GitHub; a page there may opt in to the site, but none is required to.
 var publishedDirs = []string{".", "operations", "import"}
 
 // contextFiles are agent context aliases, not pages.

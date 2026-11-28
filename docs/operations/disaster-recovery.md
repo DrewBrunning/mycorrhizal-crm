@@ -376,7 +376,7 @@ the scenario that decides whether your backup strategy was real.
    enrolled passkey stops working — passkeys are bound to that hostname. Users fall back to
    TOTP or a recovery code; a passkey-only user with no codes left needs an admin
    `POST /api/v1/admin/users/:id/reset-2fa`. See
-   [Deployment → Moving to a new hostname](../deployment.md#moving-to-a-new-hostname-passkeys).
+   [Deployment → Moving to a new hostname](../deployment.html#moving-to-a-new-hostname-passkeys).
 
 ### Scenario: loss of an attachment or photo directory while the database survives
 
